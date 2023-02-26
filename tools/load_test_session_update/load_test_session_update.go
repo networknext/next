@@ -183,10 +183,10 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 	}
 	database.SellerMap[SellerId] = &seller
 	database.BuyerMap[BuyerId] = &buyer
-	database.DatacenterMaps[BuyerId] = make(map[uint64]*db.DatacenterMap)
+	database.BuyerDatacenterSettings[BuyerId] = make(map[uint64]*db.BuyerDatacenterSettings)
 	for i := range datacenters {
 		database.DatacenterMap[datacenters[i].Id] = &datacenters[i]
-		database.DatacenterMaps[BuyerId][datacenters[i].Id] = &db.DatacenterMap{DatacenterId: uint64(i), BuyerId: BuyerId, EnableAcceleration: true}
+		database.BuyerDatacenterSettings[BuyerId][datacenters[i].Id] = &db.BuyerDatacenterSettings{DatacenterId: uint64(i), BuyerId: BuyerId, EnableAcceleration: true}
 	}
 
 	err := database.Validate()

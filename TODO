@@ -38,7 +38,17 @@ TODO
 
 	Implement CRUD func test for buyer datacenter settings
 
+	---------------
 
+	Work out how to autoconfigure postgres from nothing (esp. on linux...). Add a script for it.
+
+	Get the api func tests working on semaphore.
+
+	Get the happy path working out of the box on linux.
+
+	Update README.md instructions on both Mac and Linux to include postgres setup.
+
+	---------------
 
 	
 
