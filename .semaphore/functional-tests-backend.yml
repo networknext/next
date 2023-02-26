@@ -30,9 +30,9 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/func_tests_backend dist/magic_backend dist/relay_gateway dist/relay_backend
+            - make -j dist/func_test_backend dist/magic_backend dist/relay_gateway dist/relay_backend
 
-            - artifact push workflow dist/func_tests_backend
+            - artifact push workflow dist/func_test_backend
             - artifact push workflow dist/magic_backend
             - artifact push workflow dist/relay_gateway
             - artifact push workflow dist/relay_backend
@@ -58,7 +58,7 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_tests_backend
+            - artifact pull workflow func_test_backend
             - artifact pull workflow libnext5.so
             - artifact pull workflow relay
             - artifact pull workflow magic_backend
@@ -67,7 +67,7 @@ blocks:
 
             - chmod +x relay
             - chmod +x libnext5.so
-            - chmod +x func_tests_backend
+            - chmod +x func_test_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
             - chmod +x relay_backend
@@ -82,53 +82,53 @@ blocks:
 
         - name: "test_magic_backend"
           commands:
-            - cd ./dist && ./func_tests_backend test_magic_backend
+            - cd ./dist && ./func_test_backend test_magic_backend
 
         - name: "test_redis_streams"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_streams
+            - cd ./dist && ./func_test_backend test_redis_streams
 
         - name: "test_redis_pubsub"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_pubsub
+            - cd ./dist && ./func_test_backend test_redis_pubsub
 
         - name: "test_google_pubsub"
           commands:
             - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
-            - cd ./dist && ./func_tests_backend test_google_pubsub
+            - cd ./dist && ./func_test_backend test_google_pubsub
 
         - name: "test_google_bigquery"
           commands:
             - bigquery-emulator --project="local" --dataset="local" &
-            - cd ./dist && ./func_tests_backend test_google_bigquery
+            - cd ./dist && ./func_test_backend test_google_bigquery
 
         - name: "test_redis_leader_store_no_flap"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_leader_store_no_flap
+            - cd ./dist && ./func_test_backend test_redis_leader_store_no_flap
 
         - name: "test_redis_leader_store_migration"
           commands:
-            - cd ./dist && ./func_tests_backend test_redis_leader_store_migration
+            - cd ./dist && ./func_test_backend test_redis_leader_store_migration
 
         - name: "test_cost_matrix_read_write"
           commands:
-            - cd ./dist && ./func_tests_backend test_cost_matrix_read_write
+            - cd ./dist && ./func_test_backend test_cost_matrix_read_write
 
         - name: "test_route_matrix_read_write"
           commands:
-            - cd ./dist && ./func_tests_backend test_route_matrix_read_write
+            - cd ./dist && ./func_test_backend test_route_matrix_read_write
 
         - name: "test_session_data_serialize"
           commands:
-            - cd ./dist && ./func_tests_backend test_session_data_serialize
+            - cd ./dist && ./func_test_backend test_session_data_serialize
 
         - name: "test_relay_manager"
           commands:
-            - cd ./dist && ./func_tests_backend test_relay_manager
+            - cd ./dist && ./func_test_backend test_relay_manager
 
         - name: "test_optimize"
           commands:
-            - cd ./dist && ./func_tests_backend test_optimize
+            - cd ./dist && ./func_test_backend test_optimize
 
         - name: "test_relay_backend"
           commands:

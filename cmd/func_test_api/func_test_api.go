@@ -747,7 +747,7 @@ func test_relays() {
 
 	relayId := uint64(0)
 	{
-		relay := admin.RelayData{RelayName: "Relay", DatacenterId: datacenterId}
+		relay := admin.RelayData{RelayName: "Relay", DatacenterId: datacenterId, PublicIP: "127.0.0.1"}
 
 		relayId = Create("http://127.0.0.1:50000/admin/create_relay", relay)
 	}

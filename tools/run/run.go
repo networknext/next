@@ -129,11 +129,11 @@ func main() {
 		bigquery_emulator()
 	} else if command == "setup-emulators" {
 		setup_emulators()
-	} else if command == "func-tests-sdk5" {
+	} else if command == "func-test-sdk5" {
 		func_tests_sdk5(args[2:])
-	} else if command == "func-tests-backend" {
+	} else if command == "func-test-backend" {
 		func_tests_backend(args[2:])
-	} else if command == "func-tests-api" {
+	} else if command == "func-test-api" {
 		func_tests_api(args[2:])
 	} else if command == "raspberry-backend" {
 		raspberry_backend()

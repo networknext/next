@@ -32,7 +32,7 @@ build:
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME5).so dist/relay dist/client dist/server dist/test func-test-sdk5 dist/raspberry_server dist/raspberry_client $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME5).so dist/relay dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -101,9 +101,6 @@ dist/func_server: dist/$(SDKNAME5).so cmd/func_server/*
 dist/func_client: dist/$(SDKNAME5).so cmd/func_client/*
 	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client ../cmd/func_client/func_client.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
-
-.PHONY: func-test-sdk5
-func-test-sdk5: dist/relay dist/func_server dist/func_client dist/func_backend dist/func_tests_sdk5
 
 # Raspberry
 
