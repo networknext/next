@@ -7,16 +7,17 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
-	"runtime"
 	"reflect"
-	"time"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
+	"runtime"
 	"strconv"
+	"time"
+	"strings"
 
 	"github.com/networknext/backend/modules/admin"
 )
@@ -64,6 +65,74 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	return cmd, &output
 }
 
+func PostJSON(url string, object interface{}) (*http.Response, error) {
+
+	buffer := new(bytes.Buffer)
+
+	json.NewEncoder(buffer).Encode(object)
+
+	request, _ := http.NewRequest("POST", url, buffer)
+
+	client := &http.Client{}
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = client.Do(request)
+		if err == nil {
+			return response, nil
+		}
+		time.Sleep(time.Second)
+	}
+
+	return nil, err
+}
+
+func Delete(url string, id uint64) error {
+
+	request, _ := http.NewRequest("DELETE", url, strings.NewReader(fmt.Sprintf("%d", id)))
+
+	client := &http.Client{}
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = client.Do(request)
+		if err == nil {
+			body, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				panic(fmt.Sprintf("could not read delete response: %v", err))
+			}
+			_ = body
+			response.Body.Close()
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+
+	return err
+}
+
+func Get(url string) (*http.Response, error) {
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get(url)
+		if err == nil {
+			return response, nil
+		}
+		time.Sleep(time.Second)
+	}
+
+	return nil, err
+}
+
+type CustomersResponse struct {
+	Customers []admin.CustomerData `json:"customers"`
+	Error     string               `json:"error"`
+}
+
 func test_customers() {
 
 	fmt.Printf("test_customers\n")
@@ -72,77 +141,88 @@ func test_customers() {
 
 	api_cmd, _ := api()
 
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
 	// create customer
+
+	customerId := uint64(0)
 	{
 		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-		
-		buffer := new(bytes.Buffer)
-		
-		json.NewEncoder(buffer).Encode(customer)
-		
-		request, _ := http.NewRequest("POST", "http://127.0.0.1:50000/admin/create_customer", buffer)
-		
-		client := &http.Client{}
 
-		var err error		
-		var response *http.Response
-		for i := 0; i < 30; i++ {
-			response, err = client.Do(request)
-			if err == nil {
-				break
-			}
-			time.Sleep(time.Second)
-		}
+		response, err := PostJSON("http://127.0.0.1:50000/admin/create_customer", customer)
 
 		if err != nil {
-		    panic(fmt.Sprintf("could not post create customer: %v\n", err))
+			panic(fmt.Sprintf("could not post create customer: %v\n", err))
 		}
 
 		if response.StatusCode != 200 {
-	      panic(fmt.Sprintf("bad http response on create customer: %d", response.StatusCode))
+			panic(fmt.Sprintf("bad http response on create customer: %d", response.StatusCode))
 		}
 
-	   body, error := ioutil.ReadAll(response.Body)
-	   if error != nil {
-	      panic(fmt.Sprintf("could not read response: %v", err))
-	   }
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			panic(fmt.Sprintf("could not read response: %v", err))
+		}
 
-	   customerId, err := strconv.ParseUint(string(body), 10, 64)
-	   if err != nil {
-	   	panic(fmt.Sprintf("could not parse customer id in response: %v\n", err))
-	   }
+		customerId, err = strconv.ParseUint(string(body), 10, 64)
+		if err != nil {
+			panic(fmt.Sprintf("could not parse customer id in response: %v\n", err))
+		}
 
-	   _ = customerId
-
-	   response.Body.Close()
+		response.Body.Close()
 	}
 
 	// read customers
 	{
-		var err error
-		var response *http.Response
-		for i := 0; i < 30; i++ {
-			response, err = http.Get("http://127.0.0.1:50000/admin/customers")
-			if err == nil {
-				break
-			}
-			time.Sleep(time.Second)
-		}
+		response, err := Get("http://127.0.0.1:50000/admin/customers")
 
 		if err != nil {
 			panic(fmt.Sprintf("failed to get customers: %v", err))
 		}
 
-	   body, error := ioutil.ReadAll(response.Body)
-	   if error != nil {
-	      panic(fmt.Sprintf("could not read response: %v", err))
-	   }
+		body, error := ioutil.ReadAll(response.Body)
+		if error != nil {
+			panic(fmt.Sprintf("could not read response: %v", err))
+		}
 
-	   // todo: parse customers json
+	   customersResponse := CustomersResponse{}
+    	err = json.Unmarshal([]byte(body), &customersResponse)
+    	if err != nil {
+			panic(fmt.Sprintf("could not parse customers json: %v", err))
+    	}
 
-	   response.Body.Close()
+    	if len(customersResponse.Customers) != 1 {
+    		panic("expect one customer in response")
+    	}
+    
+    	if customersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
 
-		fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+    	if customersResponse.Customers[0].CustomerId != customerId {
+    		panic("wrong customer id")
+    	}
+
+    	if customersResponse.Customers[0].CustomerName != "Test" {
+    		panic("wrong customer name")
+    	}
+
+    	if customersResponse.Customers[0].CustomerCode != "test" {
+    		panic("wrong customer code")
+    	}
+
+    	if !customersResponse.Customers[0].Live {
+    		panic("customer should have live true")
+    	}
+
+    	if !customersResponse.Customers[0].Debug {
+    		panic("customer should have debug true")
+    	}
+
+		response.Body.Close()
 	}
 
 	// update customer
@@ -150,12 +230,36 @@ func test_customers() {
 	// (read customers again to make sure updated)
 
 	// delete customer
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_customer", customerId)
+	
+		response, err := Get("http://127.0.0.1:50000/admin/customers")
 
-	// (read customers again to make sure deleted)
+		if err != nil {
+			panic(fmt.Sprintf("failed to get customers: %v", err))
+		}
 
-	api_cmd.Process.Signal(os.Interrupt)
+		body, error := ioutil.ReadAll(response.Body)
+		if error != nil {
+			panic(fmt.Sprintf("could not read response: %v", err))
+		}
 
-	api_cmd.Wait()
+	   customersResponse := CustomersResponse{}
+    	err = json.Unmarshal([]byte(body), &customersResponse)
+    	if err != nil {
+			panic(fmt.Sprintf("could not parse customers json: %v", err))
+    	}
+
+    	if len(customersResponse.Customers) != 0 {
+    		panic("should be no customers after delete")
+    	}
+    
+    	if customersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
+
+		response.Body.Close()
+	}
 }
 
 /*
@@ -365,12 +469,12 @@ func main() {
 	allTests := []test_function{
 		test_customers,
 		/*
-		test_buyers,
-		test_sellers,
-		test_datacenters,
-		test_relays,
-		test_route_shaders,
-		test_buyer_datacenter_settings,
+			test_buyers,
+			test_sellers,
+			test_datacenters,
+			test_relays,
+			test_route_shaders,
+			test_buyer_datacenter_settings,
 		*/
 	}
 

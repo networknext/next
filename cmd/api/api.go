@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"fmt"
 
+	"github.com/networknext/backend/modules/admin"
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
-	"github.com/networknext/backend/modules/admin"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
@@ -54,7 +55,9 @@ func main() {
 
 	service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
 
-	service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler)
+	service.Router.HandleFunc("/admin/create_customer", adminCreateCustomerHandler).Methods("POST")
+	service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler).Methods("GET")
+	service.Router.HandleFunc("/admin/delete_customer", adminReadCustomersHandler).Methods("DELETE")
 
 	service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler)
 
@@ -257,9 +260,27 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("customer handler\n")
+	var customer admin.CustomerData
+    err := json.NewDecoder(r.Body).Decode(&customer)
+    if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+    }
+    customerId, err := controller.CreateCustomer(&customer)
+    if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+    }
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "%d", customerId)
+}
+
 type AdminReadCustomersResponse struct {
 	Customers []admin.CustomerData `json:"customers"`
-	Error string `json:"error"`
+	Error     string               `json:"error"`
 }
 
 func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +297,7 @@ func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
 
 type AdminReadBuyersResponse struct {
 	Buyers []admin.BuyerData `json:"buyers"`
-	Error string `json:"error"`
+	Error  string            `json:"error"`
 }
 
 func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
@@ -293,7 +314,7 @@ func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
 
 type AdminReadSellersResponse struct {
 	Sellers []admin.SellerData `json:"sellers"`
-	Error string `json:"error"`
+	Error   string             `json:"error"`
 }
 
 func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
@@ -310,7 +331,7 @@ func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
 
 type AdminReadDatacentersResponse struct {
 	Datacenters []admin.DatacenterData `json:"datacenters"`
-	Error string `json:"error"`
+	Error       string                 `json:"error"`
 }
 
 func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
@@ -327,7 +348,7 @@ func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 
 type AdminReadRelaysResponse struct {
 	Relays []admin.RelayData `json:"relays"`
-	Error string `json:"error"`
+	Error  string            `json:"error"`
 }
 
 func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
@@ -344,7 +365,7 @@ func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
 
 type AdminReadRouteShadersResponse struct {
 	RouteShaders []admin.RouteShaderData `json:"route_shaders"`
-	Error string `json:"error"`
+	Error        string                  `json:"error"`
 }
 
 func adminReadRouteShadersHandler(w http.ResponseWriter, r *http.Request) {
@@ -361,7 +382,7 @@ func adminReadRouteShadersHandler(w http.ResponseWriter, r *http.Request) {
 
 type AdminReadBuyerDatacenterSettingsResponse struct {
 	BuyerDatacenterSettings []admin.BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
-	Error string `json:"error"`
+	Error                   string                          `json:"error"`
 }
 
 func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {

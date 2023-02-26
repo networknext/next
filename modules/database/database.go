@@ -842,11 +842,11 @@ func ExtractDatabase(config string) (*Database, error) {
 	// datacenters
 
 	type DatacenterRow struct {
-		datacenter_id        uint64
-		datacenter_name      string
-		latitude             float32
-		longitude            float32
-		seller_id            uint64
+		datacenter_id   uint64
+		datacenter_name string
+		latitude        float32
+		longitude       float32
+		seller_id       uint64
 	}
 
 	datacenterRows := make([]DatacenterRow, 0)
@@ -898,9 +898,9 @@ func ExtractDatabase(config string) (*Database, error) {
 	// sellers
 
 	type SellerRow struct {
-		seller_id          uint64
-		seller_name        string
-		customer_id        sql.NullInt64
+		seller_id   uint64
+		seller_name string
+		customer_id sql.NullInt64
 	}
 
 	sellerRows := make([]SellerRow, 0)
