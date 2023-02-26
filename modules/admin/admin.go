@@ -481,8 +481,14 @@ func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
 
 func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) error {
 	// IMPORTANT: Cannot change datacenter id once created
-	sql := "UPDATE customers SET datacenter_name = $1, latitude = $2, longitude = $3, seller_id = $4, notes = $5 WHERE datacenter_id = $6;"
-	_, err := controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.DatacenterId)
+	var err error
+	if datacenterData.SellerId != 0 {
+		sql := "UPDATE datacenters SET datacenter_name = $1, latitude = $2, longitude = $3, seller_id = $4, notes = $5 WHERE datacenter_id = $6;"
+		_, err = controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes, datacenterData.DatacenterId)
+	} else {
+		sql := "UPDATE datacenters SET datacenter_name = $1, latitude = $2, longitude = $3, notes = $4 WHERE datacenter_id = $5;"
+		_, err = controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.Notes, datacenterData.DatacenterId)
+	}
 	return err
 }
 

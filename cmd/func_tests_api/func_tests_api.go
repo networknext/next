@@ -577,6 +577,136 @@ func test_sellers() {
 
 // ----------------------------------------------------------------------------------------
 
+type DatacentersResponse struct {
+	Datacenters []admin.DatacenterData `json:"datacenters"`
+	Error  string            `json:"error"`
+}
+
+func test_datacenters() {
+
+	fmt.Printf("test_datacenters\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create seller (needed by datacenter)
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Seller"}
+
+		sellerId = Create("http://127.0.0.1:50000/admin/create_seller", seller)
+	}
+
+	// create datacenter
+
+	datacenterId := uint64(0)
+	{
+		datacenter := admin.DatacenterData{DatacenterName: "Datacenter", Latitude: 100, Longitude: 200, SellerId: sellerId}
+
+		datacenterId = Create("http://127.0.0.1:50000/admin/create_datacenter", datacenter)
+	}
+
+	// read datacenters
+	{
+		datacentersResponse := DatacentersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
+
+	 	if len(datacentersResponse.Datacenters) != 1 {
+	 		panic("expect one datacenter in response")
+	 	}
+
+	 	if datacentersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
+	 		panic("wrong datacenter id")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].DatacenterName != "Datacenter" {
+	 		panic("wrong datacenter name")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].Latitude != 100 {
+	 		panic("wrong latitude")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].Longitude != 200 {
+	 		panic("wrong longitude")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].Notes != "" {
+	 		panic("notes should be empty")
+	 	}
+	}
+
+	// update datacenter
+	{
+		datacenter := admin.DatacenterData{DatacenterId: datacenterId, DatacenterName: "Updated", Latitude: 110, Longitude: 220, Notes: "notes"}
+
+		Update("http://127.0.0.1:50000/admin/update_datacenter", datacenter)
+
+		datacentersResponse := DatacentersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
+
+	 	if len(datacentersResponse.Datacenters) != 1 {
+	 		panic("expect one datacenter in response")
+	 	}
+
+	 	if datacentersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
+	 		panic("wrong datacenter id")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].DatacenterName != "Updated" {
+	 		panic("wrong datacenter name")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].Latitude != 110 {
+	 		panic("wrong latitude")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].Longitude != 220 {
+	 		panic("wrong longitude")
+	 	}
+
+	 	if datacentersResponse.Datacenters[0].Notes != "notes" {
+	 		panic("wrong notes")
+	 	}
+	}
+
+	// delete datacenter
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_datacenter", datacenterId)
+
+		datacentersResponse := DatacentersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
+
+    	if len(datacentersResponse.Datacenters) != 0 {
+    		panic("should be no datacenters after delete")
+    	}
+
+    	if datacentersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+
 type test_function func()
 
 func main() {
@@ -585,7 +715,7 @@ func main() {
 		test_customers,
 		test_buyers,
 		test_sellers,
-		// test_datacenters,
+		test_datacenters,
 		/*
 			test_relays,
 			test_route_shaders,

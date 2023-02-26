@@ -78,7 +78,10 @@ func main() {
 		service.Router.HandleFunc("/admin/update_seller", adminUpdateSellerHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_seller", adminDeleteSellerHandler).Methods("DELETE")
 
+		service.Router.HandleFunc("/admin/create_datacenter", adminCreateDatacenterHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
+		service.Router.HandleFunc("/admin/update_datacenter", adminUpdateDatacenterHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_datacenter", adminDeleteDatacenterHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
 
@@ -484,6 +487,23 @@ func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
+	var datacenter admin.DatacenterData
+	err := json.NewDecoder(r.Body).Decode(&datacenter)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	datacenterId, err := controller.CreateDatacenter(&datacenter)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "%d", datacenterId)
+}
+
 type AdminReadDatacentersResponse struct {
 	Datacenters []admin.DatacenterData `json:"datacenters"`
 	Error       string                 `json:"error"`
@@ -497,6 +517,41 @@ func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
+	var datacenter admin.DatacenterData
+	err := json.NewDecoder(r.Body).Decode(&datacenter)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.UpdateDatacenter(&datacenter)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	datacenterId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.DeleteDatacenter(datacenterId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
