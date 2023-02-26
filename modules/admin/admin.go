@@ -65,7 +65,6 @@ func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
 	// IMPORTANT: Cannot change customer id once created
 	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4 WHERE customer_id = $5;"
 	_, err := controller.pgsql.Exec(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug, customerData.CustomerId)
-	fmt.Printf("error = %v\n", err)
 	return err
 }
 
@@ -423,8 +422,14 @@ func (controller *Controller) ReadSellers() ([]SellerData, error) {
 
 func (controller *Controller) UpdateSeller(sellerData *SellerData) error {
 	// IMPORTANT: Cannot change seller id once created
-	sql := "UPDATE customers SET seller_name = $1, customer_id = $2 WHERE seller_id = $3;"
-	_, err := controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.CustomerId, sellerData.SellerId)
+	var err error
+	if sellerData.CustomerId != 0 {
+		sql := "UPDATE sellers SET seller_name = $1, customer_id = $2 WHERE seller_id = $3;"
+		_, err = controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.CustomerId, sellerData.SellerId)
+	} else {
+		sql := "UPDATE sellers SET seller_name = $1 WHERE seller_id = $2;"
+		_, err = controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.SellerId)
+	}
 	return err
 }
 

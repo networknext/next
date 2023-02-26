@@ -499,100 +499,80 @@ func test_sellers() {
 		sellerId = Create("http://127.0.0.1:50000/admin/create_seller", seller)
 	}
 
-	_ = sellerId
-
-/*
-	// read buyers
+	// read sellers
 	{
-		buyersResponse := BuyersResponse{}
+		sellersResponse := SellersResponse{}
 
-		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
 
-	 	if len(buyersResponse.Buyers) != 1 {
-	 		panic("expect one buyer in response")
+	 	if len(sellersResponse.Sellers) != 1 {
+	 		panic("expect one seller in response")
 	 	}
 
-	 	if buyersResponse.Error != "" {
+	 	if sellersResponse.Error != "" {
 	 		panic("expect error string to be empty")
 	 	}
 
-	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
-	 		panic("wrong buyer id")
+	 	if sellersResponse.Sellers[0].SellerId != sellerId {
+	 		panic("wrong seller id")
 	 	}
 
-	 	if buyersResponse.Buyers[0].BuyerName != "Buyer" {
-	 		panic("wrong buyer name")
+	 	if sellersResponse.Sellers[0].SellerName != "Seller" {
+	 		panic("wrong seller name")
 	 	}
 
-	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
-	 		panic("wrong public key base64")
-	 	}
-
-	 	if buyersResponse.Buyers[0].CustomerId != customerId {
+	 	if sellersResponse.Sellers[0].CustomerId != 0 {
 	 		panic("wrong customer id")
-	 	}
-
-	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
 	 	}
 	}
 
-	// update buyer
+	// update seller
 	{
-		buyer := admin.BuyerData{BuyerName: "Updated", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+		seller := admin.SellerData{SellerId: sellerId, SellerName: "Updated"}
 
-		Update("http://127.0.0.1:50000/admin/update_buyer", buyer)
+		Update("http://127.0.0.1:50000/admin/update_seller", seller)
 
-		buyersResponse := BuyersResponse{}
+		sellersResponse := SellersResponse{}
 
-		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
 
-	 	if len(buyersResponse.Buyers) != 1 {
-	 		panic("expect one buyer in response")
+	 	if len(sellersResponse.Sellers) != 1 {
+	 		panic("expect one seller in response")
 	 	}
 
-	 	if buyersResponse.Error != "" {
+	 	if sellersResponse.Error != "" {
 	 		panic("expect error string to be empty")
 	 	}
 
-	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
-	 		panic("wrong buyer id")
+	 	if sellersResponse.Sellers[0].SellerId != sellerId {
+	 		panic("wrong seller id")
 	 	}
 
-	 	if buyersResponse.Buyers[0].BuyerName != "Updated" {
-	 		panic("wrong buyer name")
+	 	if sellersResponse.Sellers[0].SellerName != "Updated" {
+	 		panic("wrong seller name")
 	 	}
 
-	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
-	 		panic("wrong public key base64")
-	 	}
-
-	 	if buyersResponse.Buyers[0].CustomerId != customerId {
+	 	if sellersResponse.Sellers[0].CustomerId != 0 {
 	 		panic("wrong customer id")
-	 	}
-
-	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
 	 	}
 	}
 
-	// delete buyer
+	// delete seller
 	{
-		Delete("http://127.0.0.1:50000/admin/delete_buyer", buyerId)
+		Delete("http://127.0.0.1:50000/admin/delete_seller", sellerId)
 
-		buyersResponse := BuyersResponse{}
+		sellersResponse := SellersResponse{}
 
-		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
 
-    	if len(buyersResponse.Buyers) != 0 {
-    		panic("should be no buyers after delete")
+    	if len(sellersResponse.Sellers) != 0 {
+    		panic("should be no sellers after delete")
     	}
 
-    	if buyersResponse.Error != "" {
+    	if sellersResponse.Error != "" {
     		panic("expect error string to be empty")
     	}
 	}
-*/
 }
 
 // ----------------------------------------------------------------------------------------
@@ -605,8 +585,8 @@ func main() {
 		test_customers,
 		test_buyers,
 		test_sellers,
+		// test_datacenters,
 		/*
-			test_datacenters,
 			test_relays,
 			test_route_shaders,
 			test_buyer_datacenter_settings,

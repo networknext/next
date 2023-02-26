@@ -75,6 +75,8 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_seller", adminCreateSellerHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler)
+		service.Router.HandleFunc("/admin/update_seller", adminUpdateSellerHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_seller", adminDeleteSellerHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
 
@@ -443,6 +445,41 @@ func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
+	var seller admin.SellerData
+	err := json.NewDecoder(r.Body).Decode(&seller)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.UpdateSeller(&seller)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	sellerId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.DeleteSeller(sellerId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
