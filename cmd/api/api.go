@@ -30,48 +30,60 @@ func main() {
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
+	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
+	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 
 	core.Log("pgsql config: %s", pgsqlConfig)
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis pool active: %d", redisPoolActive)
 	core.Log("redis pool idle: %d", redisPoolIdle)
 
-	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
-
-	controller = admin.CreateController(pgsqlConfig)
-
 	service.Router.HandleFunc("/ping", pingHandler)
 
-	service.Router.HandleFunc("/portal/session_counts", portalSessionCountsHandler)
-	service.Router.HandleFunc("/portal/sessions/{begin}/{end}", portalSessionsHandler)
-	service.Router.HandleFunc("/portal/session/{session_id}", portalSessionDataHandler)
+	if enablePortal {
 
-	service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
-	service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
-	service.Router.HandleFunc("/portal/server/{server_address}", portalServerDataHandler)
+		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
-	service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
-	service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
-	service.Router.HandleFunc("/portal/relay/{relay_address}", portalRelayDataHandler)
+		service.Router.HandleFunc("/portal/session_counts", portalSessionCountsHandler)
+		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", portalSessionsHandler)
+		service.Router.HandleFunc("/portal/session/{session_id}", portalSessionDataHandler)
 
-	service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
+		service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
+		service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
+		service.Router.HandleFunc("/portal/server/{server_address}", portalServerDataHandler)
 
-	service.Router.HandleFunc("/admin/create_customer", adminCreateCustomerHandler).Methods("POST")
-	service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler).Methods("GET")
-	service.Router.HandleFunc("/admin/update_customer", adminUpdateCustomerHandler).Methods("PUT")
-	service.Router.HandleFunc("/admin/delete_customer", adminDeleteCustomerHandler).Methods("DELETE")
+		service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
+		service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
+		service.Router.HandleFunc("/portal/relay/{relay_address}", portalRelayDataHandler)
 
-	service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler)
+		service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
+	}
 
-	service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler)
+	if enableAdmin {
 
-	service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
+		controller = admin.CreateController(pgsqlConfig)
 
-	service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
+		service.Router.HandleFunc("/admin/create_customer", adminCreateCustomerHandler).Methods("POST")
+		service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler).Methods("GET")
+		service.Router.HandleFunc("/admin/update_customer", adminUpdateCustomerHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_customer", adminDeleteCustomerHandler).Methods("DELETE")
 
-	service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
+		service.Router.HandleFunc("/admin/create_buyer", adminCreateBuyerHandler).Methods("POST")
+		service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler)
+		service.Router.HandleFunc("/admin/update_buyer", adminUpdateBuyerHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_buyer", adminDeleteBuyerHandler).Methods("DELETE")
 
-	service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler)
+		service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler)
+
+		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
+
+		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
+
+		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
+		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
+
+		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler)
+	}
 
 	service.StartWebServer()
 
@@ -331,6 +343,23 @@ func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
+	var buyer admin.BuyerData
+	err := json.NewDecoder(r.Body).Decode(&buyer)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	buyerId, err := controller.CreateBuyer(&buyer)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "%d", buyerId)
+}
+
 type AdminReadBuyersResponse struct {
 	Buyers []admin.BuyerData `json:"buyers"`
 	Error  string            `json:"error"`
@@ -344,6 +373,41 @@ func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateBuyerHandler(w http.ResponseWriter, r *http.Request) {
+	var buyer admin.BuyerData
+	err := json.NewDecoder(r.Body).Decode(&buyer)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.UpdateBuyer(&buyer)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	buyerId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.DeleteBuyer(buyerId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -398,6 +462,24 @@ func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+func adminCreateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
+	var routeShader admin.RouteShaderData
+	err := json.NewDecoder(r.Body).Decode(&routeShader)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	routeShaderId, err := controller.CreateRouteShader(&routeShader)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Printf("error: %v\n", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "%d", routeShaderId)
+}
 
 type AdminReadRouteShadersResponse struct {
 	RouteShaders []admin.RouteShaderData `json:"route_shaders"`

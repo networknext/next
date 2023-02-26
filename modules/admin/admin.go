@@ -131,6 +131,7 @@ INSERT INTO route_shaders
 	rtt_veto_packetloss,
 	force_next,
 	route_diversity
+)
 VALUES
 (
 	$1,
@@ -368,13 +369,13 @@ func (controller *Controller) ReadBuyers() ([]BuyerData, error) {
 
 func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
 	// IMPORTANT: Cannot change buyer id once created
-	sql := "UPDATE customers SET buyer_name = $1, public_key_base64 = $2, customer_id = $3, route_shader_id = $4 WHERE buyer_id = $5;"
+	sql := "UPDATE buyers SET buyer_name = $1, public_key_base64 = $2, customer_id = $3, route_shader_id = $4 WHERE buyer_id = $5;"
 	_, err := controller.pgsql.Exec(sql, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId, buyerData.BuyerId)
 	return err
 }
 
 func (controller *Controller) DeleteBuyer(buyerId uint64) error {
-	sql := "DELETE FROM buyers WHERE buyers_id = $1;"
+	sql := "DELETE FROM buyers WHERE buyer_id = $1;"
 	_, err := controller.pgsql.Exec(sql, buyerId)
 	return err
 }

@@ -24,13 +24,13 @@ DONE
 
 	Implement CRUD func test for customers
 
-TODO
-
 	Simplify CRUD func tests so generalizing to all types is easy.
 
-	---------------
-
 	Implement CRUD func test for buyers
+
+TODO
+
+	---------------
 
 	Implement CRUD func test for sellers
 

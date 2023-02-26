@@ -365,108 +365,105 @@ func test_buyers() {
 
 	// create buyer
 
+	dummyBase64 := "oaneuthoanuthath"
+
 	buyerId := uint64(0)
 	{
-		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: "oaneuthoanuthath", CustomerId: customerId, RouteShaderId: routeShaderId}
+		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
 
 		buyerId = Create("http://127.0.0.1:50000/admin/create_buyer", buyer)
 	}
 
-	// todo
-	_ = buyerId
+	// read buyers
+	{
+		buyersResponse := BuyersResponse{}
 
-	/*
-			// read customers
-			{
-				customersResponse := CustomersResponse{}
+		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
 
-				Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+	 	if len(buyersResponse.Buyers) != 1 {
+	 		panic("expect one buyer in response")
+	 	}
 
-		    	if len(customersResponse.Customers) != 1 {
-		    		panic("expect one customer in response")
-		    	}
+	 	if buyersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
 
-		    	if customersResponse.Error != "" {
-		    		panic("expect error string to be empty")
-		    	}
+	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
+	 		panic("wrong buyer id")
+	 	}
 
-		    	if customersResponse.Customers[0].CustomerId != customerId {
-		    		panic("wrong customer id")
-		    	}
+	 	if buyersResponse.Buyers[0].BuyerName != "Buyer" {
+	 		panic("wrong buyer name")
+	 	}
 
-		    	if customersResponse.Customers[0].CustomerName != "Test" {
-		    		panic("wrong customer name")
-		    	}
+	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
+	 		panic("wrong public key base64")
+	 	}
 
-		    	if customersResponse.Customers[0].CustomerCode != "test" {
-		    		panic("wrong customer code")
-		    	}
+	 	if buyersResponse.Buyers[0].CustomerId != customerId {
+	 		panic("wrong customer id")
+	 	}
 
-		    	if !customersResponse.Customers[0].Live {
-		    		panic("customer should have live true")
-		    	}
+	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
 
-		    	if !customersResponse.Customers[0].Debug {
-		    		panic("customer should have debug true")
-		    	}
-			}
+	// update buyer
+	{
+		buyer := admin.BuyerData{BuyerName: "Updated", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
 
-			// update customer
-			{
-				customer := admin.CustomerData{CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
+		Update("http://127.0.0.1:50000/admin/update_buyer", buyer)
 
-				Update("http://127.0.0.1:50000/admin/update_customer", customer)
+		buyersResponse := BuyersResponse{}
 
-				customersResponse := CustomersResponse{}
+		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
 
-				Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+	 	if len(buyersResponse.Buyers) != 1 {
+	 		panic("expect one buyer in response")
+	 	}
 
-		    	if len(customersResponse.Customers) != 1 {
-		    		panic("expect one customer in response")
-		    	}
+	 	if buyersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
 
-		    	if customersResponse.Error != "" {
-		    		panic("expect error string to be empty")
-		    	}
+	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
+	 		panic("wrong buyer id")
+	 	}
 
-		    	if customersResponse.Customers[0].CustomerId != customerId {
-		    		panic("wrong customer id")
-		    	}
+	 	if buyersResponse.Buyers[0].BuyerName != "Updated" {
+	 		panic("wrong buyer name")
+	 	}
 
-		    	if customersResponse.Customers[0].CustomerName != "Updated" {
-		    		panic("wrong customer name")
-		    	}
+	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
+	 		panic("wrong public key base64")
+	 	}
 
-		    	if customersResponse.Customers[0].CustomerCode != "updated" {
-		    		panic("wrong customer code")
-		    	}
+	 	if buyersResponse.Buyers[0].CustomerId != customerId {
+	 		panic("wrong customer id")
+	 	}
 
-		    	if customersResponse.Customers[0].Live {
-		    		panic("customer should have live false")
-		    	}
+	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
 
-		    	if customersResponse.Customers[0].Debug {
-		    		panic("customer should have debug false")
-		    	}
-			}
+	// delete buyer
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_buyer", buyerId)
 
-			// delete customer
-			{
-				Delete("http://127.0.0.1:50000/admin/delete_customer", customerId)
+		buyersResponse := BuyersResponse{}
 
-				customersResponse := CustomersResponse{}
+		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
 
-				Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+    	if len(buyersResponse.Buyers) != 0 {
+    		panic("should be no buyers after delete")
+    	}
 
-		    	if len(customersResponse.Customers) != 0 {
-		    		panic("should be no customers after delete")
-		    	}
-
-		    	if customersResponse.Error != "" {
-		    		panic("expect error string to be empty")
-		    	}
-			}
-	*/
+    	if buyersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
+	}
 }
 
 // ----------------------------------------------------------------------------------------
