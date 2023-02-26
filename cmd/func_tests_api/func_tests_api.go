@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"reflect"
 	"time"
+	"net/http"
+	"io/ioutil"
 )
 
 func api() (*exec.Cmd, *bytes.Buffer) {
@@ -34,18 +36,37 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	return cmd, &output
 }
 
-func test_relays() {
+func test_customers() {
 
-	fmt.Printf("test_relays\n")
+	fmt.Printf("test_customers\n")
 
-	api_cmd, api_stdout := api()
+	api_cmd, _ := api()
 
-	time.Sleep(time.Second * 30)
-	
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get("http://127.0.0.1:50000/admin/customers")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to get customers: %v", err))
+	}
+
+   body, error := ioutil.ReadAll(response.Body)
+   if error != nil {
+      panic(fmt.Sprintf("could not read response: %v", err))
+   }
+
+   response.Body.Close()
+
+	fmt.Printf("--------------------------------------------------\n%s--------------------------------------------------\n", body)
+
 	api_cmd.Process.Signal(os.Interrupt)
 	api_cmd.Wait()
-
-	fmt.Printf("stdout: %s\n", api_stdout)
 }
 
 type test_function func()
@@ -53,7 +74,7 @@ type test_function func()
 func main() {
 
 	allTests := []test_function{
-		test_relays,
+		test_customers,
 	}
 
 	var tests []test_function
