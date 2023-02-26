@@ -85,6 +85,7 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_relay", adminCreateRelayHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
+		service.Router.HandleFunc("/admin/update_relay", adminUpdateRelayHandler).Methods("PUT")
 
 		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
@@ -587,6 +588,21 @@ func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
+	var relay admin.RelayData
+	err := json.NewDecoder(r.Body).Decode(&relay)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.UpdateRelay(&relay)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -669,7 +669,7 @@ SET
 	mrc = $14,
 	port_speed = $15,
 	max_sessions = $16,
-	notes = $17,
+	notes = $17
 WHERE
 	relay_id = $18;`
 	_, err := controller.pgsql.Exec(sql,
@@ -692,6 +692,7 @@ WHERE
 		relayData.Notes,
 		relayData.RelayId,
 	)
+	fmt.Printf("error: %v\n", err)
 	return err
 }
 

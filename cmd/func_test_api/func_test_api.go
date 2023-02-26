@@ -791,81 +791,38 @@ func test_relays() {
 	 	}
 	}
 
-/*
-	// read datacenters
+	// update relay
 	{
-		datacentersResponse := DatacentersResponse{}
+		relay := admin.RelayData{RelayId: relayId, RelayName: "Updated", DatacenterId: datacenterId, Notes: "notes", PublicIP: "127.0.0.10", InternalIP:"5.5.5.5", SSH_IP:"127.0.0.10"}
 
-		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
+		Update("http://127.0.0.1:50000/admin/update_relay", relay)
 
-	 	if len(datacentersResponse.Datacenters) != 1 {
-	 		panic("expect one datacenter in response")
+		relaysResponse := RelaysResponse{}
+
+		Read("http://127.0.0.1:50000/admin/relays", &relaysResponse)
+
+	 	if relaysResponse.Relays[0].RelayName != "Updated" {
+	 		panic("wrong relay name")
 	 	}
 
-	 	if datacentersResponse.Error != "" {
-	 		panic("expect error string to be empty")
+	 	if relaysResponse.Relays[0].PublicIP != "127.0.0.10" {
+	 		panic("wrong public ip")
 	 	}
 
-	 	if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
-	 		panic("wrong datacenter id")
+	 	if relaysResponse.Relays[0].InternalIP != "5.5.5.5" {
+	 		panic("wrong internal ip")
 	 	}
 
-	 	if datacentersResponse.Datacenters[0].DatacenterName != "Datacenter" {
-	 		panic("wrong datacenter name")
+	 	if relaysResponse.Relays[0].SSH_IP != "127.0.0.10" {
+	 		panic("wrong ssh ip")
 	 	}
 
-	 	if datacentersResponse.Datacenters[0].Latitude != 100 {
-	 		panic("wrong latitude")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].Longitude != 200 {
-	 		panic("wrong longitude")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].Notes != "" {
-	 		panic("notes should be empty")
-	 	}
-	}
-
-	// update datacenter
-	{
-		datacenter := admin.DatacenterData{DatacenterId: datacenterId, DatacenterName: "Updated", Latitude: 110, Longitude: 220, Notes: "notes"}
-
-		Update("http://127.0.0.1:50000/admin/update_datacenter", datacenter)
-
-		datacentersResponse := DatacentersResponse{}
-
-		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
-
-	 	if len(datacentersResponse.Datacenters) != 1 {
-	 		panic("expect one datacenter in response")
-	 	}
-
-	 	if datacentersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
-	 		panic("wrong datacenter id")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].DatacenterName != "Updated" {
-	 		panic("wrong datacenter name")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].Latitude != 110 {
-	 		panic("wrong latitude")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].Longitude != 220 {
-	 		panic("wrong longitude")
-	 	}
-
-	 	if datacentersResponse.Datacenters[0].Notes != "notes" {
+	 	if relaysResponse.Relays[0].Notes != "notes" {
 	 		panic("wrong notes")
 	 	}
 	}
 
+/*
 	// delete datacenter
 	{
 		Delete("http://127.0.0.1:50000/admin/delete_datacenter", datacenterId)
