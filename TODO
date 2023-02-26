@@ -18,9 +18,14 @@ DONE
 
 	Implement CRUD for all data types.
 
+	Implemented func tests for read of each type.
+
+	Clear postgres tables before running admin func tests.
+
 TODO
 
-	We need a set of admin func tests.
+	Implement full CRUD test for customer type.
+
 	
 
 
