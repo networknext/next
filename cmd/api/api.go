@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
-	"fmt"
-	"io/ioutil"
 
 	"github.com/networknext/backend/modules/admin"
 	"github.com/networknext/backend/modules/common"
@@ -264,16 +264,16 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 
 func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 	var customer admin.CustomerData
-    err := json.NewDecoder(r.Body).Decode(&customer)
-    if err != nil {
+	err := json.NewDecoder(r.Body).Decode(&customer)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-    }
-    customerId, err := controller.CreateCustomer(&customer)
-    if err != nil {
+	}
+	customerId, err := controller.CreateCustomer(&customer)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-    }
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprintf(w, "%d", customerId)
@@ -296,36 +296,36 @@ func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
 
 func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 	var customer admin.CustomerData
-    err := json.NewDecoder(r.Body).Decode(&customer)
-    if err != nil {
+	err := json.NewDecoder(r.Body).Decode(&customer)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-    }
-    err = controller.UpdateCustomer(&customer)
-    if err != nil {
+	}
+	err = controller.UpdateCustomer(&customer)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-    }
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
 func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
-    body, err := ioutil.ReadAll(r.Body)
-    if err != nil {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-    }
-    r.Body.Close()
-    customerId, err := strconv.ParseUint(string(body), 10, 64)
-    if err != nil {
+	}
+	r.Body.Close()
+	customerId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-    }
-    err = controller.DeleteCustomer(customerId)
-    if err != nil {
+	}
+	err = controller.DeleteCustomer(customerId)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-    }
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

@@ -16,11 +16,13 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/networknext/backend/modules/admin"
 )
+
+// ----------------------------------------------------------------------------------------
 
 func bash(command string) {
 
@@ -64,6 +66,8 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 
 	return cmd, &output
 }
+
+// ----------------------------------------------------------------------------------------
 
 func Create(url string, object interface{}) uint64 {
 
@@ -128,13 +132,13 @@ func Read(url string, object interface{}) {
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
 	}
- 
+
 	response.Body.Close()
 
 	err = json.Unmarshal([]byte(body), &object)
- 	if err != nil {
+	if err != nil {
 		panic(fmt.Sprintf("could not parse json response for %s: %v", url, err))
- 	}
+	}
 }
 
 func Update(url string, object interface{}) {
@@ -200,6 +204,8 @@ func Delete(url string, id uint64) error {
 	return err
 }
 
+// ----------------------------------------------------------------------------------------
+
 type CustomersResponse struct {
 	Customers []admin.CustomerData `json:"customers"`
 	Error     string               `json:"error"`
@@ -233,33 +239,33 @@ func test_customers() {
 
 		Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
 
-    	if len(customersResponse.Customers) != 1 {
-    		panic("expect one customer in response")
-    	}
-    
-    	if customersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if len(customersResponse.Customers) != 1 {
+			panic("expect one customer in response")
+		}
 
-    	if customersResponse.Customers[0].CustomerId != customerId {
-    		panic("wrong customer id")
-    	}
+		if customersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-    	if customersResponse.Customers[0].CustomerName != "Test" {
-    		panic("wrong customer name")
-    	}
+		if customersResponse.Customers[0].CustomerId != customerId {
+			panic("wrong customer id")
+		}
 
-    	if customersResponse.Customers[0].CustomerCode != "test" {
-    		panic("wrong customer code")
-    	}
+		if customersResponse.Customers[0].CustomerName != "Test" {
+			panic("wrong customer name")
+		}
 
-    	if !customersResponse.Customers[0].Live {
-    		panic("customer should have live true")
-    	}
+		if customersResponse.Customers[0].CustomerCode != "test" {
+			panic("wrong customer code")
+		}
 
-    	if !customersResponse.Customers[0].Debug {
-    		panic("customer should have debug true")
-    	}
+		if !customersResponse.Customers[0].Live {
+			panic("customer should have live true")
+		}
+
+		if !customersResponse.Customers[0].Debug {
+			panic("customer should have debug true")
+		}
 	}
 
 	// update customer
@@ -272,52 +278,198 @@ func test_customers() {
 
 		Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
 
-    	if len(customersResponse.Customers) != 1 {
-    		panic("expect one customer in response")
-    	}
-    
-    	if customersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if len(customersResponse.Customers) != 1 {
+			panic("expect one customer in response")
+		}
 
-    	if customersResponse.Customers[0].CustomerId != customerId {
-    		panic("wrong customer id")
-    	}
+		if customersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-    	if customersResponse.Customers[0].CustomerName != "Updated" {
-    		panic("wrong customer name")
-    	}
+		if customersResponse.Customers[0].CustomerId != customerId {
+			panic("wrong customer id")
+		}
 
-    	if customersResponse.Customers[0].CustomerCode != "updated" {
-    		panic("wrong customer code")
-    	}
+		if customersResponse.Customers[0].CustomerName != "Updated" {
+			panic("wrong customer name")
+		}
 
-    	if customersResponse.Customers[0].Live {
-    		panic("customer should have live false")
-    	}
+		if customersResponse.Customers[0].CustomerCode != "updated" {
+			panic("wrong customer code")
+		}
 
-    	if customersResponse.Customers[0].Debug {
-    		panic("customer should have debug false")
-    	}
+		if customersResponse.Customers[0].Live {
+			panic("customer should have live false")
+		}
+
+		if customersResponse.Customers[0].Debug {
+			panic("customer should have debug false")
+		}
 	}
 
 	// delete customer
 	{
 		Delete("http://127.0.0.1:50000/admin/delete_customer", customerId)
-	
+
 		customersResponse := CustomersResponse{}
 
 		Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
 
-    	if len(customersResponse.Customers) != 0 {
-    		panic("should be no customers after delete")
-    	}
-    
-    	if customersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if len(customersResponse.Customers) != 0 {
+			panic("should be no customers after delete")
+		}
+
+		if customersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
 }
+
+// ----------------------------------------------------------------------------------------
+
+type BuyersResponse struct {
+	Buyers []admin.BuyerData `json:"buyers"`
+	Error  string            `json:"error"`
+}
+
+func test_buyers() {
+
+	fmt.Printf("test_buyers\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create customer (needed by buyer)
+
+	customerId := uint64(0)
+	{
+		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
+
+		customerId = Create("http://127.0.0.1:50000/admin/create_customer", customer)
+	}
+
+	// create route shader (needed by buyer)
+
+	routeShaderId := uint64(0)
+	{
+		routeShader := admin.RouteShaderData{}
+
+		routeShaderId = Create("http://127.0.0.1:50000/admin/create_route_shader", routeShader)
+	}
+
+	// create buyer
+
+	buyerId := uint64(0)
+	{
+		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: "oaneuthoanuthath", CustomerId: customerId, RouteShaderId: routeShaderId}
+
+		buyerId = Create("http://127.0.0.1:50000/admin/create_buyer", buyer)
+	}
+
+	// todo
+	_ = buyerId
+
+	/*
+			// read customers
+			{
+				customersResponse := CustomersResponse{}
+
+				Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+
+		    	if len(customersResponse.Customers) != 1 {
+		    		panic("expect one customer in response")
+		    	}
+
+		    	if customersResponse.Error != "" {
+		    		panic("expect error string to be empty")
+		    	}
+
+		    	if customersResponse.Customers[0].CustomerId != customerId {
+		    		panic("wrong customer id")
+		    	}
+
+		    	if customersResponse.Customers[0].CustomerName != "Test" {
+		    		panic("wrong customer name")
+		    	}
+
+		    	if customersResponse.Customers[0].CustomerCode != "test" {
+		    		panic("wrong customer code")
+		    	}
+
+		    	if !customersResponse.Customers[0].Live {
+		    		panic("customer should have live true")
+		    	}
+
+		    	if !customersResponse.Customers[0].Debug {
+		    		panic("customer should have debug true")
+		    	}
+			}
+
+			// update customer
+			{
+				customer := admin.CustomerData{CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
+
+				Update("http://127.0.0.1:50000/admin/update_customer", customer)
+
+				customersResponse := CustomersResponse{}
+
+				Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+
+		    	if len(customersResponse.Customers) != 1 {
+		    		panic("expect one customer in response")
+		    	}
+
+		    	if customersResponse.Error != "" {
+		    		panic("expect error string to be empty")
+		    	}
+
+		    	if customersResponse.Customers[0].CustomerId != customerId {
+		    		panic("wrong customer id")
+		    	}
+
+		    	if customersResponse.Customers[0].CustomerName != "Updated" {
+		    		panic("wrong customer name")
+		    	}
+
+		    	if customersResponse.Customers[0].CustomerCode != "updated" {
+		    		panic("wrong customer code")
+		    	}
+
+		    	if customersResponse.Customers[0].Live {
+		    		panic("customer should have live false")
+		    	}
+
+		    	if customersResponse.Customers[0].Debug {
+		    		panic("customer should have debug false")
+		    	}
+			}
+
+			// delete customer
+			{
+				Delete("http://127.0.0.1:50000/admin/delete_customer", customerId)
+
+				customersResponse := CustomersResponse{}
+
+				Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+
+		    	if len(customersResponse.Customers) != 0 {
+		    		panic("should be no customers after delete")
+		    	}
+
+		    	if customersResponse.Error != "" {
+		    		panic("expect error string to be empty")
+		    	}
+			}
+	*/
+}
+
+// ----------------------------------------------------------------------------------------
 
 type test_function func()
 
@@ -325,8 +477,8 @@ func main() {
 
 	allTests := []test_function{
 		test_customers,
+		test_buyers,
 		/*
-			test_buyers,
 			test_sellers,
 			test_datacenters,
 			test_relays,
