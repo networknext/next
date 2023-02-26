@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/networknext/backend/modules/admin"
 	"github.com/networknext/backend/modules/common"
@@ -57,7 +58,8 @@ func main() {
 
 	service.Router.HandleFunc("/admin/create_customer", adminCreateCustomerHandler).Methods("POST")
 	service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler).Methods("GET")
-	service.Router.HandleFunc("/admin/delete_customer", adminReadCustomersHandler).Methods("DELETE")
+	service.Router.HandleFunc("/admin/update_customer", adminUpdateCustomerHandler).Methods("PUT")
+	service.Router.HandleFunc("/admin/delete_customer", adminDeleteCustomerHandler).Methods("DELETE")
 
 	service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler)
 
@@ -261,7 +263,6 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("customer handler\n")
 	var customer admin.CustomerData
     err := json.NewDecoder(r.Body).Decode(&customer)
     if err != nil {
@@ -291,6 +292,41 @@ func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
+	var customer admin.CustomerData
+    err := json.NewDecoder(r.Body).Decode(&customer)
+    if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+    }
+    err = controller.UpdateCustomer(&customer)
+    if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+    }
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
+    body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+    }
+    r.Body.Close()
+    customerId, err := strconv.ParseUint(string(body), 10, 64)
+    if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+    }
+    err = controller.DeleteCustomer(customerId)
+    if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+    }
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
