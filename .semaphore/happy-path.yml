@@ -17,7 +17,7 @@ blocks:
           commands:
             - cache restore golang
             - checkout
-            - sudo apt-get install -y libsodium-dev redis-server
+            - sudo apt-get install -y libsodium-dev redis-server postgresql@14
             - cd ~/backend
             - make rebuild
             - ./next select local
