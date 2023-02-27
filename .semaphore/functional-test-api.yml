@@ -63,10 +63,14 @@ blocks:
             - chmod +x api
             - chmod +x func_test_api
 
+            - ls -al
+
             - cd ~
 
       jobs:
 
         - name: "test_customers"
           commands:
-            - cd ./dist && ./func_test_api test_customers
+            - cd ./dist
+            - HTTP_PORT=50000 ./api &
+            - ./func_test_api test_customers
