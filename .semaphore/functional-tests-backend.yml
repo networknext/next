@@ -132,4 +132,4 @@ blocks:
 
         - name: "test_relay_backend"
           commands:
-            - cd ./dist && ./func_tests_backend test_relay_backend
+            - cd ./dist && ./func_test_backend test_relay_backend

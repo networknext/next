@@ -50,7 +50,7 @@ This repo contains the Network Next backend.
 
 ```console
 gaffer@macbook backend % make build
-dist/func_tests_sdk5
+dist/func_test_sdk5
 dist/relay
 dist/func_backend
 dist/libnext5.so
@@ -64,7 +64,7 @@ dist/raspberry_server
 dist/server
 dist/api
 dist/map_cruncher
-dist/func_tests_backend
+dist/func_test_backend
 dist/portal_cruncher
 dist/func_server
 dist/raspberry_backend
@@ -263,7 +263,7 @@ verifying map cruncher received map update messages ... OK
 
 ```console
 root@linux:~/backend# make build
-dist/func_tests_sdk5
+dist/func_test_sdk5
 dist/relay
 dist/func_backend
 dist/libnext5.so
@@ -277,7 +277,7 @@ dist/raspberry_server
 dist/server
 dist/api
 dist/map_cruncher
-dist/func_tests_backend
+dist/func_test_backend
 dist/portal_cruncher
 dist/func_server
 dist/raspberry_backend
