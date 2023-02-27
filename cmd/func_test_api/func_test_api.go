@@ -32,8 +32,8 @@ func bash(command string) {
 		os.Exit(1)
 	}
 
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("error: failed to run command: %v\n", err)
