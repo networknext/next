@@ -582,7 +582,6 @@ RETURNING relay_id;`
 	)
 	relayId := uint64(0)
 	if err := result.Scan(&relayId); err != nil {
-		fmt.Printf("error: %v\n", err)
 		return 0, fmt.Errorf("could not insert relay: %v\n", err)
 	}
 	return relayId, nil

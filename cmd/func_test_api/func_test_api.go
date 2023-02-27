@@ -939,6 +939,150 @@ func test_route_shaders() {
 
 // ----------------------------------------------------------------------------------------
 
+type BuyerDatacenterSettingsResponse struct {
+	Settings []admin.BuyerDatacenterSettings `json:"test_buyer_datacenter_settings"`
+	Error  string            `json:"error"`
+}
+
+func test_buyer_datacenter_settings() {
+
+	fmt.Printf("test_buyer_datacenter_settings\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create customer
+
+	customerId := uint64(0)
+	{
+		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
+
+		customerId = Create("http://127.0.0.1:50000/admin/create_customer", customer)
+	}
+
+	// create route shader
+
+	routeShaderId := uint64(0)
+	{
+		routeShader := admin.RouteShaderData{}
+
+		routeShaderId = Create("http://127.0.0.1:50000/admin/create_route_shader", routeShader)
+	}
+
+	// create buyer
+
+	dummyBase64 := "oaneuthoanuthath"
+
+	buyerId := uint64(0)
+	{
+		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+
+		buyerId = Create("http://127.0.0.1:50000/admin/create_buyer", buyer)
+	}
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Seller"}
+
+		sellerId = Create("http://127.0.0.1:50000/admin/create_seller", seller)
+	}
+
+	// create datacenter
+
+	datacenterId := uint64(0)
+	{
+		datacenter := admin.DatacenterData{DatacenterName: "Datacenter", Latitude: 100, Longitude: 200, SellerId: sellerId}
+
+		datacenterId = Create("http://127.0.0.1:50000/admin/create_datacenter", datacenter)
+	}
+
+	// create buyer datacenter settings
+	{
+		settings := admin.BuyerDatacenterSettings{BuyerId: buyerId, DatacenterId: datacenterId, EnableAcceleration: true}
+
+		Create("http://127.0.0.1:50000/admin/create_buyer_datacenter_settings", settings)
+	}
+
+/*
+	// read route shaders
+	{
+		routeShadersResponse := RouteShadersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Route Shader" {
+	 		panic("wrong route shader name")
+	 	}
+
+	 	if len(routeShadersResponse.RouteShaders) != 1 {
+	 		panic("expect one route shader in response")
+	 	}
+
+	 	if routeShadersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
+
+	// update route shader
+	{
+		routeShader := admin.RouteShaderData{RouteShaderId: routeShaderId, RouteShaderName: "Updated"}
+
+		Update("http://127.0.0.1:50000/admin/update_route_shader", routeShader)
+
+		routeShadersResponse := RouteShadersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Updated" {
+	 		panic("wrong route shader name")
+	 	}
+
+	 	if len(routeShadersResponse.RouteShaders) != 1 {
+	 		panic("expect one route shader in response")
+	 	}
+
+	 	if routeShadersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
+
+	// delete route shader
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_route_shader", routeShaderId)
+
+		routeShadersResponse := RouteShadersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+
+    	if len(routeShadersResponse.RouteShaders) != 0 {
+    		panic("should be no route shaders after delete")
+    	}
+
+    	if routeShadersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
+	}
+*/
+}
+
+// ----------------------------------------------------------------------------------------
+
 type test_function func()
 
 func main() {
@@ -950,9 +1094,7 @@ func main() {
 		test_datacenters,
 		test_relays,
 		test_route_shaders,
-		/*
-			test_buyer_datacenter_settings,
-		*/
+		test_buyer_datacenter_settings,
 	}
 
 	var tests []test_function
