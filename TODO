@@ -36,11 +36,11 @@ DONE
 
 	Implement CRUD func test for route shaders
 
-TODO
-
 	Implement CRUD func test for buyer datacenter settings
 
-	---------------
+	May I never implement another CRUD again.
+
+TODO
 
 	Need rest functions to get default values for each struct type (esp. RouteShaders...)
 

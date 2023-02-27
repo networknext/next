@@ -93,7 +93,10 @@ func main() {
 		service.Router.HandleFunc("/admin/update_route_shader", adminUpdateRouteShaderHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_route_shader", adminDeleteRouteShaderHandler).Methods("DELETE")
 
+		service.Router.HandleFunc("/admin/create_buyer_datacenter_settings", adminCreateBuyerDatacenterSettingsHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler)
+		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", adminUpdateBuyerDatacenterSettingsHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", adminDeleteBuyerDatacenterSettingsHandler).Methods("DELETE")
 	}
 
 	service.StartWebServer()
@@ -699,6 +702,23 @@ func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	var settings admin.BuyerDatacenterSettings
+	err := json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.CreateBuyerDatacenterSettings(&settings)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	fmt.Fprintf(w, "1")
+}
+
 type AdminReadBuyerDatacenterSettingsResponse struct {
 	BuyerDatacenterSettings []admin.BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
 	Error                   string                          `json:"error"`
@@ -712,6 +732,52 @@ func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	var settings admin.BuyerDatacenterSettings
+	err := json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.UpdateBuyerDatacenterSettings(&settings)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	buyerId, err := strconv.ParseUint(vars["buyerId"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	datacenterId, err := strconv.ParseUint(vars["datacenterId"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	_ = body
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.DeleteBuyerDatacenterSettings(buyerId, datacenterId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

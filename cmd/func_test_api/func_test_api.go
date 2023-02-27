@@ -384,33 +384,33 @@ func test_buyers() {
 
 		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
 
-	 	if len(buyersResponse.Buyers) != 1 {
-	 		panic("expect one buyer in response")
-	 	}
+		if len(buyersResponse.Buyers) != 1 {
+			panic("expect one buyer in response")
+		}
 
-	 	if buyersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if buyersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
-	 		panic("wrong buyer id")
-	 	}
+		if buyersResponse.Buyers[0].BuyerId != buyerId {
+			panic("wrong buyer id")
+		}
 
-	 	if buyersResponse.Buyers[0].BuyerName != "Buyer" {
-	 		panic("wrong buyer name")
-	 	}
+		if buyersResponse.Buyers[0].BuyerName != "Buyer" {
+			panic("wrong buyer name")
+		}
 
-	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
-	 		panic("wrong public key base64")
-	 	}
+		if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
+			panic("wrong public key base64")
+		}
 
-	 	if buyersResponse.Buyers[0].CustomerId != customerId {
-	 		panic("wrong customer id")
-	 	}
+		if buyersResponse.Buyers[0].CustomerId != customerId {
+			panic("wrong customer id")
+		}
 
-	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
-	 	}
+		if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
+			panic("wrong route shader id")
+		}
 	}
 
 	// update buyer
@@ -423,33 +423,33 @@ func test_buyers() {
 
 		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
 
-	 	if len(buyersResponse.Buyers) != 1 {
-	 		panic("expect one buyer in response")
-	 	}
+		if len(buyersResponse.Buyers) != 1 {
+			panic("expect one buyer in response")
+		}
 
-	 	if buyersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if buyersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if buyersResponse.Buyers[0].BuyerId != buyerId {
-	 		panic("wrong buyer id")
-	 	}
+		if buyersResponse.Buyers[0].BuyerId != buyerId {
+			panic("wrong buyer id")
+		}
 
-	 	if buyersResponse.Buyers[0].BuyerName != "Updated" {
-	 		panic("wrong buyer name")
-	 	}
+		if buyersResponse.Buyers[0].BuyerName != "Updated" {
+			panic("wrong buyer name")
+		}
 
-	 	if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
-	 		panic("wrong public key base64")
-	 	}
+		if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
+			panic("wrong public key base64")
+		}
 
-	 	if buyersResponse.Buyers[0].CustomerId != customerId {
-	 		panic("wrong customer id")
-	 	}
+		if buyersResponse.Buyers[0].CustomerId != customerId {
+			panic("wrong customer id")
+		}
 
-	 	if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
-	 	}
+		if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
+			panic("wrong route shader id")
+		}
 	}
 
 	// delete buyer
@@ -460,13 +460,13 @@ func test_buyers() {
 
 		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
 
-    	if len(buyersResponse.Buyers) != 0 {
-    		panic("should be no buyers after delete")
-    	}
+		if len(buyersResponse.Buyers) != 0 {
+			panic("should be no buyers after delete")
+		}
 
-    	if buyersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if buyersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
 }
 
@@ -474,7 +474,7 @@ func test_buyers() {
 
 type SellersResponse struct {
 	Sellers []admin.SellerData `json:"sellers"`
-	Error  string            `json:"error"`
+	Error   string             `json:"error"`
 }
 
 func test_sellers() {
@@ -505,25 +505,25 @@ func test_sellers() {
 
 		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
 
-	 	if len(sellersResponse.Sellers) != 1 {
-	 		panic("expect one seller in response")
-	 	}
+		if len(sellersResponse.Sellers) != 1 {
+			panic("expect one seller in response")
+		}
 
-	 	if sellersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if sellersResponse.Sellers[0].SellerId != sellerId {
-	 		panic("wrong seller id")
-	 	}
+		if sellersResponse.Sellers[0].SellerId != sellerId {
+			panic("wrong seller id")
+		}
 
-	 	if sellersResponse.Sellers[0].SellerName != "Seller" {
-	 		panic("wrong seller name")
-	 	}
+		if sellersResponse.Sellers[0].SellerName != "Seller" {
+			panic("wrong seller name")
+		}
 
-	 	if sellersResponse.Sellers[0].CustomerId != 0 {
-	 		panic("wrong customer id")
-	 	}
+		if sellersResponse.Sellers[0].CustomerId != 0 {
+			panic("wrong customer id")
+		}
 	}
 
 	// update seller
@@ -536,25 +536,25 @@ func test_sellers() {
 
 		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
 
-	 	if len(sellersResponse.Sellers) != 1 {
-	 		panic("expect one seller in response")
-	 	}
+		if len(sellersResponse.Sellers) != 1 {
+			panic("expect one seller in response")
+		}
 
-	 	if sellersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if sellersResponse.Sellers[0].SellerId != sellerId {
-	 		panic("wrong seller id")
-	 	}
+		if sellersResponse.Sellers[0].SellerId != sellerId {
+			panic("wrong seller id")
+		}
 
-	 	if sellersResponse.Sellers[0].SellerName != "Updated" {
-	 		panic("wrong seller name")
-	 	}
+		if sellersResponse.Sellers[0].SellerName != "Updated" {
+			panic("wrong seller name")
+		}
 
-	 	if sellersResponse.Sellers[0].CustomerId != 0 {
-	 		panic("wrong customer id")
-	 	}
+		if sellersResponse.Sellers[0].CustomerId != 0 {
+			panic("wrong customer id")
+		}
 	}
 
 	// delete seller
@@ -565,13 +565,13 @@ func test_sellers() {
 
 		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
 
-    	if len(sellersResponse.Sellers) != 0 {
-    		panic("should be no sellers after delete")
-    	}
+		if len(sellersResponse.Sellers) != 0 {
+			panic("should be no sellers after delete")
+		}
 
-    	if sellersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
 }
 
@@ -579,7 +579,7 @@ func test_sellers() {
 
 type DatacentersResponse struct {
 	Datacenters []admin.DatacenterData `json:"datacenters"`
-	Error  string            `json:"error"`
+	Error       string                 `json:"error"`
 }
 
 func test_datacenters() {
@@ -619,33 +619,33 @@ func test_datacenters() {
 
 		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
 
-	 	if len(datacentersResponse.Datacenters) != 1 {
-	 		panic("expect one datacenter in response")
-	 	}
+		if len(datacentersResponse.Datacenters) != 1 {
+			panic("expect one datacenter in response")
+		}
 
-	 	if datacentersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if datacentersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
-	 		panic("wrong datacenter id")
-	 	}
+		if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
+			panic("wrong datacenter id")
+		}
 
-	 	if datacentersResponse.Datacenters[0].DatacenterName != "Datacenter" {
-	 		panic("wrong datacenter name")
-	 	}
+		if datacentersResponse.Datacenters[0].DatacenterName != "Datacenter" {
+			panic("wrong datacenter name")
+		}
 
-	 	if datacentersResponse.Datacenters[0].Latitude != 100 {
-	 		panic("wrong latitude")
-	 	}
+		if datacentersResponse.Datacenters[0].Latitude != 100 {
+			panic("wrong latitude")
+		}
 
-	 	if datacentersResponse.Datacenters[0].Longitude != 200 {
-	 		panic("wrong longitude")
-	 	}
+		if datacentersResponse.Datacenters[0].Longitude != 200 {
+			panic("wrong longitude")
+		}
 
-	 	if datacentersResponse.Datacenters[0].Notes != "" {
-	 		panic("notes should be empty")
-	 	}
+		if datacentersResponse.Datacenters[0].Notes != "" {
+			panic("notes should be empty")
+		}
 	}
 
 	// update datacenter
@@ -658,33 +658,33 @@ func test_datacenters() {
 
 		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
 
-	 	if len(datacentersResponse.Datacenters) != 1 {
-	 		panic("expect one datacenter in response")
-	 	}
+		if len(datacentersResponse.Datacenters) != 1 {
+			panic("expect one datacenter in response")
+		}
 
-	 	if datacentersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if datacentersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
-	 		panic("wrong datacenter id")
-	 	}
+		if datacentersResponse.Datacenters[0].DatacenterId != datacenterId {
+			panic("wrong datacenter id")
+		}
 
-	 	if datacentersResponse.Datacenters[0].DatacenterName != "Updated" {
-	 		panic("wrong datacenter name")
-	 	}
+		if datacentersResponse.Datacenters[0].DatacenterName != "Updated" {
+			panic("wrong datacenter name")
+		}
 
-	 	if datacentersResponse.Datacenters[0].Latitude != 110 {
-	 		panic("wrong latitude")
-	 	}
+		if datacentersResponse.Datacenters[0].Latitude != 110 {
+			panic("wrong latitude")
+		}
 
-	 	if datacentersResponse.Datacenters[0].Longitude != 220 {
-	 		panic("wrong longitude")
-	 	}
+		if datacentersResponse.Datacenters[0].Longitude != 220 {
+			panic("wrong longitude")
+		}
 
-	 	if datacentersResponse.Datacenters[0].Notes != "notes" {
-	 		panic("wrong notes")
-	 	}
+		if datacentersResponse.Datacenters[0].Notes != "notes" {
+			panic("wrong notes")
+		}
 	}
 
 	// delete datacenter
@@ -695,13 +695,13 @@ func test_datacenters() {
 
 		Read("http://127.0.0.1:50000/admin/datacenters", &datacentersResponse)
 
-    	if len(datacentersResponse.Datacenters) != 0 {
-    		panic("should be no datacenters after delete")
-    	}
+		if len(datacentersResponse.Datacenters) != 0 {
+			panic("should be no datacenters after delete")
+		}
 
-    	if datacentersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if datacentersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
 }
 
@@ -747,7 +747,7 @@ func test_relays() {
 
 	relayId := uint64(0)
 	{
-		relay := admin.RelayData{RelayName: "Relay", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP:"0.0.0.0", SSH_IP:"127.0.0.1"}
+		relay := admin.RelayData{RelayName: "Relay", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
 
 		relayId = Create("http://127.0.0.1:50000/admin/create_relay", relay)
 	}
@@ -758,42 +758,42 @@ func test_relays() {
 
 		Read("http://127.0.0.1:50000/admin/relays", &relaysResponse)
 
-	 	if len(relaysResponse.Relays) != 1 {
-	 		panic("expect one relay in response")
-	 	}
+		if len(relaysResponse.Relays) != 1 {
+			panic("expect one relay in response")
+		}
 
-	 	if relaysResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if relaysResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if relaysResponse.Relays[0].RelayId != relayId {
-	 		panic("wrong relay id")
-	 	}
+		if relaysResponse.Relays[0].RelayId != relayId {
+			panic("wrong relay id")
+		}
 
-	 	if relaysResponse.Relays[0].RelayName != "Relay" {
-	 		panic("wrong relay name")
-	 	}
+		if relaysResponse.Relays[0].RelayName != "Relay" {
+			panic("wrong relay name")
+		}
 
-	 	if relaysResponse.Relays[0].PublicIP != "127.0.0.1" {
-	 		panic("wrong public ip")
-	 	}
+		if relaysResponse.Relays[0].PublicIP != "127.0.0.1" {
+			panic("wrong public ip")
+		}
 
-	 	if relaysResponse.Relays[0].InternalIP != "0.0.0.0" {
-	 		panic("wrong internal ip")
-	 	}
+		if relaysResponse.Relays[0].InternalIP != "0.0.0.0" {
+			panic("wrong internal ip")
+		}
 
-	 	if relaysResponse.Relays[0].SSH_IP != "127.0.0.1" {
-	 		panic("wrong ssh ip")
-	 	}
+		if relaysResponse.Relays[0].SSH_IP != "127.0.0.1" {
+			panic("wrong ssh ip")
+		}
 
-	 	if relaysResponse.Relays[0].Notes != "" {
-	 		panic("notes should be empty")
-	 	}
+		if relaysResponse.Relays[0].Notes != "" {
+			panic("notes should be empty")
+		}
 	}
 
 	// update relay
 	{
-		relay := admin.RelayData{RelayId: relayId, RelayName: "Updated", DatacenterId: datacenterId, Notes: "notes", PublicIP: "127.0.0.10", InternalIP:"5.5.5.5", SSH_IP:"127.0.0.10"}
+		relay := admin.RelayData{RelayId: relayId, RelayName: "Updated", DatacenterId: datacenterId, Notes: "notes", PublicIP: "127.0.0.10", InternalIP: "5.5.5.5", SSH_IP: "127.0.0.10"}
 
 		Update("http://127.0.0.1:50000/admin/update_relay", relay)
 
@@ -801,25 +801,25 @@ func test_relays() {
 
 		Read("http://127.0.0.1:50000/admin/relays", &relaysResponse)
 
-	 	if relaysResponse.Relays[0].RelayName != "Updated" {
-	 		panic("wrong relay name")
-	 	}
+		if relaysResponse.Relays[0].RelayName != "Updated" {
+			panic("wrong relay name")
+		}
 
-	 	if relaysResponse.Relays[0].PublicIP != "127.0.0.10" {
-	 		panic("wrong public ip")
-	 	}
+		if relaysResponse.Relays[0].PublicIP != "127.0.0.10" {
+			panic("wrong public ip")
+		}
 
-	 	if relaysResponse.Relays[0].InternalIP != "5.5.5.5" {
-	 		panic("wrong internal ip")
-	 	}
+		if relaysResponse.Relays[0].InternalIP != "5.5.5.5" {
+			panic("wrong internal ip")
+		}
 
-	 	if relaysResponse.Relays[0].SSH_IP != "127.0.0.10" {
-	 		panic("wrong ssh ip")
-	 	}
+		if relaysResponse.Relays[0].SSH_IP != "127.0.0.10" {
+			panic("wrong ssh ip")
+		}
 
-	 	if relaysResponse.Relays[0].Notes != "notes" {
-	 		panic("wrong notes")
-	 	}
+		if relaysResponse.Relays[0].Notes != "notes" {
+			panic("wrong notes")
+		}
 	}
 
 	// delete relay
@@ -830,13 +830,13 @@ func test_relays() {
 
 		Read("http://127.0.0.1:50000/admin/relays", &relaysResponse)
 
-    	if len(relaysResponse.Relays) != 0 {
-    		panic("should be no relays after delete")
-    	}
+		if len(relaysResponse.Relays) != 0 {
+			panic("should be no relays after delete")
+		}
 
-    	if relaysResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if relaysResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
 }
 
@@ -844,7 +844,7 @@ func test_relays() {
 
 type RouteShadersResponse struct {
 	RouteShaders []admin.RouteShaderData `json:"route_shaders"`
-	Error  string            `json:"error"`
+	Error        string                  `json:"error"`
 }
 
 func test_route_shaders() {
@@ -875,21 +875,21 @@ func test_route_shaders() {
 
 		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Route Shader" {
-	 		panic("wrong route shader name")
-	 	}
+		if routeShadersResponse.RouteShaders[0].RouteShaderName != "Route Shader" {
+			panic("wrong route shader name")
+		}
 
-	 	if len(routeShadersResponse.RouteShaders) != 1 {
-	 		panic("expect one route shader in response")
-	 	}
+		if len(routeShadersResponse.RouteShaders) != 1 {
+			panic("expect one route shader in response")
+		}
 
-	 	if routeShadersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if routeShadersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
-	 	}
+		if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
+			panic("wrong route shader id")
+		}
 	}
 
 	// update route shader
@@ -902,21 +902,21 @@ func test_route_shaders() {
 
 		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Updated" {
-	 		panic("wrong route shader name")
-	 	}
+		if routeShadersResponse.RouteShaders[0].RouteShaderName != "Updated" {
+			panic("wrong route shader name")
+		}
 
-	 	if len(routeShadersResponse.RouteShaders) != 1 {
-	 		panic("expect one route shader in response")
-	 	}
+		if len(routeShadersResponse.RouteShaders) != 1 {
+			panic("expect one route shader in response")
+		}
 
-	 	if routeShadersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if routeShadersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
-	 	}
+		if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
+			panic("wrong route shader id")
+		}
 	}
 
 	// delete route shader
@@ -927,21 +927,21 @@ func test_route_shaders() {
 
 		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
 
-    	if len(routeShadersResponse.RouteShaders) != 0 {
-    		panic("should be no route shaders after delete")
-    	}
+		if len(routeShadersResponse.RouteShaders) != 0 {
+			panic("should be no route shaders after delete")
+		}
 
-    	if routeShadersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if routeShadersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
 }
 
 // ----------------------------------------------------------------------------------------
 
 type BuyerDatacenterSettingsResponse struct {
-	Settings []admin.BuyerDatacenterSettings `json:"test_buyer_datacenter_settings"`
-	Error  string            `json:"error"`
+	Settings []admin.BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
+	Error    string                          `json:"error"`
 }
 
 func test_buyer_datacenter_settings() {
@@ -1011,74 +1011,80 @@ func test_buyer_datacenter_settings() {
 		Create("http://127.0.0.1:50000/admin/create_buyer_datacenter_settings", settings)
 	}
 
-/*
-	// read route shaders
+	// read buyer datacenter settings
 	{
-		routeShadersResponse := RouteShadersResponse{}
+		buyerDatacenterSettingsResponse := BuyerDatacenterSettingsResponse{}
 
-		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+		Read("http://127.0.0.1:50000/admin/buyer_datacenter_settings", &buyerDatacenterSettingsResponse)
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Route Shader" {
-	 		panic("wrong route shader name")
-	 	}
+		if len(buyerDatacenterSettingsResponse.Settings) != 1 {
+			panic(fmt.Sprintf("expect one settings in response, got %d", len(buyerDatacenterSettingsResponse.Settings)))
+		}
 
-	 	if len(routeShadersResponse.RouteShaders) != 1 {
-	 		panic("expect one route shader in response")
-	 	}
+		if buyerDatacenterSettingsResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if routeShadersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if buyerDatacenterSettingsResponse.Settings[0].BuyerId != buyerId {
+			panic("wrong buyer id")
+		}
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
-	 	}
+		if buyerDatacenterSettingsResponse.Settings[0].DatacenterId != datacenterId {
+			panic("wrong datacenter id")
+		}
+
+		if buyerDatacenterSettingsResponse.Settings[0].EnableAcceleration != true {
+			panic("wrong enable acceleration")
+		}
 	}
 
-	// update route shader
+	// update buyer datacenter settings
 	{
-		routeShader := admin.RouteShaderData{RouteShaderId: routeShaderId, RouteShaderName: "Updated"}
+		settings := admin.BuyerDatacenterSettings{BuyerId: buyerId, DatacenterId: datacenterId, EnableAcceleration: false}
 
-		Update("http://127.0.0.1:50000/admin/update_route_shader", routeShader)
+		Update("http://127.0.0.1:50000/admin/update_buyer_datacenter_settings", settings)
 
-		routeShadersResponse := RouteShadersResponse{}
+		buyerDatacenterSettingsResponse := BuyerDatacenterSettingsResponse{}
 
-		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+		Read("http://127.0.0.1:50000/admin/buyer_datacenter_settings", &buyerDatacenterSettingsResponse)
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Updated" {
-	 		panic("wrong route shader name")
-	 	}
+		if len(buyerDatacenterSettingsResponse.Settings) != 1 {
+			panic(fmt.Sprintf("expect one settings in response, got %d", len(buyerDatacenterSettingsResponse.Settings)))
+		}
 
-	 	if len(routeShadersResponse.RouteShaders) != 1 {
-	 		panic("expect one route shader in response")
-	 	}
+		if buyerDatacenterSettingsResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 
-	 	if routeShadersResponse.Error != "" {
-	 		panic("expect error string to be empty")
-	 	}
+		if buyerDatacenterSettingsResponse.Settings[0].BuyerId != buyerId {
+			panic("wrong buyer id")
+		}
 
-	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
-	 		panic("wrong route shader id")
-	 	}
+		if buyerDatacenterSettingsResponse.Settings[0].DatacenterId != datacenterId {
+			panic("wrong datacenter id")
+		}
+
+		if buyerDatacenterSettingsResponse.Settings[0].EnableAcceleration != false {
+			panic("wrong enable acceleration")
+		}
 	}
 
-	// delete route shader
+	// delete buyer datacenter settings
 	{
-		Delete("http://127.0.0.1:50000/admin/delete_route_shader", routeShaderId)
+		Delete(fmt.Sprintf("http://127.0.0.1:50000/admin/delete_buyer_datacenter_settings/%d/%d", buyerId, datacenterId), 1)
 
-		routeShadersResponse := RouteShadersResponse{}
+		buyerDatacenterSettingsResponse := BuyerDatacenterSettingsResponse{}
 
-		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+		Read("http://127.0.0.1:50000/admin/buyer_datacenter_settings", &buyerDatacenterSettingsResponse)
 
-    	if len(routeShadersResponse.RouteShaders) != 0 {
-    		panic("should be no route shaders after delete")
-    	}
+		if len(buyerDatacenterSettingsResponse.Settings) != 0 {
+			panic("should be no settings after delete")
+		}
 
-    	if routeShadersResponse.Error != "" {
-    		panic("expect error string to be empty")
-    	}
+		if buyerDatacenterSettingsResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
 	}
-*/
 }
 
 // ----------------------------------------------------------------------------------------

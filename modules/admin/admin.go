@@ -709,7 +709,7 @@ type BuyerDatacenterSettings struct {
 
 func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
 	sql := "INSERT INTO buyer_datacenter_settings (buyer_id, datacenter_id, enable_acceleration) VALUES ($1, $2, $3);"
-	_, err := controller.pgsql.Exec(sql, settings.DatacenterId, settings.BuyerId, settings.EnableAcceleration)
+	_, err := controller.pgsql.Exec(sql, settings.BuyerId, settings.DatacenterId, settings.EnableAcceleration)
 	return err
 }
 
@@ -732,13 +732,13 @@ func (controller *Controller) ReadBuyerDatacenterSettings() ([]BuyerDatacenterSe
 
 func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
 	// IMPORTANT: Cannot change buyer id or datacenter id once created
-	sql := "UPDATE buyer_datacenter_settings SET enable_acceleration = $1 WHERE buyer_id = $2, datacenter_id = $3;"
+	sql := "UPDATE buyer_datacenter_settings SET enable_acceleration = $1 WHERE buyer_id = $2 AND datacenter_id = $3;"
 	_, err := controller.pgsql.Exec(sql, settings.EnableAcceleration, settings.BuyerId, settings.DatacenterId)
 	return err
 }
 
 func (controller *Controller) DeleteBuyerDatacenterSettings(buyerId uint64, datacenterId uint64) error {
-	sql := "DELETE FROM buyer_datacenter_settings WHERE relay_id = $1, datacenter_id = $2;"
+	sql := "DELETE FROM buyer_datacenter_settings WHERE buyer_id = $1 AND datacenter_id = $2;"
 	_, err := controller.pgsql.Exec(sql, buyerId, datacenterId)
 	return err
 }
