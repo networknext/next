@@ -12,15 +12,19 @@ DONE
 
 	Get api func tests working in semaphore
 
-TODO
-
 	Func test database
-
-	-----------------	
 
 	Func test portal
 
-	-----------------
+TODO
+
+	Run func test portal in semaphore
+
+	Implement basic portal test
+
+	Implement redis streams test
+
+	Implement redis pubsub test
 
 
 
