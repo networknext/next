@@ -15,8 +15,8 @@ blocks:
       jobs:
         - name: "run happy-path-no-wait"
           commands:
-            - sem-service start redis:7.0
-            - sem-service status redis:7.0
+            - sem-service start redis:7
+            - sem-service status redis:7
             - sem-service start postgres:14
             - sem-service status postgres:14
             - psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer';"
