@@ -16,12 +16,13 @@ DONE
 
 	Func test portal
 
-TODO
+	Recover redis portal load test
 
-	Run func test portal in semaphore
+TODO
 
 	Implement basic portal test
 
+	Run func test portal in semaphore
 
 
 
