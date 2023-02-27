@@ -50,10 +50,6 @@ func api() *exec.Cmd {
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
 
-	// todo
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
 	cmd.Start()
 
 	return cmd
@@ -226,8 +222,7 @@ func test_portal() {
 
 	var ready bool
 
-	// todo
-	for { //i := 0; i < 120; i++ {
+	for i := 0; i < 120; i++ {
 
 		sessionCountsResponse := PortalSessionCountsResponse{}
 
@@ -244,8 +239,6 @@ func test_portal() {
 		sessionDataResponse := PortalSessionDataResponse{}
 
 		if len(sessionsResponse.Sessions) > 0 {
-
-			// todo: theroy, SessionId is not correct after parse, sometimes...
 
 			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%d", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
 
@@ -280,12 +273,9 @@ func test_portal() {
 
 		fmt.Printf("-------------------------------------------------------------\n")
 
-		// todo
-		/*
 		if ready {
 			break
 		}
-		*/
 
 		time.Sleep(time.Second)
 	}

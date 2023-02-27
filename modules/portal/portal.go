@@ -758,9 +758,6 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionE
 
 func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
-	// todo
-	fmt.Printf("GetSessionData: sessionId = %016x\n", sessionId)
-
 	redisClient := pool.Get()
 
 	redisClient.Send("GET", fmt.Sprintf("sd-%016x", sessionId))
@@ -771,30 +768,20 @@ func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceDa
 
 	redis_session_data, err := redis.String(redisClient.Receive())
 	if err != nil {
-		// todo
-		fmt.Printf("error reading redis session data: %v\n", err)
 		return nil, nil, nil
 	}
 
 	redis_slice_data, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		// todo
-		fmt.Printf("error reading redis slice data: %v\n", err)
 		return nil, nil, nil
 	}
 
-	// todo
 	fmt.Printf("session %016x has %d slices\n", sessionId, len(redis_slice_data))
 
 	redis_near_relay_data, err := redis.Strings(redisClient.Receive())
 	if err != nil {
-		// todo
-		fmt.Printf("error reading redis near relay data: %v\n", err)
 		return nil, nil, nil
 	}
-
-	// todo
-	fmt.Printf("session %016x has %d slices\n", sessionId, len(redis_near_relay_data))
 
 	redisClient.Close()
 
