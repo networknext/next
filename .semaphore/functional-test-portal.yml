@@ -30,7 +30,7 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/api dist/func_test_api
+            - make -j dist/api dist/func_test_portal
 
             - artifact push workflow dist/api
             - artifact push workflow dist/func_test_portal
