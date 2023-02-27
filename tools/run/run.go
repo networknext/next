@@ -360,7 +360,7 @@ func relay_keygen() {
 
 func sql_create() {
 	if runtime.GOOS == "linux" {
-		bash("cat ./schemas/sql/create.sql | sudo -c \"psql postgres\" -l postgres")
+		bash("cat ./schemas/sql/create.sql | su -c \"psql postgres\" -l postgres")
 	} else {
 		bash("psql postgres -f ./schemas/sql/create.sql")
 	}
@@ -368,7 +368,7 @@ func sql_create() {
 
 func sql_destroy() {
 	if runtime.GOOS == "linux" {
-		bash("cat ./schemas/sql/destroy.sql | sudo -l postgres psql postgres")
+		bash("cat ./schemas/sql/destroy.sql | su -c \"psql postgres\" -l postgres")
 	} else {
 		bash("psql postgres -f ./schemas/sql/destroy.sql")
 	}
@@ -376,7 +376,7 @@ func sql_destroy() {
 
 func sql_dev() {
 	if runtime.GOOS == "linux" {
-		bash("cat ./schemas/sql/dev.sql | sudo -l postgres psql postgres")
+		bash("cat ./schemas/sql/dev.sql | su -c \"psql postgres\" -l postgres")
 	} else {
 		bash("psql postgres -f ./schemas/sql/dev.sql")
 	}
@@ -384,7 +384,7 @@ func sql_dev() {
 
 func sql_local() {
 	if runtime.GOOS == "linux" {
-		bash("cat ./schemas/sql/local.sql | sudo -l postgres psql postgres")
+		bash("cat ./schemas/sql/local.sql | su -c \"psql postgres\" -l postgres")
 	} else {
 		bash("psql postgres -f ./schemas/sql/local.sql")
 	}
