@@ -47,6 +47,7 @@ blocks:
       prologue:
         commands:
 
+            - sem-service start redis
             - sem-service start postgres
             - sem-service status postgres
             - psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer';"
