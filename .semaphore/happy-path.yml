@@ -15,7 +15,8 @@ blocks:
       jobs:
         - name: "run happy-path-no-wait"
           commands:
-            - sem-service start postgres
+            - sem-service start redis 7
+            - sem-service start postgres 14
             - sem-service status postgres
             - psql -U postgres -h localhost -c "CREATE USER developer;"
             - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"

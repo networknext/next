@@ -20,6 +20,7 @@ blocks:
 
       prologue:
         commands:
+            - sem-service start redis 7
             - cache restore golang
             - sudo apt-get install -y libsodium-dev
             - checkout
