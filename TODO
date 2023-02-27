@@ -317,3 +317,7 @@ Nice to have:
 	Func test for bigquery with emulator
 
 	--------------
+
+	Fix compile warnings on linux, both in raspberry, and in next.cpp
+
+	--------------
