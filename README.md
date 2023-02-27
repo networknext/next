@@ -22,27 +22,33 @@ This repo contains the Network Next backend.
 
 	`brew services start postgresql@14`
 
-5. Add . to your path
+5. Configure postgres
+
+   `psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer'; ALTER USER developer WITH SUPERUSER;"`
+
+   `brew services start postgresql@14`
+
+6. Add . to your path
 
 	Modify ~/.zshrc to include:
 
 	`export PATH=.:/opt/homebrew/bin:$PATH`
 
-6. Setup SSH keys on your Mac for Github
+7. Setup SSH keys on your Mac for Github
 
    Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 
-7. Clone repo and cd into it
+8. Clone repo and cd into it
 
 	`git clone git@github.com:networknext/backend.git`
 
 	`cd backend`
 
-8. Select local environment
+9. Select local environment
 
 	`next select local`
 
-9. Build everything and run unit tests
+10. Build everything and run unit tests
 
 	`make`
 
@@ -86,11 +92,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-10. Setup postgres database
+11. Setup postgres database
 
    (something something something... default user is not good enough here)
 
-11. Run happy path
+12. Run happy path
 
 	`run happy-path`
 
@@ -220,18 +226,9 @@ verifying map cruncher received map update messages ... OK
 
 	`source ~/.profile`
 
-5. Configure local postgres
+5. Configure postgres
 
-   Change these lines in /etc/postgresql/14/main/pg_hba.conf:
-
-   `local   all             postgres                                peer`
-   `local   all             all                                     peer`
-   `host    all             all             127.0.0.1/32            scram-sha-256`
-
-   to:
-
-   `local   all             all                                     trust`
-   `host    all             all             127.0.0.1/32            trust`
+   `psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer'; ALTER USER developer WITH SUPERUSER;"`
 
    then restart postgres:
 
