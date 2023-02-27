@@ -325,3 +325,7 @@ Nice to have:
 	Atomics in SDK mean I can't just clear the whole structs. Godfucking damnit.
 
 	--------------
+
+	Func test for bigquery with emulator
+
+	--------------

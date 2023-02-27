@@ -1,6 +1,6 @@
 version: v1.0
 
-name: Functional Tests (Backend)
+name: Functional Test Backend
 
 agent:
   machine:

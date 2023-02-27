@@ -163,11 +163,14 @@ promotions:
   - name: "Development Deployment"
     pipeline_file: development-deploy.yml
 
-  - name: "Functional Tests (Backend)"
-    pipeline_file: functional-tests-backend.yml
+  - name: "Functional Test Backend"
+    pipeline_file: functional-test-backend.yml
 
-  - name: "Functional Tests (SDK5)"
-    pipeline_file: functional-tests-sdk5.yml
+  - name: "Functional Test SDK5"
+    pipeline_file: functional-test-sdk5.yml
+
+  - name: "Functional Test API"
+    pipeline_file: functional-test-api.yml
 
   - name: "Load Tests"
     pipeline_file: load-tests.yml

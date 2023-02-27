@@ -1,6 +1,6 @@
 version: v1.0
 
-name: Functional Tests (SDK5)
+name: Functional Test SDK5
 
 agent:
   machine:
