@@ -15,10 +15,13 @@ blocks:
       jobs:
         - name: "run happy-path-no-wait"
           commands:
+            - sem service start postgres
             - cache restore golang
             - checkout
-            - sudo apt-get install -y libsodium-dev redis-server postgresql
+            - sudo apt-get install -y libsodium-dev redis-server
             - cd ~/backend
             - make rebuild
             - ./next select local
+            - psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer';"
+            - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
             - ./run happy-path-no-wait
