@@ -29,12 +29,12 @@ blocks:
 
             - cd ~/backend
             - make clean
-            - make func-test-sdk5
+            - make dist/relay dist/func_server dist/func_client dist/func_backend dist/func_test_sdk5
 
             - artifact push workflow dist/func_client
             - artifact push workflow dist/func_server
             - artifact push workflow dist/func_backend
-            - artifact push workflow dist/func_tests_sdk5
+            - artifact push workflow dist/func_test_sdk5
 
 
   - name: "Run Functional Tests (sdk5) - A"

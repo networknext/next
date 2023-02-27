@@ -6,17 +6,13 @@ DONE
 
 	Verify I can get defaults in API func test
 
+	Get postgres stuff working on linux.
+
 TODO
+	
+	Get happy path postgres working in semaphore
 
-	Work out how to autoconfigure postgres from nothing (esp. on linux...). Add a script for it.
-
-	Get the api func tests working on semaphore.
-
-	Get the happy path working out of the box on linux and in semaphore again (API requires postgres now...)
-
-	Update README.md instructions on both Mac and Linux to include postgres setup.
-
-	---------------
+	Get api func tests working in semaphore
 
 	
 
