@@ -49,7 +49,7 @@ blocks:
 
             - sem-service start postgres
             - sem-service status postgres
-            - psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer';"
+            - psql -U postgres -h localhost -c "CREATE USER developer;"
             - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
 
             - sudo apt-get install -y libsodium-dev

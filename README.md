@@ -24,7 +24,7 @@ This repo contains the Network Next backend.
 
 5. Configure postgres
 
-   `psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer'; ALTER USER developer WITH SUPERUSER;"`
+   `psql -U postgres -h localhost -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
    `brew services start postgresql@14`
 
@@ -228,7 +228,7 @@ verifying map cruncher received map update messages ... OK
 
 5. Configure postgres
 
-   `psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer'; ALTER USER developer WITH SUPERUSER;"`
+   `psql -U postgres -h localhost -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
    then restart postgres:
 
