@@ -90,6 +90,8 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
 		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
+		service.Router.HandleFunc("/admin/update_route_shader", adminUpdateRouteShaderHandler).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_route_shader", adminDeleteRouteShaderHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler)
 	}
@@ -658,6 +660,41 @@ func adminReadRouteShadersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func adminUpdateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
+	var routeShader admin.RouteShaderData
+	err := json.NewDecoder(r.Body).Decode(&routeShader)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.UpdateRouteShader(&routeShader)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	routeShaderId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = controller.DeleteRouteShader(routeShaderId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

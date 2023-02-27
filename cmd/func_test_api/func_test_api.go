@@ -842,6 +842,103 @@ func test_relays() {
 
 // ----------------------------------------------------------------------------------------
 
+type RouteShadersResponse struct {
+	RouteShaders []admin.RouteShaderData `json:"route_shaders"`
+	Error  string            `json:"error"`
+}
+
+func test_route_shaders() {
+
+	fmt.Printf("test_route_shaders\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create route shader
+
+	routeShaderId := uint64(0)
+	{
+		routeShader := admin.RouteShaderData{RouteShaderName: "Route Shader"}
+
+		routeShaderId = Create("http://127.0.0.1:50000/admin/create_route_shader", routeShader)
+	}
+
+	// read route shaders
+	{
+		routeShadersResponse := RouteShadersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Route Shader" {
+	 		panic("wrong route shader name")
+	 	}
+
+	 	if len(routeShadersResponse.RouteShaders) != 1 {
+	 		panic("expect one route shader in response")
+	 	}
+
+	 	if routeShadersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
+
+	// update route shader
+	{
+		routeShader := admin.RouteShaderData{RouteShaderId: routeShaderId, RouteShaderName: "Updated"}
+
+		Update("http://127.0.0.1:50000/admin/update_route_shader", routeShader)
+
+		routeShadersResponse := RouteShadersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderName != "Updated" {
+	 		panic("wrong route shader name")
+	 	}
+
+	 	if len(routeShadersResponse.RouteShaders) != 1 {
+	 		panic("expect one route shader in response")
+	 	}
+
+	 	if routeShadersResponse.Error != "" {
+	 		panic("expect error string to be empty")
+	 	}
+
+	 	if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
+	 		panic("wrong route shader id")
+	 	}
+	}
+
+	// delete route shader
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_route_shader", routeShaderId)
+
+		routeShadersResponse := RouteShadersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
+
+    	if len(routeShadersResponse.RouteShaders) != 0 {
+    		panic("should be no route shaders after delete")
+    	}
+
+    	if routeShadersResponse.Error != "" {
+    		panic("expect error string to be empty")
+    	}
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+
 type test_function func()
 
 func main() {
@@ -852,8 +949,8 @@ func main() {
 		test_sellers,
 		test_datacenters,
 		test_relays,
+		test_route_shaders,
 		/*
-			test_route_shaders,
 			test_buyer_datacenter_settings,
 		*/
 	}

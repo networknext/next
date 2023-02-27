@@ -34,11 +34,19 @@ DONE
 
 	Implement CRUD func test for relays
 
-TODO
-
 	Implement CRUD func test for route shaders
 
+TODO
+
 	Implement CRUD func test for buyer datacenter settings
+
+	---------------
+
+	Need rest functions to get default values for each struct type (esp. RouteShaders...)
+
+	These need to be used to fill in default values when creating a new object of each type
+
+	Don't leave this up to the front end. Specify it in the REST API.
 
 	---------------
 

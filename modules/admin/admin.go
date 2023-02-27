@@ -78,7 +78,7 @@ func (controller *Controller) DeleteCustomer(customerId uint64) error {
 
 type RouteShaderData struct {
 	RouteShaderId             uint64  `json:"route_shader_id"`
-	Name                      string  `json:"name"`
+	RouteShaderName           string  `json:"route_shader_name"`
 	ABTest                    bool    `json:"ab_test"`
 	AcceptableLatency         int     `json:"acceptable_latency"`
 	AcceptablePacketLoss      float32 `json:"acceptable_packet_loss"`
@@ -159,7 +159,7 @@ VALUES
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
-		routeShaderData.Name,
+		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
 		routeShaderData.AcceptablePacketLoss,
@@ -229,7 +229,7 @@ FROM
 		row := RouteShaderData{}
 		err := rows.Scan(
 			&row.RouteShaderId,
-			&row.Name,
+			&row.RouteShaderName,
 			&row.ABTest,
 			&row.AcceptableLatency,
 			&row.AcceptablePacketLoss,
@@ -288,12 +288,11 @@ SET
 	rtt_veto_multipath = $20,
 	rtt_veto_packetloss = $21,
 	force_next = $22,
-	route_diversity = $23,
-	route_shader_id = $24,
+	route_diversity = $23
 WHERE
-	route_shader_id = $25;`
+	route_shader_id = $24;`
 	_, err := controller.pgsql.Exec(sql,
-		routeShaderData.Name,
+		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
 		routeShaderData.AcceptablePacketLoss,
