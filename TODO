@@ -18,11 +18,13 @@ DONE
 
 	Recover redis portal load test
 
-TODO
-
 	Implement basic portal test
 
-	Run func test portal in semaphore
+TODO
+
+	Need to bring back code to insert slice data, near relay data... they don't seem to be inserting, or working.
+
+	Get portal func test passing in semaphore
 
 
 

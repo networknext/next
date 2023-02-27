@@ -159,13 +159,10 @@ type PortalSessionDataResponse struct {
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sessionId, err := strconv.ParseUint(vars["session_id"], 16, 64)
+	sessionId, err := strconv.ParseUint(vars["session_id"], 10, 64)
 	if err != nil {
-		sessionId, err = strconv.ParseUint(vars["session_id"], 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 	response := PortalSessionDataResponse{}
 	response.SessionData, response.SliceData, response.NearRelayData = portal.GetSessionData(pool, sessionId)

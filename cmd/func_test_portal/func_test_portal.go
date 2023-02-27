@@ -6,7 +6,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,24 +22,41 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-func api() (*exec.Cmd, *bytes.Buffer) {
+func bash(command string) {
+
+	cmd := exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("error: failed to run command: %v\n", err)
+		os.Exit(1)
+	}
+
+	cmd.Wait()
+}
+
+func api() *exec.Cmd {
 
 	cmd := exec.Command("./api")
 	if cmd == nil {
 		panic("could not create api!\n")
-		return nil, nil
+		return nil
 	}
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
 
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
+	// todo
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	cmd.Start()
 
-	return cmd, &output
+	return cmd
 }
 
 func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
@@ -54,8 +70,6 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 			nearRelayInserter := portal.CreateNearRelayInserter(pool, 1000)
 
 			iteration := uint64(0)
-
-			near_relay_max := uint64(0)
 
 			for {
 
@@ -71,11 +85,8 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 					sessionInserter.Insert(sessionId, score, next, sessionData, sliceData)
 
-					if sessionId > near_relay_max {
-						nearRelayData := portal.GenerateRandomNearRelayData()
-						nearRelayInserter.Insert(sessionId, nearRelayData)
-						near_relay_max = sessionId
-					}
+					nearRelayData := portal.GenerateRandomNearRelayData()
+					nearRelayInserter.Insert(sessionId, nearRelayData)
 				}
 
 				time.Sleep(time.Second)
@@ -197,12 +208,11 @@ func test_portal() {
 
 	fmt.Printf("test_portal\n")
 
-	api_cmd, _ := api()
+	redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-	defer func() {
-		api_cmd.Process.Signal(os.Interrupt)
-		api_cmd.Wait()
-	}()
+	redisClient.Do("FLUSHALL")
+
+	api_cmd := api()
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
@@ -216,7 +226,8 @@ func test_portal() {
 
 	var ready bool
 
-	for i := 0; i < 10; i++ {
+	// todo
+	for { //i := 0; i < 120; i++ {
 
 		sessionCountsResponse := PortalSessionCountsResponse{}
 
@@ -234,9 +245,11 @@ func test_portal() {
 
 		if len(sessionsResponse.Sessions) > 0 {
 
+			// todo: theroy, SessionId is not correct after parse, sometimes...
+
 			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%d", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
 
-			fmt.Printf("session %x has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
+			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
 		}
 
 		ready = true
@@ -267,12 +280,18 @@ func test_portal() {
 
 		fmt.Printf("-------------------------------------------------------------\n")
 
+		// todo
+		/*
 		if ready {
 			break
 		}
+		*/
 
 		time.Sleep(time.Second)
 	}
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
 
 	if !ready {
 		fmt.Printf("error: portal API is broken\n")
