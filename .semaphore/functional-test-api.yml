@@ -47,7 +47,7 @@ blocks:
       prologue:
         commands:
 
-            - sudo apt-get install -y libsodium-dev postgresql@14
+            - sudo apt-get install -y libsodium-dev postgresql
 
             - mkdir -p dist
             - cd dist
