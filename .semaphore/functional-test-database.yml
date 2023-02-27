@@ -80,8 +80,8 @@ blocks:
 
         - name: "test_local"
           commands:
-            - cd ./dist && ./func_test_api test_local
+            - cd ./dist && ./func_test_database test_local
 
         - name: "test_dev"
           commands:
-            - cd ./dist && ./func_test_api test_dev
+            - cd ./dist && ./func_test_database test_dev
