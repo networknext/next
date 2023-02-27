@@ -1920,7 +1920,6 @@ func TestEarlyOutDirect(t *testing.T) {
 	userId := uint64(100)
 
 	routeShader := core.NewRouteShader()
-	routeShader.AnalysisOnly = false
 	routeState := core.RouteState{}
 	assert.False(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
@@ -1940,33 +1939,30 @@ func TestEarlyOutDirect(t *testing.T) {
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
 	routeShader = core.NewRouteShader()
-	routeShader.AnalysisOnly = false
 	routeShader.DisableNetworkNext = true
 	routeState = core.RouteState{}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = core.NewRouteShader()
+	routeShader.AnalysisOnly = true
 	routeState = core.RouteState{}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)
 
 	routeShader = core.NewRouteShader()
-	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
 	routeState = core.RouteState{}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = core.NewRouteShader()
-	routeShader.AnalysisOnly = false
 	routeShader.SelectionPercent = 0
 	routeState = core.RouteState{}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.NotSelected)
 
 	routeShader = core.NewRouteShader()
-	routeShader.AnalysisOnly = false
 	routeShader.ABTest = true
 	routeState = core.RouteState{}
 	assert.False(t, core.EarlyOutDirect(0, &routeShader, &routeState, &debug))
@@ -1975,7 +1971,6 @@ func TestEarlyOutDirect(t *testing.T) {
 	assert.False(t, routeState.B)
 
 	routeShader = core.NewRouteShader()
-	routeShader.AnalysisOnly = false
 	routeShader.ABTest = true
 	routeState = core.RouteState{}
 	assert.True(t, core.EarlyOutDirect(1, &routeShader, &routeState, &debug))
@@ -2401,7 +2396,6 @@ func NewTestData(env *TestEnvironment) *TestData {
 	numSegments := test.numRelays
 	test.routeMatrix = core.Optimize(test.numRelays, numSegments, test.costMatrix, test.relayDatacenters)
 	test.routeShader = core.NewRouteShader()
-	test.routeShader.AnalysisOnly = false
 
 	test.multipathVetoUsers = map[uint64]bool{}
 

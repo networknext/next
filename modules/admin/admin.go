@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/networknext/backend/modules/core"
+
 	_ "github.com/lib/pq"
 )
 
@@ -101,6 +103,34 @@ type RouteShaderData struct {
 	RTTVeto_PacketLoss        int     `json:"rtt_veto_packetloss"`
 	ForceNext                 bool    `json:"force_next"`
 	RouteDiversity            int     `json:"route_diversity"`
+}
+
+func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
+	routeShader := core.NewRouteShader()
+	data := RouteShaderData{}
+	data.ABTest = routeShader.ABTest
+	data.AcceptableLatency = int(routeShader.AcceptableLatency)
+	data.AcceptablePacketLoss = routeShader.AcceptablePacketLoss
+	data.PacketLossSustained = routeShader.PacketLossSustained
+	data.AnalysisOnly = routeShader.AnalysisOnly
+	data.BandwidthEnvelopeUpKbps = int(routeShader.BandwidthEnvelopeUpKbps)
+	data.BandwidthEnvelopeDownKbps = int(routeShader.BandwidthEnvelopeDownKbps)
+	data.DisableNetworkNext = routeShader.DisableNetworkNext
+	data.LatencyThreshold = int(routeShader.LatencyThreshold)
+	data.Multipath = routeShader.Multipath
+	data.ReduceLatency = routeShader.ReduceLatency
+	data.ReducePacketLoss = routeShader.ReduceLatency
+	data.SelectionPercent = float32(routeShader.SelectionPercent)
+	data.MaxLatencyTradeOff = int(routeShader.MaxLatencyTradeOff)
+	data.MaxNextRTT = int(routeShader.MaxNextRTT)
+	data.RouteSwitchThreshold = int(routeShader.RouteSwitchThreshold)
+	data.RouteSelectThreshold = int(routeShader.RouteSelectThreshold)
+	data.RTTVeto_Default = int(routeShader.RTTVeto_Default)
+	data.RTTVeto_Multipath = int(routeShader.RTTVeto_Multipath)
+	data.RTTVeto_PacketLoss = int(routeShader.RTTVeto_PacketLoss)
+	data.ForceNext = routeShader.ForceNext
+	data.RouteDiversity = int(routeShader.RouteDiversity)
+	return &data
 }
 
 func (controller *Controller) CreateRouteShader(routeShaderData *RouteShaderData) (uint64, error) {

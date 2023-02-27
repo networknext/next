@@ -1,48 +1,12 @@
 DONE
 
-	Sketch out admin.go CRUD methods
+	Added default route shader to admin controller.
 
-	Clean up create.sql
+	Hooked up to API rest call.
 
-	Clean up local.sql
-
-	Finish updating all admin data types.
-
-	Rename "datacenter maps" to "buyer datacenter settings"
-
-	Update extract database so it works with new schema.
-
-	Verify that I can extract database.
-
-	Verify happy path works.
-
-	Implement CRUD for all data types.
-
-	Implemented func tests for read of each type.
-
-	Clear postgres tables before running admin func tests.
-
-	Implement CRUD func test for customers
-
-	Simplify CRUD func tests so generalizing to all types is easy.
-
-	Implement CRUD func test for buyers
-
-	Implement CRUD func test for sellers
-
-	Implement CRUD func test for datacenters
-
-	Implement CRUD func test for relays
-
-	Implement CRUD func test for route shaders
-
-	Implement CRUD func test for buyer datacenter settings
-
-	May I never implement another CRUD again.
+	Verify I can get defaults in API func test
 
 TODO
-
-	Need rest functions to get default values for route shader.
 
 	---------------
 

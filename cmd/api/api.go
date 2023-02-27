@@ -69,32 +69,33 @@ func main() {
 		service.Router.HandleFunc("/admin/delete_customer", adminDeleteCustomerHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_buyer", adminCreateBuyerHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler)
+		service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_buyer", adminUpdateBuyerHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer", adminDeleteBuyerHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_seller", adminCreateSellerHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler)
+		service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_seller", adminUpdateSellerHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_seller", adminDeleteSellerHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_datacenter", adminCreateDatacenterHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler)
+		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_datacenter", adminUpdateDatacenterHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_datacenter", adminDeleteDatacenterHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_relay", adminCreateRelayHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler)
+		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_relay", adminUpdateRelayHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_relay", adminDeleteRelayHandler).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler)
+		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_route_shader", adminUpdateRouteShaderHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_route_shader", adminDeleteRouteShaderHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/route_shader_defaults", adminRouteShaderDefaultsHandler).Methods("GET")
 
 		service.Router.HandleFunc("/admin/create_buyer_datacenter_settings", adminCreateBuyerDatacenterSettingsHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler)
+		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", adminUpdateBuyerDatacenterSettingsHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", adminDeleteBuyerDatacenterSettingsHandler).Methods("DELETE")
 	}
@@ -632,6 +633,12 @@ func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+func adminRouteShaderDefaultsHandler(w http.ResponseWriter, r *http.Request) {
+	routeShader := controller.RouteShaderDefaults()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(routeShader)
+}
 
 func adminCreateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 	var routeShader admin.RouteShaderData

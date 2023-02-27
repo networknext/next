@@ -1085,6 +1085,13 @@ func test_buyer_datacenter_settings() {
 			panic("expect error string to be empty")
 		}
 	}
+
+	// get route shader defaults
+	{
+		routeShader := admin.RouteShaderData{}
+
+		Read("http://127.0.0.1:50000/admin/route_shader_defaults", &routeShader)
+	}
 }
 
 // ----------------------------------------------------------------------------------------
