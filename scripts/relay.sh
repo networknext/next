@@ -1,3 +1,5 @@
+#!/bin/sh
+
 cd ~
 rm -f relay*
 wget https://storage.googleapis.com/relay_artifacts/relay-reference-1.0.4 -O relay --no-cache
