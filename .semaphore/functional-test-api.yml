@@ -47,7 +47,11 @@ blocks:
       prologue:
         commands:
 
-            - sudo apt-get install -y libsodium-dev postgresql
+            - sem service start postgres
+            - psql -U postgres -h localhost -c "CREATE USER developer WITH PASSWORD 'developer';"
+            - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
+
+            - sudo apt-get install -y libsodium-dev
 
             - mkdir -p dist
             - cd dist
