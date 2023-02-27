@@ -32,9 +32,6 @@ func bash(command string) {
 		os.Exit(1)
 	}
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("error: failed to run command: %v\n", err)
 		os.Exit(1)
