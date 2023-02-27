@@ -42,11 +42,7 @@ DONE
 
 TODO
 
-	Need rest functions to get default values for each struct type (esp. RouteShaders...)
-
-	These need to be used to fill in default values when creating a new object of each type
-
-	Don't leave this up to the front end. Specify it in the REST API.
+	Need rest functions to get default values for route shader.
 
 	---------------
 
