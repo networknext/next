@@ -220,25 +220,39 @@ verifying map cruncher received map update messages ... OK
 
 	`source ~/.profile`
 
-5. Setup SSH keys on your Linux box for Github
+5. Configure postgres
+
+   Change this line in /etc/postgresql/14/main/pg_hba.conf:
+
+   `local   all             all                                peer`
+
+   to:
+
+   `local   all             all                                md5`
+
+   then restart postgres:
+
+   `sudo systemctl restart postgresql`
+
+6. Setup SSH keys on your Linux box for Github
 
    Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 
-6. Clone repo and cd into it
+7. Clone repo and cd into it
 
 	`git clone git@github.com:networknext/backend.git`
 
 	`cd backend`
 
-7. Select local environment
+8. Select local environment
 
    `next select local`
 
-8. Make everything and run tests
+9. Make everything and run tests
 
 	`make`
 
-9. Build everything and run unit tests
+10. Build everything and run unit tests
 
 	`make`
 
@@ -282,11 +296,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-10. Setup postgres
+11. Setup postgres
 
    (something something something... default user is not good enough here)
 
-11. Run happy path
+12. Run happy path
 
     `run happy-path`
 
