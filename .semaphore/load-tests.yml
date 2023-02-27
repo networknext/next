@@ -32,24 +32,24 @@ blocks:
           commands:
             - ./run load-test-map
 
-        - name: "Load Test Redis Cruncher"
+        - name: "Load Test Redis Portal"
           commands:
-            - sudo apt-get install -y redis-server
-            - ./run load-test-redis-cruncher
+            - ./run load-test-redis-portal
+
+        - name: "Load Test Redis Data"
+          commands:
+            - ./run load-test-redis-data
             
         - name: "Load Test Redis Pubsub"
           commands:
-            - sudo apt-get install -y redis-server
             - ./run load-test-redis-pubsub
 
         - name: "Load Test Redis Streams"
           commands:
-            - sudo apt-get install -y redis-server
             - ./run load-test-redis-streams
 
         - name: "Load Test Redis Optimize"
           commands:
-            - sudo apt-get install -y redis-server
             - ./run load-test-optimize
 
         - name: "Load Test Route Matrix"

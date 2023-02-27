@@ -6,10 +6,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
-	"bytes"
 
 	_ "github.com/networknext/backend/modules/portal"
 )

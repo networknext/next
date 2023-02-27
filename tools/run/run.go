@@ -163,14 +163,14 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
+	} else if command == "load-test-redis-portal" {
+		load_test_redis_portal()
 	} else if command == "load-test-redis-data" {
 		load_test_redis_data()
 	} else if command == "load-test-redis-pubsub" {
 		load_test_redis_pubsub()
 	} else if command == "load-test-redis-streams" {
 		load_test_redis_streams()
-	} else if command == "load-test-redis-portal" {
-		load_test_redis_portal()
 	} else if command == "load-test-map" {
 		load_test_map()
 	} else if command == "load-test-optimize" {
