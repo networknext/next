@@ -172,6 +172,9 @@ promotions:
   - name: "Functional Test API"
     pipeline_file: functional-test-api.yml
 
+  - name: "Functional Test Database"
+    pipeline_file: functional-test-database.yml
+
   - name: "Load Tests"
     pipeline_file: load-tests.yml
 
