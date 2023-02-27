@@ -224,11 +224,11 @@ verifying map cruncher received map update messages ... OK
 
    Change this line in /etc/postgresql/14/main/pg_hba.conf:
 
-   `local   all             all                                peer`
+   `local   all             postgres                                peer`
 
    to:
 
-   `local   all             all                                md5`
+   `local   all             postgres                                trust`
 
    then restart postgres:
 
