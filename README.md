@@ -28,17 +28,21 @@ This repo contains the Network Next backend.
 
 	`export PATH=.:/opt/homebrew/bin:$PATH`
 
-6. Clone repo and change dir into it
+6. Setup SSH keys on your Mac for Github
+
+   Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+
+7. Clone repo and cd into it
 
 	`git clone git@github.com:networknext/backend.git`
 
 	`cd backend`
 
-7. Select local environment
+8. Select local environment
 
 	`next select local`
 
-8. Build everything and run unit tests
+9. Build everything and run unit tests
 
 	`make`
 
@@ -82,11 +86,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-9. Setup postgres database
+10. Setup postgres database
 
    (something something something... default user is not good enough here)
 
-10. Run happy path
+11. Run happy path
 
 	`run happy-path`
 
@@ -196,7 +200,7 @@ verifying map cruncher received map update messages ... OK
 
 2. Install libsodium
 
-    `wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz && tar -zxf libsodium-1.0.18-stable.tar.gz && cd libsodium-stable && ./configure && make -j && make check && sudo make install`
+    `wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz && tar -zxf libsodium-1.0.18-stable.tar.gz && cd libsodium-stable && ./configure && make -j && make check && sudo make install && cd ~`
 
 3. Install latest golang
 
@@ -216,13 +220,17 @@ verifying map cruncher received map update messages ... OK
 
 	`source ~/.profile`
 
-5. Clone repo and change dir into it
+5. Setup SSH keys on your Linux box for Github
+
+   Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+
+6. Clone repo and cd into it
 
 	`git clone git@github.com:networknext/backend.git`
 
 	`cd backend`
 
-6. Make everything and run tests
+7. Make everything and run tests
 
 	`make`
 
@@ -270,11 +278,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-7. Setup postgres
+9. Setup postgres
 
    (something something something... default user is not good enough here)
 
-8. Run happy path
+10. Run happy path
 
     `run happy-path`
 

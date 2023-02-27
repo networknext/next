@@ -8,8 +8,6 @@ DONE
 
 TODO
 
-	---------------
-
 	Work out how to autoconfigure postgres from nothing (esp. on linux...). Add a script for it.
 
 	Get the api func tests working on semaphore.
