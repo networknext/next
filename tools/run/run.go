@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"runtime"
 
 	"github.com/joho/godotenv"
 )
@@ -358,19 +359,35 @@ func relay_keygen() {
 }
 
 func sql_create() {
-	bash("psql postgres -f ./schemas/sql/create.sql")
+	if runtime.GOOS == "linux" {
+		bash("cat ./schemas/sql/create.sql | sudo -u postgres psql postgres")
+	} else {
+		bash("psql postgres -f ./schemas/sql/create.sql")
+	}
 }
 
 func sql_destroy() {
-	bash("psql postgres -f ./schemas/sql/destroy.sql")
+	if runtime.GOOS == "linux" {
+		bash("cat ./schemas/sql/destroy.sql | sudo -u postgres psql postgres")
+	} else {
+		bash("psql postgres -f ./schemas/sql/destroy.sql")
+	}
 }
 
 func sql_dev() {
-	bash("psql postgres -f ./schemas/sql/dev.sql")
+	if runtime.GOOS == "linux" {
+		bash("cat ./schemas/sql/dev.sql | sudo -u postgres psql postgres")
+	} else {
+		bash("psql postgres -f ./schemas/sql/dev.sql")
+	}
 }
 
 func sql_local() {
-	bash("psql postgres -f ./schemas/sql/local.sql")
+	if runtime.GOOS == "linux" {
+		bash("cat ./schemas/sql/local.sql | sudo -u postgres psql postgres")
+	} else {
+		bash("psql postgres -f ./schemas/sql/local.sql")
+	}
 }
 
 func extract_database() {

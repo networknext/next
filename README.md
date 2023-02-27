@@ -196,7 +196,7 @@ verifying map cruncher received map update messages ... OK
 
 1. Install dependencies
 
-	`apt install build-essential redis-server postgresql libcurl4-openssl-dev -y`
+	`apt install build-essential redis-server postgresql libcurl4-openssl-dev pkg-config -y`
 
 2. Install libsodium
 
@@ -230,11 +230,15 @@ verifying map cruncher received map update messages ... OK
 
 	`cd backend`
 
-7. Make everything and run tests
+7. Select local environment
+
+   `next select local`
+
+8. Make everything and run tests
 
 	`make`
 
-8. Build everything and run unit tests
+9. Build everything and run unit tests
 
 	`make`
 
@@ -278,11 +282,11 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-9. Setup postgres
+10. Setup postgres
 
    (something something something... default user is not good enough here)
 
-10. Run happy path
+11. Run happy path
 
     `run happy-path`
 
