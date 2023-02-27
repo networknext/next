@@ -8,13 +8,11 @@ DONE
 
 	Get postgres stuff working on linux.
 
-TODO
-	
 	Get happy path postgres working in semaphore
 
 	Get api func tests working in semaphore
 
-	-----------------
+TODO
 
 	Func test database
 
