@@ -360,7 +360,7 @@ func relay_keygen() {
 
 func sql_create() {
 	if runtime.GOOS == "linux" {
-		bash("cat ./schemas/sql/create.sql | sudo -l postgres psql postgres")
+		bash("cat ./schemas/sql/create.sql | sudo -c \"psql postgres\" -l postgres")
 	} else {
 		bash("psql postgres -f ./schemas/sql/create.sql")
 	}
