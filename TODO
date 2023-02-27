@@ -20,11 +20,17 @@ DONE
 
 	Implement basic portal test
 
+	Fix bug with hex vs. decimal session id in REST API (GetSessions)
+
 TODO
 
-	Need to bring back code to insert slice data, near relay data... they don't seem to be inserting, or working.
-
 	Get portal func test passing in semaphore
+
+	Add server data to portal func test
+
+	Add relay data to portal func test
+
+	Done.
 
 
 
