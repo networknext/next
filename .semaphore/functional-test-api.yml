@@ -34,6 +34,8 @@ blocks:
 
             - artifact push workflow dist/api
             - artifact push workflow dist/func_test_api
+            - artifact push workflow schemas/sql/create.sql
+            - artifact push workflow schemas/sql/destroy.sql
 
   - name: "Run Functional Tests (api)"
     dependencies: ["Build Functional Tests (api)"]
@@ -64,6 +66,12 @@ blocks:
             - chmod +x func_test_api
 
             - ls -al
+
+            - cd ~
+            - mkdir -p schemas/sql
+            - cd schemas/sql
+            - artifact pull workflow create.sql
+            - artifact pull workflow destroy.sql
 
             - cd ~
 
