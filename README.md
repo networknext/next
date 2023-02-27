@@ -220,15 +220,18 @@ verifying map cruncher received map update messages ... OK
 
 	`source ~/.profile`
 
-5. Configure postgres
+5. Configure local postgres
 
-   Change this line in /etc/postgresql/14/main/pg_hba.conf:
+   Change these lines in /etc/postgresql/14/main/pg_hba.conf:
 
    `local   all             postgres                                peer`
+   `local   all             all                                     peer`
+   `host    all             all             127.0.0.1/32            scram-sha-256`
 
    to:
 
-   `local   all             postgres                                trust`
+   `local   all             all                                     trust`
+   `host    all             all             127.0.0.1/32            trust`
 
    then restart postgres:
 
