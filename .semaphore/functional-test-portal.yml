@@ -48,7 +48,7 @@ blocks:
         commands:
 
             - sem-service start redis 7
-            - sem-service status ledis
+            - sem-service status redis
 
             - sudo apt-get install -y libsodium-dev
 
