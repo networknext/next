@@ -16,13 +16,19 @@ DONE
 
 	API service with REST API to drive admin functionality (talk to the postgres database, eg. CRUD)
 
-	Functional tests for both portal and admin REST API functionality.
+	API service with REST API to drive database.bin functionality (load the database.bin, query what is in there).
+
+	Functional tests for admin, portal and database REST API functionality.
 
 TODO
+
+	Working "next" tool that runs off the REST API and supports any number of different configured environments.
+
+	-------------
 	
 	Working analytics service that inserts data into bigquery.
 
-	Setup new dev environment with terraform
+	New dev environment in google cloud setup with terraform.
 
 	Rebuild portal (no auth)
 

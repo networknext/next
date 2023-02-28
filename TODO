@@ -1,23 +1,5 @@
 DONE
 
-	We need a method to get all portal relay data at once, eg. "I want the top 1000 relays" get them.
-
-	Now do the same for servers
-
-	And sessions
-
-	Then update the portal redis load test with the new setup
-
-	Extend API to load the database periodically via common.Service
-
-	Extend API to include methods to get the database view of things as JSON
-
-	eg. database/relays
-
-	etc...
-
-	Implement a "database" func test, eg. setup a database, save it out to database.bin, serve it up via api service, query it via REST API and make sure everything matches.
-
 TODO
 
 	Need to be able to select the API url per-env. Ideally, not hardcoded in next.go
