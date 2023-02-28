@@ -34,7 +34,7 @@ blocks:
 
             - tar -zcvf functional_test_database.tar.gz dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql
 
-            - artifact push workflow functional_test_api.tar.gz
+            - artifact push workflow functional_test_database.tar.gz
 
   - name: "Run Functional Tests (database)"
     dependencies: ["Build Functional Tests (database)"]

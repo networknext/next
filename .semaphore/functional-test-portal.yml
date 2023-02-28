@@ -34,7 +34,7 @@ blocks:
 
             - tar -zcvf functional_test_portal.tar.gz dist/api dist/func_test_portal
 
-            - artifact push workflow functional_test_api.tar.gz
+            - artifact push workflow functional_test_portal.tar.gz
 
   - name: "Run Functional Tests (portal)"
     dependencies: ["Build Functional Tests (portal)"]
