@@ -8,8 +8,6 @@ DONE
 
 	Then update the portal redis load test with the new setup
 
-TODO
-
 	Extend API to load the database periodically via common.Service
 
 	Extend API to include methods to get the database view of things as JSON
@@ -17,6 +15,13 @@ TODO
 	eg. database/relays
 
 	etc...
+
+TODO
+
+
+	-----------------
+
+	Implement a "database" func test, eg. setup a database, save it out to database.bin, serve it up via api service, query it via REST API and make sure everything matches.
 
 	-----------------
 

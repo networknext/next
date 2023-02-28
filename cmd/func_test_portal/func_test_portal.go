@@ -48,6 +48,7 @@ func api() *exec.Cmd {
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
+	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
 
 	cmd.Start()

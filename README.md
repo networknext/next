@@ -24,7 +24,7 @@ This repo contains the Network Next backend.
 
 5. Configure postgres
 
-   `psql -U postgres -h localhost -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
+   `psql -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
    `brew services start postgresql@14`
 
@@ -92,11 +92,7 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-11. Setup postgres database
-
-   (something something something... default user is not good enough here)
-
-12. Run happy path
+11. Run happy path
 
 	`run happy-path`
 

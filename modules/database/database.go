@@ -29,61 +29,62 @@ func HashString(s string) uint64 {
 }
 
 type Relay struct {
-	Id                 uint64
-	Name               string
-	DatacenterId       uint64
-	PublicAddress      net.UDPAddr
-	HasInternalAddress bool
-	InternalAddress    net.UDPAddr
-	InternalGroup      uint64
-	SSHAddress         net.UDPAddr
-	SSHUser            string
-	PublicKey          []byte
-	PrivateKey         []byte
-	MaxSessions        int
-	PortSpeed          int
-	Version            string
-	Seller             Seller
-	Datacenter         Datacenter
+	Id                 uint64         `json:"id"`
+	Name               string         `json:"name"`
+	DatacenterId       uint64         `json:"datacenter_id"`
+	PublicAddress      net.UDPAddr    `json:"public_address"`
+	HasInternalAddress bool           `json:"has_internal_address"`
+	InternalAddress    net.UDPAddr    `json:"internal_address"`
+	InternalGroup      uint64         `json:"internal_group"`
+	SSHAddress         net.UDPAddr    `json:"ssh_address"`
+	SSHUser            string         `json:"ssh_user"`
+	PublicKey          []byte         `json:"public_key"`
+	PrivateKey         []byte         `json:"private_key"`
+	MaxSessions        int            `json:"max_sessions"`
+	PortSpeed          int            `json:"port_speed"`
+	Version            string         `json:"version"`
+	Seller             Seller         `json:"seller"`
+	Datacenter         Datacenter     `json:"datacenter"`
 }
 
 type Buyer struct {
-	Id          uint64
-	Name        string
-	Live        bool
-	Debug       bool
-	PublicKey   []byte
-	RouteShader core.RouteShader
+	Id          uint64                `json:"id"`
+	Name        string                `json:"name"`
+	Live        bool                  `json:"live"`
+	Debug       bool                  `json:"debug"`
+	PublicKey   []byte                `json:"public_key"`  
+	RouteShader core.RouteShader      `json:"route_shader"`
 }
 
 type Seller struct {
-	Id   uint64
-	Name string
+	Id   uint64                       `json:"id"`
+	Name string                       `json:"name"`
 }
 
 type Datacenter struct {
-	Id        uint64
-	Name      string
-	Latitude  float32
-	Longitude float32
+	Id        uint64                  `json:"id"`
+	Name      string                  `json:"name"`
+	Latitude  float32                 `json:"latitude"`
+	Longitude float32                 `json:"longitude"`
 }
 
 type BuyerDatacenterSettings struct {
-	BuyerId            uint64
-	DatacenterId       uint64
-	EnableAcceleration bool
+	BuyerId            uint64         `json:"buyer_id"`
+	DatacenterId       uint64         `json:"datacenter_id"`
+	EnableAcceleration bool           `json:"enable_acceleration"`
 }
 
 type Database struct {
-	CreationTime            string
-	Creator                 string
-	Relays                  []Relay
-	RelayMap                map[uint64]*Relay
-	BuyerMap                map[uint64]*Buyer
-	SellerMap               map[uint64]*Seller
-	DatacenterMap           map[uint64]*Datacenter
-	DatacenterRelays        map[uint64][]uint64
-	BuyerDatacenterSettings map[uint64]map[uint64]*BuyerDatacenterSettings // [buyerId][datacenterId]
+	CreationTime            string                                            `json:"creation_time"`
+	Creator                 string                                            `json:"creator"`
+	Relays                  []Relay                                           `json:"relays"`
+	RelayMap                map[uint64]*Relay 								  `json:"relay_map"`
+	BuyerMap                map[uint64]*Buyer 								  `json:"buyer_map"`
+	SellerMap               map[uint64]*Seller                                `json:"seller_map"`
+	DatacenterMap           map[uint64]*Datacenter                            `json:"datacenter"`
+	DatacenterRelays        map[uint64][]uint64                               `json:"datacenter_relays"`
+	BuyerDatacenterSettings map[uint64]map[uint64]*BuyerDatacenterSettings    `json:"buyer_datacenter_settings"`
+
 }
 
 func CreateDatabase() *Database {
@@ -1329,6 +1330,107 @@ func ExtractDatabase(config string) (*Database, error) {
 	}
 
 	return database, nil
+}
+
+// -----------------------------------------------------------------------------------------------------------
+
+func (database *Database) GetBinary() []byte {
+	var buffer bytes.Buffer
+	err := gob.NewEncoder(&buffer).Encode(database)
+	if err != nil {
+		return nil
+	}
+	return buffer.Bytes()
+}
+
+type HeaderResponse struct {
+	CreationTime            string    `json:"creation_time"`
+	Creator                 string    `json:"creator"`
+	NumRelays               int       `json:"num_relays"`
+	NumBuyers               int       `json:"num_buyers"`
+	NumSellers              int       `json:"num_sellers"`
+	NumDatacenters          int       `json:"num_datacenters"`
+}
+
+func (database *Database) GetHeader() *HeaderResponse {
+	header := HeaderResponse{}
+	header.CreationTime = database.CreationTime
+	header.Creator = database.Creator
+	header.NumRelays = len(database.Relays)
+	header.NumBuyers = len(database.BuyerMap)
+	header.NumSellers = len(database.SellerMap)
+	header.NumDatacenters = len(database.DatacenterMap)
+	return &header
+}
+
+type RelaysResponse struct {
+	Relays []Relay `json:"relays"`
+}
+
+func (database *Database) GetRelays() *RelaysResponse {
+	response := RelaysResponse{}
+	response.Relays = database.Relays
+	return &response
+}
+
+type BuyersResponse struct {
+	Buyers []Buyer `json:"buyers"`
+}
+
+func (database *Database) GetBuyers() *BuyersResponse {
+	response := BuyersResponse{}
+	response.Buyers = make([]Buyer, len(database.BuyerMap))
+	index := 0
+	for _,v := range database.BuyerMap {
+		response.Buyers[index] = *v
+		index++
+	}
+	return &response
+}
+
+type SellersResponse struct {
+	Sellers []Seller `json:"sellers"`
+}
+
+func (database *Database) GetSellers() *SellersResponse {
+	response := SellersResponse{}
+	response.Sellers = make([]Seller, len(database.SellerMap))
+	index := 0
+	for _,v := range database.SellerMap {
+		response.Sellers[index] = *v
+		index++
+	}
+	return &response
+}
+
+type DatacentersResponse struct {
+	Datacenters []Datacenter `json:"datacenters"`
+}
+
+func (database *Database) GetDatacenters() *DatacentersResponse {
+	response := DatacentersResponse{}
+	response.Datacenters = make([]Datacenter, len(database.DatacenterMap))
+	index := 0
+	for _,v := range database.DatacenterMap {
+		response.Datacenters[index] = *v
+		index++
+	}
+	return &response
+}
+
+type BuyerDatacenterSettingsResponse struct {
+	BuyerDatacenterSettings []BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
+}
+
+func (database *Database) GetBuyerDatacenterSettings() *BuyerDatacenterSettingsResponse {
+	response := BuyerDatacenterSettingsResponse{}
+	response.BuyerDatacenterSettings = make([]BuyerDatacenterSettings, 0)
+	for _, datacenterMap := range database.BuyerDatacenterSettings {
+		for _, settings := range datacenterMap {
+			response.BuyerDatacenterSettings = append(response.BuyerDatacenterSettings, *settings)
+		}
+	}
+	return &response
 }
 
 // -----------------------------------------------------------------------------------------------------------

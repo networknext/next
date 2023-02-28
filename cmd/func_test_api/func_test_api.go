@@ -55,6 +55,7 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "ENABLE_PORTAL=false")
+	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
 
 	var output bytes.Buffer

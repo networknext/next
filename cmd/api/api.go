@@ -22,9 +22,11 @@ var pool *redis.Pool
 
 var controller *admin.Controller
 
+var service *common.Service
+
 func main() {
 
-	service := common.CreateService("api")
+	service = common.CreateService("api")
 
 	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer dbname=postgres sslmode=disable")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
@@ -32,11 +34,15 @@ func main() {
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
+	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
 
 	core.Log("pgsql config: %s", pgsqlConfig)
 	core.Log("redis hostname: %s", redisHostname)
 	core.Log("redis pool active: %d", redisPoolActive)
 	core.Log("redis pool idle: %d", redisPoolIdle)
+	core.Log("enable admin: %v", enableAdmin)
+	core.Log("enable portal: %v", enablePortal)
+	core.Log("enable database: %v", enableDatabase)
 
 	service.Router.HandleFunc("/ping", pingHandler)
 
@@ -98,6 +104,20 @@ func main() {
 		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler).Methods("GET")
 		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", adminUpdateBuyerDatacenterSettingsHandler).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", adminDeleteBuyerDatacenterSettingsHandler).Methods("DELETE")
+	}
+
+	if enableDatabase {
+
+		service.LoadDatabase()
+
+		service.Router.HandleFunc("/database/json", databaseJSONHandler).Methods("GET")
+		service.Router.HandleFunc("/database/binary", databaseBinaryHandler).Methods("GET")
+		service.Router.HandleFunc("/database/header", databaseHeaderHandler).Methods("GET")
+		service.Router.HandleFunc("/database/buyers", databaseBuyersHandler).Methods("GET")
+		service.Router.HandleFunc("/database/sellers", databaseSellersHandler).Methods("GET")
+		service.Router.HandleFunc("/database/datacenters", databaseDatacentersHandler).Methods("GET")
+		service.Router.HandleFunc("/database/relays", databaseRelaysHandler).Methods("GET")
+		service.Router.HandleFunc("/database/buyer_datacenter_settings", databaseBuyerDatacenterSettingsHandler).Methods("GET")
 	}
 
 	service.StartWebServer()
@@ -782,6 +802,91 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func databaseJSONHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(database)
+}
+
+func databaseBinaryHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetBinary()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	json.NewEncoder(w).Encode(response)
+}
+
+func databaseHeaderHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetHeader()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func databaseBuyersHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetBuyers()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func databaseSellersHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetSellers()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func databaseDatacentersHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetDatacenters()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func databaseRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetRelays()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func databaseBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	response := database.GetBuyerDatacenterSettings()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
