@@ -60,8 +60,8 @@ blocks:
 
             - tar -zxf functional_test_api.tar.gz
 
-            - chmod +x api
-            - chmod +x func_test_api
+            - chmod +x ./dist/api
+            - chmod +x ./dist/func_test_api
 
       jobs:
 
