@@ -670,10 +670,13 @@ var cachedDatabase *db.Database
 
 func getDatabase() *db.Database {
 
-	// todo: get the database from the API database/binary endpoint
-
 	if cachedDatabase != nil {
 		return cachedDatabase
+	}
+
+	if env != "local" {
+		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", databaseURL))
+		os.WriteFile("database.bin", database_binary, 0644)
 	}
 
 	cachedDatabase, err := db.LoadDatabase("database.bin")
@@ -688,6 +691,7 @@ func getDatabase() *db.Database {
 func printDatabase() {
 	database := getDatabase()
 	fmt.Println(database.String())
+	fmt.Printf("\n")
 }
 
 func GetJSON(url string, object interface{}) {

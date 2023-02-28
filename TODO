@@ -4,12 +4,6 @@ DONE
 
 TODO
 
-	Modify the SDK so that near relay RTT that is > 0.0 by any amount turns into 1ms quantized latency. 
-
-	This will significantly improve the reliability of the happy path.
-
-	-----------------
-
 	Implement "next database" so it gets the database binary from the database REST API, if not in "local"
 
 	-----------------
