@@ -58,7 +58,7 @@ blocks:
             - tar -zxf functional_test_portal.tar.gz
 
             - chmod +x ./dist/api
-            - chmod +x ./func_test_portal
+            - chmod +x ./dist/func_test_portal
 
       jobs:
 

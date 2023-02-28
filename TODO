@@ -1,77 +1,6 @@
 DONE
 
-	Added default route shader to admin controller.
-
-	Hooked up to API rest call.
-
-	Verify I can get defaults in API func test
-
-	Get postgres stuff working on linux.
-
-	Get happy path postgres working in semaphore
-
-	Get api func tests working in semaphore
-
-	Func test database
-
-	Func test portal
-
-	Recover redis portal load test
-
-	Implement basic portal test
-
-	Fix bug with hex vs. decimal session id in REST API (GetSessions)
-
-	Get portal func test passing in semaphore
-
-	Add server data to portal func test
-
-	Add relay data to portal func test
-
 TODO
-
-	Verify everything runs in semaphore.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
 
@@ -93,6 +22,18 @@ TODO
 
 	Write the analytics messages to bigquery emulator.
 
+	Verify the messages get written to bigquery.
+
+	--------------
+
+	Implement func test analytics.
+
+	--------------
+
+	Research terraform and work out how to use it with google cloud.
+
+	Implement a terraform script that brings up a dev environment in google cloud.
+
 	--------------
 
 	Get the portal back up with the happy path.
@@ -100,12 +41,6 @@ TODO
 	Portal should talk exclusively to "api" to get what it needs.
 
 	No auth, just hack it up to show the stuff that we need.
-
-	--------------
-
-	Research terraform and work out how to use it with google cloud.
-
-	Implement a terraform script that brings up a dev environment in google cloud.
 
 	--------------
 
@@ -247,8 +182,6 @@ Nice to have:
 
 	---------------------------------------------------------
 
-	--------------
-
 	Add server sdk to link to match
 
 	next_server_match ( match_id )
@@ -318,10 +251,6 @@ Nice to have:
 	--------------
 
 	Atomics in SDK mean I can't just clear the whole structs. Godfucking damnit.
-
-	--------------
-
-	Func test for bigquery with emulator
 
 	--------------
 
