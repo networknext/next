@@ -32,10 +32,9 @@ blocks:
             - make clean
             - make -j dist/api dist/func_test_portal
 
-            - mv dist/api dist/api_portal
+            - tar -zcvf functional_test_portal.tar.gz dist/api dist/func_test_portal
 
-            - artifact push workflow dist/api_portal
-            - artifact push workflow dist/func_test_portal
+            - artifact push workflow functional_test_api.tar.gz
 
   - name: "Run Functional Tests (portal)"
     dependencies: ["Build Functional Tests (portal)"]
@@ -54,20 +53,12 @@ blocks:
 
             - sudo apt-get install -y libsodium-dev
 
-            - mkdir -p dist
-            - cd dist
+            - artifact pull workflow functional_test_portal.tar.gz
 
-            - artifact pull workflow api_portal
-            - artifact pull workflow func_test_portal
+            - tar -zxf functional_test_portal.tar.gz
 
-            - mv api_portal api
-
-            - chmod +x api
-            - chmod +x func_test_portal
-
-            - ls -al
-
-            - cd ~
+            - chmod +x ./dist/api
+            - chmod +x ./func_test_portal
 
       jobs:
 
