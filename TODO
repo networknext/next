@@ -2,19 +2,57 @@ DONE
 
 TODO
 
-	Hook up next tool to API to get data it needs for "next relays" and "next ssh [relayname]"
+	-----------------
 
-	Clean up next tool to remove weird stuff around environment switches (not needed anymore...)
+	Extend portal.RelayData so it has relay state as an integer (make it an enum in constants.go)
 
-	Make sure the 
+	We need a method to get all relays data at once, eg. "I want the top 1000 relays" get them.
 
-	Functional test for next tool
+	Returning just the relay addresses and scores isn't actually helpful.
+
+	This needs to be done for relays, servers and sessions...
+
+	-----------------
+
+	Need to be able to select the API url per-env. Ideally, not hardcoded in next.go
+
+	Remove any hardcoding of envs in next.go. 
+
+	The set of available envs should be driven entirely by the set of files in the "envs" directory.
+
+	-----------------
+
+	Hook up "next relays" to API
+
+	-----------------
+
+	Hook up "next sessions" to API
+
+	-----------------
+
+	Add a new "admin/cost" GET interface to API
+
+	Hook up "next cost" to API
+
+	-----------------
+
+	Add a new "admin/database" GET interface to API
+
+	-----------------
+
+	Use API to get set of relays to pattern match on for "next ssh [relayname]"
+
+	-----------------
+
+	Make sure the following parts of the next tool work in happy path:
 
 		1. "next sessions"
 
 		2. "next relays"
 
-		3. "next ssh [relayname]"
+		3. "next cost" (hit the admin API, not the services directly...)
+
+		4. "next database" (download database.bin from admin API then print it)
 
 	-----------------
 

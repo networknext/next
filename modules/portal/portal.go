@@ -468,6 +468,8 @@ func GenerateRandomServerData() *ServerData {
 
 // --------------------------------------------------------------------------------------------------
 
+// todo: we need to add status here
+
 type RelayData struct {
 	RelayId      uint64
 	RelayAddress string

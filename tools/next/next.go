@@ -722,144 +722,110 @@ func printDatabase() {
 	fmt.Println(database.String())
 }
 
-func makeRPCCall(env Environment, reply interface{}, method string, params interface{}) error {
+func Read(url string, object interface{}) {
 
-	// todo: bring back
-	/*
-		protocol := "https"
-		if env.PortalHostname() == PortalHostnameLocal {
-			protocol = "http"
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get(url)
+		if err == nil {
+			break
 		}
+		time.Sleep(time.Second)
+	}
 
-		rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-			CustomHeaders: map[string]string{
-				"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-			},
-		})
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
 
-		if err := rpcClient.CallFor(&reply, method, params); err != nil {
-			switch e := err.(type) {
-			case *jsonrpc.HTTPError:
-				switch e.Code {
-				case http.StatusUnauthorized:
-					// Refresh token and try again
-					if err := refreshAuth(env); err != nil {
-						handleRunTimeError(err.Error(), 1)
-					}
-					env.Read()
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
 
-					rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-						CustomHeaders: map[string]string{
-							"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-						},
-					})
+	response.Body.Close()
 
-					if err := rpcClient.CallFor(&reply, method, params); err != nil {
-						return err
-					}
-				default:
-					return err
-				}
-			default:
-				return err
-			}
-		}
-	*/
-
-	return nil
+	err = json.Unmarshal([]byte(body), &object)
+	if err != nil {
+		panic(fmt.Sprintf("could not parse json response for %s: %v", url, err))
+	}
 }
 
-type RelayFleetEntry struct {
-	Name     string `json:"name"`
-	Address  string `json:"address"`
-	Id       string `json:"hex_id"`
-	Status   string `json:"status"`
-	Sessions string `json:"sessions"`
-	Version  string `json:"version"`
-}
-
-type RelayFleetArgs struct{}
-
-type RelayFleetReply struct {
-	RelayFleet []RelayFleetEntry `json:"relay_fleet"`
+type PortalRelaysResponse struct {
+	Relays []portal.RelayEntry `json:"relays"`
 }
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
 
-	// todo: bring back
-	/*
-		var reply RelayFleetReply = RelayFleetReply{}
-		var args = RelayFleetArgs{}
-		if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
-			fmt.Printf("error: could not get relays\n")
-			return
+	relaysResponse := PortalRelaysResponse{}
+
+	// todo: make portal URL configurable per-env
+	Get("http://127.0.0.1:50000/portal/relays/0/1000", &relaysResponse)
+
+	type RelayRow struct {
+		Name     string
+		Address  string
+		Id       string
+		Status   string
+		Sessions int
+		Version  string
+	}
+
+	relays := []RelayRow{}
+
+	filtered := []RelayRow{}
+
+	for _, relay := range reply.RelayFleet {
+
+		sessions, err := strconv.Atoi(relay.Sessions)
+		if err != nil {
+			sessions = -1
 		}
 
-		type RelayRow struct {
-			Name     string
-			Address  string
-			Id       string
-			Status   string
-			Sessions int
-			Version  string
+		if relay.Status == "offline" {
+			sessions = -1
 		}
 
-		relays := []RelayRow{}
+		relays = append(relays, RelayRow{
+			relay.Name,
+			strings.Split(relay.Address, ":")[0],
+			strings.ToUpper(relay.Id),
+			relay.Status,
+			sessions,
+			relay.Version,
+		})
+	}
 
-		filtered := []RelayRow{}
-
-		for _, relay := range reply.RelayFleet {
-
-			sessions, err := strconv.Atoi(relay.Sessions)
-			if err != nil {
-				sessions = -1
-			}
-
-			if relay.Status == "offline" {
-				sessions = -1
-			}
-
-			relays = append(relays, RelayRow{
-				relay.Name,
-				strings.Split(relay.Address, ":")[0],
-				strings.ToUpper(relay.Id),
-				relay.Status,
-				sessions,
-				relay.Version,
-			})
+	for _, relay := range relays {
+		if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
+			filtered = append(filtered, relay)
+			continue
 		}
+	}
 
-		for _, relay := range relays {
-			if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
-				filtered = append(filtered, relay)
-				continue
-			}
+	if alphaSort {
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return filtered[i].Name < filtered[j].Name
+		})
+	} else {
+		sort.SliceStable(filtered, func(i, j int) bool {
+			return filtered[i].Sessions > filtered[j].Sessions
+		})
+	}
+
+	outputRelays := filtered
+
+	for i := range outputRelays {
+		if outputRelays[i].Sessions < 0 {
+			outputRelays[i].Sessions = 0
 		}
+	}
 
-		if alphaSort {
-			sort.SliceStable(filtered, func(i, j int) bool {
-				return filtered[i].Name < filtered[j].Name
-			})
-		} else {
-			sort.SliceStable(filtered, func(i, j int) bool {
-				return filtered[i].Sessions > filtered[j].Sessions
-			})
-		}
-
-		outputRelays := filtered
-
-		for i := range outputRelays {
-			if outputRelays[i].Sessions < 0 {
-				outputRelays[i].Sessions = 0
-			}
-		}
-
-		if relayCount != 0 {
-			table.Output(outputRelays[0:relayCount])
-		} else {
-			table.Output(outputRelays)
-		}
-	*/
+	if relayCount != 0 {
+		table.Output(outputRelays[0:relayCount])
+	} else {
+		table.Output(outputRelays)
+	}
 }
 
 // ----------------------------------------------------------------
