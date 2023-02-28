@@ -4,6 +4,16 @@ DONE
 
 TODO
 
+	Implement "next database" so it gets the database binary from the database REST API, if not in "local"
+
+	-----------------
+	
+	Add a new "admin/cost" GET interface to API
+
+	Hook up "next cost" to API
+
+	-----------------
+
 	Plumb through the relay flags or relay status somehow, so I can show when relays are "shutting down" in next tool.
 
 	-----------------
@@ -16,39 +26,13 @@ TODO
 
 	-----------------
 
-	Remove any hardcoding of envs in next.go. 
-
-	The set of available envs should be driven entirely by the set of files in the "envs" directory.
-
-	-----------------
-
-	Hook up "next relays" to API
-
-	-----------------
-
-	Hook up "next sessions" to API
-
-	-----------------
-
-	Add a new "admin/cost" GET interface to API
-
-	Hook up "next cost" to API
-
-	-----------------
-
-	Add a new "admin/database" GET interface to API
-
-	-----------------
-
 	Use API to get set of relays to pattern match on for "next ssh [relayname]"
 
 	-----------------
 
 	Make sure the following parts of the next tool work in happy path:
 
-		1. "next sessions"
-
-		2. "next relays"
+		1. "next relays"
 
 		3. "next cost" (hit the admin API, not the services directly...)
 

@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"golang.org/x/crypto/nacl/box"
@@ -291,33 +290,12 @@ func main() {
 			env.Write()
 
 			if args[0] == "local" {
-
 				bash("rm -f database.bin && cp envs/local.bin database.bin")
-
-				// Start redis server if it isn't already
-				runnable := exec.Command("ps", "aux")
-				buffer, err := runnable.CombinedOutput()
-				if err != nil {
-					fmt.Printf("Failed to run ps aux: %v\n", err)
-				}
-
-				psAuxOutput := string(buffer)
-
-				if !strings.Contains(psAuxOutput, "redis-server") {
-					runnable := exec.Command("redis-server")
-					if err := runnable.Start(); err != nil {
-						fmt.Printf("Failed to start redis: %v\n", err)
-					}
-				}
-
+				bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
+				bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
+				bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
 			}
 
-			// todo: temporary -- copy envs/dev.bin to database.bin when we select dev
-			if args[0] == "dev" {
-				bash("rm -f database.bin && cp envs/dev.bin database.bin")
-			}
-
-			// If we can find a matching file, "envs/<env>.env", copy it to .envs. This is loaded by the makefile to get environment vars for the env
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
 
 			if _, err := os.Stat(envFilePath); err != nil {
@@ -344,8 +322,6 @@ func main() {
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
 
-			// todo: if this is local we should definitely set up postgres with local env data here
-
 			return nil
 		},
 	}
@@ -361,6 +337,7 @@ func main() {
 				fmt.Printf("Selected %s environment\n", env.Name)
 			}
 			fmt.Print(env.String())
+			fmt.Printf("\n")
 			return nil
 		},
 	}
@@ -381,7 +358,7 @@ func main() {
 		ShortHelp:  "Provide the 64-bit FNV-1a hash for the provided string",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) != 1 {
-				handleRunTimeError(fmt.Sprintf("Please provided a string"), 0)
+				handleRunTimeError(fmt.Sprintf("Please provide a string"), 0)
 			}
 
 			hashValue := common.HashString(args[0])
@@ -418,6 +395,7 @@ func main() {
 		ShortUsage: "next logs <regex> [regex]",
 		ShortHelp:  "View the journalctl log for a relay",
 		Exec: func(ctx context.Context, args []string) error {
+
 			if len(args) == 0 {
 				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
 			}
@@ -1268,52 +1246,6 @@ func (e *Environment) Clean() {
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
 
-	}
-}
-
-func (e *Environment) RouterPublicKey() (string, error) {
-	return e.switchEnvLocal(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyStaging, RouterPublicKeyProd)
-}
-
-func (e *Environment) RelayBackendURL() (string, error) {
-	return e.switchEnvLocal(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLStaging, RelayBackendURLProd)
-}
-
-func (e *Environment) RelayArtifactURL() (string, error) {
-	return e.switchEnv(RelayArtifactURLDev, RelayArtifactURLStaging, RelayArtifactURLProd)
-}
-
-func (e *Environment) RelayBackendHostname() (string, error) {
-	return e.switchEnvLocal(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameStaging, RelayBackendHostnameProd)
-}
-
-// todo: holy shit this is bad?
-func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
-	switch e.Name {
-	case "local":
-		return ifIsLocal, nil
-	case "dev":
-		return ifIsDev, nil
-	case "staging":
-		return ifIsStaging, nil
-	case "prod":
-		return ifIsProd, nil
-	default:
-		return "", errors.New("Environment does not match 'local', 'dev', 'staging', or 'prod'")
-	}
-}
-
-// todo: would be nice if we didn't hard code envs, and they were defined by the set of .env files under "envs" directory...
-func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
-	switch e.Name {
-	case "dev":
-		return ifIsDev, nil
-	case "staging":
-		return ifIsStaging, nil
-	case "prod":
-		return ifIsProd, nil
-	default:
-		return "", errors.New("Environment does not match 'dev', 'staging', or 'prod'")
 	}
 }
 
