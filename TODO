@@ -1,6 +1,12 @@
 DONE
 
+	Hack sketch out "next relays" with mixture of admin and portal APIs
+
 TODO
+
+	Plumb through the relay flags or relay status somehow, so I can show when relays are "shutting down" in next tool.
+
+	-----------------
 
 	Need to be able to select the API url per-env. Ideally, not hardcoded in next.go
 

@@ -81,6 +81,12 @@ func happy_path(wait bool) int {
 
 	os.Mkdir("logs", os.ModePerm)
 
+	// initialize postgres
+
+	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
+
 	// nuke redis
 
 	redisClient := common.CreateRedisClient("127.0.0.1:6379")

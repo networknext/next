@@ -468,6 +468,8 @@ func GenerateRandomServerData() *ServerData {
 
 // --------------------------------------------------------------------------------------------------
 
+// todo: would be nice to know relay flags here, eg. if shutting down
+
 type RelayData struct {
 	RelayId      uint64
 	RelayAddress string

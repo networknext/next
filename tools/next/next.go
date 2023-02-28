@@ -17,27 +17,29 @@ import (
 	"golang.org/x/crypto/nacl/box"
 	"io"
 	"io/ioutil"
-	// "net/http"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
-	// "regexp"
+	"regexp"
 	"runtime"
-	// "sort"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/admin"
+	"github.com/networknext/backend/modules/portal"
 	db "github.com/networknext/backend/modules/database"
 
-	// "github.com/modood/table"
+	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
-	// "github.com/tidwall/gjson"
-	_ "github.com/ybbus/jsonrpc/v3"
 )
 
 type arrayFlags []string
@@ -49,18 +51,6 @@ func (i *arrayFlags) String() string {
 func (i *arrayFlags) Set(value string) error {
 	*i = append(*i, value)
 	return nil
-}
-
-func isWindows() bool {
-	return runtime.GOOS == "windows"
-}
-
-func isMac() bool {
-	return runtime.GOOS == "darwin"
-}
-
-func isLinux() bool {
-	return runtime.GOOS == "linux"
 }
 
 func runCommand(command string, args []string) bool {
@@ -352,7 +342,9 @@ func main() {
 				return err
 			}
 
-			fmt.Printf("Selected %s environment\n", env.Name)
+			fmt.Printf("Selected %s environment\n\n", env.Name)
+
+			// todo: if this is local we should definitely set up postgres with local env data here
 
 			return nil
 		},
@@ -692,8 +684,6 @@ func main() {
 	if len(args) == 0 {
 		root.FlagSet.Usage()
 	}
-
-	fmt.Printf("\n")
 }
 
 // -------------------------------------------------------------------------------------------------------
@@ -701,9 +691,13 @@ func main() {
 var cachedDatabase *db.Database
 
 func getDatabase() *db.Database {
+
+	// todo: get the database from the API database/binary endpoint
+
 	if cachedDatabase != nil {
 		return cachedDatabase
 	}
+
 	cachedDatabase, err := db.LoadDatabase("database.bin")
 	if err != nil {
 		fmt.Printf("error: could not load database.bin: %v\n", err)
@@ -714,15 +708,11 @@ func getDatabase() *db.Database {
 }
 
 func printDatabase() {
-
-	// todo: if the env is not "local", pull down the database.bin from the admin service
-
 	database := getDatabase()
-
 	fmt.Println(database.String())
 }
 
-func Read(url string, object interface{}) {
+func GetJSON(url string, object interface{}) {
 
 	var err error
 	var response *http.Response
@@ -751,50 +741,104 @@ func Read(url string, object interface{}) {
 	}
 }
 
-type PortalRelaysResponse struct {
-	Relays []portal.RelayEntry `json:"relays"`
+func GetBinary(url string) []byte {
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get(url)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	return body
 }
+
+type PortalRelaysResponse struct {
+	Relays []portal.RelayData `json:"relays"`
+}
+
+type AdminRelaysResponse struct {
+	Relays []admin.RelayData `json:"relays"`
+	Error  string            `json:"error"`
+}
+
+// todo: make these URLs configurable per-env
+var adminURL = "http://127.0.0.1:50000"
+var portalURL = "http://127.0.0.1:50000"
+var databaseURL = "http://127.0.0.1:50000"
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
 
-	relaysResponse := PortalRelaysResponse{}
+	adminRelaysResponse := AdminRelaysResponse{}
+	portalRelaysResponse := PortalRelaysResponse{}
 
-	// todo: make portal URL configurable per-env
-	Get("http://127.0.0.1:50000/portal/relays/0/1000", &relaysResponse)
+	GetJSON(fmt.Sprintf("%s/admin/relays", adminURL), &adminRelaysResponse)
+	GetJSON(fmt.Sprintf("%s/portal/relays/0/%d", portalURL, constants.MaxRelays), &portalRelaysResponse)
 
 	type RelayRow struct {
 		Name     string
-		Address  string
+		PublicAddress  string
+		InternalAddress  string
 		Id       string
 		Status   string
 		Sessions int
 		Version  string
 	}
 
-	relays := []RelayRow{}
+	relayMap := make(map[uint64]*RelayRow)
+
+	for i := range adminRelaysResponse.Relays {
+		relayId := adminRelaysResponse.Relays[i].RelayId
+		relay := relayMap[relayId]
+		if relay == nil {
+			relay = &RelayRow{}
+			relayMap[relayId] = relay
+		}
+		relay.Name = adminRelaysResponse.Relays[i].RelayName
+		relay.Id = fmt.Sprintf("%016x", relayId)
+		relay.PublicAddress = fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
+		if adminRelaysResponse.Relays[i].InternalIP != "0.0.0.0" {
+			relay.InternalAddress = fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].InternalIP, adminRelaysResponse.Relays[i].InternalPort)
+		}
+		relay.Status = "offline"
+		relay.Sessions = 0
+		relay.Version = adminRelaysResponse.Relays[i].Version
+	}
+
+	for i := range portalRelaysResponse.Relays {
+		relayId := portalRelaysResponse.Relays[i].RelayId
+		relay := relayMap[relayId]
+		if relay == nil {
+			continue
+		}
+		relay.Status = "online"
+		// todo: handle "shutting down" state here
+		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
+		relay.Version = portalRelaysResponse.Relays[i].Version
+	}
+
+	relays := make([]RelayRow, len(relayMap))
+	index := 0
+	for _,v := range relayMap {
+		relays[index] = *v
+		index++
+	}
 
 	filtered := []RelayRow{}
-
-	for _, relay := range reply.RelayFleet {
-
-		sessions, err := strconv.Atoi(relay.Sessions)
-		if err != nil {
-			sessions = -1
-		}
-
-		if relay.Status == "offline" {
-			sessions = -1
-		}
-
-		relays = append(relays, RelayRow{
-			relay.Name,
-			strings.Split(relay.Address, ":")[0],
-			strings.ToUpper(relay.Id),
-			relay.Status,
-			sessions,
-			relay.Version,
-		})
-	}
 
 	for _, relay := range relays {
 		if match, err := regexp.Match(regexName, []byte(relay.Name)); match && err == nil {
@@ -803,11 +847,11 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		}
 	}
 
-	if alphaSort {
-		sort.SliceStable(filtered, func(i, j int) bool {
-			return filtered[i].Name < filtered[j].Name
-		})
-	} else {
+	sort.SliceStable(filtered, func(i, j int) bool {
+		return filtered[i].Name < filtered[j].Name
+	})
+
+	if !alphaSort {
 		sort.SliceStable(filtered, func(i, j int) bool {
 			return filtered[i].Sessions > filtered[j].Sessions
 		})
@@ -826,6 +870,8 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	} else {
 		table.Output(outputRelays)
 	}
+
+	fmt.Printf("\n")
 }
 
 // ----------------------------------------------------------------
@@ -914,6 +960,11 @@ type RelaysReply struct {
 }
 
 func getRelayInfo(env Environment, regex string) []RelayInfo {
+
+	// todo: bring back
+	return nil
+
+	/*
 	args := RelaysArgs{
 		Regex: regex,
 	}
@@ -923,6 +974,7 @@ func getRelayInfo(env Environment, regex string) []RelayInfo {
 		os.Exit(1)
 	}
 	return reply.Relays
+	*/
 }
 
 func ssh(env Environment, regexes []string) {
@@ -1267,14 +1319,11 @@ func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, 
 
 // -------------------------------------------------------------------------------------------
 
-type NextCostMatrixHandlerArgs struct{}
-
-type NextCostMatrixHandlerReply struct {
-	CostMatrix []byte `json:"costMatrix"`
-}
-
 func getCostMatrix(env Environment, fileName string) {
 
+	// todo: call in to portal interface directly to get cost matrix in binary format (grab it from redis directly...)
+
+	/*
 	args := NextCostMatrixHandlerArgs{}
 
 	var reply NextCostMatrixHandlerReply
@@ -1287,6 +1336,7 @@ func getCostMatrix(env Environment, fileName string) {
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not write %s to the filesystem: %v\n", fileName, err), 0)
 	}
+	*/
 }
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
