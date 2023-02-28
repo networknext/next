@@ -757,6 +757,10 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 
 	// now get session data for the set of session ids in [begin, end]
 
+	if len(sessionEntries) == 0 {
+		return nil
+	}
+
 	redisClient = pool.Get()
 
 	args := redis.Args{}
@@ -944,6 +948,10 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerDat
 	}
 
 	// now get server data for the set of server addresses in [begin, end]
+
+	if len(serverEntries) == 0 {
+		return nil
+	}
 
 	redisClient = pool.Get()
 
@@ -1145,6 +1153,10 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData 
 	}
 
 	// now get relay data for the set of relay addresses in [begin, end]
+
+	if len(relayEntries) == 0 {
+		return nil
+	}
 
 	redisClient = pool.Get()
 

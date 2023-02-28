@@ -169,7 +169,7 @@ func RunPollThread(pool *redis.Pool) {
 
 			if len(servers) > 0 {
 				start = time.Now()
-				serverData, sessionIds := portal.GetServerData(pool, servers[0].Address, minutes)
+				serverData, sessionIds := portal.GetServerData(pool, servers[0].ServerAddress, minutes)
 				if serverData != nil {
 					fmt.Printf("server data: %d sessions (%.1fms)\n", len(sessionIds), float64(time.Since(start).Milliseconds()))
 				}
@@ -189,7 +189,7 @@ func RunPollThread(pool *redis.Pool) {
 
 			if len(relays) > 0 {
 				start = time.Now()
-				relayData, relaySamples := portal.GetRelayData(pool, relays[0].Address)
+				relayData, relaySamples := portal.GetRelayData(pool, relays[0].RelayAddress)
 				if relayData != nil {
 					fmt.Printf("relay data: %d samples (%.1fms)\n", len(relaySamples), float64(time.Since(start).Milliseconds()))
 				}
