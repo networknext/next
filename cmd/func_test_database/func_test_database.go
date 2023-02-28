@@ -73,7 +73,7 @@ func ValidateDatabase() {
 		os.Exit(1)
 	}
 
-	fmt.Println(database.String())
+	fmt.Printf("%s\n\n", database.String())
 }
 
 func test_local() {
@@ -98,7 +98,7 @@ func test_dev() {
 	ValidateDatabase()
 }
 
-func Get(url string, object interface{}) {
+func GetJSON(url string, object interface{}) {
 
 	var err error
 	var response *http.Response
@@ -125,6 +125,32 @@ func Get(url string, object interface{}) {
 	if err != nil {
 		panic(fmt.Sprintf("could not parse json response for %s: %v", url, err))
 	}
+}
+
+func GetBinary(url string) []byte {
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get(url)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	return body
 }
 
 func test_api() {
@@ -160,18 +186,118 @@ func test_api() {
 
 	api_cmd, _ := api()
 
-	// query the database REST API
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
 
-	// ...
+	// run API queries
 
-	// shut down API service
+	database_binary := GetBinary("http://127.0.0.1:50000/database/binary")
 
-	api_cmd.Process.Signal(os.Interrupt)
-	api_cmd.Wait()
+	database_json := db.Database{}
+	GetJSON("http://127.0.0.1:50000//database/json", &database_json)
 
-	// check results of all queries
+	database_header := db.HeaderResponse{}
+	GetJSON("http://127.0.0.1:50000//database/header", &database_header)
 
-	// ...
+	database_buyers := db.BuyersResponse{}
+	GetJSON("http://127.0.0.1:50000//database/buyers", &database_buyers)
+
+	database_sellers := db.SellersResponse{}
+	GetJSON("http://127.0.0.1:50000//database/sellers", &database_sellers)
+
+	database_datacenters := db.DatacentersResponse{}
+	GetJSON("http://127.0.0.1:50000//database/datacenters", &database_datacenters)
+
+	database_relays := db.RelaysResponse{}
+	GetJSON("http://127.0.0.1:50000//database/relays", &database_relays)
+
+	database_buyer_datacenter_settings := db.BuyerDatacenterSettingsResponse{}
+	GetJSON("http://127.0.0.1:50000//database/buyer_datacenter_settings", &database_buyer_datacenter_settings)
+
+	// verify database binary
+
+	expected_binary := database.GetBinary()
+
+	if !bytes.Equal(database_binary, expected_binary) {
+		panic("database binary does not match expected")
+	}
+
+	json_binary := database_json.GetBinary()
+
+	if !bytes.Equal(json_binary, expected_binary) {
+		panic("json database does not match expected")
+	}
+
+	if err := database_json.Validate(); err != nil {
+		fmt.Printf("error: json database did not validate: %v\n", err)
+		os.Exit(1)
+	}
+
+	if database_header.CreationTime != "now" {
+		panic("wrong database creation time")
+	}
+
+	if database_header.Creator != "test" {
+		panic("wrong database creator")
+	}
+
+	if database_header.NumBuyers != 1 {
+		panic("wrong number of database buyers")
+	}
+
+	if database_header.NumSellers != 1 {
+		panic("wrong number of database sellers")
+	}
+
+	if database_header.NumDatacenters != 1 {
+		panic("wrong number of database datacenters")
+	}
+
+	if database_header.NumRelays != 1 {
+		panic("wrong number of database relays")
+	}
+
+	if len(database_buyers.Buyers) != 1 {
+		panic("wrong number of buyers")
+	}
+
+	if len(database_sellers.Sellers) != 1 {
+		panic("wrong number of sellers")
+	}
+
+	if len(database_datacenters.Datacenters) != 1 {
+		panic("wrong number of datacenters")
+	}
+
+	if len(database_relays.Relays) != 1 {
+		panic("wrong number of relays")
+	}
+
+	if len(database_buyer_datacenter_settings.BuyerDatacenterSettings) != 1 {
+		panic("wrong number of buyer datacenter settings")
+	}
+
+	if database_buyers.Buyers[0].Id != 1 || database_buyers.Buyers[0].Name != "buyer" || database_buyers.Buyers[0].Live != true || database_buyers.Buyers[0].Debug != true {
+		panic("buyer is invalid")
+	}
+
+	if database_sellers.Sellers[0].Id != 1 || database_sellers.Sellers[0].Name != "seller" {
+		panic("seller is invalid")
+	}
+
+	if database_datacenters.Datacenters[0].Id != 1 || database_datacenters.Datacenters[0].Name != "datacenter" || database_datacenters.Datacenters[0].Latitude != 100 || database_datacenters.Datacenters[0].Longitude != 200 {
+		panic("datacenter is invalid")
+	}
+
+	if database_relays.Relays[0].Id != 1 || database_relays.Relays[0].Name != "relay" {
+		panic("relay is invalid")
+	}
+
+	if database_buyer_datacenter_settings.BuyerDatacenterSettings[0].BuyerId != 1 || database_buyer_datacenter_settings.BuyerDatacenterSettings[0].DatacenterId != 1 || database_buyer_datacenter_settings.BuyerDatacenterSettings[0].EnableAcceleration == false {
+		panic("buyer datacenter settings are invalid")
+	}
 }
 
 // ----------------------------------------------------------------------------------------

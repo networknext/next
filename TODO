@@ -16,11 +16,9 @@ DONE
 
 	etc...
 
-TODO
-
-	-----------------
-
 	Implement a "database" func test, eg. setup a database, save it out to database.bin, serve it up via api service, query it via REST API and make sure everything matches.
+
+TODO
 
 	-----------------
 
@@ -377,5 +375,11 @@ Nice to have:
 	I think I can fix up the whole crazy thing with ordering of tokens by requiring that the "prev address" is specified, and is not just inferred by the address packets come in on.
 
 	Given that the advanced packet filter will check that the packets are actually coming from the client external address already, nothing of value is lost here.
+
+	--------------
+
+	There are issues where cleanup does not occur in func tests due to panics.
+
+	A systematic fix to this problem is desirable, failing this, we should do a cleanup in run.go of known processes by name, before and after running the func test locally.
 
 	--------------

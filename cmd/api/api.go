@@ -820,7 +820,7 @@ func databaseBinaryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := database.GetBinary()
 	w.Header().Set("Content-Type", "application/octet-stream")
-	json.NewEncoder(w).Encode(response)
+	fmt.Fprintf(w, string(response))
 }
 
 func databaseHeaderHandler(w http.ResponseWriter, r *http.Request) {
