@@ -222,7 +222,7 @@ func test_portal() {
 
 	var ready bool
 
-	for i := 0; i < 120; i++ {
+	for i := 0; i < 10; i++ {
 
 		sessionCountsResponse := PortalSessionCountsResponse{}
 
