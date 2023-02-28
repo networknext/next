@@ -20,9 +20,13 @@ DONE
 
 TODO
 
-	-----------------
-
 	Need to be able to select the API url per-env. Ideally, not hardcoded in next.go
+
+	Ideally, split into separate URLs for "admin", "portal" and "database" REST APIs.
+
+	eg. "ADMIN_REST_API_URL"
+
+	-----------------
 
 	Remove any hardcoding of envs in next.go. 
 
