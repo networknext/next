@@ -247,10 +247,6 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 	return costs
 }
 
-const RELAY_STATUS_OFFLINE = 0
-const RELAY_STATUS_ONLINE = 1
-const RELAY_STATUS_SHUTTING_DOWN = 2
-
 var RelayStatusStrings = [3]string{"offline", "online", "shutting down"}
 
 type Relay struct {
@@ -290,23 +286,23 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 		relay.Address = sourceEntry.RelayAddress
 		relay.Sessions = sourceEntry.Sessions
 
-		relay.Status = RELAY_STATUS_ONLINE
+		relay.Status = constants.RelayStatus_Offline
 
 		if sourceEntry.ShuttingDown {
-			relay.Status = RELAY_STATUS_SHUTTING_DOWN
+			relay.Status = constants.RelayStatus_ShuttingDown
 		}
 
 		expired := currentTime-sourceEntry.LastUpdateTime > constants.RelayTimeout
 
 		if expired {
-			relay.Status = RELAY_STATUS_OFFLINE
+			relay.Status = constants.RelayStatus_Offline
 		}
 
-		if relay.Status == RELAY_STATUS_ONLINE {
+		if relay.Status == constants.RelayStatus_Online {
 			relay.Version = sourceEntry.RelayVersion
 		}
 
-		if relay.Status != RELAY_STATUS_ONLINE {
+		if relay.Status != constants.RelayStatus_Online {
 			relay.Sessions = 0
 		}
 
@@ -329,7 +325,7 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 		relay.Address = relayAddresses[i]
 		relay.Sessions = 0
 		relay.Version = ""
-		relay.Status = RELAY_STATUS_OFFLINE
+		relay.Status = constants.RelayStatus_Offline
 
 		relays = append(relays, relay)
 	}
@@ -365,7 +361,7 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 		}
 
 		activeRelay := Relay{}
-		activeRelay.Status = RELAY_STATUS_ONLINE
+		activeRelay.Status = constants.RelayStatus_Online
 		activeRelay.Name = sourceEntry.RelayName
 		activeRelay.Address = sourceEntry.RelayAddress
 		activeRelay.Id = sourceEntry.RelayId

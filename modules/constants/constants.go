@@ -40,8 +40,6 @@ const (
 	NEXT_CONTINUE_TOKEN_BYTES           = 17
 	NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
-	RelayFlags_ShuttingDown = uint64(1)
-
 	SessionFlags_Next                            = (1 << 0)
 	SessionFlags_Reported                        = (1 << 1)
 	SessionFlags_Summary                         = (1 << 2)
@@ -80,4 +78,10 @@ const (
 	SessionFlags_LocationVeto                    = (1 << 35)
 	SessionFlags_ClientNextBandwidthOverLimit    = (1 << 36)
 	SessionFlags_ServerNextBandwidthOverLimit    = (1 << 37)
+
+	RelayFlags_ShuttingDown = uint64(1)
+
+	RelayStatus_Offline      = 0
+	RelayStatus_Online       = 1
+	RelayStatus_ShuttingDown = 2
 )

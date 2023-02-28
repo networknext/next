@@ -6,18 +6,18 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net/http"
 	"os"
 	"os/exec"
 	"time"
-	"math/rand"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
 
 	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/portal"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/portal"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -172,6 +172,12 @@ func Get(url string, object interface{}) {
 
 	response.Body.Close()
 
+	/*
+	fmt.Printf("--------------------------------------------------------------------\n")
+	fmt.Printf("%s", body)
+	fmt.Printf("--------------------------------------------------------------------\n")
+	*/
+
 	err = json.Unmarshal([]byte(body), &object)
 	if err != nil {
 		panic(fmt.Sprintf("could not parse json response for %s: %v", url, err))
@@ -211,7 +217,7 @@ type PortalRelayCountResponse struct {
 }
 
 type PortalRelaysResponse struct {
-	Relays []portal.RelayEntry `json:"relays"`
+	Relays []portal.RelayData `json:"relays"`
 }
 
 type PortalRelayDataResponse struct {
@@ -295,13 +301,17 @@ func test_portal() {
 
 		Get("http://127.0.0.1:50000/portal/relays/0/1000", &relaysResponse)
 
+		fmt.Printf("got data for %d relays\n", len(relaysResponse.Relays))
+
 		relayDataResponse := PortalRelayDataResponse{}
 
 		if len(relaysResponse.Relays) > 0 {
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].Address), &relayDataResponse)
+			fmt.Printf("first relay address is '%s'\n", relaysResponse.Relays[0].RelayAddress)
 
-			fmt.Printf("relay %s has %d samples\n", relaysResponse.Relays[0].Address, len(relayDataResponse.RelaySamples))
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].RelayAddress), &relayDataResponse)
+
+			fmt.Printf("relay %s has %d samples\n", relaysResponse.Relays[0].RelayAddress, len(relayDataResponse.RelaySamples))
 		}
 
 		ready = true

@@ -238,7 +238,7 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelaysResponse struct {
-	Relays []portal.RelayEntry `json:"relays"`
+	Relays []portal.RelayData `json:"relays"`
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {

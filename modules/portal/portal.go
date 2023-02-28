@@ -468,8 +468,6 @@ func GenerateRandomServerData() *ServerData {
 
 // --------------------------------------------------------------------------------------------------
 
-// todo: we need to add status here
-
 type RelayData struct {
 	RelayId      uint64
 	RelayAddress string
@@ -1008,11 +1006,11 @@ func GetRelayCount(pool *redis.Pool, minutes int64) int {
 }
 
 type RelayEntry struct {
-	Address string `json:"address"`
-	Score   uint32 `json:"score"`
+	Address string
+	Score   uint32
 }
 
-func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayEntry {
+func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get relays: %d", begin)
@@ -1029,12 +1027,12 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayEntry
 		return nil
 	}
 
+	// get the set of relay entries in order in the range [begin,end]
+
 	redisClient := pool.Get()
 
 	redisClient.Send("ZREVRANGE", fmt.Sprintf("r-%d", minutes-1), begin, end-1, "WITHSCORES")
 	redisClient.Send("ZREVRANGE", fmt.Sprintf("r-%d", minutes), begin, end-1, "WITHSCORES")
-	redisClient.Send("ZCARD", fmt.Sprintf("r-%d", minutes-1))
-	redisClient.Send("ZCARD", fmt.Sprintf("r-%d", minutes))
 
 	redisClient.Flush()
 
@@ -1047,18 +1045,6 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayEntry
 	relays_b, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		core.Error("redis get relays b failed: %v", err)
-		return nil
-	}
-
-	totalRelayCount_a, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		core.Error("redis get relays count a failed: %v", err)
-		return nil
-	}
-
-	totalRelayCount_b, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		core.Error("redis get relays count b failed: %v", err)
 		return nil
 	}
 
@@ -1084,23 +1070,46 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayEntry
 		}
 	}
 
-	relays := make([]RelayEntry, len(relayMap))
+	relayEntries := make([]RelayEntry, len(relayMap))
 	index := 0
 	for _, v := range relayMap {
-		relays[index] = v
+		relayEntries[index] = v
 		index++
 	}
 
-	sort.SliceStable(relays, func(i, j int) bool { return relays[i].Score > relays[j].Score })
+	sort.SliceStable(relayEntries, func(i, j int) bool { return relayEntries[i].Score > relayEntries[j].Score })
 
 	maxSize := end - begin
-	if len(relays) > maxSize {
-		relays = relays[:maxSize]
+	if len(relayEntries) > maxSize {
+		relayEntries = relayEntries[:maxSize]
 	}
 
-	totalRelayCount := totalRelayCount_a
-	if totalRelayCount_b > totalRelayCount {
-		totalRelayCount = totalRelayCount_b
+	// now get relay data for the set of relay addresses in [begin, end]
+
+	redisClient = pool.Get()
+
+	args := redis.Args{}
+	for i := range relayEntries {
+		args = args.Add(relayEntries[i].Address)
+	}
+
+	redisClient.Send("MGET", args)
+
+	redisClient.Flush()
+
+	redis_relay_data, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis mget get relay data failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	relays := make([]RelayData, len(redis_relay_data))
+
+	for i := range relays {
+		relays[i].Parse(redis_relay_data[i])
+		relays[i].RelayAddress = relayEntries[i].Address
 	}
 
 	return relays
