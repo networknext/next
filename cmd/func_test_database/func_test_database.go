@@ -13,6 +13,9 @@ import (
 	"runtime"
 	"time"
 	"bytes"
+	"net/http"
+	"encoding/json"
+	"io/ioutil"
 
 	db "github.com/networknext/backend/modules/database"
 )
@@ -95,17 +98,80 @@ func test_dev() {
 	ValidateDatabase()
 }
 
+func Get(url string, object interface{}) {
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+		response, err = http.Get(url)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	err = json.Unmarshal([]byte(body), &object)
+	if err != nil {
+		panic(fmt.Sprintf("could not parse json response for %s: %v", url, err))
+	}
+}
+
 func test_api() {
 
 	fmt.Printf("test_api\n")
 
-	// todo: create a dummy database
+	// create a dummy database
 
-	// todo: save it to database.bin
+	database := db.CreateDatabase()
 
-	// todo: run API service and it will load in database.bin
+	database.CreationTime = "now"
+	database.Creator = "test"
+	database.BuyerMap[1] = &db.Buyer{Id: 1, Name: "buyer", Live: true, Debug: true}
+	database.SellerMap[1] = &db.Seller{Id: 1, Name: "seller"}
+	database.DatacenterMap[1] = &db.Datacenter{Id: 1, Name: "datacenter", Latitude: 100, Longitude: 200}
+	database.Relays = append(database.Relays, db.Relay{Id: 1, Name: "relay", Datacenter: *database.DatacenterMap[1]})
+	datacenterRelays := [1]uint64{1}
+	database.DatacenterRelays[1] = datacenterRelays[:]
+	database.BuyerDatacenterSettings[1] = make(map[uint64]*db.BuyerDatacenterSettings)
+	database.BuyerDatacenterSettings[1][1] = &db.BuyerDatacenterSettings{BuyerId: 1, DatacenterId: 1, EnableAcceleration: true}
 
-	// todo: query the database REST API and check all responses vs. the database we wrote
+	err := database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		os.Exit(1)
+	}
+
+	// save it to database.bin
+
+	database.Save("database.bin")
+
+	// run API service and it will load in database.bin
+
+	api_cmd, _ := api()
+
+	// query the database REST API
+
+	// ...
+
+	// shut down API service
+
+	api_cmd.Process.Signal(os.Interrupt)
+	api_cmd.Wait()
+
+	// check results of all queries
+
+	// ...
 }
 
 // ----------------------------------------------------------------------------------------
