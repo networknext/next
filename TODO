@@ -6,19 +6,17 @@ DONE
 
 	And sessions
 
-TODO
-
 	Then update the portal redis load test with the new setup
 
-	-----------------
+TODO
 
-	How should the next tool know which relays are offline vs. online?
+	Extend API to load the database periodically via common.Service
 
-	How should the next tool know which relays are shutting down?
+	Extend API to include methods to get the database view of things as JSON
 
-	Should I provide a "database" centric view of things, eg. api/database/relays?
+	eg. database/relays
 
-	And this is from the database.bin view of things, for runtime database on portal?
+	etc...
 
 	-----------------
 
