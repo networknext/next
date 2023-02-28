@@ -77,6 +77,8 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 					sessionData := portal.GenerateRandomSessionData()
 
+					sessionData.ServerAddress = "127.0.0.1:50000"
+
 					sliceData := portal.GenerateRandomSliceData()
 
 					sessionInserter.Insert(sessionId, score, next, sessionData, sliceData)
@@ -101,24 +103,15 @@ func RunServerInsertThreads(pool *redis.Pool, threadCount int) {
 
 			serverInserter := portal.CreateServerInserter(pool, 1000)
 
-			iteration := uint64(0)
-
 			for {
 
-				for j := 0; j < 100; j++ {
+				serverData := portal.GenerateRandomServerData()
 
-					serverData := portal.GenerateRandomServerData()
+				serverData.ServerAddress = "127.0.0.1:50000"
 
-					id := uint32(iteration + uint64(j))
-
-					serverData.ServerAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
-
-					serverInserter.Insert(serverData)
-				}
+				serverInserter.Insert(serverData)
 
 				time.Sleep(time.Second)
-
-				iteration++
 			}
 		}(k)
 	}
@@ -200,6 +193,32 @@ type PortalSessionDataResponse struct {
 	NearRelayData []portal.NearRelayData `json:"near_relay_data"`
 }
 
+type PortalServerCountResponse struct {
+	ServerCount int `json:"server_count"`
+}
+
+type PortalServersResponse struct {
+	Servers []portal.ServerEntry `json:"servers"`
+}
+
+type PortalServerDataResponse struct {
+	ServerData       *portal.ServerData `json:"server_data"`
+	ServerSessionIds []uint64           `json:"server_session_ids"`
+}
+
+type PortalRelayCountResponse struct {
+	RelayCount int `json:"relay_count"`
+}
+
+type PortalRelaysResponse struct {
+	Relays []portal.RelayEntry `json:"relays"`
+}
+
+type PortalRelayDataResponse struct {
+	RelayData    *portal.RelayData    `json:"relay_data"`
+	RelaySamples []portal.RelaySample `json:"relay_samples"`
+}
+
 func test_portal() {
 
 	fmt.Printf("test_portal\n")
@@ -245,6 +264,46 @@ func test_portal() {
 			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
 		}
 
+		serverCountResponse := PortalServerCountResponse{}
+
+		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
+
+		fmt.Printf("servers = %d\n", serverCountResponse.ServerCount)
+
+		serversResponse := PortalServersResponse{}
+
+		Get("http://127.0.0.1:50000/portal/servers/0/1000", &serversResponse)
+
+		serverDataResponse := PortalServerDataResponse{}
+
+		if len(serversResponse.Servers) > 0 {
+
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].Address), &serverDataResponse)
+
+			fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].Address, len(serverDataResponse.ServerSessionIds))
+		}
+
+		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
+
+		relayCountResponse := PortalRelayCountResponse{}
+
+		Get("http://127.0.0.1:50000/portal/relay_count", &relayCountResponse)
+
+		fmt.Printf("relays = %d\n", relayCountResponse.RelayCount)
+
+		relaysResponse := PortalRelaysResponse{}
+
+		Get("http://127.0.0.1:50000/portal/relays/0/1000", &relaysResponse)
+
+		relayDataResponse := PortalRelayDataResponse{}
+
+		if len(relaysResponse.Relays) > 0 {
+
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].Address), &relayDataResponse)
+
+			fmt.Printf("relay %s has %d samples\n", relaysResponse.Relays[0].Address, len(relayDataResponse.RelaySamples))
+		}
+
 		ready = true
 
 		if sessionCountsResponse.NextSessionCount < 100 {
@@ -268,6 +327,22 @@ func test_portal() {
 		}
 
 		if len(sessionDataResponse.NearRelayData) == 0 {
+			ready = false
+		}
+
+		if serverCountResponse.ServerCount != 1 {
+			ready = false
+		}
+
+		if len(serverDataResponse.ServerSessionIds) < 10000 {
+			ready = false
+		}
+
+		if relayCountResponse.RelayCount < 100 {
+			ready = false
+		}
+
+		if len(relayDataResponse.RelaySamples) == 0 {
 			ready = false
 		}
 

@@ -22,9 +22,9 @@ DONE
 
 	Fix bug with hex vs. decimal session id in REST API (GetSessions)
 
-TODO
-
 	Get portal func test passing in semaphore
+
+TODO
 
 	Add server data to portal func test
 
