@@ -2,6 +2,66 @@ DONE
 
 TODO
 
+	Hook up next tool to API to get data it needs for "next relays" and "next ssh [relayname]"
+
+	Clean up next tool to remove weird stuff around environment switches (not needed anymore...)
+
+	Make sure the 
+
+	Functional test for next tool
+
+		1. "next sessions"
+
+		2. "next relays"
+
+		3. "next ssh [relayname]"
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
 	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
 
 	Seems like multiple receives? Is it not configured correctly? Are all consumers receiving the same messages?
@@ -26,7 +86,11 @@ TODO
 
 	--------------
 
-	Implement func test analytics.
+	Extend analytics so we can specify the number of consumer threads (if it's not already).
+
+	Make sure that analytics doesn't block forever on messages, but instead polls. If it sleeps, messages will get stuck in queues and not flushed to bigquery when we have too many consumers in analytics.
+
+	Implement func test analytics (include both pubsub -> analytics, and analytics -> bigquery is working).
 
 	--------------
 

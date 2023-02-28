@@ -14,11 +14,13 @@ DONE
 
 	API service with REST API to drive the portal functionality.
 
-TODO
-	
 	API service with REST API to drive admin functionality (talk to the postgres database, eg. CRUD)
 
-	Working analytics service that inserts data into bigquery, schema files to create the bigquery tables.
+	Functional tests for both portal and admin REST API functionality.
+
+TODO
+	
+	Working analytics service that inserts data into bigquery.
 
 	Setup new dev environment with terraform
 
@@ -28,16 +30,20 @@ TODO
 
 	Multithreaded relay with session database per-socket thread (no contention)
 
-	Profile and optimize each component:
-
-		1. Client
-		2. Server
-		3. Relay
-		4. Server Backend
-		5. Relay Backend
-		6. Analytics (esp. is there a faster way to insert into bigquery?)
-		7. Portal Cruncher
+	Configuration step (generate unique keys etc.)
 
 	Document *everything*.
 
 	(Ready for Turtle Rock)
+
+	Multipath with two next routes.
+
+	(Ready for Psyonix pitch)
+
+	Auth for portal and admin tool.
+
+	Multiple buyer support in portal.
+
+	Turnkey add relays in clouds via admin tool.
+
+	(Ready for Unity, WB, etc.)
