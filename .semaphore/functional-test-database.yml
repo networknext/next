@@ -30,9 +30,9 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/func_test_database
+            - make -j dist/api dist/func_test_database
 
-            - tar -zcvf functional_test_database.tar.gz dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql
+            - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql
 
             - artifact push workflow functional_test_database.tar.gz
 
@@ -72,3 +72,7 @@ blocks:
         - name: "test_dev"
           commands:
             - cd ./dist && ./func_test_database test_dev
+
+        - name: "test_api"
+          commands:
+            - cd ./dist && ./func_test_database test_api

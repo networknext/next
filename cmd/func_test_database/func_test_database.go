@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"runtime"
 	"time"
+	"bytes"
 
 	db "github.com/networknext/backend/modules/database"
 )
@@ -32,6 +33,27 @@ func bash(command string) {
 	}
 
 	cmd.Wait()
+}
+
+func api() (*exec.Cmd, *bytes.Buffer) {
+
+	cmd := exec.Command("./api")
+	if cmd == nil {
+		panic("could not create api!\n")
+		return nil, nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENABLE_PORTAL=false")
+	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
+	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	cmd.Start()
+
+	return cmd, &output
 }
 
 func ValidateDatabase() {
@@ -73,6 +95,19 @@ func test_dev() {
 	ValidateDatabase()
 }
 
+func test_api() {
+
+	fmt.Printf("test_api\n")
+
+	// todo: create a dummy database
+
+	// todo: save it to database.bin
+
+	// todo: run API service and it will load in database.bin
+
+	// todo: query the database REST API and check all responses vs. the database we wrote
+}
+
 // ----------------------------------------------------------------------------------------
 
 type test_function func()
@@ -82,6 +117,7 @@ func main() {
 	allTests := []test_function{
 		test_local,
 		test_dev,
+		test_api,
 	}
 
 	var tests []test_function
