@@ -32,7 +32,9 @@ blocks:
             - make clean
             - make -j dist/api dist/func_test_portal
 
-            - artifact push workflow dist/api
+            - mv dist/api dist/api_portal
+
+            - artifact push workflow dist/api_portal
             - artifact push workflow dist/func_test_portal
 
   - name: "Run Functional Tests (portal)"
@@ -55,8 +57,10 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow api
+            - artifact pull workflow api_portal
             - artifact pull workflow func_test_portal
+
+            - mv api_portal api
 
             - chmod +x api
             - chmod +x func_test_portal
