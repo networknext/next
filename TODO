@@ -4,11 +4,17 @@ DONE
 
 TODO
 
+	Modify the SDK so that near relay RTT that is > 0.0 by any amount turns into 1ms quantized latency. 
+
+	This will significantly improve the reliability of the happy path.
+
+	-----------------
+
 	Implement "next database" so it gets the database binary from the database REST API, if not in "local"
 
 	-----------------
 	
-	Add a new "admin/cost" GET interface to API
+	Add a new "admin/cost" GET interface to API --- get leader service "cost_matrix" from redis.
 
 	Hook up "next cost" to API
 
@@ -24,9 +30,13 @@ TODO
 
 	eg. "ADMIN_REST_API_URL"
 
+	These should be defined in the corresponding .env file, but we'll need to parse it to find them, othrewise chicken and egg.
+
 	-----------------
 
 	Use API to get set of relays to pattern match on for "next ssh [relayname]"
+
+	Here we want to hit the postgres directly, eg. "admin"
 
 	-----------------
 
