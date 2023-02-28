@@ -129,7 +129,7 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionsResponse struct {
-	Sessions []portal.SessionEntry `json:"sessions"`
+	Sessions []portal.SessionData `json:"sessions"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -186,7 +186,7 @@ func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalServersResponse struct {
-	Servers []portal.ServerEntry `json:"servers"`
+	Servers []portal.ServerData `json:"servers"`
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {

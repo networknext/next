@@ -681,7 +681,7 @@ type SessionEntry struct {
 	Score     uint32 `json:"score"`
 }
 
-func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionEntry {
+func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionData {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get sessions: %d", begin)
@@ -697,6 +697,8 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionE
 		core.Error("invalid begin passed to get sessions: %d", begin)
 		return nil
 	}
+
+	// get session ids in order in the range [begin,end]
 
 	redisClient := pool.Get()
 
@@ -739,18 +741,46 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionE
 		}
 	}
 
-	sessions := make([]SessionEntry, len(sessionsMap))
+	sessionEntries := make([]SessionEntry, len(sessionsMap))
 	index := 0
 	for _, v := range sessionsMap {
-		sessions[index] = v
+		sessionEntries[index] = v
 		index++
 	}
 
-	sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].Score > sessions[j].Score })
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
 
 	maxSize := end - begin
-	if len(sessions) > maxSize {
-		sessions = sessions[:maxSize]
+	if len(sessionEntries) > maxSize {
+		sessionEntries = sessionEntries[:maxSize]
+	}
+
+	// now get session data for the set of session ids in [begin, end]
+
+	redisClient = pool.Get()
+
+	args := redis.Args{}
+	for i := range sessionEntries {
+		args = args.Add(sessionEntries[i].SessionId)
+	}
+
+	redisClient.Send("MGET", args)
+
+	redisClient.Flush()
+
+	redis_session_data, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis mget get session data failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	sessions := make([]SessionData, len(redis_session_data))
+
+	for i := range sessions {
+		sessions[i].Parse(redis_session_data[i])
+		sessions[i].SessionId = sessionEntries[i].SessionId
 	}
 
 	return sessions
@@ -839,7 +869,7 @@ type ServerEntry struct {
 	Score   uint32 `json:"score"`
 }
 
-func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEntry {
+func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerData {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get servers: %d", begin)
@@ -855,6 +885,8 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEnt
 		core.Error("end must be greater than begin")
 		return nil
 	}
+
+	// get the set of server addresses in the range [begin,end]
 
 	redisClient := pool.Get()
 
@@ -897,18 +929,46 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerEnt
 		}
 	}
 
-	servers := make([]ServerEntry, len(serverMap))
+	serverEntries := make([]ServerEntry, len(serverMap))
 	index := 0
 	for _, v := range serverMap {
-		servers[index] = v
+		serverEntries[index] = v
 		index++
 	}
 
-	sort.SliceStable(servers, func(i, j int) bool { return servers[i].Score > servers[j].Score })
+	sort.SliceStable(serverEntries, func(i, j int) bool { return serverEntries[i].Score > serverEntries[j].Score })
 
 	maxSize := end - begin
-	if len(servers) > maxSize {
-		servers = servers[:maxSize]
+	if len(serverEntries) > maxSize {
+		serverEntries = serverEntries[:maxSize]
+	}
+
+	// now get server data for the set of server addresses in [begin, end]
+
+	redisClient = pool.Get()
+
+	args := redis.Args{}
+	for i := range serverEntries {
+		args = args.Add(serverEntries[i].Address)
+	}
+
+	redisClient.Send("MGET", args)
+
+	redisClient.Flush()
+
+	redis_server_data, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis mget get server data failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	servers := make([]ServerData, len(redis_server_data))
+
+	for i := range servers {
+		servers[i].Parse(redis_server_data[i])
+		servers[i].ServerAddress = serverEntries[i].Address
 	}
 
 	return servers
@@ -1027,7 +1087,7 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData 
 		return nil
 	}
 
-	// get the set of relay entries in order in the range [begin,end]
+	// get the set of relay addresses in order in the range [begin,end]
 
 	redisClient := pool.Get()
 

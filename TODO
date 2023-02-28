@@ -1,14 +1,14 @@
 DONE
 
-TODO
-
-	-----------------
-
 	We need a method to get all portal relay data at once, eg. "I want the top 1000 relays" get them.
 
-	Returning just the relay addresses and scores isn't actually helpful.
+	Now do the same for servers
 
-	This needs to be done for relays, servers and sessions...
+TODO
+
+	And sessions
+
+	Then update the portal redis load test with the new setup
 
 	-----------------
 
@@ -16,13 +16,9 @@ TODO
 
 	How should the next tool know which relays are shutting down?
 
-	-----------------
+	Should I provide a "database" centric view of things, eg. api/database/relays?
 
-	The portal actually needs to know the set of relays that are in the database.bin
-	to work out which ones are "offline", because offline relays do not generate "portal relay update"
-	messages which drive the portal.
-
-	There need to be methods for the portal, that return *database* view of things, as JSON.
+	And this is from the database.bin view of things, for runtime database on portal?
 
 	-----------------
 
@@ -369,5 +365,15 @@ Nice to have:
 	--------------
 
 	Fix compile warnings on linux, both in raspberry, and in next.cpp
+
+	--------------
+
+	Need to fix up the silly next/prev internal overlay w. addresses in route tokens
+
+	--------------
+
+	I think I can fix up the whole crazy thing with ordering of tokens by requiring that the "prev address" is specified, and is not just inferred by the address packets come in on.
+
+	Given that the advanced packet filter will check that the packets are actually coming from the client external address already, nothing of value is lost here.
 
 	--------------

@@ -190,7 +190,7 @@ type PortalSessionCountsResponse struct {
 }
 
 type PortalSessionsResponse struct {
-	Sessions []portal.SessionEntry `json:"sessions"`
+	Sessions []portal.SessionData `json:"sessions"`
 }
 
 type PortalSessionDataResponse struct {
@@ -204,7 +204,7 @@ type PortalServerCountResponse struct {
 }
 
 type PortalServersResponse struct {
-	Servers []portal.ServerEntry `json:"servers"`
+	Servers []portal.ServerData `json:"servers"`
 }
 
 type PortalServerDataResponse struct {
@@ -261,9 +261,13 @@ func test_portal() {
 
 		Get("http://127.0.0.1:50000/portal/sessions/0/1000", &sessionsResponse)
 
+		fmt.Printf("got data for %d sessions\n", len(sessionsResponse.Sessions))
+
 		sessionDataResponse := PortalSessionDataResponse{}
 
 		if len(sessionsResponse.Sessions) > 0 {
+
+			fmt.Printf("first session id is %016x\n", sessionsResponse.Sessions[0].SessionId)
 
 			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%d", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
 
@@ -282,11 +286,15 @@ func test_portal() {
 
 		serverDataResponse := PortalServerDataResponse{}
 
+		fmt.Printf("got data for %d servers\n", len(serversResponse.Servers))
+
 		if len(serversResponse.Servers) > 0 {
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].Address), &serverDataResponse)
+			fmt.Printf("first server address is '%s'\n", serversResponse.Servers[0].ServerAddress)
 
-			fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].Address, len(serverDataResponse.ServerSessionIds))
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].ServerAddress), &serverDataResponse)
+
+			fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].ServerAddress, len(serverDataResponse.ServerSessionIds))
 		}
 
 		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
