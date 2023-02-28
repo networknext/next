@@ -326,42 +326,52 @@ func test_portal() {
 		ready = true
 
 		if sessionCountsResponse.NextSessionCount < 100 {
+			fmt.Printf("A\n")
 			ready = false
 		}
 
 		if sessionCountsResponse.TotalSessionCount < 1000 {
+			fmt.Printf("B\n")
 			ready = false
 		}
 
 		if len(sessionsResponse.Sessions) < 1000 {
+			fmt.Printf("C\n")
 			ready = false
 		}
 
 		if sessionDataResponse.SessionData == nil {
+			fmt.Printf("D\n")
 			ready = false
 		}
 
 		if len(sessionDataResponse.SliceData) == 0 {
+			fmt.Printf("E\n")
 			ready = false
 		}
 
 		if len(sessionDataResponse.NearRelayData) == 0 {
+			fmt.Printf("F\n")
 			ready = false
 		}
 
 		if serverCountResponse.ServerCount != 1 {
+			fmt.Printf("G\n")
 			ready = false
 		}
 
 		if len(serverDataResponse.ServerSessionIds) < 10000 {
+			fmt.Printf("H\n")
 			ready = false
 		}
 
 		if relayCountResponse.RelayCount < 100 {
+			fmt.Printf("I\n")
 			ready = false
 		}
 
 		if len(relayDataResponse.RelaySamples) == 0 {
+			fmt.Printf("J\n")
 			ready = false
 		}
 

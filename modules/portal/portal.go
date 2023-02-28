@@ -768,7 +768,7 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 		args = args.Add(sessionEntries[i].SessionId)
 	}
 
-	redisClient.Send("MGET", args)
+	redisClient.Send("MGET", args...)
 
 	redisClient.Flush()
 
@@ -960,7 +960,7 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerDat
 		args = args.Add(serverEntries[i].Address)
 	}
 
-	redisClient.Send("MGET", args)
+	redisClient.Send("MGET", args...)
 
 	redisClient.Flush()
 
@@ -1165,7 +1165,7 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData 
 		args = args.Add(relayEntries[i].Address)
 	}
 
-	redisClient.Send("MGET", args)
+	redisClient.Send("MGET", args...)
 
 	redisClient.Flush()
 
