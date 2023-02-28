@@ -30,12 +30,12 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
+            
             - make -j dist/api dist/func_test_api
 
-            - artifact push workflow dist/api
-            - artifact push workflow dist/func_test_api
-            - artifact push workflow schemas/sql/create.sql
-            - artifact push workflow schemas/sql/destroy.sql
+            - tar -zcvf functional_test_api.tar.gz dist/api dist/func_test_api schemas/sql/create.sql schemas/sql/destroy.sql
+
+            - artifact push workflow functional_test_api.tar.gz
 
   - name: "Run Functional Tests (api)"
     dependencies: ["Build Functional Tests (api)"]
@@ -56,24 +56,12 @@ blocks:
 
             - sudo apt-get install -y libsodium-dev
 
-            - mkdir -p dist
-            - cd dist
+            - artifact pull workflow functional_test_api.tar.gz
 
-            - artifact pull workflow api
-            - artifact pull workflow func_test_api
+            - tar -zxf functional_test_api.tar.gz
 
             - chmod +x api
             - chmod +x func_test_api
-
-            - ls -al
-
-            - cd ~
-            - mkdir -p schemas/sql
-            - cd schemas/sql
-            - artifact pull workflow create.sql
-            - artifact pull workflow destroy.sql
-
-            - cd ~
 
       jobs:
 
