@@ -63,6 +63,8 @@ func main() {
 		service.Router.HandleFunc("/portal/relay/{relay_address}", portalRelayDataHandler)
 
 		service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
+
+		service.Router.HandleFunc("/portal/cost_matrix", portalCostMatrixHandler)
 	}
 
 	if enableAdmin {
@@ -301,6 +303,15 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	data := common.LoadMasterServiceData(pool, "map_cruncher", "map_data")
+	w.Write(data)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	data := common.LoadMasterServiceData(pool, "relay_backend", "cost_matrix")
 	w.Write(data)
 }
 

@@ -260,7 +260,7 @@ func LoadMasterServiceData(pool *redis.Pool, service string, name string) []byte
 	seconds := time.Now().Unix()
 	minutes := seconds / 60
 	instanceEntries := getInstanceEntries(pool, service, minutes)
-	if len(instanceEntries) < 0 {
+	if len(instanceEntries) == 0 {
 		return nil
 	}
 	masterInstance := instanceEntries[0]

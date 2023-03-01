@@ -262,8 +262,9 @@ func handleRunTimeError(msg string, level int) {
 	os.Exit(level)
 }
 
+var env Environment
+
 func main() {
-	var env Environment
 
 	if !env.Exists() {
 		env.Write()
@@ -562,7 +563,7 @@ func main() {
 				output = args[0]
 			}
 			getCostMatrix(env, output)
-			fmt.Printf("Cost matrix from %s saved to %s\n", env.Name, output)
+			fmt.Printf("Cost matrix from %s saved to %s\n\n", env.Name, output)
 			return nil
 		},
 	}
@@ -674,7 +675,7 @@ func getDatabase() *db.Database {
 		return cachedDatabase
 	}
 
-	if env != "local" {
+	if env.String() != "local" {
 		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", databaseURL))
 		os.WriteFile("database.bin", database_binary, 0644)
 	}
@@ -1256,23 +1257,8 @@ func (e *Environment) Clean() {
 // -------------------------------------------------------------------------------------------
 
 func getCostMatrix(env Environment, fileName string) {
-
-	// todo: call in to portal interface directly to get cost matrix in binary format (grab it from redis directly...)
-
-	/*
-	args := NextCostMatrixHandlerArgs{}
-
-	var reply NextCostMatrixHandlerReply
-	if err := makeRPCCall(env, &reply, "RelayFleetService.NextCostMatrixHandler", args); err != nil {
-		fmt.Printf("error: could not get cost matrix\n")
-		os.Exit(1)
-	}
-
-	err := ioutil.WriteFile(fileName, reply.CostMatrix, 0777)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not write %s to the filesystem: %v\n", fileName, err), 0)
-	}
-	*/
+	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", portalURL))
+	os.WriteFile("cost.bin", cost_matrix_binary, 0644)
 }
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {

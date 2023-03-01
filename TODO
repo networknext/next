@@ -2,15 +2,13 @@ DONE
 
 	Hack sketch out "next relays" with mixture of admin and portal APIs
 
-TODO
-
 	Implement "next database" so it gets the database binary from the database REST API, if not in "local"
 
-	-----------------
-	
 	Add a new "admin/cost" GET interface to API --- get leader service "cost_matrix" from redis.
 
 	Hook up "next cost" to API
+
+TODO
 
 	-----------------
 
@@ -24,23 +22,13 @@ TODO
 
 	eg. "ADMIN_REST_API_URL"
 
-	These should be defined in the corresponding .env file, but we'll need to parse it to find them, othrewise chicken and egg.
+	These should be defined in the corresponding .env file, but we'll need to parse it to find them, otherwise chicken and egg.
 
 	-----------------
 
 	Use API to get set of relays to pattern match on for "next ssh [relayname]"
 
 	Here we want to hit the postgres directly, eg. "admin"
-
-	-----------------
-
-	Make sure the following parts of the next tool work in happy path:
-
-		1. "next relays"
-
-		3. "next cost" (hit the admin API, not the services directly...)
-
-		4. "next database" (download database.bin from admin API then print it)
 
 	-----------------
 
