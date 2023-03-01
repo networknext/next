@@ -20,14 +20,14 @@ DONE
 
 	Functional tests for admin, portal and database REST API functionality.
 
+	Working "next" tool that runs off the REST API and supports any number of different configured environments.
+
 TODO
 
-	Working "next" tool that runs off the REST API and supports any number of different configured environments.
+	Working analytics service that inserts data into bigquery.
 
 	-------------
 	
-	Working analytics service that inserts data into bigquery.
-
 	New dev environment in google cloud setup with terraform.
 
 	Rebuild portal (no auth)

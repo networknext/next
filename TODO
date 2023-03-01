@@ -20,6 +20,60 @@ DONE
 
 TODO
 
+	Take a break. Good stopping point right here before diving into google pubsub and bigquery.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
 	--------------
 
 	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
