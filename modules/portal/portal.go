@@ -476,23 +476,25 @@ type RelayData struct {
 	NumSessions  uint32
 	MaxSessions  uint32
 	StartTime    uint64
+	RelayFlags   uint64
 	Version      string
 }
 
 func (data *RelayData) Value() string {
-	return fmt.Sprintf("%x|%s|%d|%d|%x|%s",
+	return fmt.Sprintf("%x|%s|%d|%d|%x|%x|%s",
 		data.RelayId,
 		data.RelayAddress,
 		data.NumSessions,
 		data.MaxSessions,
 		data.StartTime,
+		data.RelayFlags,
 		data.Version,
 	)
 }
 
 func (data *RelayData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 6 {
+	if len(values) != 7 {
 		return
 	}
 	relayId, err := strconv.ParseUint(values[0], 16, 64)
@@ -512,12 +514,17 @@ func (data *RelayData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	version := values[5]
+	relayFlags, err := strconv.ParseUint(values[5], 16, 64)
+	if err != nil {
+		return
+	}
+	version := values[6]
 	data.RelayId = relayId
 	data.RelayAddress = relayAddress
 	data.NumSessions = uint32(numSessions)
 	data.MaxSessions = uint32(maxSessions)
 	data.StartTime = startTime
+	data.RelayFlags = relayFlags
 	data.Version = version
 }
 
@@ -528,6 +535,7 @@ func GenerateRandomRelayData() *RelayData {
 	data.NumSessions = rand.Uint32()
 	data.MaxSessions = rand.Uint32()
 	data.StartTime = rand.Uint64()
+	data.RelayFlags = rand.Uint64()
 	data.Version = common.RandomString(constants.MaxRelayVersionLength)
 	return &data
 }

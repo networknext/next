@@ -292,9 +292,9 @@ func main() {
 
 			if args[0] == "local" {
 				bash("rm -f database.bin && cp envs/local.bin database.bin")
-				bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-				bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-				bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
+				bash("psql -U developer postgres -f ../schemas/sql/destroy.sql")
+				bash("psql -U developer postgres -f ../schemas/sql/create.sql")
+				bash("psql -U developer postgres -f ../schemas/sql/local.sql")
 			}
 
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
@@ -595,7 +595,7 @@ func main() {
 
 			optimizeCostMatrix(input, output, rtt)
 
-			fmt.Printf("Generated route matrix %s from %s\n", output, input)
+			fmt.Printf("Generated route matrix %s from %s\n\n", output, input)
 
 			return nil
 		},
@@ -808,8 +808,11 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if relay == nil {
 			continue
 		}
-		relay.Status = "online"
-		// todo: handle "shutting down" state here
+		if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
+			relay.Status = "shutting down"
+		} else {
+			relay.Status = "online"
+		}
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
 	}
@@ -1314,38 +1317,6 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for writing: %v\n", err), 1)
 	}
-
-	// todo: temporary -- print out route matrix as csv
-
-	fmt.Printf(",")
-	for i := range costMatrix.RelayNames {
-		fmt.Printf("%s,", costMatrix.RelayNames[i])
-	}
-	fmt.Printf("\n")
-	for i := range costMatrix.RelayNames {
-		fmt.Printf("%s,", costMatrix.RelayNames[i])
-		for j := range costMatrix.RelayNames {
-			if i == j {
-				fmt.Printf("-1,")
-			} else {
-				index := core.TriMatrixIndex(i, j)
-				cost := costMatrix.Costs[index]
-				fmt.Printf("%d,", cost)
-			}
-		}
-		fmt.Printf("\n")
-	}
-	fmt.Printf("\n")
-
-	// todo: temporary -- print out dest relays
-
-	fmt.Printf("dest relays: ")
-	for i := range costMatrix.RelayNames {
-		if costMatrix.DestRelays[i] {
-			fmt.Printf("%s,", costMatrix.RelayNames[i])
-		}
-	}
-	fmt.Printf("\n\n")
 }
 
 func analyzeRouteMatrix(inputFile string) {
@@ -1390,6 +1361,8 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have only one route\n", analysis.OneRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
+
+	fmt.Printf("\n")
 }
 
 // -------------------------------------------------------------------------------------------

@@ -234,6 +234,7 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 		NumSessions:  message.SessionCount,
 		MaxSessions:  message.MaxSessions,
 		StartTime:    message.StartTime,
+		RelayFlags:   message.RelayFlags,
 		Version:      message.RelayVersion,
 	}
 

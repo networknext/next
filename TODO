@@ -8,21 +8,13 @@ DONE
 
 	Hook up "next cost" to API
 
+	Plumb through the relay flags so I can show when relays are "shutting down" in next tool.
+
+	Added env vars 
+
 TODO
 
-	-----------------
-
-	Plumb through the relay flags or relay status somehow, so I can show when relays are "shutting down" in next tool.
-
-	-----------------
-
-	Need to be able to select the API url per-env. Ideally, not hardcoded in next.go
-
-	Ideally, split into separate URLs for "admin", "portal" and "database" REST APIs.
-
-	eg. "ADMIN_REST_API_URL"
-
-	These should be defined in the corresponding .env file, but we'll need to parse it to find them, otherwise chicken and egg.
+	Read in REST API urls from the current .env file
 
 	-----------------
 
