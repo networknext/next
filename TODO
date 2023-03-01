@@ -12,17 +12,13 @@ DONE
 
 	Added env vars 
 
-TODO
-
 	Read in REST API url and SSH key from current env file, and save it to the .next file
-
-	-----------------
 
 	Use API to get set of relays to pattern match on for "next ssh [relayname]"
 
-	Here we want to hit the postgres directly, eg. "admin"
+	Make sure that "next ssh [relayname]" works
 
-	-----------------
+TODO
 
 
 

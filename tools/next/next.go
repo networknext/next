@@ -405,6 +405,22 @@ func main() {
 		},
 	}
 
+	var sshCommand = &ffcli.Command{
+		Name:       "ssh",
+		ShortUsage: "next ssh [regex...]",
+		ShortHelp:  "SSH into the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			ssh(env, regexes)
+
+			return nil
+		},
+	}
+
 	var logCommand = &ffcli.Command{
 		Name:       "logs",
 		ShortUsage: "next logs <regex> [regex]",
@@ -610,6 +626,7 @@ func main() {
 		envCommand,
 		databaseCommand,
 		relaysCommand,
+		sshCommand,
 		logCommand,
 		startCommand,
 		stopCommand,
@@ -887,6 +904,8 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 
 // ------------------------------------------------------------------------------
 
+// todo: we need to configure where relay artifacts live -- it's hard coded below in "LoadRelayScript" =p
+
 const (
 	StartRelayScript   = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 	StopRelayScript    = `sudo systemctl stop relay && sudo systemctl disable relay`
@@ -897,38 +916,36 @@ const (
 )
 
 type RelayInfo struct {
-	Id         uint64 `json:"id"`
-	Name       string `json:"name"`
-	SSHAddress string `json:"management_addr"`
-	SSHUser    string `json:"ssh_user"`
-	SSHPort    int64  `json:"ssh_port"`
-	State      string `json:"state"`
-}
-
-type RelaysArgs struct {
-	Regex string `json:"name"`
-}
-
-type RelaysReply struct {
-	Relays []RelayInfo `json:"relays"`
+	Id         uint64
+	Name       string
+	SSHAddress string
+	SSHUser    string
+	SSHPort    int
 }
 
 func getRelayInfo(env Environment, regex string) []RelayInfo {
 
-	// todo: bring back
-	return nil
+	relaysResponse := AdminRelaysResponse{}
 
-	/*
-	args := RelaysArgs{
-		Regex: regex,
+	GetJSON(fmt.Sprintf("%s/admin/relays", env.AdminURL), &relaysResponse)
+
+	relays := make([]RelayInfo, 0)
+
+	for i := range relaysResponse.Relays {
+		matched, _ := regexp.Match(regex, []byte(relaysResponse.Relays[i].RelayName))
+		if !matched {
+			continue
+		}
+		relayInfo := RelayInfo{}
+		relayInfo.Id = relaysResponse.Relays[i].RelayId
+		relayInfo.Name = relaysResponse.Relays[i].RelayName
+		relayInfo.SSHAddress = relaysResponse.Relays[i].SSH_IP
+		relayInfo.SSHUser = relaysResponse.Relays[i].SSH_User
+		relayInfo.SSHPort = relaysResponse.Relays[i].SSH_Port
+		relays = append(relays, relayInfo)
 	}
-	var reply RelaysReply
-	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
-		fmt.Printf("error: could not get relay info\n")
-		os.Exit(1)
-	}
-	return reply.Relays
-	*/
+
+	return relays
 }
 
 func ssh(env Environment, regexes []string) {
@@ -939,16 +956,19 @@ func ssh(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address\n", relays[i].Name)
 				continue
 			}
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
-			fmt.Printf("Connecting to %s\n", relay.Name)
+			fmt.Printf("Connecting to %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.Connect()
 			break
 		}
 	}
+
+	fmt.Printf("\n")
 }
 
 func config(env Environment, regexes []string) {
@@ -960,9 +980,6 @@ func config(env Environment, regexes []string) {
 			continue
 		}
 		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
-				continue
-			}
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			fmt.Printf("Connecting to %s\n", relay.Name)
 			if !con.ConnectAndIssueCmd(ConfigRelayScript) {
@@ -981,9 +998,6 @@ func startRelays(env Environment, regexes []string) {
 			continue
 		}
 		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
-				continue
-			}
 			fmt.Printf("starting relay %s\n", relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(StartRelayScript)
@@ -1000,9 +1014,6 @@ func stopRelays(env Environment, regexes []string) {
 			continue
 		}
 		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
-				continue
-			}
 			fmt.Printf("stopping relay %s\n", relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
@@ -1019,9 +1030,6 @@ func upgradeRelays(env Environment, regexes []string) {
 			continue
 		}
 		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
-				continue
-			}
 			fmt.Printf("upgrading relay %s\n", relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
@@ -1038,9 +1046,6 @@ func rebootRelays(env Environment, regexes []string) {
 			continue
 		}
 		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
-				continue
-			}
 			fmt.Printf("rebooting relay %s\n", relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
@@ -1056,9 +1061,6 @@ func loadRelays(env Environment, regexes []string, version string) {
 			continue
 		}
 		for _, relay := range relays {
-			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
-				continue
-			}
 			fmt.Printf("loading relay-%s onto %s\n", version, relay.Name)
 			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
