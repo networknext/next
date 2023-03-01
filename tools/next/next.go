@@ -958,10 +958,10 @@ func ssh(env Environment, regexes []string) {
 		}
 		for i := range relays {
 			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("Relay %s does not have an SSH address\n", relays[i].Name)
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
 				continue
 			}
-			fmt.Printf("Connecting to %s\n", relays[i].Name)
+			fmt.Printf("connecting to %s\n", relays[i].Name)
 			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.Connect()
 			break
@@ -979,9 +979,13 @@ func config(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
-			fmt.Printf("Connecting to %s\n", relay.Name)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("connecting to %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			if !con.ConnectAndIssueCmd(ConfigRelayScript) {
 				continue
 			}
@@ -997,9 +1001,13 @@ func startRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			fmt.Printf("starting relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("starting relay %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(StartRelayScript)
 		}
 	}
@@ -1013,9 +1021,13 @@ func stopRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			fmt.Printf("stopping relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("stopping relay %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1029,9 +1041,13 @@ func upgradeRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			fmt.Printf("upgrading relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("upgrading relay %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1045,9 +1061,13 @@ func rebootRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			fmt.Printf("rebooting relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("rebooting relay %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1060,9 +1080,13 @@ func loadRelays(env Environment, regexes []string, version string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
-		for _, relay := range relays {
-			fmt.Printf("loading relay-%s onto %s\n", version, relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("loading relay-%s onto %s\n", version, relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
 		}
 	}
@@ -1071,8 +1095,13 @@ func loadRelays(env Environment, regexes []string, version string) {
 func relayLog(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
-		for _, relay := range relays {
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("connecting to %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("journalctl -fu relay -n 1000")
 			break
 		}
@@ -1082,8 +1111,13 @@ func relayLog(env Environment, regexes []string) {
 func keys(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
-		for _, relay := range relays {
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
+		for i := range relays {
+			if relays[i].SSHAddress == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].Name)
+				continue
+			}
+			fmt.Printf("connecting to %s\n", relays[i].Name)
+			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("sudo cat /app/relay.env | grep _KEY")
 			break
 		}
