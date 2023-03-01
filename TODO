@@ -20,48 +20,6 @@ DONE
 
 TODO
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	--------------
 
 	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
