@@ -198,8 +198,9 @@ func runCommandQuiet(command string, args []string, stdoutOnly bool) (bool, stri
 	return true, output
 }
 
-func bash(command string) (bool, string) {
-	return runCommandQuiet("bash", []string{"-c", command}, false)
+func bash(command string) string {
+	_, output := runCommandQuiet("bash", []string{"-c", command}, false)
+	return output
 }
 
 func secureShell(user string, address string, port int) {
@@ -264,6 +265,15 @@ func handleRunTimeError(msg string, level int) {
 
 var env Environment
 
+func getKeyValue(envFile string, keyName string) string {
+	value := bash(fmt.Sprintf("cat %s | awk -v key=%s -F= '$1 == key { sub(/^[^=]+=/, \"\"); print }'", envFile, keyName))
+	if len(value) < 1 {
+		return ""
+	}
+	value = value[:len(value)-1]
+	return value
+}
+
 func main() {
 
 	if !env.Exists() {
@@ -286,9 +296,6 @@ func main() {
 			if len(args) == 0 {
 				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
 			}
-
-			env.Name = args[0]
-			env.Write()
 
 			if args[0] == "local" {
 				bash("rm -f database.bin && cp envs/local.bin database.bin")
@@ -320,6 +327,13 @@ func main() {
 			if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
 				return err
 			}
+
+			env.Name = args[0]
+			env.AdminURL = getKeyValue(envFilePath, "ADMIN_REST_API_URL")
+			env.PortalURL = getKeyValue(envFilePath, "PORTAL_REST_API_URL")
+			env.DatabaseURL = getKeyValue(envFilePath, "DATABASE_REST_API_URL")
+			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
+			env.Write()
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
 
@@ -516,33 +530,6 @@ func main() {
 		},
 	}
 
-	var sshCommand = &ffcli.Command{
-		Name:       "ssh",
-		ShortUsage: "next ssh [regex...]",
-		ShortHelp:  "SSH into a relay",
-		Exec: func(ctx context.Context, args []string) error {
-			ssh(env, args)
-			return nil
-		},
-		Subcommands: []*ffcli.Command{
-			{
-				Name:       "key",
-				ShortUsage: "next ssh key <path to ssh key>",
-				ShortHelp:  "Set the key you'd like to use for ssh",
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) > 0 {
-						env.SSHKeyFilePath = args[0]
-						env.Write()
-					}
-
-					fmt.Println(env.String())
-
-					return nil
-				},
-			},
-		},
-	}
-
 	var configCommand = &ffcli.Command{
 		Name:       "config",
 		ShortUsage: "next config [regex...]",
@@ -631,7 +618,6 @@ func main() {
 		rebootCommand,
 		keygenCommand,
 		keysCommand,
-		sshCommand,
 		configCommand,
 		costCommand,
 		optimizeCommand,
@@ -676,7 +662,7 @@ func getDatabase() *db.Database {
 	}
 
 	if env.String() != "local" {
-		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", databaseURL))
+		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", env.DatabaseURL))
 		os.WriteFile("database.bin", database_binary, 0644)
 	}
 
@@ -759,18 +745,13 @@ type AdminRelaysResponse struct {
 	Error  string            `json:"error"`
 }
 
-// todo: make these URLs configurable per-env
-var adminURL = "http://127.0.0.1:50000"
-var portalURL = "http://127.0.0.1:50000"
-var databaseURL = "http://127.0.0.1:50000"
-
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
 
 	adminRelaysResponse := AdminRelaysResponse{}
 	portalRelaysResponse := PortalRelaysResponse{}
 
-	GetJSON(fmt.Sprintf("%s/admin/relays", adminURL), &adminRelaysResponse)
-	GetJSON(fmt.Sprintf("%s/portal/relays/0/%d", portalURL, constants.MaxRelays), &portalRelaysResponse)
+	GetJSON(fmt.Sprintf("%s/admin/relays", env.AdminURL), &adminRelaysResponse)
+	GetJSON(fmt.Sprintf("%s/portal/relays/0/%d", env.PortalURL, constants.MaxRelays), &portalRelaysResponse)
 
 	type RelayRow struct {
 		Name     string
@@ -862,16 +843,6 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 
 // ----------------------------------------------------------------
 
-func testForSSHKey(env Environment) {
-	if env.SSHKeyFilePath == "" {
-		handleRunTimeError(fmt.Sprintln("The ssh key file name is not set, set it with 'next ssh key <path>'"), 0)
-	}
-
-	if _, err := os.Stat(env.SSHKeyFilePath); err != nil {
-		handleRunTimeError(fmt.Sprintf("The ssh key file '%s' does not exist, set it with 'next ssh key <path>'\n", env.SSHKeyFilePath), 0)
-	}
-}
-
 type SSHConn struct {
 	user    string
 	address string
@@ -899,11 +870,8 @@ func (con SSHConn) commonSSHCommands() []string {
 	return args
 }
 
-func (con SSHConn) Connect(isRiotRelay bool) {
+func (con SSHConn) Connect() {
 	args := con.commonSSHCommands()
-	if isRiotRelay {
-		args = append(args, "-R 9000")
-	}
 	args = append(args, "-tt", con.user+"@"+con.address)
 	if !runCommandEnv("ssh", args, nil) {
 		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 1)
@@ -975,14 +943,9 @@ func ssh(env Environment, regexes []string) {
 			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
 				continue
 			}
-			testForSSHKey(env)
-			riot := false
-			if strings.Split(relay.Name, ".")[0] == "riot" {
-				riot = true
-			}
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			fmt.Printf("Connecting to %s\n", relay.Name)
-			con.Connect(riot)
+			con.Connect()
 			break
 		}
 	}
@@ -1000,8 +963,7 @@ func config(env Environment, regexes []string) {
 			if strings.Contains(relay.Name, "-removed-") || relay.State != "enabled" {
 				continue
 			}
-			testForSSHKey(env)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			fmt.Printf("Connecting to %s\n", relay.Name)
 			if !con.ConnectAndIssueCmd(ConfigRelayScript) {
 				continue
@@ -1023,15 +985,13 @@ func startRelays(env Environment, regexes []string) {
 				continue
 			}
 			fmt.Printf("starting relay %s\n", relay.Name)
-			testForSSHKey(env)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(StartRelayScript)
 		}
 	}
 }
 
 func stopRelays(env Environment, regexes []string) {
-	testForSSHKey(env)
 	script := StopRelayScript
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -1044,14 +1004,13 @@ func stopRelays(env Environment, regexes []string) {
 				continue
 			}
 			fmt.Printf("stopping relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
 }
 
 func upgradeRelays(env Environment, regexes []string) {
-	testForSSHKey(env)
 	script := UpgradeRelayScript
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -1064,14 +1023,13 @@ func upgradeRelays(env Environment, regexes []string) {
 				continue
 			}
 			fmt.Printf("upgrading relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
 }
 
 func rebootRelays(env Environment, regexes []string) {
-	testForSSHKey(env)
 	script := RebootRelayScript
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -1084,14 +1042,13 @@ func rebootRelays(env Environment, regexes []string) {
 				continue
 			}
 			fmt.Printf("rebooting relay %s\n", relay.Name)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
 }
 
 func loadRelays(env Environment, regexes []string, version string) {
-	testForSSHKey(env)
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
@@ -1103,8 +1060,7 @@ func loadRelays(env Environment, regexes []string, version string) {
 				continue
 			}
 			fmt.Printf("loading relay-%s onto %s\n", version, relay.Name)
-			testForSSHKey(env)
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
 		}
 	}
@@ -1114,7 +1070,7 @@ func relayLog(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for _, relay := range relays {
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("journalctl -fu relay -n 1000")
 			break
 		}
@@ -1125,7 +1081,7 @@ func keys(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for _, relay := range relays {
-			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFilePath)
+			con := NewSSHConn(relay.SSHUser, relay.SSHAddress, fmt.Sprintf("%d", relay.SSHPort), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("sudo cat /app/relay.env | grep _KEY")
 			break
 		}
@@ -1148,43 +1104,22 @@ func keygen() {
 
 // --------------------------------------------------------------------------------------------
 
-const (
-	PortalHostnameLocal   = "localhost:20000"
-	PortalHostnameDev     = "portal-dev.networknext.com"
-	PortalHostnameStaging = "portal-staging.networknext.com"
-	PortalHostnameProd    = "portal.networknext.com"
-
-	RouterPublicKeyLocal   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-	RouterPublicKeyDev     = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-	RouterPublicKeyStaging = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-	RouterPublicKeyProd    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-
-	RelayArtifactURLDev     = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
-	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.staging.tar.gz"
-	RelayArtifactURLProd    = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
-
-	RelayBackendHostnameLocal   = "localhost"
-	RelayBackendHostnameDev     = "34.117.47.154"
-	RelayBackendHostnameStaging = "35.190.44.124"
-	RelayBackendHostnameProd    = "35.227.196.44"
-
-	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30005"
-	RelayBackendURLDev     = "http://" + RelayBackendHostnameDev
-	RelayBackendURLStaging = "http://" + RelayBackendHostnameStaging
-	RelayBackendURLProd    = "http://" + RelayBackendHostnameProd
-)
-
 type Environment struct {
 	Name           string `json:"name"`
-	SSHKeyFilePath string `json:"ssh_key_filepath"`
+	AdminURL       string `json:"admin_url"`
+	PortalURL      string `json:"portal_url"`
+	DatabaseURL    string `json:"database_url"`
+	SSHKeyFile     string `json:"ssh_key_filepath"`
 }
 
 func (e *Environment) String() string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("Environment: %s\n", e.Name))
-	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("SSHKeyFilePath: %s\n", e.SSHKeyFilePath))
+	sb.WriteString(fmt.Sprintf("Environment: %s\n\n", e.Name))
+	sb.WriteString(fmt.Sprintf("Admin URL: %s\n", e.AdminURL))
+	sb.WriteString(fmt.Sprintf("Portal URL: %s\n", e.PortalURL))
+	sb.WriteString(fmt.Sprintf("Database URL: %s\n\n", e.DatabaseURL))
+	sb.WriteString(fmt.Sprintf("SSHKeyFile: %s\n", e.SSHKeyFile))
 
 	return sb.String()
 }
@@ -1195,7 +1130,7 @@ func (e *Environment) Exists() bool {
 		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
-	envFilePath := path.Join(homeDir, ".nextenv")
+	envFilePath := path.Join(homeDir, ".next")
 
 	if _, err := os.Stat(envFilePath); err != nil {
 		return false
@@ -1210,7 +1145,7 @@ func (e *Environment) Read() {
 		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
-	envFilePath := path.Join(homeDir, ".nextenv")
+	envFilePath := path.Join(homeDir, ".next")
 
 	f, err := os.Open(envFilePath)
 	if err != nil {
@@ -1229,7 +1164,7 @@ func (e *Environment) Write() {
 		handleRunTimeError(fmt.Sprintf("failed to read environment %v\n", err), 1)
 	}
 
-	envFilePath := path.Join(homeDir, ".nextenv")
+	envFilePath := path.Join(homeDir, ".next")
 
 	f, err := os.Create(envFilePath)
 	if err != nil {
@@ -1248,7 +1183,7 @@ func (e *Environment) Clean() {
 		handleRunTimeError(fmt.Sprintf("failed to clean environment %v\n", err), 1)
 	}
 
-	envFilePath := path.Join(homeDir, ".nextenv")
+	envFilePath := path.Join(homeDir, ".next")
 
 	err = os.RemoveAll(envFilePath)
 	if err != nil {
@@ -1260,7 +1195,7 @@ func (e *Environment) Clean() {
 // -------------------------------------------------------------------------------------------
 
 func getCostMatrix(env Environment, fileName string) {
-	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", portalURL))
+	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", env.PortalURL))
 	os.WriteFile("cost.bin", cost_matrix_binary, 0644)
 }
 

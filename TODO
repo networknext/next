@@ -14,7 +14,7 @@ DONE
 
 TODO
 
-	Read in REST API urls from the current .env file
+	Read in REST API url and SSH key from current env file, and save it to the .next file
 
 	-----------------
 
