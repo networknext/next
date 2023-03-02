@@ -1,25 +1,5 @@
 DONE
 
-	Hack sketch out "next relays" with mixture of admin and portal APIs
-
-	Implement "next database" so it gets the database binary from the database REST API, if not in "local"
-
-	Add a new "admin/cost" GET interface to API --- get leader service "cost_matrix" from redis.
-
-	Hook up "next cost" to API
-
-	Plumb through the relay flags so I can show when relays are "shutting down" in next tool.
-
-	Added env vars 
-
-	Read in REST API url and SSH key from current env file, and save it to the .next file
-
-	Use API to get set of relays to pattern match on for "next ssh [relayname]"
-
-	Make sure that "next ssh [relayname]" works
-
-	I'm bored with queues and data. Moving on to terraform stuff.-
-
 	Setup google cloud test account.
 
 	Get terraform setup to work with my google cloud account.
@@ -46,15 +26,47 @@ DONE
 
 	Split apart terraform for setting up storage and for setting up dev
 
-TODO
-
 	Setup internal load balancer and MIG following tutorial.
 
 	Adapt the load balancer and MIG so I can use it to run the "magic_backend" with bootstrap.sh executed from start script in instance template.
 
-	Verify that I can curl the URL + endpoint on the magic backend and get the magic values back.
+	Lots of fun working out how to talk to google cloud APIs with only an internal address
+
+	Lots of fun with service accounts and getting permissions to download files from google cloud storage...
+
+	Lots of fun with bootstrap.sh not working (probably needs sudo + some fixes...)
 
 	Investigate how I can setup variables, to make the configurations easier to modify without copy paste.
+
+	It's getting too frustrating with storage having chicken and egg. 
+
+	Created a new project called storage and moved the artifacts there.
+
+	Verify that I can upload artifacts from semaphore with the new service account key.
+
+	Now go back to dev and set everything back up again with vars
+
+TODO
+
+	Verify I can run the terraform script.
+
+	Now build sodium and upload it to cloud storage...
+
+
+
+
+
+
+	
+	--------------
+
+	Verify that I can curl the URL + endpoint on the magic backend and get the magic values back.
+
+	--------------
+
+	Setup so that the service account in dev can access the bucket in the storage project:
+
+	"gsutil acl ch -u my-project-name@appspot.gserviceaccount.com:FC gs://myBucketName"
 
 	--------------
 

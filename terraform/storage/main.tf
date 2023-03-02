@@ -1,35 +1,55 @@
 # ----------------------------------------------------------------------------------------
 
+variable "credentials" { type = string }
+variable "project" { type = string }
+variable "location" { type = string }
+variable "region" { type = string }
+variable "zone" { type = string }
+variable "dev_artifacts" { type = string }
+variable "relay_artifacts" { type = string }
+
+# ----------------------------------------------------------------------------------------
+
 terraform {
   required_providers {
     google = {
-      source = "hashicorp/google"
+      source  = "hashicorp/google"
       version = "4.51.0"
     }
   }
 }
 
 provider "google" {
-  credentials = file("~/Documents/terraform.json")
-  project = "heroic-grove-379322"
-  region  = "us-central1"
-  zone    = "us-central1-c"
+  credentials = file(var.credentials)
+  project     = var.project
+  region      = var.region
+  zone        = var.zone
 }
 
 # ----------------------------------------------------------------------------------------
 
 resource "google_storage_bucket" "dev-artifacts" {
-  name = "network_next_dev_artifacts"
-  storage_class = "MULTI_REGIONAL"
-  location = "US"
-  force_destroy = true
+  name                        = var.dev_artifacts
+  storage_class               = "MULTI_REGIONAL"
+  location                    = var.location
+  public_access_prevention    = "enforced"
+  uniform_bucket_level_access = true
+  force_destroy               = true
 }
 
 resource "google_storage_bucket" "relay-artifacts" {
-  name = "network_next_relay_artifacts"
-  storage_class = "MULTI_REGIONAL"
-  location = "US"
-  force_destroy = true
+  name                        = var.relay_artifacts
+  storage_class               = "MULTI_REGIONAL"
+  location                    = var.location
+  uniform_bucket_level_access = true
+  force_destroy               = true
+}
+
+resource "google_storage_bucket_iam_member" "member" {
+  provider = google-beta
+  bucket   = google_storage_bucket.relay-artifacts.name
+  role     = "roles/storage.objectViewer"
+  member   = "allUsers"
 }
 
 # ----------------------------------------------------------------------------------------
