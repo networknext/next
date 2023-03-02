@@ -22,8 +22,6 @@ DONE
 
 	Setup google cloud test account.
 
-TODO
-
 	Get terraform setup to work with my google cloud account.
 
 	https://cloud.google.com/docs/terraform
@@ -31,7 +29,29 @@ TODO
 	https://cloud.google.com/docs/terraform/best-practices-for-terraform#module-structure
 
 	https://developer.hashicorp.com/terraform/tutorials/gcp-get-started/google-cloud-platform-build
-	
+
+	Got basic network, subnet, instance template, health checks and managed instance group going for "magic-backend"	
+
+	Opened up firewall for http and https onte the magic backend.
+
+	Setup dev-artifacts bucket with google cloud.
+
+	Create a service account for semaphore.
+
+	Export a token
+
+	And then save this token as a secret in semaphore
+
+TODO
+
+	Verify that I can run a development deploy in semaphore and it copies the artifacts to the buckets
+
+	---------------------
+
+	Next step is to set up an *internal* http load balancer so I can talk to the magic backend from other VMs.
+
+	This google cloud bucket needs to be configured somewhere...
+
 
 
 

@@ -161,7 +161,7 @@ blocks:
 promotions:
 
   - name: "Development Deployment"
-    pipeline_file: development-deploy.yml
+    pipeline_file: dev-deploy.yml
 
   - name: "Functional Test Backend"
     pipeline_file: functional-test-backend.yml

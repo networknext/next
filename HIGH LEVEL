@@ -24,11 +24,11 @@ DONE
 
 TODO
 
-	Working analytics service that inserts data into bigquery.
+	Setup dev environment in google cloud with terraform.
 
 	-------------
 	
-	New dev environment in google cloud setup with terraform.
+	Working analytics service that inserts data into bigquery.
 
 	Rebuild portal (no auth)
 

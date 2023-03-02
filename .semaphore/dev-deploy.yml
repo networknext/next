@@ -20,73 +20,75 @@ blocks:
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+            - export DEV_BUCKET=gs://network_next_dev_artifacts/
+            - export RELAY_BUCKET=gs://network_next_relay_artifacts/
 
       jobs:
 
         - name: "Bootstrap"
           commands:
             - artifact pull workflow bootstrap.sh
-            - gsutil cp bootstrap.sh gs://development_artifacts/
+            - gsutil cp bootstrap.sh $DEV_BUCKET
 
         - name: "Analytics"
           commands:
             - artifact pull workflow analytics.dev.tar.gz
-            - gsutil cp analytics.dev.tar.gz gs://development_artifacts/
+            - gsutil cp analytics.dev.tar.gz $DEV_BUCKET
 
         - name: "API"
           commands:
             - artifact pull workflow api.dev.tar.gz
-            - gsutil cp api.dev.tar.gz gs://development_artifacts/
+            - gsutil cp api.dev.tar.gz $DEV_BUCKET
 
         - name: "Map Cruncher"
           commands:
             - artifact pull workflow map_cruncher.dev.tar.gz
-            - gsutil cp map_cruncher.dev.tar.gz gs://development_artifacts/
+            - gsutil cp map_cruncher.dev.tar.gz $DEV_BUCKET
 
         - name: "Portal Cruncher"
           commands:
             - artifact pull workflow portal_cruncher.dev.tar.gz
-            - gsutil cp portal_cruncher.dev.tar.gz gs://development_artifacts/
+            - gsutil cp portal_cruncher.dev.tar.gz $DEV_BUCKET
 
         - name: "Relay Gateway"
           commands:
             - artifact pull workflow relay_gateway.dev.tar.gz
-            - gsutil cp relay_gateway.dev.tar.gz gs://development_artifacts/
+            - gsutil cp relay_gateway.dev.tar.gz $DEV_BUCKET
 
         - name: "Relay Backend"
           commands:
             - artifact pull workflow relay_backend.dev.tar.gz
-            - gsutil cp relay_backend.dev.tar.gz gs://development_artifacts/
+            - gsutil cp relay_backend.dev.tar.gz $DEV_BUCKET
 
         - name: "Server Backend 5"
           commands:
             - artifact pull workflow server_backend5.dev.tar.gz
-            - gsutil cp server_backend5.dev.tar.gz gs://development_artifacts/
+            - gsutil cp server_backend5.dev.tar.gz $DEV_BUCKET
 
         - name: "Magic Backend"
           commands:
             - artifact pull workflow magic_backend.dev.tar.gz
-            - gsutil cp magic_backend.dev.tar.gz gs://development_artifacts/
+            - gsutil cp magic_backend.dev.tar.gz $DEV_BUCKET
 
         - name: "Website Cruncher"
           commands:
             - artifact pull workflow website_cruncher.dev.tar.gz
-            - gsutil cp website_cruncher.dev.tar.gz gs://development_artifacts/
+            - gsutil cp website_cruncher.dev.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Backend"
           commands:
             - artifact pull workflow raspberry_backend.dev.tar.gz
-            - gsutil cp raspberry_backend.dev.tar.gz gs://development_artifacts/
+            - gsutil cp raspberry_backend.dev.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Server"
           commands:
             - artifact pull workflow raspberry_server.dev.tar.gz
-            - gsutil cp raspberry_server.dev.tar.gz gs://development_artifacts/
+            - gsutil cp raspberry_server.dev.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Client"
           commands:
             - artifact pull workflow raspberry_client.dev.tar.gz
-            - gsutil cp raspberry_client.dev.tar.gz gs://development_artifacts/
+            - gsutil cp raspberry_client.dev.tar.gz $DEV_BUCKET
 
         - name: "Relay"
           commands:
@@ -94,4 +96,4 @@ blocks:
             - chmod +x relay
             - export VERSION=`./relay version`
             - mv relay relay-$VERSION
-            - gsutil cp relay-$VERSION gs://relay_artifacts/
+            - gsutil cp relay-$VERSION $RELAY_BUCKET

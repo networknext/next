@@ -14,38 +14,109 @@ provider "google" {
   zone    = "us-central1-c"
 }
 
-resource "google_compute_network" "vpc_network" {
-  name                    = "network-next-network"
+resource "google_compute_network" "default" {
+  name                    = "network-next"
   auto_create_subnetworks = false
   mtu                     = 1460
 }
 
 resource "google_compute_subnetwork" "default" {
-  name          = "network-next-subnet"
+  name          = "network-next"
   ip_cidr_range = "10.0.1.0/24"
   region        = "us-central1"
-  network       = google_compute_network.vpc_network.id
+  network       = google_compute_network.default.id
 }
 
-resource "google_compute_instance" "default" {
-  name         = "test-vm"
-  machine_type = "f1-micro"
-  zone         = "us-central1-a"
-  tags         = ["ssh"]
+resource "google_compute_instance_template" "magic-backend" {
 
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-minimal-2210-arm64"
-    }
+  name        = "magic-backend"
+
+  description = "Serves up magic values for other services in the Network Next Backend"
+
+  tags = ["http-server", "https-server"]
+
+  labels = {
+    environment = "dev"
   }
 
-  metadata_startup_script = "sudo apt-get update; sudo apt-get upgrade -y"
+  machine_type         = "f1-micro"
+
+  scheduling {
+    automatic_restart   = true
+    on_host_maintenance = "MIGRATE"
+  }
+
+  disk {
+    source_image      = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    auto_delete       = true
+    boot              = true
+  }
 
   network_interface {
-    subnetwork = google_compute_subnetwork.default.id
-
-    access_config {
-      # Include this section to give the VM an external IP address
-    }
+    network = "default"
   }
+}
+
+resource "google_compute_health_check" "traffic" {
+  name                = "traffic"
+  check_interval_sec  = 1
+  timeout_sec         = 1
+  healthy_threshold   = 10
+  unhealthy_threshold = 1
+  http_health_check {
+    request_path = "/health"
+    port = 80
+  }
+}
+
+resource "google_compute_http_health_check" "vm" {
+  name         = "vm"
+  request_path = "/health_check"
+  timeout_sec        = 1
+  check_interval_sec = 1
+}
+
+resource "google_compute_target_pool" "magic-backend" {
+  name = "magic-backend"
+  health_checks = [
+    google_compute_http_health_check.vm.name,
+  ]
+}
+
+resource "google_compute_region_instance_group_manager" "magic-backend" {
+
+  name = "magic-backend"
+
+  base_instance_name         = "magic-backend"
+  region                     = "us-central1"
+  distribution_policy_zones  = ["us-central1-a", "us-central1-f"]
+
+  version {
+    instance_template = google_compute_instance_template.magic-backend.id
+  }
+
+  target_pools = [google_compute_target_pool.magic-backend.id]
+  target_size  = 2
+
+  named_port {
+    name = "http"
+    port = 80
+  }
+
+  auto_healing_policies {
+    health_check      = google_compute_health_check.traffic.id
+    initial_delay_sec = 300
+  }
+}
+
+resource "google_storage_bucket" "dev-artifacts" {
+  name = "network_next_dev_artifacts"
+  storage_class = "MULTI_REGIONAL"
+  location = "US"
+}
+
+resource "google_storage_bucket" "relay-artifacts" {
+  name = "network_next_relay_artifacts"
+  storage_class = "MULTI_REGIONAL"
+  location = "US"
 }
