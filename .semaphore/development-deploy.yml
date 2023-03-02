@@ -30,6 +30,11 @@ blocks:
             - artifact pull workflow bootstrap.sh
             - gsutil cp bootstrap.sh $DEV_BUCKET
 
+        - name: "Sodium"
+          commands:
+            - artifact pull workflow libsodium.so
+            - gsutil cp libsodium.so $DEV_BUCKET
+
         - name: "Analytics"
           commands:
             - artifact pull workflow analytics.dev.tar.gz
