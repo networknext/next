@@ -42,17 +42,39 @@ DONE
 
 	And then save this token as a secret in semaphore
 
-TODO
-
 	Verify that I can run a development deploy in semaphore and it copies the artifacts to the buckets
 
-	---------------------
+	Split apart terraform for setting up storage and for setting up dev
 
-	Next step is to set up an *internal* http load balancer so I can talk to the magic backend from other VMs.
+TODO
 
-	This google cloud bucket needs to be configured somewhere...
+	Setup internal load balancer and MIG following tutorial.
 
+	Adapt the load balancer and MIG so I can use it to run the "magic_backend" with bootstrap.sh executed from start script in instance template.
 
+	Verify that I can curl the URL + endpoint on the magic backend and get the magic values back.
+
+	Investigate how I can setup variables, to make the configurations easier to modify without copy paste.
+
+	--------------
+
+	Get the network_next_dev_database storage bucket created.
+
+	Manually deploy a dev database.bin
+
+	--------------
+
+	Work out how to create postges
+
+	--------------
+
+	Work out how to create redis
+
+	--------------
+
+	Get the relay frontend up. This time, it needs an external *HTTPS* load balancer.
+
+	--------------
 
 
 
