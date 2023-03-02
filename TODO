@@ -18,9 +18,18 @@ DONE
 
 	Make sure that "next ssh [relayname]" works
 
+	I'm bored with queues and data. Moving on to terraform stuff.-
+
+	Setup google cloud test account.
+
 TODO
 
-	Take a break. Good stopping point right here before diving into google pubsub and bigquery.
+	Get terraform setup to work with my google cloud account.
+
+	https://cloud.google.com/docs/terraform
+
+	Setup terraform so that it 
+
 
 
 
