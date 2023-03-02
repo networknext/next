@@ -1,3 +1,19 @@
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+      version = "4.51.0"
+    }
+  }
+}
+
+provider "google" {
+  credentials = file("~/terraform.json")
+  project = "heroic-grove-379322"
+  region  = "us-central1"
+  zone    = "us-central1-c"
+}
+
 resource "google_compute_network" "vpc_network" {
   name                    = "network-next-network"
   auto_create_subnetworks = false
