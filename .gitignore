@@ -33,3 +33,6 @@ network_next.db
 
 # test files
 *.mmdb
+
+# terraform state
+.terraform*
