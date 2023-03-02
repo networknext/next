@@ -60,20 +60,15 @@ blocks:
             - artifact pull workflow relay_backend.dev.tar.gz
             - gsutil cp relay_backend.dev.tar.gz $DEV_BUCKET
 
-        - name: "Server Backend 5"
+        - name: "Server Backend"
           commands:
-            - artifact pull workflow server_backend5.dev.tar.gz
-            - gsutil cp server_backend5.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow server_backend.dev.tar.gz
+            - gsutil cp server_backend.dev.tar.gz $DEV_BUCKET
 
         - name: "Magic Backend"
           commands:
             - artifact pull workflow magic_backend.dev.tar.gz
             - gsutil cp magic_backend.dev.tar.gz $DEV_BUCKET
-
-        - name: "Website Cruncher"
-          commands:
-            - artifact pull workflow website_cruncher.dev.tar.gz
-            - gsutil cp website_cruncher.dev.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Backend"
           commands:
