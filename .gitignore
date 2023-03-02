@@ -12,24 +12,13 @@ cover.out
 *.rdb
 *.csv
 
-# There's no point storing this
-# Generated each time
-relay.env
-
 # next tool output
 cost.bin
 optimize.bin
 database.bin*
-overlay.bin*
-servers*.json
-parsed*.json
-parsed*.csv
 
 # happy path output
 logs
-
-# volatile sqlite3 db required for unit testing
-network_next.db
 
 # test files
 *.mmdb
