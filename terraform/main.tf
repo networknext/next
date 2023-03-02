@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "google" {
-  credentials = file("~/terraform.json")
+  credentials = file("~/Documents/terraform.json")
   project = "heroic-grove-379322"
   region  = "us-central1"
   zone    = "us-central1-c"
