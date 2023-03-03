@@ -417,3 +417,8 @@ Nice to have:
 	A systematic fix to this problem is desirable, failing this, we should do a cleanup in run.go of known processes by name, before and after running the func test locally.
 
 	--------------
+
+	Semaphore should bitch at you if you try to deploy to dev from main, or prod from main etc.
+
+	--------------
+	

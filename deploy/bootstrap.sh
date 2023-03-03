@@ -23,6 +23,11 @@ while getopts 'b:a:h' flag; do
   esac
 done
 
+# Create /app dir
+rm -rf /app
+mkdir -p /app
+cd /app
+
 # Copy libsodium from GCP Storage
 gsutil cp "$bucket/libsodium.so" '/usr/local/lib'
 
@@ -32,10 +37,7 @@ ldconfig
 # Copy the required files for the service from GCP Storage
 gsutil cp "$bucket/$artifact" artifact.tar.gz
 
-# Stop the service
-systemctl stop app.service
-
-# Uncompress the artifact files into /app
+# Uncompress the artifact files
 tar -xvf artifact.tar.gz
 
 # Set the app service binary to executable
