@@ -156,7 +156,6 @@ resource "google_compute_instance_template" "magic-backend" {
 ENV=dev
 DEBUG_LOGS=1
       EOF
-      sudo systemctl enable app.service
       sudo systemctl start app.service
     EOF2
   }
