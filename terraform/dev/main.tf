@@ -11,6 +11,16 @@ variable "machine_type" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
+resource "random_string" "run_id" {
+  length  = 8
+  lower   = true
+  upper   = false
+  numeric = false
+  special = false
+}
+
+# ----------------------------------------------------------------------------------------
+
 terraform {
   required_providers {
     google = {
@@ -130,7 +140,7 @@ resource "google_compute_region_backend_service" "magic-backend" {
 }
 
 resource "google_compute_instance_template" "magic-backend" {
-  name         = "magic-backend"
+  name         = "magic-backend-${random_string.run_id.result}"
   project      = var.project
   machine_type = var.machine_type
   tags         = ["http-server"]
@@ -147,17 +157,17 @@ resource "google_compute_instance_template" "magic-backend" {
   }
 
   metadata = {
-    startup-script = <<-EOF2
+    startup-script = <<-EOF1
       #!/bin/bash
       gsutil cp ${var.dev_artifacts_bucket}/bootstrap.sh bootstrap.sh
       chmod +x bootstrap.sh
       sudo ./bootstrap.sh -b ${var.dev_artifacts_bucket} -a magic_backend.tar.gz
       cat <<EOF > /app/app.env
-ENV=dev
-DEBUG_LOGS=1
+      ENV=dev
+      DEBUG_LOGS=1
       EOF
       sudo systemctl start app.service
-    EOF2
+    EOF1
   }
 
   service_account {
@@ -212,7 +222,15 @@ resource "google_compute_region_instance_group_manager" "magic-backend" {
   }
   auto_healing_policies {
     health_check      = google_compute_health_check.magic-backend-vm.id
-    initial_delay_sec = 300
+    initial_delay_sec = 120
+  }
+  update_policy {
+    type                           = "PROACTIVE"
+    minimal_action                 = "REPLACE"
+    most_disruptive_allowed_action = "REPLACE"
+    max_surge_fixed                = 10
+    max_unavailable_fixed          = 0
+    replacement_method             = "SUBSTITUTE"
   }
 }
 

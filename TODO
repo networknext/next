@@ -22,21 +22,25 @@ DONE
 
 	Stop bundling [env].env into the artifact.
 
-TODO
-
 	Verify that I can upload artifacts to cloud storage
 
 	Verify that I can deploy and run magic backend with terraform configuring the env file and enabling the service
 
-	--------------
+	Fix problem with recreating instance templates by adding a random id to end of instance template each run
 
-	How to create redis?
-
-	How to create postgres?
+TODO
 
 	--------------
 
-	Get the relay frontend up. This time, it needs an external *HTTPS* load balancer.
+	Create redis.
+
+	--------------
+
+	Create postgres.
+
+	--------------
+
+	Setup relay front end.
 
 	--------------
 
