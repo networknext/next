@@ -54,7 +54,7 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 # Build artifacts
 
 dist/%.tar.gz: dist/%
-	@go run tools/artifact/artifact.go
+	@go run tools/artifact/artifact.go $@
 	@echo $@
 
 # Format code
