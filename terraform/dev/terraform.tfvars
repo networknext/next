@@ -1,0 +1,8 @@
+service_account      = "465253190432-compute@developer.gserviceaccount.com"
+credentials          = "~/Documents/terraform-development.json"
+project              = "heroic-grove-379322"
+location             = "US"
+region               = "us-central1"
+zone                 = "us-central1-c"
+dev_artifacts_bucket = "gs://network_next_dev_artifacts"
+machine_type         = "f1-micro"

@@ -1,0 +1,7 @@
+credentials     = "~/Documents/terraform-storage.json"
+project         = "storage-379422"
+location        = "US"
+region          = "us-central1"
+zone            = "us-central1-c"
+dev_artifacts   = "network_next_dev_artifacts"
+relay_artifacts = "network_next_relay_artifacts"
