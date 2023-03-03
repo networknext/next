@@ -54,22 +54,21 @@ DONE
 
 	Verify that the magic backend artifact gets downloaded and the service starts.
 
+	Fix issue with load balancer not getting named port setup in MIG.
+
 TODO
 
-	There is something wrong with the load balancer.
+	I can't curl the magic backend instances, even directly on their internal IP addresses.
 
-	For starters, I want it running on a specific internal IP address, known ahead of time.
+	What's going on here? I think something is screwed up with the networking...
 
-	Second, it semes to have some issue with the MIG not defining the http port, eg: 
+	--------------
 
-		"Some of your instance groups don't define the key name and value for the port name http"
+	Configure the magic backend MIG so it serves on a specific named static IP address.
 
 	--------------
 
 	Verify that I can curl the URL + endpoint on the magic backend from the test VM and get magic values.
-
-	--------------
-
 
 	--------------
 

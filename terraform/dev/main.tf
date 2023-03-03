@@ -14,7 +14,7 @@ variable "machine_type" { type = string }
 terraform {
   required_providers {
     google = {
-      source = "hashicorp/google"
+      source  = "hashicorp/google"
       version = "4.51.0"
     }
   }
@@ -22,9 +22,9 @@ terraform {
 
 provider "google" {
   credentials = file(var.credentials)
-  project = var.project
-  region  = var.region
-  zone    = var.zone
+  project     = var.project
+  region      = var.region
+  zone        = var.zone
 }
 
 # ----------------------------------------------------------------------------------------
@@ -176,12 +176,13 @@ resource "google_compute_instance_template" "magic-backend" {
 }
 
 resource "google_compute_region_health_check" "magic-backend" {
-  name     = "magic-backend"
-  provider = google-beta
-  project  = var.project
-  region   = var.region
+  name         = "magic-backend"
+  provider     = google-beta
+  project      = var.project
+  region       = var.region
   http_health_check {
-    port_specification = "USE_SERVING_PORT"
+    request_path = "/health"
+    port = "80"
   }
 }
 
@@ -212,7 +213,7 @@ resource "google_compute_firewall" "magic-backend" {
   target_tags   = ["http-server"]
   allow {
     protocol = "tcp"
-    ports    = ["80"]
+    ports    = ["80", "443", "8080"]
   }
 }
 
