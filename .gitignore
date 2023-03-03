@@ -24,4 +24,5 @@ logs
 *.mmdb
 
 # terraform state
-.terraform*
+terraform.tfstate
+terraform.tfstate.*
