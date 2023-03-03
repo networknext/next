@@ -31,7 +31,6 @@ provider "google" {
 
 resource "google_compute_instance" "test" {
   name         = "test"
-  provider     = google-beta
   project      = var.project
   zone         = var.zone
   machine_type = var.machine_type
@@ -50,14 +49,12 @@ resource "google_compute_instance" "test" {
 
 resource "google_compute_network" "development" {
   name                    = "development"
-  provider                = google-beta
   project                 = var.project
   auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "development" {
   name                     = "development"
-  provider                 = google-beta
   project                  = var.project
   ip_cidr_range            = "10.0.0.0/24"
   region                   = var.region
@@ -67,7 +64,6 @@ resource "google_compute_subnetwork" "development" {
 
 resource "google_compute_firewall" "development" {
   name          = "development"
-  provider      = google-beta
   project       = var.project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
@@ -82,7 +78,6 @@ resource "google_compute_firewall" "development" {
 
 resource "google_compute_subnetwork" "magic-backend" {
   name          = "magic-backend"
-  provider      = google-beta
   project       = var.project
   region        = var.region
   purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
@@ -93,7 +88,6 @@ resource "google_compute_subnetwork" "magic-backend" {
 
 resource "google_compute_forwarding_rule" "magic-backend" {
   name                  = "magic-backend"
-  provider              = google-beta
   project               = var.project
   region                = var.region
   depends_on            = [google_compute_subnetwork.magic-backend]
@@ -108,7 +102,6 @@ resource "google_compute_forwarding_rule" "magic-backend" {
 
 resource "google_compute_region_target_http_proxy" "magic-backend" {
   name     = "magic-backend"
-  provider = google-beta
   project  = var.project
   region   = var.region
   url_map  = google_compute_region_url_map.magic-backend.id
@@ -116,7 +109,6 @@ resource "google_compute_region_target_http_proxy" "magic-backend" {
 
 resource "google_compute_region_url_map" "magic-backend" {
   name            = "magic-backend"
-  provider        = google-beta
   project         = var.project
   region          = var.region
   default_service = google_compute_region_backend_service.magic-backend.id
@@ -124,13 +116,12 @@ resource "google_compute_region_url_map" "magic-backend" {
 
 resource "google_compute_region_backend_service" "magic-backend" {
   name                  = "magic-backend"
-  provider              = google-beta
   project               = var.project
   region                = var.region
   protocol              = "HTTP"
   load_balancing_scheme = "INTERNAL_MANAGED"
   timeout_sec           = 10
-  health_checks         = [google_compute_region_health_check.magic-backend.id]
+  health_checks         = [google_compute_region_health_check.magic-backend-lb.id]
   backend {
     group           = google_compute_region_instance_group_manager.magic-backend.instance_group
     balancing_mode  = "UTILIZATION"
@@ -140,7 +131,6 @@ resource "google_compute_region_backend_service" "magic-backend" {
 
 resource "google_compute_instance_template" "magic-backend" {
   name         = "magic-backend"
-  provider     = google-beta
   project      = var.project
   machine_type = var.machine_type
   tags         = ["http-server"]
@@ -175,20 +165,34 @@ resource "google_compute_instance_template" "magic-backend" {
   }
 }
 
-resource "google_compute_region_health_check" "magic-backend" {
-  name         = "magic-backend"
-  provider     = google-beta
-  project      = var.project
-  region       = var.region
+resource "google_compute_region_health_check" "magic-backend-lb" {
+  name                = "magic-backend"
+  timeout_sec         = 1
+  check_interval_sec  = 1
+  healthy_threshold   = 5
+  unhealthy_threshold = 2
+  project             = var.project
+  region              = var.region
   http_health_check {
-    request_path = "/health"
+    request_path = "/lb_health"
     port = "80"
+  }
+}
+
+resource "google_compute_health_check" "magic-backend-vm" {
+  name                = "magic-backend-vm"
+  check_interval_sec  = 5
+  timeout_sec         = 5
+  healthy_threshold   = 2
+  unhealthy_threshold = 10
+  http_health_check {
+    request_path = "/vm_health"
+    port         = "80"
   }
 }
 
 resource "google_compute_region_instance_group_manager" "magic-backend" {
   name     = "magic-backend"
-  provider = google-beta
   project  = var.project
   region   = var.region
   version {
@@ -201,11 +205,14 @@ resource "google_compute_region_instance_group_manager" "magic-backend" {
     name = "http"
     port = 80
   }
+  auto_healing_policies {
+    health_check      = google_compute_health_check.magic-backend-vm.id
+    initial_delay_sec = 300
+  }
 }
 
 resource "google_compute_firewall" "magic-backend" {
   name          = "magic-backend"
-  provider      = google-beta
   project       = var.project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
@@ -216,5 +223,17 @@ resource "google_compute_firewall" "magic-backend" {
     ports    = ["80", "443", "8080"]
   }
 }
+
+# ----------------------------------------------------------------------------------------
+
+/*
+resource "google_redis_instance" "redis" {
+  name           = "redis"
+  tier           = "BASIC"
+  memory_size_gb = 2
+  region         = "us-central1"
+  redis_version  = "REDIS_6_X"
+}
+*/
 
 # ----------------------------------------------------------------------------------------

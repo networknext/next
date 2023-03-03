@@ -1,96 +1,30 @@
 DONE
 
-	Setup google cloud test account.
+	Fixed issue. Forgot that I needed to point to vm_health or lb_health!
 
-	Get terraform setup to work with my google cloud account.
+	Verified that I can get the 
 
-	https://cloud.google.com/docs/terraform
+	Need to setup autohealing on the MIG with the vm_health check
 
-	https://cloud.google.com/docs/terraform/best-practices-for-terraform#module-structure
+	Removed google cloud beta provider. Stick with the official non-beta stuff.
 
-	https://developer.hashicorp.com/terraform/tutorials/gcp-get-started/google-cloud-platform-build
+	Is it possible to get the internal LB configured to a specific internal IP address?
 
-	Got basic network, subnet, instance template, health checks and managed instance group going for "magic-backend"	
+	Yes, I think it is, but it has to be under the 10.0.0.0/24 -- eg. http://10.0.0.5
 
-	Opened up firewall for http and https onte the magic backend.
+	It can't be under the 10.0.1.0 -- that's used for proxy only.
 
-	Setup dev-artifacts bucket with google cloud.
-
-	Create a service account for semaphore.
-
-	Export a token
-
-	And then save this token as a secret in semaphore
-
-	Verify that I can run a development deploy in semaphore and it copies the artifacts to the buckets
-
-	Split apart terraform for setting up storage and for setting up dev
-
-	Setup internal load balancer and MIG following tutorial.
-
-	Adapt the load balancer and MIG so I can use it to run the "magic_backend" with bootstrap.sh executed from start script in instance template.
-
-	Lots of fun working out how to talk to google cloud APIs with only an internal address
-
-	Lots of fun with service accounts and getting permissions to download files from google cloud storage...
-
-	Lots of fun with bootstrap.sh not working (probably needs sudo + some fixes...)
-
-	Investigate how I can setup variables, to make the configurations easier to modify without copy paste.
-
-	It's getting too frustrating with storage having chicken and egg. 
-
-	Created a new project called storage and moved the artifacts there.
-
-	Verify that I can upload artifacts from semaphore with the new service account key.
-
-	Now go back to dev and set everything back up again with vars
-
-	Verify I can run the terraform script.
-
-	Now build sodium and upload it to cloud storage...
-
-	Fix bootstrap.sh so it creates /app and cds into it.
-
-	Verify that the magic backend artifact gets downloaded and the service starts.
-
-	Fix issue with load balancer not getting named port setup in MIG.
+	OK. Should be finished now. Set to 10.0.0.1
 
 TODO
-
-	I can't curl the magic backend instances, even directly on their internal IP addresses.
-
-	What's going on here? I think something is screwed up with the networking...
-
-	--------------
-
-	Configure the magic backend MIG so it serves on a specific named static IP address.
-
-	--------------
-
-	Verify that I can curl the URL + endpoint on the magic backend from the test VM and get magic values.
-
-	--------------
-
-	Need autoheal and autoscale setup for the magic backend
-
-	--------------
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Work out how to create postges
 
 	--------------
 
 	Work out how to create redis
+
+	--------------
+
+	Work out how to create postges
 
 	--------------
 

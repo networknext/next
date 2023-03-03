@@ -46,7 +46,6 @@ resource "google_storage_bucket" "relay-artifacts" {
 }
 
 resource "google_storage_bucket_iam_member" "member" {
-  provider = google-beta
   bucket   = google_storage_bucket.relay-artifacts.name
   role     = "roles/storage.objectViewer"
   member   = "allUsers"
