@@ -16,15 +16,19 @@ DONE
 
 	OK. Should be finished now. Set to 10.0.0.1
 
+	There is going to be a common pattern where I don't actually know the env vars to set until the terraform script runs.
+
+	This means that I should stop setting up dev.env etc. and instead, write the env var as needed in the output script.
+
 TODO
 
-	--------------
-
-	Work out how to create redis
+	Stop bundling [env].env into the artifact.
 
 	--------------
 
-	Work out how to create postges
+	How to create redis?
+
+	How to create postgres?
 
 	--------------
 

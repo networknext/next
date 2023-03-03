@@ -37,58 +37,58 @@ blocks:
 
         - name: "Analytics"
           commands:
-            - artifact pull workflow analytics.dev.tar.gz
-            - gsutil cp analytics.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow analytics.tar.gz
+            - gsutil cp analytics.tar.gz $DEV_BUCKET
 
         - name: "API"
           commands:
-            - artifact pull workflow api.dev.tar.gz
-            - gsutil cp api.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow api.tar.gz
+            - gsutil cp api.tar.gz $DEV_BUCKET
 
         - name: "Map Cruncher"
           commands:
-            - artifact pull workflow map_cruncher.dev.tar.gz
-            - gsutil cp map_cruncher.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow map_cruncher.tar.gz
+            - gsutil cp map_cruncher.tar.gz $DEV_BUCKET
 
         - name: "Portal Cruncher"
           commands:
-            - artifact pull workflow portal_cruncher.dev.tar.gz
-            - gsutil cp portal_cruncher.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow portal_cruncher.tar.gz
+            - gsutil cp portal_cruncher.tar.gz $DEV_BUCKET
 
         - name: "Relay Gateway"
           commands:
-            - artifact pull workflow relay_gateway.dev.tar.gz
-            - gsutil cp relay_gateway.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow relay_gateway.tar.gz
+            - gsutil cp relay_gateway.tar.gz $DEV_BUCKET
 
         - name: "Relay Backend"
           commands:
-            - artifact pull workflow relay_backend.dev.tar.gz
-            - gsutil cp relay_backend.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow relay_backend.tar.gz
+            - gsutil cp relay_backend.tar.gz $DEV_BUCKET
 
         - name: "Server Backend"
           commands:
-            - artifact pull workflow server_backend.dev.tar.gz
-            - gsutil cp server_backend.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow server_backend.tar.gz
+            - gsutil cp server_backend.tar.gz $DEV_BUCKET
 
         - name: "Magic Backend"
           commands:
-            - artifact pull workflow magic_backend.dev.tar.gz
-            - gsutil cp magic_backend.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow magic_backend.tar.gz
+            - gsutil cp magic_backend.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Backend"
           commands:
-            - artifact pull workflow raspberry_backend.dev.tar.gz
-            - gsutil cp raspberry_backend.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow raspberry_backend.tar.gz
+            - gsutil cp raspberry_backend.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Server"
           commands:
-            - artifact pull workflow raspberry_server.dev.tar.gz
-            - gsutil cp raspberry_server.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow raspberry_server.tar.gz
+            - gsutil cp raspberry_server.tar.gz $DEV_BUCKET
 
         - name: "Raspberry Client"
           commands:
-            - artifact pull workflow raspberry_client.dev.tar.gz
-            - gsutil cp raspberry_client.dev.tar.gz $DEV_BUCKET
+            - artifact pull workflow raspberry_client.tar.gz
+            - gsutil cp raspberry_client.tar.gz $DEV_BUCKET
 
         - name: "Relay"
           commands:

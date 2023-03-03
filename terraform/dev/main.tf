@@ -147,12 +147,17 @@ resource "google_compute_instance_template" "magic-backend" {
   }
 
   metadata = {
-    startup-script = <<-EOF
+    startup-script = <<-EOF2
       #!/bin/bash
       gsutil cp ${var.dev_artifacts_bucket}/bootstrap.sh bootstrap.sh
       chmod +x bootstrap.sh
-      sudo ./bootstrap.sh -b ${var.dev_artifacts_bucket} -a magic_backend.dev.tar.gz
-    EOF
+      sudo ./bootstrap.sh -b ${var.dev_artifacts_bucket} -a magic_backend.tar.gz
+      cat <<EOF > /app/app.env
+ENV=dev
+DEBUG_LOGS=1
+      EOF
+      sudo systemctl enable app.service
+    EOF2
   }
 
   service_account {

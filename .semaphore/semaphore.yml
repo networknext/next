@@ -105,48 +105,48 @@ blocks:
 
         - name: "Analytics"
           commands:
-            - make dist/analytics.dev.tar.gz
-            - artifact push workflow dist/analytics.dev.tar.gz
+            - make dist/analytics.tar.gz
+            - artifact push workflow dist/analytics.tar.gz
 
         - name: "API"
           commands:
-            - make dist/api.dev.tar.gz
-            - artifact push workflow dist/api.dev.tar.gz
+            - make dist/api.tar.gz
+            - artifact push workflow dist/api.tar.gz
 
         - name: "Map Cruncher"
           commands:
-            - make dist/map_cruncher.dev.tar.gz
-            - artifact push workflow dist/map_cruncher.dev.tar.gz
+            - make dist/map_cruncher.tar.gz
+            - artifact push workflow dist/map_cruncher.tar.gz
 
         - name: "Portal Cruncher"
           commands:
-            - make dist/portal_cruncher.dev.tar.gz
-            - artifact push workflow dist/portal_cruncher.dev.tar.gz
+            - make dist/portal_cruncher.tar.gz
+            - artifact push workflow dist/portal_cruncher.tar.gz
 
         - name: "Relay Gateway"
           commands:
-            - make dist/relay_gateway.dev.tar.gz
-            - artifact push workflow dist/relay_gateway.dev.tar.gz
+            - make dist/relay_gateway.tar.gz
+            - artifact push workflow dist/relay_gateway.tar.gz
 
         - name: "Relay Backend"
           commands:
-            - make dist/relay_backend.dev.tar.gz
-            - artifact push workflow dist/relay_backend.dev.tar.gz
+            - make dist/relay_backend.tar.gz
+            - artifact push workflow dist/relay_backend.tar.gz
 
         - name: "Server Backend"
           commands:
-            - make dist/server_backend.dev.tar.gz
-            - artifact push workflow dist/server_backend.dev.tar.gz
+            - make dist/server_backend.tar.gz
+            - artifact push workflow dist/server_backend.tar.gz
 
         - name: "Magic Backend"
           commands:
-            - make dist/magic_backend.dev.tar.gz
-            - artifact push workflow dist/magic_backend.dev.tar.gz
+            - make dist/magic_backend.tar.gz
+            - artifact push workflow dist/magic_backend.tar.gz
 
         - name: "Raspberry Backend"
           commands:
-            - make dist/raspberry_backend.dev.tar.gz
-            - artifact push workflow dist/raspberry_backend.dev.tar.gz
+            - make dist/raspberry_backend.tar.gz
+            - artifact push workflow dist/raspberry_backend.tar.gz
 
   - name: "Build Artifacts (Native)"
 
@@ -169,13 +169,13 @@ blocks:
 
         - name: "Raspberry Server"
           commands:
-            - make -j dist/raspberry_server.dev.tar.gz
-            - artifact push workflow dist/raspberry_server.dev.tar.gz
+            - make -j dist/raspberry_server.tar.gz
+            - artifact push workflow dist/raspberry_server.tar.gz
 
         - name: "Raspberry Client"
           commands:
-            - make -j dist/raspberry_client.dev.tar.gz
-            - artifact push workflow dist/raspberry_client.dev.tar.gz
+            - make -j dist/raspberry_client.tar.gz
+            - artifact push workflow dist/raspberry_client.tar.gz
 
 promotions:
 

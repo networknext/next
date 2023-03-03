@@ -9,7 +9,7 @@ print_usage() {
     printf "a [string]\tArtifact name on GCP Storage\n"
 
     printf "Example:\n\n"
-    printf "> bootstrap.sh -b gs://network_next_dev_artifacts -a server_backend.dev.tar.gz\n"
+    printf "> bootstrap.sh -b gs://network_next_dev_artifacts -a server_backend.tar.gz\n"
 }
 
 while getopts 'b:a:h' flag; do
@@ -50,6 +50,5 @@ cp app.service /etc/systemd/system/app.service
 sysctl -w net.core.rmem_max=1000000000
 sysctl -w net.core.wmem_max=1000000000
 
-# Start the service
+# Reload services
 systemctl daemon-reload
-systemctl start app.service
