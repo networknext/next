@@ -196,6 +196,10 @@ resource "google_compute_region_instance_group_manager" "magic-backend" {
   }
   base_instance_name = "magic-backend"
   target_size        = 2
+  named_port {
+    name = "http"
+    port = 80
+  }
 }
 
 resource "google_compute_firewall" "magic-backend" {

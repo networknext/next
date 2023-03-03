@@ -46,33 +46,44 @@ DONE
 
 	Now go back to dev and set everything back up again with vars
 
-TODO
-
 	Verify I can run the terraform script.
 
 	Now build sodium and upload it to cloud storage...
 
+	Fix bootstrap.sh so it creates /app and cds into it.
 
+	Verify that the magic backend artifact gets downloaded and the service starts.
 
+TODO
 
+	There is something wrong with the load balancer.
 
+	For starters, I want it running on a specific internal IP address, known ahead of time.
 
-	
-	--------------
+	Second, it semes to have some issue with the MIG not defining the http port, eg: 
 
-	Verify that I can curl the URL + endpoint on the magic backend and get the magic values back.
-
-	--------------
-
-	Setup so that the service account in dev can access the bucket in the storage project:
-
-	"gsutil acl ch -u my-project-name@appspot.gserviceaccount.com:FC gs://myBucketName"
+		"Some of your instance groups don't define the key name and value for the port name http"
 
 	--------------
 
-	Get the network_next_dev_database storage bucket created.
+	Verify that I can curl the URL + endpoint on the magic backend from the test VM and get magic values.
 
-	Manually deploy a dev database.bin
+	--------------
+
+
+	--------------
+
+	Need autoheal and autoscale setup for the magic backend
+
+	--------------
+
+
+
+
+
+
+
+
 
 	--------------
 
@@ -421,4 +432,3 @@ Nice to have:
 	Semaphore should bitch at you if you try to deploy to dev from main, or prod from main etc.
 
 	--------------
-	
