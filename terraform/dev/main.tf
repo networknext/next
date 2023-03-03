@@ -157,6 +157,7 @@ ENV=dev
 DEBUG_LOGS=1
       EOF
       sudo systemctl enable app.service
+      sudo systemctl start app.service
     EOF2
   }
 
@@ -225,7 +226,7 @@ resource "google_compute_firewall" "magic-backend" {
   target_tags   = ["http-server"]
   allow {
     protocol = "tcp"
-    ports    = ["80", "443", "8080"]
+    ports    = ["80"]
   }
 }
 

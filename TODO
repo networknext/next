@@ -20,9 +20,13 @@ DONE
 
 	This means that I should stop setting up dev.env etc. and instead, write the env var as needed in the output script.
 
+	Stop bundling [env].env into the artifact.
+
 TODO
 
-	Stop bundling [env].env into the artifact.
+	Verify that I can upload artifacts to cloud storage
+
+	Verify that I can deploy and run magic backend with terraform configuring the env file and enabling the service
 
 	--------------
 
