@@ -28,15 +28,17 @@ DONE
 
 	Fix problem with recreating instance templates by adding a random id to end of instance template each run
 
-TODO
-
-	--------------
-
 	Create redis.
 
-	--------------
-
 	Create postgres.
+
+TODO
+
+	Work out how to setup an external HTTPS load balance with terraform.
+
+	https://github.com/terraform-google-modules/terraform-google-lb-http
+
+	This is quite involved. Stop for the weekend.
 
 	--------------
 

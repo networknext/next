@@ -249,14 +249,223 @@ resource "google_compute_firewall" "magic-backend" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 resource "google_redis_instance" "redis" {
   name           = "redis"
   tier           = "BASIC"
-  memory_size_gb = 2
+  memory_size_gb = 1
   region         = "us-central1"
   redis_version  = "REDIS_6_X"
+  authorized_network = google_compute_network.development.id
+}
+
+output "redis_host" {
+  description = "The IP address of the redis instance"
+  value = "${google_redis_instance.redis.host}"
+}
+
+# ----------------------------------------------------------------------------------------
+
+/*
+module "gce-lb-http" {
+  source  = "GoogleCloudPlatform/lb-http/google"
+  version = "~> 6.0"
+  name    = var.network_prefix
+  project = var.project
+  target_tags = [
+    "${var.network_prefix}-group1",
+    module.cloud-nat-group1.router_name,
+    "${var.network_prefix}-group2",
+    module.cloud-nat-group2.router_name
+  ]
+  firewall_networks = [google_compute_network.default.name]
+
+  backends = {
+    default = {
+
+      description                     = null
+      protocol                        = "HTTP"
+      port                            = 80
+      port_name                       = "http"
+      timeout_sec                     = 10
+      connection_draining_timeout_sec = null
+      enable_cdn                      = false
+      security_policy                 = null
+      session_affinity                = null
+      affinity_cookie_ttl_sec         = null
+      custom_request_headers          = null
+      custom_response_headers         = null
+
+      health_check = {
+        check_interval_sec  = null
+        timeout_sec         = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
+        request_path        = "/"
+        port                = 80
+        host                = null
+        logging             = null
+      }
+
+      log_config = {
+        enable      = true
+        sample_rate = 1.0
+      }
+
+      groups = [
+        {
+          group                        = module.mig1.instance_group
+          balancing_mode               = null
+          capacity_scaler              = null
+          description                  = null
+          max_connections              = null
+          max_connections_per_instance = null
+          max_connections_per_endpoint = null
+          max_rate                     = null
+          max_rate_per_instance        = null
+          max_rate_per_endpoint        = null
+          max_utilization              = null
+        }
+      ]
+
+      iap_config = {
+        enable               = false
+        oauth2_client_id     = ""
+        oauth2_client_secret = ""
+      }
+    }
+  }
 }
 */
 
 # ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ---------------------------------------------------------------------------------------
+
+/*
+resource "google_sql_database_instance" "postgres" {
+  name = "postgres"
+  database_version = "POSTGRES_14"
+  region = "${var.region}"
+  settings {
+    tier = "db-f1-micro"
+    ip_configuration {
+      private_network = google_compute_network.development.id
+    }
+  }
+}
+
+resource "google_sql_database" "database" {
+  name      = "database"
+  instance  = "${google_sql_database_instance.postgres.name}"
+}
+
+resource "google_sql_user" "users" {
+  name     = "developer"
+  password = "developer"
+  instance = "${google_sql_database_instance.postgres.name}"
+}
+
+output "postgres_host" {
+  description = "The IP address of the postgres instance"
+  value = "${google_sql_database_instance.postgres.ip_address.0.ip_address}"
+}
+
+# ----------------------------------------------------------------------------------------
+
+/*
+resource "google_compute_network" "private_network" {
+  provider = google-beta
+
+  name = "private-network"
+}
+
+resource "google_compute_global_address" "private_ip_address" {
+  provider = google-beta
+
+  name          = "private-ip-address"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.private_network.id
+}
+
+resource "google_service_networking_connection" "private_vpc_connection" {
+  provider = google-beta
+
+  network                 = google_compute_network.private_network.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+}
+
+resource "random_id" "db_name_suffix" {
+  byte_length = 4
+}
+
+resource "google_sql_database_instance" "instance" {
+  provider = google-beta
+
+  name             = "private-instance-${random_id.db_name_suffix.hex}"
+  region           = "us-central1"
+  database_version = "MYSQL_5_7"
+
+  depends_on = [google_service_networking_connection.private_vpc_connection]
+
+  settings {
+    tier = "db-f1-micro"
+    ip_configuration {
+      ipv4_enabled                                  = false
+      private_network                               = google_compute_network.private_network.id
+      enable_private_path_for_google_cloud_services = true
+    }
+  }
+}
+
+provider "google-beta" {
+  region = "us-central1"
+  zone   = "us-central1-a"
+}
+*/
