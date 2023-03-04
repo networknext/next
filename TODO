@@ -32,13 +32,25 @@ DONE
 
 	Create postgres.
 
+	Relay gateway is up and running.
+
 TODO
 
-	Work out how to setup an external HTTPS load balance with terraform.
+	Is it possible to make the relay gateway multi-zonal?
 
-	https://github.com/terraform-google-modules/terraform-google-lb-http
+	It seems like I just need to tack on "-region-" in the google cloud types.
+	
+	--------------
 
-	This is quite involved. Stop for the weekend.
+	Get the relay backend up.
+
+	It needs configuration for redis.
+
+	It needs the database.bin...
+
+	It needs an internal HTTP load balancer, just like the magic backend.
+
+	It should be easy to set up.
 
 	--------------
 
