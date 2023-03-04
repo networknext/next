@@ -34,12 +34,18 @@ DONE
 
 	Relay gateway is up and running.
 
-TODO
-
 	Is it possible to make the relay gateway multi-zonal?
 
 	It seems like I just need to tack on "-region-" in the google cloud types.
-	
+
+	No, it's not this easy. Later...
+
+	https://cloud.google.com/load-balancing/docs/https#global
+
+TODO
+
+	Stop and setup modules before stuff gets too copy pasta...
+
 	--------------
 
 	Get the relay backend up.
@@ -58,6 +64,11 @@ TODO
 
 	--------------
 
+	HTTP load balance documentation:
+
+	https://cloud.google.com/load-balancing/docs/https#global
+
+	--------------
 
 
 
@@ -389,5 +400,9 @@ Nice to have:
 	--------------
 
 	Semaphore should bitch at you if you try to deploy to dev from main, or prod from main etc.
+
+	--------------
+
+	Chaos monkey testing. The goal is to ensure no fallback to directs.
 
 	--------------
