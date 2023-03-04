@@ -9,7 +9,6 @@ variable "service_account" { type = string }
 variable "artifacts_bucket" { type = string }
 variable "machine_type" { type = string }
 variable "git_hash" { type = string }
-variable "postgres_password" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
@@ -68,13 +67,6 @@ resource "google_compute_subnetwork" "load_balancer" {
   ip_cidr_range = "10.1.0.0/16"
 }
 
-resource "google_compute_subnetwork" "relay_gateway" {
-  name          = "relay-gateway"
-  region        = "us-central1"
-  network       = google_compute_network.development.id
-  ip_cidr_range = "10.2.0.0/16"
-}
-
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_instance" "test" {
@@ -111,12 +103,31 @@ output "redis_address" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_compute_global_address" "postgres_private_address" {
+  name          = "postgres-private-address"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.development.id
+}
+
+resource "google_service_networking_connection" "postgres" {
+  network                 = google_compute_network.development.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.postgres_private_address.name]
+}
+
 resource "google_sql_database_instance" "postgres" {
   name = "postgres"
   database_version = "POSTGRES_14"
   region = "${var.region}"
+  depends_on = [google_service_networking_connection.postgres]
   settings {
     tier = "db-f1-micro"
+    ip_configuration {
+      ipv4_enabled    = "false"
+      private_network = google_compute_network.development.id
+    }
   }
   deletion_protection = false
 }
@@ -128,13 +139,20 @@ resource "google_sql_database" "database" {
 
 resource "google_sql_user" "users" {
   name     = "developer"
-  password = var.postgres_password
+  password = "developer"
   instance = "${google_sql_database_instance.postgres.name}"
+}
+
+resource "google_compute_network_peering_routes_config" "postgres" {
+  peering              = google_service_networking_connection.postgres.peering
+  network              = google_compute_network.development.name
+  import_custom_routes = true
+  export_custom_routes = true
 }
 
 output "postgres_address" {
   description = "The IP address of the postgres instance"
-  value = "${google_sql_database_instance.postgres.ip_address.0.ip_address}"
+  value = "${google_compute_global_address.postgres_private_address.address}"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -320,7 +338,7 @@ module "api" {
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
-    PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=${var.postgres_password} dbname=postgres sslmode=disable"
+    PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=postgres sslmode=disable"
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service

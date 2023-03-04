@@ -14,50 +14,15 @@ DONE
 
 	Get api service up, with postgres, database and redis (!!)
 
+	Setup postgres so it has a private address.
+
+	Verify that I can hit the API and get some portal data back.
+
 TODO
 
-	--------------
-
-	api service cannot talk to postgres, because the VMs only have private addresses.
-
-	how to setup postgres so it has a private address?
+	raspberry_server (external http)
 
 	--------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	external http:
-
-		raspberry_server
 
 	no lb:
 
@@ -65,6 +30,10 @@ TODO
 		map_cruncher
 		raspberry_client
 		raspberry_server
+
+	udp external:
+
+		server_backend
 
 	--------------
 
