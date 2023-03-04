@@ -17,9 +17,10 @@ variable "machine_type" { type = string }
 variable "git_hash" { type = string }
 variable "project" { type = string }
 variable "region" { type = string }
-variable "network" { type = string }
-variable "subnetwork" { type = string }
-variable "service_network_mask" { type = string }
+variable "default_network" { type = string }
+variable "default_subnetwork" { type = string }
+variable "load_balancer_subnetwork" { type = string }
+variable "load_balancer_network_mask" { type = string }
 variable "service_account" { type = string }
 
 # ----------------------------------------------------------------------------------------
@@ -27,33 +28,28 @@ variable "service_account" { type = string }
 resource "google_compute_address" "service" {
   name         = var.service_name
   region       = var.region
-  subnetwork   = var.subnetwork
+  subnetwork   = var.default_subnetwork
   address_type = "INTERNAL"
   purpose      = "SHARED_LOADBALANCER_VIP"
 }
 
-resource "google_compute_subnetwork" "service" {
-  name          = var.service_name
-  project       = var.project
-  region        = var.region
-  purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
-  role          = "ACTIVE"
-  network       = var.network
-  ip_cidr_range = var.service_network_mask
+output "address" {
+  description = "The IP address of the load balancer"
+  value = google_compute_address.service.address
 }
 
 resource "google_compute_forwarding_rule" "service" {
   name                  = var.service_name
   project               = var.project
   region                = var.region
-  depends_on            = [google_compute_subnetwork.service]
+  depends_on            = [var.load_balancer_subnetwork]
   ip_protocol           = "TCP"
   ip_address            = google_compute_address.service.id
   load_balancing_scheme = "INTERNAL_MANAGED"
   port_range            = "80"
   target                = google_compute_region_target_http_proxy.service.id
-  network               = var.network
-  subnetwork            = var.subnetwork
+  network               = var.default_network
+  subnetwork            = var.default_subnetwork
   network_tier          = "PREMIUM"
 }
 
@@ -93,8 +89,8 @@ resource "google_compute_instance_template" "service" {
   tags         = ["http-server"]
 
   network_interface {
-    network    = var.network
-    subnetwork = var.subnetwork
+    network    = var.default_network
+    subnetwork = var.default_subnetwork
   }
 
   disk {
@@ -175,8 +171,8 @@ resource "google_compute_firewall" "service" {
   name          = var.service_name
   project       = var.project
   direction     = "INGRESS"
-  network       = var.network
-  source_ranges = [var.service_network_mask]
+  network       = var.default_network
+  source_ranges = [var.load_balancer_network_mask]
   target_tags   = ["http-server"]
   allow {
     protocol = "tcp"
