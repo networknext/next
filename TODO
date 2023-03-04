@@ -1,70 +1,74 @@
 DONE
 
-	Fixed issue. Forgot that I needed to point to vm_health or lb_health!
+	Stop and setup modules before stuff gets too copy pasta...
 
-	Verified that I can get the 
+	Magic backend with module
 
-	Need to setup autohealing on the MIG with the vm_health check
+	Relay gateway with module
 
-	Removed google cloud beta provider. Stick with the official non-beta stuff.
+	Relay backend with module
 
-	Is it possible to get the internal LB configured to a specific internal IP address?
+	analytics is done
 
-	Yes, I think it is, but it has to be under the 10.0.0.0/24 -- eg. http://10.0.0.5
+	Get postgres back up.
 
-	It can't be under the 10.0.1.0 -- that's used for proxy only.
-
-	OK. Should be finished now. Set to 10.0.0.1
-
-	There is going to be a common pattern where I don't actually know the env vars to set until the terraform script runs.
-
-	This means that I should stop setting up dev.env etc. and instead, write the env var as needed in the output script.
-
-	Stop bundling [env].env into the artifact.
-
-	Verify that I can upload artifacts to cloud storage
-
-	Verify that I can deploy and run magic backend with terraform configuring the env file and enabling the service
-
-	Fix problem with recreating instance templates by adding a random id to end of instance template each run
-
-	Create redis.
-
-	Create postgres.
-
-	Relay gateway is up and running.
-
-	Is it possible to make the relay gateway multi-zonal?
-
-	It seems like I just need to tack on "-region-" in the google cloud types.
-
-	No, it's not this easy. Later...
-
-	https://cloud.google.com/load-balancing/docs/https#global
+	Get api service up, with postgres, database and redis (!!)
 
 TODO
 
-	Stop and setup modules before stuff gets too copy pasta...
+	--------------
+
+	api service cannot talk to postgres, because the VMs only have private addresses.
+
+	how to setup postgres so it has a private address?
 
 	--------------
 
-	Get the relay backend up.
 
-	It needs configuration for redis.
 
-	It needs the database.bin...
 
-	It needs an internal HTTP load balancer, just like the magic backend.
 
-	It should be easy to set up.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	external http:
+
+		raspberry_server
+
+	no lb:
+
+		portal_cruncher
+		map_cruncher
+		raspberry_client
+		raspberry_server
 
 	--------------
 
-	Setup relay front end.
-
-	--------------
-
-	HTTP load balance documentation:
+	Study google HTTP load balancer documentation:
 
 	https://cloud.google.com/load-balancing/docs/https#global
 
