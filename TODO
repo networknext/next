@@ -28,6 +28,11 @@ DONE
 
 TODO
 
+	Create new service type "external_udp_service"
+
+	--------------
+
+	Get server_backend up
 
 	--------------
 
@@ -35,14 +40,16 @@ TODO
 
 		raspberry_backend (external http)
 
-	no lb:
+	--------------
+
+	Create new service type "mig_without_health_check"
+
+	--------------
+
+	no lb, no health check:
 
 		raspberry_client
 		raspberry_server
-
-	udp external:
-
-		server_backend
 
 	--------------
 
