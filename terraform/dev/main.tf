@@ -360,3 +360,34 @@ output "api_address" {
 }
 
 // ---------------------------------------------------------------------------------------
+
+module "portal_cruncher" {
+
+  source = "./mig_service_with_health_check"
+
+  service_name = "portal-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a portal_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    GOOGLE_PROJECT_ID=${var.project}
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  machine_type       = var.machine_type
+  git_hash           = var.git_hash
+  project            = var.project
+  zone               = var.zone
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.service_account
+}
+
+// ---------------------------------------------------------------------------------------

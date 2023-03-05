@@ -20,9 +20,11 @@ DONE
 
 	Added early detection for null service.google when database needs to be reloaded, and fixed it for the API service in dev.
 
+	Create a new module for just a raw instance group with no load balancer.
+
 TODO
 
-	Create a new module for just a raw instance group with no load balancer.
+	Create portal cruncher service
 
 	--------------
 
