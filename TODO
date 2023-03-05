@@ -18,9 +18,11 @@ DONE
 
 	Verify that I can hit the API and get some portal data back.
 
+	Added early detection for null service.google when database needs to be reloaded, and fixed it for the API service in dev.
+
 TODO
 
-	raspberry_server (external http)
+	Create a new module for just a raw instance group with no load balancer.
 
 	--------------
 
@@ -34,6 +36,10 @@ TODO
 	udp external:
 
 		server_backend
+
+	http external:
+
+		raspberry_server (external http)
 
 	--------------
 
