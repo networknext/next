@@ -50,9 +50,12 @@ DONE
 
 	Needed to copy in libnext5.so
 
+	Get raspberry client up and healthy
+
+	Change so that no health check mig is external with public address per-VM
+
 TODO
 
-	Get raspberry client up and healthy
 
 	--------------
 

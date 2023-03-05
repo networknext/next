@@ -212,6 +212,8 @@ module "relay_gateway" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
+    RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
@@ -362,7 +364,7 @@ output "api_address" {
 
 module "portal_cruncher" {
 
-  source = "./mig_service_with_health_check"
+  source = "./internal_mig_with_health_check"
 
   service_name = "portal-cruncher"
 
@@ -392,7 +394,7 @@ module "portal_cruncher" {
 
 module "map_cruncher" {
 
-  source = "./mig_service_with_health_check"
+  source = "./internal_mig_with_health_check"
 
   service_name = "map-cruncher"
 
@@ -502,7 +504,7 @@ output "raspberry_backend_address" {
 
 module "raspberry_server" {
 
-  source = "./mig_service_without_health_check"
+  source = "./external_mig_without_health_check"
 
   service_name = "raspberry-server"
 
@@ -514,11 +516,45 @@ module "raspberry_server" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     NEXT_LOG_LEVEL=4
     NEXT_DATACENTER=cloud
     NEXT_CUSTOMER_PRIVATE_KEY=UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
+    EOF
+    sudo gsutil cp ${var.artifacts_bucket}/libnext5.so /usr/local/lib/libnext5.so
+    sudo ldconfig
+    sudo systemctl start app.service
+  EOF1
+
+  machine_type       = var.machine_type
+  git_hash           = var.git_hash
+  project            = var.project
+  region             = var.region
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.service_account
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "raspberry_client" {
+
+  source = "./external_mig_without_health_check"
+
+  service_name = "raspberry-client"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a raspberry_client.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    NEXT_LOG_LEVEL=4
+    NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
+    RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
+    RASPBERRY_NUM_CLIENTS=1
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/libnext5.so /usr/local/lib/libnext5.so
     sudo ldconfig
