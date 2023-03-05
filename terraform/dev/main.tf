@@ -336,6 +336,7 @@ module "api" {
     ENV=dev
     DEBUG_LOGS=1
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    GOOGLE_PROJECT_ID=${var.project}
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=postgres sslmode=disable"
