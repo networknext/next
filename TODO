@@ -30,6 +30,8 @@ TODO
 
 	Create new service type "external_udp_service"
 
+	https://cloud.google.com/load-balancing/docs/network/networklb-backend-service
+
 	--------------
 
 	Get server_backend up
