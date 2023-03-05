@@ -35,6 +35,11 @@ blocks:
             - artifact pull workflow libsodium.so
             - gsutil cp libsodium.so $DEV_BUCKET
 
+        - name: "SDK"
+          commands:
+            - artifact pull workflow libnext5.so
+            - gsutil cp libnext5.so $DEV_BUCKET
+
         - name: "Analytics"
           commands:
             - artifact pull workflow analytics.tar.gz

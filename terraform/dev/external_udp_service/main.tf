@@ -16,7 +16,7 @@ variable "startup_script" { type = string }
 variable "machine_type" { type = string }
 variable "git_hash" { type = string }
 variable "project" { type = string }
-variable "zone" { type = string }
+variable "region" { type = string }
 variable "default_network" { type = string }
 variable "default_subnetwork" { type = string }
 variable "service_account" { type = string }
@@ -24,25 +24,35 @@ variable "port" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_forwarding_rule" "service" {
-  name                  = var.service_name
-  project               = var.project
-  target                = google_compute_target_pool.service.self_link
-  load_balancing_scheme = "EXTERNAL"
-  ip_protocol           = "UDP"
-  port_range            = var.port
+resource "google_compute_address" "service" {
+  name         = var.service_name
+  network_tier = "STANDARD"
 }
 
-resource "google_compute_target_pool" "default" {
-  name             = var.service_name
-  project          = var.project
-  region           = var.region
+resource "google_compute_forwarding_rule" "service" {
+  name                  = var.service_name
+  region                = var.region
+  project               = var.project
+  backend_service       = google_compute_region_backend_service.service.id
+  load_balancing_scheme = "EXTERNAL"
+  ip_protocol           = "UDP"
+  ip_address            = google_compute_address.service.id
+  port_range            = var.port
+  network_tier          = "STANDARD"
+}
 
-  instances = var.instances
-
-  health_checks = [
-    google_compute_http_health_check.service_lb.name,
-  ]
+resource "google_compute_region_backend_service" "service" {
+  name                  = var.service_name
+  project               = var.project
+  region                = var.region
+  protocol              = "UDP"
+  load_balancing_scheme = "EXTERNAL"
+  timeout_sec           = 10
+  health_checks         = [google_compute_region_health_check.service_lb.id]
+  backend {
+    group           = google_compute_region_instance_group_manager.service.instance_group
+    balancing_mode  = "CONNECTION"
+  }
 }
 
 resource "google_compute_instance_template" "service" {
@@ -75,15 +85,17 @@ resource "google_compute_instance_template" "service" {
   }
 }
 
-resource "google_compute_health_check" "service_lb" {
+resource "google_compute_region_health_check" "service_lb" {
   name                = "${var.service_name}-lb"
-  check_interval_sec  = 1
   timeout_sec         = 1
+  check_interval_sec  = 1
   healthy_threshold   = 5
   unhealthy_threshold = 2
+  project             = var.project
+  region              = var.region
   http_health_check {
     request_path = "/lb_health"
-    port         = "80"
+    port = "80"
   }
 }
 
@@ -99,9 +111,9 @@ resource "google_compute_health_check" "service_vm" {
   }
 }
 
-resource "google_compute_instance_group_manager" "service" {
+resource "google_compute_region_instance_group_manager" "service" {
   name     = var.service_name
-  zone     = var.zone
+  region   = var.region
   named_port {
     name = "udp"
     port = 45000
@@ -128,7 +140,7 @@ resource "google_compute_instance_group_manager" "service" {
 
 output "address" {
   description = "The IP address of the external udp load balancer"
-  value = google_compute_global_address.service.address
+  value = google_compute_address.service.address
 }
 
 # ----------------------------------------------------------------------------------------

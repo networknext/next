@@ -26,23 +26,25 @@ DONE
 
 	Create map cruncher service
 
-TODO
+	Understanding enough about the load balancer setup to make all migs regional in dev
 
 	Create new service type "external_udp_service"
 
 	https://cloud.google.com/load-balancing/docs/network/networklb-backend-service
 
-	--------------
+	Tentatively, "should" be working...
 
 	Get server_backend up
 
-	--------------
+	Verify that server backend gets healthy
 
-	http external:
+	Fix route matrix URL
 
-		raspberry_backend (external http)
+	Fix magic URL
 
-	--------------
+	raspberry_backend (external http)
+
+TODO
 
 	Create new service type "mig_without_health_check"
 

@@ -26,7 +26,7 @@ variable "service_account" { type = string }
 resource "google_compute_instance_template" "service" {
   name         = "${var.service_name}-${var.git_hash}"
   machine_type = var.machine_type
-  tags         = ["allow-health-check", "http-server"]
+  tags         = ["http-server"]
 
   network_interface {
     network    = var.default_network
@@ -53,18 +53,6 @@ resource "google_compute_instance_template" "service" {
   }
 }
 
-resource "google_compute_health_check" "service_vm" {
-  name                = "${var.service_name}-vm"
-  check_interval_sec  = 5
-  timeout_sec         = 5
-  healthy_threshold   = 2
-  unhealthy_threshold = 10
-  http_health_check {
-    request_path = "/vm_health"
-    port         = "80"
-  }
-}
-
 resource "google_compute_region_instance_group_manager" "service" {
   name     = var.service_name
   region   = var.region
@@ -74,10 +62,6 @@ resource "google_compute_region_instance_group_manager" "service" {
   }
   base_instance_name = var.service_name
   target_size        = 2
-  auto_healing_policies {
-    health_check      = google_compute_health_check.service_vm.id
-    initial_delay_sec = 120
-  }
   update_policy {
     type                           = "PROACTIVE"
     minimal_action                 = "REPLACE"

@@ -57,8 +57,8 @@ resource "google_compute_firewall" "development" {
   }
 }
 
-resource "google_compute_subnetwork" "load_balancer" {
-  name          = "load-balancer"
+resource "google_compute_subnetwork" "internal_http_load_balancer" {
+  name          = "internal-http-load-balancer"
   project       = var.project
   region        = var.region
   purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
@@ -181,8 +181,8 @@ module "magic_backend" {
   region                     = var.region
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
-  load_balancer_subnetwork   = google_compute_subnetwork.load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.load_balancer.ip_cidr_range
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
 }
 
@@ -203,7 +203,7 @@ module "relay_gateway" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a relay_backend.tar.gz
+    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -212,19 +212,18 @@ module "relay_gateway" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
-    READY_DELAY=5s
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
-  git_hash           = var.git_hash
-  project            = var.project
-  zone               = var.zone
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  machine_type             = var.machine_type
+  git_hash                 = var.git_hash
+  project                  = var.project
+  zone                     = var.zone
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.service_account
 }
 
 output "relay_gateway_address" {
@@ -265,8 +264,8 @@ module "relay_backend" {
   region                     = var.region
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
-  load_balancer_subnetwork   = google_compute_subnetwork.load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.load_balancer.ip_cidr_range
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
 }
 
@@ -309,8 +308,8 @@ module "analytics" {
   region                     = var.region
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
-  load_balancer_subnetwork   = google_compute_subnetwork.load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.load_balancer.ip_cidr_range
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
 }
 
@@ -345,13 +344,13 @@ module "api" {
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
-  git_hash           = var.git_hash
-  project            = var.project
-  zone               = var.zone
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  machine_type             = var.machine_type
+  git_hash                 = var.git_hash
+  project                  = var.project
+  zone                     = var.zone
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.service_account
 }
 
 output "api_address" {
@@ -383,7 +382,7 @@ module "portal_cruncher" {
   machine_type       = var.machine_type
   git_hash           = var.git_hash
   project            = var.project
-  zone               = var.zone
+  region             = var.region
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
@@ -413,10 +412,126 @@ module "map_cruncher" {
   machine_type       = var.machine_type
   git_hash           = var.git_hash
   project            = var.project
-  zone               = var.zone
+  region             = var.region
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
 }
 
-// ---------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
+
+module "server_backend" {
+
+  source = "./external_udp_service"
+
+  service_name = "server-backend"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a server_backend.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    GOOGLE_PROJECT_ID=${var.project}
+    MAGIC_URL="http://${module.magic_backend.address}/magic"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+    SERVER_BACKEND_ADDRESS=self.address
+    SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
+    SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
+    EOF
+    sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
+    sudo systemctl start app.service
+  EOF1
+
+  machine_type       = var.machine_type
+  git_hash           = var.git_hash
+  project            = var.project
+  region             = var.region
+  port               = 45000
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.service_account
+}
+
+output "server_backend_address" {
+  description = "The IP address of the server backend load balancer"
+  value       = module.server_backend.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "raspberry_backend" {
+
+  source = "./external_http_service"
+
+  service_name = "raspberry-backend"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a raspberry_backend.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  machine_type             = var.machine_type
+  git_hash                 = var.git_hash
+  project                  = var.project
+  zone                     = var.zone
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.service_account
+}
+
+output "raspberry_backend_address" {
+  description = "The IP address of the raspberry backend load balancer"
+  value       = module.raspberry_backend.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "raspberry_server" {
+
+  source = "./mig_service_without_health_check"
+
+  service_name = "raspberry-server"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a raspberry_server.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    NEXT_LOG_LEVEL=4
+    NEXT_DATACENTER=cloud
+    NEXT_CUSTOMER_PRIVATE_KEY=UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3
+    RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
+    EOF
+    gsutil cp ${var.artifacts_bucket}/libnext5.so libnext5.so
+    sudo ldconfig
+    sudo systemctl start app.service
+  EOF1
+
+  machine_type       = var.machine_type
+  git_hash           = var.git_hash
+  project            = var.project
+  region             = var.region
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.service_account
+}
+
+# ----------------------------------------------------------------------------------------
