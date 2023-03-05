@@ -44,16 +44,25 @@ DONE
 
 	raspberry_backend (external http)
 
+	Create new service type "mig_without_health_check"
+
+	Get raspberry server up and healthy
+
+	Needed to copy in libnext5.so
+
 TODO
 
-	Create new service type "mig_without_health_check"
+	Get raspberry client up and healthy
 
 	--------------
 
-	no lb, no health check:
+	Raspberry server will not be able to talk to the raspberry backend, because it doesn't have a public IP address
 
-		raspberry_client
-		raspberry_server
+	Need to make sure that instances in the "mig_without_health_check" get public IP addresses assigned.
+
+	--------------
+
+	Make sure that raspberry client and server can connect
 
 	--------------
 

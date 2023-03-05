@@ -520,7 +520,7 @@ module "raspberry_server" {
     NEXT_CUSTOMER_PRIVATE_KEY=UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     EOF
-    gsutil cp ${var.artifacts_bucket}/libnext5.so libnext5.so
+    sudo gsutil cp ${var.artifacts_bucket}/libnext5.so /usr/local/lib/libnext5.so
     sudo ldconfig
     sudo systemctl start app.service
   EOF1
