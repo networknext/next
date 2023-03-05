@@ -22,26 +22,27 @@ DONE
 
 	Create a new module for just a raw instance group with no load balancer.
 
+	Create portal cruncher service
+
+	Create map cruncher service
+
 TODO
 
-	Create portal cruncher service
 
 	--------------
 
+	http external:
+
+		raspberry_backend (external http)
+
 	no lb:
 
-		portal_cruncher
-		map_cruncher
 		raspberry_client
 		raspberry_server
 
 	udp external:
 
 		server_backend
-
-	http external:
-
-		raspberry_server (external http)
 
 	--------------
 
