@@ -1,0 +1,48 @@
+uk2group,100tb
+UK2,100tb
+Midphase,100tb
+WestHost,100tb
+Internap,inap
+inap.com,inap
+datagram.net,inap
+singlehop.com,inap
+SINGLEHOP,inap
+SingleHop,inap
+InterNAP,inap
+INAP,inap
+VELIA,velia
+Maxihost,maxihost
+MaxiHost,maxihost
+maxihost,maxihost
+latitude.sh,maxihost
+Zenlayer,zenlayer
+ZENLAYER,zenlayer
+zenlayer,zenlayer
+Total server solutions,totalserversolutions
+Total Server Solutions,totalserversolutions
+totalserversolutions.com,totalserversolutions
+TOTAL-SERVER-SOLUTIONS,totalserversolutions
+TSS-LONDON,totalserversolutions
+Performive,totalserversolutions
+Vultr,vultr
+vultr,vultr
+CHOOP,vultr
+Servers.com,serversdotcom
+servers.com,serversdotcom
+servers.ru,serversdotcom
+SERVERS-COM,serversdotcom
+Psychz,psychz
+Profuse,psychz
+PSINet,psychz
+Servers Australia,serversaustralia
+Datacamp,datapacket
+DataCamp,datapacket
+DATACAMP,datapacket
+HIVELOCITY,hivelocity
+Hivelocity,hivelocity
+hivelocity,hivelocity
+Leaseweb,leaseweb
+GoDaddy,godaddy
+iWeb Technologies Inc,iweb
+G-Core,gcore
+G-Core Labs,gcore
