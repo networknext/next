@@ -30,6 +30,8 @@ blocks:
             - artifact push workflow ./dist/relay
             - artifact push workflow ./dist/libnext5.so
             - artifact push workflow deploy/bootstrap.sh
+            - artifact push workflow config/google.txt
+            - artifact push workflow config/multiplay.txt
 
   - name: "Sodium"
     dependencies: []
