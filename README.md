@@ -292,11 +292,7 @@ ok  	github.com/networknext/backend/modules/packets	0.885s
 ok  	github.com/networknext/backend/modules/portal	0.281s
 ```
 
-11. Setup postgres
-
-   (something something something... default user is not good enough here)
-
-12. Run happy path
+11. Run happy path
 
     `run happy-path`
 
