@@ -54,31 +54,24 @@ DONE
 
 	Change so that no health check mig is external with public address per-VM
 
+	Gave public addresses to raspberry client and server VMs.
+
 TODO
 
+	Seems that autodetect is jacked up:
 
-	--------------
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099775: info: server attempting to autodetect datacenter
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099888: info: server autodetect datacenter: looking for curl
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.100066: info: server resolving backend hostname 'dev5.spacecats.net'
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.118138: info: server autodetect datacenter: curl exists
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.124958: info: server autodetect datacenter: running in google cloud
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.135118: info: server autodetect datacenter: google zone is "us-central1-c"
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.202215: info: server resolved backend hostname to 35.208.142.31:45000
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295106: info: server autodetect datacenter: not in AWS
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295541: info: server autodetect datacenter: not in multiplay
+		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.306211: info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]
 
-	Raspberry server will not be able to talk to the raspberry backend, because it doesn't have a public IP address
-
-	Need to make sure that instances in the "mig_without_health_check" get public IP addresses assigned.
-
-	--------------
-
-	Make sure that raspberry client and server can connect
-
-	--------------
-
-	Study google HTTP load balancer documentation:
-
-	https://cloud.google.com/load-balancing/docs/https#global
-
-	--------------
-
-
-
-
-
+	Looks like autodetect succeeded, then it gave up and fell back to cloud? What?
 
 
 
