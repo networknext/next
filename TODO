@@ -11,19 +11,32 @@ DONE
 	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295541: info: server autodetect datacenter: not in multiplay
 	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.306211: info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]
 
+	Setup google.txt
+
+	Copy across old multiplay.txt
+
 TODO
 
-	Setup SDK autodetect files uploaded to google cloud storage, especially google.txt, amazon.txt, multiplay.txt
+	Extend storage terraform to setup a download directory for SDK files, eg: "network_next_sdk_config"
 
-	This is why the autodetect is not working.
+	This directory should be public, so that the SDK can read data.
+
+	Make sure the directory is configured so that NO CACHING is allowed.
+
+	Update semaphore so it uploads all config text files to this dir on deploy.
+
+	Adjust the SDK to read google.txt from this public directory.
 
 	----------------------
 
-	Generate a dev database.bin where the raspberry customer is setup
+	Update dev.sql so that it defines *ALL* google cloud datacenters.
+
+	Generate a new dev.bin and copy this (manually) to the dev artifacts directory.
 
 	----------------------
 
-	Verify that the raspberry server is actually initializing with the server backend
+	Deploy this code to dev env via terraform and verify that the raspberry server autodetects the correct google datacenter name,
+	and inits with the server backend with a known datacenter and customer (raspberry).
 
 	----------------------
 
