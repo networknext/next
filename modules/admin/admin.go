@@ -481,7 +481,7 @@ type DatacenterData struct {
 }
 
 func (controller *Controller) CreateDatacenter(datacenterData *DatacenterData) (uint64, error) {
-	sql := "INSERT INTO datacenters (datacenter_name, native_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5) RETURNING datacenter_id;"
+	sql := "INSERT INTO datacenters (datacenter_name, native_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING datacenter_id;"
 	result := controller.pgsql.QueryRow(sql, datacenterData.DatacenterName, datacenterData.NativeName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes)
 	datacenterId := uint64(0)
 	if err := result.Scan(&datacenterId); err != nil {
@@ -511,11 +511,11 @@ func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) e
 	// IMPORTANT: Cannot change datacenter id once created
 	var err error
 	if datacenterData.SellerId != 0 {
-		sql := "UPDATE datacenters SET datacenter_name = $1, latitude = $2, longitude = $3, seller_id = $4, notes = $5 WHERE datacenter_id = $6;"
-		_, err = controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes, datacenterData.DatacenterId)
+		sql := "UPDATE datacenters SET datacenter_name = $1, native_name = $2, latitude = $3, longitude = $4, seller_id = $5, notes = $6 WHERE datacenter_id = $7;"
+		_, err = controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.NativeName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes, datacenterData.DatacenterId)
 	} else {
-		sql := "UPDATE datacenters SET datacenter_name = $1, latitude = $2, longitude = $3, notes = $4 WHERE datacenter_id = $5;"
-		_, err = controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.Notes, datacenterData.DatacenterId)
+		sql := "UPDATE datacenters SET datacenter_name = $1, native_name = $2, latitude = $3, longitude = $4, notes = $5 WHERE datacenter_id = $6;"
+		_, err = controller.pgsql.Exec(sql, datacenterData.DatacenterName, datacenterData.NativeName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.Notes, datacenterData.DatacenterId)
 	}
 	return err
 }
