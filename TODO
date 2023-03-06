@@ -27,15 +27,15 @@ DONE
 
 	Generate a new database.bin and copy this (manually) to the dev artifacts directory.
 
-TODO
-
 	I'm going to need to automatically map between native datacenter names and my own datacenter names.
 
 	Add an optional string to each datacenter called "native_name".
 
 	Add this to the JSON and the database extract code in golang.
 
-	
+TODO
+
+	Now go through google.txt and put the native name in each datacenter in dev.sql
 
 	----------------------
 
