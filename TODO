@@ -15,19 +15,15 @@ DONE
 
 	Copy across old multiplay.txt
 
-TODO
-
 	Extend storage terraform to setup a download directory for SDK files, eg: "network_next_sdk_config"
 
 	This directory should be public, so that the SDK can read data.
 
-	Make sure the directory is configured so that NO CACHING is allowed.
-
 	Update semaphore so it uploads all config text files to this dir on deploy.
 
-	Adjust the SDK to read google.txt from this public directory.
+	Adjust the SDK to read google.txt, multiplay.txt from the new google cloud storage location.
 
-	----------------------
+TODO
 
 	Update dev.sql so that it defines *ALL* google cloud datacenters.
 
@@ -403,5 +399,25 @@ Nice to have:
 	--------------
 
 	Chaos monkey testing. The goal is to ensure no fallback to directs.
+
+	--------------
+
+	Any configuration in the SDK must be easily identified at the top of the file, especially bucket for google.txt, amazon.txt, multiplay.txt
+
+	Domains for server backend
+
+	Relay backend keypairs
+
+	Server backend keypairs
+
+	Customer private keys 
+
+	etc...
+
+	--------------
+
+	Any configuration in the semaphore needs to be considered, eg. buckets to upload artifacts, sdk config etc.
+
+	Secrets for accessing google cloud to upload files to google cloud storage
 
 	--------------
