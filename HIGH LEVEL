@@ -22,11 +22,9 @@ DONE
 
 	Working "next" tool that runs off the REST API and supports any number of different configured environments.
 
-TODO
-
 	Setup dev environment in google cloud with terraform.
 
-	-------------
+TODO
 	
 	Working analytics service that inserts data into bigquery.
 

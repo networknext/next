@@ -1,81 +1,69 @@
 DONE
 
-	Stop and setup modules before stuff gets too copy pasta...
-
-	Magic backend with module
-
-	Relay gateway with module
-
-	Relay backend with module
-
-	analytics is done
-
-	Get postgres back up.
-
-	Get api service up, with postgres, database and redis (!!)
-
-	Setup postgres so it has a private address.
-
-	Verify that I can hit the API and get some portal data back.
-
-	Added early detection for null service.google when database needs to be reloaded, and fixed it for the API service in dev.
-
-	Create a new module for just a raw instance group with no load balancer.
-
-	Create portal cruncher service
-
-	Create map cruncher service
-
-	Understanding enough about the load balancer setup to make all migs regional in dev
-
-	Create new service type "external_udp_service"
-
-	https://cloud.google.com/load-balancing/docs/network/networklb-backend-service
-
-	Tentatively, "should" be working...
-
-	Get server_backend up
-
-	Verify that server backend gets healthy
-
-	Fix route matrix URL
-
-	Fix magic URL
-
-	raspberry_backend (external http)
-
-	Create new service type "mig_without_health_check"
-
-	Get raspberry server up and healthy
-
-	Needed to copy in libnext5.so
-
-	Get raspberry client up and healthy
-
-	Change so that no health check mig is external with public address per-VM
-
-	Gave public addresses to raspberry client and server VMs.
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099775: info: server attempting to autodetect datacenter
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099888: info: server autodetect datacenter: looking for curl
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.100066: info: server resolving backend hostname 'dev5.spacecats.net'
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.118138: info: server autodetect datacenter: curl exists
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.124958: info: server autodetect datacenter: running in google cloud
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.135118: info: server autodetect datacenter: google zone is "us-central1-c"
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.202215: info: server resolved backend hostname to 35.208.142.31:45000
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295106: info: server autodetect datacenter: not in AWS
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295541: info: server autodetect datacenter: not in multiplay
+	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.306211: info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]
 
 TODO
 
-	Seems that autodetect is jacked up:
+	Setup SDK autodetect files uploaded to google cloud storage, especially google.txt, amazon.txt, multiplay.txt
 
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099775: info: server attempting to autodetect datacenter
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099888: info: server autodetect datacenter: looking for curl
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.100066: info: server resolving backend hostname 'dev5.spacecats.net'
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.118138: info: server autodetect datacenter: curl exists
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.124958: info: server autodetect datacenter: running in google cloud
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.135118: info: server autodetect datacenter: google zone is "us-central1-c"
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.202215: info: server resolved backend hostname to 35.208.142.31:45000
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295106: info: server autodetect datacenter: not in AWS
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295541: info: server autodetect datacenter: not in multiplay
-		Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.306211: info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]
+	This is why the autodetect is not working.
 
-	Looks like autodetect succeeded, then it gave up and fell back to cloud? What?
+	----------------------
 
+	Generate a dev database.bin where the raspberry customer is setup
 
+	----------------------
 
+	Verify that the raspberry server is actually initializing with the server backend
 
+	----------------------
+
+	Verify that the raspberry client is actually connecting and upgrading
+
+	----------------------
+
+	Setup the spacecats.net or losangelesfreewaysatnight.com domain on cloudflare to point to the server backend
+
+	Can I use terraform to control cloudflare and set up domains?
+
+	It would be nice if I could quickly setup dev/prod domains for the SDK so I can point the SDK at them, and these domains would directly point to the address in the terraform for the API, server backend, relay backend... ?
+
+	This way if the server backend address changes due to deployment, then it could automatically update cloudflare.
+
+	Alternatively, I could pin the IP address for each public feature so they hold the same external IP over time, in terraform, even if they get torn down and rebuilt.
+
+	----------------------
+
+	Now I need to setup relays.
+
+	Create a new "Relays" project under google cloud.
+
+	Inside here, I can programatically create relays with terraform.
+
+	----------------------
+
+	Could I create a terraform interface to my database, so I can define the database via terraform?
+
+	This would completely remove the need for any admin portal.
+
+	This is a smart move...
+
+	----------------------
+
+	Can I create VMs with vultr, linode, amazon, stackpath, etc. using terraform.
+
+	And then for bare metal VMs that need to be manual, I could set them up manually, and then add them to the system via terraform adding the relay entry to the database.
+
+	----------------------
 
 
 
