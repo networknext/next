@@ -104,9 +104,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.iowa.1',
-	41.2619,
-	-95.8608,
+	'google.taiwan.1',
+	25.105497,
+	121.597366,
 	(select seller_id from sellers where seller_name = 'google')
 );
 
@@ -116,9 +116,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.lasvegas.1',
-	36.1716,
-	-115.1391,
+	'google.taiwan.2',
+	25.105497,
+	121.597366,
 	(select seller_id from sellers where seller_name = 'google')
 );
 
@@ -128,9 +128,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.oregon.2',
-	45.8399,
-	-119.7006,
+	'google.taiwan.3',
+	25.105497,
+	121.597366,
 	(select seller_id from sellers where seller_name = 'google')
 );
 
@@ -140,9 +140,861 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.saltlakecity.1',
-	40.7608,
-	-111.8910,
+	'google.hongkong.1',
+	22.3193,
+	114.1694,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.hongkong.2',
+	22.3193,
+	114.1694,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.hongkong.3',
+	22.3193,
+	114.1694,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.tokyo.1',
+	35.6762,
+	139.6503,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.tokyo.2',
+	35.6762,
+	139.6503,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.tokyo.3',
+	35.6762,
+	139.6503,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.osaka.1',
+	34.6937,
+	135.5023,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.osaka.2',
+	34.6937,
+	135.5023,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.osaka.3',
+	34.6937,
+	135.5023,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.seoul.1',
+	37.5665,
+	126.9780,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.seoul.2',
+	37.5665,
+	126.9780,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.seoul.3',
+	37.5665,
+	126.9780,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.mumbai.1',
+	19.0760,
+	72.8777,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.mumbai.2',
+	19.0760,
+	72.8777,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.mumbai.3',
+	19.0760,
+	72.8777,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.delhi.1',
+	28.7041,
+	77.1025,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.delhi.2',
+	28.7041,
+	77.1025,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.delhi.3',
+	28.7041,
+	77.1025,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.singapore.1',
+	1.3521,
+	103.8198,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.singapore.2',
+	1.3521,
+	103.8198,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.singapore.3',
+	1.3521,
+	103.8198,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.jakarta.1',
+	6.2088,
+	106.8456,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.jakarta.2',
+	6.2088,
+	106.8456,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.jakarta.3',
+	6.2088,
+	106.8456,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.sydney.1',
+	-33.8688,
+	151.2093,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.sydney.2',
+	-33.8688,
+	151.2093,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.sydney.3',
+	-33.8688,
+	151.2093,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.melbourne.1',
+	-37.8136,
+	144.9631,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.melbourne.2',
+	-37.8136,
+	144.9631,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.melbourne.3',
+	-37.8136,
+	144.9631,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.warsaw.1',
+	52.2297,
+	21.0122,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.warsaw.2',
+	52.2297,
+	21.0122,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.warsaw.3',
+	52.2297,
+	21.0122,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.finland.1',
+	60.5693,
+	27.1878,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.finland.2',
+	60.5693,
+	27.1878,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.finland.3',
+	60.5693,
+	27.1878,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.madrid.1',
+	40.4168,
+	3.7038,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.madrid.2',
+	40.4168,
+	3.7038,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.madrid.3',
+	40.4168,
+	3.7038,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.belgium.1',
+	50.4706,
+	3.8170,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.belgium.2',
+	50.4706,
+	3.8170,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.belgium.3',
+	50.4706,
+	3.8170,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.london.1',
+	51.5072,
+	-0.1276,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.london.2',
+	51.5072,
+	-0.1276,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.london.3',
+	51.5072,
+	-0.1276,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.frankfurt.1',
+	50.1109,
+	8.6821,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.frankfurt.2',
+	50.1109,
+	8.6821,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.frankfurt.3',
+	50.1109,
+	8.6821,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.netherlands.1',
+	53.4386,
+	6.8355,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.netherlands.2',
+	53.4386,
+	6.8355,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.netherlands.3',
+	53.4386,
+	6.8355,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.zurich.1',
+	47.3769,
+	8.5417,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.zurich.2',
+	47.3769,
+	8.5417,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.zurich.3',
+	47.3769,
+	8.5417,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.milan.1',
+	45.4642,
+	9.1900,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.milan.2',
+	45.4642,
+	9.1900,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.milan.3',
+	45.4642,
+	9.1900,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.paris.1',
+	48.8566,
+	2.3522,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.paris.2',
+	48.8566,
+	2.3522,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.paris.3',
+	48.8566,
+	2.3522,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.telaviv.1',
+	32.0853,
+	34.7818,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.telaviv.2',
+	32.0853,
+	34.7818,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.telaviv.3',
+	32.0853,
+	34.7818,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.montreal.1',
+	45.5019,
+	-73.5674,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.montreal.2',
+	45.5019,
+	-73.5674,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.montreal.3',
+	45.5019,
+	-73.5674,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.toronto.1',
+	43.6532,
+	-79.3832,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.toronto.2',
+	43.6532,
+	-79.3832,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.toronto.3',
+	43.6532,
+	-79.3832,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.saopaulo.1',
+	-23.5558,
+	-46.6396,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.saopaulo.2',
+	-23.5558,
+	-46.6396,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.saopaulo.3',
+	-23.5558,
+	-46.6396,
 	(select seller_id from sellers where seller_name = 'google')
 );
 
@@ -164,9 +1016,129 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'google.saopaulo.1',
-	-23.5558, 
-	-46.6396,
+	'google.santiago.2',
+	-33.4489,
+	-70.6693,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.santiago.3',
+	-33.4489,
+	-70.6693,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.iowa.1',
+	41.8780,
+	-93.0977,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.iowa.2',
+	41.8780,
+	-93.0977,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.iowa.3',
+	41.8780,
+	-93.0977,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.iowa.4',
+	41.8780,
+	-93.0977,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.southcarolina.1',
+	33.8361,
+	-81.1637,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.southcarolina.2',
+	33.8361,
+	-81.1637,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.southcarolina.3',
+	33.8361,
+	-81.1637,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.virginia.1',
+	37.4316,
+	-78.6569,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.virginia.2',
+	37.4316,
+	-78.6569,
 	(select seller_id from sellers where seller_name = 'google')
 );
 
@@ -177,8 +1149,224 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'google.virginia.3',
-	39.0438,
-	-77.4874,
+	37.4316,
+	-78.6569,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.ohio.1',
+	39.9612,
+	-82.9988,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.ohio.2',
+	39.9612,
+	-82.9988,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.ohio.3',
+	39.9612,
+	-82.9988,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.dallas.1',
+	32.7767,
+	-96.7970,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.dallas.2',
+	32.7767,
+	-96.7970,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.dallas.3',
+	32.7767,
+	-96.7970,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.oregon.1',
+	45.5946,
+	-121.1787,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.oregon.2',
+	45.5946,
+	-121.1787,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.oregon.3',
+	45.5946,
+	-121.1787,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.losangeles.1',
+	34.0522,
+	-118.2437,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.losangeles.2',
+	34.0522,
+	-118.2437,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.losangeles.3',
+	34.0522,
+	-118.2437,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.saltlakecity.1',
+	40.7608,
+	-111.8910,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.saltlakecity.2',
+	40.7608,
+	-111.8910,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.saltlakecity.3',
+	40.7608,
+	-111.8910,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.lasvegas.1',
+	36.1716,
+	-115.1391,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.lasvegas.2',
+	36.1716,
+	-115.1391,
+	(select seller_id from sellers where seller_name = 'google')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'google.lasvegas.3',
+	36.1716,
+	-115.1391,
 	(select seller_id from sellers where seller_name = 'google')
 );
 
