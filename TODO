@@ -23,11 +23,19 @@ DONE
 
 	Adjust the SDK to read google.txt, multiplay.txt from the new google cloud storage location.
 
-TODO
-
 	Update dev.sql so that it defines *ALL* google cloud datacenters.
 
-	Generate a new dev.bin and copy this (manually) to the dev artifacts directory.
+	Generate a new database.bin and copy this (manually) to the dev artifacts directory.
+
+TODO
+
+	I'm going to need to automatically map between native datacenter names and my own datacenter names.
+
+	Add an optional string to each datacenter called "native_name".
+
+	Add this to the JSON and the database extract code in golang.
+
+	
 
 	----------------------
 

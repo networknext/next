@@ -473,6 +473,7 @@ func (controller *Controller) DeleteSeller(sellerId uint64) error {
 type DatacenterData struct {
 	DatacenterId   uint64  `json:"datacenter_id"`
 	DatacenterName string  `json:"datacenter_name"`
+	NativeName     string  `json:"native_name"`
 	Latitude       float32 `json:"latitude"`
 	Longitude      float32 `json:"longitude"`
 	SellerId       uint64  `json:"seller_id"`
@@ -480,8 +481,8 @@ type DatacenterData struct {
 }
 
 func (controller *Controller) CreateDatacenter(datacenterData *DatacenterData) (uint64, error) {
-	sql := "INSERT INTO datacenters (datacenter_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5) RETURNING datacenter_id;"
-	result := controller.pgsql.QueryRow(sql, datacenterData.DatacenterName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes)
+	sql := "INSERT INTO datacenters (datacenter_name, native_name, latitude, longitude, seller_id, notes) VALUES ($1, $2, $3, $4, $5) RETURNING datacenter_id;"
+	result := controller.pgsql.QueryRow(sql, datacenterData.DatacenterName, datacenterData.NativeName, datacenterData.Latitude, datacenterData.Longitude, datacenterData.SellerId, datacenterData.Notes)
 	datacenterId := uint64(0)
 	if err := result.Scan(&datacenterId); err != nil {
 		return 0, fmt.Errorf("could not insert datacenter: %v\n", err)
@@ -491,14 +492,14 @@ func (controller *Controller) CreateDatacenter(datacenterData *DatacenterData) (
 
 func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
 	datacenters := make([]DatacenterData, 0)
-	rows, err := controller.pgsql.Query("SELECT datacenter_id, datacenter_name, latitude, longitude, seller_id, notes FROM datacenters;")
+	rows, err := controller.pgsql.Query("SELECT datacenter_id, datacenter_name, native_name, latitude, longitude, seller_id, notes FROM datacenters;")
 	if err != nil {
 		return nil, fmt.Errorf("could not read datacenters: %v\n", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := DatacenterData{}
-		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.Latitude, &row.Longitude, &row.SellerId, &row.Notes); err != nil {
+		if err := rows.Scan(&row.DatacenterId, &row.DatacenterName, &row.NativeName, &row.Latitude, &row.Longitude, &row.SellerId, &row.Notes); err != nil {
 			return nil, fmt.Errorf("could not scan datacenter row: %v\n", err)
 		}
 		datacenters = append(datacenters, row)

@@ -62,10 +62,11 @@ type Seller struct {
 }
 
 type Datacenter struct {
-	Id        uint64                  `json:"id"`
-	Name      string                  `json:"name"`
-	Latitude  float32                 `json:"latitude"`
-	Longitude float32                 `json:"longitude"`
+	Id         uint64                  `json:"id"`
+	Name       string                  `json:"name"`
+	Native     string                  `json:"native"`
+	Latitude   float32                 `json:"latitude"`
+	Longitude  float32                 `json:"longitude"`
 }
 
 type BuyerDatacenterSettings struct {
@@ -381,6 +382,7 @@ func (database *Database) String() string {
 
 	type DatacenterRow struct {
 		Name      string
+		Native    string
 		Id        string
 		Latitude  string
 		Longitude string
@@ -393,6 +395,7 @@ func (database *Database) String() string {
 		row := DatacenterRow{
 			Id:        fmt.Sprintf("%0x", v.Id),
 			Name:      v.Name,
+			Native:    v.Native,
 			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
 			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
 		}
@@ -845,6 +848,7 @@ func ExtractDatabase(config string) (*Database, error) {
 	type DatacenterRow struct {
 		datacenter_id   uint64
 		datacenter_name string
+		native_name     string
 		latitude        float32
 		longitude       float32
 		seller_id       uint64
@@ -852,7 +856,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	datacenterRows := make([]DatacenterRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT datacenter_id, datacenter_name, latitude, longitude, seller_id FROM datacenters")
+		rows, err := pgsql.Query("SELECT datacenter_id, datacenter_name, native_name, latitude, longitude, seller_id FROM datacenters")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract datacenters: %v\n", err)
 		}
@@ -861,7 +865,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := DatacenterRow{}
-			if err := rows.Scan(&row.datacenter_id, &row.datacenter_name, &row.latitude, &row.longitude, &row.seller_id); err != nil {
+			if err := rows.Scan(&row.datacenter_id, &row.datacenter_name, &row.native_name, &row.latitude, &row.longitude, &row.seller_id); err != nil {
 				return nil, fmt.Errorf("failed to scan datacenter row: %v\n", err)
 			}
 			datacenterRows = append(datacenterRows, row)
@@ -1031,7 +1035,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\ndatacenters:\n")
 	for _, row := range datacenterRows {
-		fmt.Printf("%d: %s, %.1f, %.1f, %d\n", row.datacenter_id, row.datacenter_name, row.latitude, row.longitude, row.seller_id)
+		fmt.Printf("%d: %s, %s, %.1f, %.1f, %d\n", row.datacenter_id, row.datacenter_name, row.native_name, row.latitude, row.longitude, row.seller_id)
 	}
 
 	fmt.Printf("\nbuyers:\n")
@@ -1182,6 +1186,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		datacenter.Id = HashString(row.datacenter_name)
 		datacenter.Name = row.datacenter_name
+		datacenter.Native = row.native_name
 		datacenter.Latitude = row.latitude
 		datacenter.Longitude = row.longitude
 
