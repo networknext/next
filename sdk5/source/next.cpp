@@ -12539,6 +12539,9 @@ void next_server_internal_send_packet_to_backend( next_server_internal_t * serve
 {
     next_server_internal_verify_sentinels( server );
 
+    if ( server->backend_address.type == NEXT_ADDRESS_NONE )
+        return;
+
     next_assert( server->backend_address.type != NEXT_ADDRESS_NONE );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
@@ -14871,6 +14874,8 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     if ( !server->autodetect_finished )
         return;
+
+    // wait until the backend 
 
     // if we have started flushing, abort the init...
 
