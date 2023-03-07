@@ -39,9 +39,13 @@ DONE
 
 TODO
 
+	Setup dev.losangelesfreewaysatnight.com domain with cloudflare to point at the server backend in dev.
+
+	Bonus points, do this via terraform :)
+
 	----------------------
 
-	Verify that raspberry server autodetects google cloud datacenter and inits with server backend
+	Verify that the raspberry server inits with the server backend.
 
 	----------------------
 
@@ -49,21 +53,7 @@ TODO
 
 	----------------------
 
-	Setup the spacecats.net or losangelesfreewaysatnight.com domain on cloudflare to point to the server backend
-
-	Can I use terraform to control cloudflare and set up domains?
-
-	It would be nice if I could quickly setup dev/prod domains for the SDK so I can point the SDK at them, and these domains would directly point to the address in the terraform for the API, server backend, relay backend... ?
-
-	This way if the server backend address changes due to deployment, then it could automatically update cloudflare.
-
-	Alternatively, I could pin the IP address for each public feature so they hold the same external IP over time, in terraform, even if they get torn down and rebuilt.
-
-	----------------------
-
-	Now I need to setup relays.
-
-	Create a new "Relays" project under google cloud.
+	Create a new "Relays" project under google cloud via terraform.
 
 	Inside here, I can programatically create relays with terraform.
 
