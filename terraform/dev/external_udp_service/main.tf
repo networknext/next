@@ -34,12 +34,12 @@ resource "google_compute_forwarding_rule" "service" {
   name                  = var.service_name
   region                = var.region
   project               = var.project
-  backend_service       = google_compute_region_backend_service.service.id
-  load_balancing_scheme = "EXTERNAL"
-  ip_protocol           = "UDP"
   ip_address            = google_compute_address.service.id
   port_range            = var.port
   network_tier          = "STANDARD"
+  load_balancing_scheme = "EXTERNAL"
+  ip_protocol           = "UDP"
+  backend_service       = google_compute_region_backend_service.service.id
 }
 
 resource "google_compute_region_backend_service" "service" {

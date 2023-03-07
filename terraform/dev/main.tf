@@ -70,41 +70,6 @@ resource "google_compute_firewall" "allow_ssh" {
   target_tags = ["allow-ssh"]
 }
 
-resource "google_compute_firewall" "allow_http" {
-  name          = "allow http"
-  project       = var.project
-  direction     = "INGRESS"
-  network       = google_compute_network.development.id
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-  target_tags = ["allow-http"]
-}
-
-resource "google_compute_firewall" "allow_udp_45000" {
-  name          = "allow-udp-45000"
-  project       = var.project
-  direction     = "INGRESS"
-  network       = google_compute_network.development.id
-  allow {
-    protocol = "udp"
-    ports    = ["45000"]
-  }
-  target_tags = ["allow-udp-45000"]
-}
-
-resource "google_compute_firewall" "allow_udp_all" {
-  name          = "allow-udp-all"
-  project       = var.project
-  direction     = "INGRESS"
-  network       = google_compute_network.development.id
-  allow {
-    protocol = "udp"
-  }
-  target_tags = ["allow-udp-all"]
-}
-
 resource "google_compute_firewall" "allow_health_checks" {
   name          = "allow-health-checks"
   project       = var.project
@@ -118,6 +83,44 @@ resource "google_compute_firewall" "allow_health_checks" {
   target_tags = ["allow-health-checks"]
 }
 
+resource "google_compute_firewall" "allow_http" {
+  name          = "allow-http"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+  target_tags = ["allow-http"]
+}
+
+resource "google_compute_firewall" "allow_udp_45000" {
+  name          = "allow-udp-45000"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "udp"
+    ports    = ["45000"]
+  }
+  target_tags = ["allow-udp-45000"]
+}
+
+resource "google_compute_firewall" "allow_udp_all" {
+  name          = "allow-udp-all"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "udp"
+  }
+  target_tags = ["allow-udp-all"]
+}
+
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_instance" "test" {
@@ -128,12 +131,14 @@ resource "google_compute_instance" "test" {
   network_interface {
     network    = google_compute_network.development.id
     subnetwork = google_compute_subnetwork.development.id
+    access_config {}
   }
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     }
   }
+  tags = ["allow-ssh"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -322,7 +327,7 @@ module "relay_backend" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
-  tags                     = ["allow-ssh", "allow-health-checks"]
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 output "relay_backend_address" {
@@ -444,7 +449,7 @@ module "portal_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
-  tags               = ["allow-ssh", "allow-health-checks"]
+  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -475,7 +480,7 @@ module "map_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
-  tags               = ["allow-ssh", "allow-health-checks"]
+  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 # ----------------------------------------------------------------------------------------

@@ -20,12 +20,11 @@ DONE
 
 TODO
 
-	Server backend LB says 0/2 healthy, so there it is...
+	After adjusting firewall rules, it seems the server backend cannot get the route matrix from the relay backend, and this is what is making it (correctly) report not healthy on the lb_health check.
 
-	Need to look up examples of external UDP load balancer configuration in google cloud, sans terraform, and then convert to terraform.
+	Why can't it get the route matrix? The relay backend seems healthy.
 
-	There are no external UDP load balancer examples in terraform that I can find.
-	
+		
 
 
 
