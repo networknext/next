@@ -20,18 +20,20 @@ variable "region" { type = string }
 variable "default_network" { type = string }
 variable "default_subnetwork" { type = string }
 variable "service_account" { type = string }
+variable "tags" { type = list }
 
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_instance_template" "service" {
   name         = "${var.service_name}-${var.git_hash}"
   machine_type = var.machine_type
-  tags         = ["allow-health-check", "http-server"]
 
   network_interface {
     network    = var.default_network
     subnetwork = var.default_subnetwork
   }
+
+  tags = var.tags
 
   disk {
     source_image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"

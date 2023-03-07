@@ -22,6 +22,7 @@ variable "default_subnetwork" { type = string }
 variable "load_balancer_subnetwork" { type = string }
 variable "load_balancer_network_mask" { type = string }
 variable "service_account" { type = string }
+variable "tags" { type = list }
 
 # ----------------------------------------------------------------------------------------
 
@@ -86,12 +87,13 @@ resource "google_compute_instance_template" "service" {
   name         = "${var.service_name}-${var.git_hash}"
   project      = var.project
   machine_type = var.machine_type
-  tags         = ["http-server"]
 
   network_interface {
     network    = var.default_network
     subnetwork = var.default_subnetwork
   }
+
+  tags = var.tags
 
   disk {
     source_image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
@@ -164,19 +166,6 @@ resource "google_compute_region_instance_group_manager" "service" {
     max_surge_fixed                = 10
     max_unavailable_fixed          = 0
     replacement_method             = "SUBSTITUTE"
-  }
-}
-
-resource "google_compute_firewall" "service" {
-  name          = var.service_name
-  project       = var.project
-  direction     = "INGRESS"
-  network       = var.default_network
-  source_ranges = [var.load_balancer_network_mask]
-  target_tags   = ["http-server"]
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
   }
 }
 

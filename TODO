@@ -2,54 +2,7 @@ DONE
 
 	Setup dev.spacecats.net to point at the server backend LB in dev.
 
-TODO
-
-	Assert failing on one of the raspberry server instances:
-
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: assert failed: ( server->backend_address.type != NEXT_ADDRESS_NONE ), function next_server_internal_send_packet_to_backend, file ../sdk5/source/next.cpp, line 12542
-
-	This definitely should not happen...
-
-	Full logs:
-
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: Raspberry Server
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.000222: info: log level overridden to 4
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.000233: debug: customer public key is ''
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.000237: info: customer private key override
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.000242: info: found valid customer private key
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.000247: info: raspberry backend url: http://35.227.249.201
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.010944: info: server buyer id is 2b9c891211588152
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.011159: info: server datacenter override 'cloud'
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.011278: info: server input datacenter is 'cloud' [9ebb5c9513bac4fe]
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.011413: info: server bound to 0.0.0.0:56878
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.013617: info: server initializing with backend
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.013828: info: server started on 34.71.201.168:56878
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.014172: info: server increased thread priority
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.014393: info: public address is: 34.71.201.168:56878
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.014587: info: sending server update: 34.71.201.168:56878
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.014768: info: server attempting to autodetect datacenter
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.014874: info: server autodetect datacenter: looking for curl
-		Mar 07 01:18:54 raspberry-server-mh77 app[2681]: 100000.015031: info: server resolving backend hostname 'dev5.spacecats.net'
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.033509: info: server autodetect datacenter: curl exists
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.034024: warning: server failed to resolve hostname (0)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.041476: info: server autodetect datacenter: running in google cloud
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.051732: info: server autodetect datacenter: google zone is "us-central1-c"
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.063027: warning: server failed to resolve hostname (1)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.081710: warning: server failed to resolve hostname (2)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.098712: warning: server failed to resolve hostname (3)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.133123: warning: server failed to resolve hostname (4)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.153406: warning: server failed to resolve hostname (5)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.170103: warning: server failed to resolve hostname (6)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.187246: warning: server failed to resolve hostname (7)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.206543: warning: server failed to resolve hostname (8)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.224077: warning: server failed to resolve hostname (9)
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.224094: error: server failed to resolve backend hostname: dev5.spacecats.net
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.236437: info: server autodetect datacenter: "us-central1-c" -> " google.iowa.3"
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.325577: info: server failed to resolve backend hostname
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: 100000.325610: info: server autodetected datacenter ' google.iowa.3' [e9ef0340e766d81d]
-		Mar 07 01:18:55 raspberry-server-mh77 app[2681]: assert failed: ( server->backend_address.type != NEXT_ADDRESS_NONE ), function next_server_internal_send_packet_to_backend, file ../sdk5/source/next.cpp, line 12542	
-
-	---------------
+	Fixed assert on one raspberry server instance when it couldn't resolve the server backend hostname.
 
 	When the raspberry server has the correct DNS, it points at the server backend LB IP address
 
@@ -58,6 +11,48 @@ TODO
 	It could be that the LB is misconfigured, or firewall rules or whatever.
 
 	Need to debug ...
+
+	The server backend simply isn't receiving packets.
+
+	This means the UDP external LB is misconfigured.
+
+	Added firewall rules to open up UDP ports. For the moment applied to all VMs, which is fine, it's dev and is not expected to be hardened.
+
+TODO
+
+	Server backend LB says 0/2 healthy, so there it is...
+
+	Need to look up examples of external UDP load balancer configuration in google cloud, sans terraform, and then convert to terraform.
+
+	There are no external UDP load balancer examples in terraform that I can find.
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

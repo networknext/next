@@ -45,18 +45,6 @@ resource "google_compute_subnetwork" "development" {
   private_ip_google_access = true
 }
 
-resource "google_compute_firewall" "development" {
-  name          = "development"
-  project       = var.project
-  direction     = "INGRESS"
-  network       = google_compute_network.development.id
-  source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
-  allow {
-    protocol = "tcp"
-    ports    = ["22", "80"]
-  }
-}
-
 resource "google_compute_subnetwork" "internal_http_load_balancer" {
   name          = "internal-http-load-balancer"
   project       = var.project
@@ -65,6 +53,69 @@ resource "google_compute_subnetwork" "internal_http_load_balancer" {
   role          = "ACTIVE"
   network       = google_compute_network.development.id
   ip_cidr_range = "10.1.0.0/16"
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_firewall" "allow_ssh" {
+  name          = "allow-ssh"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+  target_tags = ["allow-ssh"]
+}
+
+resource "google_compute_firewall" "allow_http" {
+  name          = "allow http"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+  target_tags = ["allow-http"]
+}
+
+resource "google_compute_firewall" "allow_udp_45000" {
+  name          = "allow-udp-45000"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  allow {
+    protocol = "udp"
+    ports    = ["45000"]
+  }
+  target_tags = ["allow-udp-45000"]
+}
+
+resource "google_compute_firewall" "allow_udp_all" {
+  name          = "allow-udp-all"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  allow {
+    protocol = "udp"
+  }
+  target_tags = ["allow-udp-all"]
+}
+
+resource "google_compute_firewall" "allow_health_checks" {
+  name          = "allow-health-checks"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+  target_tags = ["allow-health-checks"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -184,6 +235,7 @@ module "magic_backend" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
+  tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 output "magic_backend_address" {
@@ -226,6 +278,7 @@ module "relay_gateway" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.service_account
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 output "relay_gateway_address" {
@@ -269,6 +322,7 @@ module "relay_backend" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
+  tags                     = ["allow-ssh", "allow-health-checks"]
 }
 
 output "relay_backend_address" {
@@ -313,6 +367,7 @@ module "analytics" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
+  tags                       = ["allow-ssh", "allow-health-checks"]
 }
 
 output "analytics_address" {
@@ -353,6 +408,7 @@ module "api" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.service_account
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 output "api_address" {
@@ -388,6 +444,7 @@ module "portal_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
+  tags               = ["allow-ssh", "allow-health-checks"]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -418,6 +475,7 @@ module "map_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
+  tags               = ["allow-ssh", "allow-health-checks"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -458,6 +516,7 @@ module "server_backend" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
+  tags               = ["allow-ssh", "allow-health-checks", "allow-udp-45000"]
 }
 
 output "server_backend_address" {
@@ -493,6 +552,7 @@ module "raspberry_backend" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.service_account
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 output "raspberry_backend_address" {
@@ -533,6 +593,7 @@ module "raspberry_server" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -568,6 +629,7 @@ module "raspberry_client" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
+  tags               = ["allow-ssh"]
 }
 
 # ----------------------------------------------------------------------------------------

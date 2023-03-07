@@ -21,6 +21,7 @@ variable "default_network" { type = string }
 variable "default_subnetwork" { type = string }
 variable "service_account" { type = string }
 variable "port" { type = string }
+variable "tags" { type = list }
 
 # ----------------------------------------------------------------------------------------
 
@@ -46,6 +47,7 @@ resource "google_compute_region_backend_service" "service" {
   project               = var.project
   region                = var.region
   protocol              = "UDP"
+  port_name             = "udp"
   load_balancing_scheme = "EXTERNAL"
   timeout_sec           = 10
   health_checks         = [google_compute_region_health_check.service_lb.id]
@@ -58,12 +60,13 @@ resource "google_compute_region_backend_service" "service" {
 resource "google_compute_instance_template" "service" {
   name         = "${var.service_name}-${var.git_hash}"
   machine_type = var.machine_type
-  tags         = ["allow-health-check", "http-server", "udp-server"]
 
   network_interface {
     network    = var.default_network
     subnetwork = var.default_subnetwork
   }
+
+  tags = var.tags
 
   disk {
     source_image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
