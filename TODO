@@ -1,47 +1,49 @@
 DONE
 
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099775: info: server attempting to autodetect datacenter
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.099888: info: server autodetect datacenter: looking for curl
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.100066: info: server resolving backend hostname 'dev5.spacecats.net'
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.118138: info: server autodetect datacenter: curl exists
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.124958: info: server autodetect datacenter: running in google cloud
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.135118: info: server autodetect datacenter: google zone is "us-central1-c"
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.202215: info: server resolved backend hostname to 35.208.142.31:45000
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295106: info: server autodetect datacenter: not in AWS
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.295541: info: server autodetect datacenter: not in multiplay
-	Mar 05 23:57:19 raspberry-server-4fnk app[1579]: 100000.306211: info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]
-
-	Setup google.txt
-
-	Copy across old multiplay.txt
-
-	Extend storage terraform to setup a download directory for SDK files, eg: "network_next_sdk_config"
-
-	This directory should be public, so that the SDK can read data.
-
-	Update semaphore so it uploads all config text files to this dir on deploy.
-
-	Adjust the SDK to read google.txt, multiplay.txt from the new google cloud storage location.
-
-	Update dev.sql so that it defines *ALL* google cloud datacenters.
-
-	Generate a new database.bin and copy this (manually) to the dev artifacts directory.
-
-	I'm going to need to automatically map between native datacenter names and my own datacenter names.
-
-	Add an optional string to each datacenter called "native_name".
-
-	Add this to the JSON and the database extract code in golang.
-
-	Now go through google.txt and put the native name in each datacenter in dev.sql
-
-	Push updated database.bin with all datacenters and native names.
+	Setup dev.spacecats.net to point at the server backend LB in dev.
 
 TODO
 
-	Setup dev.losangelesfreewaysatnight.com domain with cloudflare to point at the server backend in dev.
+	When the raspberry server has the correct DNS, it points at the server backend LB IP address
 
-	Bonus points, do this via terraform :)
+	But it still is not getting a response for the init request.
+
+	It could be that the LB is misconfigured, or firewall rules or whatever.
+
+	Need to debug ...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	----------------------
 

@@ -44,9 +44,9 @@
 #endif
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                "prod5.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME                 "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                 "dev5.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME                  "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "45000"
 
