@@ -33,18 +33,19 @@ DONE
 
 	Add this to the JSON and the database extract code in golang.
 
-TODO
-
 	Now go through google.txt and put the native name in each datacenter in dev.sql
 
+	Push updated database.bin with all datacenters and native names.
+
+TODO
+
 	----------------------
 
-	Deploy this code to dev env via terraform and verify that the raspberry server autodetects the correct google datacenter name,
-	and inits with the server backend with a known datacenter and customer (raspberry).
+	Verify that raspberry server autodetects google cloud datacenter and inits with server backend
 
 	----------------------
 
-	Verify that the raspberry client is actually connecting and upgrading
+	Verify that the raspberry client connects and upgrades
 
 	----------------------
 
