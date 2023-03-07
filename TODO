@@ -18,13 +18,23 @@ DONE
 
 	Added firewall rules to open up UDP ports. For the moment applied to all VMs, which is fine, it's dev and is not expected to be hardened.
 
-TODO
-
 	After adjusting firewall rules, it seems the server backend cannot get the route matrix from the relay backend, and this is what is making it (correctly) report not healthy on the lb_health check.
 
 	Why can't it get the route matrix? The relay backend seems healthy.
 
-		
+	Seems like the server backend can get the route matrix after a while (5 minute delay?)
+
+	Even so, the load balancer still thinks the server backend is unhealthy. Why?
+
+	I believe the firewall is setup correctly to allow the health checks in on TCP port 80 for the external network load balancer.
+
+	At this point, I believe there is an issue with the load balancer configuration, so that it is not actually firing off the health checks. 
+
+	I don't see any health checks in the firewall rules.
+
+TODO
+
+
 
 
 
@@ -465,3 +475,10 @@ Nice to have:
 	Secrets for accessing google cloud to upload files to google cloud storage
 
 	--------------
+
+	Need to make sure the server backend UDP packets sent back to the server, "come from" the IP address and port of the load balancer.
+
+	Details here: https://cloud.google.com/load-balancing/docs/network/udp-with-network-load-balancing
+
+	--------------
+	

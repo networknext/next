@@ -75,11 +75,28 @@ resource "google_compute_firewall" "allow_health_checks" {
   project       = var.project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
-  source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
+  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
+
   allow {
     protocol = "tcp"
     ports    = ["80"]
   }
+
+  target_tags = ["allow-health-checks"]
+}
+
+resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
+  name          = "allow-network-load-balancer-traffic"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20", "209.85.152.0/22", "209.85.204.0/22"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+
   target_tags = ["allow-health-checks"]
 }
 
