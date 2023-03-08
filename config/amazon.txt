@@ -1,0 +1,25 @@
+# availability zones
+
+use1-az1,amazon.virginia.1
+use1-az2,amazon.virginia.2
+use1-az3,amazon.virginia.3
+use1-az4,amazon.virginia.4
+use1-az5,amazon.virginia.5
+use1-az6,amazon.virginia.6
+
+# local zones
+
+use1-atl1-az1,amazon.atlanta.1
+use1-bos1-az1,amazon.boston.1
+use1-bue1-az1,amazon.buenosaires.1
+use1-chi1-az1,amazon.chicago.1
+use1-dfw1-az1,amazon.dallas.1
+use1-iah1-az1,amazon.houston.1
+use1-lim1-az1,amazon.lima.1
+use1-mci1-az1,amazon.kansas.1
+use1-mia1-az1,amazon.miami.1
+use1-msp1-az1,amazon.minneapolis.1
+use1-nyc1-az1,amazon.newyork.1
+use1-phl1-az1,amazon.philadelphia.1
+use1-qro1-az1,amazon.queretaro.1
+use1-scl1-az1,amazon.santiago.1

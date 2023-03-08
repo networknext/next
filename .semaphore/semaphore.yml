@@ -184,7 +184,7 @@ promotions:
   - name: "Deploy Backend"
     pipeline_file: deploy-backend.yml
     auto_promote:
-      when: "result = 'passed' and (branch = 'dev' or branch = 'staging' or branch = 'prod')"
+      when: "result = 'passed' and (branch = 'dev' or branch = 'staging')"
 
   - name: "Deploy Relay"
     pipeline_file: deploy-relay.yml

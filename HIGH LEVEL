@@ -26,9 +26,13 @@ DONE
 
 TODO
 
-	Setup relays with terraform.
-	
+	Resolve external UDP LB blocker.
+
+	Setup dev relays with terraform.
+
 	Working analytics service that inserts data into bigquery.
+
+	-------------
 
 	Rebuild portal (no auth)
 
@@ -36,20 +40,14 @@ TODO
 
 	Configuration step (generate unique keys etc.)
 
-	Document *everything*.
-
 	Run through setup on a new google cloud organization and check everything.
+
+	Document *everything*.
 
 	(Ready for Turtle Rock)
 
 	Multipath with two next routes.
 
 	(Ready for Psyonix pitch)
-
-	Auth for portal and admin tool.
-
-	Multiple buyer support in portal.
-
-	Turnkey add relays in clouds via admin tool.
 
 	(Ready for Unity, WB, etc.)

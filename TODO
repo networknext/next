@@ -20,7 +20,88 @@ DONE
 
 	Test dev automatic deploy backend.
 
+	Limit automatic deploy to dev and staging. Prod is manual.
+
+	Get access to AWS account.
+
+	Extract the full set of amazon AZIDs
+
+		> aws ec2 describe-availability-zones --all-availability-zones
+
+	https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
+
 TODO
+
+	Setup new amazon.txt
+
+	-----------------------
+
+	Import all amazon datacenters into dev.sql
+
+	-----------------------
+
+	When creating the postgres database via terraform, there needs to be something that runs create.sql and ${BRANCH}.sql to set up the initial state of the database.
+
+	-----------------------
+
+	Start playing around with spinning up relays in semaphore.
+
+	First, create a new "Relays" project in google cloud.
+
+	Add a new "relays" terraform project that points to the google cloud provider, and spins up a fixed number of relays with given configuration in dev.
+
+	The goal here is to just spin up the relay VMs and configure them, but we'll not actually be able to modify the 
+
+	-----------------------
+
+	How can I setup a terraform provider to configure the database, and ultimately, database.bin?
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
+	I am blocked on the external UDP load balancer configuration.
+
+	--------------
 
 	Verify that the raspberry server inits with the server backend.
 
@@ -107,27 +188,6 @@ TODO
 
 
 
-	----------------------
-
-	Create a new "Relays" project under google cloud via terraform.
-
-	Inside here, I can programatically create relays with terraform.
-
-	----------------------
-
-	Could I create a terraform interface to my database, so I can define the database via terraform?
-
-	This would completely remove the need for any admin portal.
-
-	This is a smart move...
-
-	----------------------
-
-	Can I create VMs with vultr, linode, amazon, stackpath, etc. using terraform.
-
-	And then for bare metal VMs that need to be manual, I could set them up manually, and then add them to the system via terraform adding the relay entry to the database.
-
-	----------------------
 
 
 
