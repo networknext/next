@@ -12,6 +12,12 @@ DONE
 
 	Split apart relay and config deploys, since they are not tied to any specific branch.
 
+	Make deploy backend automatic for dev, staging and prod branches
+
+	Generalize deploy backend so it works on multiple branches
+
+	Add deploy database step
+
 TODO
 
 	Verify that the raspberry server inits with the server backend.
