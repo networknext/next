@@ -192,6 +192,9 @@ promotions:
   - name: "Deploy Config"
     pipeline_file: deploy-config.yml
 
+  - name: "Deploy Database"
+    pipeline_file: deploy-database.yml
+
   - name: "Functional Test Backend"
     pipeline_file: functional-test-backend.yml
 
