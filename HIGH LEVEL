@@ -26,17 +26,23 @@ DONE
 
 TODO
 
-	Resolve external UDP LB blocker.
-
 	Setup dev relays with terraform.
 
-	Working analytics service that inserts data into bigquery.
+	------------
 
-	-------------
+	Resolve external UDP load balancer blocker.
 
-	Rebuild portal (no auth)
+	Setup pubsub in dev with terraform.
+
+	Setup bigquery in dev with terraform.
+
+	Analytics service inserts data into bigquery in dev.
+
+	Rebuild portal (no auth).
 
 	Multithreaded relay with session database per-socket thread (no contention)
+
+	------------	
 
 	Configuration step (generate unique keys etc.)
 

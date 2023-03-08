@@ -30,13 +30,21 @@ DONE
 
 	https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
 
+	First pass amazon.txt
+
+	Get a list of all AWS regions
+
 TODO
 
-	Setup new amazon.txt
+	Then per-region, pass them in and describe all availability zones per-region.
+
+		>  aws ec2 describe-availability-zones --region ${REGION} > region.txt
+
+	Once this is done, I should have a complete amazon.txt
 
 	-----------------------
 
-	Import all amazon datacenters into dev.sql
+	Once amazon.txt is finished, import all amazon datacenters into dev.sql
 
 	-----------------------
 
