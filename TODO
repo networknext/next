@@ -18,6 +18,8 @@ DONE
 
 	Add deploy database step
 
+	Test dev automatic deploy backend.
+
 TODO
 
 	Verify that the raspberry server inits with the server backend.
