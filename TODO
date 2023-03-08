@@ -1,110 +1,97 @@
 DONE
 
-	Setup dev.spacecats.net to point at the server backend LB in dev.
-
-	Fixed assert on one raspberry server instance when it couldn't resolve the server backend hostname.
-
-	When the raspberry server has the correct DNS, it points at the server backend LB IP address
-
-	But it still is not getting a response for the init request.
-
-	It could be that the LB is misconfigured, or firewall rules or whatever.
-
-	Need to debug ...
-
-	The server backend simply isn't receiving packets.
-
-	This means the UDP external LB is misconfigured.
-
-	Added firewall rules to open up UDP ports. For the moment applied to all VMs, which is fine, it's dev and is not expected to be hardened.
-
-	After adjusting firewall rules, it seems the server backend cannot get the route matrix from the relay backend, and this is what is making it (correctly) report not healthy on the lb_health check.
-
-	Why can't it get the route matrix? The relay backend seems healthy.
-
-	Seems like the server backend can get the route matrix after a while (5 minute delay?)
-
-	Even so, the load balancer still thinks the server backend is unhealthy. Why?
-
-	I believe the firewall is setup correctly to allow the health checks in on TCP port 80 for the external network load balancer.
-
-	At this point, I believe there is an issue with the load balancer configuration, so that it is not actually firing off the health checks. 
-
-	I don't see any health checks in the firewall rules.
+	Server backend is now healthy.
 
 TODO
 
+	google.txt needs to be adjusted to remove the ' ' between the datacenter names
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	----------------------
+	--------------
 
 	Verify that the raspberry server inits with the server backend.
 
-	----------------------
+	--------------
 
 	Verify that the raspberry client connects and upgrades
+
+	--------------
+
+	Verify that I can run a raspberry server locally after "next select dev" and it initializes with the dev server backend.
+
+	Need to make sure the server backend UDP packets sent back to the server, "come from" the IP address and port of the load balancer.
+
+	Details here: https://cloud.google.com/load-balancing/docs/network/udp-with-network-load-balancing
+
+	This can be done by adjusting the startup script in the instance template.
+
+	--------------
+
+	Verify that I can run raspberry clients locally and they hit the raspberry backend and connect to servers and upgrade.
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	----------------------
 
@@ -475,10 +462,3 @@ Nice to have:
 	Secrets for accessing google cloud to upload files to google cloud storage
 
 	--------------
-
-	Need to make sure the server backend UDP packets sent back to the server, "come from" the IP address and port of the load balancer.
-
-	Details here: https://cloud.google.com/load-balancing/docs/network/udp-with-network-load-balancing
-
-	--------------
-	

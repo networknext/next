@@ -25,18 +25,20 @@ DONE
 	Setup dev environment in google cloud with terraform.
 
 TODO
+
+	Setup relays with terraform.
 	
 	Working analytics service that inserts data into bigquery.
 
 	Rebuild portal (no auth)
-
-	Rebuild admin tool (no auth)
 
 	Multithreaded relay with session database per-socket thread (no contention)
 
 	Configuration step (generate unique keys etc.)
 
 	Document *everything*.
+
+	Run through setup on a new google cloud organization and check everything.
 
 	(Ready for Turtle Rock)
 

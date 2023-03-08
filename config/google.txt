@@ -1,106 +1,106 @@
-asia-east1-a, google.taiwan.1
-asia-east1-b, google.taiwan.2
-asia-east1-c, google.taiwan.3
-asia-east2-a, google.hongkong.1
-asia-east2-b, google.hongkong.2
-asia-east2-c, google.hongkong.3
-asia-northeast1-a, google.tokyo.1
-asia-northeast1-b, google.tokyo.2
-asia-northeast1-c, google.tokyo.3
-asia-northeast2-a, google.osaka.1
-asia-northeast2-b, google.osaka.2
-asia-northeast2-c, google.osaka.3
-asia-northeast3-a, google.seoul.1
-asia-northeast3-b, google.seoul.2
-asia-northeast3-c, google.seoul.3
-asia-south1-a, google.mumbai.1
-asia-south1-b, google.mumbai.2
-asia-south1-c, google.mumbai.3
-asia-south2-a, google.delhi.1
-asia-south2-b, google.delhi.2
-asia-south2-c, google.delhi.3
-asia-southeast1-a, google.singapore.1
-asia-southeast1-b, google.singapore.2
-asia-southeast1-c, google.singapore.3
-asia-southeast2-a, google.jakarta.1
-asia-southeast2-b, google.jakarta.2
-asia-southeast2-c, google.jakarta.3
-australia-southeast1-a, google.sydney.1
-australia-southeast1-b, google.sydney.2
-australia-southeast1-c, google.sydney.3
-australia-southeast2-a, google.melbourne.1
-australia-southeast2-b, google.melbourne.2
-australia-southeast2-c, google.melbourne.3
-europe-central2-a, google.warsaw.1
-europe-central2-b, google.warsaw.2
-europe-central2-c, google.warsaw.3
-europe-north1-a, google.finland.1
-europe-north1-b, google.finland.2
-europe-north1-c, google.finland.3
-europe-southwest1-a, google.madrid.1,
-europe-southwest1-b, google.madrid.2,
-europe-southwest1-c, google.madrid.3,
-europe-west1-b, google.belgium.1
-europe-west1-c, google.belgium.2
-europe-west1-d, google.belgium.3
-europe-west2-a, google.london.1
-europe-west2-b, google.london.2
-europe-west2-c, google.london.3
-europe-west3-a, google.frankfurt.1
-europe-west3-b, google.frankfurt.2
-europe-west3-c, google.frankfurt.3
-europe-west4-a, google.netherlands.1
-europe-west4-b, google.netherlands.2
-europe-west4-c, google.netherlands.3
-europe-west6-a, google.zurich.1
-europe-west6-b, google.zurich.2
-europe-west6-c, google.zurich.3
-europe-west8-a, google.milan.1
-europe-west8-b, google.milan.2
-europe-west8-c, google.milan.3
-europe-west9-a, google.paris.1
-europe-west9-b, google.paris.2
-europe-west9-c, google.paris.3
-me-west1-a, google.telaviv.1
-me-west1-b, google.telaviv.2
-me-west1-c, google.telaviv.3
-northamerica-northeast1-a, google.montreal.1
-northamerica-northeast1-b, google.montreal.2
-northamerica-northeast1-c, google.montreal.3
-northamerica-northeast2-a, google.toronto.1
-northamerica-northeast2-b, google.toronto.2
-northamerica-northeast2-c, google.toronto.3
-southamerica-east1-a, google.saopaulo.1
-southamerica-east1-b, google.saopaulo.2
-southamerica-east1-c, google.saopaulo.3
-southamerica-west1-a, google.santiago.1
-southamerica-west1-b, google.santiago.2
-southamerica-west1-c, google.santiago.3
-us-central1-a, google.iowa.1
-us-central1-b, google.iowa.2
-us-central1-c, google.iowa.3
-us-central1-f, google.iowa.4
-us-east1-b, google.southcarolina.1
-us-east1-c, google.southcarolina.2
-us-east1-d, google.southcarolina.3
-us-east4-a, google.virginia.1
-us-east4-b,	google.virginia.2
-us-east4-c, google.virginia.3
-us-east5-a, google.ohio.1
-us-east5-b, google.ohio.2
-us-east5-c, google.ohio.3
-us-south1-a, google.dallas.1
-us-south1-b, google.dallas.2
-us-south1-c, google.dallas.3
-us-west1-a, google.oregon.1
-us-west1-b, google.oregon.2
-us-west1-c, google.oregon.3
-us-west2-a, google.losangeles.1
-us-west2-b, google.losangeles.2
-us-west2-c, google.losangeles.3
-us-west3-a, google.saltlakecity.1
-us-west3-b, google.saltlakecity.2
-us-west3-c, google.saltlakecity.3
-us-west4-a, google.lasvegas.1
-us-west4-b, google.lasvegas.2
-us-west4-c, google.lasvegas.3
+asia-east1-a,google.taiwan.1
+asia-east1-b,google.taiwan.2
+asia-east1-c,google.taiwan.3
+asia-east2-a,google.hongkong.1
+asia-east2-b,google.hongkong.2
+asia-east2-c,google.hongkong.3
+asia-northeast1-a,google.tokyo.1
+asia-northeast1-b,google.tokyo.2
+asia-northeast1-c,google.tokyo.3
+asia-northeast2-a,google.osaka.1
+asia-northeast2-b,google.osaka.2
+asia-northeast2-c,google.osaka.3
+asia-northeast3-a,google.seoul.1
+asia-northeast3-b,google.seoul.2
+asia-northeast3-c,google.seoul.3
+asia-south1-a,google.mumbai.1
+asia-south1-b,google.mumbai.2
+asia-south1-c,google.mumbai.3
+asia-south2-a,google.delhi.1
+asia-south2-b,google.delhi.2
+asia-south2-c,google.delhi.3
+asia-southeast1-a,google.singapore.1
+asia-southeast1-b,google.singapore.2
+asia-southeast1-c,google.singapore.3
+asia-southeast2-a,google.jakarta.1
+asia-southeast2-b,google.jakarta.2
+asia-southeast2-c,google.jakarta.3
+australia-southeast1-a,google.sydney.1
+australia-southeast1-b,google.sydney.2
+australia-southeast1-c,google.sydney.3
+australia-southeast2-a,google.melbourne.1
+australia-southeast2-b,google.melbourne.2
+australia-southeast2-c,google.melbourne.3
+europe-central2-a,google.warsaw.1
+europe-central2-b,google.warsaw.2
+europe-central2-c,google.warsaw.3
+europe-north1-a,google.finland.1
+europe-north1-b,google.finland.2
+europe-north1-c,google.finland.3
+europe-southwest1-a,google.madrid.1,
+europe-southwest1-b,google.madrid.2,
+europe-southwest1-c,google.madrid.3,
+europe-west1-b,google.belgium.1
+europe-west1-c,google.belgium.2
+europe-west1-d,google.belgium.3
+europe-west2-a,google.london.1
+europe-west2-b,google.london.2
+europe-west2-c,google.london.3
+europe-west3-a,google.frankfurt.1
+europe-west3-b,google.frankfurt.2
+europe-west3-c,google.frankfurt.3
+europe-west4-a,google.netherlands.1
+europe-west4-b,google.netherlands.2
+europe-west4-c,google.netherlands.3
+europe-west6-a,google.zurich.1
+europe-west6-b,google.zurich.2
+europe-west6-c,google.zurich.3
+europe-west8-a,google.milan.1
+europe-west8-b,google.milan.2
+europe-west8-c,google.milan.3
+europe-west9-a,google.paris.1
+europe-west9-b,google.paris.2
+europe-west9-c,google.paris.3
+me-west1-a,google.telaviv.1
+me-west1-b,google.telaviv.2
+me-west1-c,google.telaviv.3
+northamerica-northeast1-a,google.montreal.1
+northamerica-northeast1-b,google.montreal.2
+northamerica-northeast1-c,google.montreal.3
+northamerica-northeast2-a,google.toronto.1
+northamerica-northeast2-b,google.toronto.2
+northamerica-northeast2-c,google.toronto.3
+southamerica-east1-a,google.saopaulo.1
+southamerica-east1-b,google.saopaulo.2
+southamerica-east1-c,google.saopaulo.3
+southamerica-west1-a,google.santiago.1
+southamerica-west1-b,google.santiago.2
+southamerica-west1-c,google.santiago.3
+us-central1-a,google.iowa.1
+us-central1-b,google.iowa.2
+us-central1-c,google.iowa.3
+us-central1-f,google.iowa.4
+us-east1-b,google.southcarolina.1
+us-east1-c,google.southcarolina.2
+us-east1-d,google.southcarolina.3
+us-east4-a,google.virginia.1
+us-east4-b,google.virginia.2
+us-east4-c,google.virginia.3
+us-east5-a,google.ohio.1
+us-east5-b,google.ohio.2
+us-east5-c,google.ohio.3
+us-south1-a,google.dallas.1
+us-south1-b,google.dallas.2
+us-south1-c,google.dallas.3
+us-west1-a,google.oregon.1
+us-west1-b,google.oregon.2
+us-west1-c,google.oregon.3
+us-west2-a,google.losangeles.1
+us-west2-b,google.losangeles.2
+us-west2-c,google.losangeles.3
+us-west3-a,google.saltlakecity.1
+us-west3-b,google.saltlakecity.2
+us-west3-c,google.saltlakecity.3
+us-west4-a,google.lasvegas.1
+us-west4-b,google.lasvegas.2
+us-west4-c,google.lasvegas.3
