@@ -14,67 +14,6 @@ DONE
 
 TODO
 
-	Optimize code so it doesn't run tests unless stuff has changed, eg. https://docs.semaphoreci.com/reference/conditions-reference/
-
-	Don't waste money when only changing TODO...
-
-	Don't allow production deploy unless on prod branch.
-
-	The other branches, whatever...
-
-	------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	Verify that the raspberry server inits with the server backend.
 
 	--------------
@@ -502,10 +441,6 @@ Nice to have:
 
 	--------------
 
-	Semaphore should bitch at you if you try to deploy to dev from main, or prod from main etc.
-
-	--------------
-
 	Chaos monkey testing. The goal is to ensure no fallback to directs.
 
 	--------------
@@ -527,5 +462,15 @@ Nice to have:
 	Any configuration in the semaphore needs to be considered, eg. buckets to upload artifacts, sdk config etc.
 
 	Secrets for accessing google cloud to upload files to google cloud storage
+
+	--------------
+
+	Optimize code so it doesn't run tests unless stuff has changed, eg. https://docs.semaphoreci.com/reference/conditions-reference/
+
+	Don't waste money when only changing TODO...
+
+	Don't allow production deploy unless on prod branch.
+
+	The other branches, whatever...
 
 	--------------
