@@ -32,9 +32,11 @@ DONE
 
 	First pass amazon.txt
 
+TODO
+
 	Get a list of all AWS regions
 
-TODO
+		https://www.aws-services.info/regions.html
 
 	Then per-region, pass them in and describe all availability zones per-region.
 
