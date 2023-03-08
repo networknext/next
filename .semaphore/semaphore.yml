@@ -181,14 +181,10 @@ blocks:
 
 promotions:
 
-  - name: "Deploy Dev"
-    pipeline_file: deploy-dev.yml
-
-  - name: "Deploy Staging"
-    pipeline_file: deploy-staging.yml
-
-  - name: "Deploy Prod"
-    pipeline_file: deploy-prod.yml
+  - name: "Deploy Backend"
+    pipeline_file: deploy-backend.yml
+    auto_promote:
+      when: "result = 'passed' and (branch = 'dev' or branch = 'staging' or branch = 'prod')"
 
   - name: "Deploy Relay"
     pipeline_file: deploy-relay.yml
