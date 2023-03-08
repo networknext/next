@@ -1,39 +1,5 @@
 DONE
 
-	Server backend is now healthy.
-
-	google.txt needs to be adjusted to remove the ' ' between the datacenter names
-
-	Fix server backend so it listens on port 45000
-
-	Setup staging and production buckets
-
-	Setup staging and production deploys
-
-	Split apart relay and config deploys, since they are not tied to any specific branch.
-
-	Make deploy backend automatic for dev, staging and prod branches
-
-	Generalize deploy backend so it works on multiple branches
-
-	Add deploy database step
-
-	Test dev automatic deploy backend.
-
-	Limit automatic deploy to dev and staging. Prod is manual.
-
-	Get access to AWS account.
-
-	Extract the full set of amazon AZIDs
-
-		> aws ec2 describe-availability-zones --all-availability-zones
-
-	https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
-
-	First pass amazon.txt
-
-TODO
-
 	Get a list of all AWS regions
 
 		https://www.aws-services.info/regions.html
@@ -44,9 +10,9 @@ TODO
 
 	Once this is done, I should have a complete amazon.txt
 
-	-----------------------
+TODO
 
-	Once amazon.txt is finished, import all amazon datacenters into dev.sql
+	Import all amazon.txt datacenters into dev.sql
 
 	-----------------------
 
