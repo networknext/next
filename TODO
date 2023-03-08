@@ -2,11 +2,78 @@ DONE
 
 	Server backend is now healthy.
 
-TODO
-
 	google.txt needs to be adjusted to remove the ' ' between the datacenter names
 
-	--------------
+	Fix server backend so it listens on port 45000
+
+	Setup staging and production buckets
+
+	Setup staging and production deploys
+
+	Split apart relay and config deploys, since they are not tied to any specific branch.
+
+TODO
+
+	Optimize code so it doesn't run tests unless stuff has changed, eg. https://docs.semaphoreci.com/reference/conditions-reference/
+
+	Don't waste money when only changing TODO...
+
+	Don't allow production deploy unless on prod branch.
+
+	The other branches, whatever...
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Verify that the raspberry server inits with the server backend.
 
@@ -22,7 +89,7 @@ TODO
 
 	Details here: https://cloud.google.com/load-balancing/docs/network/udp-with-network-load-balancing
 
-	This can be done by adjusting the startup script in the instance template.
+	This can be done by adjusting the startup script in the instance template, *OR* by forcing the server backend to bind to the load balancer address.
 
 	--------------
 

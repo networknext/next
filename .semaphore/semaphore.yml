@@ -181,8 +181,20 @@ blocks:
 
 promotions:
 
-  - name: "Development Deployment"
-    pipeline_file: development-deploy.yml
+  - name: "Deploy Dev"
+    pipeline_file: deploy-dev.yml
+
+  - name: "Deploy Staging"
+    pipeline_file: deploy-staging.yml
+
+  - name: "Deploy Prod"
+    pipeline_file: deploy-prod.yml
+
+  - name: "Deploy Relay"
+    pipeline_file: deploy-relay.yml
+
+  - name: "Deploy Config"
+    pipeline_file: deploy-config.yml
 
   - name: "Functional Test Backend"
     pipeline_file: functional-test-backend.yml

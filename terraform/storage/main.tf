@@ -6,6 +6,8 @@ variable "location" { type = string }
 variable "region" { type = string }
 variable "zone" { type = string }
 variable "dev_artifacts" { type = string }
+variable "staging_artifacts" { type = string }
+variable "prod_artifacts" { type = string }
 variable "relay_artifacts" { type = string }
 variable "sdk_config" { type = string }
 
@@ -31,6 +33,28 @@ provider "google" {
 
 resource "google_storage_bucket" "dev-artifacts" {
   name                        = var.dev_artifacts
+  storage_class               = "MULTI_REGIONAL"
+  location                    = var.location
+  public_access_prevention    = "enforced"
+  uniform_bucket_level_access = true
+  force_destroy               = true
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_storage_bucket" "staging-artifacts" {
+  name                        = var.staging_artifacts
+  storage_class               = "MULTI_REGIONAL"
+  location                    = var.location
+  public_access_prevention    = "enforced"
+  uniform_bucket_level_access = true
+  force_destroy               = true
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_storage_bucket" "prod-artifacts" {
+  name                        = var.prod_artifacts
   storage_class               = "MULTI_REGIONAL"
   location                    = var.location
   public_access_prevention    = "enforced"

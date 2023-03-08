@@ -1,0 +1,32 @@
+version: v1.0
+
+name: "Config Deploy"
+
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: google-cloud-platform
+
+blocks:
+
+  - name: "Publish Config"
+
+    task:
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+            - export SDK_CONFIG_BUCKET=gs://network_next_sdk_config/
+
+      jobs:
+
+        - name: "Config"
+          commands:
+            - artifact pull workflow google.txt
+            - artifact pull workflow multiplay.txt
+            - gsutil cp google.txt $SDK_CONFIG_BUCKET
+            - gsutil cp multiplay.txt $SDK_CONFIG_BUCKET

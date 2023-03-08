@@ -1,0 +1,33 @@
+version: v1.0
+
+name: "Relay Deploy"
+
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: google-cloud-platform
+
+blocks:
+
+  - name: "Publish Artifacts"
+
+    task:
+
+      prologue:
+        commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+            - export RELAY_BUCKET=gs://network_next_relay_artifacts/
+
+      jobs:
+
+        - name: "Relay"
+          commands:
+            - artifact pull workflow relay
+            - chmod +x relay
+            - export VERSION=`./relay version`
+            - mv relay relay-$VERSION
+            - gsutil cp relay-$VERSION $RELAY_BUCKET

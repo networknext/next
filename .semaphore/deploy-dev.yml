@@ -21,8 +21,6 @@ blocks:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
             - export DEV_BUCKET=gs://network_next_dev_artifacts/
-            - export RELAY_BUCKET=gs://network_next_relay_artifacts/
-            - export SDK_CONFIG_BUCKET=gs://network_next_sdk_config/
 
       jobs:
 
@@ -40,13 +38,6 @@ blocks:
           commands:
             - artifact pull workflow libnext5.so
             - gsutil cp libnext5.so $DEV_BUCKET
-
-        - name: "Config"
-          commands:
-            - artifact pull workflow google.txt
-            - artifact pull workflow multiplay.txt
-            - gsutil cp google.txt $SDK_CONFIG_BUCKET
-            - gsutil cp multiplay.txt $SDK_CONFIG_BUCKET
 
         - name: "Analytics"
           commands:
@@ -102,11 +93,3 @@ blocks:
           commands:
             - artifact pull workflow raspberry_client.tar.gz
             - gsutil cp raspberry_client.tar.gz $DEV_BUCKET
-
-        - name: "Relay"
-          commands:
-            - artifact pull workflow relay
-            - chmod +x relay
-            - export VERSION=`./relay version`
-            - mv relay relay-$VERSION
-            - gsutil cp relay-$VERSION $RELAY_BUCKET
