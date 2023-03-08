@@ -91,7 +91,7 @@ void server_update_thread( void * data )
 
     while ( !quit )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "sending server update: %s", server_address );
+        next_printf( NEXT_LOG_LEVEL_INFO, "sending raspberry server update: %s", server_address );
 
         FILE * file = popen( command_line, "r" );
         if ( file )
@@ -158,7 +158,7 @@ int main()
 
     if ( server == NULL )
     {
-        printf( "error: failed to create server\n" );
+        printf( "error: failed to create raspberry server\n" );
         return 1;
     }
 
@@ -167,7 +167,7 @@ int main()
     int server_port = next_server_port( server );
     char public_address[256];
     snprintf( public_address, sizeof(public_address), "%s:%d", server_address, server_port );
-    next_printf( NEXT_LOG_LEVEL_INFO, "public address is: %s", public_address );
+    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry server public address is: %s", public_address );
 
     // send server updates to the raspberry backend in the background
 
@@ -186,7 +186,7 @@ int main()
 
         if ( next_server_direct_only( server ) )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "detected server is in direct only mode. restarting..." );
+            next_printf( NEXT_LOG_LEVEL_INFO, "detected raspberry server is in direct only mode. restarting..." );
             break;
         }
 
