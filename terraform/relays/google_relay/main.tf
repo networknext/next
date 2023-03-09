@@ -12,39 +12,38 @@ terraform {
 # ----------------------------------------------------------------------------------------
 
 variable "relay_name" { type = string }
-variable "region" { type = string }
 variable "zone" { type = string }
 variable "machine_type" { type = string }
-variable "vpn_address" { type = string }
-variable "ssh_public_key_file" { type = string }
-variable "env" { type = string }
-variable "relay_version" { type = string }
-variable "relay_artifacts_bucket" { type = string }
-variable "relay_public_key" { type = string }
-variable "relay_private_key" { type = string }
-variable "relay_backend_hostname" { type = string }
-variable "relay_backend_public_key" { type = string }
+variable "context" { type = map(string) }
+
+# ----------------------------------------------------------------------------------------
+
+locals {
+  a = split("-", var.zone)[0]
+  b = split("-", var.zone)[1]
+  region = join("-", [local.a,local.b])
+}
 
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_address" "public" {
   name         = "${replace(var.relay_name, ".", "-")}-public"
-  region       = var.region
+  region       = local.region
   address_type = "EXTERNAL"
 }
 
 resource "google_compute_address" "internal" {
   name         = "${replace(var.relay_name, ".", "-")}-internal"
-  region       = var.region
+  region       = local.region
   address_type = "INTERNAL"
 }
 
 resource "google_compute_instance" "relay" {
-  name         = "relay"
+  name         = "${replace(var.relay_name, ".", "-")}"
   zone         = var.zone
   machine_type = var.machine_type
   network_interface {
-    network_ip = google_compute_address.internal.id
+    network_ip = google_compute_address.internal.address
     network    = "default"
     subnetwork = "default"
     access_config {
@@ -57,48 +56,45 @@ resource "google_compute_instance" "relay" {
     }
   }
   metadata = {
-    ssh-keys = "ubuntu:${file(var.ssh_public_key_file)}"
+    ssh-keys = "ubuntu:${file(var.context.ssh_public_key_file)}"
   }
 
   metadata_startup_script = <<-EOF
 
 # remove any old journalctl files to free up disk space (if necessary)
 
-sudo journalctl --vacuum-size 10M
+journalctl --vacuum-size 10M
 
 # clean up old packages from apt-get to free up disk space (if necessary)
 
-sudo apt autoremove -y
+apt autoremove -y
 
 # update installed packages
 
-sudo apt update -y
-sudo apt upgrade -y
-sudo apt dist-upgrade -y
-sudo apt autoremove -y
+apt update -y
+apt upgrade -y
+apt dist-upgrade -y
+apt autoremove -y
+
+# we need libcurl
+
+apt install libcurl3-gnutls -y
+ldconfig
 
 # install build essentials so we can build libsodium
 
-sudo apt install build-essential -y
+apt install build-essential -y
 
 # install unattended upgrades so the relay keeps up to date with security fixes
 
-sudo apt install unattended-upgrades -y
+apt install unattended-upgrades -y
 
 # only allow ssh from vpn address
 
 echo sshd: ALL > hosts.deny
-echo sshd: ${var.vpn_address} > hosts.allow
-sudo mv hosts.deny /etc/hosts.deny
-sudo mv hosts.allow /etc/hosts.allow
-
-# make the relay command line prompt cool
-
-sudo cat >> ~/.bashrc <<- EOM
-export PS1="\[\033[36m\]${var.relay_name} [${var.env}] \[\033[00m\]\w # "
-EOM
-
-sudo echo "source ~/.bashrc" >> ~/.profile.sh
+echo sshd: ${var.context.vpn_address} > hosts.allow
+mv hosts.deny /etc/hosts.deny
+mv hosts.allow /etc/hosts.allow
 
 # build and install libsodium optimized for this relay
 
@@ -107,31 +103,31 @@ tar -zxf libsodium-1.0.18.tar.gz
 cd libsodium-1.0.18
 ./configure
 make -j
-sudo make install
+make install
 ldconfig
 cd ~
 
 # download the relay binary and rename it to 'relay'
 
-wget https://storage.googleapis.com/${var.relay_artifacts_bucket}/relay-${var.relay_version} --no-cache
-sudo mv relay-${var.relay_version} relay
-sudo chmod +x relay
+wget https://storage.googleapis.com/${var.context.relay_artifacts_bucket}/relay-${var.context.relay_version} --no-cache
+mv relay-${var.context.relay_version} relay
+chmod +x relay
 
 # setup the relay environment file
 
-sudo cat > relay.env <<- EOM
+cat > relay.env <<- EOM
 RELAY_NAME=${var.relay_name}
 RELAY_PUBLIC_ADDRESS=${google_compute_address.public.address}:40000
 RELAY_INTERNAL_ADDRESS=${google_compute_address.internal.address}:40000
-RELAY_PUBLIC_KEY=${var.relay_public_key}
-RELAY_PRIVATE_KEY=${var.relay_private_key}
-RELAY_BACKEND_HOSTNAME=${var.relay_backend_hostname}
-RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+RELAY_PUBLIC_KEY=${var.context.relay_public_key}
+RELAY_PRIVATE_KEY=${var.context.relay_private_key}
+RELAY_BACKEND_HOSTNAME=${var.context.relay_backend_hostname}
+RELAY_BACKEND_PUBLIC_KEY=${var.context.relay_backend_public_key}
 EOM
 
 # setup the relay service file
 
-sudo cat > relay.service <<- EOM
+cat > relay.service <<- EOM
 [Unit]
 Description=Network Next Relay
 ConditionPathExists=/app/relay
@@ -152,24 +148,24 @@ EOM
 
 # move everything into the /app dir
 
-sudo rm -rf /app
-sudo mkdir /app
-sudo mv relay /app/relay
-sudo mv relay.env /app/relay.env
-sudo mv relay.service /app/relay.service
+rm -rf /app
+mkdir /app
+mv relay /app/relay
+mv relay.env /app/relay.env
+mv relay.service /app/relay.service
 
 # limit maximum journalctl logs to 200MB so we don't run out of disk space
 
-sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
-sudo systemctl restart systemd-journald
+sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
+systemctl restart systemd-journald
 
 # install the relay service so it starts on boot
 
-sudo systemctl enable /app/relay.service
+systemctl enable /app/relay.service
 
 # start the relay service
 
-sudo systemctl start relay
+systemctl start relay
 
 EOF
 }

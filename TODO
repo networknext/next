@@ -22,39 +22,80 @@ DONE
 
 	Setup dev.virtualgo.net as the API endpoint for dev env
 
+	Make sure that public and internal addresses for relays are held static when the relay is recreated
+
+	SSH in and verify the relay config is applied with correct public and internal addresses
+
+	For some reason the relay binary is not downloading...
+
+	Relay version was wrong.
+
+	Verify the relay binary is downloaded and the service starts.
+
+	Setup admin as its own domain name from my collection, eg. dev.virtualgo.net
+
+	Setup multiple relays in google cloud with terraform
+
+	Is there some way to avoid passing in so many variables to the google_relay terraform module?
+
+	Yes. Fixed by passing in common stuff via a "context" map(string)
+
 TODO
 
-	SSH in and verify the relay config is applied
+	Create an AWS relay.
+
+	Create a linode relay.
+
+	Create a stackpath relay.
+
+	Create an equinix relay.
+
+	Create a vultr relay.
+
+	What other suppliers have terraform interfaces?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------------
 
 	Modify admin setup in terraform so it can only be accessed from the vpn address
 
-	Setup admin as its own domain name from my collection, eg. dev.virtualgo.net?
-
-	-----------------------
-
-	Detect the public and internal address on command line so it can be configured dynamically (not passed in...) in the metadata startup script
-
 	-----------------------
 
 	Verify that the relay is showing up in dev
-
-	-----------------------
-
-	Create an AWS relay.
-
-	What other providers have terraform?
-
-	Linode/Akamai.
-
-	Stackpath.
-
-	Packet/Equinex.
-
-	Vultr.com
-
-	Play around with each...
 
 	-----------------------
 
@@ -544,5 +585,11 @@ Nice to have:
 	Don't allow production deploy unless on prod branch.
 
 	The other branches, whatever...
+
+	--------------
+
+	The nice prompt for relay SSH needs to be done on ssh login via next tool
+
+	It can't easily be done in start script for google cloud relays :(
 
 	--------------

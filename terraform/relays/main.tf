@@ -60,31 +60,68 @@ resource "google_compute_firewall" "allow_udp" {
 
 # ----------------------------------------------------------------------------------------
 
-module "google_relay" {
-  source                 = "./google_relay"
-  relay_name               = "google.iowa.1"
-  region                   = "us-central1"
-  zone                     = "us-central1-a"
-  machine_type             = "n1-standard-2"
-  vpn_address              = var.vpn_address
-  ssh_public_key_file      = var.ssh_public_key_file
-  env                      = var.env
-  relay_version            = var.relay_version
-  relay_artifacts_bucket   = var.relay_artifacts_bucket
-  relay_public_key         = var.relay_public_key
-  relay_private_key        = var.relay_private_key
-  relay_backend_hostname   = var.relay_backend_hostname
-  relay_backend_public_key = var.relay_backend_public_key
+locals {
+  context = {
+    vpn_address              = var.vpn_address
+    ssh_public_key_file      = var.ssh_public_key_file
+    env                      = var.env
+    relay_version            = var.relay_version
+    relay_artifacts_bucket   = var.relay_artifacts_bucket
+    relay_public_key         = var.relay_public_key
+    relay_private_key        = var.relay_private_key
+    relay_backend_hostname   = var.relay_backend_hostname
+    relay_backend_public_key = var.relay_backend_public_key    
+  }
 }
 
-output "relay_public_address" {
-  description = "The public IP address of the google cloud relay"
-  value       = module.google_relay.public_address
+module "google_iowa_1" {
+  relay_name        = "google.iowa.1"
+  zone              = "us-central1-a"
+  machine_type      = "n1-standard-2"
+  source            = "./google_relay"
+  context           = local.context
 }
 
-output "relay_internal_address" {
-  description = "The internal IP address of the google cloud relay"
-  value       = module.google_relay.internal_address
+module "google_iowa_2" {
+  relay_name        = "google.iowa.2"
+  zone              = "us-central1-b"
+  machine_type      = "n1-standard-2"
+  source            = "./google_relay"
+  context           = local.context
+}
+
+module "google_iowa_3" {
+  relay_name        = "google.iowa.3"
+  zone              = "us-central1-c"
+  machine_type      = "n1-standard-2"
+  source            = "./google_relay"
+  context           = local.context
+}
+
+module "google_iowa_4" {
+  relay_name        = "google.iowa.4"
+  zone              = "us-central1-f"
+  machine_type      = "n1-standard-2"
+  source            = "./google_relay"
+  context           = local.context
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "google_losangeles_1" {
+  relay_name        = "google.losangeles.1"
+  zone              = "us-west2-a"
+  machine_type      = "n1-standard-2"
+  source            = "./google_relay"
+  context           = local.context
+}
+
+module "google_losangeles_2" {
+  relay_name        = "google.losangeles.2"
+  zone              = "us-west2-b"
+  machine_type      = "n1-standard-2"
+  source            = "./google_relay"
+  context           = local.context
 }
 
 # ----------------------------------------------------------------------------------------
