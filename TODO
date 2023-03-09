@@ -12,13 +12,49 @@ DONE
 
 	Import all amazon.txt datacenters into dev.sql
 
-TODO
-
 	Create a new "Relays" terraform project
 
-	Create a google relay.
+	Create a google relay that I can ssh into.
+
+	Turn the google relay thing into a module, eg. "relays/google/main.tf"
+
+	Actually configure the relay with the setup_relay.sh script
+
+	Setup dev.virtualgo.net as the API endpoint for dev env
+
+TODO
+
+	SSH in and verify the relay config is applied
+
+	-----------------------
+
+	Modify admin setup in terraform so it can only be accessed from the vpn address
+
+	Setup admin as its own domain name from my collection, eg. dev.virtualgo.net?
+
+	-----------------------
+
+	Detect the public and internal address on command line so it can be configured dynamically (not passed in...) in the metadata startup script
+
+	-----------------------
+
+	Verify that the relay is showing up in dev
+
+	-----------------------
 
 	Create an AWS relay.
+
+	What other providers have terraform?
+
+	Linode/Akamai.
+
+	Stackpath.
+
+	Packet/Equinex.
+
+	Vultr.com
+
+	Play around with each...
 
 	-----------------------
 
