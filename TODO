@@ -10,29 +10,15 @@ DONE
 
 	Once this is done, I should have a complete amazon.txt
 
-TODO
-
 	Import all amazon.txt datacenters into dev.sql
 
-	-----------------------
+TODO
 
-	Idea: amazon.sql, google.sql etc.
+	Create a new "Relays" terraform project
 
-	So I can refer to multiple suppliers from different envs...
+	Create a google relay.
 
-	-----------------------
-
-	When creating the postgres database via terraform, there needs to be something that runs create.sql and ${BRANCH}.sql to set up the initial state of the database.
-
-	-----------------------
-
-	Start playing around with spinning up relays in semaphore.
-
-	First, create a new "Relays" project in google cloud.
-
-	Add a new "relays" terraform project that points to the google cloud provider, and spins up a fixed number of relays with given configuration in dev.
-
-	The goal here is to just spin up the relay VMs and configure them, but we'll not actually be able to modify the 
+	Create an AWS relay.
 
 	-----------------------
 

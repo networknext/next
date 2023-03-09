@@ -1179,8 +1179,8 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.oregon.1',
 	'usw2-az1',
-	37.3387,
-	-121.8853,
+	45.8399,
+	-119.7006,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 
@@ -1193,8 +1193,8 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.oregon.2',
 	'usw2-az2',
-	37.3387,
-	-121.8853,
+	45.8399,
+	-119.7006,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 
@@ -1207,8 +1207,8 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.oregon.3',
 	'usw2-az3',
-	37.3387,
-	-121.8853,
+	45.8399,
+	-119.7006,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 
@@ -1221,45 +1221,6 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.oregon.4',
 	'usw2-az4',
-	37.3387,
-	-121.8853,
-	(select seller_id from sellers where seller_name = 'amazon')
-);
-
-/*
-use1-atl1-az1,amazon.atlanta.1
-use1-bos1-az1,amazon.boston.1
-use1-bue1-az1,amazon.buenosaires.1
-use1-chi1-az1,amazon.chicago.1
-use1-dfw1-az1,amazon.dallas.1
-use1-iah1-az1,amazon.houston.1
-use1-lim1-az1,amazon.lima.1
-use1-mci1-az1,amazon.kansas.1
-use1-mia1-az1,amazon.miami.1
-use1-msp1-az1,amazon.minneapolis.1
-use1-nyc1-az1,amazon.newyork.1
-use1-phl1-az1,amazon.philadelphia.1
-use1-qro1-az1,amazon.queretaro.1
-use1-scl1-az1,amazon.santiago.1
-*/
-
-
-
-
-
-
-
-
-
-
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'amazon.oregon.1',
 	45.8399,
 	-119.7006,
 	(select seller_id from sellers where seller_name = 'amazon')
@@ -1267,13 +1228,197 @@ VALUES(
 
 INSERT INTO datacenters(
 	datacenter_name, 
+	native_name,
 	latitude, 
 	longitude, 
 	seller_id)
 VALUES(
-	'amazon.saopaulo.1',
-	-23.5558, 
-	-46.6396,
+	'amazon.atlanta.1',
+	'use1-atl1-az1',
+	33.7488,
+	-84.3877,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.boston.1',
+	'use1-bos1-az1',
+	42.3601,
+	-71.0589,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.buenosaires.1',
+	'use1-bue1-az1',
+	42.3601,
+	-71.0589,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.chicago.1',
+	'use1-chi1-az1',
+	41.8781,
+	-87.6298,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.dallas.1',
+	'use1-dfw1-az1',
+	32.7767,
+	-96.7970,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.houston.1',
+	'use1-iah1-az1',
+	29.7604,
+	-95.3698,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.lima.1',
+	'use1-lim1-az1',
+	-12.0464,
+	-77.0428,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.kansas.1',
+	'use1-mci1-az1',
+	39.0997,
+	-94.5786,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.miami.1',
+	'use1-mia1-az1',
+	25.7617,
+	-80.1918,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.minneapolis.1',
+	'use1-msp1-az1',
+	44.9778,
+	-93.2650,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.newyork.1',
+	'use1-nyc1-az1',
+	40.7128,
+	-74.0060,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.philadelphia.1',
+	'use1-phl1-az1',
+	39.9526,
+	-75.1652,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.queretaro.1',
+	'use1-qro1-az1',
+	20.5888,
+	-100.3899,
+	(select seller_id from sellers where seller_name = 'amazon')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	native_name,
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'amazon.santiago.1',
+	'use1-scl1-az1',
+	-33.4489,
+	-70.6693,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 
