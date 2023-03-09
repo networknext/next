@@ -16,6 +16,12 @@ TODO
 
 	-----------------------
 
+	Idea: amazon.sql, google.sql etc.
+
+	So I can refer to multiple suppliers from different envs...
+
+	-----------------------
+
 	When creating the postgres database via terraform, there needs to be something that runs create.sql and ${BRANCH}.sql to set up the initial state of the database.
 
 	-----------------------
