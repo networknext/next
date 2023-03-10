@@ -1,5 +1,20 @@
 # ----------------------------------------------------------------------------------------
 
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "4.51.0"
+    }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+
+# ----------------------------------------------------------------------------------------
+
 variable "credentials" { type = string }
 variable "project" { type = string }
 variable "vpn_address" { type = string }
@@ -11,52 +26,6 @@ variable "relay_public_key" { type = string }
 variable "relay_private_key" { type = string }
 variable "relay_backend_hostname" { type = string }
 variable "relay_backend_public_key" { type = string }
-
-# ----------------------------------------------------------------------------------------
-
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "4.51.0"
-    }
-  }
-}
-
-provider "google" {
-  credentials = file(var.credentials)
-  project     = var.project
-}
-
-# ----------------------------------------------------------------------------------------
-
-data "google_compute_network" "default" {
-  name = "default"
-}
-
-resource "google_compute_firewall" "allow_ssh" {
-  name          = "allow-ssh"
-  project       = var.project
-  direction     = "INGRESS"
-  network       = "default"
-  source_ranges = [var.vpn_address]
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-}
-
-resource "google_compute_firewall" "allow_udp" {
-  name          = "allow-udp"
-  project       = var.project
-  direction     = "INGRESS"
-  network       = "default"
-  source_ranges = ["0.0.0.0/0"]
-  allow {
-    protocol = "udp"
-    ports    = ["40000"]
-  }
-}
 
 # ----------------------------------------------------------------------------------------
 
@@ -73,6 +42,43 @@ locals {
     relay_backend_public_key = var.relay_backend_public_key    
   }
 }
+
+# ----------------------------------------------------------------------------------------
+
+provider "google" {
+  credentials = file(var.credentials)
+  project     = var.project
+}
+
+data "google_compute_network" "default" {
+  name = "default"
+}
+
+resource "google_compute_firewall" "google_allow_ssh" {
+  name          = "allow-ssh"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = "default"
+  source_ranges = [var.vpn_address]
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+}
+
+resource "google_compute_firewall" "google_allow_udp" {
+  name          = "allow-udp"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = "default"
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "udp"
+    ports    = ["40000"]
+  }
+}
+
+# us-central1: IOWA
 
 module "google_iowa_1" {
   relay_name        = "google.iowa.1"
@@ -106,7 +112,7 @@ module "google_iowa_4" {
   context           = local.context
 }
 
-# ----------------------------------------------------------------------------------------
+# us-west2: LOS ANGELES
 
 module "google_losangeles_1" {
   relay_name        = "google.losangeles.1"
@@ -123,5 +129,79 @@ module "google_losangeles_2" {
   source            = "./google_relay"
   context           = local.context
 }
+
+# ----------------------------------------------------------------------------------------
+
+provider "aws" {
+  shared_config_files      = ["~/.aws/config"]
+  shared_credentials_files = ["~/.aws/credentials"]
+  profile                  = "default"
+}
+
+resource "aws_default_vpc" "default" {
+  tags = {
+    Name = "default"
+  }
+}
+
+resource "aws_security_group" "amazon_allow_ssh_and_udp" {
+
+  name = "amazon-allow-ssh-and-udp"
+
+  vpc_id = aws_default_vpc.default.id
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 22
+    to_port     = 22
+    cidr_blocks = ["${var.vpn_address}/32"]
+  }
+
+  ingress {
+    protocol    = "udp"
+    from_port   = 45000
+    to_port     = 45000
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    cidr_blocks     = ["0.0.0.0/0"]
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+data "aws_ami" "amazon_ubuntu" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["099720109477"] # Canonical
+}
+
+resource "aws_instance" "amazon_relay" {
+  ami                    = data.aws_ami.amazon_ubuntu.id
+  instance_type          = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.amazon_allow_ssh_and_udp.id]
+  tags = {
+    Name = "relay"
+  }
+}
+
+/*
+output "amazon_relay_address" {
+  value = amazon_relay.project-iac.public_ip
+}
+*/
 
 # ----------------------------------------------------------------------------------------

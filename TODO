@@ -1,54 +1,88 @@
 DONE
 
-	Get a list of all AWS regions
-
-		https://www.aws-services.info/regions.html
-
-	Then per-region, pass them in and describe all availability zones per-region.
-
-		>  aws ec2 describe-availability-zones --region ${REGION} > region.txt
-
-	Once this is done, I should have a complete amazon.txt
-
-	Import all amazon.txt datacenters into dev.sql
-
-	Create a new "Relays" terraform project
-
-	Create a google relay that I can ssh into.
-
-	Turn the google relay thing into a module, eg. "relays/google/main.tf"
-
-	Actually configure the relay with the setup_relay.sh script
-
-	Setup dev.virtualgo.net as the API endpoint for dev env
-
-	Make sure that public and internal addresses for relays are held static when the relay is recreated
-
-	SSH in and verify the relay config is applied with correct public and internal addresses
-
-	For some reason the relay binary is not downloading...
-
-	Relay version was wrong.
-
-	Verify the relay binary is downloaded and the service starts.
-
-	Setup admin as its own domain name from my collection, eg. dev.virtualgo.net
-
-	Setup multiple relays in google cloud with terraform
-
-	Is there some way to avoid passing in so many variables to the google_relay terraform module?
-
-	Yes. Fixed by passing in common stuff via a "context" map(string)
-
 TODO
 
 	Create an AWS relay.
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Create a linode relay.
 
 	Create a stackpath relay.
 
 	Create an equinix relay.
+
+		https://registry.terraform.io/providers/equinix/equinix/latest/docs/data-sources/equinix_metal_facility
 
 	Create a vultr relay.
 
@@ -91,7 +125,7 @@ TODO
 
 	-----------------------
 
-	Modify admin setup in terraform so it can only be accessed from the vpn address
+	Modify API service setup in terraform so it can only be accessed from the vpn address
 
 	-----------------------
 
