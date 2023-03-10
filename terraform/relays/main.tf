@@ -186,7 +186,7 @@ data "aws_ami" "amazon_ubuntu" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
   }
   filter {
     name   = "virtualization-type"
@@ -202,7 +202,7 @@ resource "aws_key_pair" "amazon_ssh_key" {
 
 resource "aws_instance" "amazon_relay" {
   availability_zone      = "us-west-2a"
-  instance_type          = "t2.micro"
+  instance_type          = "a1.large"
   ami                    = data.aws_ami.amazon_ubuntu.id
   key_name               = "amazon-ssh-key"
   vpc_security_group_ids = [aws_security_group.amazon_allow_ssh_and_udp.id]
@@ -212,20 +212,7 @@ resource "aws_instance" "amazon_relay" {
   lifecycle {
     create_before_destroy = true
   }
-  connection {
-    type        = "ssh"
-    host        = self.public_ip
-    user        = "ubuntu"
-    private_key = file(var.ssh_private_key_file)
-    timeout     = "10m"
-  }
-  provisioner "file" {
-    source      = "./setup_relay.sh"
-    destination = "/tmp/setup_relay.sh"
-  }
-  provisioner "remote-exec" {
-    inline = ["chmod +x /tmp/setup_relay.sh && /tmp/setup_relay.sh ${var.env} ${local.relay_name} ${self.public_ip} ${self.private_ip} ${var.relay_public_key} ${var.relay_private_key} ${var.relay_backend_hostname} ${var.relay_backend_public_key} ${var.relay_version} ${var.relay_artifacts_bucket} ${var.vpn_address}"]
-  }
+  user_data = file("./setup_relay.sh")
 }
 
 resource "aws_eip" "amazon_address" {
