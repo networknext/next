@@ -20,8 +20,6 @@ DONE
 
 	Can now SSH into the AWS relay, and confirmed I can't SSH in unless I'm on the VPN.
 
-TODO
-
 	How to configure the AWS relay?
 
 	user_data = <<-EOF
@@ -30,13 +28,19 @@ TODO
 	    curl http://169.254.169.254/latest/meta-data/local-ipv4 | sudo tee -a /tmp/user_data.log
 	EOF
 
-	-------------------------------------------------------------
+	Tried using provisioner, but it runs late and is annoying. Best to use the user data, and setup the relay more minimally, without needing vars.
 
-	There is going to be "fun" getting AWS to create relays across multiple regions. 
+	Setup to use a1.large instance type in AWS. The other free tier would shut down, too much CPU usage apparently.
 
-	The whole AWS usage is region specific, and this extends to terraform.
+TODO
+
+	Move the AWS instance creation into its own module.
+
+	Make the instance creation more data driven, eg. pass in an array of maps to params, so I can import the "amazon_relay" module and in one instantiation, create multiple relays.
 
 	https://developer.hashicorp.com/terraform/language/modules/develop/providers#passing-providers-explicitly
+
+	Print out the list of outputs, again, array of map outputs... print out all maps.
 
 	-------------------------------------------------------------
 	
