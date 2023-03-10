@@ -19,6 +19,7 @@ variable "credentials" { type = string }
 variable "project" { type = string }
 variable "vpn_address" { type = string }
 variable "ssh_public_key_file" { type = string }
+variable "ssh_private_key_file" { type = string }
 variable "env" { type = string }
 variable "relay_version" { type = string }
 variable "relay_artifacts_bucket" { type = string }
@@ -132,10 +133,15 @@ module "google_losangeles_2" {
 
 # ----------------------------------------------------------------------------------------
 
+locals {
+  relay_name = "relay"
+}
+
 provider "aws" {
   shared_config_files      = ["~/.aws/config"]
   shared_credentials_files = ["~/.aws/credentials"]
   profile                  = "default"
+  region                   = "us-west-2"
 }
 
 resource "aws_default_vpc" "default" {
@@ -189,19 +195,48 @@ data "aws_ami" "amazon_ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
+resource "aws_key_pair" "amazon_ssh_key" {
+  key_name   = "amazon-ssh-key"
+  public_key = file(var.ssh_public_key_file)
+}
+
 resource "aws_instance" "amazon_relay" {
-  ami                    = data.aws_ami.amazon_ubuntu.id
+  availability_zone      = "us-west-2a"
   instance_type          = "t2.micro"
+  ami                    = data.aws_ami.amazon_ubuntu.id
+  key_name               = "amazon-ssh-key"
   vpc_security_group_ids = [aws_security_group.amazon_allow_ssh_and_udp.id]
   tags = {
     Name = "relay"
   }
+  lifecycle {
+    create_before_destroy = true
+  }
+  connection {
+    type        = "ssh"
+    host        = self.public_ip
+    user        = "ubuntu"
+    private_key = file(var.ssh_private_key_file)
+    timeout     = "10m"
+  }
+  provisioner "remote-exec" {
+    inline ["echo ANUS"]
+  }
 }
 
-/*
-output "amazon_relay_address" {
-  value = amazon_relay.project-iac.public_ip
+resource "aws_eip" "amazon_address" {
+  instance = aws_instance.amazon_relay.id
+  vpc      = true
 }
-*/
+
+output "amazon_public_address" {
+  description = "The public IP address of amazon relay"
+  value = aws_eip.amazon_address.public_ip
+}
+
+output "amazon_internal_address" {
+  description = "The internal IP address of amazon relay"
+  value = aws_eip.amazon_address.private_ip
+}
 
 # ----------------------------------------------------------------------------------------

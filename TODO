@@ -1,9 +1,44 @@
 DONE
 
-TODO
-
 	Create an AWS relay.
 
+	Setup security group to allow ssh from vpn address, and UDP ingress on port 45000
+
+	Load the correct AMI for Ubuntu 22.04 LTS by name
+
+	Create the VM in a specific region in AWS, does the AMI still work? No. It needs to match the region in the AWS provider... =p
+
+	Assign a specific public IP ahead of time to the VM.
+
+	Assign a specific private IP ahead of time to the VM.
+
+	How to setup keys so I can ssh into the AWS VM?
+
+	"key_name" on the AWS instance... don't think this is a local file...
+
+	Added key name resource.
+
+	Can now SSH into the AWS relay, and confirmed I can't SSH in unless I'm on the VPN.
+
+TODO
+
+	How to configure the AWS relay?
+
+	user_data = <<-EOF
+	    #!/bin/bash
+	    echo test of user_data | sudo tee /tmp/user_data.log
+	    curl http://169.254.169.254/latest/meta-data/local-ipv4 | sudo tee -a /tmp/user_data.log
+	EOF
+
+	-------------------------------------------------------------
+
+	There is going to be "fun" getting AWS to create relays across multiple regions. 
+
+	The whole AWS usage is region specific, and this extends to terraform.
+
+	https://developer.hashicorp.com/terraform/language/modules/develop/providers#passing-providers-explicitly
+
+	-------------------------------------------------------------
 	
 
 
