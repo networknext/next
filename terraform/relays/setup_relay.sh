@@ -18,14 +18,14 @@ sudo journalctl --vacuum-size 10M
 
 # clean up old packages from apt-get to free up disk space (if necessary)
 
-sudo apt autoremove -y
+sudo NEEDRESTART_SUSPEND=1 apt apt autoremove -y
 
 # update installed packages
 
-sudo apt update -y
-sudo apt upgrade -y
-sudo NEEDRESTART_MODE=a sudo apt dist-upgrade -y
-sudo apt autoremove -y
+sudo NEEDRESTART_SUSPEND=1 apt apt update -y
+sudo NEEDRESTART_SUSPEND=1 apt apt upgrade -y
+sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
+sudo NEEDRESTART_SUSPEND=1 apt apt autoremove -y
 
 # we need libcurl
 
