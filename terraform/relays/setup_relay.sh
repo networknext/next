@@ -24,7 +24,7 @@ sudo apt autoremove -y
 
 sudo apt update -y
 sudo apt upgrade -y
-sudo apt dist-upgrade -y
+sudo NEEDRESTART_MODE=a sudo apt dist-upgrade -y
 sudo apt autoremove -y
 
 # we need libcurl

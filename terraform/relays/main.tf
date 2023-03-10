@@ -219,8 +219,12 @@ resource "aws_instance" "amazon_relay" {
     private_key = file(var.ssh_private_key_file)
     timeout     = "10m"
   }
+  provisioner "file" {
+    source      = "./setup_relay.sh"
+    destination = "/tmp/setup_relay.sh"
+  }
   provisioner "remote-exec" {
-    inline ["echo ANUS"]
+    inline = ["chmod +x /tmp/setup_relay.sh && /tmp/setup_relay.sh ${var.env} ${local.relay_name} ${self.public_ip} ${self.private_ip} ${var.relay_public_key} ${var.relay_private_key} ${var.relay_backend_hostname} ${var.relay_backend_public_key} ${var.relay_version} ${var.relay_artifacts_bucket} ${var.vpn_address}"]
   }
 }
 
