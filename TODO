@@ -2,10 +2,19 @@ DONE
 
 	Get akamai (linode) relays up.
 
-TODO
-
 	Get vultr relays up.
 
+TODO
+
+	Generalize vultr relays to array of relays.
+
+	Create multiple vultr relays.
+
+	Get output working.
+
+	Verify I can ssh into vultr relays and they are setup with libsodium.
+
+	-----------------
 
 
 
