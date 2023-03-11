@@ -10,11 +10,9 @@ DONE
 
 	Verify I can ssh into vultr relays and they are setup with libsodium.
 
-TODO
-
 	Create multiple vultr relays.
 
-	-----------------
+TODO
 
 	Latitude.sh
 
