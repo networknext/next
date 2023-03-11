@@ -34,33 +34,42 @@ resource "vultr_startup_script" "setup_relay" {
 }
 
 data "vultr_plan" "relay" {
+  count    = length(var.relays)
   filter {
     name   = "id"
-    values = ["vc2-1c-1gb"]
+    values = [var.relays[count.index].plan]
   }
 }
 
 data "vultr_os" "relay" {
+  count    = length(var.relays)
   filter {
     name   = "name"
-    values = ["Ubuntu 22.04 LTS x64"]
+    values = [var.relays[count.index].os]
   }
 }
 
 resource "vultr_instance" "relay" {
-  plan        = data.vultr_plan.relay.id
-  region      = "sea"
-  os_id       = 167
-  label       = "relay"
+  count       = length(var.relays)
+  label       = "#{var.relays[count.index].name"
+  region      = var.relays[count.index].region
+  plan        = data.vultr_plan.relay[count.index].id
+  os_id       = data.vultr_os.relay[count.index].id
   ssh_key_ids = [vultr_ssh_key.relay.id]
   script_id   = vultr_startup_script.setup_relay.id
 }
 
-/*
-output "relays" {
-  description = "Data for each akamai relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "region", "public_address", "internal_address", "type", "image"], [var.relays[i].name, var.relays[i].region, linode_instance.relay[i].ip_address, "0.0.0.0", var.relays[i].type, var.relays[i].image])]
+resource "vultr_reserved_ip" "relay" {
+  count       = length(var.relays)
+  label       = var.relays[count.index].name
+  region      = var.relays[count.index].region
+  ip_type     = "v4"
+  instance_id = vultr_instance.relay[count.index].id
 }
-*/
+
+output "relays" {
+  description = "Data for each vultr relay setup by Terraform"
+  value = [for i, v in var.relays : zipmap(["relay_name", "region", "public_address", "internal_address", "plan", "os"], [var.relays[i].name, var.relays[i].region, vultr_instance.relay[i].main_ip, "0.0.0.0", var.relays[i].plan, var.relays[i].os])]
+}
 
 # --------------------------------------------------------------------------

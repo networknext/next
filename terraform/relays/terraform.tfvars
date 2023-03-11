@@ -146,11 +146,19 @@ akamai_relays = [
 
 vultr_relays = [
 
-	# us-east: NEW YORK
+	# sea: SEATTLE
+	{
+		name   = "vultr.seattle"
+		region = "sea"
+		plan   = "vc2-1c-1gb"
+		os     = "Ubuntu 22.04 LTS x64"
+	},
+
+	# ord: CHICAGO
 	{
 		name   = "vultr.chicago"
-		region = "us-east"
-		type   = "g6-dedicated-2"
-		image  = "linode/ubuntu22.04"
+		region = "ord"
+		plan   = "vc2-1c-1gb"
+		os     = "Ubuntu 22.04 LTS x64"
 	},
 ]

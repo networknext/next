@@ -86,11 +86,9 @@ module "vultr_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-/*
 output "vultr_relays" {
   description = "Data for each vultr relay"
   value = module.vultr_relays.relays
 }
-*/
 
 # ----------------------------------------------------------------------------------------
