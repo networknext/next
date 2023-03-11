@@ -111,11 +111,35 @@ amazon_relays = [
 
 akamai_relays = [
 
+	# us-east: NEW YORK
+	{
+		name   = "akamai.newyork"
+		region = "us-east"
+		type   = "g6-dedicated-2"
+		image  = "linode/ubuntu22.04"
+	},
+
 	# us-east: ATLANTA
 	{
 		name   = "akamai.atlanta"
-		region = "us-east"
-		type   = "g6-standard-1"
+		region = "us-southeast"
+		type   = "g6-dedicated-2"
+		image  = "linode/ubuntu22.04"
+	},
+
+	# us-west: FREMONT
+	{
+		name   = "akamai.fremont"
+		region = "us-west"
+		type   = "g6-dedicated-2"
+		image  = "linode/ubuntu22.04"
+	},
+
+	# eu-central: FRANKFURT
+	{
+		name   = "akamai.frankfurt"
+		region = "eu-central"
+		type   = "g6-dedicated-2"
 		image  = "linode/ubuntu22.04"
 	},
 ]
