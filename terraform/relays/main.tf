@@ -76,3 +76,21 @@ output "akamai_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+variable "vultr_relays" { type = list(map(string)) }
+
+module "vultr_relays" {
+  relays              = var.vultr_relays
+  source              = "./vultr"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+/*
+output "vultr_relays" {
+  description = "Data for each vultr relay"
+  value = module.vultr_relays.relays
+}
+*/
+
+# ----------------------------------------------------------------------------------------

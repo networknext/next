@@ -143,3 +143,14 @@ akamai_relays = [
 		image  = "linode/ubuntu22.04"
 	},
 ]
+
+vultr_relays = [
+
+	# us-east: NEW YORK
+	{
+		name   = "vultr.chicago"
+		region = "us-east"
+		type   = "g6-dedicated-2"
+		image  = "linode/ubuntu22.04"
+	},
+]
