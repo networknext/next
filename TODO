@@ -38,17 +38,44 @@ DONE
 
 	Generate an output list of maps, one entry per-relay.
 
-TODO
-
-	Create amazon relays in multiple regions
-
-	-------------------------------------------------------------
-
 	Apply the same logic to google module.
 
 	Instead of calling the module once per-relay, pass in a list of google relays to create.
 
 	The return the output list of maps with the data.
+
+TODO
+
+	Play around with linode terraform provider.
+
+	Add akamai datacenters to the database.
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-------------------------------------------------------------
+
+	Create amazon relays in multiple regions
 
 	-------------------------------------------------------------
 

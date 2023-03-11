@@ -108,3 +108,14 @@ amazon_relays = [
 		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	},
 ]
+
+akamai_relays = [
+
+	# us-east: ATLANTA
+	{
+		name   = "akamai.atlanta"
+		region = "us-east"
+		type   = "g6-standard-1"
+		image  = "linode/ubuntu22.04"
+	},
+]

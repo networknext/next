@@ -60,3 +60,19 @@ output "amazon_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+variable "akamai_relays" { type = list(map(string)) }
+
+module "akamai_relays" {
+  relays              = var.akamai_relays
+  source              = "./akamai"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+output "akamai_relays" {
+  description = "Data for each akamai relay"
+  value = module.akamai_relays.relays
+}
+
+# ----------------------------------------------------------------------------------------
