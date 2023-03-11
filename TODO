@@ -40,11 +40,7 @@ DONE
 
 TODO
 
-	-------------------------------------------------------------
-
-	Generalize so I can create relays in multiple regions
-
-	https://developer.hashicorp.com/terraform/language/modules/develop/providers#passing-providers-explicitly
+	Create amazon relays in multiple regions
 
 	-------------------------------------------------------------
 
