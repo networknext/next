@@ -70,46 +70,41 @@ google_relays = [
 	}
 ]
 
-/*
-amazon_relays = {
-
-	"us-east-1" = [
-		{
-			name = "amazon.virginia.1"
-			zone = "us-east-1a"
-			type = "a1.large"
-			ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-		},
-		{
-			name = "amazon.virginia.2"
-			zone = "us-east-1b"
-			type = "a1.large"
-			ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-		},
-		{
-			name = "amazon.virginia.3"
-			zone = "us-east-1c"
-			type = "m5a.large"
-			ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-		},
-		{
-			name = "amazon.virginia.4"
-			zone = "us-east-1d"
-			type = "a1.large"
-			ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-		},
-		{
-			name = "amazon.virginia.5"
-			zone = "us-east-1e"
-			type = "m4.large"
-			ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-		},
-		{
-			name = "amazon.virginia.6"
-			zone = "us-east-1f"
-			type = "m5a.large"
-			ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-		},
-	]
-}
-*/
+amazon_relays = [
+	{
+		name = "amazon.virginia.1"
+		zone = "us-east-1a"
+		type = "a1.large"
+		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+	},
+	{
+		name = "amazon.virginia.2"
+		zone = "us-east-1b"
+		type = "a1.large"
+		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+	},
+	{
+		name = "amazon.virginia.3"
+		zone = "us-east-1c"
+		type = "m5a.large"
+		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	},
+	{
+		name = "amazon.virginia.4"
+		zone = "us-east-1d"
+		type = "a1.large"
+		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+	},
+	{
+		name = "amazon.virginia.5"
+		zone = "us-east-1e"
+		type = "m4.large"
+		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	},
+	{
+		name = "amazon.virginia.6"
+		zone = "us-east-1f"
+		type = "m5a.large"
+		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	},
+]
