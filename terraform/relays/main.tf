@@ -6,10 +6,6 @@ terraform {
       source  = "hashicorp/google"
       version = "4.51.0"
     }
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.0"
-    }
   }
 }
 
@@ -27,6 +23,8 @@ variable "relay_public_key" { type = string }
 variable "relay_private_key" { type = string }
 variable "relay_backend_hostname" { type = string }
 variable "relay_backend_public_key" { type = string }
+
+variable "amazon_relays" { type = list(map(string)) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -133,101 +131,18 @@ module "google_losangeles_2" {
 
 # ----------------------------------------------------------------------------------------
 
-locals {
-  relay_name = "relay"
+module "amazon_relays" {
+  relays              = var.amazon_relays
+  region              = "us-east-1"
+  source              = "./amazon_relay"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
 }
 
-provider "aws" {
-  shared_config_files      = ["~/.aws/config"]
-  shared_credentials_files = ["~/.aws/credentials"]
-  profile                  = "default"
-  region                   = "us-west-2"
+output "amazon_relays" {
+  description = "Data for each amazon relay"
+  value = module.amazon_relays.relays
 }
 
-resource "aws_default_vpc" "default" {
-  tags = {
-    Name = "default"
-  }
-}
-
-resource "aws_security_group" "amazon_allow_ssh_and_udp" {
-
-  name = "amazon-allow-ssh-and-udp"
-
-  vpc_id = aws_default_vpc.default.id
-
-  ingress {
-    protocol    = "tcp"
-    from_port   = 22
-    to_port     = 22
-    cidr_blocks = ["${var.vpn_address}/32"]
-  }
-
-  ingress {
-    protocol    = "udp"
-    from_port   = 45000
-    to_port     = 45000
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
-    cidr_blocks     = ["0.0.0.0/0"]
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-data "aws_ami" "amazon_ubuntu" {
-  most_recent = true
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-  owners = ["099720109477"] # Canonical
-}
-
-resource "aws_key_pair" "amazon_ssh_key" {
-  key_name   = "amazon-ssh-key"
-  public_key = file(var.ssh_public_key_file)
-}
-
-resource "aws_instance" "amazon_relay" {
-  availability_zone      = "us-west-2a"
-  instance_type          = "a1.large"
-  ami                    = data.aws_ami.amazon_ubuntu.id
-  key_name               = "amazon-ssh-key"
-  vpc_security_group_ids = [aws_security_group.amazon_allow_ssh_and_udp.id]
-  tags = {
-    Name = "relay"
-  }
-  lifecycle {
-    create_before_destroy = true
-  }
-  user_data = file("./setup_relay.sh")
-}
-
-resource "aws_eip" "amazon_address" {
-  instance = aws_instance.amazon_relay.id
-  vpc      = true
-}
-
-output "amazon_public_address" {
-  description = "The public IP address of amazon relay"
-  value = aws_eip.amazon_address.public_ip
-}
-
-output "amazon_internal_address" {
-  description = "The internal IP address of amazon relay"
-  value = aws_eip.amazon_address.private_ip
-}
 
 # ----------------------------------------------------------------------------------------

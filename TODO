@@ -32,15 +32,37 @@ DONE
 
 	Setup to use a1.large instance type in AWS. The other free tier would shut down, too much CPU usage apparently.
 
-TODO
-
 	Move the AWS instance creation into its own module.
 
 	Make the instance creation more data driven, eg. pass in an array of maps to params, so I can import the "amazon_relay" module and in one instantiation, create multiple relays.
 
+	Generate an output list of maps, one entry per-relay.
+
+TODO
+
+	-------------------------------------------------------------
+
+	Generalize so I can create relays in multiple regions
+
 	https://developer.hashicorp.com/terraform/language/modules/develop/providers#passing-providers-explicitly
 
-	Print out the list of outputs, again, array of map outputs... print out all maps.
+	-------------------------------------------------------------
+
+	Apply the same logic to google module.
+
+	Instead of calling the module once per-relay, pass in a list of google relays to create.
+
+	The return the output list of maps with the data.
+
+	-------------------------------------------------------------
+
+	Need to generate an AZID -> availability zone mapping for the project.
+
+	This could simply be a var passed in?
+
+	Ouch. It's going to be an extensive list, and probably will need to be generated dynamically (scripted).
+
+	Gross.
 
 	-------------------------------------------------------------
 	
