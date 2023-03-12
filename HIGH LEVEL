@@ -24,9 +24,13 @@ DONE
 
 	Setup dev environment in google cloud with terraform.
 
+	Setup relays with terraform in various providers.
+
 TODO
 
-	Setup dev relays with terraform.
+	Implement terraform provider to work with our database CRUD API.
+
+	Fully turnkey system to provision and configure relays using terraform.
 
 	------------
 
@@ -38,9 +42,9 @@ TODO
 
 	Analytics service inserts data into bigquery in dev.
 
-	Rebuild portal (no auth).
-
 	Multithreaded relay with session database per-socket thread (no contention)
+
+	Rebuild portal (no auth).
 
 	------------	
 
@@ -50,10 +54,10 @@ TODO
 
 	Document *everything*.
 
-	(Ready for Turtle Rock)
+	(Ready for WB)
 
 	Multipath with two next routes.
 
 	(Ready for Psyonix pitch)
 
-	(Ready for Unity, WB, etc.)
+	(Ready for Unity etc...)

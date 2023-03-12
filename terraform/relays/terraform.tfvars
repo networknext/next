@@ -12,6 +12,8 @@ relay_private_key        = "ei8wBWrWnnJOoI3dyQgajOcwfk1axAoKg0L5Xp9UCZw="
 relay_backend_public_key = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 relay_backend_hostname   = "dev.losangelesfreewaysatnight.com"
 
+# ----------------------------------------------------------------------
+
 google_relays = [
 
 	# us-central1: IOWA
@@ -70,6 +72,8 @@ google_relays = [
 	}
 ]
 
+# ----------------------------------------------------------------------
+
 amazon_relays = [
 	{
 		name = "amazon.virginia.1"
@@ -109,6 +113,8 @@ amazon_relays = [
 	},
 ]
 
+# ----------------------------------------------------------------------
+
 akamai_relays = [
 
 	# us-east: NEW YORK
@@ -144,6 +150,8 @@ akamai_relays = [
 	},
 ]
 
+# ----------------------------------------------------------------------
+
 vultr_relays = [
 
 	# sea: SEATTLE
@@ -162,3 +170,50 @@ vultr_relays = [
 		os     = "Ubuntu 22.04 LTS x64"
 	},
 ]
+
+# ----------------------------------------------------------------------
+
+latitude_relays = [
+
+	# sea: SEATTLE
+	{
+		name   = "vultr.seattle"
+		region = "sea"
+		plan   = "vc2-1c-1gb"
+		os     = "Ubuntu 22.04 LTS x64"
+	},
+]
+
+# ----------------------------------------------------------------------
+
+equinix_project_id = "22b594e2-512c-42fb-881f-7a94da7d2737"
+
+equinix_relays = [
+
+	# DALLAS
+	{
+		name   = "equinix.dallas.1"
+		zone   = "da11"
+		plan   = "c3.small.x86"
+		os     = "ubuntu_22_04"
+	},
+	{
+		name   = "equinix.dallas.2"
+		zone   = "da6"
+		plan   = "c3.medium.x86"
+		os     = "ubuntu_22_04"
+	},
+
+	# CHICAGO
+	{
+		name   = "equinix.chicago.1"
+		zone   = "ch3"
+		plan   = "c3.small.x86"
+		os     = "ubuntu_22_04"
+	},
+
+]
+
+# see: https://deploy.equinix.com/developers/docs/metal/locations/metros/
+
+# ----------------------------------------------------------------------

@@ -12,13 +12,102 @@ DONE
 
 	Create multiple vultr relays.
 
-TODO
+	Equinix metal (packet).
 
-	Latitude.sh
+	https://registry.terraform.io/providers/equinix/equinix/latest/docs
+
+	Working fine!
+
+	How to run a startup script on equinix metal? User data (not documented, but seems to be a standard...)
+
+	Verify that I can ssh in to equinix metal. Yes I can, it's via root.
+
+TODO
 
 	-----------------
 
-	Get stackpath relays up with terraform
+	HiVelocity
+
+	https://registry.terraform.io/providers/hivelocity/hivelocity/latest/docs
+
+	-----------------
+
+	PhoenixNap
+
+	https://github.com/phoenixnap/terraform-provider-pnap
+
+	-----------------
+
+	GCore Labs
+
+	https://registry.terraform.io/providers/G-Core/gcorelabs/latest/docs
+
+	-----------------
+
+	Bare metal module
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Latitude.sh is pending account validation...
+
+	-----------------
+
+	Stackpath can't validate on my phone number, need to use Chantel's...
 
 	-----------------
 
@@ -31,16 +120,6 @@ TODO
 	-----------------
 
 	Get oracle cloud relays up with terraform
-
-	-----------------
-
-	Equinix metal (packet).
-
-	-----------------
-
-	HiVelocity
-
-	https://cloud7.news/hosting/hivelocity-introduces-terraform-for-its-bare-metal-solution/
 
 	-----------------
 
