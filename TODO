@@ -16,6 +16,8 @@ DONE
 
 	Tencent cloud
 
+	Yandex cloud
+
 TODO
 
 	Hook up "next" tool with terraform, eg.
@@ -23,12 +25,6 @@ TODO
 		next select dev
 		next deploy backend
 		next deploy relays
-
-	-----------------
-
-	Yandex cloud
-
-	https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs
 
 	-----------------
 
