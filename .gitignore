@@ -23,6 +23,8 @@ logs
 # test files
 *.mmdb
 
-# terraform state
+# terraform
+.terraform
+.terraform.*
 terraform.tfstate
 terraform.tfstate.*
