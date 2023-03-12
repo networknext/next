@@ -1,125 +1,241 @@
 DONE
 
-	Get akamai (linode) relays up.
+	Restructure terraform directory so we have the ability to have multiple relay environments
 
-	Get vultr relays up.
+		eg. 
+			terraform/dev/backend
+		    terraform/dev/relays
 
-	Generalize vultr relays to array of relays.
+		and:
 
-	Get output working.
+			terraform/suppliers/amazon|google|stackpath etc...
 
-	Verify I can ssh into vultr relays and they are setup with libsodium.
-
-	Create multiple vultr relays.
-
-	Equinix metal (packet).
-
-	https://registry.terraform.io/providers/equinix/equinix/latest/docs
-
-	Working fine!
-
-	How to run a startup script on equinix metal? User data (not documented, but seems to be a standard...)
-
-	Verify that I can ssh in to equinix metal. Yes I can, it's via root.
-
-	HiVelocity relays are configured
-
-	GCore Labs sketched out, but API token is not working
-
-	https://registry.terraform.io/providers/G-Core/gcorelabs/latest/docs
-
-	PhoenixNap
-
-	https://registry.terraform.io/providers/phoenixnap/pnap/latest/docs
-
-	Can't seem to create an account, for some reason...
-
-	Bare metal module
+	Standardize key file locations to "~/secrets/*"
 
 TODO
 
+	Hook up "next" tool with terraform, eg.
+
+		next select dev
+		next deploy backend
+		next deploy relays
+
 	-----------------
 
-	Azure
+	Huawei cloud
+
+	https://support.huaweicloud.com/intl/en-us/qs-terraform/index.html
+
+	-----------------
+
+	Tencent cloud
+
+	https://registry.terraform.io/providers/tencentcloudstack/tencentcloud/latest/docs
+
+	-----------------
+
+	Yandex cloud
+
+	https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs
+
+	-----------------
+
+	Alibaba Cloud
+
+	https://registry.terraform.io/providers/aliyun/alicloud/latest/docs
 
 	-----------------
 
 	IBM
 
+	https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs
+
 	-----------------
 
 	Oracle
 
-	-----------------
-
-	Bare metal:
-
-	colocrossing.com
-
-	datapacket.com
+	https://registry.terraform.io/providers/oracle/oci/latest/docs
 
 	-----------------
 
+	OVH
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Latitude.sh is pending account validation...
+	https://registry.terraform.io/providers/ovh/ovh/latest/docs
 
 	-----------------
 
-	Stackpath can't validate on my phone number, need to use Chantel's...
+	DigitalOcean
+
+	https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs
 
 	-----------------
+
+	All terraform supplier modules need to be adjusted so they have maps as relay input
+
+	Otherwise, inserting a new relay definition anywhere except the start of the file
+
+	See if this is possible, or if it is crazy with one provider (eg. google...)
+
+	-----------------
+
+	Work out how to get amazon supplier working with multiple regions
+
+	-----------------
+
+	Now need to go across *ALL* relay suppliers and make sure they return relays in a standard format.
+
+	This data needs to be enough for me to initialize relay entries in the database:
+
+        relay_name
+        datacenter_name
+        supplier_name
+        public_address
+        internal_address
+        internal_group
+        ssh_address
+        ssh_user
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------------
+
+	Modify API service setup in terraform so it can only be accessed from the vpn address
+
+	--------------
+
+	Add concept of API_KEY and assign it to customer.
+
+	If an API key in on the customer, then there is a corresponding public key set there that can verify the customer API key.
+
+	Pass the API KEY into the REST API to get access, it really is easy...
+
+	--------------
+
+	Actually, the API key not *per-customer*. The API key is for admins only.
+
+	-----------------------
+
+	Extend the api.to go to have a set of API keys defined at the top of the file.
+
+	They can just be random numbers n bytes long. Nothing fancy.
+
+	Check the APIKey thing in the header matches, and reject if doesn't. Simple.
+
+	-----------------------
+
+	API service must run over https in dev.
+
+	-----------------------
+
+	Relay gateway service must run over https in dev.
+
+	-----------------------
+
+	Verify that the relay is showing up in dev
+
+	-----------------------
+
+	How can I setup a terraform provider to configure the database, and ultimately, database.bin?
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -308,31 +424,6 @@ TODO
 
 
 
-	-----------------------
-
-	Modify API service setup in terraform so it can only be accessed from the vpn address
-
-	--------------
-
-	Add concept of API_KEY and assign it to customer.
-
-	If an API key in on the customer, then there is a corresponding public key set there that can verify the customer API key.
-
-	Pass the API KEY into the REST API to get access, it really is easy...
-
-	--------------
-
-	Actually, the API key not *per-customer*. The API key is for admins only.
-
-	-----------------------
-
-	Verify that the relay is showing up in dev
-
-	-----------------------
-
-	How can I setup a terraform provider to configure the database, and ultimately, database.bin?
-
-	-----------------------
 
 
 
