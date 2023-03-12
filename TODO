@@ -32,12 +32,6 @@ TODO
 
 	-----------------
 
-	OVH
-
-	https://registry.terraform.io/providers/ovh/ovh/latest/docs
-
-	-----------------
-
 	DigitalOcean
 
 	https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs
