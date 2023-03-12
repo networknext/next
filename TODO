@@ -18,6 +18,10 @@ DONE
 
 	Yandex cloud
 
+	Alibaba cloud
+
+	IBM cloud
+
 TODO
 
 	Hook up "next" tool with terraform, eg.
@@ -25,24 +29,6 @@ TODO
 		next select dev
 		next deploy backend
 		next deploy relays
-
-	-----------------
-
-	Alibaba Cloud
-
-	https://registry.terraform.io/providers/aliyun/alicloud/latest/docs
-
-	-----------------
-
-	IBM
-
-	https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs
-
-	-----------------
-
-	Oracle
-
-	https://registry.terraform.io/providers/oracle/oci/latest/docs
 
 	-----------------
 
