@@ -293,3 +293,18 @@ phoenixnap_relays = [
 ]
 
 # ----------------------------------------------------------------------
+
+bare_metal_relays = [
+	{
+		relay_name       = "datapacket.losangeles.a"
+		datacenter_name  = "datapacket.losangeles"
+		supplier_name    = "datapacket"
+		public_address   = "127.0.0.1:40000"
+		internal_address = "0.0.0.0"
+		internal_group   = ""
+		ssh_address      = "127.0.0.1"
+		ssh_user         = "ubuntu"
+	},
+]
+
+# ----------------------------------------------------------------------

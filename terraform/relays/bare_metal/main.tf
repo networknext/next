@@ -8,6 +8,7 @@ output "relays" {
     for i, v in var.relays : zipmap( 
       [
         "relay_name", 
+        "datacenter_name",
         "supplier_name", 
         "public_address", 
         "internal_address", 
@@ -17,6 +18,7 @@ output "relays" {
       ], 
       [
         var.relays[i].relay_name, 
+        var.relays[i].datacenter_name,
         var.relays[i].supplier_name, 
         var.relays[i].public_address, 
         var.relays[i].internal_address, 

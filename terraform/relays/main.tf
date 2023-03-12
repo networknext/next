@@ -158,16 +158,19 @@ module "gcore_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
+/*
 output "gcore_relays" {
   description = "Data for each gcore relay"
   value = module.gcore_relays.relays
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
 variable "phoenixnap_client_id" { type = string }
 variable "phoenixnap_relays" { type = list(map(string)) }
 
+/*
 module "phoenixnap_relays" {
   relays              = var.phoenixnap_relays
   client_id           = var.phoenixnap_client_id
@@ -176,7 +179,6 @@ module "phoenixnap_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-/*
 output "phoenixnap_relays" {
   description = "Data for each phoenixnap relay"
   value = module.phoenixnap_relays.relays
