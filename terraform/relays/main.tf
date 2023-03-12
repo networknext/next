@@ -185,3 +185,16 @@ output "phoenixnap_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+variable "bare_metal_relays" { type = list(map(string)) }
+
+module "bare_metal_relays" {
+  relays = var.bare_metal_relays
+  source = "./bare_metal"
+}
+
+output "bare_metal_relays" {
+  description = "Data for each bare metal relay"
+  value = module.bare_metal_relays.relays
+}
+
+# ----------------------------------------------------------------------------------------
