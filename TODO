@@ -22,13 +22,11 @@ DONE
 
 	Verify that I can ssh in to equinix metal. Yes I can, it's via root.
 
+	HiVelocity relays are configured
+
 TODO
 
-	-----------------
-
-	HiVelocity
-
-	https://registry.terraform.io/providers/hivelocity/hivelocity/latest/docs
+	Verify that I can ssh into hivelocity relays.
 
 	-----------------
 
@@ -828,5 +826,17 @@ Nice to have:
 	The nice prompt for relay SSH needs to be done on ssh login via next tool
 
 	It can't easily be done in start script for google cloud relays :(
+
+	--------------
+
+	Add concept of API_KEY and assign it to customer.
+
+	If an API key in on the customer, then there is a corresponding public key set there that can verify the customer API key.
+
+	Pass the API KEY into the REST API to get access, it really is easy...
+
+	--------------
+
+	Actually, the API key not *per-customer*. The API key is for admins only.
 
 	--------------

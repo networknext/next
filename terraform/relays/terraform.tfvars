@@ -1,7 +1,5 @@
 
 env                      = "dev"
-credentials              = "~/Documents/terraform-relays.json"
-project                  = "relays-380114"
 vpn_address              = "45.33.53.242"
 ssh_public_key_file      = "~/.ssh/id_rsa.pub"
 ssh_private_key_file     = "~/.ssh/id_rsa"
@@ -13,6 +11,9 @@ relay_backend_public_key = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 relay_backend_hostname   = "dev.losangelesfreewaysatnight.com"
 
 # ----------------------------------------------------------------------
+
+google_credentials = "~/Documents/terraform-relays.json"
+google_project     = "relays-380114"
 
 google_relays = [
 
@@ -215,5 +216,31 @@ equinix_relays = [
 ]
 
 # see: https://deploy.equinix.com/developers/docs/metal/locations/metros/
+
+# ----------------------------------------------------------------------
+
+hivelocity_relays = [
+
+	# DALLAS
+	{
+		name   = "hivelocity.dallas.1"
+		zone   = "DAL1"
+		os     = "Ubuntu 20.x"
+	},
+
+	/*
+	# TAMPA
+	{
+		name   = "hivelocity.tampa.1"
+		zone   = "TPA1"
+		os     = "Ubuntu 20.x"
+	},
+	{
+		name   = "hivelocity.tampa.2"
+		zone   = "TPA2"
+		os     = "Ubuntu 20.x"
+	},
+	*/
+]
 
 # ----------------------------------------------------------------------

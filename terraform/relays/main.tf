@@ -11,10 +11,6 @@ terraform {
 
 # ----------------------------------------------------------------------------------------
 
-# todo: these two are actually specific to google cloud only...
-variable "credentials" { type = string }
-variable "project" { type = string }
-
 variable "vpn_address" { type = string }
 variable "ssh_public_key_file" { type = string }
 variable "ssh_private_key_file" { type = string }
@@ -28,13 +24,15 @@ variable "relay_backend_public_key" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
+variable "google_credentials" { type = string }
+variable "google_project" { type = string }
 variable "google_relays" { type = list(map(string)) }
 
 module "google_relays" {
   relays              = var.google_relays
+  project             = var.google_project
+  credentials         = var.google_credentials
   source              = "./google"
-  project             = var.project
-  credentials         = var.credentials
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
@@ -133,8 +131,13 @@ output "equinix_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+variable "hivelocity_relays" { type = list(map(string)) }
+
 module "hivelocity_relays" {
+  relays              = var.hivelocity_relays
   source              = "./hivelocity"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
 }
 
 output "hivelocity_relays" {
