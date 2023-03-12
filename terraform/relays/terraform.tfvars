@@ -221,6 +221,7 @@ equinix_relays = [
 
 hivelocity_relays = [
 
+	/*
 	# DALLAS
 	{
 		name   = "hivelocity.dallas.1"
@@ -228,7 +229,6 @@ hivelocity_relays = [
 		os     = "Ubuntu 20.x"
 	},
 
-	/*
 	# TAMPA
 	{
 		name   = "hivelocity.tampa.1"
@@ -242,5 +242,7 @@ hivelocity_relays = [
 	},
 	*/
 ]
+
+// see: https://developers.hivelocity.net/docs/facilities
 
 # ----------------------------------------------------------------------

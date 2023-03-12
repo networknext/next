@@ -45,7 +45,8 @@ data "hivelocity_product" "relay" {
 
 resource "hivelocity_bare_metal_device" "relay" {
   count             = length(var.relays)
-  hostname          = var.relays[count.index].name
+  hostname          = "test.relay.fuckyou"  # what is up with this field... =p
+  tags              = [var.relays[count.index].name]
   os_name           = var.relays[count.index].os
   period            = "Hourly"
   product_id        = data.hivelocity_product.relay[count.index].product_id
