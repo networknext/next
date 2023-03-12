@@ -246,3 +246,19 @@ hivelocity_relays = [
 // see: https://developers.hivelocity.net/docs/facilities
 
 # ----------------------------------------------------------------------
+
+gcore_project_id = "1"
+
+gcore_relays = [
+
+	# DALLAS
+	{
+		name   = "hivelocity.dallas.1"
+		zone   = "DAL1"
+		os     = "Ubuntu 20.x"
+	},
+]
+
+// see: https://apidocs.gcore.com/cloud
+
+# ----------------------------------------------------------------------

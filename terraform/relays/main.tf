@@ -146,3 +146,23 @@ output "hivelocity_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+variable "gcore_project_id" { type = string }
+variable "gcore_relays" { type = list(map(string)) }
+
+module "gcore_relays" {
+  relays              = var.gcore_relays
+  project             = var.gcore_project_id
+  source              = "./gcore"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+/*
+output "gcore_relays" {
+  description = "Data for each gcore relay"
+  value = module.gcore_relays.relays
+}
+*/
+
+# ----------------------------------------------------------------------------------------

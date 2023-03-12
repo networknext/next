@@ -24,9 +24,12 @@ DONE
 
 	HiVelocity relays are configured
 
+	GCore Labs sketched out, but API token is not working
+
+	https://registry.terraform.io/providers/G-Core/gcorelabs/latest/docs
+
 TODO
 
-	Verify that I can ssh into hivelocity relays.
 
 	-----------------
 
@@ -36,13 +39,19 @@ TODO
 
 	-----------------
 
-	GCore Labs
-
-	https://registry.terraform.io/providers/G-Core/gcorelabs/latest/docs
+	Bare metal module
 
 	-----------------
 
-	Bare metal module
+	Azure
+
+	-----------------
+
+	IBM
+
+	-----------------
+
+	Oracle
 
 	-----------------
 
@@ -106,22 +115,6 @@ TODO
 	-----------------
 
 	Stackpath can't validate on my phone number, need to use Chantel's...
-
-	-----------------
-
-	Get azure relays up with terraform
-
-	-----------------
-
-	Get IBM cloud relays up with terraform
-
-	-----------------
-
-	Get oracle cloud relays up with terraform
-
-	-----------------
-
-	DataPacket.com?
 
 	-----------------
 
@@ -277,18 +270,6 @@ TODO
 
 
 
-	Create a linode relay.
-
-	Create a stackpath relay.
-
-	Create an equinix relay.
-
-		https://registry.terraform.io/providers/equinix/equinix/latest/docs/data-sources/equinix_metal_facility
-
-	Create a vultr relay.
-
-	What other suppliers have terraform interfaces?
-
 
 
 
@@ -327,6 +308,18 @@ TODO
 	-----------------------
 
 	Modify API service setup in terraform so it can only be accessed from the vpn address
+
+	--------------
+
+	Add concept of API_KEY and assign it to customer.
+
+	If an API key in on the customer, then there is a corresponding public key set there that can verify the customer API key.
+
+	Pass the API KEY into the REST API to get access, it really is easy...
+
+	--------------
+
+	Actually, the API key not *per-customer*. The API key is for admins only.
 
 	-----------------------
 
@@ -826,17 +819,5 @@ Nice to have:
 	The nice prompt for relay SSH needs to be done on ssh login via next tool
 
 	It can't easily be done in start script for google cloud relays :(
-
-	--------------
-
-	Add concept of API_KEY and assign it to customer.
-
-	If an API key in on the customer, then there is a corresponding public key set there that can verify the customer API key.
-
-	Pass the API KEY into the REST API to get access, it really is easy...
-
-	--------------
-
-	Actually, the API key not *per-customer*. The API key is for admins only.
 
 	--------------
