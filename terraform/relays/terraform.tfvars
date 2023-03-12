@@ -17,6 +17,7 @@ google_project     = "relays-380114"
 
 google_relays = [
 
+/*
 	# us-central1: IOWA
 	{
 		name   = "google.iowa.1"
@@ -71,11 +72,14 @@ google_relays = [
 		type   = "n1-standard-2"
 		image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
 	}
+*/
 ]
 
 # ----------------------------------------------------------------------
 
 amazon_relays = [
+
+/*
 	{
 		name = "amazon.virginia.1"
 		zone = "us-east-1a"
@@ -112,12 +116,14 @@ amazon_relays = [
 		type = "m5a.large"
 		ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	},
+*/
 ]
 
 # ----------------------------------------------------------------------
 
 akamai_relays = [
 
+/*
 	# us-east: NEW YORK
 	{
 		name   = "akamai.newyork"
@@ -149,12 +155,14 @@ akamai_relays = [
 		type   = "g6-dedicated-2"
 		image  = "linode/ubuntu22.04"
 	},
+*/
 ]
 
 # ----------------------------------------------------------------------
 
 vultr_relays = [
 
+/*
 	# sea: SEATTLE
 	{
 		name   = "vultr.seattle"
@@ -170,12 +178,14 @@ vultr_relays = [
 		plan   = "vc2-1c-1gb"
 		os     = "Ubuntu 22.04 LTS x64"
 	},
+*/
 ]
 
 # ----------------------------------------------------------------------
 
 latitude_relays = [
 
+/*
 	# sea: SEATTLE
 	{
 		name   = "vultr.seattle"
@@ -183,6 +193,7 @@ latitude_relays = [
 		plan   = "vc2-1c-1gb"
 		os     = "Ubuntu 22.04 LTS x64"
 	},
+*/
 ]
 
 # ----------------------------------------------------------------------
@@ -191,6 +202,7 @@ equinix_project_id = "22b594e2-512c-42fb-881f-7a94da7d2737"
 
 equinix_relays = [
 
+/*
 	# DALLAS
 	{
 		name   = "equinix.dallas.1"
@@ -212,7 +224,7 @@ equinix_relays = [
 		plan   = "c3.small.x86"
 		os     = "ubuntu_22_04"
 	},
-
+*/
 ]
 
 # see: https://deploy.equinix.com/developers/docs/metal/locations/metros/
@@ -221,7 +233,7 @@ equinix_relays = [
 
 hivelocity_relays = [
 
-	/*
+/*
 	# DALLAS
 	{
 		name   = "hivelocity.dallas.1"
@@ -240,7 +252,7 @@ hivelocity_relays = [
 		zone   = "TPA2"
 		os     = "Ubuntu 20.x"
 	},
-	*/
+*/
 ]
 
 // see: https://developers.hivelocity.net/docs/facilities
@@ -251,14 +263,33 @@ gcore_project_id = "1"
 
 gcore_relays = [
 
+/*
 	# DALLAS
 	{
 		name   = "hivelocity.dallas.1"
 		zone   = "DAL1"
 		os     = "Ubuntu 20.x"
 	},
+*/
 ]
 
 // see: https://apidocs.gcore.com/cloud
+
+# ----------------------------------------------------------------------
+
+phoenixnap_client_id = "ANUS"
+
+phoenixnap_relays = [
+
+/*
+	# DALLAS
+	{
+		name   = "phoenixnap.phoenix"
+		zone   = "PHX"
+		type   = "s1.c1.medium"
+		os     = "ubuntu/jammy"
+	},
+*/
+]
 
 # ----------------------------------------------------------------------

@@ -28,14 +28,13 @@ DONE
 
 	https://registry.terraform.io/providers/G-Core/gcorelabs/latest/docs
 
-TODO
-
-
-	-----------------
-
 	PhoenixNap
 
-	https://github.com/phoenixnap/terraform-provider-pnap
+	https://registry.terraform.io/providers/phoenixnap/pnap/latest/docs
+
+	Can't seem to create an account, for some reason...
+
+TODO
 
 	-----------------
 
@@ -55,7 +54,13 @@ TODO
 
 	-----------------
 
+	Bare metal:
 
+	colocrossing.com
+
+	datapacket.com
+
+	-----------------
 
 
 
