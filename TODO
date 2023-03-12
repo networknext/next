@@ -12,6 +12,10 @@ DONE
 
 	Standardize key file locations to "~/secrets/*"
 
+	Huawei cloud
+
+	Tencent cloud
+
 TODO
 
 	Hook up "next" tool with terraform, eg.
@@ -19,18 +23,6 @@ TODO
 		next select dev
 		next deploy backend
 		next deploy relays
-
-	-----------------
-
-	Huawei cloud
-
-	https://support.huaweicloud.com/intl/en-us/qs-terraform/index.html
-
-	-----------------
-
-	Tencent cloud
-
-	https://registry.terraform.io/providers/tencentcloudstack/tencentcloud/latest/docs
 
 	-----------------
 
