@@ -93,12 +93,12 @@ output "vultr_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-// todo: not ready yet
-
 variable "latitude_relays" { type = list(map(string)) }
 
-/*
 module "latitude_relays" {
+  project_name        = "Test Relays"
+  project_description = "Test Relays"
+  project_environment = "Development"
   relays              = var.latitude_relays
   source              = "../../suppliers/latitude"
   vpn_address         = var.vpn_address
@@ -109,7 +109,6 @@ output "latitude_relays" {
   description = "Data for each latitude relay"
   value = module.latitude_relays.relays
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 

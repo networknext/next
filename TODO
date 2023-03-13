@@ -1,20 +1,24 @@
 DONE
 
-TODO
-
 	Hook up "next" tool with terraform, eg.
 
 		next select dev
 		next deploy backend
 		next deploy relays
 
+	Also add "init" and "destroy" actions.
+
+	Setup latitude.sh provider
+
+TODO
+
 	-----------------
 
-	Setup latitude.sh relays.
+	Setup stackpath relays.
 
 	-----------------
 
-	Unblock stackpath setup.
+	Setup digitalocean.
 
 	-----------------
 

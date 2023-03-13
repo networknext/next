@@ -185,15 +185,13 @@ vultr_relays = [
 
 latitude_relays = [
 
-/*
-	# sea: SEATTLE
+	# VIRGINIA
 	{
-		name   = "vultr.seattle"
-		region = "sea"
-		plan   = "vc2-1c-1gb"
-		os     = "Ubuntu 22.04 LTS x64"
+		name   = "latitude.virginia"
+		site   = "ASH"
+		plan   = "c1-tiny-x86"
+		os     = "ubuntu_22_04_x64_lts"
 	},
-*/
 ]
 
 # ----------------------------------------------------------------------

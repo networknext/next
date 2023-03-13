@@ -1,3 +1,65 @@
+# ----------------------------------------------------------------------------------------
+
+/*
+    Do not setup and try out this provider as part of a dev enviroment, or you purchase a monthly commit for a VM server each time you recreate the relays :)
+
+    Plans are bare metal and available on a monthly basis. This provider currently does not do VMs.
+
+    Available sites as of March 13, 2023:
+
+      BGT    -> latitude.bogota
+      ASH    -> latitude.virginia
+      CH1    -> latitude.chicago
+      BUE    -> latitude.buenosaires
+      LON    -> latitude.london
+      MEX    -> latitude.mexico.1
+      MEX2   -> latitude.mexico.2
+      TY6    -> latitude.tokyo.1
+      TY8    -> latitude.tokyo.2
+      SAN    -> latitude.santiago.1
+      SAN2   -> latitude.santiago.2
+      SYD    -> latitude.sydney
+      NY2    -> latitude.newyork
+      MI1    -> latitude.miami
+      LA2    -> latitude.losangeles
+      DAL2   -> latitude.dallas
+      MH1    -> latitude.saopaulo.1
+      SP2    -> latitude.saopaulo.2
+
+  To update this list, run:
+
+    curl --request GET \
+     --url https://api.latitude.sh/regions \
+     --header 'accept: application/json' \
+     -H "Authorization: Bearer <API_KEY>"
+
+  Available plans as of March 13, 2023:
+
+    c1-tiny-x86
+    c1-medium-x86
+    c1-large-x86
+    c2-small-x86
+    c2-medium-x86
+    c2-large-x86
+    c3-medium-x86
+    c3-large-x86
+    c3-small-x86
+    m3-large-x86
+    s3-large-x86
+
+    etc...
+
+  Not all plans are available in each location. Plans are really just an inventory of different types of bare metal servers available in each location.
+
+  To update this list, run:
+
+    curl --request GET \
+     --url https://api.latitude.sh/plans \
+     --header 'accept: application/json' \
+     -H "Authorization: Bearer <API_KEY>"
+
+*/
+
 # --------------------------------------------------------------------------
 
 terraform {
@@ -15,119 +77,47 @@ provider "latitudesh" {
 
 # ----------------------------------------------------------------------------------------
 
+variable "project_name" { type = string }
+variable "project_description" { type = string }
+variable "project_environment" { type = string }
 variable "relays" { type = list(map(string)) }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
-variable "latitudesh_token" {
-  description = "Latitude.sh API token"
+resource "latitudesh_project" "relay" {
+  name        = var.project_name
+  description = var.project_description
+  environment = var.project_environment
 }
 
-variable "plan" {
-  description = "Latitude.sh server plan"
-  default     = "c2.small.x86"
+resource "latitudesh_ssh_key" "relay" {
+  name       = "relay"
+  project    = latitudesh_project.relay.id
+  public_key = file(var.ssh_public_key_file)
 }
 
-variable "region" {
-  description = "Latitude.sh server region slug"
-  default     = "ASH"
+resource "latitudesh_user_data" "relay" {
+  description = "Setup relay"
+  project = latitudesh_project.relay.id
+  content = base64encode(file("./setup_relay.sh"))
 }
 
-variable "ssh_public_key" {
-  description = "Latitude.sh SSH public key"
-}
-
-resource "latitudesh_server" "server" {
-  hostname         = "terraform.latitude.sh"
-  operating_system = "ubuntu_22_04_x64_lts"
-  plan             = data.latitudesh_plan.plan.slug
-  project          = latitudesh_project.project.id      # You can use the project id or slug
-  site             = data.latitudesh_region.region.slug # You can use the site id or slug
-  ssh_keys         = [latitudesh_ssh_key.ssh_key.id]
-  user_data        = latitudesh_user_data.user_data.id
-}
-
-# ----------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-# --------------------------------------------------------------------------
-
-resource "vultr_ssh_key" "relay" {
-  name    = "relay"
-  ssh_key = replace(file(var.ssh_public_key_file), "\n", "")
-}
-
-resource "vultr_startup_script" "setup_relay" {
-    name   = "setup-relay"
-    script = base64encode(file("./setup_relay.sh"))
-}
-
-data "vultr_plan" "relay" {
-  count    = length(var.relays)
-  filter {
-    name   = "id"
-    values = [var.relays[count.index].plan]
-  }
-}
-
-data "vultr_os" "relay" {
-  count    = length(var.relays)
-  filter {
-    name   = "name"
-    values = [var.relays[count.index].os]
-  }
-}
-
-resource "vultr_instance" "relay" {
-  count       = length(var.relays)
-  label       = "#{var.relays[count.index].name"
-  region      = var.relays[count.index].region
-  plan        = data.vultr_plan.relay[count.index].id
-  os_id       = data.vultr_os.relay[count.index].id
-  ssh_key_ids = [vultr_ssh_key.relay.id]
-  script_id   = vultr_startup_script.setup_relay.id
-}
-
-resource "vultr_reserved_ip" "relay" {
-  count       = length(var.relays)
-  label       = var.relays[count.index].name
-  region      = var.relays[count.index].region
-  ip_type     = "v4"
-  instance_id = vultr_instance.relay[count.index].id
+resource "latitudesh_server" "relay" {
+  count            = length(var.relays)
+  hostname         = var.relays[count.index].name
+  site             = var.relays[count.index].site
+  operating_system = var.relays[count.index].os
+  plan             = var.relays[count.index].plan
+  project          = latitudesh_project.relay.id
+  ssh_keys         = [latitudesh_ssh_key.relay.id]
+  user_data        = latitudesh_user_data.relay.id
 }
 
 output "relays" {
-  description = "Data for each vultr relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "region", "public_address", "internal_address", "plan", "os"], [var.relays[i].name, var.relays[i].region, vultr_instance.relay[i].main_ip, "0.0.0.0", var.relays[i].plan, var.relays[i].os])]
+  description = "Data for each latitude relay setup by Terraform"
+  value = [for i, v in var.relays : zipmap(["relay_name", "public_address", "internal_address"], [var.relays[i].name, latitudesh_server.relay[i].primary_ip_v4, "0.0.0.0"])]
 }
-*/
 
-# --------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------

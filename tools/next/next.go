@@ -198,7 +198,11 @@ func runCommandQuiet(command string, args []string, stdoutOnly bool) (bool, stri
 	return true, output
 }
 
-func bash(command string) string {
+func bash(command string) bool {
+	return runCommand("bash", []string{"-c", command})
+}
+
+func bashQuiet(command string) string {
 	_, output := runCommandQuiet("bash", []string{"-c", command}, false)
 	return output
 }
@@ -266,7 +270,7 @@ func handleRunTimeError(msg string, level int) {
 var env Environment
 
 func getKeyValue(envFile string, keyName string) string {
-	value := bash(fmt.Sprintf("cat %s | awk -v key=%s -F= '$1 == key { sub(/^[^=]+=/, \"\"); print }'", envFile, keyName))
+	value := bashQuiet(fmt.Sprintf("cat %s | awk -v key=%s -F= '$1 == key { sub(/^[^=]+=/, \"\"); print }'", envFile, keyName))
 	if len(value) < 1 {
 		return ""
 	}
@@ -291,17 +295,17 @@ func main() {
 	var selectCommand = &ffcli.Command{
 		Name:       "select",
 		ShortUsage: "next select <local|dev|prod>",
-		ShortHelp:  "Select environment to use (local|dev|prod)",
+		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|prod)"), 0)
+				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|staging|prod)"), 0)
 			}
 
 			if args[0] == "local" {
-				bash("rm -f database.bin && cp envs/local.bin database.bin")
-				bash("psql -U developer postgres -f ../schemas/sql/destroy.sql")
-				bash("psql -U developer postgres -f ../schemas/sql/create.sql")
-				bash("psql -U developer postgres -f ../schemas/sql/local.sql")
+				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
+				bashQuiet("psql -U developer postgres -f ../schemas/sql/destroy.sql")
+				bashQuiet("psql -U developer postgres -f ../schemas/sql/create.sql")
+				bashQuiet("psql -U developer postgres -f ../schemas/sql/local.sql")
 			}
 
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
@@ -1384,15 +1388,21 @@ func analyzeRouteMatrix(inputFile string) {
 // -------------------------------------------------------------------------------------------
 
 func terraformInit(env Environment, component string) {
-	fmt.Printf("init %s\n\n", component)
+	fmt.Printf("init %s in %s\n\n", component, env.Name)
+	bash(fmt.Sprintf("cd terraform/%s/%s && terraform init", env.Name, component))
+	fmt.Printf("\n")
 }
 
 func terraformDeploy(env Environment, component string) {
-	fmt.Printf("deploy %s\n\n", component)
+	fmt.Printf("deploy %s to %s\n\n", component, env.Name)
+	bash(fmt.Sprintf("cd terraform/%s/%s && terraform apply", env.Name, component))
+	fmt.Printf("\n")
 }
 
 func terraformDestroy(env Environment, component string) {
-	fmt.Printf("destroy %s\n\n", component)
+	fmt.Printf("destroy %s in %s\n\n", component, env.Name)
+	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
+	fmt.Printf("\n")
 }
 
 // -------------------------------------------------------------------------------------------
