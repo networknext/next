@@ -185,6 +185,7 @@ vultr_relays = [
 
 latitude_relays = [
 
+/*
 	# VIRGINIA
 	{
 		name   = "latitude.virginia"
@@ -192,6 +193,7 @@ latitude_relays = [
 		plan   = "c1-tiny-x86"
 		os     = "ubuntu_22_04_x64_lts"
 	},
+*/
 ]
 
 # ----------------------------------------------------------------------
@@ -302,6 +304,18 @@ bare_metal_relays = [
 		internal_group   = ""
 		ssh_address      = "127.0.0.1"
 		ssh_user         = "ubuntu"
+	},
+]
+
+# ----------------------------------------------------------------------
+
+digitalocean_relays = [
+	{
+		relay_name       = "digitalocean.losangeles.a"
+		datacenter_name  = "digitalocean.losangeles"
+		image            = "ubuntu-22-04-x64"
+		region           = "nyc"
+		size             = "s-1vcpu-1gb"
 	},
 ]
 

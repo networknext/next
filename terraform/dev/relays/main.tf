@@ -199,3 +199,20 @@ output "bare_metal_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+variable "digitalocean_relays" { type = list(map(string)) }
+
+module "digitalocean_relays" {
+
+  relays = var.digitalocean_relays
+  source = "../../suppliers/digitalocean"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+output "digitalocean_relays" {
+  description = "Data for each digitalocean relay"
+  value = module.digitalocean_relays.relays
+}
+
+# ----------------------------------------------------------------------------------------

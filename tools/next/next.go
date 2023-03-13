@@ -1388,19 +1388,19 @@ func analyzeRouteMatrix(inputFile string) {
 // -------------------------------------------------------------------------------------------
 
 func terraformInit(env Environment, component string) {
-	fmt.Printf("init %s in %s\n\n", component, env.Name)
+	fmt.Printf("initializing %s in %s\n\n", component, env.Name)
 	bash(fmt.Sprintf("cd terraform/%s/%s && terraform init", env.Name, component))
 	fmt.Printf("\n")
 }
 
 func terraformDeploy(env Environment, component string) {
-	fmt.Printf("deploy %s to %s\n\n", component, env.Name)
+	fmt.Printf("deploying %s to %s\n\n", component, env.Name)
 	bash(fmt.Sprintf("cd terraform/%s/%s && terraform apply", env.Name, component))
 	fmt.Printf("\n")
 }
 
 func terraformDestroy(env Environment, component string) {
-	fmt.Printf("destroy %s in %s\n\n", component, env.Name)
+	fmt.Printf("destroying %s in %s\n\n", component, env.Name)
 	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
 	fmt.Printf("\n")
 }

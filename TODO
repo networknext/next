@@ -10,15 +10,17 @@ DONE
 
 	Setup latitude.sh provider
 
+	Setup digitalocean.
+
 TODO
+
+	Setup firewall for digital ocean relays.
+
+	Make sure we can SSH into digital ocean relay.
 
 	-----------------
 
 	Setup stackpath relays.
-
-	-----------------
-
-	Setup digitalocean.
 
 	-----------------
 
