@@ -1,27 +1,5 @@
 DONE
 
-	Restructure terraform directory so we have the ability to have multiple relay environments
-
-		eg. 
-			terraform/dev/backend
-		    terraform/dev/relays
-
-		and:
-
-			terraform/suppliers/amazon|google|stackpath etc...
-
-	Standardize key file locations to "~/secrets/*"
-
-	Huawei cloud
-
-	Tencent cloud
-
-	Yandex cloud
-
-	Alibaba cloud
-
-	IBM cloud
-
 TODO
 
 	Hook up "next" tool with terraform, eg.
@@ -32,9 +10,11 @@ TODO
 
 	-----------------
 
-	DigitalOcean
+	Setup latitude.sh relays.
 
-	https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs
+	-----------------
+
+	Unblock stackpath setup.
 
 	-----------------
 

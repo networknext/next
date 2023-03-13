@@ -357,6 +357,48 @@ func main() {
 		},
 	}
 
+	var initCommand = &ffcli.Command{
+		Name:       "init",
+		ShortUsage: "next init <component>",
+		ShortHelp:  "Terraform init component, eg. 'next init backend', or 'next init relays'. Call this before first deploy, or after any new modules are added.",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) == 0 {
+				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
+			}
+			component := args[0]
+			terraformInit(env, component)
+			return nil
+		},
+	}
+
+	var deployCommand = &ffcli.Command{
+		Name:       "deploy",
+		ShortUsage: "next deploy <component>",
+		ShortHelp:  "Deploy component to current env with terraform, eg. 'next deploy backend', or 'next deploy relays'",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) == 0 {
+				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
+			}
+			component := args[0]
+			terraformDeploy(env, component)
+			return nil
+		},
+	}
+
+	var destroyCommand = &ffcli.Command{
+		Name:       "destroy",
+		ShortUsage: "next destroy <component>",
+		ShortHelp:  "Tear down the entire terraform environment, eg. 'next destroy backend', or 'next destroy relays'",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) == 0 {
+				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
+			}
+			component := args[0]
+			terraformDestroy(env, component)
+			return nil
+		},
+	}
+
 	var databaseCommand = &ffcli.Command{
 		Name:       "database",
 		ShortUsage: "next database",
@@ -624,6 +666,9 @@ func main() {
 	var commands = []*ffcli.Command{
 		selectCommand,
 		envCommand,
+		initCommand,
+		deployCommand,
+		destroyCommand,
 		databaseCommand,
 		relaysCommand,
 		sshCommand,
@@ -1334,6 +1379,20 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
 
 	fmt.Printf("\n")
+}
+
+// -------------------------------------------------------------------------------------------
+
+func terraformInit(env Environment, component string) {
+	fmt.Printf("init %s\n\n", component)
+}
+
+func terraformDeploy(env Environment, component string) {
+	fmt.Printf("deploy %s\n\n", component)
+}
+
+func terraformDestroy(env Environment, component string) {
+	fmt.Printf("destroy %s\n\n", component)
 }
 
 // -------------------------------------------------------------------------------------------
