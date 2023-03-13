@@ -1,64 +1,33 @@
 DONE
 
-	Hook up "next" tool with terraform, eg.
-
-		next select dev
-		next deploy backend
-		next deploy relays
-
-	Also add "init" and "destroy" actions.
-
-	Setup latitude.sh provider
-
-	Setup digitalocean.
-
-	Setup firewall for digital ocean relays.
-
-	Make sure we can SSH into digital ocean relay.
-
-	Adjust the dev/relays/main.tf to specify the relays in the code
-
-	We do not need or want to specify them entirely in vars.
-
-	There will be a separate tf file for each set of relays (dev/staging/prod)
-
-	Adjusted bare metal so it has map of relays as input.
-
-	Did the same to google, for_each works really well!
-
-	Now extend the relay provider to have internal maps to convert from datacenter name to region.
-
-	Finish out the google provider by listing all known datacenters as of today, and fleshing out the map from datacenter -> zone/region.
-
-	Create schemas/sql/sellers/google.sql / amazon.sql
-
-	Then make sure this gets called when I go "run sql-dev"
-
-	Verify I can run the sql-create, sql-dev, export-database locally.
-
-	Look through all uses of dev.sql and fix up
-
-	Verify database func tests pass in sem
-
 TODO
-
-	Verify happy path works locally
-
-	Verify all functional tests pass
-
-	There is something wrong with the local.env and/or the func tests not properly setting up the server backend to local in happy path, and in func tests.
-
-	The server backend is pointing to the dev backend... dev.spacecats.net
-
-	Why?
-
-	-----------------
 
 	Finalize the amazon supplier so it works in the same form as google (map of relays)
 
 	Work out how to get amazon supplier working with multiple regions
 
 	-----------------
+
+	Setup serversdotcom provider
+
+	The have cloud instances...
+
+	https://registry.terraform.io/providers/serverscom/serverscom/latest/docs/resources/cloud_computing_instance
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

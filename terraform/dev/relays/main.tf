@@ -26,7 +26,7 @@ locals {
 
     "datapacket.losangeles.a" = {
       datacenter_name  = "datapacket.losangeles"
-      native_name      = "Cyxtera LAX1-A"
+      native_name      = ""
       supplier_name    = "datapacket"
       public_address   = "127.0.0.1:40000"
       internal_address = "0.0.0.0"
@@ -119,3 +119,85 @@ output "google_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+# ============
+# AMAZON CLOUD
+# ============
+
+locals {
+
+  amazon_config      = ["~/.aws/config"]
+  amazon_credentials = ["~/.aws/credentials"]
+  amazon_profile     = "default"
+
+  amazon_relays = {
+
+    # VIRGINIA
+
+    "amazon.virginia.1" = {
+      config          = local.amazon_config
+      credentials     = local.amazon_credentials
+      profile         = local.amazon_profile
+      zone            = "us-east-1a"              # todo: temporary
+      region          = "us-east-1"               # todo: temporary
+      datacenter_name = "amazon.virginia.1"
+      type            = "a1.large"
+      ami             = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+    },
+
+  }
+}
+
+module "amazon_relays" {
+  region              = "us-east-1"                      # todo: this needs to go away
+  relays              = local.amazon_relays
+  project             = local.google_project
+  credentials         = local.google_credentials
+  source              = "../../suppliers/google"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+output "google_relays" {
+  description = "Data for each google relay"
+  value = module.google_relays.relays
+}
+
+# ----------------------------------------------------------------------------------------
+
+/*
+  {
+    name = "amazon.virginia.1"
+    zone = "us-east-1a"
+  },
+  {
+    name = "amazon.virginia.2"
+    zone = "us-east-1b"
+    type = "a1.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  },
+  {
+    name = "amazon.virginia.3"
+    zone = "us-east-1c"
+    type = "m5a.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  },
+  {
+    name = "amazon.virginia.4"
+    zone = "us-east-1d"
+    type = "a1.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  },
+  {
+    name = "amazon.virginia.5"
+    zone = "us-east-1e"
+    type = "m4.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  },
+  {
+    name = "amazon.virginia.6"
+    zone = "us-east-1f"
+    type = "m5a.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  },
+*/

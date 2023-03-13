@@ -10,14 +10,17 @@ terraform {
 }
 
 provider "aws" {
-  shared_config_files      = ["~/.aws/config"]
-  shared_credentials_files = ["~/.aws/credentials"]
+  shared_config_files      = ["~/.aws/config"]            # todo: this should be configurable
+  shared_credentials_files = ["~/.aws/credentials"]       # todo: this should be configurable
   profile                  = "default"
-  region                   = var.region
+  region                   = var.region                   # todo: this should go away
 }
 
 # --------------------------------------------------------------------------
 
+variable "config" { type = list(string) }
+variable "credentials" { type = list(string) }
+variable "profile" { type = string }
 variable "relays" { type = list(map(string)) }
 variable "region" { type = string }
 variable "ssh_public_key_file" { type = string }
@@ -40,7 +43,7 @@ resource "aws_security_group" "allow_ssh_and_udp" {
   ingress {
     protocol    = "tcp"
     from_port   = 22
-      to_port     = 22
+    to_port     = 22
     cidr_blocks = ["${var.vpn_address}/32"]
   }
 
@@ -52,10 +55,10 @@ resource "aws_security_group" "allow_ssh_and_udp" {
   }
 
   egress {
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
-    cidr_blocks     = ["0.0.0.0/0"]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   lifecycle {

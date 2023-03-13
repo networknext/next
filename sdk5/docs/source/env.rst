@@ -91,16 +91,16 @@ Overrides the socket receive buffer size in *next_config_t*.
 
 	$ export NEXT_RECEIVE_BUFFER_SIZE=500000
 
-NEXT_HOSTNAME
--------------
+NEXT_SERVER_BACKEND_HOSTNAME
+----------------------------
 
-Overrides the hostname in *next_config_t*.
+Overrides the server backend hostname in *next_config_t*.
 
 **Example:**
 
 .. code-block:: console
 
-	$ export NEXT_HOSTNAME=mygamecompany.spacecats.net
+	$ export NEXT_SERVER_BACKEND_HOSTNAME=prod.spacecats.net
 
 NEXT_SERVER_ADDRESS
 -------------------
