@@ -1,11 +1,25 @@
 # ----------------------------------------------------------------------------------------
 
-variable "relays" { type = list(map(string)) }
+/*
+  Good bare metal providers:
+
+    1. datapacket.com
+    2. colocrossing.com
+    3. servers.com
+    4. performive.com
+    5. serversaustralia.com.au
+    6. velia.net
+    7. oneqode.com
+*/
+
+# ----------------------------------------------------------------------------------------
+
+variable "relays" { type = map(map(string)) }
 
 output "relays" {
   description = "Data for each bare metal relay setup by Terraform"
-  value = [
-    for i, v in var.relays : zipmap( 
+  value = {
+    for k, v in var.relays : k => zipmap( 
       [
         "relay_name", 
         "datacenter_name",
@@ -17,19 +31,17 @@ output "relays" {
         "ssh_user",
       ], 
       [
-        var.relays[i].relay_name, 
-        var.relays[i].datacenter_name,
-        var.relays[i].supplier_name, 
-        var.relays[i].public_address, 
-        var.relays[i].internal_address, 
-        var.relays[i].internal_group, 
-        var.relays[i].ssh_address, 
-        var.relays[i].ssh_user,
+        k,
+        v.datacenter_name,
+        v.supplier_name, 
+        v.public_address, 
+        v.internal_address, 
+        v.internal_group, 
+        v.ssh_address, 
+        v.ssh_user,
       ]
     )
-  ]
+  }
 }
 
 # --------------------------------------------------------------------------
-
-// note: good bare metal include datapacket.com, colocrossing.com, servers.com, serversaustralia.com.au, oneqode.com

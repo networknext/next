@@ -16,7 +16,7 @@ provider "google" {
 
 # ----------------------------------------------------------------------------------------
 
-variable "relays" { type = list(map(string)) }
+variable "relays" { type = map(map(string)) }
 variable "project" { type = string }
 variable "credentials" { type = string }
 variable "ssh_public_key_file" { type = string }
@@ -54,10 +54,19 @@ resource "google_compute_firewall" "google_allow_udp" {
 
 # ----------------------------------------------------------------------------------------
 
+locals {
+  datacenter_map = {
+    "google.iowa.1" = {
+      zone   = "us-central1-a"
+      region = "us-central1"
+    }
+  }
+}
+
 resource "google_compute_address" "public" {
-  count        = length(var.relays)
-  name         = "${replace(var.relays[count.index].name, ".", "-")}-public"
-  region       = var.relays[count.index].region
+  for_each     = var.relays
+  name         = "${replace(each.key, ".", "-")}-public"
+  region       = local.datacenter_map[each.value.datacenter_name].region
   address_type = "EXTERNAL"
   lifecycle {
     create_before_destroy = true
@@ -65,9 +74,9 @@ resource "google_compute_address" "public" {
 }
 
 resource "google_compute_address" "internal" {
-  count        = length(var.relays)
-  name         = "${replace(var.relays[count.index].name, ".", "-")}-internal"
-  region       = var.relays[count.index].region
+  for_each     = var.relays
+  name         = "${replace(each.key, ".", "-")}-internal"
+  region       = local.datacenter_map[each.value.datacenter_name].region
   address_type = "INTERNAL"
   lifecycle {
     create_before_destroy = true
@@ -75,21 +84,21 @@ resource "google_compute_address" "internal" {
 }
 
 resource "google_compute_instance" "relay" {
-  count        = length(var.relays)
-  name         = "${replace(var.relays[count.index].name, ".", "-")}"
-  zone         = var.relays[count.index].zone
-  machine_type = var.relays[count.index].type
+  for_each     = var.relays
+  name         = "${replace(each.key, ".", "-")}"
+  zone         = local.datacenter_map[each.value.datacenter_name].zone
+  machine_type = each.value.type
   network_interface {
-    network_ip = google_compute_address.internal[count.index].address
+    network_ip = google_compute_address.internal[each.key].address
     network    = "default"
     subnetwork = "default"
     access_config {
-      nat_ip = google_compute_address.public[count.index].address
+      nat_ip = google_compute_address.public[each.key].address
     }
   }
   boot_disk {
     initialize_params {
-      image = var.relays[count.index].image
+      image = each.value.image
     }
   }
   metadata = {
@@ -101,9 +110,34 @@ resource "google_compute_instance" "relay" {
   metadata_startup_script = file("./setup_relay.sh")
 }
 
+# ----------------------------------------------------------------------------------------
+
 output "relays" {
-  description = "Data for each google relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "zone", "region", "public_address", "internal_address", "machine_type", "image"], [var.relays[i].name, var.relays[i].zone, var.relays[i].region, google_compute_address.public[i].address, google_compute_address.internal[i].address, var.relays[i].type, var.relays[i].image])]
+  description = "Data for each bare metal relay setup by Terraform"
+  value = {
+    for k, v in var.relays : k => zipmap( 
+      [
+        "relay_name", 
+        "datacenter_name",
+        "supplier_name", 
+        "public_address", 
+        "internal_address", 
+        "internal_group", 
+        "ssh_address", 
+        "ssh_user",
+      ], 
+      [
+        k,
+        v.datacenter_name,
+        "google", 
+        "${google_compute_address.public[k].address}:40000",
+        "${google_compute_address.internal[k].address}:40000",
+        "", 
+        "${google_compute_address.public[k].address}:22",
+        "ubuntu",
+      ]
+    )
+  }
 }
 
 # ----------------------------------------------------------------------------------------

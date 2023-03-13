@@ -12,23 +12,45 @@ DONE
 
 	Setup digitalocean.
 
-TODO
-
 	Setup firewall for digital ocean relays.
 
 	Make sure we can SSH into digital ocean relay.
 
+	Adjust the dev/relays/main.tf to specify the relays in the code
+
+	We do not need or want to specify them entirely in vars.
+
+	There will be a separate tf file for each set of relays (dev/staging/prod)
+
+	Adjusted bare metal so it has map of relays as input.
+
+	Did the same to google, for_each works really well!
+
+TODO
+
+	Now extend the relay provider to have internal maps to convert from datacenter name to region.
+
 	-----------------
 
-	Setup stackpath relays.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------
 
-	All terraform supplier modules need to be adjusted so they have maps as relay input
-
-	Otherwise, inserting a new relay definition anywhere except the start of the file
-
-	See if this is possible, or if it is crazy with one provider (eg. google...)
+	Setup stackpath relays (needs Chantel's phone number?)
 
 	-----------------
 
