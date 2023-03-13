@@ -34,6 +34,9 @@ INSERT INTO sellers(seller_name) VALUES('amazon');
 INSERT INTO sellers(seller_name) VALUES('vultr');
 INSERT INTO sellers(seller_name) VALUES('linode');
 
+\i sellers/google.sql
+\i sellers/amazon.sql
+
 -- linode datacenters
 
 INSERT INTO datacenters(
