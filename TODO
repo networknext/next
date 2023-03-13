@@ -28,9 +28,17 @@ DONE
 
 	Now extend the relay provider to have internal maps to convert from datacenter name to region.
 
+	Finish out the google provider by listing all known datacenters as of today, and fleshing out the map from datacenter -> zone/region.
+
 TODO
 
-	Finish out the google provider by listing all known datacenters as of today, and fleshing out the map from datacenter -> zone/region.
+	Create schemas/sql/sellers/google.sql
+
+	Then make sure this gets called when I go "run sql-dev"
+
+	And in all the functional tests that use dev.sql ...
+
+	Verify all functional tests and happy path pass.
 
 	-----------------
 

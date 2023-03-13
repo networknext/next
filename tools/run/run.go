@@ -392,6 +392,7 @@ func sql_destroy() {
 }
 
 func sql_dev() {
+	bash("psql -U developer postgres -f ./schemas/sql/sellers/*.sql")
 	bash("psql -U developer postgres -f ./schemas/sql/dev.sql")
 }
 

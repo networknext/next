@@ -186,9 +186,9 @@ locals {
 
           2. Add an entry in the map below for the new datacenter
 
-          3. Update schemas/sql/google.sql then apply to your postgres database
+          3. Update schemas/sql/sellers/google.sql then update your postgres database
 
-          4. Update config/google.txt then deploy config to your environment
+          4. Update config/google.txt then "Deploy Config" config to your environment via semaphore
 
       Please be extremely careful making these changes!
   */
