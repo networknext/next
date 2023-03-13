@@ -58,8 +58,50 @@ locals {
   google_project     = "relays-380114"
   google_relays = {
 
+    # IOWA
+
     "google.iowa.1.a" = {
       datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.b" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.2" = {
+      datacenter_name = "google.iowa.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # OREGON
+
+    "google.oregon.1" = {
+      datacenter_name = "google.oregon.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.oregon.2.a" = {
+      datacenter_name = "google.oregon.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # SALT LAKE CITY
+
+    "google.saltlakecity.1" = {
+      datacenter_name = "google.saltlakecity.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.saltlakecity.2" = {
+      datacenter_name = "google.saltlakecity.2"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },

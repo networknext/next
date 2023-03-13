@@ -26,9 +26,11 @@ DONE
 
 	Did the same to google, for_each works really well!
 
+	Now extend the relay provider to have internal maps to convert from datacenter name to region.
+
 TODO
 
-	Now extend the relay provider to have internal maps to convert from datacenter name to region.
+	Finish out the google provider by listing all known datacenters as of today, and fleshing out the map from datacenter -> zone/region.
 
 	-----------------
 
