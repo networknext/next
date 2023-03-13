@@ -38,11 +38,19 @@ DONE
 
 	Look through all uses of dev.sql and fix up
 
+	Verify database func tests pass in sem
+
 TODO
 
 	Verify happy path works locally
 
-	Verify func tests pass in sem
+	Verify all functional tests pass
+
+	There is something wrong with the local.env and/or the func tests not properly setting up the server backend to local in happy path, and in func tests.
+
+	The server backend is pointing to the dev backend... dev.spacecats.net
+
+	Why?
 
 	-----------------
 
