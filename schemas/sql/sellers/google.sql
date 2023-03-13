@@ -110,7 +110,7 @@ VALUES(
 	'asia-northeast1-b',
 	35.6762,
 	139.6503,
-a	(select seller_id from sellers where seller_name = 'google')
+	(select seller_id from sellers where seller_name = 'google')
 );
 
 INSERT INTO datacenters(
