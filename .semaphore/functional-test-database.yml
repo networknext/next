@@ -32,7 +32,7 @@ blocks:
             - make clean
             - make -j dist/api dist/func_test_database
 
-            - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql
+            - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql schemas/sql/sellers/*.sql
 
             - artifact push workflow functional_test_database.tar.gz
 
