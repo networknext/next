@@ -86,12 +86,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.oregon.2.a" = {
-      datacenter_name = "google.oregon.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
     # SALT LAKE CITY
 
     "google.saltlakecity.1" = {

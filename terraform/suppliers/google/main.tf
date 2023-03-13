@@ -114,9 +114,9 @@
       google.lasvegas.2
       google.lasvegas.3
 
-    See google.txt for more details, or schemas/sql/google.sql
+    See config/google.txt for more details, or schemas/sql/google.sql
 
-    You can get an updated version of this list from: https://cloud.google.com/compute/docs/regions-zones
+    You can derive an updated version of this list from: https://cloud.google.com/compute/docs/regions-zones
 */
 
 # ----------------------------------------------------------------------------------------
@@ -177,257 +177,559 @@ resource "google_compute_firewall" "google_allow_udp" {
 
 locals {
 
-  # IMPORTANT: This map translates from the network next google datacenter names to google cloud zone and region
-  # If you add any more datacenters from google cloud, then this map must be updated before you can use them.
-  # You must also update update schemas/sql/google.sql then patch your database, as well as update config/google.txt
-  # and deploy the config to your environment before the SDK will pick up the new datacenters in autodetect.
+  /*
+      IMPORTANT: This map translates from the network next google datacenter names to google cloud zone and region.
+      
+      If want you add more datacenters from google cloud, then you must:
+
+          1. Update the list of supported google datacenters at the top of this file
+
+          2. Add an entry in the map below for the new datacenter
+
+          3. Update schemas/sql/google.sql then apply to your postgres database
+
+          4. Update config/google.txt then deploy config to your environment
+
+      Please be extremely careful making these changes!
+  */
 
   datacenter_map = {
 
-    google.taiwan.1 = {
+    "google.taiwan.1" = {
       zone   = "asia-east1-a"
       region = "asia-east1"
     },
 
-    google.taiwan.2 = {
+    "google.taiwan.2" = {
       zone   = "asia-east1-b"
       region = "asia-east1"
     },
 
-    google.taiwan.3 = {
+    "google.taiwan.3" = {
       zone   = "asia-east1-c"
       region = "asia-east1"
     },
 
-    google.hongkong.1 = {
+    "google.hongkong.1" = {
       zone   = "asia-east2-a"
       region = "asia-east2"
     },
 
-    google.hongkong.2 = {
+    "google.hongkong.2" = {
       zone   = "asia-east2-b"
       region = "asia-east2"
     },
 
-    google.hongkong.3 = {
+    "google.hongkong.3" = {
       zone   = "asia-east2-c"
       region = "asia-east2"
     },
 
-    google.tokyo.1 = {
+    "google.tokyo.1" = {
       zone   = "asia-northeast1-a"
       region = "asia-northeast1"
     },
 
-    google.tokyo.2 = {
+    "google.tokyo.2" = {
       zone   = "asia-northeast1-b"
       region = "asia-northeast1"
     },
 
-    google.tokyo.3 = {
+    "google.tokyo.3" = {
       zone   = "asia-northeast1-c"
       region = "asia-northeast1"
     }
 
-    google.osaka.1 = {
+    "google.osaka.1" = {
       zone   = "asia-northeast2-a"
       region = "asia-northeast2"
     },
 
-    google.osaka.2 = {
+    "google.osaka.2" = {
       zone   = "asia-northeast2-b"
       region = "asia-northeast2"
     },
 
-    google.osaka.3 = {
+    "google.osaka.3" = {
       zone   = "asia-northeast2-c"
       region = "asia-northeast2"
     },
 
-    google.seoul.1 = {
+    "google.seoul.1" = {
       zone   = "asia-northeast3-a"
       region = "asia-northeast3"
     },
 
-    google.seoul.2 = {
+    "google.seoul.2" = {
       zone   = "asia-northeast3-b"
       region = "asia-northeast3"
     },
 
-    google.seoul.3 = {
+    "google.seoul.3" = {
       zone   = "asia-northeast3-c"
       region = "asia-northeast3"
     },
 
-    google.mumbai.1 = {
+    "google.mumbai.1" = {
       zone   = "asia-south1-a"
       region = "asia-south1"
     },
 
-    google.mumbai.2 = {
+    "google.mumbai.2" = {
       zone   = "asia-south1-b"
       region = "asia-south1"
     },
 
-    google.mumbai.3 = {
+    "google.mumbai.3" = {
       zone   = "asia-south1-c"
       region = "asia-south1"
     },
 
-    google.delhi.1 = {
+    "google.delhi.1" = {
       zone   = "asia-south2-a"
       region = "asia-south2"
     },
 
-    google.delhi.2 = {
+    "google.delhi.2" = {
       zone   = "asia-south2-b"
       region = "asia-south2"
     },
 
-    google.delhi.3 = {
+    "google.delhi.3" = {
       zone   = "asia-south2-c"
       region = "asia-south2"
     },
 
-    google.singapore.1 = {
+    "google.singapore.1" = {
       zone   = "asia-southeast1-a"
       region = "asia-southeast1"
     },
 
-    google.singapore.2 = {
+    "google.singapore.2" = {
       zone   = "asia-southeast1-b"
       region = "asia-southeast1"
     },
 
-    google.singapore.3 = {
+    "google.singapore.3" = {
       zone   = "asia-southeast1-c"
       region = "asia-southeast1"
     },
 
-    google.jakarta.1 = {
+    "google.jakarta.1" = {
       zone   = "asia-southeast2-a"
       region = "asia-southeast2"
     },
 
-    google.jakarta.2 = {
+    "google.jakarta.2" = {
       zone   = "asia-southeast2-b"
       region = "asia-southeast2"
     },
 
-    google.jakarta.3 = {
+    "google.jakarta.3" = {
       zone   = "asia-southeast2-c"
       region = "asia-southeast2"
     },
 
-    google.sydney.1 = {
+    "google.sydney.1" = {
       zone   = "australia-southeast1-a"
       region = "australia-southeast1"
     },
 
-    google.sydney.2 = {
+    "google.sydney.2" = {
       zone   = "australia-southeast1-b"
       region = "australia-southeast1"
     },
 
-    google.sydney.3 = {
+    "google.sydney.3" = {
       zone   = "australia-southeast1-c"
       region = "australia-southeast1"
     },
 
-    google.melbourne.1 = {
+    "google.melbourne.1" = {
       zone   = "australia-southeast2-a"
       region = "australia-southeast2"
     },
 
-    google.melbourne.2 = {
+    "google.melbourne.2" = {
       zone   = "australia-southeast2-b"
       region = "australia-southeast2"
     },
 
-    google.melbourne.3 = {
+    "google.melbourne.3" = {
       zone   = "australia-southeast2-c"
       region = "australia-southeast2"
+    },
+
+    "google.warsaw.1" = {
+      zone   = "europe-central2-a"
+      region = "europe-central2"
+    },
+
+    "google.warsaw.2" = {
+      zone   = "europe-central2-b"
+      region = "europe-central2"
+    },
+
+    "google.warsaw.3" = {
+      zone   = "europe-central2-c"
+      region = "europe-central2"
+    },
+
+    "google.finland.1" = {
+      zone   = "europe-north1-a"
+      region = "europe-north1"
+    },
+
+    "google.finland.2" = {
+      zone   = "europe-north1-b"
+      region = "europe-north1"
+    },
+
+    "google.finland.3" = {
+      zone   = "europe-north1-c"
+      region = "europe-north1"
+    },
+
+    "google.madrid.1" = {
+      zone   = "europe-southwest1-a"
+      region = "europe-southwest1"
+    },
+
+    "google.madrid.2" = {
+      zone   = "europe-southwest1-b"
+      region = "europe-southwest1"
+    },
+
+    "google.madrid.3" = {
+      zone   = "europe-southwest1-c"
+      region = "europe-southwest1"
+    },
+
+    "google.belgium.1" = {
+      zone   = "europe-west1-a"
+      region = "europe-west1"
+    },
+
+    "google.belgium.2" = {
+      zone   = "europe-west1-b"
+      region = "europe-west1"
+    },
+
+    "google.belgium.3" = {
+      zone   = "europe-west1-c"
+      region = "europe-west1"
+    },
+
+    "google.london.1" = {
+      zone   = "europe-west2-a"
+      region = "europe-west2"
+    },
+
+    "google.london.2" = {
+      zone   = "europe-west2-b"
+      region = "europe-west2"
+    },
+
+    "google.london.3" = {
+      zone   = "europe-west2-c"
+      region = "europe-west2"
+    },
+
+    "google.frankfurt.1" = {
+      zone   = "europe-west3-a"
+      region = "europe-west3"
+    },
+
+    "google.frankfurt.2" = {
+      zone   = "europe-west3-b"
+      region = "europe-west3"
+    },
+
+    "google.frankfurt.3" = {
+      zone   = "europe-west3-c"
+      region = "europe-west3"
+    },
+
+    "google.netherlands.1" = {
+      zone   = "europe-west4-a"
+      region = "europe-west4"
+    },
+
+    "google.netherlands.2" = {
+      zone   = "europe-west4-b"
+      region = "europe-west4"
+    },
+
+    "google.netherlands.3" = {
+      zone   = "europe-west4-c"
+      region = "europe-west4"
+    },
+
+    "google.zurich.1" = {
+      zone   = "europe-west6-a"
+      region = "europe-west6"
+    },
+
+    "google.zurich.2" = {
+      zone   = "europe-west6-b"
+      region = "europe-west6"
+    },
+
+    "google.zurich.3" = {
+      zone   = "europe-west6-c"
+      region = "europe-west6"
+    },
+
+    "google.milan.1" = {
+      zone   = "europe-west8-a"
+      region = "europe-west"
+    },
+
+    "google.milan.2" = {
+      zone   = "europe-west8-b"
+      region = "europe-west"
+    },
+
+    "google.milan.3" = {
+      zone   = "europe-west8-c"
+      region = "europe-west"
+    },
+
+    "google.paris.1" = {
+      zone   = "europe-west9-a"
+      region = "europe-west"
+    },
+
+    "google.paris.2" = {
+      zone   = "europe-west9-b"
+      region = "europe-west"
+    },
+
+    "google.paris.3" = {
+      zone   = "europe-west9-c"
+      region = "europe-west"
+    },
+
+    "google.telaviv.1" = {
+      zone   = "me-west1-a"
+      region = "me-west1"
+    },
+
+    "google.telaviv.2" = {
+      zone   = "me-west1-b"
+      region = "me-west1"
+    },
+
+    "google.telaviv.3" = {
+      zone   = "me-west1-c"
+      region = "me-west1"
+    },
+
+    "google.montreal.1" = {
+      zone   = "northamerica-northeast1-a"
+      region = "northamerica-northeast1"
+    },
+
+    "google.montreal.2" = {
+      zone   = "northamerica-northeast1-b"
+      region = "northamerica-northeast1"
+    },
+
+    "google.montreal.3" = {
+      zone   = "northamerica-northeast1-c"
+      region = "northamerica-northeast1"
+    },
+
+    "google.toronto.1" = {
+      zone   = "northamerica-northeast2-a"
+      region = "northamerica-northeast2"
+    },
+
+    "google.toronto.2" = {
+      zone   = "northamerica-northeast2-b"
+      region = "northamerica-northeast2"
+    },
+
+    "google.toronto.3" = {
+      zone   = "northamerica-northeast2-c"
+      region = "northamerica-northeast2"
+    },
+
+    "google.saopaulo.1" = {
+      zone   = "southamerica-east1-a"
+      region = "southamerica-east1"
+    },
+
+    "google.saopaulo.2" = {
+      zone   = "southamerica-east1-b"
+      region = "southamerica-east1"
+    },
+
+    "google.saopaulo.3" = {
+      zone   = "southamerica-east1-c"
+      region = "southamerica-east1"
+    },
+
+    "google.santiago.1" = {
+      zone   = "southamerica-west1-a"
+      region = "southamerica-west1"
+    },
+
+    "google.santiago.2" = {
+      zone   = "southamerica-west1-b"
+      region = "southamerica-west1"
+    },
+
+    "google.santiago.3" = {
+      zone   = "southamerica-west1-c"
+      region = "southamerica-west1"
+    },
+
+    "google.iowa.1" = {
+      zone   = "us-central1-a"
+      region = "us-central1"
+    },
+
+    "google.iowa.2" = {
+      zone   = "us-central1-b"
+      region = "us-central1"
+    },
+
+    "google.iowa.3" = {
+      zone   = "us-central1-c"
+      region = "us-central1"
+    },
+
+    "google.iowa.4" = {
+      zone   = "us-central1-f"
+      region = "us-central1"
+    },
+
+    "google.southcarolina.1" = {
+      zone   = "us-east1-b"
+      region = "us-east1"
+    },
+
+    "google.southcarolina.2" = {
+      zone   = "us-east1-c"
+      region = "us-east1"
+    },
+
+    "google.southcarolina.3" = {
+      zone   = "us-east1-d"
+      region = "us-east1"
+    },
+
+    "google.virginia.1" = {
+      zone   = "us-east4-a"
+      region = "us-east4"
+    },
+
+    "google.virginia.2" = {
+      zone   = "us-east4-b"
+      region = "us-east4"
+    },
+
+    "google.virginia.3" = {
+      zone   = "us-east4-c"
+      region = "us-east4"
+    },
+
+    "google.ohio.1" = {
+      zone   = "us-east5-a"
+      region = "us-east5"
+    },
+
+    "google.ohio.2" = {
+      zone   = "us-east5-b"
+      region = "us-east5"
+    },
+
+    "google.ohio.3" = {
+      zone   = "us-east5-c"
+      region = "us-east5"
+    },
+
+    "google.dallas.1" = {
+      zone   = "us-south1-a"
+      region = "us-south1"
+    },
+
+    "google.dallas.2" = {
+      zone   = "us-south1-b"
+      region = "us-south1"
+    },
+
+    "google.dallas.3" = {
+      zone   = "us-south1-c"
+      region = "us-south1"
+    },
+
+    "google.oregon.1" = {
+      zone   = "us-west1-a"
+      region = "us-west1"
+    },
+
+    "google.oregon.2" = {
+      zone   = "us-west1-b"
+      region = "us-west1"
+    },
+
+    "google.oregon.3" = {
+      zone   = "us-west1-c"
+      region = "us-west1"
+    },
+
+    "google.losangeles.1" = {
+      zone   = "us-west2-a"
+      region = "us-west2"
+    },
+
+    "google.losangeles.2" = {
+      zone   = "us-west2-b"
+      region = "us-west2"
+    },
+
+    "google.losangeles.3" = {
+      zone   = "us-west2-c"
+      region = "us-west2"
+    },
+
+    "google.saltlakecity.1" = {
+      zone   = "us-west3-a"
+      region = "us-west3"
+    },
+
+    "google.saltlakecity.2" = {
+      zone   = "us-west3-b"
+      region = "us-west3"
+    },
+
+    "google.saltlakecity.3" = {
+      zone   = "us-west3-c"
+      region = "us-west3"
+    },
+
+    "google.lasvegas.1" = {
+      zone   = "us-west4-a"
+      region = "us-west4"
+    },
+
+    "google.lasvegas.2" = {
+      zone   = "us-west4-b"
+      region = "us-west4"
+    },
+
+    "google.lasvegas.3" = {
+      zone   = "us-west4-c"
+      region = "us-west4"
     },
 
   }
 
 }
 
-/*
-europe-central2-a,google.warsaw.1
-europe-central2-b,google.warsaw.2
-europe-central2-c,google.warsaw.3
-europe-north1-a,google.finland.1
-europe-north1-b,google.finland.2
-europe-north1-c,google.finland.3
-europe-southwest1-a,google.madrid.1,
-europe-southwest1-b,google.madrid.2,
-europe-southwest1-c,google.madrid.3,
-europe-west1-b,google.belgium.1
-europe-west1-c,google.belgium.2
-europe-west1-d,google.belgium.3
-europe-west2-a,google.london.1
-europe-west2-b,google.london.2
-europe-west2-c,google.london.3
-europe-west3-a,google.frankfurt.1
-europe-west3-b,google.frankfurt.2
-europe-west3-c,google.frankfurt.3
-europe-west4-a,google.netherlands.1
-europe-west4-b,google.netherlands.2
-europe-west4-c,google.netherlands.3
-europe-west6-a,google.zurich.1
-europe-west6-b,google.zurich.2
-europe-west6-c,google.zurich.3
-europe-west8-a,google.milan.1
-europe-west8-b,google.milan.2
-europe-west8-c,google.milan.3
-europe-west9-a,google.paris.1
-europe-west9-b,google.paris.2
-europe-west9-c,google.paris.3
-me-west1-a,google.telaviv.1
-me-west1-b,google.telaviv.2
-me-west1-c,google.telaviv.3
-northamerica-northeast1-a,google.montreal.1
-northamerica-northeast1-b,google.montreal.2
-northamerica-northeast1-c,google.montreal.3
-northamerica-northeast2-a,google.toronto.1
-northamerica-northeast2-b,google.toronto.2
-northamerica-northeast2-c,google.toronto.3
-southamerica-east1-a,google.saopaulo.1
-southamerica-east1-b,google.saopaulo.2
-southamerica-east1-c,google.saopaulo.3
-southamerica-west1-a,google.santiago.1
-southamerica-west1-b,google.santiago.2
-southamerica-west1-c,google.santiago.3
-us-central1-a,google.iowa.1
-us-central1-b,google.iowa.2
-us-central1-c,google.iowa.3
-us-central1-f,google.iowa.4
-us-east1-b,google.southcarolina.1
-us-east1-c,google.southcarolina.2
-us-east1-d,google.southcarolina.3
-us-east4-a,google.virginia.1
-us-east4-b,google.virginia.2
-us-east4-c,google.virginia.3
-us-east5-a,google.ohio.1
-us-east5-b,google.ohio.2
-us-east5-c,google.ohio.3
-us-south1-a,google.dallas.1
-us-south1-b,google.dallas.2
-us-south1-c,google.dallas.3
-us-west1-a,google.oregon.1
-us-west1-b,google.oregon.2
-us-west1-c,google.oregon.3
-us-west2-a,google.losangeles.1
-us-west2-b,google.losangeles.2
-us-west2-c,google.losangeles.3
-us-west3-a,google.saltlakecity.1
-us-west3-b,google.saltlakecity.2
-us-west3-c,google.saltlakecity.3
-us-west4-a,google.lasvegas.1
-us-west4-b,google.lasvegas.2
-us-west4-c,google.lasvegas.3
-*/
+# ----------------------------------------------------------------------------------------
 
 resource "google_compute_address" "public" {
   for_each     = var.relays
@@ -479,11 +781,14 @@ resource "google_compute_instance" "relay" {
 # ----------------------------------------------------------------------------------------
 
 output "relays" {
+
   description = "Data for each bare metal relay setup by Terraform"
+
   value = {
     for k, v in var.relays : k => zipmap( 
       [
         "relay_name", 
+        "native_name",
         "datacenter_name",
         "supplier_name", 
         "public_address", 
@@ -494,6 +799,7 @@ output "relays" {
       ], 
       [
         k,
+        local.datacenter_map[v.datacenter_name].zone,
         v.datacenter_name,
         "google", 
         "${google_compute_address.public[k].address}:40000",
