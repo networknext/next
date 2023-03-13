@@ -26,6 +26,7 @@ locals {
 
     "datapacket.losangeles.a" = {
       datacenter_name  = "datapacket.losangeles"
+      native_name      = "Cyxtera LAX1-A"
       supplier_name    = "datapacket"
       public_address   = "127.0.0.1:40000"
       internal_address = "0.0.0.0"

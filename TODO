@@ -36,12 +36,21 @@ DONE
 
 	Verify I can run the sql-create, sql-dev, export-database locally.
 
+	Look through all uses of dev.sql and fix up
+
 TODO
 
-	Look through all uses of dev.sql and fix up
+	Verify happy path works locally
+
+	Verify func tests pass in sem
 
 	-----------------
 
+	Finalize the amazon supplier so it works in the same form as google (map of relays)
+
+	Work out how to get amazon supplier working with multiple regions
+
+	-----------------
 
 
 
@@ -64,15 +73,12 @@ TODO
 
 	-----------------
 
-	Work out how to get amazon supplier working with multiple regions
-
-	-----------------
-
 	Now need to go across *ALL* relay suppliers and make sure they return relays in a standard format.
 
 	This data needs to be enough for me to initialize relay entries in the database:
 
         relay_name
+        native_name
         datacenter_name
         supplier_name
         public_address
