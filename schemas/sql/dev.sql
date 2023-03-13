@@ -29,185 +29,43 @@ VALUES(
 	(select route_shader_id from route_shaders where route_shader_name = 'raspberry')
 );
 
-INSERT INTO sellers(seller_name) VALUES('google');
 INSERT INTO sellers(seller_name) VALUES('amazon');
+INSERT INTO sellers(seller_name) VALUES('akamai');
+INSERT INTO sellers(seller_name) VALUES('alibaba');
+INSERT INTO sellers(seller_name) VALUES('azure');
+INSERT INTO sellers(seller_name) VALUES('digitalocean');
+INSERT INTO sellers(seller_name) VALUES('equinix');
+INSERT INTO sellers(seller_name) VALUES('gcore');
+INSERT INTO sellers(seller_name) VALUES('google');
+INSERT INTO sellers(seller_name) VALUES('hivelocity');
+INSERT INTO sellers(seller_name) VALUES('huawei');
+INSERT INTO sellers(seller_name) VALUES('ibm');
+INSERT INTO sellers(seller_name) VALUES('latitude');
+INSERT INTO sellers(seller_name) VALUES('oracle');
+INSERT INTO sellers(seller_name) VALUES('ovh');
+INSERT INTO sellers(seller_name) VALUES('phoenixnap');
+INSERT INTO sellers(seller_name) VALUES('tencent');
 INSERT INTO sellers(seller_name) VALUES('vultr');
-INSERT INTO sellers(seller_name) VALUES('linode');
+INSERT INTO sellers(seller_name) VALUES('yandex');
 
-\i sellers/google.sql
-\i sellers/amazon.sql
-
--- linode datacenters
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'linode.atlanta',
-	33.7488,
-	-84.3877,
-	(select seller_id from sellers where seller_name = 'linode')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'linode.dallas',
-	32.7767,
-	-96.7970,
-	(select seller_id from sellers where seller_name = 'linode')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'linode.fremont',
-	37.3387,
-	-121.8853,
-	(select seller_id from sellers where seller_name = 'linode')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'linode.newark',
-	40.7357,
-	-74.1724,
-	(select seller_id from sellers where seller_name = 'linode')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'linode.toronto',
-	43.6532,
-	79.3832,
-	(select seller_id from sellers where seller_name = 'linode')
-);
-
--- vultr datacenters 
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.atlanta',
-	33.7488,
-	-84.3877,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.chicago',
-	41.8781,
-	-87.6298,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.dallas',
-	32.7767,
-	-96.7970,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.honolulu',
-	21.3099,
-	-157.8581,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.losangeles',
-	34.0522,
-	118.2437,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.miami',
-	25.7617,
-	-80.1918,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.newyork',
-	40.7128,
-	-74.0060,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.seattle',
-	47.6062,
-	-122.3321,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'vultr.siliconvalley',
-	37.3387,
-	-121.8853,
-	(select seller_id from sellers where seller_name = 'vultr')
-);
+\i 'sellers/amazon.sql'
+\i 'sellers/akamai.sql'
+\i 'sellers/alibaba.sql'
+\i 'sellers/azure.sql'
+\i 'sellers/digitalocean.sql'
+\i 'sellers/equinix.sql'
+\i 'sellers/gcore.sql'
+\i 'sellers/google.sql'
+\i 'sellers/hivelocity.sql'
+\i 'sellers/huawei.sql'
+\i 'sellers/ibm.sql'
+\i 'sellers/latitude.sql'
+\i 'sellers/oracle.sql'
+\i 'sellers/ovh.sql'
+\i 'sellers/phoenixnap.sql'
+\i 'sellers/tencent.sql'
+\i 'sellers/vultr.sql'
+\i 'sellers/yandex.sql'
 
 -- enable datacenters for buyers
 
