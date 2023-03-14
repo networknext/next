@@ -786,7 +786,6 @@ output "relays" {
     for k, v in var.relays : k => zipmap( 
       [
         "relay_name", 
-        "native_name",
         "datacenter_name",
         "supplier_name", 
         "public_address", 
@@ -797,7 +796,6 @@ output "relays" {
       ], 
       [
         k,
-        local.datacenter_map[v.datacenter_name].zone,
         v.datacenter_name,
         "google", 
         "${google_compute_address.public[k].address}:40000",

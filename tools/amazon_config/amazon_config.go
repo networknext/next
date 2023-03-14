@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -16,7 +17,7 @@ import (
 
 	IMPORTANT: This is the definition of the set of datacenters for Amazon!!!
 
-	All other data for amazon relays are all generated from here:
+	All data for amazon relays are all generated from here:
 
 		1. config/amazon.txt
 		2. terraform/amazon.tfvars
@@ -39,6 +40,21 @@ var datacenterMap = map[string]*Datacenter{
 	"apse3": {"jakarta", -6.2088, 106.8456},
 	"apse4": {"melbourne", -37.8136, 144.9631},
 	"cac1": {"montreal", 45.5019, -73.5674},
+	"euc1": {"frankfurt", 50.1109, 8.6821},
+	"euc2": {"zurich", 	47.3769, 8.5417},
+	"eun1": {"stockholm", 59.3293, 18.0686},
+	"eus1": {"milan", 45.4642, 9.1900},
+	"eus2": {"spain", 41.5976, -0.9057},
+	"euw1": {"ireland", 53.7798, -7.3055},
+	"euw2": {"london", 51.5072, -0.1276},
+	"euw3": {"paris", 48.8566, 2.3522},
+	"mec1": {"uae", 23.4241, 53.8478},
+	"mes1": {"bahrain", 26.0667, 50.5577},
+	"sae1": {"saopaulo", -23.5558, -46.6396},
+	"use1": {"virginia", 39.0438, -77.4874},
+	"use2": {"ohio", 40.4173, -82.9071},
+	"usw1": {"sanjose", 37.3387, -121.8853},
+	"usw2": {"oregon", 45.8399, -119.7006},
 }
 
 type Datacenter struct {
@@ -86,6 +102,8 @@ type Zone struct {
 	region          string
 	local           bool
 	datacenter_name string
+	latitude        float32
+	longitude       float32
 }
 
 func main() {
@@ -134,7 +152,7 @@ func main() {
 			} else {
 				fmt.Printf("  %s [%s]\n", zone, azid)
 			}
-			zones = append(zones, Zone{zone, azid, region, local, ""})
+			zones = append(zones, Zone{zone, azid, region, local, "", 0, 0})
 		}
 
 	}
@@ -165,7 +183,10 @@ func main() {
 		datacenter := datacenterMap[a]
 		number, _ := strconv.Atoi(b[2:])
 		if datacenter != nil {
-			fmt.Printf("  amazon.%s.%d\n", datacenter.name, number)
+			zones[i].datacenter_name = fmt.Sprintf("amazon.%s.%d", datacenter.name, number)
+			zones[i].latitude = datacenter.latitude
+			zones[i].longitude = datacenter.longitude
+			fmt.Printf("  %s\n", zones[i].datacenter_name)
 		} else {
 			unknown = append(unknown, &zones[i])
 		}
@@ -179,4 +200,81 @@ func main() {
 		fmt.Printf("  %s -> %s\n", unknown[i].zone, unknown[i].azid)
 	}
 
+	// generate amazon.txt
+
+	fmt.Printf("\nGenerating amazon.txt\n")
+
+    file, err := os.Create("config/amazon.txt")
+    if err != nil {
+        panic(err)
+    }
+
+    for i := range zones {
+    	if zones[i].datacenter_name != "" {
+    		fmt.Fprintf(file, "%s,%s\n", zones[i].azid, zones[i].datacenter_name)
+    	}
+    }
+
+    file.Close()
+
+    // generate amazon.sql
+
+	fmt.Printf("\nGenerating amazon.sql\n")
+
+    file, err = os.Create("schemas/sql/sellers/amazon.sql")
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Fprintf(file, "\n-- amazon datacenters\n")
+
+    format_string := "\nINSERT INTO datacenters(\n" +
+		"	datacenter_name,\n" +
+		"	native_name,\n" +
+		"	latitude,\n" +
+		"	longitude,\n" + 
+		"	seller_id)\n" +
+		"VALUES(\n" +
+		"   '%s',\n" +
+		"   '%s',\n" +
+		"   %f,\n" +
+		"   %f,\n" +
+		"   (select seller_id from sellers where seller_name = 'amazon')\n" +
+		");\n"
+
+    for i := range zones {
+    	if zones[i].datacenter_name != "" {
+    		fmt.Fprintf(file, format_string, zones[i].datacenter_name, zones[i].azid, zones[i].latitude, zones[i].longitude)
+    	}
+    }
+
+    file.Close()
+
+    // generate amazon.tfvars
+
+	fmt.Printf("\nGenerating amazon.tfvars\n")
+
+    file, err = os.Create("terraform/amazon.tfvars")
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Fprintf(file, "\namazon_datacenter_map = {\n\n")
+
+    format_string = "  \"%s\" = {\n" +
+    	"    azid   = \"%s\"\n" + 
+    	"    zone   = \"%s\"\n" + 
+    	"    region = \"%s\"\n" + 
+    	"  }\n" +
+    	"\n"
+
+    for i := range zones {
+    	if zones[i].datacenter_name != "" {
+    		fmt.Fprintf(file, format_string, zones[i].datacenter_name, zones[i].azid, zones[i].zone, zones[i].region)
+    	}
+    }
+
+    fmt.Fprintf(file, "}\n")
+
+    file.Close()
 }

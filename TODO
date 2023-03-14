@@ -1,31 +1,50 @@
 DONE
 
-TODO
-
-	-----------------
-
 	Implement amazon-config tool
 
 	"run amazon-config"
 
-	Example:
+	Parse all regions
 
-		aws ec2 describe-regions --all-regions
+	Parse all zones
 
-		^--- gets all regions
+	Convert AZID to network next datacenter
 
-	Then walk this, get all zones, for each region.
+	Implement map for all availability zones from AZID -> datacenter name
 
-	Might need to also do queries to get AZID.
+	Generate config/amazon.txt
 
-	From all this, we can generate an amazon.tfvars file that can be input into the amazon supplier module?
+	Generate schemas/sql/sellers/amazon.sql
+
+	Generate terraform/amazon.tfvars
+
+TODO
+
+	Work out how to read in amazon.tfvars from terraform
+
+	Get amazon provider supporting multiple zones
 
 	-----------------
 
-	Finalize the amazon supplier so it works in the same form as google (map of relays)
+	Finalize amazon config by generating all local zones
 
-	Work out how to get amazon supplier working with multiple regions
+	Create some relays in local zones to make sure it's working
 
+	-----------------
+
+	Apply the same strategy to google
+
+	"run google-config"
+
+	Walk the regions
+
+	Walk the zones
+
+	Generate config/google.txt
+
+	Generate schemas/sql/sellers/google.sql
+
+	Generate terraform/google.tfvars
 
 	-----------------
 

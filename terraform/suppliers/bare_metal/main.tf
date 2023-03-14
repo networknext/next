@@ -22,7 +22,6 @@ output "relays" {
     for k, v in var.relays : k => zipmap( 
       [
         "relay_name", 
-        "native_name",
         "datacenter_name",
         "supplier_name", 
         "public_address", 
@@ -33,7 +32,6 @@ output "relays" {
       ], 
       [
         k,
-        v.native_name,
         v.datacenter_name,
         v.supplier_name, 
         v.public_address, 
