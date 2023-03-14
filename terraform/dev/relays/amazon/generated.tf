@@ -469,7 +469,7 @@ module "region_us_east_2" {
 
 locals {
 
-  amazon_datacenter_map = {
+  datacenter_map = {
 
     "amazon.johannesburg.1" = {
       azid   = "afs1-az1"
@@ -983,7 +983,7 @@ locals {
 
   }
 
-  amazon_regions = [
+  regions = [
     "ap-south-2",
     "ap-south-1",
     "eu-south-1",
@@ -1018,15 +1018,27 @@ locals {
   
   relays = {
 
-    
+    "amazon.virginia.1" = {
+      datacenter_name = "amazon.virginia.1"
+    }    
 
   }
 
 }
 
+module "relay_amazon_virginia_1" {
+  source            = "./relay"
+  name              = "amazon.virginia.1"
+  zone              = "us-east-1c"
+  region            = "us-east-1"
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_east_1.security_group_id
+}
+
 output "relays" {
 
-  description = "Data for each amazon setup by Terraform"
+  description = "Data for each amazon relay setup by Terraform"
 
   value = {
     for k, v in local.relays : k => zipmap( 
@@ -1044,10 +1056,10 @@ output "relays" {
         k,
         v.datacenter_name,
         "amazon", 
-        "127.0.0.1:40000",
-        "127.0.0.1:40000",
-        var.datacenter_map[v.datacenter_name].region,
-        "127.0.0.1:22",
+        "${module.relay_amazon_virginia_1.public_address}:40000",
+        "${module.relay_amazon_virginia_1.internal_address}:40000",
+        local.datacenter_map[v.datacenter_name].region,
+        "${module.relay_amazon_virginia_1.public_address}:22",
         "ubuntu",
       ]
     )

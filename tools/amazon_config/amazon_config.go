@@ -343,7 +343,7 @@ terraform {
 		fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
 	}
 
-    fmt.Fprintf(file, "\nlocals {\n\n  amazon_datacenter_map = {\n\n")
+    fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
     format_string = "    \"%s\" = {\n" +
     	"      azid   = \"%s\"\n" + 
@@ -358,11 +358,11 @@ terraform {
     	}
     }
 
-    fmt.Fprintf(file, "  }\n\n  amazon_regions = [\n")
+    fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
-	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
-	}
+		for i := range regionsResponse.Regions {
+			fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
+		}
 
     fmt.Fprintf(file, "  ]\n}\n")
 

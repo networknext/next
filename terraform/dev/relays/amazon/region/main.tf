@@ -1,4 +1,3 @@
-# --------------------------------------------------------------------------
 
 terraform {
   required_providers {
@@ -55,4 +54,7 @@ resource "aws_security_group" "allow_ssh_and_udp" {
   }
 }
 
-# --------------------------------------------------------------------------
+output "security_group_id" {
+  description = "The id of the security group for this region"
+  value = aws_security_group.allow_ssh_and_udp.id
+}

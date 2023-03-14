@@ -25,8 +25,8 @@ data "aws_ami" "ubuntu" {
 resource "aws_instance" "relay" {
   availability_zone      = var.zone
   instance_type          = var.type
-  ami                    = var.ami
-  key_name               = "ssh-key"
+  ami                    = data.aws_ami.ubuntu.id
+  key_name               = "region-ssh-key"
   vpc_security_group_ids = [var.security_group_id]
   tags = {
     Name = var.name
@@ -44,10 +44,14 @@ resource "aws_eip" "relay" {
 
 # --------------------------------------------------------------------------
 
-output "relay" {
-  description = "Relay data"
-  public_address = aws_eip.relay.public_ip
-  public_address = aws_eip.relay.private_ip
+output "public_address" {
+  description = "Relay public address"
+  value = aws_eip.relay.public_ip
+}
+
+output "internal_address" {
+  description = "Relay internal address"
+  value = aws_eip.relay.private_ip
 }
 
 # --------------------------------------------------------------------------

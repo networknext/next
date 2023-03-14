@@ -132,13 +132,13 @@ locals {
 
 module "amazon_relays" {
 
-  # IMPORTANT: It is literally impossible to work with multiple AWS regions programmatically in Terraform
+  # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
   # So for AWS, see tools/amazon_config/amazon_config.go for the set of dev relays -> amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
   profile             = local.amazon_profile
-  source              = "../../suppliers/amazon"
+  source              = "./amazon"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
