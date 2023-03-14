@@ -117,7 +117,7 @@
 
     Before deploying relays in AWS, run the network next AWS configuration tool:
 
-      run aws-config
+      run amazon-config
 
     This is necessary because zone ids in AWS are different per-account.
 
@@ -153,6 +153,38 @@ variable "relays" { type = map(map(string)) }
 variable "region" { type = string }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
+
+# ----------------------------------------------------------------------------------------
+
+locals {
+
+  /*
+      IMPORTANT: This map translates from the network next amazon datacenter names to 
+      AWS regions, zones and AZID.
+      
+      If want you add more datacenters from amazon, then you must:
+
+          1. Enable the datacenters in your account
+
+          2. Run the amazon tool: "run amazon-tool"
+
+          3. Update schemas/sql/sellers/amazon.sql then update your postgres database
+
+          4. Update config/amazon.txt then "Deploy Config" config to your environment via semaphore
+
+      Please be extremely careful making these changes!
+  */
+
+  datacenter_map = {
+
+    "amazon.virginia.1" = {
+      azid   = "use1-az1"
+      zone   = "us-east-1a"
+      region = "us-east-1"
+    },
+
+  }
+}
 
 # --------------------------------------------------------------------------
 
@@ -256,24 +288,17 @@ output "relays" {
       ], 
       [
         k,
-        v.zone,          # todo: we need to look up zone here from next datacenter
+        local.datacenter_map[v.datacenter_name].azid,
         v.datacenter_name,
         "amazon", 
         "${aws_eip.address[k].public_ip}:40000",
         "${aws_eip.address[k].private_ip}:40000",
-        v.region,        # todo: we need to look up region here from next datacenter
+        local.datacenter_map[v.datacenter_name].region,
         "${aws_eip.address[k].public_ip}:22",
         "ubuntu",
       ]
     )
   }
 }
-
-/*
-output "relays" {
-  description = "Data for each amazon relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "zone", "region", "public_address", "internal_address", "instance_type", "ami"], [var.relays[i].name, var.relays[i].zone, var.region, aws_eip.address[i].public_ip, aws_eip.address[i].private_ip, var.relays[i].type, data.aws_ami.ubuntu[i].id])]
-}
-*/
 
 # --------------------------------------------------------------------------

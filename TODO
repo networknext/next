@@ -8,6 +8,61 @@ TODO
 
 	-----------------
 
+	Implement amazon-config tool
+
+	"run amazon-config"
+
+	Example:
+
+		aws ec2 describe-regions --all-regions
+
+		^--- gets all regions
+
+	Then walk this, get all zones, for each region.
+
+	Might need to also do queries to get AZID.
+
+	From all this, we can generate an amazon.tfvars file that can be input into the amazon supplier module?
+
+	-----------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------
+
 	Setup serversdotcom provider
 
 	The have cloud instances...
