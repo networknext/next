@@ -276,5 +276,13 @@ func main() {
 
     fmt.Fprintf(file, "}\n")
 
+    fmt.Fprintf(file, "\namazon_regions = [\n")
+
+	for i := range regionsResponse.Regions {
+		fmt.Fprintf(file, "  \"%s\",\n", regionsResponse.Regions[i].RegionName)
+	}
+
+    fmt.Fprintf(file, "]\n")
+
     file.Close()
 }

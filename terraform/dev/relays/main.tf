@@ -124,6 +124,7 @@ output "google_relays" {
 # ============
 
 variable "amazon_datacenter_map" { type = map(map(string)) }
+variable "amazon_regions" { type = list(string) }
 
 locals {
 
@@ -136,8 +137,6 @@ locals {
     # VIRGINIA
 
     "amazon.virginia.1" = {
-      zone            = "us-east-1a"              # todo: temporary
-      region          = "us-east-1"               # todo: temporary
       datacenter_name = "amazon.virginia.1"
       type            = "a1.large"
       ami             = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
@@ -147,7 +146,6 @@ locals {
 }
 
 module "amazon_relays" {
-  region              = "us-east-1"                      # todo: this needs to go away
   relays              = local.amazon_relays
   config              = local.amazon_config
   credentials         = local.amazon_credentials
@@ -156,6 +154,7 @@ module "amazon_relays" {
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
   datacenter_map      = var.amazon_datacenter_map
+  regions             = var.amazon_regions
 }
 
 output "amazon_relays" {

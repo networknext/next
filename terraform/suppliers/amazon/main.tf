@@ -5,35 +5,22 @@
 /*
     Before deploying relays in AWS, run the amazon configuration tool:
 
-      run amazon-config
+      "run amazon-config"
 
-    It generates config/amazon.txt, schemas/sql/sellers/amazon.sql and
-    terraform/amazon.tfvars which is used by this module.
+    It generates: 
 
-    Some AWS regions need to be manually enabled on your account before you can use them.
+      config/amazon.txt
+      schemas/sql/sellers/amazon.sql,
+      terraform/amazon.tfvars
+      terraform/suppliers/amazon/providers.tf
+      terraform/suppliers/amazon/region/main.tf
 
-    For more details on enabling regions in your account, see: 
+    Some AWS regions need to be manually enabled on your account.
+
+    For more details on enabling regions see: 
 
       https://docs.aws.amazon.com/general/latest/gr/rande-manage.html
 */
-
-# --------------------------------------------------------------------------
-
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.0"
-    }
-  }
-}
-
-provider "aws" {
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  region                   = var.region
-}
 
 # --------------------------------------------------------------------------
 
@@ -41,103 +28,38 @@ variable "config" { type = list(string) }
 variable "credentials" { type = list(string) }
 variable "profile" { type = string }
 variable "relays" { type = map(map(string)) }
-variable "region" { type = string }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
 variable "datacenter_map" { type = map(map(string)) }
+variable "regions" { type = list(string) }
 
 # --------------------------------------------------------------------------
 
-resource "aws_default_vpc" "default" {
-  tags = {
-    Name = "default"
+module "region" {
+  source = "./region"
+  providers = {
+    aws = aws.us-east-1
   }
+  vpn_address = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
 }
 
-resource "aws_security_group" "allow_ssh_and_udp" {
+# --------------------------------------------------------------------------
 
-  name = "allow-ssh-and-udp"
+# per-relay
 
-  vpc_id = aws_default_vpc.default.id
-
-  ingress {
-    protocol    = "tcp"
-    from_port   = 22
-    to_port     = 22
-    cidr_blocks = ["${var.vpn_address}/32"]
-  }
-
-  ingress {
-    protocol    = "udp"
-    from_port   = 45000
-    to_port     = 45000
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_key_pair" "ssh_key" {
-  key_name   = "ssh-key"
-  public_key = file(var.ssh_public_key_file)
-}
-
-data "aws_ami" "ubuntu" {
-  for_each = var.relays
-  most_recent = true
-  filter {
-    name   = "name"
-    values = [each.value.ami]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-  owners = ["099720109477"] # Canonical
-}
-
-resource "aws_instance" "relay" {
-  for_each               = var.relays
-  availability_zone      = each.value.zone
-  instance_type          = each.value.type
-  ami                    = data.aws_ami.ubuntu[each.key].id
-  key_name               = "ssh-key"
-  vpc_security_group_ids = [aws_security_group.allow_ssh_and_udp.id]
-  tags = {
-    Name = each.key
-  }
-  lifecycle {
-    create_before_destroy = true
-  }
-  user_data = file("./setup_relay.sh")
-}
-
-resource "aws_eip" "address" {
-  for_each = var.relays
-  instance = aws_instance.relay[each.key].id
-  vpc      = true
-}
+# security_group_id = aws_security_group.allow_ssh_and_udp.id
 
 # --------------------------------------------------------------------------
 
 output "relays" {
 
-  description = "Data for each bare metal relay setup by Terraform"
+  description = "Data for each amazon setup by Terraform"
 
   value = {
     for k, v in var.relays : k => zipmap( 
       [
         "relay_name",
-        "native_name",
         "datacenter_name",
         "supplier_name", 
         "public_address", 
@@ -148,13 +70,12 @@ output "relays" {
       ], 
       [
         k,
-        var.datacenter_map[v.datacenter_name].azid,
         v.datacenter_name,
         "amazon", 
-        "${aws_eip.address[k].public_ip}:40000",
-        "${aws_eip.address[k].private_ip}:40000",
+        "127.0.0.1:40000",
+        "127.0.0.1:40000",
         var.datacenter_map[v.datacenter_name].region,
-        "${aws_eip.address[k].public_ip}:22",
+        "127.0.0.1:22",
         "ubuntu",
       ]
     )
