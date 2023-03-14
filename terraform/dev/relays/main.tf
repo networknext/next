@@ -135,9 +135,6 @@ locals {
     # VIRGINIA
 
     "amazon.virginia.1" = {
-      config          = local.amazon_config
-      credentials     = local.amazon_credentials
-      profile         = local.amazon_profile
       zone            = "us-east-1a"              # todo: temporary
       region          = "us-east-1"               # todo: temporary
       datacenter_name = "amazon.virginia.1"
@@ -151,17 +148,21 @@ locals {
 module "amazon_relays" {
   region              = "us-east-1"                      # todo: this needs to go away
   relays              = local.amazon_relays
-  project             = local.google_project
-  credentials         = local.google_credentials
-  source              = "../../suppliers/google"
+  config              = local.amazon_config
+  credentials         = local.amazon_credentials
+  profile             = local.amazon_profile
+  source              = "../../suppliers/amazon"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-output "google_relays" {
-  description = "Data for each google relay"
-  value = module.google_relays.relays
+// todo
+/*
+output "amazon_relays" {
+  description = "Data for each amazon relay"
+  value = module.amazon_relays.relays
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 

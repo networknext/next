@@ -3,8 +3,6 @@
 # ========================================================================================
 
 /*
-    Google cloud is an awesome supplier with highly performant relays.
-
     Here is the full set of google cloud datacenters, as of March 13, 2023:
 
       google.taiwan.1
