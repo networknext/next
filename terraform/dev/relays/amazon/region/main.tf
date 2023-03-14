@@ -19,13 +19,13 @@ resource "aws_default_vpc" "default" {
 }
 
 resource "aws_key_pair" "ssh_key" {
-  key_name   = "ssh-key"
+  key_name   = "region-ssh-key"
   public_key = file(var.ssh_public_key_file)
 }
 
 resource "aws_security_group" "allow_ssh_and_udp" {
 
-  name = "allow-ssh-and-udp"
+  name = "region-security-group"
 
   vpc_id = aws_default_vpc.default.id
 

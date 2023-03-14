@@ -123,38 +123,24 @@ output "google_relays" {
 # AMAZON CLOUD
 # ============
 
-variable "amazon_datacenter_map" { type = map(map(string)) }
-variable "amazon_regions" { type = list(string) }
-
 locals {
 
   amazon_config      = ["~/.aws/config"]
   amazon_credentials = ["~/.aws/credentials"]
   amazon_profile     = "default"
-
-  amazon_relays = {
-
-    # VIRGINIA
-
-    "amazon.virginia.1" = {
-      datacenter_name = "amazon.virginia.1"
-      type            = "a1.large"
-      ami             = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-    },
-
-  }
 }
 
 module "amazon_relays" {
-  relays              = local.amazon_relays
+
+  # IMPORTANT: It is literally impossible to work with multiple AWS regions programmatically in Terraform
+  # So for AWS, see tools/amazon_config/amazon_config.go for the set of dev relays -> amazon/generated.tf
+
   config              = local.amazon_config
   credentials         = local.amazon_credentials
   profile             = local.amazon_profile
   source              = "../../suppliers/amazon"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
-  datacenter_map      = var.amazon_datacenter_map
-  regions             = var.amazon_regions
 }
 
 output "amazon_relays" {
@@ -163,40 +149,3 @@ output "amazon_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
-
-/*
-  {
-    name = "amazon.virginia.1"
-    zone = "us-east-1a"
-  },
-  {
-    name = "amazon.virginia.2"
-    zone = "us-east-1b"
-    type = "a1.large"
-    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-  },
-  {
-    name = "amazon.virginia.3"
-    zone = "us-east-1c"
-    type = "m5a.large"
-    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-  },
-  {
-    name = "amazon.virginia.4"
-    zone = "us-east-1d"
-    type = "a1.large"
-    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-  },
-  {
-    name = "amazon.virginia.5"
-    zone = "us-east-1e"
-    type = "m4.large"
-    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-  },
-  {
-    name = "amazon.virginia.6"
-    zone = "us-east-1f"
-    type = "m5a.large"
-    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-  },
-*/

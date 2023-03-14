@@ -20,9 +20,19 @@ DONE
 
 	Work out how to read in amazon.tfvars from terraform
 
-TODO
-
 	Get amazon provider supporting multiple zones
+
+	Successfully generated code amazon/generated.tf to setup providers per-region.
+
+	It is *NOT POSSIBLE* to programmatically drive the AWS provider for multiple regions. I have to use code gen.
+
+	We don't need amazon.tfvars now that we have amazon/generated.tf. Put the stuff in there as locals.
+
+TODO
+	
+	Put the relay definitions for dev in amazon_config.go
+
+	The relay definitions need to be per-environment, they need to live in terraform/dev/amazon_relays.tf?
 
 	-----------------
 

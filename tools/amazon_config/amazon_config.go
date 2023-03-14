@@ -14,16 +14,7 @@ import (
 // ----------------------------------------------------------------------------------
 
 /*
-
-	IMPORTANT: This is the definition of the set of datacenters for Amazon!!!
-
-	All data for amazon relays are all generated from here:
-
-		1. config/amazon.txt
-		2. terraform/amazon.tfvars
-		3. schemas/sql/sellers/amazon.sql
-
-	Do not edit the generated data directly, edit the map below!
+	IMPORTANT: This definition drives the set of amazon datacenters, eg. "amazon.[country/city].[number]"
 */
 
 var datacenterMap = map[string]*Datacenter{
@@ -62,6 +53,62 @@ type Datacenter struct {
 	latitude  float32
 	longitude float32
 }
+
+// ----------------------------------------------------------------------------------
+
+/*
+	IMPORTANT: This definition drives the set of amazon relays in dev
+*/
+
+var devRelayMap = map[string]*Relay{
+
+	// todo
+
+}
+
+type Relay struct {
+	datacenter_name string
+	amazon_type string
+	amazon_ami string
+}
+
+/*
+  {
+    name = "amazon.virginia.1"
+    zone = "us-east-1a"
+  },
+  {
+    name = "amazon.virginia.2"
+    zone = "us-east-1b"
+    type = "a1.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  },
+  {
+    name = "amazon.virginia.3"
+    zone = "us-east-1c"
+    type = "m5a.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  },
+  {
+    name = "amazon.virginia.4"
+    zone = "us-east-1d"
+    type = "a1.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  },
+  {
+    name = "amazon.virginia.5"
+    zone = "us-east-1e"
+    type = "m4.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  },
+  {
+    name = "amazon.virginia.6"
+    zone = "us-east-1f"
+    type = "m5a.large"
+    ami  = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  },
+*/
+
 
 // ----------------------------------------------------------------------------------
 
@@ -250,22 +297,59 @@ func main() {
 
     file.Close()
 
-    // generate amazon.tfvars
+    // generate amazon/generated.tf
 
-	fmt.Printf("\nGenerating amazon.tfvars\n")
+	fmt.Printf("\nGenerating amazon/generated.tf\n")
 
-    file, err = os.Create("terraform/amazon.tfvars")
+    file, err = os.Create("terraform/suppliers/amazon/generated.tf")
     if err != nil {
         panic(err)
     }
 
-    fmt.Fprintf(file, "\namazon_datacenter_map = {\n\n")
+    header := `
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+`
+	fmt.Fprintf(file, header)
 
-    format_string = "  \"%s\" = {\n" +
-    	"    azid   = \"%s\"\n" + 
-    	"    zone   = \"%s\"\n" + 
-    	"    region = \"%s\"\n" + 
+    format_string = "\nprovider \"aws\" { \n" +
+    	"  shared_config_files      = var.config\n" +
+    	"  shared_credentials_files = var.credentials\n" +
+		"  profile                  = var.profile\n" +
+		"  alias                    = \"%s\"\n" +
+		"  region                   = \"%s\"\n" +
+		"}\n"
+
+	for i := range regionsResponse.Regions {
+		fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
+	}
+
+    format_string = "\nmodule \"region_%s\" { \n" +
+		"  source              = \"./region\"\n" +
+		"  vpn_address         = var.vpn_address\n" +
+		"  ssh_public_key_file = var.ssh_public_key_file\n" +
+		"  providers = {\n" + 
+    	"    aws = aws.%s\n" +
     	"  }\n" +
+    	"}\n"
+
+	for i := range regionsResponse.Regions {
+		fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
+	}
+
+    fmt.Fprintf(file, "\nlocals {\n\n  amazon_datacenter_map = {\n\n")
+
+    format_string = "    \"%s\" = {\n" +
+    	"      azid   = \"%s\"\n" + 
+    	"      zone   = \"%s\"\n" + 
+    	"      region = \"%s\"\n" + 
+    	"    }\n" +
     	"\n"
 
     for i := range zones {
@@ -274,15 +358,47 @@ func main() {
     	}
     }
 
-    fmt.Fprintf(file, "}\n")
-
-    fmt.Fprintf(file, "\namazon_regions = [\n")
+    fmt.Fprintf(file, "  }\n\n  amazon_regions = [\n")
 
 	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, "  \"%s\",\n", regionsResponse.Regions[i].RegionName)
+		fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
 	}
 
-    fmt.Fprintf(file, "]\n")
+    fmt.Fprintf(file, "  ]\n}\n")
+
+    file.Close()
 
     file.Close()
 }
+
+/*
+output "relays" {
+
+  description = "Data for each amazon setup by Terraform"
+
+  value = {
+    for k, v in var.relays : k => zipmap( 
+      [
+        "relay_name",
+        "datacenter_name",
+        "supplier_name", 
+        "public_address", 
+        "internal_address", 
+        "internal_group", 
+        "ssh_address", 
+        "ssh_user",
+      ], 
+      [
+        k,
+        v.datacenter_name,
+        "amazon", 
+        "127.0.0.1:40000",
+        "127.0.0.1:40000",
+        var.datacenter_map[v.datacenter_name].region,
+        "127.0.0.1:22",
+        "ubuntu",
+      ]
+    )
+  }
+}
+*/
