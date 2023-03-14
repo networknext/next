@@ -276,8 +276,8 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.hyderabad.1',
 	'aps2-az1',
-	19.0760,
-	72.8777,
+	17.3850, 
+	78.4867,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 
@@ -290,8 +290,8 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.hyderabad.2',
 	'aps2-az2',
-	19.0760,
-	72.8777,
+	17.3850, 
+	78.4867,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 
@@ -304,8 +304,8 @@ INSERT INTO datacenters(
 VALUES(
 	'amazon.hyderabad.3',
 	'aps2-az3',
-	19.0760,
-	72.8777,
+	17.3850, 
+	78.4867,
 	(select seller_id from sellers where seller_name = 'amazon')
 );
 

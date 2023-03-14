@@ -30,12 +30,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/constants"
 	"github.com/networknext/backend/modules/admin"
-	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/backend/modules/common"
+	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/backend/modules/core"
 	db "github.com/networknext/backend/modules/database"
+	"github.com/networknext/backend/modules/portal"
 
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -820,13 +820,13 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	GetJSON(fmt.Sprintf("%s/portal/relays/0/%d", env.PortalURL, constants.MaxRelays), &portalRelaysResponse)
 
 	type RelayRow struct {
-		Name     string
-		PublicAddress  string
-		InternalAddress  string
-		Id       string
-		Status   string
-		Sessions int
-		Version  string
+		Name            string
+		PublicAddress   string
+		InternalAddress string
+		Id              string
+		Status          string
+		Sessions        int
+		Version         string
 	}
 
 	relayMap := make(map[uint64]*RelayRow)
@@ -866,7 +866,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 
 	relays := make([]RelayRow, len(relayMap))
 	index := 0
-	for _,v := range relayMap {
+	for _, v := range relayMap {
 		relays[index] = *v
 		index++
 	}
@@ -1190,11 +1190,11 @@ func keygen() {
 // --------------------------------------------------------------------------------------------
 
 type Environment struct {
-	Name           string `json:"name"`
-	AdminURL       string `json:"admin_url"`
-	PortalURL      string `json:"portal_url"`
-	DatabaseURL    string `json:"database_url"`
-	SSHKeyFile     string `json:"ssh_key_filepath"`
+	Name        string `json:"name"`
+	AdminURL    string `json:"admin_url"`
+	PortalURL   string `json:"portal_url"`
+	DatabaseURL string `json:"database_url"`
+	SSHKeyFile  string `json:"ssh_key_filepath"`
 }
 
 func (e *Environment) String() string {

@@ -2,12 +2,52 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os/exec"
-	"encoding/json"
-	"strings"
 	"sort"
+	"strconv"
+	"strings"
 )
+
+// ----------------------------------------------------------------------------------
+
+/*
+
+	IMPORTANT: This is the definition of the set of datacenters for Amazon!!!
+
+	All other data for amazon relays are all generated from here:
+
+		1. config/amazon.txt
+		2. terraform/amazon.tfvars
+		3. schemas/sql/sellers/amazon.sql
+
+	Do not edit the generated data directly, edit the map below!
+*/
+
+var datacenterMap = map[string]*Datacenter{
+
+	"afs1": {"johannesburg", -33.9249, 18.4241},
+	"ape1": {"hongkong", 22.3193, 114.1694},
+	"apne1": {"tokyo", 35.6762, 139.6503},
+	"apne2": {"seoul", 37.5665, 126.9780},
+	"apne3": {"osaka", 34.6937, 135.5023},
+	"aps1": {"mumbai", 19.0760, 72.8777},
+	"aps2": {"hyderabad", 17.3850, 78.4867},
+	"apse1": {"singapore", 1.3521, 103.8198},
+	"apse2": {"sydney", -33.8688, 151.2093},
+	"apse3": {"jakarta", -6.2088, 106.8456},
+	"apse4": {"melbourne", -37.8136, 144.9631},
+	"cac1": {"montreal", 45.5019, -73.5674},
+}
+
+type Datacenter struct {
+	name      string
+	latitude  float32
+	longitude float32
+}
+
+// ----------------------------------------------------------------------------------
 
 func bash(command string) string {
 	var output bytes.Buffer
@@ -26,7 +66,7 @@ type RegionsResponse struct {
 }
 
 type RegionData struct {
-	RegionName string 
+	RegionName string
 }
 
 type AvailabilityZonesResponse struct {
@@ -34,17 +74,17 @@ type AvailabilityZonesResponse struct {
 }
 
 type AvailabilityZoneData struct {
-	RegionName string 
-	ZoneName string
-	ZoneId string
-	ZoneType string
+	RegionName string
+	ZoneName   string
+	ZoneId     string
+	ZoneType   string
 }
 
 type Zone struct {
-	zone string
-	azid string
-	region string
-	local bool
+	zone            string
+	azid            string
+	region          string
+	local           bool
 	datacenter_name string
 }
 
@@ -53,63 +93,90 @@ func main() {
 	// get all regions
 
 	fmt.Printf("\nRegions:\n\n")
-	
+
 	output := bash("aws ec2 describe-regions --all-regions")
 
 	regionsResponse := RegionsResponse{}
 	if err := json.Unmarshal([]byte(output), &regionsResponse); err != nil {
-        panic(err)
-    }
+		panic(err)
+	}
 
-    for i := range regionsResponse.Regions {
-    	fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
-    }
+	for i := range regionsResponse.Regions {
+		fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
+	}
 
-    // iterate across each region and get zones
+	// iterate across each region and get zones
 
-    zones := make([]Zone, 0)
+	zones := make([]Zone, 0)
 
-    for i := range regionsResponse.Regions {
+	for i := range regionsResponse.Regions {
 
-	    fmt.Printf("\n%s zones:\n\n", regionsResponse.Regions[i].RegionName)
+		fmt.Printf("\n%s zones:\n\n", regionsResponse.Regions[i].RegionName)
 
 		output = bash(fmt.Sprintf("aws ec2 describe-availability-zones --region=%s --all-availability-zones", regionsResponse.Regions[i].RegionName))
 
 		availabilityZonesResponse := AvailabilityZonesResponse{}
 		if err := json.Unmarshal([]byte(output), &availabilityZonesResponse); err != nil {
-	        panic(err)
-	    }
+			panic(err)
+		}
 
-	    for j := range availabilityZonesResponse.AvailabilityZones {
-	    	zoneType := availabilityZonesResponse.AvailabilityZones[j].ZoneType
-	    	if zoneType != "availability-zone" && zoneType != "local-zone" {
-	    		continue
-	    	}
-	    	local := zoneType == "local-zone"
-	    	zone := availabilityZonesResponse.AvailabilityZones[j].ZoneName
-	    	azid := availabilityZonesResponse.AvailabilityZones[j].ZoneId
-	    	region := availabilityZonesResponse.AvailabilityZones[j].RegionName
-	    	if local {
-		    	fmt.Printf("  %s [%s] (local)\n", zone, azid)
-	    	} else {
-		    	fmt.Printf("  %s [%s]\n", zone, azid)
-	    	}
+		for j := range availabilityZonesResponse.AvailabilityZones {
+			zoneType := availabilityZonesResponse.AvailabilityZones[j].ZoneType
+			if zoneType != "availability-zone" && zoneType != "local-zone" {
+				continue
+			}
+			local := zoneType == "local-zone"
+			zone := availabilityZonesResponse.AvailabilityZones[j].ZoneName
+			azid := availabilityZonesResponse.AvailabilityZones[j].ZoneId
+			region := availabilityZonesResponse.AvailabilityZones[j].RegionName
+			if local {
+				fmt.Printf("  %s [%s] (local)\n", zone, azid)
+			} else {
+				fmt.Printf("  %s [%s]\n", zone, azid)
+			}
+			zones = append(zones, Zone{zone, azid, region, local, ""})
+		}
 
-	    	zones = append(zones, Zone{zone, azid, region, local, ""})
-	    }
+	}
 
-    }
+	// sort by azid and print out zones
 
-    // sort by azid and print out zones
+	fmt.Printf("\nAll zones:\n\n")
 
-    fmt.Printf("\nAll zones:\n\n")
+	sort.SliceStable(zones, func(i, j int) bool { return zones[i].azid < zones[j].azid })
 
-    sort.SliceStable(zones, func(i, j int) bool { return zones[i].azid < zones[j].azid })
-
-    for i := range zones {
+	for i := range zones {
 		values := strings.Split(zones[i].azid, "-")
 		a := values[len(values)-2]
 		b := values[len(values)-1]
-    	fmt.Printf("  %s|%s -> %s\n", a, b, zones[i].region)
-    }
+		fmt.Printf("  %s|%s\n", a, b)
+	}
+
+	// print out the known datacenters
+
+	fmt.Printf("\nKnown datacenters:\n\n")
+
+	unknown := make([]*Zone, 0)
+
+	for i := range zones {
+		values := strings.Split(zones[i].azid, "-")
+		a := values[len(values)-2]
+		b := values[len(values)-1]
+		datacenter := datacenterMap[a]
+		number, _ := strconv.Atoi(b[2:])
+		if datacenter != nil {
+			fmt.Printf("  amazon.%s.%d\n", datacenter.name, number)
+		} else {
+			unknown = append(unknown, &zones[i])
+		}
+	}
+
+	// print out the unknown datacenters
+
+	fmt.Printf("\nUnknown datacenters:\n\n")
+
+	for i := range unknown {
+		fmt.Printf("  %s -> %s\n", unknown[i].zone, unknown[i].azid)
+	}
+
 }
