@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 	"encoding/json"
+	"strings"
+	"sort"
 )
 
 func bash(command string) string {
@@ -96,5 +98,18 @@ func main() {
 	    	zones = append(zones, Zone{zone, azid, region, local, ""})
 	    }
 
+    }
+
+    // sort by azid and print out zones
+
+    fmt.Printf("\nAll zones:\n\n")
+
+    sort.SliceStable(zones, func(i, j int) bool { return zones[i].azid < zones[j].azid })
+
+    for i := range zones {
+		values := strings.Split(zones[i].azid, "-")
+		a := values[len(values)-2]
+		b := values[len(values)-1]
+    	fmt.Printf("  %s|%s -> %s\n", a, b, zones[i].region)
     }
 }
