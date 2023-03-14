@@ -18,9 +18,9 @@ DONE
 
 	Generate terraform/amazon.tfvars
 
-TODO
-
 	Work out how to read in amazon.tfvars from terraform
+
+TODO
 
 	Get amazon provider supporting multiple zones
 

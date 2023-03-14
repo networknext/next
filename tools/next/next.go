@@ -1389,19 +1389,31 @@ func analyzeRouteMatrix(inputFile string) {
 
 func terraformInit(env Environment, component string) {
 	fmt.Printf("initializing %s in %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform init", env.Name, component))
+	vars := ""
+	if component == "relays" {
+		vars = "-var-file=\"../../amazon.tfvars\""
+	}
+	bash(fmt.Sprintf("cd terraform/%s/%s && terraform init %s", env.Name, component, vars))
 	fmt.Printf("\n")
 }
 
 func terraformDeploy(env Environment, component string) {
 	fmt.Printf("deploying %s to %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform apply", env.Name, component))
+	vars := ""
+	if component == "relays" {
+		vars = "-var-file=\"../../amazon.tfvars\""
+	}
+	bash(fmt.Sprintf("cd terraform/%s/%s && terraform apply %s", env.Name, component, vars))
 	fmt.Printf("\n")
 }
 
 func terraformDestroy(env Environment, component string) {
 	fmt.Printf("destroying %s in %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
+	vars := ""
+	if component == "relays" {
+		vars = "-var-file=\"../../amazon.tfvars\""
+	}
+	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy %s", env.Name, component, vars))
 	fmt.Printf("\n")
 }
 

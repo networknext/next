@@ -123,6 +123,8 @@ output "google_relays" {
 # AMAZON CLOUD
 # ============
 
+variable "amazon_datacenter_map" { type = map(map(string)) }
+
 locals {
 
   amazon_config      = ["~/.aws/config"]
@@ -153,15 +155,13 @@ module "amazon_relays" {
   source              = "../../suppliers/amazon"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
+  datacenter_map      = var.amazon_datacenter_map
 }
 
-// todo
-/*
 output "amazon_relays" {
   description = "Data for each amazon relay"
   value = module.amazon_relays.relays
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 

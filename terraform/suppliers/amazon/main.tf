@@ -44,38 +44,7 @@ variable "relays" { type = map(map(string)) }
 variable "region" { type = string }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
-
-# ----------------------------------------------------------------------------------------
-
-locals {
-
-  /*
-      IMPORTANT: This map translates from the network next amazon datacenter names to 
-      AWS regions, zones and AZID.
-      
-      If want you add more datacenters from amazon, then you must:
-
-          1. Enable the datacenters in your account
-
-          2. Run the amazon tool: "run amazon-tool"
-
-          3. Update schemas/sql/sellers/amazon.sql then update your postgres database
-
-          4. Update config/amazon.txt then "Deploy Config" config to your environment via semaphore
-
-      Please be extremely careful making these changes!
-  */
-
-  datacenter_map = {
-
-    "amazon.virginia.1" = {
-      azid   = "use1-az1"
-      zone   = "us-east-1a"
-      region = "us-east-1"
-    },
-
-  }
-}
+variable "datacenter_map" { type = map(map(string)) }
 
 # --------------------------------------------------------------------------
 
@@ -179,12 +148,12 @@ output "relays" {
       ], 
       [
         k,
-        local.datacenter_map[v.datacenter_name].azid,
+        var.datacenter_map[v.datacenter_name].azid,
         v.datacenter_name,
         "amazon", 
         "${aws_eip.address[k].public_ip}:40000",
         "${aws_eip.address[k].private_ip}:40000",
-        local.datacenter_map[v.datacenter_name].region,
+        var.datacenter_map[v.datacenter_name].region,
         "${aws_eip.address[k].public_ip}:22",
         "ubuntu",
       ]
