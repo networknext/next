@@ -1022,6 +1022,10 @@ locals {
       datacenter_name = "amazon.virginia.1"
     }    
 
+    "amazon.tokyo.1" = {
+      datacenter_name = "amazon.tokyo.1"
+    }    
+
   }
 
 }
@@ -1029,11 +1033,27 @@ locals {
 module "relay_amazon_virginia_1" {
   source            = "./relay"
   name              = "amazon.virginia.1"
-  zone              = "us-east-1c"
-  region            = "us-east-1"
+  zone              = local.datacenter_map["amazon.virginia.1"].zone
+  region            = local.datacenter_map["amazon.virginia.1"].region
   type              = "m5a.large"
   ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
   security_group_id = module.region_us_east_1.security_group_id
+  providers = {
+    aws = aws.us-east-1
+  }
+}
+
+module "relay_amazon_tokyo_1" {
+  source            = "./relay"
+  name              = "amazon.tokyo.1"
+  zone              = local.datacenter_map["amazon.tokyo.1"].zone
+  region            = local.datacenter_map["amazon.tokyo.1"].region
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_ap_northeast_1.security_group_id
+  providers = {
+    aws = aws.ap-northeast-1
+  }
 }
 
 output "relays" {
@@ -1041,27 +1061,28 @@ output "relays" {
   description = "Data for each amazon relay setup by Terraform"
 
   value = {
-    for k, v in local.relays : k => zipmap( 
-      [
-        "relay_name",
-        "datacenter_name",
-        "supplier_name", 
-        "public_address", 
-        "internal_address", 
-        "internal_group", 
-        "ssh_address", 
-        "ssh_user",
-      ], 
-      [
-        k,
-        v.datacenter_name,
-        "amazon", 
-        "${module.relay_amazon_virginia_1.public_address}:40000",
-        "${module.relay_amazon_virginia_1.internal_address}:40000",
-        local.datacenter_map[v.datacenter_name].region,
-        "${module.relay_amazon_virginia_1.public_address}:22",
-        "ubuntu",
-      ]
-    )
+
+    "amazon.virginia.1" = {
+      "relay_name"       = "amazon.virginia.1"
+      "datacenter_name"  = "amazon.virginia.1"
+      "supplier_name"    = "amazon"
+      "public_address"   = "${module.relay_amazon_virginia_1.public_address}:40000"
+      "internal_address" = "${module.relay_amazon_virginia_1.internal_address}:40000"
+      "internal_group"   = "amazon.virginia.1"
+      "ssh_address"      = "${module.relay_amazon_virginia_1.public_address}:22"
+      "ssh_user"         = "ubuntu"
+    }    
+
+    "amazon.tokyo.1" = {
+      "relay_name"       = "amazon.tokyo.1"
+      "datacenter_name"  = "amazon.tokyo.1"
+      "supplier_name"    = "amazon"
+      "public_address"   = "${module.relay_amazon_tokyo_1.public_address}:40000"
+      "internal_address" = "${module.relay_amazon_tokyo_1.internal_address}:40000"
+      "internal_group"   = "amazon.tokyo.1"
+      "ssh_address"      = "${module.relay_amazon_tokyo_1.public_address}:22"
+      "ssh_user"         = "ubuntu"
+    }    
+
   }
 }

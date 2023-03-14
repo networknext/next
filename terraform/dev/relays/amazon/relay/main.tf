@@ -1,5 +1,16 @@
 # --------------------------------------------------------------------------
 
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+
+# --------------------------------------------------------------------------
+
 variable "name" { type = string }
 variable "zone" { type = string }
 variable "region" { type = string }
