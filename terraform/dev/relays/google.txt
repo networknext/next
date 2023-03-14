@@ -1,0 +1,104 @@
+  // todo
+  /*
+
+    "google.iowa.1.b" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.2" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.oregon.1" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.oregon.2.a" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.oregon.2.b" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.saltlakecity.1" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.saltlakecity.2.a" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.saltlakecity.2.b" = {
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+  }
+  */
+
+/*
+  google_relays = [
+
+    # us-central1: IOWA
+    {
+      name   = "google.iowa.1"
+      zone   = "us-central1-a"
+      region = "us-central1"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    {
+      name   = "google.iowa.2"
+      zone   = "us-central1-b"
+      region = "us-central1"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    {
+      name   = "google.iowa.3"
+      zone   = "us-central1-c"
+      region = "us-central1"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    {
+      name   = "google.iowa.4"
+      zone   = "us-central1-f"
+      region = "us-central1"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # us-west2: OREGON
+    {
+      name   = "google.oregon.1"
+      zone   = "us-west1-a"
+      region = "us-west1"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    {
+      name   = "google.oregon.2"
+      zone   = "us-west1-b"
+      region = "us-west1"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # us-west3: SALT LAKE CITY
+    {
+      name   = "google.saltlakecity.1"
+      zone   = "us-west3-a"
+      region = "us-west3"
+      type   = "n1-standard-2"
+      image  = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    }
+  ]
+*/
