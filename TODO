@@ -1,7 +1,5 @@
 DONE
 	
-TODO
-
 	Apply the same strategy to google
 
 	"run google-config"
@@ -10,13 +8,68 @@ TODO
 
 	Walk the zones
 
+TODO
+
+	Implement the google zone -> datacenter map.
+
 	Generate config/google.txt
 
 	Generate schemas/sql/sellers/google.sql
 
 	Generate terraform/sellers/google/generated.tf
 
+	Verify that I can still create google relays.
+
 	-----------------------
+
+	Implement the same config tool for linode
+
+	-----------------------
+
+	Implement the same config tool for vultr
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Setup a terraform provider for network next that calls the REST API
 

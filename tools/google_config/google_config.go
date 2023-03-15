@@ -23,7 +23,18 @@ import (
 
 var datacenterMap = map[string]*Datacenter{
 
-	"us-east1":  {"southcarolina", 33.8361, -81.1637},
+	"us-east1":        {"southcarolina", 33.8361, -81.1637},
+	"asia-east1":      {"taiwan", 25.105497, 121.597366},
+	"asia-east2":      {"hongkong", 22.3193, 114.1694},
+	"asia-northeast1": {"tokyo", 	35.6762, 139.6503},
+	"asia-northeast2": {"osaka", 34.6937, 135.5023},
+	"asia-northeast3": {"seoul", 37.5665, 126.9780},
+	"asia-south1":     {"mumbai", 19.0760, 72.8777},
+	"asia-south2":     {"delhi", 	28.7041, 77.1025},
+	"asia-southeast1": {"singapore", 1.3521, 103.8198},
+	"asia-southeast2": {"jakarta", 6.2088, 106.8456},
+	"australia-southeast1": {"sydney", -33.8688, 151.2093},
+	"australia-southeast2": {"melbourne",	-37.8136,	144.9631},
 
 }
 
@@ -205,9 +216,9 @@ func main() {
 
 	if len(unknown) > 0 {
 		fmt.Printf("\nUnknown datacenters:\n\n")
-		// for i := range unknown {
-			// fmt.Printf("  %s\n", unknown[i].Zone)
-		// }
+		for i := range unknown {
+			fmt.Printf("  %s\n", unknown[i].Zone)
+		}
 	}
 
 
