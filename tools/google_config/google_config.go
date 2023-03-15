@@ -109,6 +109,11 @@ func bash(command string) string {
 	return output.String()
 }
 
+type Zone struct {
+	Zone   string
+	Region string
+}
+
 func main() {
 
 	// create cache dir if needed
@@ -163,6 +168,53 @@ func main() {
 		}
 	}
 
+	// load zones cache, if possible
+
+	zones := make([]*Zone, 0)
+
+	loadedZonesCache := false
+
+	{
+	 	file, err := os.Open("cache/google_zones.bin")
+	 	if err == nil {
+			gob.NewDecoder(file).Decode(&zones)
+		 	if err == nil {
+		 		loadedZonesCache = true
+		 	}
+		 	file.Close()
+	 	}
+	}
+
+	// otherwise, get google zones and save to cache
+
+	if !loadedZonesCache {
+
+		output := bash("gcloud compute zones list")
+
+		lines := strings.Split(output, "\n")
+
+		for i := 1; i < len(lines); i++ {
+			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+([a-zA-Z0-9-]+)\w+`)
+			match := re.FindStringSubmatch(lines[i])
+			if len(match) >= 2 {
+				zones = append(zones, &Zone{match[0], match[1]})
+			}
+		}
+
+		{
+			file, err := os.Create("cache/google_zones.bin")
+		 	if err != nil {
+		 		panic(err)
+		 	}
+			gob.NewEncoder(file).Encode(&zones)
+		 	file.Close()
+		}
+
+		fmt.Printf("\nZones:\n\n")
+		for i := range zones {
+			fmt.Printf("  %s | %s\n", zones[i].Zone, zones[i].Region)
+		}
+	}
 
 
 
