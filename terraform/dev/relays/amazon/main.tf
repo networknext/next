@@ -6,17 +6,11 @@
     Unfortunately, it is LITERALLY IMPOSSIBLE to work programmatically in
     terraform across multiple regions in AWS :(
 
-    To work around this, the set of amazon relays are specified in:
+    To get started with amazon relays, look at the file:
 
       tools/amazon_config/amazon_config.go
 
-    And they are written to the "generated.tf" file in this directory.
-
-    To get started with amazon relays, look in the amazon_config.go file
-
-    Make your edits in there...
-
-    Then run the amazon configuration tool:
+    Make your edits in there, then run the amazon configuration tool:
 
       "run amazon-config"
 
@@ -25,10 +19,8 @@
       config/amazon.txt
       schemas/sql/sellers/amazon.sql,
       terraform/dev/relays/amazon/generated.tf
-      terraform/staging/relays/amazon/generated.tf
-      terraform/prod/relays/amazon/generated.tf
 
-    Also, some regions need to be manually enabled on your account.
+    IMPORTANT: some regions need to be manually enabled on your account.
 
     For more details on enabling regions see: 
 
