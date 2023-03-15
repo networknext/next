@@ -1,44 +1,16 @@
 DONE
-
-	Implement amazon-config tool
-
-	"run amazon-config"
-
-	Parse all regions
-
-	Parse all zones
-
-	Convert AZID to network next datacenter
-
-	Implement map for all availability zones from AZID -> datacenter name
-
-	Generate config/amazon.txt
-
-	Generate schemas/sql/sellers/amazon.sql
-
-	Generate terraform/amazon.tfvars
-
-	Work out how to read in amazon.tfvars from terraform
-
-	Get amazon provider supporting multiple zones
-
-	Successfully generated code amazon/generated.tf to setup providers per-region.
-
-	It is *NOT POSSIBLE* to programmatically drive the AWS provider for multiple regions. I have to use code gen.
-
-	We don't need amazon.tfvars now that we have amazon/generated.tf. Put the stuff in there as locals.
-
-TODO
 	
-	Put the relay definitions for dev in amazon_config.go
+TODO
 
-	The relay definitions need to be per-environment, they need to live in terraform/dev/amazon_relays.tf?
+	Enough for today!
 
 	-----------------
 
 	Finalize amazon config by generating all local zones
 
 	Create some relays in local zones to make sure it's working
+
+	Adjust internal group for local zones so it works as expected
 
 	-----------------
 
@@ -54,44 +26,11 @@ TODO
 
 	Generate schemas/sql/sellers/google.sql
 
-	Generate terraform/google.tfvars
+	Generate terraform/sellers/google/generated.tf
 
 	-----------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Bring across the other suppliers one-by-one until all work from a map input, not array, and they return the standard output.
 
 	-----------------
 
@@ -103,97 +42,7 @@ TODO
 
 	-----------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------
-
 	Setup stackpath relays (needs Chantel's phone number?)
-
-	-----------------
-
-	Now need to go across *ALL* relay suppliers and make sure they return relays in a standard format.
-
-	This data needs to be enough for me to initialize relay entries in the database:
-
-        relay_name
-        native_name
-        datacenter_name
-        supplier_name
-        public_address
-        internal_address
-        internal_group
-        ssh_address
-        ssh_user
-
-	-----------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -969,5 +818,17 @@ Nice to have:
 	The nice prompt for relay SSH needs to be done on ssh login via next tool
 
 	It can't easily be done in start script for google cloud relays :(
+
+	--------------
+
+	Review debug endpoints on the relay gateway
+
+	If there are any (?), make sure they can be hidden, eg. if DEBUG
+
+	--------------
+
+	Almost certainly need to adjust relay manage to build route matrix only including active relays
+
+	There are just too many relays defined, esp. all google and AWS ones...
 
 	--------------

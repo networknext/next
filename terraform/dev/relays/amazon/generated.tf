@@ -1015,17 +1015,12 @@ locals {
 }
 
 locals {
-  
+
   relays = {
 
-    "amazon.virginia.1" = {
-      datacenter_name = "amazon.virginia.1"
-    }    
-
-    "amazon.tokyo.1" = {
-      datacenter_name = "amazon.tokyo.1"
-    }    
-
+    "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
+    "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
+    "amazon.tokyo.1" = { datacenter_name = "amazon.tokyo.1" },
   }
 
 }
@@ -1037,6 +1032,19 @@ module "relay_amazon_virginia_1" {
   region            = local.datacenter_map["amazon.virginia.1"].region
   type              = "m5a.large"
   ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_east_1.security_group_id
+  providers = {
+    aws = aws.us-east-1
+  }
+}
+
+module "relay_amazon_virginia_2" {
+  source            = "./relay"
+  name              = "amazon.virginia.2"
+  zone              = local.datacenter_map["amazon.virginia.2"].zone
+  region            = local.datacenter_map["amazon.virginia.2"].region
+  type              = "a1.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
   security_group_id = module.region_us_east_1.security_group_id
   providers = {
     aws = aws.us-east-1
@@ -1068,10 +1076,21 @@ output "relays" {
       "supplier_name"    = "amazon"
       "public_address"   = "${module.relay_amazon_virginia_1.public_address}:40000"
       "internal_address" = "${module.relay_amazon_virginia_1.internal_address}:40000"
-      "internal_group"   = "amazon.virginia.1"
+      "internal_group"   = "us-east-1"
       "ssh_address"      = "${module.relay_amazon_virginia_1.public_address}:22"
       "ssh_user"         = "ubuntu"
-    }    
+    }
+
+    "amazon.virginia.2" = {
+      "relay_name"       = "amazon.virginia.2"
+      "datacenter_name"  = "amazon.virginia.2"
+      "supplier_name"    = "amazon"
+      "public_address"   = "${module.relay_amazon_virginia_2.public_address}:40000"
+      "internal_address" = "${module.relay_amazon_virginia_2.internal_address}:40000"
+      "internal_group"   = "us-east-1"
+      "ssh_address"      = "${module.relay_amazon_virginia_2.public_address}:22"
+      "ssh_user"         = "ubuntu"
+    }
 
     "amazon.tokyo.1" = {
       "relay_name"       = "amazon.tokyo.1"
@@ -1079,10 +1098,12 @@ output "relays" {
       "supplier_name"    = "amazon"
       "public_address"   = "${module.relay_amazon_tokyo_1.public_address}:40000"
       "internal_address" = "${module.relay_amazon_tokyo_1.internal_address}:40000"
-      "internal_group"   = "amazon.tokyo.1"
+      "internal_group"   = "ap-northeast-1"
       "ssh_address"      = "${module.relay_amazon_tokyo_1.public_address}:22"
       "ssh_user"         = "ubuntu"
-    }    
+    }
+
 
   }
+
 }
