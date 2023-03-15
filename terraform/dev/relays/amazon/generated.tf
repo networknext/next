@@ -489,6 +489,12 @@ locals {
       region = "af-south-1"
     }
 
+    "amazon.nigeria.1" = {
+      azid   = "afs1-los1-az1"
+      zone   = "af-south-1-los-1a"
+      region = "af-south-1"
+    }
+
     "amazon.hongkong.1" = {
       azid   = "ape1-az1"
       zone   = "ap-east-1a"
@@ -522,6 +528,12 @@ locals {
     "amazon.tokyo.4" = {
       azid   = "apne1-az4"
       zone   = "ap-northeast-1a"
+      region = "ap-northeast-1"
+    }
+
+    "amazon.taipei.1" = {
+      azid   = "apne1-tpe1-az1"
+      zone   = "ap-northeast-1-tpe-1a"
       region = "ap-northeast-1"
     }
 
@@ -585,6 +597,18 @@ locals {
       region = "ap-south-1"
     }
 
+    "amazon.kolkata.1" = {
+      azid   = "aps1-ccu1-az1"
+      zone   = "ap-south-1-ccu-1a"
+      region = "ap-south-1"
+    }
+
+    "amazon.delhi.1" = {
+      azid   = "aps1-del1-az1"
+      zone   = "ap-south-1-del-1a"
+      region = "ap-south-1"
+    }
+
     "amazon.hyderabad.1" = {
       azid   = "aps2-az1"
       zone   = "ap-south-2a"
@@ -621,6 +645,12 @@ locals {
       region = "ap-southeast-1"
     }
 
+    "amazon.bangkok.1" = {
+      azid   = "apse1-bkk1-az1"
+      zone   = "ap-southeast-1-bkk-1a"
+      region = "ap-southeast-1"
+    }
+
     "amazon.sydney.1" = {
       azid   = "apse2-az1"
       zone   = "ap-southeast-2b"
@@ -636,6 +666,12 @@ locals {
     "amazon.sydney.3" = {
       azid   = "apse2-az3"
       zone   = "ap-southeast-2a"
+      region = "ap-southeast-2"
+    }
+
+    "amazon.perth.1" = {
+      azid   = "apse2-per1-az1"
+      zone   = "ap-southeast-2-per-1a"
       region = "ap-southeast-2"
     }
 
@@ -711,6 +747,18 @@ locals {
       region = "eu-central-1"
     }
 
+    "amazon.hamburg.1" = {
+      azid   = "euc1-ham1-az1"
+      zone   = "eu-central-1-ham-1a"
+      region = "eu-central-1"
+    }
+
+    "amazon.warsaw.1" = {
+      azid   = "euc1-waw1-az1"
+      zone   = "eu-central-1-waw-1a"
+      region = "eu-central-1"
+    }
+
     "amazon.zurich.1" = {
       azid   = "euc2-az1"
       zone   = "eu-central-2a"
@@ -744,6 +792,18 @@ locals {
     "amazon.stockholm.3" = {
       azid   = "eun1-az3"
       zone   = "eu-north-1c"
+      region = "eu-north-1"
+    }
+
+    "amazon.copenhagen.1" = {
+      azid   = "eun1-cph1-az1"
+      zone   = "eu-north-1-cph-1a"
+      region = "eu-north-1"
+    }
+
+    "amazon.finland.1" = {
+      azid   = "eun1-hel1-az1"
+      zone   = "eu-north-1-hel-1a"
       region = "eu-north-1"
     }
 
@@ -873,6 +933,12 @@ locals {
       region = "me-south-1"
     }
 
+    "amazon.oman.1" = {
+      azid   = "mes1-mct1-az1"
+      zone   = "me-south-1-mct-1a"
+      region = "me-south-1"
+    }
+
     "amazon.saopaulo.1" = {
       azid   = "sae1-az1"
       zone   = "sa-east-1a"
@@ -889,6 +955,12 @@ locals {
       azid   = "sae1-az3"
       zone   = "sa-east-1c"
       region = "sa-east-1"
+    }
+
+    "amazon.atlanta.1" = {
+      azid   = "use1-atl1-az1"
+      zone   = "us-east-1-atl-1a"
+      region = "us-east-1"
     }
 
     "amazon.virginia.1" = {
@@ -924,6 +996,84 @@ locals {
     "amazon.virginia.6" = {
       azid   = "use1-az6"
       zone   = "us-east-1b"
+      region = "us-east-1"
+    }
+
+    "amazon.boston.1" = {
+      azid   = "use1-bos1-az1"
+      zone   = "us-east-1-bos-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.buenosaires.1" = {
+      azid   = "use1-bue1-az1"
+      zone   = "us-east-1-bue-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.chicago.1" = {
+      azid   = "use1-chi1-az1"
+      zone   = "us-east-1-chi-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.dallas.1" = {
+      azid   = "use1-dfw1-az1"
+      zone   = "us-east-1-dfw-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.houston.1" = {
+      azid   = "use1-iah1-az1"
+      zone   = "us-east-1-iah-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.lima.1" = {
+      azid   = "use1-lim1-az1"
+      zone   = "us-east-1-lim-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.kansas.1" = {
+      azid   = "use1-mci1-az1"
+      zone   = "us-east-1-mci-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.miami.1" = {
+      azid   = "use1-mia1-az1"
+      zone   = "us-east-1-mia-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.minneapolis.1" = {
+      azid   = "use1-msp1-az1"
+      zone   = "us-east-1-msp-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.newyork.1" = {
+      azid   = "use1-nyc1-az1"
+      zone   = "us-east-1-nyc-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.philadelphia.1" = {
+      azid   = "use1-phl1-az1"
+      zone   = "us-east-1-phl-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.mexico.1" = {
+      azid   = "use1-qro1-az1"
+      zone   = "us-east-1-qro-1a"
+      region = "us-east-1"
+    }
+
+    "amazon.santiago.1" = {
+      azid   = "use1-scl1-az1"
+      zone   = "us-east-1-scl-1a"
       region = "us-east-1"
     }
 
@@ -981,6 +1131,48 @@ locals {
       region = "us-west-2"
     }
 
+    "amazon.denver.1" = {
+      azid   = "usw2-den1-az1"
+      zone   = "us-west-2-den-1a"
+      region = "us-west-2"
+    }
+
+    "amazon.lasvegas.1" = {
+      azid   = "usw2-las1-az1"
+      zone   = "us-west-2-las-1a"
+      region = "us-west-2"
+    }
+
+    "amazon.losangeles.1" = {
+      azid   = "usw2-lax1-az1"
+      zone   = "us-west-2-lax-1a"
+      region = "us-west-2"
+    }
+
+    "amazon.losangeles.2" = {
+      azid   = "usw2-lax1-az2"
+      zone   = "us-west-2-lax-1b"
+      region = "us-west-2"
+    }
+
+    "amazon.portland.1" = {
+      azid   = "usw2-pdx1-az1"
+      zone   = "us-west-2-pdx-1a"
+      region = "us-west-2"
+    }
+
+    "amazon.phoenix.1" = {
+      azid   = "usw2-phx1-az1"
+      zone   = "us-west-2-phx-1a"
+      region = "us-west-2"
+    }
+
+    "amazon.seattle.1" = {
+      azid   = "usw2-sea1-az1"
+      zone   = "us-west-2-sea-1a"
+      region = "us-west-2"
+    }
+
   }
 
   regions = [
@@ -1018,9 +1210,10 @@ locals {
 
   relays = {
 
-    "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
     "amazon.tokyo.1" = { datacenter_name = "amazon.tokyo.1" },
+    "amazon.losangeles.1" = { datacenter_name = "amazon.losangeles.1" },
+    "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
   }
 
 }
@@ -1064,6 +1257,19 @@ module "relay_amazon_tokyo_1" {
   }
 }
 
+module "relay_amazon_losangeles_1" {
+  source            = "./relay"
+  name              = "amazon.losangeles.1"
+  zone              = local.datacenter_map["amazon.losangeles.1"].zone
+  region            = local.datacenter_map["amazon.losangeles.1"].region
+  type              = "c5d.2xlarge"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_west_2.security_group_id
+  providers = {
+    aws = aws.us-west-2
+  }
+}
+
 output "relays" {
 
   description = "Data for each amazon relay setup by Terraform"
@@ -1100,6 +1306,17 @@ output "relays" {
       "internal_address" = "${module.relay_amazon_tokyo_1.internal_address}:40000"
       "internal_group"   = "ap-northeast-1"
       "ssh_address"      = "${module.relay_amazon_tokyo_1.public_address}:22"
+      "ssh_user"         = "ubuntu"
+    }
+
+    "amazon.losangeles.1" = {
+      "relay_name"       = "amazon.losangeles.1"
+      "datacenter_name"  = "amazon.losangeles.1"
+      "supplier_name"    = "amazon"
+      "public_address"   = "${module.relay_amazon_losangeles_1.public_address}:40000"
+      "internal_address" = "${module.relay_amazon_losangeles_1.internal_address}:40000"
+      "internal_group"   = "amazon.losangeles.1"
+      "ssh_address"      = "${module.relay_amazon_losangeles_1.public_address}:22"
       "ssh_user"         = "ubuntu"
     }
 

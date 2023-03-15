@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,8 @@ import (
 // This definition drives the set of amazon datacenters, eg. "amazon.[country/city].[number]"
 
 var datacenterMap = map[string]*Datacenter{
+
+	// regions (AZID)
 
 	"afs1":  {"johannesburg", -33.9249, 18.4241},
 	"ape1":  {"hongkong", 22.3193, 114.1694},
@@ -44,6 +47,40 @@ var datacenterMap = map[string]*Datacenter{
 	"use2":  {"ohio", 40.4173, -82.9071},
 	"usw1":  {"sanjose", 37.3387, -121.8853},
 	"usw2":  {"oregon", 45.8399, -119.7006},
+
+	// local zones (AZID)
+
+	"los1": {"nigeria", 6.5244, 3.3792},
+	"tpe1": {"taipei", 25.0330, 121.5654},
+	"ccu1": {"kolkata", 22.5726, 88.3639},
+	"del1": {"delhi", 28.7041, 77.1025},
+	"bkk1": {"bangkok", 13.7563, 100.5018},
+	"per1": {"perth", -31.9523, 115.8613},
+	"ham1": {"hamburg", 53.5488, 9.9872},
+	"waw1": {"warsaw", 52.2297, 21.0122},
+	"cph1": {"copenhagen", 55.6761, 12.5683},
+	"hel1": {"finland", 60.1699, 24.9384},
+	"mct1": {"oman", 23.5880, 58.3829},
+  "atl1": {"atlanta", 33.7488, -84.3877},
+  "bos1": {"boston", 42.3601, -71.0589},
+  "bue1": {"buenosaires", -34.6037, -58.3816}, 
+  "chi1": {"chicago", 41.8781, -87.6298},
+  "dfw1": {"dallas", 32.7767, -96.7970},
+  "iah1": {"houston", 29.7604, -95.3698},
+  "lim1": {"lima", -12.0464, -77.0428},
+  "mci1": {"kansas", 39.0997, -94.5786},
+  "mia1": {"miami", 25.7617, -80.1918},
+  "msp1": {"minneapolis", 44.9778, -93.2650},
+  "nyc1": {"newyork", 40.7128, -74.0060},
+  "phl1": {"philadelphia", 39.9526, -75.1652},
+  "qro1": {"mexico", 23.6345, -102.5528},
+  "scl1": {"santiago", -33.4489, -70.6693},
+  "den1": {"denver", 39.7392, -104.9903},
+  "las1": {"lasvegas", 36.1716, -115.1391},
+  "lax1": {"losangeles", 34.0522, -118.2437},
+  "pdx1": {"portland", 45.5152, -122.6784},
+	"phx1": {"phoenix", 33.4484, -112.0740},
+	"sea1": {"seattle", 47.6062, -122.3321},
 }
 
 type Datacenter struct {
@@ -54,13 +91,20 @@ type Datacenter struct {
 
 // -------------------------------------------------------------------------------------------------------------------------------------------
 
-// This definition drives amazon relays in dev
+/*
+		This definition drives amazon relays in dev
+
+		To deploy after changes:
+
+			next select dev && run amazon-config && next init relays && next deploy relays
+*/
 
 var devRelayMap = map[string][]string{
 
 	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.virginia.2": {"amazon.virginia.2", "a1.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"},
 	"amazon.tokyo.1":    {"amazon.tokyo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.losangeles.1":  {"amazon.losangeles.1", "c5d.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================
@@ -97,74 +141,133 @@ type AvailabilityZoneData struct {
 }
 
 type Zone struct {
-	zone            string
-	azid            string
-	region          string
-	local           bool
-	datacenter_name string
-	latitude        float32
-	longitude       float32
+	Zone            string
+	AZID            string
+	Region          string
+	Local           bool
+	DatacenterName  string
+	Latitude        float32
+	Longitude       float32
 }
 
 func main() {
 
-	// get all regions
+	// create cache dir if needed
 
-	fmt.Printf("\nRegions:\n\n")
+	bash("mkdir -p cache")
 
-	output := bash("aws ec2 describe-regions --all-regions")
+	// load regions cache, if possible
 
 	regionsResponse := RegionsResponse{}
-	if err := json.Unmarshal([]byte(output), &regionsResponse); err != nil {
-		panic(err)
+
+	loadedRegionsCache := false
+
+	{
+	 	file, err := os.Open("cache/amazon_regions.bin")
+	 	if err == nil {
+			gob.NewDecoder(file).Decode(&regionsResponse)
+		 	if err == nil {
+		 		loadedRegionsCache = true
+		 	}
+		 	file.Close()
+	 	}
 	}
 
-	for i := range regionsResponse.Regions {
-		fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
-	}
+	// otherwise, get all regions and save to cache
 
-	// iterate across each region and get zones
+	if !loadedRegionsCache {
 
-	zones := make([]Zone, 0)
+		output := bash("aws ec2 describe-regions --all-regions")
 
-	for i := range regionsResponse.Regions {
-
-		fmt.Printf("\n%s zones:\n\n", regionsResponse.Regions[i].RegionName)
-
-		output = bash(fmt.Sprintf("aws ec2 describe-availability-zones --region=%s --all-availability-zones", regionsResponse.Regions[i].RegionName))
-
-		availabilityZonesResponse := AvailabilityZonesResponse{}
-		if err := json.Unmarshal([]byte(output), &availabilityZonesResponse); err != nil {
+		if err := json.Unmarshal([]byte(output), &regionsResponse); err != nil {
 			panic(err)
 		}
 
-		for j := range availabilityZonesResponse.AvailabilityZones {
-			zoneType := availabilityZonesResponse.AvailabilityZones[j].ZoneType
-			if zoneType != "availability-zone" && zoneType != "local-zone" {
-				continue
-			}
-			local := zoneType == "local-zone"
-			zone := availabilityZonesResponse.AvailabilityZones[j].ZoneName
-			azid := availabilityZonesResponse.AvailabilityZones[j].ZoneId
-			region := availabilityZonesResponse.AvailabilityZones[j].RegionName
-			if local {
-				fmt.Printf("  %s [%s] (local)\n", zone, azid)
-			} else {
-				fmt.Printf("  %s [%s]\n", zone, azid)
-			}
-			zones = append(zones, Zone{zone, azid, region, local, "", 0, 0})
+		for i := range regionsResponse.Regions {
+			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
 		}
 
+		{
+			file, err := os.Create("cache/amazon_regions.bin")
+		 	if err != nil {
+		 		panic(err)
+		 	}
+			gob.NewEncoder(file).Encode(&regionsResponse)
+		 	file.Close()
+		}
 	}
 
-	// sort by azid and print out zones
+	// load regions cache, if possible
+
+	zones := make([]Zone, 0)
+
+	loadedZonesCache := false
+
+	{
+	 	file, err := os.Open("cache/amazon_zones.bin")
+	 	if err == nil {
+			gob.NewDecoder(file).Decode(&zones)
+		 	if err == nil {
+		 		loadedZonesCache = true
+		 	}
+		 	file.Close()
+	 	}
+	}
+
+	// otherwise, iterate across each region and get zones then save to cache
+
+	if !loadedZonesCache {
+
+		for i := range regionsResponse.Regions {
+
+			fmt.Printf("\n%s zones:\n\n", regionsResponse.Regions[i].RegionName)
+
+			output := bash(fmt.Sprintf("aws ec2 describe-availability-zones --region=%s --all-availability-zones", regionsResponse.Regions[i].RegionName))
+
+			availabilityZonesResponse := AvailabilityZonesResponse{}
+			if err := json.Unmarshal([]byte(output), &availabilityZonesResponse); err != nil {
+				panic(err)
+			}
+
+			for j := range availabilityZonesResponse.AvailabilityZones {
+				zoneType := availabilityZonesResponse.AvailabilityZones[j].ZoneType
+				if zoneType != "availability-zone" && zoneType != "local-zone" {
+					continue
+				}
+				local := zoneType == "local-zone"
+				zone := availabilityZonesResponse.AvailabilityZones[j].ZoneName
+				azid := availabilityZonesResponse.AvailabilityZones[j].ZoneId
+				region := availabilityZonesResponse.AvailabilityZones[j].RegionName
+				if local {
+					fmt.Printf("  %s [%s] (local)\n", zone, azid)
+				} else {
+					fmt.Printf("  %s [%s]\n", zone, azid)
+				}
+				zones = append(zones, Zone{zone, azid, region, local, "", 0, 0})
+			}
+
+		}
+
+		// sort by azid then cache results
+
+		sort.SliceStable(zones, func(i, j int) bool { return zones[i].AZID < zones[j].AZID })
+
+		{
+			file, err := os.Create("cache/amazon_zones.bin")
+		 	if err != nil {
+		 		panic(err)
+		 	}
+			gob.NewEncoder(file).Encode(zones)
+		 	file.Close()
+		}
+	}
+
+	// print all zones
 
 	fmt.Printf("\nAll zones:\n\n")
 
-	sort.SliceStable(zones, func(i, j int) bool { return zones[i].azid < zones[j].azid })
-
 	for i := range zones {
-		values := strings.Split(zones[i].azid, "-")
+		values := strings.Split(zones[i].AZID, "-")
 		a := values[len(values)-2]
 		b := values[len(values)-1]
 		fmt.Printf("  %s|%s\n", a, b)
@@ -177,19 +280,21 @@ func main() {
 	unknown := make([]*Zone, 0)
 
 	datacenterToRegion := make(map[string]string)
+	datacenterIsLocal := make(map[string]bool)
 
 	for i := range zones {
-		values := strings.Split(zones[i].azid, "-")
+		values := strings.Split(zones[i].AZID, "-")
 		a := values[len(values)-2]
 		b := values[len(values)-1]
 		datacenter := datacenterMap[a]
 		number, _ := strconv.Atoi(b[2:])
 		if datacenter != nil {
-			zones[i].datacenter_name = fmt.Sprintf("amazon.%s.%d", datacenter.name, number)
-			zones[i].latitude = datacenter.latitude
-			zones[i].longitude = datacenter.longitude
-			fmt.Printf("  %s\n", zones[i].datacenter_name)
-			datacenterToRegion[zones[i].datacenter_name] = zones[i].region
+			zones[i].DatacenterName = fmt.Sprintf("amazon.%s.%d", datacenter.name, number)
+			zones[i].Latitude = datacenter.latitude
+			zones[i].Longitude = datacenter.longitude
+			fmt.Printf("  %s\n", zones[i].DatacenterName)
+			datacenterToRegion[zones[i].DatacenterName] = zones[i].Region
+			datacenterIsLocal[zones[i].DatacenterName] = zones[i].Local
 		} else {
 			unknown = append(unknown, &zones[i])
 		}
@@ -197,10 +302,11 @@ func main() {
 
 	// print out the unknown datacenters
 
-	fmt.Printf("\nUnknown datacenters:\n\n")
-
-	for i := range unknown {
-		fmt.Printf("  %s -> %s\n", unknown[i].zone, unknown[i].azid)
+	if len(unknown) > 0 {
+		fmt.Printf("\nUnknown datacenters:\n\n")
+		for i := range unknown {
+			fmt.Printf("  %s -> %s\n", unknown[i].Zone, unknown[i].AZID)
+		}
 	}
 
 	// generate amazon.txt
@@ -213,8 +319,8 @@ func main() {
 	}
 
 	for i := range zones {
-		if zones[i].datacenter_name != "" {
-			fmt.Fprintf(file, "%s,%s\n", zones[i].azid, zones[i].datacenter_name)
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, "%s,%s\n", zones[i].AZID, zones[i].DatacenterName)
 		}
 	}
 
@@ -246,8 +352,8 @@ func main() {
 		");\n"
 
 	for i := range zones {
-		if zones[i].datacenter_name != "" {
-			fmt.Fprintf(file, format_string, zones[i].datacenter_name, zones[i].azid, zones[i].latitude, zones[i].longitude)
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Latitude, zones[i].Longitude)
 		}
 	}
 
@@ -309,8 +415,8 @@ terraform {
 		"\n"
 
 	for i := range zones {
-		if zones[i].datacenter_name != "" {
-			fmt.Fprintf(file, format_string, zones[i].datacenter_name, zones[i].azid, zones[i].zone, zones[i].region)
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Zone, zones[i].Region)
 		}
 	}
 
@@ -370,10 +476,13 @@ terraform {
 
 `
 	for k, v := range devRelayMap {
-		// todo: may need special handling for local zones here
 		region := datacenterToRegion[v[0]]
+		internal_group := region
+		if datacenterIsLocal[v[0]] {
+			internal_group = v[0]
+		}
 		datacenter_underscores := strings.ReplaceAll(v[0], ".", "_")
-		fmt.Fprintf(file, relay_output, k, k, v[0], datacenter_underscores, datacenter_underscores, region, datacenter_underscores)
+		fmt.Fprintf(file, relay_output, k, k, v[0], datacenter_underscores, datacenter_underscores, internal_group, datacenter_underscores)
 	}
 
 	fmt.Fprintf(file, "\n  }\n\n}\n")

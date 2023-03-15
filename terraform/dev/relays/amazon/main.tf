@@ -28,11 +28,15 @@
       terraform/staging/relays/amazon/generated.tf
       terraform/prod/relays/amazon/generated.tf
 
-    Also, some AWS regions need to be manually enabled on your account.
+    Also, some regions need to be manually enabled on your account.
 
     For more details on enabling regions see: 
 
       https://docs.aws.amazon.com/general/latest/gr/rande-manage.html
+
+    There are also local zones in AWS which must be manually enabled here:
+
+      https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
 */
 
 # --------------------------------------------------------------------------
