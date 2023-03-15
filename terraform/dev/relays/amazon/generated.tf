@@ -1210,10 +1210,10 @@ locals {
 
   relays = {
 
+    "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
     "amazon.tokyo.1" = { datacenter_name = "amazon.tokyo.1" },
-    "amazon.losangeles.1" = { datacenter_name = "amazon.losangeles.1" },
-    "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
+    "amazon.seattle.1" = { datacenter_name = "amazon.seattle.1" },
   }
 
 }
@@ -1257,11 +1257,11 @@ module "relay_amazon_tokyo_1" {
   }
 }
 
-module "relay_amazon_losangeles_1" {
+module "relay_amazon_seattle_1" {
   source            = "./relay"
-  name              = "amazon.losangeles.1"
-  zone              = local.datacenter_map["amazon.losangeles.1"].zone
-  region            = local.datacenter_map["amazon.losangeles.1"].region
+  name              = "amazon.seattle.1"
+  zone              = local.datacenter_map["amazon.seattle.1"].zone
+  region            = local.datacenter_map["amazon.seattle.1"].region
   type              = "c5d.2xlarge"
   ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
   security_group_id = module.region_us_west_2.security_group_id
@@ -1309,14 +1309,14 @@ output "relays" {
       "ssh_user"         = "ubuntu"
     }
 
-    "amazon.losangeles.1" = {
-      "relay_name"       = "amazon.losangeles.1"
-      "datacenter_name"  = "amazon.losangeles.1"
+    "amazon.seattle.1" = {
+      "relay_name"       = "amazon.seattle.1"
+      "datacenter_name"  = "amazon.seattle.1"
       "supplier_name"    = "amazon"
-      "public_address"   = "${module.relay_amazon_losangeles_1.public_address}:40000"
-      "internal_address" = "${module.relay_amazon_losangeles_1.internal_address}:40000"
-      "internal_group"   = "amazon.losangeles.1"
-      "ssh_address"      = "${module.relay_amazon_losangeles_1.public_address}:22"
+      "public_address"   = "${module.relay_amazon_seattle_1.public_address}:40000"
+      "internal_address" = "${module.relay_amazon_seattle_1.internal_address}:40000"
+      "internal_group"   = "amazon.seattle.1"
+      "ssh_address"      = "${module.relay_amazon_seattle_1.public_address}:22"
       "ssh_user"         = "ubuntu"
     }
 

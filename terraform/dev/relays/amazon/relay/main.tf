@@ -48,21 +48,16 @@ resource "aws_instance" "relay" {
   user_data = file("./setup_relay.sh")
 }
 
-resource "aws_eip" "relay" {
-  instance = aws_instance.relay.id
-  vpc      = true
-}
-
 # --------------------------------------------------------------------------
 
 output "public_address" {
   description = "Relay public address"
-  value = aws_eip.relay.public_ip
+  value = aws_instance.relay.public_ip
 }
 
 output "internal_address" {
   description = "Relay internal address"
-  value = aws_eip.relay.private_ip
+  value = aws_instance.relay.private_ip
 }
 
 # --------------------------------------------------------------------------
