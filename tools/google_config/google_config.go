@@ -2,18 +2,23 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"encoding/gob"
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
-	"strconv"
+	"regexp"
 	"strings"
+	"encoding/gob"
+
+	// "encoding/json"
+	// 
+	// "os"
+	// "sort"
+	// "strconv"
 )
 
 // ===========================================================================================================================================
 
+/*
 // This definition drives the set of amazon datacenters, eg. "amazon.[country/city].[number]"
 
 var datacenterMap = map[string]*Datacenter{
@@ -88,26 +93,7 @@ type Datacenter struct {
 	latitude  float32
 	longitude float32
 }
-
-// -------------------------------------------------------------------------------------------------------------------------------------------
-
-/*
-		This definition drives amazon relays in dev
-
-		To deploy after changes:
-
-			next select dev && run amazon-config && next init relays && next deploy relays
 */
-
-var devRelayMap = map[string][]string{
-
-	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "a1.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"},
-	"amazon.tokyo.1":    {"amazon.tokyo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.seattle.1":  {"amazon.seattle.1", "c5d.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-}
-
-// IMPORTANT: To research instance types and cost, see - https://instances.vantage.sh/aws/ec2/c5d.2xlarge
 
 // ===========================================================================================================================================
 
@@ -123,35 +109,6 @@ func bash(command string) string {
 	return output.String()
 }
 
-type RegionsResponse struct {
-	Regions []RegionData
-}
-
-type RegionData struct {
-	RegionName string
-}
-
-type AvailabilityZonesResponse struct {
-	AvailabilityZones []AvailabilityZoneData
-}
-
-type AvailabilityZoneData struct {
-	RegionName string
-	ZoneName   string
-	ZoneId     string
-	ZoneType   string
-}
-
-type Zone struct {
-	Zone            string
-	AZID            string
-	Region          string
-	Local           bool
-	DatacenterName  string
-	Latitude        float32
-	Longitude       float32
-}
-
 func main() {
 
 	// create cache dir if needed
@@ -160,14 +117,14 @@ func main() {
 
 	// load regions cache, if possible
 
-	regionsResponse := RegionsResponse{}
+	regions := make([]string, 0)
 
 	loadedRegionsCache := false
 
 	{
-	 	file, err := os.Open("cache/amazon_regions.bin")
+	 	file, err := os.Open("cache/google_regions.bin")
 	 	if err == nil {
-			gob.NewDecoder(file).Decode(&regionsResponse)
+			gob.NewDecoder(file).Decode(&regions)
 		 	if err == nil {
 		 		loadedRegionsCache = true
 		 	}
@@ -175,30 +132,54 @@ func main() {
 	 	}
 	}
 
-	// otherwise, get all regions and save to cache
+	// otherwise, get google regions and save to cache
 
 	if !loadedRegionsCache {
 
-		output := bash("aws ec2 describe-regions --all-regions")
+		output := bash("gcloud compute regions list")
 
-		if err := json.Unmarshal([]byte(output), &regionsResponse); err != nil {
-			panic(err)
-		}
+		lines := strings.Split(output, "\n")
 
-		for i := range regionsResponse.Regions {
-			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
+		for i := 1; i < len(lines); i++ {
+			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
+			match := re.FindStringSubmatch(lines[i])
+			if len(match) > 0 {
+				regions = append(regions, match[0])	
+			}
 		}
 
 		{
-			file, err := os.Create("cache/amazon_regions.bin")
+			file, err := os.Create("cache/google_regions.bin")
 		 	if err != nil {
 		 		panic(err)
 		 	}
-			gob.NewEncoder(file).Encode(&regionsResponse)
+			gob.NewEncoder(file).Encode(&regions)
 		 	file.Close()
+		}
+
+		fmt.Printf("\nRegions:\n\n")
+		for i := range regions {
+			fmt.Printf("  %s\n", regions[i])
 		}
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 	// load zones cache, if possible
 
 	zones := make([]Zone, 0)
@@ -490,4 +471,5 @@ terraform {
 	fmt.Fprintf(file, "\n  }\n\n}\n")
 
 	file.Close()
+*/
 }

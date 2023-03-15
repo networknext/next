@@ -189,6 +189,8 @@ func main() {
 		load_test_session_update()
 	} else if command == "amazon-config" {
 		amazon_config()
+	} else if command == "google-config" {
+		google_config()
 	}
 
 	cleanup()
@@ -467,4 +469,8 @@ func load_test_session_update() {
 
 func amazon_config() {
 	bash("go run tools/amazon_config/amazon_config.go")
+}
+
+func google_config() {
+	bash("go run tools/google_config/google_config.go")
 }
