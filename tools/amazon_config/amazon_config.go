@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -61,24 +61,24 @@ var datacenterMap = map[string]*Datacenter{
 	"cph1": {"copenhagen", 55.6761, 12.5683},
 	"hel1": {"finland", 60.1699, 24.9384},
 	"mct1": {"oman", 23.5880, 58.3829},
-  "atl1": {"atlanta", 33.7488, -84.3877},
-  "bos1": {"boston", 42.3601, -71.0589},
-  "bue1": {"buenosaires", -34.6037, -58.3816}, 
-  "chi1": {"chicago", 41.8781, -87.6298},
-  "dfw1": {"dallas", 32.7767, -96.7970},
-  "iah1": {"houston", 29.7604, -95.3698},
-  "lim1": {"lima", -12.0464, -77.0428},
-  "mci1": {"kansas", 39.0997, -94.5786},
-  "mia1": {"miami", 25.7617, -80.1918},
-  "msp1": {"minneapolis", 44.9778, -93.2650},
-  "nyc1": {"newyork", 40.7128, -74.0060},
-  "phl1": {"philadelphia", 39.9526, -75.1652},
-  "qro1": {"mexico", 23.6345, -102.5528},
-  "scl1": {"santiago", -33.4489, -70.6693},
-  "den1": {"denver", 39.7392, -104.9903},
-  "las1": {"lasvegas", 36.1716, -115.1391},
-  "lax1": {"losangeles", 34.0522, -118.2437},
-  "pdx1": {"portland", 45.5152, -122.6784},
+	"atl1": {"atlanta", 33.7488, -84.3877},
+	"bos1": {"boston", 42.3601, -71.0589},
+	"bue1": {"buenosaires", -34.6037, -58.3816},
+	"chi1": {"chicago", 41.8781, -87.6298},
+	"dfw1": {"dallas", 32.7767, -96.7970},
+	"iah1": {"houston", 29.7604, -95.3698},
+	"lim1": {"lima", -12.0464, -77.0428},
+	"mci1": {"kansas", 39.0997, -94.5786},
+	"mia1": {"miami", 25.7617, -80.1918},
+	"msp1": {"minneapolis", 44.9778, -93.2650},
+	"nyc1": {"newyork", 40.7128, -74.0060},
+	"phl1": {"philadelphia", 39.9526, -75.1652},
+	"qro1": {"mexico", 23.6345, -102.5528},
+	"scl1": {"santiago", -33.4489, -70.6693},
+	"den1": {"denver", 39.7392, -104.9903},
+	"las1": {"lasvegas", 36.1716, -115.1391},
+	"lax1": {"losangeles", 34.0522, -118.2437},
+	"pdx1": {"portland", 45.5152, -122.6784},
 	"phx1": {"phoenix", 33.4484, -112.0740},
 	"sea1": {"seattle", 47.6062, -122.3321},
 }
@@ -92,11 +92,11 @@ type Datacenter struct {
 // -------------------------------------------------------------------------------------------------------------------------------------------
 
 /*
-		This definition drives amazon relays in dev
+	This definition drives amazon relays in dev
 
-		To deploy after changes:
+	To deploy after changes:
 
-			next select dev && run amazon-config && next init relays && next deploy relays
+		next select dev && run amazon-config && next init relays && next deploy relays
 */
 
 var devRelayMap = map[string][]string{
@@ -143,13 +143,13 @@ type AvailabilityZoneData struct {
 }
 
 type Zone struct {
-	Zone            string
-	AZID            string
-	Region          string
-	Local           bool
-	DatacenterName  string
-	Latitude        float32
-	Longitude       float32
+	Zone           string
+	AZID           string
+	Region         string
+	Local          bool
+	DatacenterName string
+	Latitude       float32
+	Longitude      float32
 }
 
 func main() {
@@ -165,14 +165,14 @@ func main() {
 	loadedRegionsCache := false
 
 	{
-	 	file, err := os.Open("cache/amazon_regions.bin")
-	 	if err == nil {
+		file, err := os.Open("cache/amazon_regions.bin")
+		if err == nil {
 			gob.NewDecoder(file).Decode(&regionsResponse)
-		 	if err == nil {
-		 		loadedRegionsCache = true
-		 	}
-		 	file.Close()
-	 	}
+			if err == nil {
+				loadedRegionsCache = true
+			}
+			file.Close()
+		}
 	}
 
 	// otherwise, get all regions and save to cache
@@ -191,11 +191,11 @@ func main() {
 
 		{
 			file, err := os.Create("cache/amazon_regions.bin")
-		 	if err != nil {
-		 		panic(err)
-		 	}
+			if err != nil {
+				panic(err)
+			}
 			gob.NewEncoder(file).Encode(&regionsResponse)
-		 	file.Close()
+			file.Close()
 		}
 	}
 
@@ -206,14 +206,14 @@ func main() {
 	loadedZonesCache := false
 
 	{
-	 	file, err := os.Open("cache/amazon_zones.bin")
-	 	if err == nil {
+		file, err := os.Open("cache/amazon_zones.bin")
+		if err == nil {
 			gob.NewDecoder(file).Decode(&zones)
-		 	if err == nil {
-		 		loadedZonesCache = true
-		 	}
-		 	file.Close()
-	 	}
+			if err == nil {
+				loadedZonesCache = true
+			}
+			file.Close()
+		}
 	}
 
 	// otherwise, iterate across each region and get zones then save to cache
@@ -256,11 +256,11 @@ func main() {
 
 		{
 			file, err := os.Create("cache/amazon_zones.bin")
-		 	if err != nil {
-		 		panic(err)
-		 	}
+			if err != nil {
+				panic(err)
+			}
 			gob.NewEncoder(file).Encode(zones)
-		 	file.Close()
+			file.Close()
 		}
 	}
 

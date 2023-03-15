@@ -2,16 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
-	"strings"
-	"encoding/gob"
 	"sort"
-
+	"strings"
 	// "encoding/json"
-	// 
+	//
 	// "os"
 	// "sort"
 	// "strconv"
@@ -23,18 +22,28 @@ import (
 
 var datacenterMap = map[string]*Datacenter{
 
-	"us-east1":        {"southcarolina", 33.8361, -81.1637},
-	"asia-east1":      {"taiwan", 25.105497, 121.597366},
-	"asia-east2":      {"hongkong", 22.3193, 114.1694},
-	"asia-northeast1": {"tokyo", 	35.6762, 139.6503},
-	"asia-northeast2": {"osaka", 34.6937, 135.5023},
-	"asia-northeast3": {"seoul", 37.5665, 126.9780},
-	"asia-south1":     {"mumbai", 19.0760, 72.8777},
-	"asia-south2":     {"delhi", 	28.7041, 77.1025},
-	"asia-southeast1": {"singapore", 1.3521, 103.8198},
-	"asia-southeast2": {"jakarta", 6.2088, 106.8456},
+	"us-east1":             {"southcarolina", 33.8361, -81.1637},
+	"asia-east1":           {"taiwan", 25.105497, 121.597366},
+	"asia-east2":           {"hongkong", 22.3193, 114.1694},
+	"asia-northeast1":      {"tokyo", 35.6762, 139.6503},
+	"asia-northeast2":      {"osaka", 34.6937, 135.5023},
+	"asia-northeast3":      {"seoul", 37.5665, 126.9780},
+	"asia-south1":          {"mumbai", 19.0760, 72.8777},
+	"asia-south2":          {"delhi", 28.7041, 77.1025},
+	"asia-southeast1":      {"singapore", 1.3521, 103.8198},
+	"asia-southeast2":      {"jakarta", 6.2088, 106.8456},
 	"australia-southeast1": {"sydney", -33.8688, 151.2093},
-	"australia-southeast2": {"melbourne",	-37.8136,	144.9631},
+	"australia-southeast2": {"melbourne", -37.8136, 144.9631},
+	"europe-central2":      {"warsaw", 52.2297, 21.0122},
+	"europe-north1":        {"finland", 60.5693, 27.1878},
+	"europe-southwest1":    {"madrid", 	40.4168, 3.7038},
+	"europe-west1":         {"belgium", 50.4706, 3.8170},
+	"europe-west2":         {"london", 51.5072, -0.1276},
+	"europe-west3":         {"frankfurt", 50.1109, 8.6821},
+	"europe-west4":         {"netherlands", 53.4386, 6.8355},
+	"europe-west6":         {"zurich", 47.3769, 8.5417},
+	"europe-west8":         {"milan", 45.4642, 9.1900},
+	"europe-west9":         {"paris", 48.8566, 2.3522},
 
 }
 
@@ -59,11 +68,11 @@ func bash(command string) string {
 }
 
 type Zone struct {
-	Zone            string
-	Region          string
-	DatacenterName  string
-	Latitude        float32
-	Longitude       float32
+	Zone           string
+	Region         string
+	DatacenterName string
+	Latitude       float32
+	Longitude      float32
 }
 
 func main() {
@@ -79,14 +88,14 @@ func main() {
 	loadedRegionsCache := false
 
 	{
-	 	file, err := os.Open("cache/google_regions.bin")
-	 	if err == nil {
+		file, err := os.Open("cache/google_regions.bin")
+		if err == nil {
 			gob.NewDecoder(file).Decode(&regions)
-		 	if err == nil {
-		 		loadedRegionsCache = true
-		 	}
-		 	file.Close()
-	 	}
+			if err == nil {
+				loadedRegionsCache = true
+			}
+			file.Close()
+		}
 	}
 
 	// otherwise, get google regions and save to cache
@@ -101,17 +110,17 @@ func main() {
 			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
 			match := re.FindStringSubmatch(lines[i])
 			if len(match) > 0 {
-				regions = append(regions, match[0])	
+				regions = append(regions, match[0])
 			}
 		}
 
 		{
 			file, err := os.Create("cache/google_regions.bin")
-		 	if err != nil {
-		 		panic(err)
-		 	}
+			if err != nil {
+				panic(err)
+			}
 			gob.NewEncoder(file).Encode(&regions)
-		 	file.Close()
+			file.Close()
 		}
 
 		fmt.Printf("\nRegions:\n\n")
@@ -127,14 +136,14 @@ func main() {
 	loadedZonesCache := false
 
 	{
-	 	file, err := os.Open("cache/google_zones.bin")
-	 	if err == nil {
+		file, err := os.Open("cache/google_zones.bin")
+		if err == nil {
 			gob.NewDecoder(file).Decode(&zones)
-		 	if err == nil {
-		 		loadedZonesCache = true
-		 	}
-		 	file.Close()
-	 	}
+			if err == nil {
+				loadedZonesCache = true
+			}
+			file.Close()
+		}
 	}
 
 	// otherwise, get google zones and save to cache
@@ -155,11 +164,11 @@ func main() {
 
 		{
 			file, err := os.Create("cache/google_zones.bin")
-		 	if err != nil {
-		 		panic(err)
-		 	}
+			if err != nil {
+				panic(err)
+			}
 			gob.NewEncoder(file).Encode(&zones)
-		 	file.Close()
+			file.Close()
 		}
 
 		fmt.Printf("\nZones:\n\n")
@@ -171,14 +180,14 @@ func main() {
 	// unique the zones (not sure why I need to do this...) then sort by zone name
 
 	zoneMap := make(map[string]*Zone)
-	
+
 	for i := range zones {
 		zoneMap[zones[i].Zone] = zones[i]
 	}
 
 	index := 0
 	zones = make([]*Zone, len(zoneMap))
-	for _,v := range zoneMap {
+	for _, v := range zoneMap {
 		zones[index] = v
 		index++
 	}
@@ -221,200 +230,191 @@ func main() {
 		}
 	}
 
+	/*
+	   	// generate amazon.txt
 
+	   	fmt.Printf("\nGenerating amazon.txt\n")
 
+	   	file, err := os.Create("config/amazon.txt")
+	   	if err != nil {
+	   		panic(err)
+	   	}
 
+	   	for i := range zones {
+	   		if zones[i].DatacenterName != "" {
+	   			fmt.Fprintf(file, "%s,%s\n", zones[i].AZID, zones[i].DatacenterName)
+	   		}
+	   	}
 
+	   	file.Close()
 
+	   	// generate amazon.sql
 
+	   	fmt.Printf("\nGenerating amazon.sql\n")
 
+	   	file, err = os.Create("schemas/sql/sellers/amazon.sql")
+	   	if err != nil {
+	   		panic(err)
+	   	}
 
+	   	fmt.Fprintf(file, "\n-- amazon datacenters\n")
 
+	   	format_string := "\nINSERT INTO datacenters(\n" +
+	   		"	datacenter_name,\n" +
+	   		"	native_name,\n" +
+	   		"	latitude,\n" +
+	   		"	longitude,\n" +
+	   		"	seller_id)\n" +
+	   		"VALUES(\n" +
+	   		"   '%s',\n" +
+	   		"   '%s',\n" +
+	   		"   %f,\n" +
+	   		"   %f,\n" +
+	   		"   (select seller_id from sellers where seller_name = 'amazon')\n" +
+	   		");\n"
 
+	   	for i := range zones {
+	   		if zones[i].DatacenterName != "" {
+	   			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Latitude, zones[i].Longitude)
+	   		}
+	   	}
 
+	   	file.Close()
 
+	   	// generate amazon/generated.tf
 
+	   	fmt.Printf("\nGenerating amazon/generated.tf\n")
 
-/*
+	   	file, err = os.Create("terraform/dev/relays/amazon/generated.tf")
+	   	if err != nil {
+	   		panic(err)
+	   	}
 
-	// generate amazon.txt
+	   	header := `
 
-	fmt.Printf("\nGenerating amazon.txt\n")
+	   	terraform {
+	   	  required_providers {
+	   	    aws = {
+	   	      source  = "hashicorp/aws"
+	   	      version = "~> 4.0"
+	   	    }
+	   	  }
+	   	}
 
-	file, err := os.Create("config/amazon.txt")
-	if err != nil {
-		panic(err)
-	}
+	   `
 
-	for i := range zones {
-		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, "%s,%s\n", zones[i].AZID, zones[i].DatacenterName)
-		}
-	}
+	   		fmt.Fprintf(file, header)
 
-	file.Close()
+	   		format_string = "\nprovider \"aws\" { \n" +
+	   			"  shared_config_files      = var.config\n" +
+	   			"  shared_credentials_files = var.credentials\n" +
+	   			"  profile                  = var.profile\n" +
+	   			"  alias                    = \"%s\"\n" +
+	   			"  region                   = \"%s\"\n" +
+	   			"}\n"
 
-	// generate amazon.sql
+	   		for i := range regionsResponse.Regions {
+	   			fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
+	   		}
 
-	fmt.Printf("\nGenerating amazon.sql\n")
+	   		format_string = "\nmodule \"region_%s\" { \n" +
+	   			"  source              = \"./region\"\n" +
+	   			"  vpn_address         = var.vpn_address\n" +
+	   			"  ssh_public_key_file = var.ssh_public_key_file\n" +
+	   			"  providers = {\n" +
+	   			"    aws = aws.%s\n" +
+	   			"  }\n" +
+	   			"}\n"
 
-	file, err = os.Create("schemas/sql/sellers/amazon.sql")
-	if err != nil {
-		panic(err)
-	}
+	   		for i := range regionsResponse.Regions {
+	   			fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
+	   		}
 
-	fmt.Fprintf(file, "\n-- amazon datacenters\n")
+	   		fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
-	format_string := "\nINSERT INTO datacenters(\n" +
-		"	datacenter_name,\n" +
-		"	native_name,\n" +
-		"	latitude,\n" +
-		"	longitude,\n" +
-		"	seller_id)\n" +
-		"VALUES(\n" +
-		"   '%s',\n" +
-		"   '%s',\n" +
-		"   %f,\n" +
-		"   %f,\n" +
-		"   (select seller_id from sellers where seller_name = 'amazon')\n" +
-		");\n"
+	   		format_string = "    \"%s\" = {\n" +
+	   			"      azid   = \"%s\"\n" +
+	   			"      zone   = \"%s\"\n" +
+	   			"      region = \"%s\"\n" +
+	   			"    }\n" +
+	   			"\n"
 
-	for i := range zones {
-		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Latitude, zones[i].Longitude)
-		}
-	}
+	   		for i := range zones {
+	   			if zones[i].DatacenterName != "" {
+	   				fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Zone, zones[i].Region)
+	   			}
+	   		}
 
-	file.Close()
+	   		fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
-	// generate amazon/generated.tf
+	   		for i := range regionsResponse.Regions {
+	   			fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
+	   		}
 
-	fmt.Printf("\nGenerating amazon/generated.tf\n")
+	   		fmt.Fprintf(file, "  ]\n}\n")
 
-	file, err = os.Create("terraform/dev/relays/amazon/generated.tf")
-	if err != nil {
-		panic(err)
-	}
+	   		fmt.Fprintf(file, "\nlocals {\n\n  relays = {\n\n")
 
-	header := `
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.0"
-    }
-  }
-}
-`
-	fmt.Fprintf(file, header)
+	   		for k, v := range devRelayMap {
+	   			fmt.Fprintf(file, "    \"%s\" = { datacenter_name = \"%s\" },\n", k, v[0])
+	   		}
 
-	format_string = "\nprovider \"aws\" { \n" +
-		"  shared_config_files      = var.config\n" +
-		"  shared_credentials_files = var.credentials\n" +
-		"  profile                  = var.profile\n" +
-		"  alias                    = \"%s\"\n" +
-		"  region                   = \"%s\"\n" +
-		"}\n"
+	   		fmt.Fprintf(file, "  }\n\n}\n\n")
 
-	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
-	}
+	   		relay_module := `module "relay_%s" {
+	   	  source            = "./relay"
+	   	  name              = "%s"
+	   	  zone              = local.datacenter_map["%s"].zone
+	   	  region            = local.datacenter_map["%s"].region
+	   	  type              = "%s"
+	   	  ami               = "%s"
+	   	  security_group_id = module.region_%s.security_group_id
+	   	  providers = {
+	   	    aws = aws.%s
+	   	  }
+	   	}
 
-	format_string = "\nmodule \"region_%s\" { \n" +
-		"  source              = \"./region\"\n" +
-		"  vpn_address         = var.vpn_address\n" +
-		"  ssh_public_key_file = var.ssh_public_key_file\n" +
-		"  providers = {\n" +
-		"    aws = aws.%s\n" +
-		"  }\n" +
-		"}\n"
+	   `
 
-	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
-	}
+	   		for k, v := range devRelayMap {
+	   			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
+	   		}
 
-	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
+	   		output_header := `output "relays" {
 
-	format_string = "    \"%s\" = {\n" +
-		"      azid   = \"%s\"\n" +
-		"      zone   = \"%s\"\n" +
-		"      region = \"%s\"\n" +
-		"    }\n" +
-		"\n"
+	   	  description = "Data for each amazon relay setup by Terraform"
 
-	for i := range zones {
-		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Zone, zones[i].Region)
-		}
-	}
+	   	  value = {
 
-	fmt.Fprintf(file, "  }\n\n  regions = [\n")
+	   `
 
-	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
-	}
+	   		fmt.Fprintf(file, output_header)
 
-	fmt.Fprintf(file, "  ]\n}\n")
+	   		relay_output := `    "%s" = {
+	   	      "relay_name"       = "%s"
+	   	      "datacenter_name"  = "%s"
+	   	      "supplier_name"    = "amazon"
+	   	      "public_address"   = "${module.relay_%s.public_address}:40000"
+	   	      "internal_address" = "${module.relay_%s.internal_address}:40000"
+	   	      "internal_group"   = "%s"
+	   	      "ssh_address"      = "${module.relay_%s.public_address}:22"
+	   	      "ssh_user"         = "ubuntu"
+	   	    }
 
-	fmt.Fprintf(file, "\nlocals {\n\n  relays = {\n\n")
+	   `
 
-	for k, v := range devRelayMap {
-		fmt.Fprintf(file, "    \"%s\" = { datacenter_name = \"%s\" },\n", k, v[0])
-	}
+	   	for k, v := range devRelayMap {
+	   		region := datacenterToRegion[v[0]]
+	   		internal_group := region
+	   		if datacenterIsLocal[v[0]] {
+	   			internal_group = v[0]
+	   		}
+	   		datacenter_underscores := strings.ReplaceAll(v[0], ".", "_")
+	   		fmt.Fprintf(file, relay_output, k, k, v[0], datacenter_underscores, datacenter_underscores, internal_group, datacenter_underscores)
+	   	}
 
-	fmt.Fprintf(file, "  }\n\n}\n\n")
+	   	fmt.Fprintf(file, "\n  }\n\n}\n")
 
-	relay_module := `module "relay_%s" {
-  source            = "./relay"
-  name              = "%s"
-  zone              = local.datacenter_map["%s"].zone
-  region            = local.datacenter_map["%s"].region
-  type              = "%s"
-  ami               = "%s"
-  security_group_id = module.region_%s.security_group_id
-  providers = {
-    aws = aws.%s
-  }
-}
-
-`
-	for k, v := range devRelayMap {
-		fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
-	}
-
-	output_header := `output "relays" {
-
-  description = "Data for each amazon relay setup by Terraform"
-
-  value = {
-
-`
-	fmt.Fprintf(file, output_header)
-
-	relay_output := `    "%s" = {
-      "relay_name"       = "%s"
-      "datacenter_name"  = "%s"
-      "supplier_name"    = "amazon"
-      "public_address"   = "${module.relay_%s.public_address}:40000"
-      "internal_address" = "${module.relay_%s.internal_address}:40000"
-      "internal_group"   = "%s"
-      "ssh_address"      = "${module.relay_%s.public_address}:22"
-      "ssh_user"         = "ubuntu"
-    }
-
-`
-	for k, v := range devRelayMap {
-		region := datacenterToRegion[v[0]]
-		internal_group := region
-		if datacenterIsLocal[v[0]] {
-			internal_group = v[0]
-		}
-		datacenter_underscores := strings.ReplaceAll(v[0], ".", "_")
-		fmt.Fprintf(file, relay_output, k, k, v[0], datacenter_underscores, datacenter_underscores, internal_group, datacenter_underscores)
-	}
-
-	fmt.Fprintf(file, "\n  }\n\n}\n")
-
-	file.Close()
-*/
+	   	file.Close()
+	*/
 }
