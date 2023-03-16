@@ -1,0 +1,11 @@
+ap-west,akamai.mumbai
+ca-central,akamai.toronto
+ap-southeast,akamai.sydney
+us-central,akamai.dallas
+us-west,akamai.fremont
+us-southeast,akamai.atlanta
+us-east,akamai.newyork
+eu-west,akamai.london
+ap-south,akamai.singapore
+eu-central,akamai.frankfurt
+ap-northeast,akamai.tokyo
