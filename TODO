@@ -8,13 +8,13 @@ DONE
 
 	Walk the zones
 
-TODO
-
 	Implement the google zone -> datacenter map.
 
 	Generate config/google.txt
 
 	Generate schemas/sql/sellers/google.sql
+
+TODO
 
 	Generate terraform/sellers/google/generated.tf
 
@@ -29,8 +29,6 @@ TODO
 	Implement the same config tool for vultr
 
 	-----------------------
-
-
 
 
 
