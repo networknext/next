@@ -9,6 +9,7 @@ variable "service_account" { type = string }
 variable "artifacts_bucket" { type = string }
 variable "machine_type" { type = string }
 variable "git_hash" { type = string }
+variable "vpn_address" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
@@ -111,6 +112,19 @@ resource "google_compute_firewall" "allow_http" {
     ports    = ["80"]
   }
   target_tags = ["allow-http"]
+}
+
+resource "google_compute_firewall" "allow_http_vpn_only" {
+  name          = "allow-http-vpn-only"
+  project       = var.project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["${var.vpn_address}/32"]
+  allow {
+    protocol = "tcp"
+    ports    = ["80"]
+  }
+  target_tags = ["allow-http-vpn-only"]
 }
 
 resource "google_compute_firewall" "allow_udp_45000" {
@@ -344,7 +358,7 @@ module "relay_backend" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
 output "relay_backend_address" {
@@ -430,7 +444,7 @@ module "api" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http-vpn-only"]
 }
 
 output "api_address" {

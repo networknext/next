@@ -1,12 +1,73 @@
 DONE
 	
+	Modify API service setup in terraform so it can only be accessed from the vpn address
+
 TODO
 
-	Create a terraform provider for network next that drives the CRUD REST API
+	Create a udp test service running on port 45000
 
-	-----------------------
+	Should just be a mirror server.
 
-	Modify API service setup in terraform so it can only be accessed from the vpn address
+	Print out on each packet received.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------------
 
@@ -19,6 +80,8 @@ TODO
 	-----------------------
 
 	Relay gateway service must run over https in dev.
+
+	Create a terraform provider for network next that drives the CRUD REST API
 
 	-----------------------
 

@@ -28,17 +28,19 @@ DONE
 
 TODO
 
-	Network Next terraform provider.
-
-	------------
-
 	Resolve external UDP load balancer blocker.
 
 	------------
 
-	Setup SSH for relay backend and API.
+	Setup HTTPs for api service.
 
-	Setup API_KEY for use of API.
+	Setup HTTPS for relay backend.
+
+	Require API_KEY for use of API.
+
+	------------
+
+	Network Next terraform provider.
 
 	------------
 
@@ -48,7 +50,11 @@ TODO
 
 	Analytics service inserts data into bigquery in dev.
 
+	------------
+
 	Multithreaded relay with session database per-socket thread (no contention)
+
+	------------
 
 	Rebuild portal (no auth).
 
