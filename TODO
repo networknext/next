@@ -14,11 +14,11 @@ DONE
 
 	Generate schemas/sql/sellers/google.sql
 
-TODO
-
 	Generate terraform/sellers/google/generated.tf
 
 	Verify that I can still create google relays.
+
+TODO
 
 	-----------------------
 
