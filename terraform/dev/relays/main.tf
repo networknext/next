@@ -101,6 +101,7 @@ locals {
     },
   
   }
+
 }
 
 module "google_relays" {
@@ -181,7 +182,9 @@ locals {
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
     },
+
   }
+
 }
 
 module "akamai_relays" {
@@ -194,6 +197,44 @@ module "akamai_relays" {
 output "akamai_relays" {
   description = "Data for each akamai relay"
   value = module.akamai_relays.relays
+}
+
+# ----------------------------------------------------------------------------------------
+
+# =====
+# VULTR
+# =====
+
+locals {
+
+  vultr_relays = {
+
+    "vultr.seattle" = {
+      datacenter_name = "vultr.seattle"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.chicago" = {
+      datacenter_name = "vultr.chicago"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+  }
+  
+}
+
+module "vultr_relays" {
+  relays              = local.vultr_relays
+  source              = "../../suppliers/vultr"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+output "vultr_relays" {
+  description = "Data for each vultr relay"
+  value = module.vultr_relays.relays
 }
 
 # ----------------------------------------------------------------------------------------

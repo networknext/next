@@ -31,4 +31,6 @@ blocks:
             - artifact pull workflow multiplay.txt
             - gsutil cp google.txt $SDK_CONFIG_BUCKET
             - gsutil cp amazon.txt $SDK_CONFIG_BUCKET
+            - gsutil cp akamai.txt $SDK_CONFIG_BUCKET
+            - gsutil cp vultr.txt $SDK_CONFIG_BUCKET
             - gsutil cp multiplay.txt $SDK_CONFIG_BUCKET

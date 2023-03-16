@@ -22,17 +22,21 @@ DONE
 
 	Implement the same config tool for vultr
 
-TODO
-
 	Update akamai terraform module to have a map of relays as input
 
 	Verify I can create akamai relays
 
-	-----------------------
+	Verify I can ssh into akamai relays
 
 	Update vultr module to have a map of relays as input
 
 	Verify I can create vultr relays
+
+	Verify I can ssh into vultr relays
+
+TODO
+
+	Update semaphore to upload akamai.txt and vultr.txt to cloud storage
 
 	-----------------------
 

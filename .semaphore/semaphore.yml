@@ -32,6 +32,8 @@ blocks:
             - artifact push workflow deploy/bootstrap.sh
             - artifact push workflow config/google.txt
             - artifact push workflow config/amazon.txt
+            - artifact push workflow config/akamai.txt
+            - artifact push workflow config/vultr.txt
             - artifact push workflow config/multiplay.txt
 
   - name: "Sodium"
