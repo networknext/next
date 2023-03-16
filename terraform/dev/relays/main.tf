@@ -149,3 +149,51 @@ output "amazon_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+# ===================
+# AKAMAI (linode.com)
+# ===================
+
+locals {
+  
+  akamai_relays = {
+
+    "akamai.newyork" = {
+      datacenter_name = "akamai.newyork"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    },
+
+    "akamai.atlanta" = {
+      datacenter_name = "akamai.atlanta"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    },
+
+    "akamai.fremont" = {
+      datacenter_name = "akamai.fremont"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    }
+    
+    "akamai.frankfurt" = {
+      datacenter_name = "akamai.frankfurt"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    },
+  }
+}
+
+module "akamai_relays" {
+  relays              = local.akamai_relays
+  source              = "../../suppliers/akamai"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+}
+
+output "akamai_relays" {
+  description = "Data for each akamai relay"
+  value = module.akamai_relays.relays
+}
+
+# ----------------------------------------------------------------------------------------

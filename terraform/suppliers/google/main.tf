@@ -107,7 +107,7 @@ resource "google_compute_instance" "relay" {
 
 output "relays" {
 
-  description = "Data for each bare metal relay setup by Terraform"
+  description = "Data for each google relay setup by Terraform"
 
   value = {
     for k, v in var.relays : k => zipmap( 

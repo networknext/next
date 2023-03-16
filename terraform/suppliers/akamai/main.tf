@@ -15,7 +15,7 @@ provider "linode" {
 
 # ----------------------------------------------------------------------------------------
 
-variable "relays" { type = list(map(string)) }
+variable "relays" { type = map(map(string)) }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
 
@@ -56,11 +56,11 @@ resource "linode_stackscript" "setup_relay" {
 }
 
 resource "linode_instance" "relay" {
-  count           = length(var.relays)
-  image           = var.relays[count.index].image
-  label           = var.relays[count.index].name
-  region          = var.relays[count.index].region
-  type            = var.relays[count.index].type
+  for_each        = var.relays
+  image           = each.value.image
+  label           = each.key
+  region          = local.datacenter_map[each.value.datacenter_name].zone
+  type            = each.value.type
   tags            = ["relay"]
   group           = "relays"
   authorized_keys = [replace(file(var.ssh_public_key_file), "\n", "")]
@@ -70,9 +70,36 @@ resource "linode_instance" "relay" {
   }
 }
 
+# ----------------------------------------------------------------------------------------
+
 output "relays" {
+
   description = "Data for each akamai relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "region", "public_address", "internal_address", "type", "image"], [var.relays[i].name, var.relays[i].region, linode_instance.relay[i].ip_address, "0.0.0.0", var.relays[i].type, var.relays[i].image])]
+
+  value = {
+    for k, v in var.relays : k => zipmap( 
+      [
+        "relay_name", 
+        "datacenter_name",
+        "supplier_name", 
+        "public_address", 
+        "internal_address", 
+        "internal_group", 
+        "ssh_address", 
+        "ssh_user",
+      ], 
+      [
+        k,
+        v.datacenter_name,
+        "akamai", 
+        "${linode_instance.relay[k].ip_address}:40000",
+        "0.0.0.0",
+        "", 
+        "${linode_instance.relay[k].ip_address}:22",
+        "root",
+      ]
+    )
+  }
 }
 
-# --------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
