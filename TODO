@@ -20,11 +20,9 @@ DONE
 
 	Implement the same config tool for akamai
 
-TODO
-
 	Implement the same config tool for vultr
 
-	-----------------------
+TODO
 
 	Update akamai terraform module to have a map of relays as input
 
@@ -38,7 +36,7 @@ TODO
 
 	-----------------------
 
-	
+
 
 
 
@@ -98,10 +96,6 @@ TODO
 	-----------------------
 
 	Spin up relays with terraform and verify they are showing up in dev
-
-	-----------------------
-
-	Setup a terraform provider to configure the database
 
 	-----------------------
 

@@ -24,24 +24,11 @@ DONE
 
 	Setup dev environment in google cloud with terraform.
 
+	Terraform modules to setup relays with google, amazon, akamai and linode (dev).
+
 TODO
 
-	Terraform modules to setup relays with at least 10 different providers, and for bare metal (no terraform provider...)
-
-	Implement a network next terraform provider to work with our database CRUD API.
-
-	Setup fully turnkey system to provision and configure relays using terraform.
-
-	------------
-
-	Setup full workflow with terraform and semaphore. eg. dev, staging, prod.
-
-	This means that I'll likely need:
-
-		dev/backend
-		dev/relays
-
-	And for the modules to live elsewhere.
+	Network Next terraform provider.
 
 	------------
 
