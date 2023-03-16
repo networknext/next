@@ -2,13 +2,20 @@ DONE
 	
 	Modify API service setup in terraform so it can only be accessed from the vpn address
 
-TODO
-
 	Create a udp test service running on port 45000
 
-	Should just be a mirror server.
-
 	Print out on each packet received.
+
+	Setup quick and dirty artifact and terraform script to deploy the udp service
+
+	I think the external UDP load balancer needs a public ip address to work.
+
+	Adding public addresses to instance template...
+
+TODO
+	
+	Verify that I can now receive UDP packets in the service.
+
 
 
 

@@ -342,6 +342,8 @@ func (service *Service) GetMagicValues() ([constants.MagicBytes]byte, [constants
 
 func (service *Service) lbHealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// todo
+		fmt.Printf("lb health check")
 		_, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -359,6 +361,8 @@ func (service *Service) lbHealthHandlerFunc() func(w http.ResponseWriter, r *htt
 
 func (service *Service) vmHealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// todo
+		fmt.Printf("vm health check")
 		_, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

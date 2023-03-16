@@ -66,7 +66,7 @@ resource "google_compute_firewall" "allow_health_checks" {
   project       = var.project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
-  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
+  source_ranges = ["0.0.0.0/0"]
 
   allow {
     protocol = "tcp"
@@ -122,6 +122,7 @@ module "udp" {
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a udp.tar.gz
+    sudo touch /app/app.env
     sudo systemctl start app.service
   EOF1
 
@@ -132,6 +133,7 @@ module "udp" {
   port               = 40000
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp"]
 }
 

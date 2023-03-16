@@ -64,6 +64,7 @@ resource "google_compute_instance_template" "service" {
   network_interface {
     network    = var.default_network
     subnetwork = var.default_subnetwork
+    access_config {}
   }
 
   tags = var.tags
@@ -126,7 +127,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     name              = "primary"
   }
   base_instance_name = var.service_name
-  target_size        = 2
+  target_size        = 1
   auto_healing_policies {
     health_check      = google_compute_health_check.service_vm.id
     initial_delay_sec = 120
