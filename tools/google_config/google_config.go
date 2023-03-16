@@ -238,56 +238,57 @@ func main() {
 		}
 	}
 
+ 	// generate amazon.txt
+
+ 	fmt.Printf("\nGenerating google.txt\n")
+
+ 	file, err := os.Create("config/google.txt")
+ 	if err != nil {
+ 		panic(err)
+ 	}
+
+ 	for i := range zones {
+ 		if zones[i].DatacenterName != "" {
+ 			fmt.Fprintf(file, "%s,%s\n", zones[i].Zone, zones[i].DatacenterName)
+ 		}
+ 	}
+
+ 	file.Close()
+
+ 	// generate google.sql
+
+ 	fmt.Printf("\nGenerating google.sql\n")
+
+ 	file, err = os.Create("schemas/sql/sellers/google.sql")
+ 	if err != nil {
+ 		panic(err)
+ 	}
+
+ 	fmt.Fprintf(file, "\n-- google datacenters\n")
+
+ 	format_string := "\nINSERT INTO datacenters(\n" +
+ 		"	datacenter_name,\n" +
+ 		"	native_name,\n" +
+ 		"	latitude,\n" +
+ 		"	longitude,\n" +
+ 		"	seller_id)\n" +
+ 		"VALUES(\n" +
+ 		"   '%s',\n" +
+ 		"   '%s',\n" +
+ 		"   %f,\n" +
+ 		"   %f,\n" +
+ 		"   (select seller_id from sellers where seller_name = 'google')\n" +
+ 		");\n"
+
+ 	for i := range zones {
+ 		if zones[i].DatacenterName != "" {
+ 			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
+ 		}
+ 	}
+
+ 	file.Close()
+
 	/*
-	   	// generate amazon.txt
-
-	   	fmt.Printf("\nGenerating amazon.txt\n")
-
-	   	file, err := os.Create("config/amazon.txt")
-	   	if err != nil {
-	   		panic(err)
-	   	}
-
-	   	for i := range zones {
-	   		if zones[i].DatacenterName != "" {
-	   			fmt.Fprintf(file, "%s,%s\n", zones[i].AZID, zones[i].DatacenterName)
-	   		}
-	   	}
-
-	   	file.Close()
-
-	   	// generate amazon.sql
-
-	   	fmt.Printf("\nGenerating amazon.sql\n")
-
-	   	file, err = os.Create("schemas/sql/sellers/amazon.sql")
-	   	if err != nil {
-	   		panic(err)
-	   	}
-
-	   	fmt.Fprintf(file, "\n-- amazon datacenters\n")
-
-	   	format_string := "\nINSERT INTO datacenters(\n" +
-	   		"	datacenter_name,\n" +
-	   		"	native_name,\n" +
-	   		"	latitude,\n" +
-	   		"	longitude,\n" +
-	   		"	seller_id)\n" +
-	   		"VALUES(\n" +
-	   		"   '%s',\n" +
-	   		"   '%s',\n" +
-	   		"   %f,\n" +
-	   		"   %f,\n" +
-	   		"   (select seller_id from sellers where seller_name = 'amazon')\n" +
-	   		");\n"
-
-	   	for i := range zones {
-	   		if zones[i].DatacenterName != "" {
-	   			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Latitude, zones[i].Longitude)
-	   		}
-	   	}
-
-	   	file.Close()
 
 	   	// generate amazon/generated.tf
 
