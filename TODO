@@ -34,52 +34,11 @@ DONE
 
 	Verify I can ssh into vultr relays
 
-TODO
-
 	Update semaphore to upload akamai.txt and vultr.txt to cloud storage
 
-	-----------------------
+TODO
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Setup a terraform provider for network next that calls the REST API
+	Create a terraform provider for network next that drives the CRUD REST API
 
 	-----------------------
 
@@ -103,43 +62,17 @@ TODO
 
 	-----------------------
 
+	Fix external UDP load balancer blocker with server backend
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	I am blocked on the external UDP load balancer configuration.
-
-	--------------
+	-----------------------
 
 	Verify that the raspberry server inits with the server backend.
 
-	--------------
+	-----------------------
 
 	Verify that the raspberry client connects and upgrades
 
-	--------------
+	-----------------------
 
 	Verify that I can run a raspberry server locally after "next select dev" and it initializes with the dev server backend.
 
@@ -149,12 +82,15 @@ TODO
 
 	This can be done by adjusting the startup script in the instance template, *OR* by forcing the server backend to bind to the load balancer address.
 
-	--------------
+	-----------------------
 
 	Verify that I can run raspberry clients locally and they hit the raspberry backend and connect to servers and upgrade.
 
-	--------------
+	-----------------------
 
+	Verify that I can run a bunch of raspberry clients and servers in dev and they all show up in the next tool, eg: "next relays"
+
+	-----------------------
 
 
 
@@ -295,12 +231,6 @@ TODO
 
 	--------------
 
-	Research terraform and work out how to use it with google cloud.
-
-	Implement a terraform script that brings up a dev environment in google cloud.
-
-	--------------
-
 	Get the portal back up with the happy path.
 
 	Portal should talk exclusively to "api" to get what it needs.
@@ -397,10 +327,6 @@ Nice to have:
 
 	---------------
 
-	Extend "next relays" to show "PublicAddress" and "InternalAddress" for relays.
-
-	---------------
-
 	Relay gateway verify keypair on startup
 
 	Server backend verify keypairs on startup
@@ -436,14 +362,6 @@ Nice to have:
 	Otherwise, with only one inserter and one server backend (typical) it will not distribute processing across multiple portal crunchers evenly.
 
 	Distribute according to modulo session id, or hash of server address + port, or relay id
-
-	---------------------------------------------------------
-
-	SDK level.
-
-	If near relay RTT really is valid (eg. > 0.0), then it must be rounded up to 1.0, or the near relay becomes unavailable.
-
-	This really only applies when in the LAN with the relay, but for testing, especially local testing, this is annoying and inconsistent.
 
 	---------------------------------------------------------
 
@@ -498,10 +416,6 @@ Nice to have:
 	--------------
 
 	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
-
-	--------------
-
-	Get "pro" tagging back in. This is a cool feature.
 
 	--------------
 
