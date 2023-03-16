@@ -468,3 +468,7 @@ Nice to have:
 	There are just too many relays defined, esp. all google and AWS ones...
 
 	--------------
+
+	Remember to bring back logic to exclude near relays with significantly higher than average jitter
+
+	--------------

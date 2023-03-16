@@ -28,6 +28,8 @@ blocks:
           commands:
             - artifact pull workflow google.txt
             - artifact pull workflow amazon.txt
+            - artifact pull workflow akamai.txt
+            - artifact pull workflow vultr.txt
             - artifact pull workflow multiplay.txt
             - gsutil cp google.txt $SDK_CONFIG_BUCKET
             - gsutil cp amazon.txt $SDK_CONFIG_BUCKET
