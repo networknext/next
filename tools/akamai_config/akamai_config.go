@@ -7,13 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"sort"
 	"strings"
 )
 
 // ===========================================================================================================================================
 
-// This definition drives the set of google datacenters, eg. "google.[country/city].[number]"
+// This definition drives the set of akamai datacenters, eg. "akamai.[country/city].[number]"
 
 var datacenterMap = map[string]*Datacenter{
 
@@ -77,7 +76,6 @@ func bash(command string) string {
 
 type Zone struct {
 	Zone           string
-	Region         string
 	DatacenterName string
 	Latitude       float32
 	Longitude      float32
@@ -89,54 +87,6 @@ func main() {
 
 	bash("mkdir -p cache")
 
-	// load regions cache, if possible
-
-	regions := make([]string, 0)
-
-	loadedRegionsCache := false
-
-	{
-		file, err := os.Open("cache/google_regions.bin")
-		if err == nil {
-			gob.NewDecoder(file).Decode(&regions)
-			if err == nil {
-				loadedRegionsCache = true
-			}
-			file.Close()
-		}
-	}
-
-	// otherwise, get google regions and save to cache
-
-	if !loadedRegionsCache {
-
-		output := bash("gcloud compute regions list")
-
-		lines := strings.Split(output, "\n")
-
-		for i := 1; i < len(lines); i++ {
-			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
-			match := re.FindStringSubmatch(lines[i])
-			if len(match) > 0 {
-				regions = append(regions, match[0])
-			}
-		}
-
-		{
-			file, err := os.Create("cache/google_regions.bin")
-			if err != nil {
-				panic(err)
-			}
-			gob.NewEncoder(file).Encode(&regions)
-			file.Close()
-		}
-
-		fmt.Printf("\nRegions:\n\n")
-		for i := range regions {
-			fmt.Printf("  %s\n", regions[i])
-		}
-	}
-
 	// load zones cache, if possible
 
 	zones := make([]*Zone, 0)
@@ -144,7 +94,7 @@ func main() {
 	loadedZonesCache := false
 
 	{
-		file, err := os.Open("cache/google_zones.bin")
+		file, err := os.Open("cache/akamai_zones.bin")
 		if err == nil {
 			gob.NewDecoder(file).Decode(&zones)
 			if err == nil {
@@ -154,7 +104,7 @@ func main() {
 		}
 	}
 
-	// otherwise, get google zones and save to cache
+	// otherwise, get akamai zones and save to cache
 
 	if !loadedZonesCache {
 
@@ -166,12 +116,12 @@ func main() {
 			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
 			match := re.FindStringSubmatch(lines[i])
 			if len(match) >= 1 {
-				zones = append(zones, &Zone{match[0], "", "", 0, 0})
+				zones = append(zones, &Zone{match[0], "", 0, 0})
 			}
 		}
 
 		{
-			file, err := os.Create("cache/google_zones.bin")
+			file, err := os.Create("cache/akamai_zones.bin")
 			if err != nil {
 				panic(err)
 			}
@@ -185,30 +135,11 @@ func main() {
 		}
 	}
 
-	// unique the zones (not sure why I need to do this...) then sort by zone name
-
-	zoneMap := make(map[string]*Zone)
-
-	for i := range zones {
-		zoneMap[zones[i].Zone] = zones[i]
-	}
-
-	index := 0
-	zones = make([]*Zone, len(zoneMap))
-	for _, v := range zoneMap {
-		zones[index] = v
-		index++
-	}
-
-	sort.SliceStable(zones, func(i, j int) bool { return zones[i].Zone < zones[j].Zone })
-
 	// print out the known datacenters
 
 	fmt.Printf("\nKnown datacenters:\n\n")
 
 	unknown := make([]*Zone, 0)
-
-	datacenterToRegion := make(map[string]string)
 
 	for i := range zones {
 		values := strings.Split(zones[i].Zone, "-")
@@ -219,12 +150,10 @@ func main() {
 		datacenter := datacenterMap[region]
 		number := c[0] - 'a' + 1
 		if datacenter != nil {
-			zones[i].Region = region
-			zones[i].DatacenterName = fmt.Sprintf("google.%s.%d", datacenter.name, number)
+			zones[i].DatacenterName = fmt.Sprintf("akamai.%s.%d", datacenter.name, number)
 			zones[i].Latitude = datacenter.latitude
 			zones[i].Longitude = datacenter.longitude
 			fmt.Printf("  %s\n", zones[i].DatacenterName)
-			datacenterToRegion[zones[i].DatacenterName] = region
 		} else {
 			unknown = append(unknown, zones[i])
 		}
@@ -239,11 +168,11 @@ func main() {
 		}
 	}
 
- 	// generate google.txt
+ 	// generate akamai.txt
 
- 	fmt.Printf("\nGenerating google.txt\n")
+ 	fmt.Printf("\nGenerating akamai.txt\n")
 
- 	file, err := os.Create("config/google.txt")
+ 	file, err := os.Create("config/akamai.txt")
  	if err != nil {
  		panic(err)
  	}
@@ -256,16 +185,16 @@ func main() {
 
  	file.Close()
 
- 	// generate google.sql
+ 	// generate akamai.sql
 
- 	fmt.Printf("\nGenerating google.sql\n")
+ 	fmt.Printf("\nGenerating akamai.sql\n")
 
- 	file, err = os.Create("schemas/sql/sellers/google.sql")
+ 	file, err = os.Create("schemas/sql/sellers/akamai.sql")
  	if err != nil {
  		panic(err)
  	}
 
- 	fmt.Fprintf(file, "\n-- google datacenters\n")
+ 	fmt.Fprintf(file, "\n-- akamai datacenters\n")
 
  	format_string := "\nINSERT INTO datacenters(\n" +
  		"	datacenter_name,\n" +
@@ -278,7 +207,7 @@ func main() {
  		"   '%s',\n" +
  		"   %f,\n" +
  		"   %f,\n" +
- 		"   (select seller_id from sellers where seller_name = 'google')\n" +
+ 		"   (select seller_id from sellers where seller_name = 'akamai')\n" +
  		");\n"
 
  	for i := range zones {
@@ -289,26 +218,25 @@ func main() {
 
  	file.Close()
 
- 	// generate google/generated.tf
+ 	// generate akamai/generated.tf
 
- 	file, err = os.Create("terraform/suppliers/google/generated.tf")
+ 	file, err = os.Create("terraform/suppliers/akamai/generated.tf")
  	if err != nil {
  		panic(err)
  	}
 
- 	fmt.Printf("\nGenerating google/generated.tf\n")
+ 	fmt.Printf("\nGenerating akamai/generated.tf\n")
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
 	format_string = "    \"%s\" = {\n" +
 		"      zone   = \"%s\"\n" +
-		"      region = \"%s\"\n" +
 		"    }\n" +
 		"\n"
 
 	for i := range zones {
 		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Region)
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone)
 		}
 	}
 

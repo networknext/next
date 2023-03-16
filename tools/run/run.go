@@ -191,6 +191,8 @@ func main() {
 		amazon_config()
 	} else if command == "google-config" {
 		google_config()
+	} else if command == "akamai-config" {
+		akamai_config()
 	}
 
 	cleanup()
@@ -473,4 +475,8 @@ func amazon_config() {
 
 func google_config() {
 	bash("go run tools/google_config/google_config.go")
+}
+
+func akamai_config() {
+	bash("go run tools/akamai_config/akamai_config.go")
 }

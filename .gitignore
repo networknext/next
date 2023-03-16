@@ -28,3 +28,6 @@ logs
 .terraform.*
 terraform.tfstate
 terraform.tfstate.*
+
+# cache
+cache/*
