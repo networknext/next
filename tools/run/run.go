@@ -193,6 +193,8 @@ func main() {
 		google_config()
 	} else if command == "akamai-config" {
 		akamai_config()
+	} else if command == "vultr-config" {
+		vultr_config()
 	}
 
 	cleanup()
@@ -479,4 +481,8 @@ func google_config() {
 
 func akamai_config() {
 	bash("go run tools/akamai_config/akamai_config.go")
+}
+
+func vultr_config() {
+	bash("go run tools/vultr_config/vultr_config.go")
 }

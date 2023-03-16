@@ -18,17 +18,27 @@ DONE
 
 	Verify that I can still create google relays.
 
-TODO
-
 	Implement the same config tool for akamai
 
-	-----------------------
+TODO
 
 	Implement the same config tool for vultr
 
 	-----------------------
 
+	Update akamai terraform module to have a map of relays as input
 
+	Verify I can create akamai relays
+
+	-----------------------
+
+	Update vultr module to have a map of relays as input
+
+	Verify I can create vultr relays
+
+	-----------------------
+
+	
 
 
 
