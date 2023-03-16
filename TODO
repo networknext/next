@@ -1,41 +1,5 @@
 DONE
 	
-	Apply the same strategy to google
-
-	"run google-config"
-
-	Walk the regions
-
-	Walk the zones
-
-	Implement the google zone -> datacenter map.
-
-	Generate config/google.txt
-
-	Generate schemas/sql/sellers/google.sql
-
-	Generate terraform/sellers/google/generated.tf
-
-	Verify that I can still create google relays.
-
-	Implement the same config tool for akamai
-
-	Implement the same config tool for vultr
-
-	Update akamai terraform module to have a map of relays as input
-
-	Verify I can create akamai relays
-
-	Verify I can ssh into akamai relays
-
-	Update vultr module to have a map of relays as input
-
-	Verify I can create vultr relays
-
-	Verify I can ssh into vultr relays
-
-	Update semaphore to upload akamai.txt and vultr.txt to cloud storage
-
 TODO
 
 	Create a terraform provider for network next that drives the CRUD REST API
