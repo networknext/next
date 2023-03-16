@@ -3,11 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
-	"strings"
 )
 
 // ===========================================================================================================================================
@@ -16,41 +15,17 @@ import (
 
 var datacenterMap = map[string]*Datacenter{
 
-	"us-east1":                {"southcarolina", 33.8361, -81.1637},
-	"asia-east1":              {"taiwan", 25.105497, 121.597366},
-	"asia-east2":              {"hongkong", 22.3193, 114.1694},
-	"asia-northeast1":         {"tokyo", 35.6762, 139.6503},
-	"asia-northeast2":         {"osaka", 34.6937, 135.5023},
-	"asia-northeast3":         {"seoul", 37.5665, 126.9780},
-	"asia-south1":             {"mumbai", 19.0760, 72.8777},
-	"asia-south2":             {"delhi", 28.7041, 77.1025},
-	"asia-southeast1":         {"singapore", 1.3521, 103.8198},
-	"asia-southeast2":         {"jakarta", 6.2088, 106.8456},
-	"australia-southeast1":    {"sydney", -33.8688, 151.2093},
-	"australia-southeast2":    {"melbourne", -37.8136, 144.9631},
-	"europe-central2":         {"warsaw", 52.2297, 21.0122},
-	"europe-north1":           {"finland", 60.5693, 27.1878},
-	"europe-southwest1":       {"madrid", 40.4168, 3.7038},
-	"europe-west1":            {"belgium", 50.4706, 3.8170},
-	"europe-west2":            {"london", 51.5072, -0.1276},
-	"europe-west3":            {"frankfurt", 50.1109, 8.6821},
-	"europe-west4":            {"netherlands", 53.4386, 6.8355},
-	"europe-west6":            {"zurich", 47.3769, 8.5417},
-	"europe-west8":            {"milan", 45.4642, 9.1900},
-	"europe-west9":            {"paris", 48.8566, 2.3522},
-	"me-west1":                {"telaviv", 32.0853, 34.7818},
-	"northamerica-northeast1": {"montreal", 45.5019, -73.5674},
-	"northamerica-northeast2": {"toronto", 43.6532, -79.3832},
-	"southamerica-east1":      {"saopaulo", -23.5558, -46.6396},
-	"southamerica-west1":      {"santiago",	-33.4489, -70.6693},
-	"us-central1":             {"iowa", 41.8780, -93.0977},
-	"us-east4":                {"virginia", 37.4316, -78.6569},
-	"us-east5":                {"ohio", 39.9612, -82.9988},
-	"us-south1":               {"dallas", 32.7767, -96.7970},
-	"us-west1":                {"oregon",	45.5946, -121.1787},
-	"us-west2":                {"losangeles", 34.0522, -118.2437},
-	"us-west3":                {"saltlakecity", 40.7608, -111.8910},
-	"us-west4":                {"lasvegas", 36.1716, -115.1391},
+	"ap-west": 		{"mumbai", 19.0760, 72.8777},
+	"ca-central": 	{"toronto", 43.6532, -79.3832},
+	"ap-southeast": {"sydney", -33.8688, 151.2093},
+	"us-central": 	{"dallas", 32.7767, -96.7970},
+	"us-west": 		{"fremont", 37.5485, -121.9886},
+	"us-southeast": {"atlanta", 33.7488, -84.3877},
+	"us-east": 		{"newyork", 40.7128, -74.0060},
+	"eu-west": 		{"london", 51.5072, -0.1276},
+	"ap-south": 	{"singapore", 1.3521, 103.8198},
+	"eu-central": 	{"frankfurt", 50.1109, 8.6821},
+	"ap-northeast": {"tokyo", 35.6762, 139.6503},
 
 }
 
@@ -76,6 +51,7 @@ func bash(command string) string {
 
 type Zone struct {
 	Zone           string
+	Label          string
 	DatacenterName string
 	Latitude       float32
 	Longitude      float32
@@ -108,16 +84,25 @@ func main() {
 
 	if !loadedZonesCache {
 
-		output := bash("gcloud compute zones list")
+		output := bash("curl -s https://api.linode.com/v4/regions")
 
-		lines := strings.Split(output, "\n")
+		type ResponseData struct {
+			Id string `json:"id"`
+			Label string `json:"label"`
+		}
 
-		for i := 1; i < len(lines); i++ {
-			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
-			match := re.FindStringSubmatch(lines[i])
-			if len(match) >= 1 {
-				zones = append(zones, &Zone{match[0], "", 0, 0})
-			}
+		type Response struct {
+			Data []ResponseData `json:"data"`
+		}		
+
+		response := Response{}
+
+		if err := json.Unmarshal([]byte(output), &response); err != nil {
+			panic(err)
+		}
+
+		for i := range response.Data {
+			zones = append(zones, &Zone{Zone: response.Data[i].Id, Label: response.Data[i].Label})
 		}
 
 		{
@@ -131,7 +116,7 @@ func main() {
 
 		fmt.Printf("\nZones:\n\n")
 		for i := range zones {
-			fmt.Printf("  %s\n", zones[i].Zone)
+			fmt.Printf("  %s -> %s\n", zones[i].Zone, zones[i].Label)
 		}
 	}
 
@@ -142,15 +127,9 @@ func main() {
 	unknown := make([]*Zone, 0)
 
 	for i := range zones {
-		values := strings.Split(zones[i].Zone, "-")
-		a := values[0]
-		b := values[1]
-		c := values[2]
-		region := fmt.Sprintf("%s-%s", a, b)
-		datacenter := datacenterMap[region]
-		number := c[0] - 'a' + 1
+		datacenter := datacenterMap[zones[i].Zone]
 		if datacenter != nil {
-			zones[i].DatacenterName = fmt.Sprintf("akamai.%s.%d", datacenter.name, number)
+			zones[i].DatacenterName = fmt.Sprintf("akamai.%s", datacenter.name)
 			zones[i].Latitude = datacenter.latitude
 			zones[i].Longitude = datacenter.longitude
 			fmt.Printf("  %s\n", zones[i].DatacenterName)

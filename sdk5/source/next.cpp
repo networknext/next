@@ -11529,7 +11529,7 @@ bool next_autodetect_google( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
+    file = popen( "curl -s \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11623,7 +11623,7 @@ bool next_autodetect_google( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network_next_sdk_config/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/network_next_sdk_config/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -11698,7 +11698,7 @@ bool next_autodetect_amazon( char * output )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
+    file = popen( "curl -s \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -11761,7 +11761,7 @@ bool next_autodetect_amazon( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network_next_sdk_config/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/network_next_sdk_config/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -12046,7 +12046,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl \"https://storage.googleapis.com/network_next_sdk_config/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/network_next_sdk_config/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -12115,7 +12115,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for curl" );
 
-    int result = system( "curl >/dev/null 2>&1" );
+    int result = system( "curl -s >/dev/null 2>&1" );
 
     if ( result < 0 )
     {

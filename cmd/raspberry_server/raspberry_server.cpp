@@ -87,7 +87,7 @@ void server_update_thread( void * data )
     const char * raspberry_backend_url = thread_data->raspberry_backend_url;
     
     char command_line[1024];
-    snprintf( command_line, sizeof(command_line), "curl -d \"%s\" -X POST %s/server_update --max-time 10 2>/dev/null", server_address, raspberry_backend_url );
+    snprintf( command_line, sizeof(command_line), "curl -s -d \"%s\" -X POST %s/server_update --max-time 10 2>/dev/null", server_address, raspberry_backend_url );
 
     while ( !quit )
     {
@@ -133,7 +133,7 @@ int main()
 
     // if we are running in google cloud, detect google cloud public IP address
 
-    FILE * file = popen( "curl http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
+    FILE * file = popen( "curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
 
     char buffer[1024];
 
