@@ -219,6 +219,7 @@ func main() {
 		datacenter := datacenterMap[region]
 		number := c[0] - 'a' + 1
 		if datacenter != nil {
+			zones[i].Region = region
 			zones[i].DatacenterName = fmt.Sprintf("google.%s.%d", datacenter.name, number)
 			zones[i].Latitude = datacenter.latitude
 			zones[i].Longitude = datacenter.longitude
