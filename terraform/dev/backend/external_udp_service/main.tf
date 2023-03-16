@@ -64,6 +64,7 @@ resource "google_compute_instance_template" "service" {
   network_interface {
     network    = var.default_network
     subnetwork = var.default_subnetwork
+    access_config {}
   }
 
   tags = var.tags

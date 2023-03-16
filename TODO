@@ -12,10 +12,15 @@ DONE
 
 	Adding public addresses to instance template...
 
-TODO
-	
 	Verify that I can now receive UDP packets in the service.
 
+	Verified.
+
+TODO
+	
+	The advanced packet filter is failing.
+
+	
 
 
 
