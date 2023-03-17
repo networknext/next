@@ -16,12 +16,33 @@ DONE
 
 	Verified.
 
-TODO
-	
 	The advanced packet filter is failing for UDP packets received by the server backend. 
 
 	What's causing this?
 
+		advanced packet filter failed for 123 byte packet from 34.29.36.209:54148 to 127.0.0.1:45000
+
+	Looks like the server backend incorrectly thinks it is setup on 127.0.0.1:45000?
+
+	Verified:
+
+		server backend address: 127.0.0.1:45000
+
+	OK, we have a chicken and egg, I can't get the address of the load balancer to put in the startup script.
+
+	How can I fix this? Maybe I run a provisioning step?
+
+	Easy fix, string replace inside the external UDP module.
+
+	Verified working. The server backend is live!
+
+TODO
+	
+	Now I need to pass in a UDP_BIND_ADDRESS var, service.go picks it up, but if not specified it binds to 0.0.0.0:40000 or whatever.
+
+	Look how the bind address is determined currently, and then adjust the bind address to the LB address in google cloud.
+
+	Once this is done, a raspberry server run locally (behind NAT), should be able to init with the server backend.
 
 
 

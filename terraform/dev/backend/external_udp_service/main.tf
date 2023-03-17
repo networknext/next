@@ -76,7 +76,7 @@ resource "google_compute_instance_template" "service" {
   }
 
   metadata = {
-    startup-script = var.startup_script
+    startup-script = replace(var.startup_script, "##########", google_compute_address.service.address)
   }
 
   service_account {

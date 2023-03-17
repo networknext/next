@@ -536,7 +536,7 @@ module "server_backend" {
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
-    SERVER_BACKEND_ADDRESS=self.address
+    SERVER_BACKEND_ADDRESS="##########:45000"
     SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
     SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
