@@ -61,76 +61,76 @@ func main() {
 
 		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 
-		service.Router.HandleFunc("/portal/session_counts", portalSessionCountsHandler)
-		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", portalSessionsHandler)
-		service.Router.HandleFunc("/portal/session/{session_id}", portalSessionDataHandler)
+		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
+		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
-		service.Router.HandleFunc("/portal/server_count", portalServerCountHandler)
-		service.Router.HandleFunc("/portal/servers/{begin}/{end}", portalServersHandler)
-		service.Router.HandleFunc("/portal/server/{server_address}", portalServerDataHandler)
+		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
+		service.Router.HandleFunc("/portal/servers/{begin}/{end}", isAuthorized(portalServersHandler))
+		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
 
-		service.Router.HandleFunc("/portal/relay_count", portalRelayCountHandler)
-		service.Router.HandleFunc("/portal/relays/{begin}/{end}", portalRelaysHandler)
-		service.Router.HandleFunc("/portal/relay/{relay_address}", portalRelayDataHandler)
+		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
+		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
 
-		service.Router.HandleFunc("/portal/map_data", portalMapDataHandler)
+		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
-		service.Router.HandleFunc("/portal/cost_matrix", portalCostMatrixHandler)
+		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
 	}
 
 	if enableAdmin {
 
 		controller = admin.CreateController(pgsqlConfig)
 
-		service.Router.HandleFunc("/admin/create_customer", adminCreateCustomerHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/customers", adminReadCustomersHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_customer", adminUpdateCustomerHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_customer", adminDeleteCustomerHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/create_customer", isAuthorized(adminCreateCustomerHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/customers", isAuthorized(adminReadCustomersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_customer", isAuthorized(adminUpdateCustomerHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_customer", isAuthorized(adminDeleteCustomerHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_buyer", adminCreateBuyerHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/buyers", adminReadBuyersHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_buyer", adminUpdateBuyerHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_buyer", adminDeleteBuyerHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/create_buyer", isAuthorized(adminCreateBuyerHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/buyers", isAuthorized(adminReadBuyersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_buyer", isAuthorized(adminUpdateBuyerHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_buyer", isAuthorized(adminDeleteBuyerHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_seller", adminCreateSellerHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/sellers", adminReadSellersHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_seller", adminUpdateSellerHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_seller", adminDeleteSellerHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/create_seller", isAuthorized(adminCreateSellerHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/sellers", isAuthorized(adminReadSellersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_seller", isAuthorized(adminUpdateSellerHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_seller", isAuthorized(adminDeleteSellerHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_datacenter", adminCreateDatacenterHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/datacenters", adminReadDatacentersHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_datacenter", adminUpdateDatacenterHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_datacenter", adminDeleteDatacenterHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/create_datacenter", isAuthorized(adminCreateDatacenterHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/datacenters", isAuthorized(adminReadDatacentersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_datacenter", isAuthorized(adminUpdateDatacenterHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_datacenter", isAuthorized(adminDeleteDatacenterHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_relay", adminCreateRelayHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/relays", adminReadRelaysHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_relay", adminUpdateRelayHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_relay", adminDeleteRelayHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/create_relay", isAuthorized(adminCreateRelayHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/relays", isAuthorized(adminReadRelaysHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_relay", isAuthorized(adminUpdateRelayHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_relay", isAuthorized(adminDeleteRelayHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_route_shader", adminCreateRouteShaderHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/route_shaders", adminReadRouteShadersHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_route_shader", adminUpdateRouteShaderHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_route_shader", adminDeleteRouteShaderHandler).Methods("DELETE")
-		service.Router.HandleFunc("/admin/route_shader_defaults", adminRouteShaderDefaultsHandler).Methods("GET")
+		service.Router.HandleFunc("/admin/create_route_shader", isAuthorized(adminCreateRouteShaderHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/route_shaders", isAuthorized(adminReadRouteShadersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_route_shader", isAuthorized(adminUpdateRouteShaderHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_route_shader", isAuthorized(adminDeleteRouteShaderHandler)).Methods("DELETE")
+		service.Router.HandleFunc("/admin/route_shader_defaults", isAuthorized(adminRouteShaderDefaultsHandler)).Methods("GET")
 
-		service.Router.HandleFunc("/admin/create_buyer_datacenter_settings", adminCreateBuyerDatacenterSettingsHandler).Methods("POST")
-		service.Router.HandleFunc("/admin/buyer_datacenter_settings", adminReadBuyerDatacenterSettingsHandler).Methods("GET")
-		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", adminUpdateBuyerDatacenterSettingsHandler).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", adminDeleteBuyerDatacenterSettingsHandler).Methods("DELETE")
+		service.Router.HandleFunc("/admin/create_buyer_datacenter_settings", isAuthorized(adminCreateBuyerDatacenterSettingsHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/buyer_datacenter_settings", isAuthorized(adminReadBuyerDatacenterSettingsHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", isAuthorized(adminUpdateBuyerDatacenterSettingsHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", isAuthorized(adminDeleteBuyerDatacenterSettingsHandler)).Methods("DELETE")
 	}
 
 	if enableDatabase {
 
 		service.LoadDatabase()
 
-		service.Router.HandleFunc("/database/json", databaseJSONHandler).Methods("GET")
-		service.Router.HandleFunc("/database/binary", databaseBinaryHandler).Methods("GET")
-		service.Router.HandleFunc("/database/header", databaseHeaderHandler).Methods("GET")
-		service.Router.HandleFunc("/database/buyers", databaseBuyersHandler).Methods("GET")
-		service.Router.HandleFunc("/database/sellers", databaseSellersHandler).Methods("GET")
-		service.Router.HandleFunc("/database/datacenters", databaseDatacentersHandler).Methods("GET")
-		service.Router.HandleFunc("/database/relays", databaseRelaysHandler).Methods("GET")
-		service.Router.HandleFunc("/database/buyer_datacenter_settings", databaseBuyerDatacenterSettingsHandler).Methods("GET")
+		service.Router.HandleFunc("/database/json", isAuthorized(databaseJSONHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/binary", isAuthorized(databaseBinaryHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/header", isAuthorized(databaseHeaderHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/buyers", isAuthorized(databaseBuyersHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/sellers", isAuthorized(databaseSellersHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/datacenters", isAuthorized(databaseDatacentersHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/relays", isAuthorized(databaseRelaysHandler)).Methods("GET")
+		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
 	}
 
 	service.StartWebServer()
@@ -152,8 +152,6 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 			apiKey := split[1]
 
-			fmt.Printf("api key = '%s'\n", apiKey)
-
 			token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("There was an error")
@@ -162,7 +160,6 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 			})
 
 			if err != nil {
-				fmt.Printf("wut\n")
 				fmt.Fprintf(w, err.Error())
 			}
 

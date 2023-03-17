@@ -6,15 +6,11 @@ DONE
 
 	Get curl working with auth bearer for the api key
 
+	Decorate all REST API handlers with authorization.
+
 TODO
 
-	Extend the next tool to use an api key to make calls.
-
-	-----------------------
-
-	Extend the api key to check claims, eg. "database", "portal", "admin"
-
-	Decorate all REST API handlers with authorization.
+	Extend the next tool to use the api key to make calls.
 
 	-----------------------
 
