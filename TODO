@@ -8,9 +8,9 @@ DONE
 
 	Decorate all REST API handlers with authorization.
 
-TODO
-
 	Extend the next tool to use the api key to make calls.
+
+TODO
 
 	---------
 
