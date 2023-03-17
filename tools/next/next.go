@@ -430,7 +430,6 @@ func main() {
 			claims["database"] = true
 			claims["admin"] = true
 			claims["portal"] = true
-			fmt.Printf("API private key = '%s'\n", env.APIPrivateKey)
 			privateKey := env.APIPrivateKey
 			tokenString, err := token.SignedString([]byte(privateKey))
 			if err != nil {
@@ -782,7 +781,10 @@ func GetJSON(url string, object interface{}) {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -811,7 +813,10 @@ func GetBinary(url string) []byte {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
 		if err == nil {
 			break
 		}

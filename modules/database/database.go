@@ -315,7 +315,7 @@ func (database *Database) String() string {
 
 	// buyers
 
-	output += "\nBuyers:\n\n"
+	output += "\n\nBuyers:\n\n"
 
 	type BuyerRow struct {
 		Name            string
@@ -345,8 +345,6 @@ func (database *Database) String() string {
 	}
 
 	sort.SliceStable(buyers, func(i, j int) bool { return buyers[i].Name < buyers[j].Name })
-
-	output += "\n\n"
 
 	output += table.Table(buyers)
 

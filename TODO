@@ -12,6 +12,30 @@ TODO
 
 	Extend the next tool to use the api key to make calls.
 
+	---------
+
+	Make sure func tests that use API also use api key
+
+	---------
+
+	Verify that happy path and all func tests pass
+
+	---------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	-----------------------
 
 	API service must run over https in dev.
