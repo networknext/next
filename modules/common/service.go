@@ -414,9 +414,9 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	config.SocketReadBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 1024*1024)
 	config.SocketWriteBuffer = envvar.GetInt("UDP_SOCKET_READ_BUFFER", 1024*1024)
 	config.MaxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
+	config.BindAddress = envvar.GetAddress("UDP_BIND_ADDRESS", core.ParseAddress(fmt.Sprintf("0.0.0.0:%d", config.Port)))
 	if service.Local {
-		bindAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", config.Port))
-		config.BindAddress = &bindAddress
+		config.BindAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", config.Port))
 	}
 	core.Log("udp port: %d", config.Port)
 	core.Log("udp num threads: %d", config.NumThreads)

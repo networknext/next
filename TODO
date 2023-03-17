@@ -36,13 +36,13 @@ DONE
 
 	Verified working. The server backend is live!
 
-TODO
-	
 	Now I need to pass in a UDP_BIND_ADDRESS var, service.go picks it up, but if not specified it binds to 0.0.0.0:40000 or whatever.
 
 	Look how the bind address is determined currently, and then adjust the bind address to the LB address in google cloud.
 
-	Once this is done, a raspberry server run locally (behind NAT), should be able to init with the server backend.
+TODO
+
+	Done. Now verify that the server backend still works with the new bind address, and that a local raspberry server can init with it.
 
 
 

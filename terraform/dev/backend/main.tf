@@ -531,6 +531,7 @@ module "server_backend" {
     ENV=dev
     DEBUG_LOGS=1
     UDP_PORT=45000
+    UDP_BIND_ADDRESS="##########:45000"
     GOOGLE_PROJECT_ID=${var.project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
