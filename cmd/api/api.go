@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/networknext/backend/modules/admin"
 	"github.com/networknext/backend/modules/common"
@@ -14,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/portal"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 )
@@ -24,10 +27,13 @@ var controller *admin.Controller
 
 var service *common.Service
 
+var privateKey string
+
 func main() {
 
 	service = common.CreateService("api")
 
+	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer dbname=postgres sslmode=disable")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
@@ -35,6 +41,11 @@ func main() {
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
+
+	if privateKey == "" {
+		core.Error("You must specify API_PRIVATE_KEY!")
+		os.Exit(1)
+	}
 
 	core.Log("pgsql config: %s", pgsqlConfig)
 	core.Log("redis hostname: %s", redisHostname)
@@ -44,7 +55,7 @@ func main() {
 	core.Log("enable portal: %v", enablePortal)
 	core.Log("enable database: %v", enableDatabase)
 
-	service.Router.HandleFunc("/ping", pingHandler)
+	service.Router.HandleFunc("/ping", isAuthorized(pingHandler))
 
 	if enablePortal {
 
@@ -125,6 +136,45 @@ func main() {
 	service.StartWebServer()
 
 	service.WaitForShutdown()
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		auth := r.Header.Get("Authorization")
+
+		split := strings.Split(auth, "Bearer ")
+
+		if len(split) == 2 {
+
+			apiKey := split[1]
+
+			fmt.Printf("api key = '%s'\n", apiKey)
+
+			token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("There was an error")
+				}
+				return []byte(privateKey), nil
+			})
+
+			if err != nil {
+				fmt.Printf("wut\n")
+				fmt.Fprintf(w, err.Error())
+			}
+
+			if token.Valid {
+				endpoint(w, r)
+			}
+
+		} else {
+
+			fmt.Fprintf(w, "Not Authorized")
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

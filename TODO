@@ -1,110 +1,20 @@
 DONE
 	
-	Modify API service setup in terraform so it can only be accessed from the vpn address
+	Add concept of API_KEY to talk to the API
 
-	Create a udp test service running on port 45000
+	Use a JWT.
 
-	Print out on each packet received.
-
-	Setup quick and dirty artifact and terraform script to deploy the udp service
-
-	I think the external UDP load balancer needs a public ip address to work.
-
-	Adding public addresses to instance template...
-
-	Verify that I can now receive UDP packets in the service.
-
-	Verified.
-
-	The advanced packet filter is failing for UDP packets received by the server backend. 
-
-	What's causing this?
-
-		advanced packet filter failed for 123 byte packet from 34.29.36.209:54148 to 127.0.0.1:45000
-
-	Looks like the server backend incorrectly thinks it is setup on 127.0.0.1:45000?
-
-	Verified:
-
-		server backend address: 127.0.0.1:45000
-
-	OK, we have a chicken and egg, I can't get the address of the load balancer to put in the startup script.
-
-	How can I fix this? Maybe I run a provisioning step?
-
-	Easy fix, string replace inside the external UDP module.
-
-	Verified working. The server backend is live!
-
-	Now I need to pass in a UDP_BIND_ADDRESS var, service.go picks it up, but if not specified it binds to 0.0.0.0:40000 or whatever.
-
-	Look how the bind address is determined currently, and then adjust the bind address to the LB address in google cloud.
+	Get curl working with auth bearer for the api key
 
 TODO
 
-	Done. Now verify that the server backend still works with the new bind address, and that a local raspberry server can init with it.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Extend the next tool to use an api key to make calls.
 
 	-----------------------
 
-	Add concept of API_KEY to talk to the API
+	Extend the api key to check claims, eg. "database", "portal", "admin"
+
+	Decorate all REST API handlers with authorization.
 
 	-----------------------
 
@@ -118,37 +28,72 @@ TODO
 
 	-----------------------
 
+	Next step has to be to actually setup some relays.
+
+	Let's do this via a terraform provider for network next.
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------------
+
 	Spin up relays with terraform and verify they are showing up in dev
 
 	-----------------------
 
-	Fix external UDP load balancer blocker with server backend
-
-	-----------------------
-
-	Verify that the raspberry server inits with the server backend.
-
-	-----------------------
-
-	Verify that the raspberry client connects and upgrades
-
-	-----------------------
-
-	Verify that I can run a raspberry server locally after "next select dev" and it initializes with the dev server backend.
-
-	Need to make sure the server backend UDP packets sent back to the server, "come from" the IP address and port of the load balancer.
-
-	Details here: https://cloud.google.com/load-balancing/docs/network/udp-with-network-load-balancing
-
-	This can be done by adjusting the startup script in the instance template, *OR* by forcing the server backend to bind to the load balancer address.
-
-	-----------------------
-
 	Verify that I can run raspberry clients locally and they hit the raspberry backend and connect to servers and upgrade.
-
-	-----------------------
-
-	Verify that I can run a bunch of raspberry clients and servers in dev and they all show up in the next tool, eg: "next relays"
 
 	-----------------------
 

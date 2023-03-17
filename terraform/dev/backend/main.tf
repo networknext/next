@@ -653,7 +653,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
-    RASPBERRY_NUM_CLIENTS=1
+    RASPBERRY_NUM_CLIENTS=64
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/libnext5.so /usr/local/lib/libnext5.so
     sudo ldconfig

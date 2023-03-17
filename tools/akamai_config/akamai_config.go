@@ -15,18 +15,17 @@ import (
 
 var datacenterMap = map[string]*Datacenter{
 
-	"ap-west": 		{"mumbai", 19.0760, 72.8777},
-	"ca-central": 	{"toronto", 43.6532, -79.3832},
+	"ap-west":      {"mumbai", 19.0760, 72.8777},
+	"ca-central":   {"toronto", 43.6532, -79.3832},
 	"ap-southeast": {"sydney", -33.8688, 151.2093},
-	"us-central": 	{"dallas", 32.7767, -96.7970},
-	"us-west": 		{"fremont", 37.5485, -121.9886},
+	"us-central":   {"dallas", 32.7767, -96.7970},
+	"us-west":      {"fremont", 37.5485, -121.9886},
 	"us-southeast": {"atlanta", 33.7488, -84.3877},
-	"us-east": 		{"newyork", 40.7128, -74.0060},
-	"eu-west": 		{"london", 51.5072, -0.1276},
-	"ap-south": 	{"singapore", 1.3521, 103.8198},
-	"eu-central": 	{"frankfurt", 50.1109, 8.6821},
+	"us-east":      {"newyork", 40.7128, -74.0060},
+	"eu-west":      {"london", 51.5072, -0.1276},
+	"ap-south":     {"singapore", 1.3521, 103.8198},
+	"eu-central":   {"frankfurt", 50.1109, 8.6821},
 	"ap-northeast": {"tokyo", 35.6762, 139.6503},
-
 }
 
 type Datacenter struct {
@@ -87,13 +86,13 @@ func main() {
 		output := bash("curl -s https://api.linode.com/v4/regions")
 
 		type ResponseData struct {
-			Id string `json:"id"`
+			Id    string `json:"id"`
 			Label string `json:"label"`
 		}
 
 		type Response struct {
 			Data []ResponseData `json:"data"`
-		}		
+		}
 
 		response := Response{}
 
@@ -147,64 +146,64 @@ func main() {
 		}
 	}
 
- 	// generate akamai.txt
+	// generate akamai.txt
 
- 	fmt.Printf("\nGenerating akamai.txt\n")
+	fmt.Printf("\nGenerating akamai.txt\n")
 
- 	file, err := os.Create("config/akamai.txt")
- 	if err != nil {
- 		panic(err)
- 	}
+	file, err := os.Create("config/akamai.txt")
+	if err != nil {
+		panic(err)
+	}
 
- 	for i := range zones {
- 		if zones[i].DatacenterName != "" {
- 			fmt.Fprintf(file, "%s,%s\n", zones[i].Zone, zones[i].DatacenterName)
- 		}
- 	}
+	for i := range zones {
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, "%s,%s\n", zones[i].Zone, zones[i].DatacenterName)
+		}
+	}
 
- 	file.Close()
+	file.Close()
 
- 	// generate akamai.sql
+	// generate akamai.sql
 
- 	fmt.Printf("\nGenerating akamai.sql\n")
+	fmt.Printf("\nGenerating akamai.sql\n")
 
- 	file, err = os.Create("schemas/sql/sellers/akamai.sql")
- 	if err != nil {
- 		panic(err)
- 	}
+	file, err = os.Create("schemas/sql/sellers/akamai.sql")
+	if err != nil {
+		panic(err)
+	}
 
- 	fmt.Fprintf(file, "\n-- akamai datacenters\n")
+	fmt.Fprintf(file, "\n-- akamai datacenters\n")
 
- 	format_string := "\nINSERT INTO datacenters(\n" +
- 		"	datacenter_name,\n" +
- 		"	native_name,\n" +
- 		"	latitude,\n" +
- 		"	longitude,\n" +
- 		"	seller_id)\n" +
- 		"VALUES(\n" +
- 		"   '%s',\n" +
- 		"   '%s',\n" +
- 		"   %f,\n" +
- 		"   %f,\n" +
- 		"   (select seller_id from sellers where seller_name = 'akamai')\n" +
- 		");\n"
+	format_string := "\nINSERT INTO datacenters(\n" +
+		"	datacenter_name,\n" +
+		"	native_name,\n" +
+		"	latitude,\n" +
+		"	longitude,\n" +
+		"	seller_id)\n" +
+		"VALUES(\n" +
+		"   '%s',\n" +
+		"   '%s',\n" +
+		"   %f,\n" +
+		"   %f,\n" +
+		"   (select seller_id from sellers where seller_name = 'akamai')\n" +
+		");\n"
 
- 	for i := range zones {
- 		if zones[i].DatacenterName != "" {
- 			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
- 		}
- 	}
+	for i := range zones {
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
+		}
+	}
 
- 	file.Close()
+	file.Close()
 
- 	// generate akamai/generated.tf
+	// generate akamai/generated.tf
 
- 	file, err = os.Create("terraform/suppliers/akamai/generated.tf")
- 	if err != nil {
- 		panic(err)
- 	}
+	file, err = os.Create("terraform/suppliers/akamai/generated.tf")
+	if err != nil {
+		panic(err)
+	}
 
- 	fmt.Printf("\nGenerating akamai/generated.tf\n")
+	fmt.Printf("\nGenerating akamai/generated.tf\n")
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 

@@ -37,6 +37,7 @@ import (
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/portal"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
@@ -275,6 +276,10 @@ func getKeyValue(envFile string, keyName string) string {
 		return ""
 	}
 	value = value[:len(value)-1]
+	if value[0] == '"' || value[0] == '\'' {
+		value = value[1:len(value)-1]
+	}
+
 	return value
 }
 
@@ -337,6 +342,8 @@ func main() {
 			env.PortalURL = getKeyValue(envFilePath, "PORTAL_REST_API_URL")
 			env.DatabaseURL = getKeyValue(envFilePath, "DATABASE_REST_API_URL")
 			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
+			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
+			env.APIKey = getKeyValue(envFilePath, "API_KEY")
 			env.Write()
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
@@ -409,6 +416,28 @@ func main() {
 		ShortHelp:  "Print the database for the current environment",
 		Exec: func(_ context.Context, args []string) error {
 			printDatabase()
+			return nil
+		},
+	}
+
+	var apiKeyCommand = &ffcli.Command{
+		Name:       "api-key",
+		ShortUsage: "next api-key",
+		ShortHelp:  "Generates an API key for use with the REST API in the current env",
+		Exec: func(_ context.Context, args []string) error {
+			token := jwt.New(jwt.SigningMethodHS256)
+			claims := token.Claims.(jwt.MapClaims)
+			claims["database"] = true
+			claims["admin"] = true
+			claims["portal"] = true
+			fmt.Printf("API private key = '%s'\n", env.APIPrivateKey)
+			privateKey := env.APIPrivateKey
+			tokenString, err := token.SignedString([]byte(privateKey))
+			if err != nil {
+				fmt.Printf("error: not generate API_KEY: %s", err.Error())
+				os.Exit(1)
+			}
+			fmt.Printf("API_KEY = %s\n\n", tokenString)
 			return nil
 		},
 	}
@@ -688,6 +717,7 @@ func main() {
 		costCommand,
 		optimizeCommand,
 		analyzeCommand,
+		apiKeyCommand,
 		hashCommand,
 	}
 
@@ -1190,11 +1220,13 @@ func keygen() {
 // --------------------------------------------------------------------------------------------
 
 type Environment struct {
-	Name        string `json:"name"`
-	AdminURL    string `json:"admin_url"`
-	PortalURL   string `json:"portal_url"`
-	DatabaseURL string `json:"database_url"`
-	SSHKeyFile  string `json:"ssh_key_filepath"`
+	Name          string `json:"name"`
+	AdminURL      string `json:"admin_url"`
+	PortalURL     string `json:"portal_url"`
+	DatabaseURL   string `json:"database_url"`
+	SSHKeyFile    string `json:"ssh_key_filepath"`
+	APIPrivateKey string `json:"api_private_key"`
+	APIKey        string `json:"api_key"`
 }
 
 func (e *Environment) String() string {
@@ -1404,5 +1436,7 @@ func terraformDestroy(env Environment, component string) {
 	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
 	fmt.Printf("\n")
 }
+
+// -------------------------------------------------------------------------------------------
 
 // -------------------------------------------------------------------------------------------
