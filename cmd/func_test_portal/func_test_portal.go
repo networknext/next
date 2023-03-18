@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"time"
+	"bytes"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
@@ -21,6 +22,12 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 )
+
+var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
+
+var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+
+// ----------------------------------------------------------------------------------------
 
 func bash(command string) {
 
@@ -50,6 +57,7 @@ func api() *exec.Cmd {
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
 
 	cmd.Start()
 
@@ -152,10 +160,20 @@ func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
 
 func Get(url string, object interface{}) {
 
+	buffer := new(bytes.Buffer)
+
+	json.NewEncoder(buffer).Encode(object)
+
+	request, _ := http.NewRequest("GET", url, buffer)
+
+   request.Header.Set("Authorization", "Bearer " + apiKey)
+
+	client := &http.Client{}
+
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+		response, err = client.Do(request)
 		if err == nil {
 			break
 		}

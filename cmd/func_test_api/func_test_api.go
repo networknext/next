@@ -61,6 +61,7 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "ENABLE_PORTAL=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
