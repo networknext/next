@@ -410,6 +410,16 @@ func main() {
 		},
 	}
 
+	var pingCommand = &ffcli.Command{
+		Name:       "ping",
+		ShortUsage: "next ping",
+		ShortHelp:  "Ping the REST API in the current environment",
+		Exec: func(_ context.Context, args []string) error {
+			ping()
+			return nil
+		},
+	}
+
 	var databaseCommand = &ffcli.Command{
 		Name:       "database",
 		ShortUsage: "next database",
@@ -698,6 +708,7 @@ func main() {
 	var commands = []*ffcli.Command{
 		selectCommand,
 		envCommand,
+		pingCommand,
 		initCommand,
 		deployCommand,
 		destroyCommand,
@@ -808,6 +819,35 @@ func GetJSON(url string, object interface{}) {
 	}
 }
 
+func GetText(url string) string {
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	return string(body)
+}
+
 func GetBinary(url string) []byte {
 
 	var err error
@@ -825,6 +865,11 @@ func GetBinary(url string) []byte {
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response == nil {
+		core.Error("no response from api")
+		os.Exit(1)
 	}
 
 	body, error := ioutil.ReadAll(response.Body)
@@ -1443,5 +1488,10 @@ func terraformDestroy(env Environment, component string) {
 }
 
 // -------------------------------------------------------------------------------------------
+
+func ping() {
+	text := GetText(fmt.Sprintf("%s/ping", env.AdminURL))
+	fmt.Printf("%s\n\n", text)
+}
 
 // -------------------------------------------------------------------------------------------

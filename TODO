@@ -12,6 +12,8 @@ DONE
 
 TODO
 
+	Deploy new API service to dev and make sure I can call it from the next tool
+
 	---------
 
 	Make sure func tests that use API also use api key
@@ -531,5 +533,9 @@ Nice to have:
 	--------------
 
 	Remember to bring back logic to exclude near relays with significantly higher than average jitter
+
+	--------------
+
+	Need some way to easily deploy backend code without having to manually edit terraform.tfvars to increase the counter
 
 	--------------

@@ -432,6 +432,7 @@ module "api" {
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=postgres sslmode=disable"
+    API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
