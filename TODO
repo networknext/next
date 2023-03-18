@@ -10,9 +10,11 @@ DONE
 
 	Extend the next tool to use the api key to make calls.
 
+	Deploy new API service to dev and make sure I can call it from the next tool
+
 TODO
 
-	Deploy new API service to dev and make sure I can call it from the next tool
+	Debug why "next database" can't read the GOB
 
 	---------
 

@@ -22,6 +22,10 @@ import (
 	"github.com/networknext/backend/modules/admin"
 )
 
+var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
+
+var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+
 // ----------------------------------------------------------------------------------------
 
 func bash(command string) {
@@ -76,6 +80,8 @@ func Create(url string, object interface{}) uint64 {
 
 	request, _ := http.NewRequest("POST", url, buffer)
 
+   request.Header.Set("Authorization", "Bearer " + apiKey)
+
 	client := &http.Client{}
 
 	var err error
@@ -119,8 +125,17 @@ func Read(url string, object interface{}) {
 
 	var err error
 	var response *http.Response
+
+	buffer := new(bytes.Buffer)
+
+	request, _ := http.NewRequest("GET", url, buffer)
+
+   request.Header.Set("Authorization", "Bearer " + apiKey)
+
+	client := &http.Client{}
+
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+		response, err = client.Do(request)
 		if err == nil {
 			break
 		}
@@ -151,6 +166,8 @@ func Update(url string, object interface{}) {
 	json.NewEncoder(buffer).Encode(object)
 
 	request, _ := http.NewRequest("PUT", url, buffer)
+
+   request.Header.Set("Authorization", "Bearer " + apiKey)
 
 	client := &http.Client{}
 
@@ -185,6 +202,8 @@ func Update(url string, object interface{}) {
 func Delete(url string, id uint64) error {
 
 	request, _ := http.NewRequest("DELETE", url, strings.NewReader(fmt.Sprintf("%d", id)))
+
+   request.Header.Set("Authorization", "Bearer " + apiKey)
 
 	client := &http.Client{}
 
