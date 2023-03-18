@@ -12,17 +12,17 @@ DONE
 
 	Deploy new API service to dev and make sure I can call it from the next tool
 
+	Make sure func tests that use API also use api key
+
+	Verify that happy path and all func tests pass
+
 TODO
 
 	Debug why "next database" can't read the GOB
 
-	---------
+	Verify that func test database passes
 
-	Make sure func tests that use API also use api key
-
-	---------
-
-	Verify that happy path and all func tests pass
+	Verify that I can "next select dev" and "next database" to view the current database.
 
 	---------
 
