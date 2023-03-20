@@ -202,7 +202,7 @@ verifying map cruncher received map update messages ... OK
 
 2. Install libsodium
 
-    `wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz && tar -zxf libsodium-1.0.18-stable.tar.gz && cd libsodium-stable && ./configure && make -j && make check && sudo make install && cd ~`
+    `wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz && tar -zxf libsodium-1.0.18-stable.tar.gz && cd libsodium-stable && ./configure && make -j && make check && sudo make install && sudo ldconfig && cd ~`
 
 3. Install latest golang
 
