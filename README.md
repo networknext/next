@@ -198,7 +198,7 @@ verifying map cruncher received map update messages ... OK
 
 1. Install dependencies
 
-	`apt install build-essential redis-server postgresql libcurl4-openssl-dev pkg-config -y`
+	`sudo apt install build-essential redis-server postgresql libcurl4-openssl-dev pkg-config -y`
 
 2. Install libsodium
 
