@@ -61,7 +61,6 @@ func main() {
 	core.Log("enable google pubsub: %v", enableGooglePubsub)
 	core.Log("enable redis streams: %v", enableRedisStreams)
 	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis password: %s", redisPassword)
 
 	if len(serverBackendPublicKey) == 0 {
 		panic("SERVER_BACKEND_PUBLIC_KEY must be specified")

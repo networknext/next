@@ -26,7 +26,6 @@ func main() {
 
 	core.Log("num map update threads: %d", numMapUpdateThreads)
 	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis password: %s", redisPassword)
 
 	service := common.CreateService("map_cruncher")
 

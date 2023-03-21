@@ -805,9 +805,14 @@ func generateRelayData(database *db.Database) *RelayData {
 func (service *Service) watchDatabase(ctx context.Context, databasePath string) {
 
 	databaseURL := envvar.GetString("DATABASE_URL", "")
+
+	if databaseURL == "" {
+		return
+	}
+
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 
-	if service.Env != "local" && service.google == nil {
+	if service.google == nil {
 		core.Error("You must pass in GOOGLE_PROJECT_ID")
 		os.Exit(1)
 	}

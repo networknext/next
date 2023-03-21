@@ -1,9 +1,28 @@
 version: "3.9"
 services:
 
+  redis:
+    image: redis:6.2-alpine
+    restart: always
+
   magic_backend:
     build: 
       context: .
       dockerfile: docker/magic_backend/Dockerfile
     ports:
       - "10000:80"
+
+  relay_gateway:
+    build: 
+      context: .
+      dockerfile: docker/relay_gateway/Dockerfile
+    ports:
+      - "11000:80"
+    depends_on:
+      - redis
+      - magic_backend
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+      - MAGIC_URL=http://magic_backend/magic
+      - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+      - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=

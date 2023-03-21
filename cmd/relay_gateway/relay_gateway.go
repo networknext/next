@@ -41,7 +41,6 @@ func main() {
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 
 	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis password: %s", redisPassword)
 	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Log("relay update batch size: %d", relayUpdateBatchSize)
 	core.Log("relay update batch duration: %v", relayUpdateBatchDuration)

@@ -46,7 +46,6 @@ func main() {
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
 	core.Debug("redis hostname: %s", redisHostname)
-	core.Debug("redis password: %s", redisPassword)
 
 	ctx := context.Background()
 

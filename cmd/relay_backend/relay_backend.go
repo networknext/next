@@ -97,7 +97,6 @@ func main() {
 	core.Log("max packet loss: %.1f", maxPacketLoss)
 	core.Log("route matrix interval: %s", routeMatrixInterval)
 	core.Log("redis host name: %s", redisHostName)
-	core.Log("redis password: %s", redisPassword)
 
 	core.Log("relay update redis pubsub channel name: %s", relayUpdateRedisPubsubChannelName)
 	core.Log("relay update redis pubsub channel size: %d", relayUpdateRedisPubsubChannelSize)
