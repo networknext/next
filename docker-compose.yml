@@ -18,14 +18,14 @@ services:
   magic_backend:
     build: 
       context: .
-      dockerfile: docker/magic_backend/Dockerfile
+      dockerfile: docker/magic_backend.Dockerfile
     ports:
       - "10000:80"
 
   relay_gateway:
     build: 
       context: .
-      dockerfile: docker/relay_gateway/Dockerfile
+      dockerfile: docker/relay_gateway.Dockerfile
     ports:
       - "11000:80"
     depends_on:
@@ -41,7 +41,7 @@ services:
   relay_backend:
     build: 
       context: .
-      dockerfile: docker/relay_backend/Dockerfile
+      dockerfile: docker/relay_backend.Dockerfile
     ports:
       - "12000:80"
     depends_on:
@@ -54,7 +54,7 @@ services:
   server_backend:
     build: 
       context: .
-      dockerfile: docker/server_backend/Dockerfile
+      dockerfile: docker/server_backend.Dockerfile
     ports:
       - "13000:80/tcp"
       - "45000:40000/udp"
@@ -70,6 +70,42 @@ services:
       - SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
       - SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+
+  portal_cruncher:
+    build: 
+      context: .
+      dockerfile: docker/portal_cruncher.Dockerfile
+    ports:
+      - "14000:80"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+
+  map_cruncher:
+    build: 
+      context: .
+      dockerfile: docker/map_cruncher.Dockerfile
+    ports:
+      - "15000:80"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+
+  analytics:
+    build: 
+      context: .
+      dockerfile: docker/analytics.Dockerfile
+    ports:
+      - "16000:80"
+    depends_on:
+      - redis
+      - relay_backend
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+      - COST_MATRIX_URL=http://relay_backend/cost_matrix
+      - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
 
 volumes:
   postgres:

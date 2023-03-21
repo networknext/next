@@ -20,6 +20,5 @@ COPY ./envs/local.bin /app/database.bin
 EXPOSE 80
 
 ENV ENV docker
-ENV DEBUG_LOGS 1
 
 CMD [ "/app/relay_gateway" ]

@@ -226,12 +226,14 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Lock()
 
+				/*
 				core.Debug("---------------------------------------------")
 				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("cost matrix num relays: %d", costMatrixNumRelays)
 				core.Debug("cost matrix num dest relays: %d", costMatrixNumDestRelays)
 				core.Debug("cost matrix num datacenters: %d", costMatrixNumDatacenters)
 				core.Debug("---------------------------------------------")
+				*/
 
 				logMutex.Unlock()
 
@@ -334,10 +336,11 @@ func ProcessRouteMatrix(service *common.Service) {
 				}
 				routeMatrixNumDatacenters := len(datacenterMap)
 
-				// todo: bring back updated data structures for full relays in route matrix
-				routeMatrixNumFullRelays := 0
-
 				analysis := routeMatrix.Analyze()
+
+				/*
+
+				routeMatrixNumFullRelays := 0
 
 				core.Debug("---------------------------------------------")
 
@@ -367,7 +370,7 @@ func ProcessRouteMatrix(service *common.Service) {
 				core.Debug("route matrix rtt bucket 40-45ms: %.1f%%", analysis.RTTBucket_40_45ms)
 				core.Debug("route matrix rtt bucket 45-50ms: %.1f%%", analysis.RTTBucket_45_50ms)
 				core.Debug("route matrix rtt bucket 50ms+: %.1f%%", analysis.RTTBucket_50ms_Plus)
-
+				
 				totalPercent := analysis.RTTBucket_NoImprovement +
 					analysis.RTTBucket_0_5ms +
 					analysis.RTTBucket_5_10ms +
@@ -384,6 +387,7 @@ func ProcessRouteMatrix(service *common.Service) {
 				core.Debug("route matrix rtt bucket total percent: %.1f%%", totalPercent)
 
 				core.Debug("---------------------------------------------")
+				*/
 
 				logMutex.Unlock()
 

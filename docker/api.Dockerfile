@@ -13,13 +13,10 @@ COPY /cmd/ /app/cmd/
 
 RUN go mod download
 
-RUN go build -o relay_backend /app/cmd/relay_backend/*.go
-
-COPY ./envs/local.bin /app/database.bin
+RUN go build -o api /app/cmd/api/*.go
 
 EXPOSE 80
 
 ENV ENV docker
-ENV DEBUG_LOGS 1
 
-CMD [ "/app/relay_backend" ]
+CMD [ "/app/api" ]
