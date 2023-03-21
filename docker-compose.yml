@@ -1,6 +1,15 @@
 version: "3.9"
 services:
 
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: developer
+      PGDATA: /data/postgres
+    volumes:
+       - postgres:/data/postgres
+
   redis:
     image: redis:6.2-alpine
     restart: always
@@ -26,3 +35,7 @@ services:
       - MAGIC_URL=http://magic_backend/magic
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+
+volumes:
+  postgres:
+    driver: local
