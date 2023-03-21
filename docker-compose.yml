@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+
+  magic_backend:
+    build: 
+      context: .
+      dockerfile: docker/magic_backend/Dockerfile
+    ports:
+      - "10000:80"
