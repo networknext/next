@@ -1,22 +1,55 @@
 DONE
 	
-	Add concept of API_KEY to talk to the API
-
-	Use a JWT.
-
-	Get curl working with auth bearer for the api key
-
-	Decorate all REST API handlers with authorization.
-
-	Extend the next tool to use the api key to make calls.
-
-	Deploy new API service to dev and make sure I can call it from the next tool
-
-	Make sure func tests that use API also use api key
-
-	Verify that happy path and all func tests pass
-
 TODO
+
+	Go hard with docker to get it easy to setup and use
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	---------
 
 	Debug why "next database" can't read the GOB
 
