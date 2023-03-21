@@ -1068,6 +1068,7 @@ func (service *Service) updateMagicValues(magicData []byte) {
 func (service *Service) updateMagicLoop() {
 
 	magicURL := envvar.GetString("MAGIC_URL", "http://127.0.0.1:41007/magic")
+	magicInterval := envvar.GetDuration("MAGIC_INTERVAL", time.Second)
 
 	core.Log("magic url: %s", magicURL)
 
@@ -1096,7 +1097,7 @@ func (service *Service) updateMagicLoop() {
 
 	go func() {
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(magicInterval)
 
 		for {
 			select {

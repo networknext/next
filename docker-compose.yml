@@ -34,6 +34,7 @@ services:
     environment:
       - REDIS_HOSTNAME=redis:6379
       - MAGIC_URL=http://magic_backend/magic
+      - MAGIC_INTERVAL=10s
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
 
@@ -48,6 +49,7 @@ services:
       - relay_gateway
     environment:
       - REDIS_HOSTNAME=redis:6379
+      - ROUTE_MATRIX_INTERVAL=10s
 
   server_backend:
     build: 
@@ -62,10 +64,12 @@ services:
     environment:
       - REDIS_HOSTNAME=redis:6379
       - MAGIC_URL=http://magic_backend/magic
+      - MAGIC_INTERVAL=10s
+      - ROUTE_MATRIX_INTERVAL=10s
+      - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
       - SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
       - SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
-      - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
 
 volumes:
   postgres:
