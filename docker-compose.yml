@@ -49,6 +49,24 @@ services:
     environment:
       - REDIS_HOSTNAME=redis:6379
 
+  server_backend:
+    build: 
+      context: .
+      dockerfile: docker/server_backend/Dockerfile
+    ports:
+      - "13000:80/tcp"
+      - "45000:40000/udp"
+    depends_on:
+      - magic_backend
+      - relay_gateway
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+      - MAGIC_URL=http://magic_backend/magic
+      - SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
+      - SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+      - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+      - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
+
 volumes:
   postgres:
     driver: local
