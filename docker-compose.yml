@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
 
   postgres:
@@ -35,6 +36,18 @@ services:
       - MAGIC_URL=http://magic_backend/magic
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+
+  relay_backend:
+    build: 
+      context: .
+      dockerfile: docker/relay_backend/Dockerfile
+    ports:
+      - "12000:80"
+    depends_on:
+      - redis
+      - relay_gateway
+    environment:
+      - REDIS_HOSTNAME=redis:6379
 
 volumes:
   postgres:
