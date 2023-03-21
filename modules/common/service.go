@@ -112,7 +112,7 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("%s", service.ServiceName)
 
-	env := envvar.GetString("ENV", "local")
+	env := envvar.GetString("ENV", "")
 
 	core.Log("env: %s", env)
 
@@ -120,9 +120,17 @@ func CreateService(serviceName string) *Service {
 
 	service.Env = env
 
-	core.Log("commit message: %s", service.CommitMessage)
-	core.Log("commit hash: %s", service.CommitHash)
-	core.Log("build time: %s", service.BuildTime)
+	if service.CommitMessage != "" {
+		core.Log("commit message: %s", service.CommitMessage)
+	}
+	
+	if service.CommitHash != "" {
+		core.Log("commit hash: %s", service.CommitHash)
+	}
+
+	if service.BuildTime != "" {
+		core.Log("build time: %s", service.BuildTime)
+	}
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
