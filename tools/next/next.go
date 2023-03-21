@@ -37,6 +37,7 @@ import (
 	db "github.com/networknext/backend/modules/database"
 	"github.com/networknext/backend/modules/portal"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
@@ -275,6 +276,10 @@ func getKeyValue(envFile string, keyName string) string {
 		return ""
 	}
 	value = value[:len(value)-1]
+	if value[0] == '"' || value[0] == '\'' {
+		value = value[1:len(value)-1]
+	}
+
 	return value
 }
 
@@ -337,6 +342,8 @@ func main() {
 			env.PortalURL = getKeyValue(envFilePath, "PORTAL_REST_API_URL")
 			env.DatabaseURL = getKeyValue(envFilePath, "DATABASE_REST_API_URL")
 			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
+			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
+			env.APIKey = getKeyValue(envFilePath, "API_KEY")
 			env.Write()
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
@@ -403,12 +410,43 @@ func main() {
 		},
 	}
 
+	var pingCommand = &ffcli.Command{
+		Name:       "ping",
+		ShortUsage: "next ping",
+		ShortHelp:  "Ping the REST API in the current environment",
+		Exec: func(_ context.Context, args []string) error {
+			ping()
+			return nil
+		},
+	}
+
 	var databaseCommand = &ffcli.Command{
 		Name:       "database",
 		ShortUsage: "next database",
 		ShortHelp:  "Print the database for the current environment",
 		Exec: func(_ context.Context, args []string) error {
 			printDatabase()
+			return nil
+		},
+	}
+
+	var apiKeyCommand = &ffcli.Command{
+		Name:       "api-key",
+		ShortUsage: "next api-key",
+		ShortHelp:  "Generates an API key for use with the REST API in the current env",
+		Exec: func(_ context.Context, args []string) error {
+			token := jwt.New(jwt.SigningMethodHS256)
+			claims := token.Claims.(jwt.MapClaims)
+			claims["database"] = true
+			claims["admin"] = true
+			claims["portal"] = true
+			privateKey := env.APIPrivateKey
+			tokenString, err := token.SignedString([]byte(privateKey))
+			if err != nil {
+				fmt.Printf("error: not generate API_KEY: %s", err.Error())
+				os.Exit(1)
+			}
+			fmt.Printf("API_KEY = %s\n\n", tokenString)
 			return nil
 		},
 	}
@@ -670,6 +708,7 @@ func main() {
 	var commands = []*ffcli.Command{
 		selectCommand,
 		envCommand,
+		pingCommand,
 		initCommand,
 		deployCommand,
 		destroyCommand,
@@ -688,6 +727,7 @@ func main() {
 		costCommand,
 		optimizeCommand,
 		analyzeCommand,
+		apiKeyCommand,
 		hashCommand,
 	}
 
@@ -752,7 +792,10 @@ func GetJSON(url string, object interface{}) {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -776,12 +819,15 @@ func GetJSON(url string, object interface{}) {
 	}
 }
 
-func GetBinary(url string) []byte {
+func GetText(url string) string {
 
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -790,6 +836,40 @@ func GetBinary(url string) []byte {
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	return string(body)
+}
+
+func GetBinary(url string) []byte {
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 30; i++ {
+	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response == nil {
+		core.Error("no response from api")
+		os.Exit(1)
 	}
 
 	body, error := ioutil.ReadAll(response.Body)
@@ -1190,11 +1270,13 @@ func keygen() {
 // --------------------------------------------------------------------------------------------
 
 type Environment struct {
-	Name        string `json:"name"`
-	AdminURL    string `json:"admin_url"`
-	PortalURL   string `json:"portal_url"`
-	DatabaseURL string `json:"database_url"`
-	SSHKeyFile  string `json:"ssh_key_filepath"`
+	Name          string `json:"name"`
+	AdminURL      string `json:"admin_url"`
+	PortalURL     string `json:"portal_url"`
+	DatabaseURL   string `json:"database_url"`
+	SSHKeyFile    string `json:"ssh_key_filepath"`
+	APIPrivateKey string `json:"api_private_key"`
+	APIKey        string `json:"api_key"`
 }
 
 func (e *Environment) String() string {
@@ -1403,6 +1485,13 @@ func terraformDestroy(env Environment, component string) {
 	fmt.Printf("destroying %s in %s\n\n", component, env.Name)
 	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
 	fmt.Printf("\n")
+}
+
+// -------------------------------------------------------------------------------------------
+
+func ping() {
+	text := GetText(fmt.Sprintf("%s/ping", env.AdminURL))
+	fmt.Printf("%s\n\n", text)
 }
 
 // -------------------------------------------------------------------------------------------

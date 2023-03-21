@@ -78,11 +78,6 @@ blocks:
             - artifact pull workflow magic_backend.tar.gz
             - gsutil cp magic_backend.tar.gz $ARTIFACT_BUCKET
 
-        - name: "UDP"
-          commands:
-            - artifact pull workflow udp.tar.gz
-            - gsutil cp udp.tar.gz $ARTIFACT_BUCKET
-
         - name: "Raspberry Backend"
           commands:
             - artifact pull workflow raspberry_backend.tar.gz

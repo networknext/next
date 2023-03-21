@@ -26,17 +26,17 @@ DONE
 
 	Terraform modules to setup relays with google, amazon, akamai and linode (dev).
 
-TODO
-
 	Resolve external UDP load balancer blocker.
+
+TODO
 
 	------------
 
-	Setup HTTPs for api service.
+	HTTPS for api service
 
-	Setup HTTPS for relay backend.
+	HTTPS for relay gateway
 
-	Require API_KEY for use of API.
+	API_KEY for API.
 
 	------------
 
@@ -49,6 +49,10 @@ TODO
 	Setup bigquery in dev with terraform.
 
 	Analytics service inserts data into bigquery in dev.
+
+	------------
+
+	Get whole env up and working in dev.
 
 	------------
 

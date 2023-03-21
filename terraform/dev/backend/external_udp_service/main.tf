@@ -64,6 +64,7 @@ resource "google_compute_instance_template" "service" {
   network_interface {
     network    = var.default_network
     subnetwork = var.default_subnetwork
+    access_config {}
   }
 
   tags = var.tags
@@ -75,7 +76,7 @@ resource "google_compute_instance_template" "service" {
   }
 
   metadata = {
-    startup-script = var.startup_script
+    startup-script = replace(var.startup_script, "##########", google_compute_address.service.address)
   }
 
   service_account {

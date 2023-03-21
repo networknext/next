@@ -43,16 +43,15 @@ var datacenterMap = map[string]*Datacenter{
 	"northamerica-northeast1": {"montreal", 45.5019, -73.5674},
 	"northamerica-northeast2": {"toronto", 43.6532, -79.3832},
 	"southamerica-east1":      {"saopaulo", -23.5558, -46.6396},
-	"southamerica-west1":      {"santiago",	-33.4489, -70.6693},
+	"southamerica-west1":      {"santiago", -33.4489, -70.6693},
 	"us-central1":             {"iowa", 41.8780, -93.0977},
 	"us-east4":                {"virginia", 37.4316, -78.6569},
 	"us-east5":                {"ohio", 39.9612, -82.9988},
 	"us-south1":               {"dallas", 32.7767, -96.7970},
-	"us-west1":                {"oregon",	45.5946, -121.1787},
+	"us-west1":                {"oregon", 45.5946, -121.1787},
 	"us-west2":                {"losangeles", 34.0522, -118.2437},
 	"us-west3":                {"saltlakecity", 40.7608, -111.8910},
 	"us-west4":                {"lasvegas", 36.1716, -115.1391},
-
 }
 
 type Datacenter struct {
@@ -239,64 +238,64 @@ func main() {
 		}
 	}
 
- 	// generate google.txt
+	// generate google.txt
 
- 	fmt.Printf("\nGenerating google.txt\n")
+	fmt.Printf("\nGenerating google.txt\n")
 
- 	file, err := os.Create("config/google.txt")
- 	if err != nil {
- 		panic(err)
- 	}
+	file, err := os.Create("config/google.txt")
+	if err != nil {
+		panic(err)
+	}
 
- 	for i := range zones {
- 		if zones[i].DatacenterName != "" {
- 			fmt.Fprintf(file, "%s,%s\n", zones[i].Zone, zones[i].DatacenterName)
- 		}
- 	}
+	for i := range zones {
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, "%s,%s\n", zones[i].Zone, zones[i].DatacenterName)
+		}
+	}
 
- 	file.Close()
+	file.Close()
 
- 	// generate google.sql
+	// generate google.sql
 
- 	fmt.Printf("\nGenerating google.sql\n")
+	fmt.Printf("\nGenerating google.sql\n")
 
- 	file, err = os.Create("schemas/sql/sellers/google.sql")
- 	if err != nil {
- 		panic(err)
- 	}
+	file, err = os.Create("schemas/sql/sellers/google.sql")
+	if err != nil {
+		panic(err)
+	}
 
- 	fmt.Fprintf(file, "\n-- google datacenters\n")
+	fmt.Fprintf(file, "\n-- google datacenters\n")
 
- 	format_string := "\nINSERT INTO datacenters(\n" +
- 		"	datacenter_name,\n" +
- 		"	native_name,\n" +
- 		"	latitude,\n" +
- 		"	longitude,\n" +
- 		"	seller_id)\n" +
- 		"VALUES(\n" +
- 		"   '%s',\n" +
- 		"   '%s',\n" +
- 		"   %f,\n" +
- 		"   %f,\n" +
- 		"   (select seller_id from sellers where seller_name = 'google')\n" +
- 		");\n"
+	format_string := "\nINSERT INTO datacenters(\n" +
+		"	datacenter_name,\n" +
+		"	native_name,\n" +
+		"	latitude,\n" +
+		"	longitude,\n" +
+		"	seller_id)\n" +
+		"VALUES(\n" +
+		"   '%s',\n" +
+		"   '%s',\n" +
+		"   %f,\n" +
+		"   %f,\n" +
+		"   (select seller_id from sellers where seller_name = 'google')\n" +
+		");\n"
 
- 	for i := range zones {
- 		if zones[i].DatacenterName != "" {
- 			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
- 		}
- 	}
+	for i := range zones {
+		if zones[i].DatacenterName != "" {
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
+		}
+	}
 
- 	file.Close()
+	file.Close()
 
- 	// generate google/generated.tf
+	// generate google/generated.tf
 
- 	file, err = os.Create("terraform/suppliers/google/generated.tf")
- 	if err != nil {
- 		panic(err)
- 	}
+	file, err = os.Create("terraform/suppliers/google/generated.tf")
+	if err != nil {
+		panic(err)
+	}
 
- 	fmt.Printf("\nGenerating google/generated.tf\n")
+	fmt.Printf("\nGenerating google/generated.tf\n")
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 

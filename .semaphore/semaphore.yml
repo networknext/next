@@ -153,11 +153,6 @@ blocks:
             - make dist/raspberry_backend.tar.gz
             - artifact push workflow dist/raspberry_backend.tar.gz
 
-        - name: "UDP"
-          commands:
-            - make dist/udp.tar.gz
-            - artifact push workflow dist/udp.tar.gz
-
   - name: "Build Artifacts (Native)"
 
     dependencies: []

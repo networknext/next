@@ -432,6 +432,7 @@ module "api" {
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=postgres sslmode=disable"
+    API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
@@ -531,12 +532,13 @@ module "server_backend" {
     ENV=dev
     DEBUG_LOGS=1
     UDP_PORT=45000
+    UDP_BIND_ADDRESS="##########:45000"
     GOOGLE_PROJECT_ID=${var.project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
-    SERVER_BACKEND_ADDRESS=self.address
+    SERVER_BACKEND_ADDRESS="##########:45000"
     SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
     SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
@@ -652,7 +654,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
-    RASPBERRY_NUM_CLIENTS=1
+    RASPBERRY_NUM_CLIENTS=64
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/libnext5.so /usr/local/lib/libnext5.so
     sudo ldconfig

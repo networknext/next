@@ -390,7 +390,7 @@ func StartUDPServer() {
 	config.SocketReadBuffer = 1024 * 1024
 	config.SocketWriteBuffer = 1024 * 1024
 	config.MaxPacketSize = 4096
-	config.BindAddress = &bindAddress
+	config.BindAddress = bindAddress
 
 	common.CreateUDPServer(context.Background(), config, packetHandler)
 }

@@ -1,14 +1,8 @@
 DONE
 	
-	Modify API service setup in terraform so it can only be accessed from the vpn address
-
 TODO
 
-	Create a udp test service running on port 45000
-
-	Should just be a mirror server.
-
-	Print out on each packet received.
+	Go hard with docker to get it easy to setup and use
 
 
 
@@ -55,6 +49,15 @@ TODO
 
 
 
+	---------
+
+	Debug why "next database" can't read the GOB
+
+	Verify that func test database passes
+
+	Verify that I can "next select dev" and "next database" to view the current database.
+
+	---------
 
 
 
@@ -69,9 +72,6 @@ TODO
 
 
 
-	-----------------------
-
-	Add concept of API_KEY to talk to the API
 
 	-----------------------
 
@@ -85,37 +85,72 @@ TODO
 
 	-----------------------
 
+	Next step has to be to actually setup some relays.
+
+	Let's do this via a terraform provider for network next.
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------------
+
 	Spin up relays with terraform and verify they are showing up in dev
 
 	-----------------------
 
-	Fix external UDP load balancer blocker with server backend
-
-	-----------------------
-
-	Verify that the raspberry server inits with the server backend.
-
-	-----------------------
-
-	Verify that the raspberry client connects and upgrades
-
-	-----------------------
-
-	Verify that I can run a raspberry server locally after "next select dev" and it initializes with the dev server backend.
-
-	Need to make sure the server backend UDP packets sent back to the server, "come from" the IP address and port of the load balancer.
-
-	Details here: https://cloud.google.com/load-balancing/docs/network/udp-with-network-load-balancing
-
-	This can be done by adjusting the startup script in the instance template, *OR* by forcing the server backend to bind to the load balancer address.
-
-	-----------------------
-
 	Verify that I can run raspberry clients locally and they hit the raspberry backend and connect to servers and upgrade.
-
-	-----------------------
-
-	Verify that I can run a bunch of raspberry clients and servers in dev and they all show up in the next tool, eg: "next relays"
 
 	-----------------------
 
@@ -533,5 +568,9 @@ Nice to have:
 	--------------
 
 	Remember to bring back logic to exclude near relays with significantly higher than average jitter
+
+	--------------
+
+	Need some way to easily deploy backend code without having to manually edit terraform.tfvars to increase the counter
 
 	--------------
