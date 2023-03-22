@@ -32,6 +32,7 @@ type RedisLeaderElection struct {
 
 	leaderMutex sync.RWMutex
 	isLeader    bool
+	isReady     bool
 }
 
 type InstanceEntry struct {
@@ -205,6 +206,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	previousValue := leaderElection.isLeader
 	currentValue := leaderInstance.InstanceId == leaderElection.instanceId
 	leaderElection.isLeader = currentValue
+	leaderElection.isReady = true
 	leaderElection.leaderMutex.Unlock()
 
 	if !previousValue && currentValue {
@@ -252,6 +254,13 @@ func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string
 func (leaderElection *RedisLeaderElection) IsLeader() bool {
 	leaderElection.leaderMutex.RLock()
 	value := leaderElection.isLeader
+	leaderElection.leaderMutex.RUnlock()
+	return value
+}
+
+func (leaderElection *RedisLeaderElection) IsReady() bool {
+	leaderElection.leaderMutex.RLock()
+	value := leaderElection.isReady
 	leaderElection.leaderMutex.RUnlock()
 	return value
 }

@@ -24,10 +24,10 @@ func main() {
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
-	core.Log("num map update threads: %d", numMapUpdateThreads)
-	core.Log("redis hostname: %s", redisHostname)
-
 	service := common.CreateService("map_cruncher")
+
+	core.Debug("num map update threads: %d", numMapUpdateThreads)
+	core.Debug("redis hostname: %s", redisHostname)
 
 	for i := 0; i < numMapUpdateThreads; i++ {
 		ProcessMessages[*messages.PortalMapUpdateMessage](service, "map update", i, ProcessMapUpdate)

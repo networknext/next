@@ -87,6 +87,7 @@ type Service struct {
 
 	sendTrafficToMe  func() bool
 	machineIsHealthy func() bool
+	ready            func() bool
 
 	udpServer *UDPServer
 
@@ -137,6 +138,7 @@ func CreateService(serviceName string) *Service {
 	service.Router.HandleFunc("/database", service.databaseHandlerFunc())
 	service.Router.HandleFunc("/lb_health", service.lbHealthHandlerFunc())
 	service.Router.HandleFunc("/vm_health", service.vmHealthHandlerFunc())
+	service.Router.HandleFunc("/ready", service.readyHandlerFunc())
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
@@ -155,13 +157,15 @@ func CreateService(serviceName string) *Service {
 
 	service.sendTrafficToMe = func() bool { return true }
 	service.machineIsHealthy = func() bool { return true }
+	service.ready = func() bool { return true }
 
 	return &service
 }
 
-func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineIsHealthy func() bool) {
+func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineIsHealthy func() bool, ready func() bool) {
 	service.sendTrafficToMe = sendTrafficToMe
 	service.machineIsHealthy = machineIsHealthy
+	service.ready = ready
 }
 
 func (service *Service) LoadDatabase() {
@@ -231,7 +235,6 @@ func (service *Service) ValidateIP2Location(filenames []string) bool {
 	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
 
 	return validateIP2Location(cityReader, ispReader)
-
 }
 
 func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bool {
@@ -268,7 +271,6 @@ func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bo
 	}
 
 	return valid
-
 }
 
 // todo: why double up these functions?!
@@ -374,6 +376,23 @@ func (service *Service) vmHealthHandlerFunc() func(w http.ResponseWriter, r *htt
 		}
 		defer r.Body.Close()
 		if !service.machineIsHealthy() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func (service *Service) readyHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		if !service.ready() {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -603,6 +622,13 @@ func (service *Service) IsLeader() bool {
 		return service.leaderElection.IsLeader()
 	}
 	return false
+}
+
+func (service *Service) IsReady() bool {
+	if service.leaderElection != nil {
+		return service.leaderElection.IsReady()
+	}
+	return true
 }
 
 func (service *Service) WaitForShutdown() {
@@ -1070,7 +1096,7 @@ func (service *Service) updateMagicLoop() {
 	magicURL := envvar.GetString("MAGIC_URL", "http://127.0.0.1:41007/magic")
 	magicInterval := envvar.GetDuration("MAGIC_INTERVAL", time.Second)
 
-	core.Log("magic url: %s", magicURL)
+	core.Debug("magic url: %s", magicURL)
 
 	httpClient := &http.Client{
 		Timeout: time.Second,

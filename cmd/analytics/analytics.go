@@ -38,14 +38,14 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
 
-	core.Log("cost matrix url: %s", costMatrixURL)
-	core.Log("route matrix url: %s", routeMatrixURL)
-	core.Log("cost matrix interval: %s", costMatrixInterval)
-	core.Log("route matrix interval: %s", routeMatrixInterval)
-	core.Log("google project id: %s", googleProjectId)
-	core.Log("bigquery dataset: %s", bigqueryDataset)
-	core.Log("enable google pubsub: %v", enableGooglePubsub)
-	core.Log("enable google bigquery: %v", enableGoogleBigquery)
+	core.Debug("cost matrix url: %s", costMatrixURL)
+	core.Debug("route matrix url: %s", routeMatrixURL)
+	core.Debug("cost matrix interval: %s", costMatrixInterval)
+	core.Debug("route matrix interval: %s", routeMatrixInterval)
+	core.Debug("google project id: %s", googleProjectId)
+	core.Debug("bigquery dataset: %s", bigqueryDataset)
+	core.Debug("enable google pubsub: %v", enableGooglePubsub)
+	core.Debug("enable google bigquery: %v", enableGoogleBigquery)
 
 	ProcessCostMatrix(service)
 
@@ -157,7 +157,7 @@ func ProcessCostMatrix(service *common.Service) {
 	var googlePubsubProducer *common.GooglePubsubProducer
 	if enableGooglePubsub {
 		pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
-		core.Log("cost matrix stats google pubsub topic: %s", pubsubTopic)
+		core.Debug("cost matrix stats google pubsub topic: %s", pubsubTopic)
 		config := common.GooglePubsubConfig{
 			ProjectId:          googleProjectId,
 			Topic:              pubsubTopic,
@@ -263,7 +263,7 @@ func ProcessRouteMatrix(service *common.Service) {
 	var googlePubsubProducer *common.GooglePubsubProducer
 	if enableGooglePubsub {
 		pubsubTopic := envvar.GetString("ROUTE_MATRIX_UPDATE_PUBSUB_TOPIC", "route_matrix_update")
-		core.Log("route matrix stats google pubsub topic: %s", pubsubTopic)
+		core.Debug("route matrix stats google pubsub topic: %s", pubsubTopic)
 		config := common.GooglePubsubConfig{
 			ProjectId:          googleProjectId,
 			Topic:              pubsubTopic,

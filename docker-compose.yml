@@ -10,6 +10,11 @@ services:
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
+    healthcheck:
+      test: pg_isready -U developer -d postgres
+      interval: 5s
+      timeout: 3s
+      retries: 3
 
   redis:
     image: redis:6.2-alpine
@@ -53,6 +58,11 @@ services:
     environment:
       - REDIS_HOSTNAME=redis:6379
       - ROUTE_MATRIX_INTERVAL=10s
+    healthcheck:
+      test: curl --fail http://localhost/ready || exit 1
+      interval: 5s
+      retries: 10
+      timeout: 1s
 
   server_backend:
     build: 
@@ -138,6 +148,8 @@ services:
     networks:
       relays:
         ipv4_address: 10.5.0.5
+    depends_on:
+      - relay_backend
     
   relay_2:
     build: 
@@ -153,6 +165,8 @@ services:
     networks:
       relays:
         ipv4_address: 10.5.0.6
+    depends_on:
+      - relay_backend
 
   relay_3:
     build: 
@@ -168,6 +182,8 @@ services:
     networks:
       relays:
         ipv4_address: 10.5.0.7
+    depends_on:
+      - relay_backend
 
   relay_4:
     build: 
@@ -183,6 +199,8 @@ services:
     networks:
       relays:
         ipv4_address: 10.5.0.8
+    depends_on:
+      - relay_backend
 
   relay_5:
     build: 
@@ -198,6 +216,8 @@ services:
     networks:
       relays:
         ipv4_address: 10.5.0.9
+    depends_on:
+      - relay_backend
 
 networks:
   relays:

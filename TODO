@@ -10,11 +10,21 @@ DONE
 
 	Get all relays up with static addresses and working with relay backend
 
-TODO
+	Added health check to postgres
 
 	error receiving messages: redis: nil
 
 	^-- fix this annoying error (it's not an error)
+
+TODO
+	
+	Think hard about health checks for services in docker compose.
+
+	The health checks should return true when the services are ready to do their function.
+
+	This way the relays can stop and wait for the relay backend to be ready.
+
+	The client and server can stop and wait for the server backend to be ready, etc.
 
 	-----------------------------------
 

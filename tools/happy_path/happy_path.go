@@ -183,7 +183,7 @@ func happy_path(wait bool) int {
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
 			strings.Contains(relay_backend_1_stdout.String(), "loaded database: database.bin") &&
-			strings.Contains(relay_backend_1_stdout.String(), "relay backend is ready") {
+			strings.Contains(relay_backend_1_stdout.String(), "initial delay completed") {
 			relay_backend_1_initialized = true
 			break
 		}

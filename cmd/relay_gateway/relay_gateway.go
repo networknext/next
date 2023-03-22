@@ -40,11 +40,11 @@ func main() {
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 
-	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis pubsub channel name: %s", redisPubsubChannelName)
-	core.Log("relay update batch size: %d", relayUpdateBatchSize)
-	core.Log("relay update batch duration: %v", relayUpdateBatchDuration)
-	core.Log("relay update channel size: %d", relayUpdateChannelSize)
+	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
+	core.Debug("relay update batch size: %d", relayUpdateBatchSize)
+	core.Debug("relay update batch duration: %v", relayUpdateBatchDuration)
+	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
 
 	if len(relayBackendPublicKey) == 0 {
 		core.Error("You must supply RELAY_BACKEND_PUBLIC_KEY")

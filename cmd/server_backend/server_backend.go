@@ -55,12 +55,12 @@ func main() {
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
-	core.Log("channel size: %d", channelSize)
-	core.Log("max packet size: %d bytes", maxPacketSize)
-	core.Log("server backend address: %s", serverBackendAddress.String())
-	core.Log("enable google pubsub: %v", enableGooglePubsub)
-	core.Log("enable redis streams: %v", enableRedisStreams)
-	core.Log("redis hostname: %s", redisHostname)
+	core.Debug("channel size: %d", channelSize)
+	core.Debug("max packet size: %d bytes", maxPacketSize)
+	core.Debug("server backend address: %s", serverBackendAddress.String())
+	core.Debug("enable google pubsub: %v", enableGooglePubsub)
+	core.Debug("enable redis streams: %v", enableRedisStreams)
+	core.Debug("redis hostname: %s", redisHostname)
 
 	if len(serverBackendPublicKey) == 0 {
 		panic("SERVER_BACKEND_PUBLIC_KEY must be specified")
@@ -106,7 +106,7 @@ func main() {
 
 	service.UpdateRouteMatrix()
 
-	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy)
+	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy, ready)
 
 	// todo: not ready yet
 	/*
@@ -131,6 +131,11 @@ func sendTrafficToMe() bool {
 
 func machineIsHealthy() bool {
 	return true
+}
+
+func ready() bool {
+	routeMatrix, database := service.RouteMatrixAndDatabase()
+	return routeMatrix != nil && len(routeMatrix.RelayIds) > 0 && database != nil
 }
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -247,7 +252,7 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 
 		pubsubTopic := envvar.GetString(envVarName, defaultPubsubTopic)
 
-		core.Log("analytics %s google pubsub topic: %s", name, pubsubTopic)
+		core.Debug("analytics %s google pubsub topic: %s", name, pubsubTopic)
 
 		config := common.GooglePubsubConfig{
 			ProjectId:          service.GoogleProjectId,
