@@ -3,17 +3,17 @@ version: "3.9"
 services:
 
   postgres:
-    image: postgres:14-alpine
+    build: 
+      context: .
+      dockerfile: docker/postgres.Dockerfile
     environment:
       POSTGRES_USER: developer
       POSTGRES_PASSWORD: developer
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
-       - ./schemas/sql/create.sql:/docker-entrypoint-initdb.d/create.sql
-       - ./schemas/sql/docker.sql:/docker-entrypoint-initdb.d/docker.sql
     ports:
-      - '5432:5432'
+      - '5436:5432'
     restart: always
 
   redis:
@@ -131,7 +131,7 @@ services:
       - postgres
     environment:
       - REDIS_HOSTNAME=redis:6379
-      - PGSQL_CONFIG=host=postgres port=5432 user=developer password=developer dbname=postgres sslmode=disable
+      - PGSQL_CONFIG=host=postgres port=5432 user=developer password=developer dbname=developer sslmode=disable
       - API_PRIVATE_KEY=this is the private key that generates API keys. make sure you change this value in production
     restart: always
 
