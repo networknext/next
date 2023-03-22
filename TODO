@@ -16,21 +16,31 @@ DONE
 
 	^-- fix this annoying error (it's not an error)
 
+	Setup health checks in docker for relay backend. Only start relays when health check passes.
+
 TODO
-	
-	Think hard about health checks for services in docker compose.
 
-	The health checks should return true when the services are ready to do their function.
+	Setup server in docker.
 
-	This way the relays can stop and wait for the relay backend to be ready.
+	Setup health check in docker for server backend. Only start server when server backend is ready.
 
-	The client and server can stop and wait for the server backend to be ready, etc.
+	-----------------------------------
+
+	Setup client in docker.
+
+	Only start client when server is ready (is it possible to do a health check based on stdout?)
+
+	-----------------------------------
+
+	Time sync to fix "error: route matrix is stale" in server backend.
 
 	-----------------------------------
 
 	Get client and server going over network next
 
+	-----------------------------------
 
+	Update payment information for 
 
 
 

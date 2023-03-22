@@ -9,7 +9,7 @@ COPY ./go.sum /app/go.sum
 
 COPY /modules/ /app/modules/
 
-COPY /cmd/ /app/cmd/
+COPY /cmd/magic_backend/ /app/cmd/magic_backend/
 
 RUN apt update -y && apt install golang-go libsodium-dev ca-certificates -y
 
