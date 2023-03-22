@@ -1,7 +1,44 @@
 DONE
 
+	Why can't I see relays in docker with "next relays" ?
+
+	I think it is not working...
+
+	backend-postgres-1         | 2023-03-22 15:33:44.517 UTC [29] ERROR:  relation "relays" does not exist at character 251
+	backend-postgres-1         | 2023-03-22 15:33:44.517 UTC [29] STATEMENT:
+	backend-postgres-1         | 	SELECT
+	backend-postgres-1         | 		relay_id,
+	backend-postgres-1         | 		relay_name,
+	backend-postgres-1         | 		datacenter_id,
+	backend-postgres-1         | 		public_ip,
+	backend-postgres-1         | 		public_port,
+	backend-postgres-1         | 		internal_ip,
+	backend-postgres-1         | 		internal_port,
+	backend-postgres-1         | 		internal_group,
+	backend-postgres-1         | 		ssh_ip,
+	backend-postgres-1         | 		ssh_port,
+	backend-postgres-1         | 		ssh_user,
+	backend-postgres-1         | 		public_key_base64,
+	backend-postgres-1         | 		private_key_base64,
+	backend-postgres-1         | 		version,
+	backend-postgres-1         | 		mrc,
+	backend-postgres-1         | 		port_speed,
+	backend-postgres-1         | 		max_sessions,
+	backend-postgres-1         | 		notes
+	backend-postgres-1         | 	FROM
+	backend-postgres-1         | 		relays;
+
+	While postgres is up, it's not actually loaded with any useful data.
+
+	Perhaps we should force it to load docker.sql ...
+
 TODO
 
+	Theoretically, the database has loaded the docker.sql, but I still get:
+
+		ERROR:  relation "relays" does not exist at character 251
+
+	I need to psql into the database from the host, to see what's going on in there...
 
 	-----------------------------------
 

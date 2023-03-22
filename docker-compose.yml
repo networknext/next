@@ -10,6 +10,8 @@ services:
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
+       - ./schemas/sql/create.sql:/docker-entrypoint-initdb.d/create.sql
+       - ./schemas/sql/docker.sql:/docker-entrypoint-initdb.d/docker.sql
 
   redis:
     image: redis:6.2-alpine
@@ -128,6 +130,7 @@ services:
       - REDIS_HOSTNAME=redis:6379
       - PGSQL_CONFIG=host=postgres port=5432 user=developer password=developer dbname=postgres sslmode=disable
       - API_PRIVATE_KEY=this is the private key that generates API keys. make sure you change this value in production
+    restart: always
 
   relay_1:
     build: 
