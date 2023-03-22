@@ -12,6 +12,9 @@ services:
        - postgres:/data/postgres
        - ./schemas/sql/create.sql:/docker-entrypoint-initdb.d/create.sql
        - ./schemas/sql/docker.sql:/docker-entrypoint-initdb.d/docker.sql
+    ports:
+      - '5432:5432'
+    restart: always
 
   redis:
     image: redis:6.2-alpine

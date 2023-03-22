@@ -1,21 +1,14 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.10
+FROM network_next_base
 
 WORKDIR /app
 
-RUN apt update -y && apt install golang-go libsodium-dev ca-certificates -y
-
-COPY ./go.mod /app/go.mod
-COPY ./go.sum /app/go.sum
 COPY /modules/ /app/modules/
 COPY /cmd/relay_gateway /app/cmd/relay_gateway
-
-RUN go mod download
+COPY /envs/docker.bin /app/database.bin
 
 RUN go build -o relay_gateway /app/cmd/relay_gateway/*.go
-
-COPY ./envs/docker.bin /app/database.bin
 
 EXPOSE 80
 

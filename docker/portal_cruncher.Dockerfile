@@ -1,17 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.10
+FROM network_next_base
 
 WORKDIR /app
 
-RUN apt update -y && apt install golang-go libsodium-dev ca-certificates -y
-
-COPY ./go.mod /app/go.mod
-COPY ./go.sum /app/go.sum
 COPY /modules/ /app/modules/
 COPY /cmd/portal_cruncher /app/cmd/portal_cruncher/
-
-RUN go mod download
 
 RUN go build -o portal_cruncher /app/cmd/portal_cruncher/*.go
 

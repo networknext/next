@@ -68,8 +68,6 @@ int main()
         next_sleep( 10.0 );
     }
 
-    printf( "\nWelcome to Network Next!\n\n" );
-
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_init( NULL, NULL );

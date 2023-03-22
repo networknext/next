@@ -468,16 +468,14 @@ func GenerateRandomServerData() *ServerData {
 
 // --------------------------------------------------------------------------------------------------
 
-// todo: would be nice to know relay flags here, eg. if shutting down
-
 type RelayData struct {
-	RelayId      uint64
-	RelayAddress string
-	NumSessions  uint32
-	MaxSessions  uint32
-	StartTime    uint64
-	RelayFlags   uint64
-	Version      string
+	RelayId      uint64 `json:"relay_id"`
+	RelayAddress string `json:"relay_address"`
+	NumSessions  uint32 `json:"num_sessions"`
+	MaxSessions  uint32 `json:"max_sessions"`
+	StartTime    uint64 `json:"start_time"`
+	RelayFlags   uint64 `json:"relay_flags"`
+	Version      string `json:"version"`
 }
 
 func (data *RelayData) Value() string {
@@ -1192,6 +1190,8 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData 
 	for i := range relays {
 		relays[i].Parse(redis_relay_data[i])
 		relays[i].RelayAddress = relayEntries[i].Address
+		// todo
+		fmt.Printf("'%s' -> %+v\n", redis_relay_data[i], relays[i])
 	}
 
 	return relays

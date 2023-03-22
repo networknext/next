@@ -930,6 +930,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	}
 
 	for i := range portalRelaysResponse.Relays {
+		fmt.Printf("portal relay: %+v\n", portalRelaysResponse.Relays[i])
 		relayId := portalRelaysResponse.Relays[i].RelayId
 		relay := relayMap[relayId]
 		if relay == nil {

@@ -32,13 +32,53 @@ DONE
 
 	Perhaps we should force it to load docker.sql ...
 
-TODO
-
 	Theoretically, the database has loaded the docker.sql, but I still get:
 
 		ERROR:  relation "relays" does not exist at character 251
 
 	I need to psql into the database from the host, to see what's going on in there...
+
+	It's not there, but using psql from host and loading the data works.
+
+	Which simply means just that the loading data into postgres is not working.
+
+	Optimize so we have a base image. Docker is going crazy with the caching.
+
+TODO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------------------------
 

@@ -393,12 +393,16 @@ func relay_keygen() {
 	bash("go run tools/relay_keygen/relay_keygen.go")
 }
 
+// todo: temp
+
 func sql_create() {
-	bash("psql -U developer postgres -f ./schemas/sql/create.sql")
+	// bash("psql -U developer postgres -f ./schemas/sql/create.sql")
+	bash("PGPASSWORD=developer psql -h localhost -p 5432 -U developer postgres -f ./schemas/sql/create.sql")
 }
 
 func sql_destroy() {
-	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql")
+	// bash("psql -U developer postgres -f ./schemas/sql/destroy.sql")
+	bash("PGPASSWORD=developer psql -h localhost -p 5432 -U developer postgres -f ./schemas/sql/destroy.sql")
 }
 
 func sql_dev() {
@@ -410,7 +414,8 @@ func sql_local() {
 }
 
 func sql_docker() {
-	bash("psql -U developer postgres -f ./schemas/sql/docker.sql")
+	// bash("psql -U developer postgres -f ./schemas/sql/docker.sql")
+	bash("PGPASSWORD=developer psql -h localhost -p 5432 -U developer postgres -f ./schemas/sql/docker.sql")
 }
 
 func extract_database() {

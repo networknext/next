@@ -1,10 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM ubuntu:22.10
+FROM network_next_base
 
 WORKDIR /app
-
-RUN apt update -y && apt install libsodium-dev build-essential libcurl4-openssl-dev -y
 
 COPY relay/ /app
 
