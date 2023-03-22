@@ -1,69 +1,22 @@
 DONE
 
-	Why can't I see relays in docker with "next relays" ?
-
-	I think it is not working...
-
-	backend-postgres-1         | 2023-03-22 15:33:44.517 UTC [29] ERROR:  relation "relays" does not exist at character 251
-	backend-postgres-1         | 2023-03-22 15:33:44.517 UTC [29] STATEMENT:
-	backend-postgres-1         | 	SELECT
-	backend-postgres-1         | 		relay_id,
-	backend-postgres-1         | 		relay_name,
-	backend-postgres-1         | 		datacenter_id,
-	backend-postgres-1         | 		public_ip,
-	backend-postgres-1         | 		public_port,
-	backend-postgres-1         | 		internal_ip,
-	backend-postgres-1         | 		internal_port,
-	backend-postgres-1         | 		internal_group,
-	backend-postgres-1         | 		ssh_ip,
-	backend-postgres-1         | 		ssh_port,
-	backend-postgres-1         | 		ssh_user,
-	backend-postgres-1         | 		public_key_base64,
-	backend-postgres-1         | 		private_key_base64,
-	backend-postgres-1         | 		version,
-	backend-postgres-1         | 		mrc,
-	backend-postgres-1         | 		port_speed,
-	backend-postgres-1         | 		max_sessions,
-	backend-postgres-1         | 		notes
-	backend-postgres-1         | 	FROM
-	backend-postgres-1         | 		relays;
-
-	While postgres is up, it's not actually loaded with any useful data.
-
-	Perhaps we should force it to load docker.sql ...
-
-	Theoretically, the database has loaded the docker.sql, but I still get:
-
-		ERROR:  relation "relays" does not exist at character 251
-
-	I need to psql into the database from the host, to see what's going on in there...
-
-	It's not there, but using psql from host and loading the data works.
-
-	Which simply means just that the loading data into postgres is not working.
-
-	Optimize so we have a base image. Docker is going crazy with the caching.
-
-	It really seems that relay data is not being property inserted into redis.
-
-	When I try to get a list of relay data from redis, it returns empty strings...
-
-	Fixed. It was a bad key. Needed to be "rd-%s", relayAddress. Was just the address.
-
-	Fixed code to merge admin and portal relays.
+	Fix code to initialize postgres.
 
 TODO
 
-	Fix code to initialize postgres.
+	Implement "next sessions"
 
-	Why don't I just setup my own postgres image with apt get?
+	Implement "next servers"
 
-	----------------
+	What else can I check from inside next.go?
 
-	We should really have ways to exercise all portal queries, eg. relays, servers, sessions.
+	---------------------
 
-	In the case of servers / session -- max out at querying top 1000
+	error: route matrix is stale
 
+	This keeps happening randomly. Time synchronization problems?
+
+	---------------------
 
 
 
