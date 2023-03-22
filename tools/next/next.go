@@ -909,18 +909,18 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		Version         string
 	}
 
-	relayMap := make(map[uint64]*RelayRow)
+	relayMap := make(map[string]*RelayRow)
 
 	for i := range adminRelaysResponse.Relays {
-		relayId := adminRelaysResponse.Relays[i].RelayId
-		relay := relayMap[relayId]
+		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
+		relay := relayMap[relayAddress]
 		if relay == nil {
 			relay = &RelayRow{}
-			relayMap[relayId] = relay
+			relayMap[relayAddress] = relay
 		}
 		relay.Name = adminRelaysResponse.Relays[i].RelayName
-		relay.Id = fmt.Sprintf("%016x", relayId)
-		relay.PublicAddress = fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
+		relay.Id = fmt.Sprintf("%x", common.HashString(relayAddress))
+		relay.PublicAddress = relayAddress
 		if adminRelaysResponse.Relays[i].InternalIP != "0.0.0.0" {
 			relay.InternalAddress = fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].InternalIP, adminRelaysResponse.Relays[i].InternalPort)
 		}
@@ -930,17 +930,19 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	}
 
 	for i := range portalRelaysResponse.Relays {
-		fmt.Printf("portal relay: %+v\n", portalRelaysResponse.Relays[i])
-		relayId := portalRelaysResponse.Relays[i].RelayId
-		relay := relayMap[relayId]
+		relayAddress := portalRelaysResponse.Relays[i].RelayAddress
+		relay := relayMap[relayAddress]
 		if relay == nil {
 			continue
 		}
+		// todo: relay flags are not passed up yet -- random data
+		/*
 		if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
 			relay.Status = "shutting down"
 		} else {
+			*/
 			relay.Status = "online"
-		}
+		// }
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
 	}
@@ -979,13 +981,16 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		}
 	}
 
-	if relayCount != 0 {
-		table.Output(outputRelays[0:relayCount])
-	} else {
-		table.Output(outputRelays)
+	if relayCount != 0 && int(relayCount) < len(outputRelays) {
+		outputRelays = outputRelays[0:relayCount]
 	}
 
-	fmt.Printf("\n")
+	if len(outputRelays) > 0 {
+		table.Output(outputRelays)
+		fmt.Printf("\n")
+	} else {
+		fmt.Printf("no relays found\n\n")
+	}
 }
 
 // ----------------------------------------------------------------

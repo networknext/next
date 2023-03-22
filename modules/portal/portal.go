@@ -1170,7 +1170,7 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData 
 
 	args := redis.Args{}
 	for i := range relayEntries {
-		args = args.Add(relayEntries[i].Address)
+		args = args.Add(fmt.Sprintf("rd-%s", relayEntries[i].Address))
 	}
 
 	redisClient.Send("MGET", args...)
@@ -1190,8 +1190,6 @@ func GetRelays(pool *redis.Pool, minutes int64, begin int, end int) []RelayData 
 	for i := range relays {
 		relays[i].Parse(redis_relay_data[i])
 		relays[i].RelayAddress = relayEntries[i].Address
-		// todo
-		fmt.Printf("'%s' -> %+v\n", redis_relay_data[i], relays[i])
 	}
 
 	return relays

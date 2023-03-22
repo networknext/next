@@ -44,10 +44,25 @@ DONE
 
 	Optimize so we have a base image. Docker is going crazy with the caching.
 
+	It really seems that relay data is not being property inserted into redis.
+
+	When I try to get a list of relay data from redis, it returns empty strings...
+
+	Fixed. It was a bad key. Needed to be "rd-%s", relayAddress. Was just the address.
+
+	Fixed code to merge admin and portal relays.
+
 TODO
 
+	Fix code to initialize postgres.
 
+	Why don't I just setup my own postgres image with apt get?
 
+	----------------
+
+	We should really have ways to exercise all portal queries, eg. relays, servers, sessions.
+
+	In the case of servers / session -- max out at querying top 1000
 
 
 
