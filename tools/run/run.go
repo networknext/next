@@ -155,6 +155,8 @@ func main() {
 		sql_dev()
 	} else if command == "sql-local" {
 		sql_local()
+	} else if command == "sql-docker" {
+		sql_docker()
 	} else if command == "extract-database" {
 		extract_database()
 	} else if command == "func-server" {
@@ -405,6 +407,10 @@ func sql_dev() {
 
 func sql_local() {
 	bash("psql -U developer postgres -f ./schemas/sql/local.sql")
+}
+
+func sql_docker() {
+	bash("psql -U developer postgres -f ./schemas/sql/docker.sql")
 }
 
 func extract_database() {

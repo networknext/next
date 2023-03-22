@@ -15,7 +15,7 @@ RUN go mod download
 
 RUN go build -o relay_gateway /app/cmd/relay_gateway/*.go
 
-COPY ./envs/local.bin /app/database.bin
+COPY ./envs/docker.bin /app/database.bin
 
 EXPOSE 80
 

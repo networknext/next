@@ -1,8 +1,25 @@
 DONE
+
+	Get single relay up
 	
+	Assign static IP address to relay
+
+	Adjust config so there is a docker.bin
+
+	This docker.bin has the relays in the specific addresses assigned in docker compose
+
+	Get all relays up with static addresses and working with relay backend
+
 TODO
 
-	Go hard with docker to get it easy to setup and use
+	error receiving messages: redis: nil
+
+	^-- fix this annoying error (it's not an error)
+
+	-----------------------------------
+
+	Get client and server going over network next
+
 
 
 

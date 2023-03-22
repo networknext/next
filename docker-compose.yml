@@ -10,8 +10,6 @@ services:
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:6.2-alpine
@@ -39,6 +37,9 @@ services:
       - MAGIC_INTERVAL=10s
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+    networks:
+      - default
+      - relays
 
   relay_backend:
     build: 
@@ -122,7 +123,90 @@ services:
       - REDIS_HOSTNAME=redis:6379
       - PGSQL_CONFIG=host=postgres port=5432 user=developer password=developer dbname=postgres sslmode=disable
       - API_PRIVATE_KEY=this is the private key that generates API keys. make sure you change this value in production
+
+  relay_1:
+    build: 
+      context: .
+      dockerfile: docker/relay.Dockerfile
+    environment:
+      - RELAY_NAME=relay_1
+      - RELAY_PUBLIC_ADDRESS=10.5.0.5:40000
+      - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+      - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    networks:
+      relays:
+        ipv4_address: 10.5.0.5
     
+  relay_2:
+    build: 
+      context: .
+      dockerfile: docker/relay.Dockerfile
+    environment:
+      - RELAY_NAME=relay_2
+      - RELAY_PUBLIC_ADDRESS=10.5.0.6:40000
+      - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+      - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    networks:
+      relays:
+        ipv4_address: 10.5.0.6
+
+  relay_3:
+    build: 
+      context: .
+      dockerfile: docker/relay.Dockerfile
+    environment:
+      - RELAY_NAME=relay_3
+      - RELAY_PUBLIC_ADDRESS=10.5.0.7:40000
+      - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+      - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    networks:
+      relays:
+        ipv4_address: 10.5.0.7
+
+  relay_4:
+    build: 
+      context: .
+      dockerfile: docker/relay.Dockerfile
+    environment:
+      - RELAY_NAME=relay_4
+      - RELAY_PUBLIC_ADDRESS=10.5.0.8:40000
+      - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+      - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    networks:
+      relays:
+        ipv4_address: 10.5.0.8
+
+  relay_5:
+    build: 
+      context: .
+      dockerfile: docker/relay.Dockerfile
+    environment:
+      - RELAY_NAME=relay_5
+      - RELAY_PUBLIC_ADDRESS=10.5.0.9:40000
+      - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
+      - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
+    networks:
+      relays:
+        ipv4_address: 10.5.0.9
+
+networks:
+  relays:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1
+
 volumes:
   postgres:
     driver: local
