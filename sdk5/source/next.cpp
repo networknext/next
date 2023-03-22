@@ -48,7 +48,7 @@
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME                  "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_PORT                                  "45000"
+#define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
@@ -5771,14 +5771,6 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
 
     next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( &route_token.next_address, to_address_data, &to_address_bytes, &to_address_port );
-
-    // todo
-    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    printf("-----------------------------------------------------\n");
-    printf("magic: %02x %02x %02x %02x %02x %02x %02x %02x\n", magic[0], magic[1], magic[2], magic[3], magic[4], magic[5], magic[6], magic[7] );
-    printf("from: %s\n", next_address_to_string( client_external_address, address_buffer ) );
-    printf("to: %s\n", next_address_to_string( &route_token.next_address, address_buffer ) );
-    printf("-----------------------------------------------------\n");
 
     route_manager->route_data.pending_route_request_packet_bytes = next_write_route_request_packet( route_manager->route_data.pending_route_request_packet_data, token_data, token_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
@@ -14568,7 +14560,8 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
             }
             else
             {
-                next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+                next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname: '%s' (%d)", hostname, i );
+                next_sleep( 1.0 );
             }
         }
     }

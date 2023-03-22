@@ -1,48 +1,21 @@
 DONE
 
-	Get single relay up
-	
-	Assign static IP address to relay
-
-	Adjust config so there is a docker.bin
-
-	This docker.bin has the relays in the specific addresses assigned in docker compose
-
-	Get all relays up with static addresses and working with relay backend
-
-	Added health check to postgres
-
-	error receiving messages: redis: nil
-
-	^-- fix this annoying error (it's not an error)
-
-	Setup health checks in docker for relay backend. Only start relays when health check passes.
-
 TODO
 
-	Setup server in docker.
-
-	Setup health check in docker for server backend. Only start server when server backend is ready.
 
 	-----------------------------------
 
-	Setup client in docker.
-
-	Only start client when server is ready (is it possible to do a health check based on stdout?)
+	Fix up server backend to run on port 40000, not 45000 (local, happy path, dev)
 
 	-----------------------------------
 
-	Time sync to fix "error: route matrix is stale" in server backend.
+	Make sure all func tests and happy path pass
 
 	-----------------------------------
 
-	Get client and server going over network next
+	Update payment information for github so mease tu can fork the repo
 
 	-----------------------------------
-
-	Update payment information for 
-
-
 
 
 

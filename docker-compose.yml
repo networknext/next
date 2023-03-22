@@ -10,11 +10,6 @@ services:
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
-    healthcheck:
-      test: pg_isready -U developer -d postgres
-      interval: 5s
-      timeout: 3s
-      retries: 3
 
   redis:
     image: redis:6.2-alpine
@@ -58,11 +53,6 @@ services:
     environment:
       - REDIS_HOSTNAME=redis:6379
       - ROUTE_MATRIX_INTERVAL=10s
-    healthcheck:
-      test: curl --fail http://localhost/ready || exit 1
-      interval: 5s
-      retries: 10
-      timeout: 1s
 
   server_backend:
     build: 
@@ -83,6 +73,11 @@ services:
       - SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
       - SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+      - SERVER_BACKEND_ADDRESS=10.5.0.100:40000
+    networks:
+      default:
+      relays:
+        ipv4_address: 10.5.0.100
 
   portal_cruncher:
     build: 
@@ -224,7 +219,7 @@ services:
       context: .
       dockerfile: docker/server.Dockerfile
     environment:
-      - NEXT_LOG_LEVEL=4
+      - NEXT_DELAY=1
       - NEXT_DATACENTER=local
       - NEXT_SERVER_ADDRESS=10.5.0.20
       - NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
@@ -233,6 +228,20 @@ services:
     networks:
       relays:
         ipv4_address: 10.5.0.20
+    depends_on:
+      - server_backend
+
+  client:
+    build: 
+      context: .
+      dockerfile: docker/client.Dockerfile
+    environment:
+      - NEXT_DELAY=1
+      - NEXT_CONNECT_ADDRESS=10.5.0.20:30000
+      - NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
+    networks:
+      relays:
+        ipv4_address: 10.5.0.30
     depends_on:
       - server_backend
 

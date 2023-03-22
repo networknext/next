@@ -63,6 +63,11 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
 
 int main()
 {
+    if ( getenv( "NEXT_DELAY" ) )
+    {
+        next_sleep( 10.0 );
+    }
+
     printf( "\nWelcome to Network Next!\n\n" );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );

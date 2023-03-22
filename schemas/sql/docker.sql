@@ -2,12 +2,10 @@
 INSERT INTO customers 
 (
 	live,
-	debug, 
 	customer_name, 
 	customer_code
 ) 
 VALUES (
-	true,
 	true,
 	'Local',
 	'local'
@@ -56,7 +54,7 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.0',
+	'local.1',
 	'10.5.0.5',
 	40000,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
@@ -72,7 +70,7 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.1',
+	'local.2',
 	'10.5.0.6',
 	40000,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
@@ -88,7 +86,7 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.2',
+	'local.3',
 	'10.5.0.7',
 	40000,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
@@ -104,7 +102,7 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.3',
+	'local.4',
 	'10.5.0.8',
 	40000,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
@@ -120,25 +118,9 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.4',
+	'local.5',
 	'10.5.0.9',
 	40000,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
-	(select datacenter_id from datacenters where datacenter_name = 'local')
-);
-
-INSERT INTO relays(
-	relay_name,
-	public_ip,
-	public_port,
-	public_key_base64,
-	private_key_base64,
-	datacenter_id)
-VALUES(
-	'local.5',
-	'10.5.0.10',
-	2005,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
 	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
 	(select datacenter_id from datacenters where datacenter_name = 'local')
