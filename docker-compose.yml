@@ -10,6 +10,8 @@ services:
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:6.2-alpine
@@ -107,6 +109,20 @@ services:
       - COST_MATRIX_URL=http://relay_backend/cost_matrix
       - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
 
+  api:
+    build: 
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "50000:80"
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+      - PGSQL_CONFIG=host=postgres port=5432 user=developer password=developer dbname=postgres sslmode=disable
+      - API_PRIVATE_KEY=this is the private key that generates API keys. make sure you change this value in production
+    
 volumes:
   postgres:
     driver: local

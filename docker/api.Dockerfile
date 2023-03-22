@@ -15,6 +15,8 @@ RUN go mod download
 
 RUN go build -o api /app/cmd/api/*.go
 
+COPY ./envs/local.bin /app/database.bin
+
 EXPOSE 80
 
 ENV ENV docker
