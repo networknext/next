@@ -555,7 +555,7 @@ func (service *Service) UpdateRouteMatrix() {
 				service.routeMatrixMutex.RUnlock()
 
 				if currentRouteMatrix != nil && time.Now().Unix()-int64(currentRouteMatrix.CreatedAt) > 30 {
-					core.Error("route matrix is stale")
+					core.Error("route matrix is stale: created at %d, current time is %d (%d seconds old)", int64(currentRouteMatrix.CreatedAt), time.Now().Unix(), time.Now().Unix()-int64(currentRouteMatrix.CreatedAt))
 					service.routeMatrixMutex.Lock()
 					service.routeMatrix = nil
 					service.routeMatrixMutex.Unlock()

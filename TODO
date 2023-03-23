@@ -4,53 +4,9 @@ DONE
 
 TODO
 
-	Implement "next sessions"
+	Fix up server backend to run on port 40000 in local env, not 45000 (local, happy path, dev)
 
-	Implement "next servers"
-
-	What else can I check from inside next.go?
-
-	---------------------
-
-	error: route matrix is stale
-
-	This keeps happening randomly. Time synchronization problems?
-
-	---------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------------------------
-
-	Fix up server backend to run on port 40000, not 45000 (local, happy path, dev)
+	Adjust in terraform as well. Default to port 40000 for UDP always when in docker or cloud.
 
 	-----------------------------------
 
@@ -62,8 +18,9 @@ TODO
 
 	-----------------------------------
 
+	Update documentation to mention how to build and run in Docker.
 
-
+	-----------------------------------
 
 
 
@@ -627,5 +584,11 @@ Nice to have:
 	--------------
 
 	Need some way to easily deploy backend code without having to manually edit terraform.tfvars to increase the counter
+
+	--------------
+
+	Implement "next sessions"
+
+	Implement "next servers"
 
 	--------------

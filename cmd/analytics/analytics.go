@@ -226,14 +226,12 @@ func ProcessCostMatrix(service *common.Service) {
 
 				logMutex.Lock()
 
-				/*
 				core.Debug("---------------------------------------------")
 				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("cost matrix num relays: %d", costMatrixNumRelays)
 				core.Debug("cost matrix num dest relays: %d", costMatrixNumDestRelays)
 				core.Debug("cost matrix num datacenters: %d", costMatrixNumDatacenters)
 				core.Debug("---------------------------------------------")
-				*/
 
 				logMutex.Unlock()
 
@@ -338,8 +336,6 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				analysis := routeMatrix.Analyze()
 
-				/*
-
 				routeMatrixNumFullRelays := 0
 
 				core.Debug("---------------------------------------------")
@@ -387,7 +383,6 @@ func ProcessRouteMatrix(service *common.Service) {
 				core.Debug("route matrix rtt bucket total percent: %.1f%%", totalPercent)
 
 				core.Debug("---------------------------------------------")
-				*/
 
 				logMutex.Unlock()
 

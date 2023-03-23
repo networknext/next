@@ -207,7 +207,7 @@ func happy_path(wait bool) int {
 	for i := 0; i < 300; i++ {
 		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
 			strings.Contains(relay_backend_2_stdout.String(), "loaded database: database.bin") &&
-			strings.Contains(relay_backend_2_stdout.String(), "relay backend is ready") {
+			strings.Contains(relay_backend_2_stdout.String(), "initial delay completed") {
 			relay_backend_2_initialized = true
 			break
 		}
@@ -383,8 +383,8 @@ func happy_path(wait bool) int {
 	server_backend_initialized := false
 
 	for i := 0; i < 250; i++ {
-		if strings.Contains(server_backend_stdout.String(), "starting http server on port 45000") &&
-			strings.Contains(server_backend_stdout.String(), "starting udp server on port 45000") &&
+		if strings.Contains(server_backend_stdout.String(), "starting http server on port 40000") &&
+			strings.Contains(server_backend_stdout.String(), "starting udp server on port 40000") &&
 			strings.Contains(server_backend_stdout.String(), "updated route matrix: 10 relays") &&
 			strings.Contains(server_backend_stdout.String(), "updated magic values: ") {
 			server_backend_initialized = true

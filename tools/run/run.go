@@ -267,7 +267,7 @@ func relay() {
 }
 
 func server_backend() {
-	bash("HTTP_PORT=45000 UDP_PORT=45000 ./dist/server_backend")
+	bash("HTTP_PORT=40000 ./dist/server_backend")
 }
 
 func website_cruncher() {
