@@ -4,13 +4,13 @@
 
 This repo contains the Network Next backend.
 
-# Running with Docker Compose
+# Run with Docker Compose
 
 You can run a Network Next test environment locally with docker compose on any OS.
 
 1. Install Docker from http://docker.com
 
-2. Download the repository source from https://github.com/networknext/backend
+2. Download the latest release from https://github.com/networknext/backend/releases
 
 3. Build the base image
 
