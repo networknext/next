@@ -362,7 +362,7 @@ func (database *Database) String() string {
 	for _, v := range database.SellerMap {
 
 		row := SellerRow{
-			Id:   fmt.Sprintf("%0x", v.Id),
+			Id:   fmt.Sprintf("%d", v.Id),
 			Name: v.Name,
 		}
 

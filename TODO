@@ -26,9 +26,19 @@ DONE
 
 	This caused me to deploy a broken dev.sql database to production and not notice
 
+	Needed to add "-v ON_ERROR_STOP=1" to psql to make it stop on error
+
+	Verify that all func tests pass
+
+	Verify that I can get dev database with "next database"
+
+	It still fails from dev, but works if I manually copy the database.bin for the environment down from google cloud storage and load it
+
+	I suspect API service has something wrong with the database?
+
+	Fixed.
+
 TODO
-
-
 
 
 

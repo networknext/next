@@ -879,9 +879,9 @@ func databaseBinaryHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	response := database.GetBinary()
+	data := database.GetBinary()
 	w.Header().Set("Content-Type", "application/octet-stream")
-	fmt.Fprintf(w, string(response))
+	w.Write(data)
 }
 
 func databaseHeaderHandler(w http.ResponseWriter, r *http.Request) {
