@@ -469,6 +469,6 @@ verifying map cruncher received map update messages ... OK
 
 # Setup for Development on Windows
 
-Windows is not supported for development.
+Native Windows is not supported for development.
 
 Setup an Ubuntu 22.04 LTS VM under WSL or a Docker Container and follow the Linux instructions. 
