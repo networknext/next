@@ -20,15 +20,19 @@ DONE
 
 	Deploy code to dev with terraform. 
 
+	psq programs run via "bash" in run.go aren't passing failure return code back down
+
+	I think it's because they just don't consider it fatal...
+
+	This caused me to deploy a broken dev.sql database to production and not notice
+
 TODO
 
-	gaffer@batman backend % next database
 
-		error: could not load database.bin: gob: bad data: field numbers out of bounds
 
-	Need to debug what's up with this. What is being returned? Why is it fucked?
 
-	Could it be that the dev database.bin generated freaks out, because there is no data in SQL?
+
+
 
 	-----------------------------------
 

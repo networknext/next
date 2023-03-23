@@ -394,23 +394,23 @@ func relay_keygen() {
 }
 
 func sql_create() {
-	bash("psql -U developer postgres -f ./schemas/sql/create.sql")
+	bash("psql -U developer postgres -f ./schemas/sql/create.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_destroy() {
-	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql")
+	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_dev() {
-	bash("psql -U developer postgres -f ./schemas/sql/dev.sql")
+	bash("psql -U developer postgres -f ./schemas/sql/dev.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_local() {
-	bash("psql -U developer postgres -f ./schemas/sql/local.sql")
+	bash("psql -U developer postgres -f ./schemas/sql/local.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_docker() {
-	bash("psql -U developer postgres -f ./schemas/sql/docker.sql")
+	bash("psql -U developer postgres -f ./schemas/sql/docker.sql -v ON_ERROR_STOP=1")
 }
 
 func extract_database() {
