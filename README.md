@@ -2,7 +2,7 @@
 
 <br>
 
-Network Next is an analytics tool and network accelerator for multiplayer games.
+Network Next is an analytics platform and network accelerator for multiplayer games.
 
 # Run with Docker Compose
 
