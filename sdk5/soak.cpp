@@ -198,8 +198,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
 int main( int argc, char ** argv )
 {
-    printf( "\nWelcome to Network Next!\n\n" );
-
     srand( (unsigned int) time( NULL ) );
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );

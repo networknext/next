@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -209,7 +208,6 @@ func (consumer *RedisStreamsConsumer) receiveMessages(ctx context.Context) {
 		}
 
 		if err != nil {
-			fmt.Printf("error receiving messages: %v\n", err)
 			continue
 		}
 

@@ -42,21 +42,21 @@ func main() {
 	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 1000)
 	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 1000)
 
-	core.Log("num session update threads: %d", numSessionUpdateThreads)
-	core.Log("num server update threads: %d", numServerUpdateThreads)
-	core.Log("num relay update threads: %d", numRelayUpdateThreads)
-	core.Log("num near relay update threads: %d", numNearRelayUpdateThreads)
-
-	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis pool active: %d", redisPoolActive)
-	core.Log("redis pool idle: %d", redisPoolIdle)
-
-	core.Log("session insert batch size: %d", sessionInsertBatchSize)
-	core.Log("server insert batch size: %d", serverInsertBatchSize)
-	core.Log("relay insert batch size: %d", relayInsertBatchSize)
-	core.Log("near relay insert batch size: %d", nearRelayInsertBatchSize)
-
 	service := common.CreateService("portal_cruncher")
+
+	core.Debug("num session update threads: %d", numSessionUpdateThreads)
+	core.Debug("num server update threads: %d", numServerUpdateThreads)
+	core.Debug("num relay update threads: %d", numRelayUpdateThreads)
+	core.Debug("num near relay update threads: %d", numNearRelayUpdateThreads)
+
+	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis pool active: %d", redisPoolActive)
+	core.Debug("redis pool idle: %d", redisPoolIdle)
+
+	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
+	core.Debug("server insert batch size: %d", serverInsertBatchSize)
+	core.Debug("relay insert batch size: %d", relayInsertBatchSize)
+	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
 	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
 

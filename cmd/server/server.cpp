@@ -62,13 +62,16 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
 int main()
 {
-    printf( "\nWelcome to Network Next!\n\n" );
+    if ( getenv( "NEXT_DELAY" ) )
+    {
+        next_sleep( 10.0 );
+    }
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_init( NULL, NULL ); 
     
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:35000", "0.0.0.0:35000", "local", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:30000", "0.0.0.0:30000", "local", server_packet_received );
 
     if ( server == NULL )
     {

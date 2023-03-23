@@ -1,17 +1,26 @@
 DONE
-	
-	Go hard with docker to get it easy to setup and use
 
-	Got the entire backend running in docker compose, equivalent to happy path.
+	Fix up server backend to run on port 40000 in local env, not 45000 (local, happy path, dev)
+
+	Make sure happy path passes
 
 TODO
 
+	Make sure functional tests pass
 
+	-----------------------------------
 
+	Adjust terraform to use port 40000 for server backend
 
+	-----------------------------------
 
+	Update documentation to mention how to build and run in Docker.
 
+	-----------------------------------
 
+	Update payment information for github so mease tu can fork the repo
+
+	-----------------------------------
 
 
 
@@ -575,5 +584,11 @@ Nice to have:
 	--------------
 
 	Need some way to easily deploy backend code without having to manually edit terraform.tfvars to increase the counter
+
+	--------------
+
+	Implement "next sessions"
+
+	Implement "next servers"
 
 	--------------

@@ -41,7 +41,7 @@ var enableGooglePubsub bool
 
 var enableRedisStreams bool
 
-var readyDelay time.Duration
+var initialDelay time.Duration
 
 var relaysMutex sync.RWMutex
 var relaysCSVData []byte
@@ -58,8 +58,8 @@ var costMatrixInternalData []byte
 var routeMatrixInternalMutex sync.RWMutex
 var routeMatrixInternalData []byte
 
-var readyMutex sync.RWMutex
-var ready bool
+var delayMutex sync.RWMutex
+var delayCompleted bool
 
 var startTime time.Time
 
@@ -89,32 +89,31 @@ func main() {
 
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 
-	readyDelay = envvar.GetDuration("READY_DELAY", 1*time.Second)
+	initialDelay = envvar.GetDuration("INITIAL_DELAY", 1*time.Second)
 
 	startTime = time.Now()
 
-	core.Log("max jitter: %d", maxJitter)
-	core.Log("max packet loss: %.1f", maxPacketLoss)
-	core.Log("route matrix interval: %s", routeMatrixInterval)
-	core.Log("redis host name: %s", redisHostName)
-	core.Log("redis password: %s", redisPassword)
+	core.Debug("max jitter: %d", maxJitter)
+	core.Debug("max packet loss: %.1f", maxPacketLoss)
+	core.Debug("route matrix interval: %s", routeMatrixInterval)
+	core.Debug("redis host name: %s", redisHostName)
 
-	core.Log("relay update redis pubsub channel name: %s", relayUpdateRedisPubsubChannelName)
-	core.Log("relay update redis pubsub channel size: %d", relayUpdateRedisPubsubChannelSize)
+	core.Debug("relay update redis pubsub channel name: %s", relayUpdateRedisPubsubChannelName)
+	core.Debug("relay update redis pubsub channel size: %d", relayUpdateRedisPubsubChannelSize)
 
-	core.Log("analytics relay to relay ping google pubsub topic: %s", analyticsRelayToRelayPingGooglePubsubTopic)
-	core.Log("analytics relay to relay ping google pubsub channel size: %d", analyticsRelayToRelayPingGooglePubsubChannelSize)
+	core.Debug("analytics relay to relay ping google pubsub topic: %s", analyticsRelayToRelayPingGooglePubsubTopic)
+	core.Debug("analytics relay to relay ping google pubsub channel size: %d", analyticsRelayToRelayPingGooglePubsubChannelSize)
 
-	core.Log("analytics relay update google pubsub topic: %s", analyticsRelayUpdateGooglePubsubTopic)
-	core.Log("analytics relay update google pubsub channel size: %d", analyticsRelayUpdateGooglePubsubChannelSize)
+	core.Debug("analytics relay update google pubsub topic: %s", analyticsRelayUpdateGooglePubsubTopic)
+	core.Debug("analytics relay update google pubsub channel size: %d", analyticsRelayUpdateGooglePubsubChannelSize)
 
-	core.Log("enable google pubsub: %v", enableGooglePubsub)
+	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 
-	core.Log("enable redis streams: %v", enableRedisStreams)
+	core.Debug("enable redis streams: %v", enableRedisStreams)
 
-	core.Log("ready delay: %s", readyDelay.String())
+	core.Debug("initial delay: %s", initialDelay.String())
 
-	core.Log("start time: %s", startTime.String())
+	core.Debug("start time: %s", startTime.String())
 
 	service.LoadDatabase()
 
@@ -133,7 +132,7 @@ func main() {
 	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 
-	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy)
+	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy, ready(service))
 
 	service.StartWebServer()
 
@@ -143,7 +142,7 @@ func main() {
 
 	UpdateRouteMatrix(service, relayManager)
 
-	UpdateReadyState(service)
+	UpdateInitialDelayState(service)
 
 	service.WaitForShutdown()
 }
@@ -463,7 +462,7 @@ func sendTrafficToMe(service *common.Service) func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
-		return isReady() && hasRouteMatrix
+		return initialDelayCompleted() && hasRouteMatrix
 	}
 }
 
@@ -471,23 +470,29 @@ func machineIsHealthy() bool {
 	return true
 }
 
-func isReady() bool {
-	readyMutex.RLock()
-	result := ready
-	readyMutex.RUnlock()
+func ready(service *common.Service) func() bool {
+	return func() bool {
+		return initialDelayCompleted() && service.IsReady()
+	}
+}
+
+func initialDelayCompleted() bool {
+	delayMutex.RLock()
+	result := delayCompleted
+	delayMutex.RUnlock()
 	return result
 }
 
-func UpdateReadyState(service *common.Service) {
+func UpdateInitialDelayState(service *common.Service) {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			delayReady := time.Since(startTime) >= readyDelay
-			if delayReady {
-				core.Log("relay backend is ready")
-				readyMutex.Lock()
-				ready = true
-				readyMutex.Unlock()
+			delayCompleted := time.Since(startTime) >= initialDelay
+			if delayCompleted {
+				core.Debug("initial delay completed")
+				delayMutex.Lock()
+				delayCompleted = true
+				delayMutex.Unlock()
 				break
 			}
 		}

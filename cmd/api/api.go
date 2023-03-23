@@ -34,7 +34,7 @@ func main() {
 	service = common.CreateService("api")
 
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
-	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer dbname=postgres sslmode=disable")
+	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
@@ -47,13 +47,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	core.Log("pgsql config: %s", pgsqlConfig)
-	core.Log("redis hostname: %s", redisHostname)
-	core.Log("redis pool active: %d", redisPoolActive)
-	core.Log("redis pool idle: %d", redisPoolIdle)
-	core.Log("enable admin: %v", enableAdmin)
-	core.Log("enable portal: %v", enablePortal)
-	core.Log("enable database: %v", enableDatabase)
+	core.Debug("pgsql config: %s", pgsqlConfig)
+	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis pool active: %d", redisPoolActive)
+	core.Debug("redis pool idle: %d", redisPoolIdle)
+	core.Debug("enable admin: %v", enableAdmin)
+	core.Debug("enable portal: %v", enablePortal)
+	core.Debug("enable database: %v", enableDatabase)
 
 	service.Router.HandleFunc("/ping", isAuthorized(pingHandler))
 

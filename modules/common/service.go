@@ -87,6 +87,7 @@ type Service struct {
 
 	sendTrafficToMe  func() bool
 	machineIsHealthy func() bool
+	ready            func() bool
 
 	udpServer *UDPServer
 
@@ -112,7 +113,7 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("%s", service.ServiceName)
 
-	env := envvar.GetString("ENV", "local")
+	env := envvar.GetString("ENV", "")
 
 	core.Log("env: %s", env)
 
@@ -120,15 +121,24 @@ func CreateService(serviceName string) *Service {
 
 	service.Env = env
 
-	core.Log("commit message: %s", service.CommitMessage)
-	core.Log("commit hash: %s", service.CommitHash)
-	core.Log("build time: %s", service.BuildTime)
+	if service.CommitMessage != "" {
+		core.Log("commit message: %s", service.CommitMessage)
+	}
+	
+	if service.CommitHash != "" {
+		core.Log("commit hash: %s", service.CommitHash)
+	}
+
+	if service.BuildTime != "" {
+		core.Log("build time: %s", service.BuildTime)
+	}
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 	service.Router.HandleFunc("/database", service.databaseHandlerFunc())
 	service.Router.HandleFunc("/lb_health", service.lbHealthHandlerFunc())
 	service.Router.HandleFunc("/vm_health", service.vmHealthHandlerFunc())
+	service.Router.HandleFunc("/ready", service.readyHandlerFunc())
 
 	service.Context, service.ContextCancelFunc = context.WithCancel(context.Background())
 
@@ -147,13 +157,15 @@ func CreateService(serviceName string) *Service {
 
 	service.sendTrafficToMe = func() bool { return true }
 	service.machineIsHealthy = func() bool { return true }
+	service.ready = func() bool { return true }
 
 	return &service
 }
 
-func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineIsHealthy func() bool) {
+func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineIsHealthy func() bool, ready func() bool) {
 	service.sendTrafficToMe = sendTrafficToMe
 	service.machineIsHealthy = machineIsHealthy
+	service.ready = ready
 }
 
 func (service *Service) LoadDatabase() {
@@ -223,7 +235,6 @@ func (service *Service) ValidateIP2Location(filenames []string) bool {
 	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
 
 	return validateIP2Location(cityReader, ispReader)
-
 }
 
 func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bool {
@@ -260,7 +271,6 @@ func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bo
 	}
 
 	return valid
-
 }
 
 // todo: why double up these functions?!
@@ -366,6 +376,23 @@ func (service *Service) vmHealthHandlerFunc() func(w http.ResponseWriter, r *htt
 		}
 		defer r.Body.Close()
 		if !service.machineIsHealthy() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(http.StatusText(http.StatusOK)))
+	}
+}
+
+func (service *Service) readyHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		if !service.ready() {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -528,7 +555,7 @@ func (service *Service) UpdateRouteMatrix() {
 				service.routeMatrixMutex.RUnlock()
 
 				if currentRouteMatrix != nil && time.Now().Unix()-int64(currentRouteMatrix.CreatedAt) > 30 {
-					core.Error("route matrix is stale")
+					core.Error("route matrix is stale: created at %d, current time is %d (%d seconds old)", int64(currentRouteMatrix.CreatedAt), time.Now().Unix(), time.Now().Unix()-int64(currentRouteMatrix.CreatedAt))
 					service.routeMatrixMutex.Lock()
 					service.routeMatrix = nil
 					service.routeMatrixMutex.Unlock()
@@ -595,6 +622,13 @@ func (service *Service) IsLeader() bool {
 		return service.leaderElection.IsLeader()
 	}
 	return false
+}
+
+func (service *Service) IsReady() bool {
+	if service.leaderElection != nil {
+		return service.leaderElection.IsReady()
+	}
+	return true
 }
 
 func (service *Service) WaitForShutdown() {
@@ -797,9 +831,14 @@ func generateRelayData(database *db.Database) *RelayData {
 func (service *Service) watchDatabase(ctx context.Context, databasePath string) {
 
 	databaseURL := envvar.GetString("DATABASE_URL", "")
+
+	if databaseURL == "" {
+		return
+	}
+
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 
-	if service.Env != "local" && service.google == nil {
+	if service.google == nil {
 		core.Error("You must pass in GOOGLE_PROJECT_ID")
 		os.Exit(1)
 	}
@@ -1055,8 +1094,9 @@ func (service *Service) updateMagicValues(magicData []byte) {
 func (service *Service) updateMagicLoop() {
 
 	magicURL := envvar.GetString("MAGIC_URL", "http://127.0.0.1:41007/magic")
+	magicInterval := envvar.GetDuration("MAGIC_INTERVAL", time.Second)
 
-	core.Log("magic url: %s", magicURL)
+	core.Debug("magic url: %s", magicURL)
 
 	httpClient := &http.Client{
 		Timeout: time.Second,
@@ -1083,7 +1123,7 @@ func (service *Service) updateMagicLoop() {
 
 	go func() {
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(magicInterval)
 
 		for {
 			select {

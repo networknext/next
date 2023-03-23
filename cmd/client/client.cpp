@@ -63,7 +63,10 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
 
 int main()
 {
-    printf( "\nWelcome to Network Next!\n\n" );
+    if ( getenv( "NEXT_DELAY" ) )
+    {
+        next_sleep( 10.0 );
+    }
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
@@ -77,7 +80,7 @@ int main()
         return 1;
     }
 
-    const char * connect_address = "127.0.0.1:32202";
+    const char * connect_address = "127.0.0.1:30000";
 
     const char * connect_address_override = getenv( "NEXT_CONNECT_ADDRESS" );
     if ( connect_address_override )
