@@ -343,7 +343,7 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
-    READY_DELAY=15s
+    INITIAL_DELAY=15s
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service

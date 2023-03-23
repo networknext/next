@@ -6,11 +6,15 @@ DONE
 
 TODO
 
+	-----------------------------------
+
 	Make sure functional tests pass
 
 	-----------------------------------
 
 	Adjust terraform to use port 40000 for server backend
+
+	Verify that I can deploy backend to dev.
 
 	-----------------------------------
 

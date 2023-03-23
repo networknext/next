@@ -28,17 +28,13 @@ DONE
 
 	Resolve external UDP load balancer blocker.
 
-TODO
+	API_KEY for API.
 
-	------------
+TODO
 
 	HTTPS for api service
 
 	HTTPS for relay gateway
-
-	API_KEY for API.
-
-	------------
 
 	Network Next terraform provider.
 
