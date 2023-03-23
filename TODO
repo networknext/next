@@ -14,8 +14,6 @@ DONE
 
 TODO
 
-	-----------------------------------
-
 	Debug why "next database" can't read the GOB
 
 	Verify that func test database passes
