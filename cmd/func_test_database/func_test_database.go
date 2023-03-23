@@ -122,6 +122,10 @@ func GetJSON(url string, object interface{}) {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
 	}
 
+	if response.StatusCode != 200 {
+		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
+	}
+
 	body, error := ioutil.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
@@ -140,7 +144,10 @@ func GetBinary(url string) []byte {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-		response, err = http.Get(url)
+   	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	   req.Header.Set("Authorization", "Bearer " + apiKey)
+	   client := &http.Client{}
+   	response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -149,6 +156,10 @@ func GetBinary(url string) []byte {
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response.StatusCode != 200 {
+		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
 	}
 
 	body, error := ioutil.ReadAll(response.Body)
@@ -229,6 +240,11 @@ func test_api() {
 	expected_binary := database.GetBinary()
 
 	if !bytes.Equal(database_binary, expected_binary) {
+
+		// todo
+		os.WriteFile("expected.bin", expected_binary, 0666);
+		os.WriteFile("actual.bin", database_binary, 0666);
+
 		panic("database binary does not match expected")
 	}
 

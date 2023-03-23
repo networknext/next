@@ -838,6 +838,15 @@ func GetText(url string) string {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
 	}
 
+	if response == nil {
+		core.Error("no response from %s", url)
+		os.Exit(1)
+	}
+
+	if response.StatusCode != 200 {
+		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
+	}
+
 	body, error := ioutil.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
@@ -868,8 +877,12 @@ func GetBinary(url string) []byte {
 	}
 
 	if response == nil {
-		core.Error("no response from api")
+		core.Error("no response from %s", url)
 		os.Exit(1)
+	}
+
+	if response.StatusCode != 200 {
+		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
 	}
 
 	body, error := ioutil.ReadAll(response.Body)

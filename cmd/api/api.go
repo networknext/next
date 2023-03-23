@@ -160,6 +160,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 			})
 
 			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, err.Error())
 			}
 
@@ -169,7 +170,9 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 		} else {
 
+			w.WriteHeader(http.StatusUnauthorized)
 			fmt.Fprintf(w, "Not Authorized")
+			
 		}
 	}
 }
