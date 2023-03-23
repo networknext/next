@@ -89,6 +89,6 @@ INSERT INTO buyer_datacenter_settings VALUES(
 
 INSERT INTO buyer_datacenter_settings VALUES(
 	(select buyer_id from buyers where buyer_name = 'raspberry'),
-	(select datacenter_id from datacenters where datacenter_name = 'google.iowa.4'),
+	(select datacenter_id from datacenters where datacenter_name = 'google.iowa.6'),
 	true
 );
