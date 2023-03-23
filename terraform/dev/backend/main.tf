@@ -127,17 +127,17 @@ resource "google_compute_firewall" "allow_http_vpn_only" {
   target_tags = ["allow-http-vpn-only"]
 }
 
-resource "google_compute_firewall" "allow_udp_45000" {
-  name          = "allow-udp-45000"
+resource "google_compute_firewall" "allow_udp_40000" {
+  name          = "allow-udp-40000"
   project       = var.project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "udp"
-    ports    = ["45000"]
+    ports    = ["40000"]
   }
-  target_tags = ["allow-udp-45000"]
+  target_tags = ["allow-udp-40000"]
 }
 
 resource "google_compute_firewall" "allow_udp_all" {
@@ -531,14 +531,14 @@ module "server_backend" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    UDP_PORT=45000
-    UDP_BIND_ADDRESS="##########:45000"
+    UDP_PORT=40000
+    UDP_BIND_ADDRESS="##########:40000"
     GOOGLE_PROJECT_ID=${var.project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
-    SERVER_BACKEND_ADDRESS="##########:45000"
+    SERVER_BACKEND_ADDRESS="##########:40000"
     SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
     SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
@@ -551,11 +551,11 @@ module "server_backend" {
   git_hash           = var.git_hash
   project            = var.project
   region             = var.region
-  port               = 45000
+  port               = 40000
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-udp-45000"]
+  tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
 }
 
 output "server_backend_address" {

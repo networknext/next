@@ -4,17 +4,13 @@ DONE
 
 	Make sure happy path passes
 
-TODO
-
-	-----------------------------------
-
 	Make sure functional tests pass
 
-	-----------------------------------
+TODO
 
 	Adjust terraform to use port 40000 for server backend
 
-	Verify that I can deploy backend to dev.
+	Verify that I can deploy backend to dev
 
 	-----------------------------------
 
