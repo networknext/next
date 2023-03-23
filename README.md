@@ -2,7 +2,7 @@
 
 <br>
 
-This repo contains the Network Next backend.
+Network Next is an analytics tool and network accelerator for multiplayer games.
 
 # Run with Docker Compose
 
