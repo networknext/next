@@ -12,19 +12,23 @@ DONE
 
 	Make a release with the docker update
 
-TODO
-
 	Debug why "next database" can't read the GOB
 
 		"Not Authorized" :)
 
 	Verify that func test database passes
 
-	-----------------------------------
-
 	Deploy code to dev with terraform. 
 
-	Verify that I can go "next database" in dev and view the database.
+TODO
+
+	gaffer@batman backend % next database
+
+		error: could not load database.bin: gob: bad data: field numbers out of bounds
+
+	Need to debug what's up with this. What is being returned? Why is it fucked?
+
+	Could it be that the dev database.bin generated freaks out, because there is no data in SQL?
 
 	-----------------------------------
 

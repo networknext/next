@@ -240,11 +240,6 @@ func test_api() {
 	expected_binary := database.GetBinary()
 
 	if !bytes.Equal(database_binary, expected_binary) {
-
-		// todo
-		os.WriteFile("expected.bin", expected_binary, 0666);
-		os.WriteFile("actual.bin", database_binary, 0666);
-
 		panic("database binary does not match expected")
 	}
 
