@@ -36,13 +36,9 @@ DONE
 
 	I suspect API service has something wrong with the database?
 
-	Fixed.
+	Fix confirmed.
 
 TODO
-
-
-
-
 
 	-----------------------------------
 
@@ -555,5 +551,9 @@ Nice to have:
 	--------------
 
 	Get raspberry backend, raspberry servers and raspberry clients running inside docker compose, so we can have a decent amount of activity to show by navigating to the portal URL locally.
+
+	--------------
+
+	Idea. "next status" gives a quick overview of the whole system, what services are up, what they are doing etc.
 
 	--------------
