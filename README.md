@@ -6,201 +6,78 @@ This repo contains the Network Next backend.
 
 # Running with Docker Compose
 
+You can run a Network Next test environment locally with docker compose on any OS.
+
 1. Install Docker from http://docker.com
 
-2. Download the 
+2. Download the repository source from https://github.com/networknext/backend
 
-# Setup for Development on MacOS
+3. Build the base image
 
-1. Install brew from https://brew.sh
+   `docker build . -t network_next_base -f docker/base.Dockerfile`
 
-	`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+4. Build the system with docker compose
 
-2. Install dependencies
+   `docker compose build`
 
-	`brew install golang redis libsodium postgresql@14`
+5. Bring the system up
 
-3. Start redis
+   `docker compose up`
 
-	`brew services start redis`
-
-4. Start postgres
-
-	`brew services start postgresql@14`
-
-5. Configure postgres
-
-   `psql -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
-
-   `brew services start postgresql@14`
-
-6. Add . to your path
-
-	Modify ~/.zshrc to include:
-
-	`export PATH=.:/opt/homebrew/bin:$PATH`
-
-7. Setup SSH keys on your Mac for Github
-
-   Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
-
-8. Clone repo and cd into it
-
-	`git clone git@github.com:networknext/backend.git`
-
-	`cd backend`
-
-9. Select local environment
-
-	`next select local`
-
-10. Build everything and run unit tests
-
-	`make`
-
-	You should see output like:
+   You should initially see a lot of output like:
 
 ```console
-gaffer@macbook backend % make build
-dist/func_test_sdk5
-dist/relay
-dist/func_backend
-dist/libnext5.so
-dist/analytics
-dist/magic_backend
-dist/client
-dist/test
-dist/raspberry_client
-dist/func_client
-dist/raspberry_server
-dist/server
-dist/api
-dist/map_cruncher
-dist/func_test_backend
-dist/portal_cruncher
-dist/func_server
-dist/raspberry_backend
-dist/server_backend
-dist/relay_gateway
-dist/relay_backend
-./run test
-?   	github.com/networknext/backend/modules/admin	[no test files]
-?   	github.com/networknext/backend/modules/constants	[no test files]
-?   	github.com/networknext/backend/modules/database	[no test files]
-?   	github.com/networknext/backend/modules/envvar	[no test files]
-ok  	github.com/networknext/backend/modules/common	0.210s
-ok  	github.com/networknext/backend/modules/core	0.382s
-ok  	github.com/networknext/backend/modules/crypto	0.379s
-ok  	github.com/networknext/backend/modules/encoding	0.255s
-ok  	github.com/networknext/backend/modules/handlers	0.306s
-ok  	github.com/networknext/backend/modules/messages	0.223s
-ok  	github.com/networknext/backend/modules/packets	0.885s
-ok  	github.com/networknext/backend/modules/portal	0.281s
+backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Redis version=6.2.11, bits=64, commit=00000000, modified=0, pid=1, just started
+backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+backend-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * monotonic clock: POSIX clock_gettime
+backend-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * Running mode=standalone, port=6379.
+backend-redis-1            | 1:M 23 Mar 2023 14:58:22.284 # Server initialized
+backend-redis-1            | 1:M 23 Mar 2023 14:58:22.286 * Ready to accept connections
+backend-magic_backend-1    | magic_backend
+backend-magic_backend-1    | env: docker
+backend-magic_backend-1    | starting http server on port 80
+backend-postgres-1         |
+backend-postgres-1         | PostgreSQL Database directory appears to contain a database; Skipping initialization
+backend-postgres-1         |
+backend-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  starting PostgreSQL 14.7 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 12.2.1_git20220924-r4) 12.2.1 20220924, 64-bit
+backend-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+backend-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+backend-postgres-1         | 2023-03-23 14:58:22.488 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+backend-postgres-1         | 2023-03-23 14:58:22.491 UTC [22] LOG:  database system was shut down at 2023-03-23 14:55:04 UTC
+backend-postgres-1         | 2023-03-23 14:58:22.494 UTC [1] LOG:  database system is ready to accept connections
+backend-map_cruncher-1     | map_cruncher
+backend-map_cruncher-1     | env: docker
+backend-map_cruncher-1     | started leader election
+backend-map_cruncher-1     | starting http server on port 80
+backend-portal_cruncher-1  | portal_cruncher
 ```
 
-11. Run happy path
+   Do not be concerned if you see errors relating to the "api" service or "postgres" on the first run. *It is normal the first time it runs for postgres to initialize and then restart. This causes the "api" service to need to restart a few times before it can properly connect to postgres.*
 
-	`run happy-path`
+   On subsequent runs, "postgres" and "api" will start clean.
 
-	You should see output like:
+   After about one minute, you should see output like:
 
 ```console
-gaffer@macbook backend % run happy-path
-
-don't worry. be happy.
-
-starting api:
-
-   run api
-
-verifying api ... OK
-
-starting relay backend services:
-
-   run magic-backend
-   run relay-gateway
-   run relay-backend
-   run relay-backend HTTP_PORT=30002
-
-verifying magic backend ... OK
-verifying relay gateway ... OK
-verifying relay backend 1 ... OK
-verifying relay backend 2 ... OK
-
-starting relays:
-
-   run relay
-   run relay RELAY_PORT=2001
-   run relay RELAY_PORT=2002
-   run relay RELAY_PORT=2003
-   run relay RELAY_PORT=2004
-
-verifying relays ... OK
-verifying relay gateway sees relays ... OK
-verifying relay backend 1 sees relays ... OK
-verifying relay backend 2 sees relays ... OK
-
-starting server backend:
-
-   run server-backend
-
-verifying server backend ... OK
-
-starting portal cruncher:
-
-   run portal-cruncher
-   run portal-cruncher HTTP_PORT=40013
-
-verifying portal cruncher 1 ... OK
-verifying portal cruncher 2 ... OK
-
-starting map cruncher:
-
-   run map-cruncher
-   run map-cruncher HTTP_PORT=40101
-
-verifying map cruncher 1 ... OK
-verifying map cruncher 2 ... OK
-
-starting analytics:
-
-   run analytics
-   run analytics HTTP_PORT=40002
-
-verifying analytics 1 ... OK
-verifying analytics 2 ... OK
-
-waiting for leader election
-
-    analytics ... OK
-    map cruncher ... OK
-    relay backend ... OK
-
-starting client and server:
-
-   run client
-   run server
-
-verifying server ... OK
-verifying client ... OK
-
-post validation:
-
-verifying leader election in relay backend ... OK
-verifying leader election in analytics ... OK
-verifying leader election in analytics ... OK
-verifying leader election in map cruncher ... OK
-verifying portal cruncher received session update messages ... OK
-verifying portal cruncher received server update messages ... OK
-verifying portal cruncher received relay update messages ... OK
-verifying portal cruncher received near relay update messages ... OK
-verifying map cruncher received map update messages ... OK
-
-*** SUCCESS! ***
-
+backend-client-1           | 0.557106: info: client upgraded to session 3fd88eb577d0826
+backend-client-1           | 3.449071: info: client pinging 5 near relays
+backend-client-1           | 3.449525: info: client direct route
+backend-client-1           | 13.464149: info: client near relay pings completed
+backend-client-1           | 13.464641: info: client direct route
+backend-client-1           | 23.483219: info: client direct route
+backend-client-1           | 33.480910: info: client direct route
+backend-client-1           | 43.494686: info: client direct route
+backend-client-1           | 53.525247: info: client direct route
+backend-client-1           | 63.549006: info: client next route
+backend-client-1           | 63.549072: info: client multipath enabled
+backend-client-1           | 73.517053: info: client continues route
+backend-client-1           | 83.499405: info: client continues route
 ```
+   
+   This indicates that the test environment is working correctly.
 
-# Setup on Linux (Ubuntu 22.04 LTS)
+# Setup for Development on Linux (Ubuntu 22.04 LTS)
 
 1. Install dependencies
 
@@ -399,3 +276,9 @@ verifying map cruncher received map update messages ... OK
 *** SUCCESS! ***
 
 ```
+
+# Setup for Development on Windows
+
+Native windows is not supported for development.
+
+Setup an Ubuntu 22.04 LTS VM under WSL or a Docker Container and follow the Linux instructions. 
