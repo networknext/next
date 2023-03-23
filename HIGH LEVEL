@@ -30,6 +30,8 @@ DONE
 
 	API_KEY for API.
 
+	Ability to run system locally under docker compose.
+
 TODO
 
 	HTTPS for api service

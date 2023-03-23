@@ -462,6 +462,7 @@ func sendTrafficToMe(service *common.Service) func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
+		fmt.Printf("relay backend: initial delay completed = %v, has route matrix = %v\n", initialDelayCompleted(), hasRouteMatrix)
 		return initialDelayCompleted() && hasRouteMatrix
 	}
 }
@@ -486,15 +487,14 @@ func initialDelayCompleted() bool {
 func UpdateInitialDelayState(service *common.Service) {
 	go func() {
 		for {
-			time.Sleep(time.Second)
-			delayCompleted := time.Since(startTime) >= initialDelay
-			if delayCompleted {
+			if time.Since(startTime) >= initialDelay {
 				core.Debug("initial delay completed")
 				delayMutex.Lock()
 				delayCompleted = true
 				delayMutex.Unlock()
-				break
+				return
 			}
+			time.Sleep(time.Second)
 		}
 	}()
 }

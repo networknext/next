@@ -1869,7 +1869,6 @@ func test_relay_backend() {
 
 	relay_gateway_cmd.Env = os.Environ()
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
-	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
@@ -1890,9 +1889,7 @@ func test_relay_backend() {
 
 	relay_backend_cmd.Env = os.Environ()
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
-	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "OVERLAY_PATH=nopenopenope")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
-	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "INITIAL_DELAY=5s")
 
 	var relay_backend_output bytes.Buffer
 	relay_backend_cmd.Stdout = &relay_backend_output
@@ -1912,6 +1909,8 @@ func test_relay_backend() {
 
 		time.Sleep(time.Second)
 	}
+
+	fmt.Printf("ready to serve http\n")
 
 	// hammer the relay backend with relay updates
 
@@ -2047,29 +2046,28 @@ func test_relay_backend() {
 		fmt.Printf("waiting until health checks pass...\n")
 
 		for {
+
 			readyCount := 0
 
 			response, err := client.Get("http://127.0.0.1:30001/vm_health")
 			if err == nil && response.StatusCode == 200 {
-				buffer, err := ioutil.ReadAll(response.Body)
-				if err == nil && strings.Contains(string(buffer), "OK") {
-					readyCount++
-				}
-				response.Body.Close()
+				readyCount++
+			} else {
+				fmt.Printf("vm_health is not ready\n")
 			}
 
 			response, err = client.Get("http://127.0.0.1:30001/lb_health")
 			if err == nil && response.StatusCode == 200 {
-				buffer, err := ioutil.ReadAll(response.Body)
-				if err == nil && strings.Contains(string(buffer), "OK") {
-					readyCount++
-				}
-				response.Body.Close()
+				readyCount++
+			} else {
+				fmt.Printf("lb_health is not ready\n")
 			}
 
 			if readyCount == 2 {
 				break
 			}
+
+			time.Sleep(time.Second)
 		}
 
 		// request route matrix once per-second
@@ -2126,8 +2124,6 @@ func test_relay_backend() {
 	}()
 
 	// wait for 60 seconds
-
-	fmt.Printf("waiting 60 seconds...\n")
 
 	time.Sleep(60 * time.Second)
 
