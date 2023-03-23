@@ -10,6 +10,8 @@ DONE
 
 	Update documentation to mention how to build and run in Docker.
 
+	Make a release with the docker update
+
 TODO
 
 	-----------------------------------
@@ -27,6 +29,10 @@ TODO
 	-----------------------------------
 
 	API service must run over https in dev.
+
+	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
+
+	Then this needs to be plugged in to the dev 
 
 	-----------------------------------
 
@@ -527,5 +533,9 @@ Nice to have:
 	Implement "next sessions"
 
 	Implement "next servers"
+
+	--------------
+
+	Get raspberry backend, raspberry servers and raspberry clients running inside docker compose, so we can have a decent amount of activity to show by navigating to the portal URL locally.
 
 	--------------
