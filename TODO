@@ -6,102 +6,43 @@ DONE
 
 	Make sure functional tests pass
 
-TODO
-
 	Adjust terraform to use port 40000 for server backend
-
-	Verify that I can deploy backend to dev
-
-	-----------------------------------
 
 	Update documentation to mention how to build and run in Docker.
 
-	-----------------------------------
-
-	Update payment information for github so mease tu can fork the repo
+TODO
 
 	-----------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	---------
 
 	Debug why "next database" can't read the GOB
 
 	Verify that func test database passes
 
-	Verify that I can "next select dev" and "next database" to view the current database.
+	-----------------------------------
 
-	---------
+	Deploy code to dev with terraform. 
 
+	Verify that I can go "next database" in dev and view the database.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------------
+	-----------------------------------
 
 	API service must run over https in dev.
 
-	-----------------------
+	-----------------------------------
 
 	Relay gateway service must run over https in dev.
 
+	-----------------------------------
+
 	Create a terraform provider for network next that drives the CRUD REST API
 
-	-----------------------
+	-----------------------------------
 
 	Next step has to be to actually setup some relays.
 
 	Let's do this via a terraform provider for network next.
 
-	-----------------------
+	-----------------------------------
 
 
 
@@ -305,11 +246,7 @@ TODO
 
 	--------------
 
-	Get the portal back up with the happy path.
-
-	Portal should talk exclusively to "api" to get what it needs.
-
-	No auth, just hack it up to show the stuff that we need.
+	Get the portal back up
 
 	--------------
 
