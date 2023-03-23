@@ -4,7 +4,13 @@
 
 This repo contains the Network Next backend.
 
-# Setup on MacOS
+# Running with Docker Compose
+
+1. Install Docker from http://docker.com
+
+2. Download the 
+
+# Setup for Development on MacOS
 
 1. Install brew from https://brew.sh
 
