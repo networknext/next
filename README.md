@@ -16,7 +16,7 @@ You can run a Network Next test environment locally with docker compose on any O
 
    `docker compose up`
 
-   You should initially see a lot of output like:
+You will initially see a lot of output like:
 
 ```console
 backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
@@ -45,11 +45,11 @@ backend-map_cruncher-1     | starting http server on port 80
 backend-portal_cruncher-1  | portal_cruncher
 ```
 
-   Do not be concerned if you see errors relating to the "api" service or "postgres" on the first run. *It is normal the first time it runs for postgres to initialize and then restart. This causes the "api" service to need to restart a few times before it can properly connect to postgres.*
+Do not be concerned if you see errors relating to the "api" service or "postgres" on the first run. *It is normal the first time it runs for postgres to initialize and then restart. This causes the "api" service to need to restart a few times before it can properly connect to postgres.*
 
-   On subsequent runs, "postgres" and "api" will start clean.
+On subsequent runs, "postgres" and "api" will start clean.
 
-   After about one minute, you should see output like:
+After about one minute, you should see output like:
 
 ```console
 backend-client-1           | 0.557106: info: client upgraded to session 3fd88eb577d0826
@@ -67,7 +67,7 @@ backend-client-1           | 73.517053: info: client continues route
 backend-client-1           | 83.499405: info: client continues route
 ```
    
-   This indicates that the test environment is working correctly.
+This indicates that the test environment is working correctly.
 
 # Setup for Development on Linux (Ubuntu 22.04 LTS)
 
