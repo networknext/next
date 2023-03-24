@@ -5,7 +5,11 @@ TODO
 	Create a terraform provider for network next that drives the CRUD REST API
 
 	https://github.com/spaceapegames/terraform-provider-example/blob/master/provider/provider.go
-	
+
+	https://developer.hashicorp.com/terraform/registry/modules/publish
+
+	^--- can publish a module here
+
 	-----------------------------------
 
 
