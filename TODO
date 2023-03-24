@@ -1,60 +1,90 @@
 DONE
 
-	Fix up server backend to run on port 40000 in local env, not 45000 (local, happy path, dev)
-
-	Make sure happy path passes
-
-	Make sure functional tests pass
-
-	Adjust terraform to use port 40000 for server backend
-
-	Update documentation to mention how to build and run in Docker.
-
-	Make a release with the docker update
-
-	Debug why "next database" can't read the GOB
-
-		"Not Authorized" :)
-
-	Verify that func test database passes
-
-	Deploy code to dev with terraform. 
-
-	psq programs run via "bash" in run.go aren't passing failure return code back down
-
-	I think it's because they just don't consider it fatal...
-
-	This caused me to deploy a broken dev.sql database to production and not notice
-
-	Needed to add "-v ON_ERROR_STOP=1" to psql to make it stop on error
-
-	Verify that all func tests pass
-
-	Verify that I can get dev database with "next database"
-
-	It still fails from dev, but works if I manually copy the database.bin for the environment down from google cloud storage and load it
-
-	I suspect API service has something wrong with the database?
-
-	Fix confirmed.
-
 TODO
+
+	Create a terraform provider for network next that drives the CRUD REST API
+
+	https://github.com/spaceapegames/terraform-provider-example/blob/master/provider/provider.go
+	
+	-----------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
+
+	Then this needs to be plugged in to the dev terraform setup
+
+	https://registry.terraform.io/providers/vancluever/acme/latest/docs/guides/dns-providers-cloudflare
+
+	https://letsencrypt.org/how-it-works/
+
+	"We recommend that most people with shell access use the Certbot ACME client. It can automate certificate issuance and installation with no downtime. It also has expert modes for people who don’t want autoconfiguration. It’s easy to use, works on many operating systems, and has great documentation. Visit the Certbot site to get customized instructions for your operating system and web server."
+
+	https://certbot.eff.org
+
+	https://registry.terraform.io/providers/vancluever/acme/latest
+
+	https://itnext.io/lets-encrypt-certs-with-terraform-f870def3ce6d
+
+	https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/certificate_pack
+
+	https://itnext.io/lets-encrypt-certs-with-terraform-f870def3ce6d
+
+	https://blog.bryantluk.com/post/2018/06/02/terraform-and-lets-encrypt-on-google-cloud-platform/
+
+	https://cloud.google.com/certificate-authority-service/docs/using-terraform
+
+	https://xbery.medium.com/say-goodbye-to-lets-encrypt-welcome-google-managed-ssl-certificates-4d92831750e1
+
+	^------ winner. work directly with google. may need to bypass cloudflare?
 
 	-----------------------------------
 
 	API service must run over https in dev.
 
-	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
-
-	Then this needs to be plugged in to the dev 
-
 	-----------------------------------
 
 	Relay gateway service must run over https in dev.
-
-	-----------------------------------
-
-	Create a terraform provider for network next that drives the CRUD REST API
 
 	-----------------------------------
 
