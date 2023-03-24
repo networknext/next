@@ -12,15 +12,7 @@ You can run a Network Next test environment locally with docker compose on any O
 
 2. Download the latest release from https://github.com/networknext/backend/releases
 
-3. Build the base image
-
-   `docker build . -t network_next_base -f docker/base.Dockerfile`
-
-4. Build the system with docker compose
-
-   `docker compose build`
-
-5. Bring the system up
+3. Bring the system up
 
    `docker compose up`
 
