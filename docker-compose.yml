@@ -2,6 +2,12 @@ version: "3.9"
 
 services:
 
+  base:
+    image: network_next_base
+    build: 
+      context: .
+      dockerfile: docker/base.Dockerfile
+
   postgres:
     build: 
       context: .
@@ -24,6 +30,8 @@ services:
     build: 
       context: .
       dockerfile: docker/magic_backend.Dockerfile
+    depends_on:
+      - base
     ports:
       - "10000:80"
 
@@ -34,6 +42,7 @@ services:
     ports:
       - "11000:80"
     depends_on:
+      - base
       - redis
       - magic_backend
     environment:
@@ -53,6 +62,7 @@ services:
     ports:
       - "12000:80"
     depends_on:
+      - base
       - redis
       - relay_gateway
     environment:
@@ -67,6 +77,7 @@ services:
       - "13000:80/tcp"
       - "45000:40000/udp"
     depends_on:
+      - base
       - magic_backend
       - relay_gateway
     environment:
@@ -91,6 +102,7 @@ services:
     ports:
       - "14000:80"
     depends_on:
+      - base
       - redis
     environment:
       - REDIS_HOSTNAME=redis:6379
@@ -102,6 +114,7 @@ services:
     ports:
       - "15000:80"
     depends_on:
+      - base
       - redis
     environment:
       - REDIS_HOSTNAME=redis:6379
@@ -113,6 +126,7 @@ services:
     ports:
       - "16000:80"
     depends_on:
+      - base
       - redis
       - relay_backend
     environment:
@@ -127,6 +141,7 @@ services:
     ports:
       - "50000:80"
     depends_on:
+      - base
       - redis
       - postgres
     environment:
@@ -150,6 +165,7 @@ services:
       relays:
         ipv4_address: 10.5.0.5
     depends_on:
+      - base
       - relay_backend
     
   relay_2:
@@ -167,6 +183,7 @@ services:
       relays:
         ipv4_address: 10.5.0.6
     depends_on:
+      - base
       - relay_backend
 
   relay_3:
@@ -184,6 +201,7 @@ services:
       relays:
         ipv4_address: 10.5.0.7
     depends_on:
+      - base
       - relay_backend
 
   relay_4:
@@ -201,6 +219,7 @@ services:
       relays:
         ipv4_address: 10.5.0.8
     depends_on:
+      - base
       - relay_backend
 
   relay_5:
@@ -218,6 +237,7 @@ services:
       relays:
         ipv4_address: 10.5.0.9
     depends_on:
+      - base
       - relay_backend
 
   server:
@@ -235,6 +255,7 @@ services:
       relays:
         ipv4_address: 10.5.0.20
     depends_on:
+      - base
       - server_backend
 
   client:
@@ -249,6 +270,7 @@ services:
       relays:
         ipv4_address: 10.5.0.30
     depends_on:
+      - base
       - server_backend
 
 networks:

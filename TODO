@@ -12,7 +12,17 @@ TODO
 
 	-----------------------------------
 
+	Good reference for documentation:
 
+	https://github.com/hashicorp/terraform/
+
+	-----------------------------------
+
+	Plugin framework
+
+	https://github.com/hashicorp/terraform-plugin-sdk
+
+	-----------------------------------
 
 
 
@@ -589,5 +599,21 @@ Nice to have:
 	--------------
 
 	Idea. "next status" gives a quick overview of the whole system, what services are up, what they are doing etc.
+
+	--------------
+
+	Try to simplify route shader parameters.
+
+	RTT Veto doesn't really need multiple values.
+
+	Latency Threshold would be much better named as "Minimum Latency Reduction" etc.
+
+	Why have "reduce latency" and "reduce packet loss" bools at all? Of *course* you always want this... etc.
+
+	--------------
+
+	API should have extensive logs for actions it performs. Right now it's completely silent.
+
+	core.Debug logs only.
 
 	--------------

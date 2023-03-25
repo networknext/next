@@ -84,6 +84,7 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_customer", isAuthorized(adminCreateCustomerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/customers", isAuthorized(adminReadCustomersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/customer/{customerId}", isAuthorized(adminReadCustomerHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_customer", isAuthorized(adminUpdateCustomerHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_customer", isAuthorized(adminDeleteCustomerHandler)).Methods("DELETE")
 
@@ -159,14 +160,12 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 				return []byte(privateKey), nil
 			})
 
-			if err != nil {
+			if token == nil ||err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, err.Error())
 			}
 
-			if token.Valid {
-				endpoint(w, r)
-			}
+			endpoint(w, r)
 
 		} else {
 
@@ -368,19 +367,22 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	var customer admin.CustomerData
-	err := json.NewDecoder(r.Body).Decode(&customer)
+	var customerData admin.CustomerData
+	err := json.NewDecoder(r.Body).Decode(&customerData)
 	if err != nil {
+		core.Log("failed to read customer data in request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	customerId, err := controller.CreateCustomer(&customer)
+	customerId, err := controller.CreateCustomer(&customerData)
 	if err != nil {
+		core.Log("failed to create customer: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
+	core.Log("create customer: %x = %+v", customerId, customerData)
 	fmt.Fprintf(w, "%d", customerId)
 }
 
@@ -390,11 +392,37 @@ type AdminReadCustomersResponse struct {
 }
 
 func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
+	core.Log("read customers")
 	customers, err := controller.ReadCustomers()
 	response := AdminReadCustomersResponse{Customers: customers}
 	if err != nil {
+		core.Log("failed to read customers: %v", err)
 		response.Error = err.Error()
 	}
+	core.Debug("customers = %+v", customers)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadCustomerResponse struct {
+	Customer admin.CustomerData `json:"customer"`
+	Error    string             `json:"error"`
+}
+
+func adminReadCustomerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	customerId, err := strconv.ParseUint(vars["customerId"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("read customer %x", customerId)
+	customer, err := controller.ReadCustomer(customerId)
+	response := AdminReadCustomerResponse{Customer: customer}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	core.Debug("customer %x = %+v", customerId, customer)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -403,31 +431,39 @@ func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 	var customer admin.CustomerData
 	err := json.NewDecoder(r.Body).Decode(&customer)
 	if err != nil {
+		core.Error("failed to decode update customer request json: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("update customer: %+v", customer)
 	err = controller.UpdateCustomer(&customer)
 	if err != nil {
+		core.Error("failed to update customer: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// todo: we probably want the updated customer data here so we can return it
 	w.WriteHeader(http.StatusOK)
 }
 
 func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		core.Error("failed to read request body", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	r.Body.Close()
 	customerId, err := strconv.ParseUint(string(body), 10, 64)
 	if err != nil {
+		core.Error("failed to parse customer id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("delete customer: %x", customerId)
 	err = controller.DeleteCustomer(customerId)
 	if err != nil {
+		core.Error("failed to delete customer: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

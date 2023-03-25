@@ -279,7 +279,6 @@ func getKeyValue(envFile string, keyName string) string {
 	if value[0] == '"' || value[0] == '\'' {
 		value = value[1:len(value)-1]
 	}
-
 	return value
 }
 

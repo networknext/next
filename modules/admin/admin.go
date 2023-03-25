@@ -63,6 +63,23 @@ func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
 	return customers, nil
 }
 
+func (controller *Controller) ReadCustomer(customerId uint64) (CustomerData, error) {
+	customer := CustomerData{}
+	rows, err := controller.pgsql.Query("SELECT customer_name, customer_code, live, debug FROM customers WHERE customer_id = $1;", customerId)
+	if err != nil {
+		return customer, fmt.Errorf("could not read customers: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&customer.CustomerName, &customer.CustomerCode, &customer.Live, &customer.Debug); err != nil {
+			return customer, fmt.Errorf("could not scan customer row: %v\n", err)
+		}
+		customer.CustomerId = customerId
+		return customer, nil
+	}
+	return customer, fmt.Errorf("customer %x not found", customerId)
+}
+
 func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
 	// IMPORTANT: Cannot change customer id once created
 	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4 WHERE customer_id = $5;"
