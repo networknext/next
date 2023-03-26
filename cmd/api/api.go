@@ -101,6 +101,7 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_datacenter", isAuthorized(adminCreateDatacenterHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/datacenters", isAuthorized(adminReadDatacentersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/datacenter/{datacenterId}", isAuthorized(adminReadDatacenterHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_datacenter", isAuthorized(adminUpdateDatacenterHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_datacenter", isAuthorized(adminDeleteDatacenterHandler)).Methods("DELETE")
 
@@ -675,6 +676,29 @@ func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		response.Error = err.Error()
 	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadDatacenterResponse struct {
+	Datacenter admin.DatacenterData `json:"datacenter"`
+	Error      string               `json:"error"`
+}
+
+func adminReadDatacenterHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	datacenterId, err := strconv.ParseUint(vars["datacenterId"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("read datacenter %x", datacenterId)
+	datacenter, err := controller.ReadDatacenter(datacenterId)
+	response := AdminReadDatacenterResponse{Datacenter: datacenter}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	core.Debug("datacenter %x = %+v", datacenterId, datacenter)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }

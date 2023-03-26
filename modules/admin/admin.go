@@ -67,7 +67,7 @@ func (controller *Controller) ReadCustomer(customerId uint64) (CustomerData, err
 	customer := CustomerData{}
 	rows, err := controller.pgsql.Query("SELECT customer_name, customer_code, live, debug FROM customers WHERE customer_id = $1;", customerId)
 	if err != nil {
-		return customer, fmt.Errorf("could not read customers: %v\n", err)
+		return customer, fmt.Errorf("could not read customer: %v\n", err)
 	}
 	defer rows.Close()
 	if rows.Next() {
@@ -470,7 +470,7 @@ func (controller *Controller) ReadSeller(sellerId uint64) (SellerData, error) {
 	seller := SellerData{}
 	rows, err := controller.pgsql.Query("SELECT seller_name, customer_id FROM sellers WHERE seller_id = $1;", sellerId)
 	if err != nil {
-		return seller, fmt.Errorf("could not read sellers: %v\n", err)
+		return seller, fmt.Errorf("could not read seller: %v\n", err)
 	}
 	defer rows.Close()
 	if rows.Next() {
@@ -541,6 +541,23 @@ func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
 		datacenters = append(datacenters, row)
 	}
 	return datacenters, nil
+}
+
+func (controller *Controller) ReadDatacenter(datacenterId uint64) (DatacenterData, error) {
+	datacenter := DatacenterData{}
+	rows, err := controller.pgsql.Query("SELECT datacenter_name, native_name, latitude, longitude, seller_id, notes FROM datacenters WHERE datacenter_id = $1;", datacenterId)
+	if err != nil {
+		return datacenter, fmt.Errorf("could not read datacenter: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&datacenter.DatacenterName, &datacenter.NativeName, &datacenter.Latitude, &datacenter.Longitude, &datacenter.SellerId, &datacenter.Notes); err != nil {
+			return datacenter, fmt.Errorf("could not scan datacenter row: %v\n", err)
+		}
+		datacenter.DatacenterId = datacenterId
+		return datacenter, nil
+	}
+	return datacenter, fmt.Errorf("datacenter %x not found", datacenterId)
 }
 
 func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) error {
