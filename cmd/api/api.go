@@ -445,6 +445,7 @@ func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	core.Debug("update customer %x = %+v", customer.CustomerId, customer)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -553,7 +554,7 @@ func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sellerId, err := controller.CreateSeller(&sellerData)
 	if err != nil {
-		core.Error("failed to create customer: %v", err)
+		core.Error("failed to create seller: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -615,10 +616,11 @@ func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
 	core.Log("update seller: %+v", seller)
 	err = controller.UpdateSeller(&seller)
 	if err != nil {
-		core.Error("failed to update customer: %v", err)
+		core.Error("failed to update seller: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	core.Debug("update seller %x = %+v", seller.SellerId, seller)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -649,17 +651,20 @@ func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
-	var datacenter admin.DatacenterData
-	err := json.NewDecoder(r.Body).Decode(&datacenter)
+	var datacenterData admin.DatacenterData
+	err := json.NewDecoder(r.Body).Decode(&datacenterData)
 	if err != nil {
+		core.Error("failed to read datacenter data in request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	datacenterId, err := controller.CreateDatacenter(&datacenter)
+	datacenterId, err := controller.CreateDatacenter(&datacenterData)
 	if err != nil {
+		core.Error("failed to create datacenter: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	core.Log("create datacenter: %x = %+v", datacenterId, datacenterData)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprintf(w, "%d", datacenterId)
@@ -671,11 +676,14 @@ type AdminReadDatacentersResponse struct {
 }
 
 func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
+	core.Log("read datacenters")
 	datacenters, err := controller.ReadDatacenters()
 	response := AdminReadDatacentersResponse{Datacenters: datacenters}
 	if err != nil {
+		core.Error("failed to read datacenters: %v", err)
 		response.Error = err.Error()
 	}
+	core.Debug("datacenters = %+v", datacenters)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -707,31 +715,38 @@ func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 	var datacenter admin.DatacenterData
 	err := json.NewDecoder(r.Body).Decode(&datacenter)
 	if err != nil {
+		core.Error("failed to decode update datacenter request json: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = controller.UpdateDatacenter(&datacenter)
 	if err != nil {
+		core.Error("failed to update datacenter: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	core.Debug("update datacenter %x = %+v", datacenter.DatacenterId, datacenter)
 	w.WriteHeader(http.StatusOK)
 }
 
 func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		core.Error("failed to read delete datacenter request body", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	r.Body.Close()
 	datacenterId, err := strconv.ParseUint(string(body), 10, 64)
 	if err != nil {
+		core.Error("failed to parse datacenter id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("delete datacenter: %x", datacenterId)
 	err = controller.DeleteDatacenter(datacenterId)
 	if err != nil {
+		core.Error("failed to delete customer: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
