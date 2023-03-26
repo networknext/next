@@ -756,17 +756,21 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
-	var relay admin.RelayData
-	err := json.NewDecoder(r.Body).Decode(&relay)
+	var relayData admin.RelayData
+	err := json.NewDecoder(r.Body).Decode(&relayData)
 	if err != nil {
+		core.Error("create relay failed to read relay data in request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	relayId, err := controller.CreateRelay(&relay)
+	relayId, err := controller.CreateRelay(&relayData)
 	if err != nil {
+		core.Error("failed to create relay: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		// todo: we definitely need a way to return this error to the caller here
 		return
 	}
+	core.Log("create relay: %x = %+v", relayId, relayData)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprintf(w, "%d", relayId)
