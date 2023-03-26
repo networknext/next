@@ -466,6 +466,25 @@ func (controller *Controller) ReadSellers() ([]SellerData, error) {
 	return sellers, nil
 }
 
+func (controller *Controller) ReadSeller(sellerId uint64) (SellerData, error) {
+	seller := SellerData{}
+	rows, err := controller.pgsql.Query("SELECT seller_name, customer_id FROM sellers WHERE seller_id = $1;", sellerId)
+	if err != nil {
+		return seller, fmt.Errorf("could not read sellers: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		customerId := sql.NullInt64{}
+		if err := rows.Scan(&seller.SellerName, &customerId); err != nil {
+			return seller, fmt.Errorf("could not scan seller row: %v\n", err)
+		}
+		seller.SellerId = sellerId
+		seller.CustomerId = uint64(customerId.Int64)
+		return seller, nil
+	}
+	return seller, fmt.Errorf("seller %x not found", sellerId)
+}
+
 func (controller *Controller) UpdateSeller(sellerData *SellerData) error {
 	// IMPORTANT: Cannot change seller id once created
 	var err error

@@ -617,3 +617,8 @@ Nice to have:
 	core.Debug logs only.
 
 	--------------
+
+	API func tests needs to check new read item by id methods
+
+	--------------
+	
