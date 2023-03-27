@@ -410,6 +410,23 @@ func (controller *Controller) ReadBuyers() ([]BuyerData, error) {
 	return buyers, nil
 }
 
+func (controller *Controller) ReadBuyer(buyerId uint64) (BuyerData, error) {
+	buyer := BuyerData{}
+	rows, err := controller.pgsql.Query("SELECT buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers WHERE buyer_id = $1;", buyerId)
+	if err != nil {
+		return buyer, fmt.Errorf("could not read buyer: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&buyer.BuyerName, &buyer.PublicKeyBase64, &buyer.CustomerId, &buyer.RouteShaderId); err != nil {
+			return buyer, fmt.Errorf("could not scan buyer row: %v\n", err)
+		}
+		buyer.BuyerId = buyerId
+		return buyer, nil
+	}
+	return buyer, fmt.Errorf("buyer %x not found", buyerId)
+}
+
 func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
 	// IMPORTANT: Cannot change buyer id once created
 	sql := "UPDATE buyers SET buyer_name = $1, public_key_base64 = $2, customer_id = $3, route_shader_id = $4 WHERE buyer_id = $5;"

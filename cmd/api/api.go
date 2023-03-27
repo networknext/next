@@ -90,6 +90,7 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_buyer", isAuthorized(adminCreateBuyerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/buyers", isAuthorized(adminReadBuyersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/buyer/{buyerId}", isAuthorized(adminReadBuyerHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_buyer", isAuthorized(adminUpdateBuyerHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer", isAuthorized(adminDeleteBuyerHandler)).Methods("DELETE")
 
@@ -479,14 +480,17 @@ func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 	var buyer admin.BuyerData
 	err := json.NewDecoder(r.Body).Decode(&buyer)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	buyerId, err := controller.CreateBuyer(&buyer)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// todo
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	fmt.Fprintf(w, "%d", buyerId)
@@ -501,8 +505,35 @@ func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	buyers, err := controller.ReadBuyers()
 	response := AdminReadBuyersResponse{Buyers: buyers}
 	if err != nil {
+		// todo
 		response.Error = err.Error()
 	}
+	// todo
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadBuyerResponse struct {
+	Buyer    admin.BuyerData 	`json:"buyer"`
+	Error    string             `json:"error"`
+}
+
+func adminReadBuyerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	buyerId, err := strconv.ParseUint(vars["buyerId"], 10, 64)
+	if err != nil {
+		// todo
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("read buyer %x", buyerId)
+	buyer, err := controller.ReadBuyer(buyerId)
+	response := AdminReadBuyerResponse{Buyer: buyer}
+	if err != nil {
+		core.Error("failed to read buyer: %v", err)
+		response.Error = err.Error()
+	}
+	core.Debug("buyer %x = %+v", buyerId, buyer)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -511,31 +542,37 @@ func adminUpdateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 	var buyer admin.BuyerData
 	err := json.NewDecoder(r.Body).Decode(&buyer)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = controller.UpdateBuyer(&buyer)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// todo
 	w.WriteHeader(http.StatusOK)
 }
 
 func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	r.Body.Close()
 	buyerId, err := strconv.ParseUint(string(body), 10, 64)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = controller.DeleteBuyer(buyerId)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -591,6 +628,7 @@ func adminReadSellerHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sellerId, err := strconv.ParseUint(vars["sellerId"], 10, 64)
 	if err != nil {
+		// todo
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -641,7 +679,7 @@ func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
 	core.Log("delete seller: %x", sellerId)
 	err = controller.DeleteSeller(sellerId)
 	if err != nil {
-		core.Error("failed to delete customer: %v", err)
+		core.Error("failed to delete seller: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -746,7 +784,7 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 	core.Log("delete datacenter: %x", datacenterId)
 	err = controller.DeleteDatacenter(datacenterId)
 	if err != nil {
-		core.Error("failed to delete customer: %v", err)
+		core.Error("failed to delete datacenter: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
