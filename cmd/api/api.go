@@ -88,17 +88,17 @@ func main() {
 		service.Router.HandleFunc("/admin/update_customer", isAuthorized(adminUpdateCustomerHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_customer", isAuthorized(adminDeleteCustomerHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_buyer", isAuthorized(adminCreateBuyerHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/buyers", isAuthorized(adminReadBuyersHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/buyer/{buyerId}", isAuthorized(adminReadBuyerHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/update_buyer", isAuthorized(adminUpdateBuyerHandler)).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_buyer", isAuthorized(adminDeleteBuyerHandler)).Methods("DELETE")
-
 		service.Router.HandleFunc("/admin/create_seller", isAuthorized(adminCreateSellerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/sellers", isAuthorized(adminReadSellersHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/seller/{sellerId}", isAuthorized(adminReadSellerHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_seller", isAuthorized(adminUpdateSellerHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_seller", isAuthorized(adminDeleteSellerHandler)).Methods("DELETE")
+
+		service.Router.HandleFunc("/admin/create_buyer", isAuthorized(adminCreateBuyerHandler)).Methods("POST")
+		service.Router.HandleFunc("/admin/buyers", isAuthorized(adminReadBuyersHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/buyer/{buyerId}", isAuthorized(adminReadBuyerHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/update_buyer", isAuthorized(adminUpdateBuyerHandler)).Methods("PUT")
+		service.Router.HandleFunc("/admin/delete_buyer", isAuthorized(adminDeleteBuyerHandler)).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_datacenter", isAuthorized(adminCreateDatacenterHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/datacenters", isAuthorized(adminReadDatacentersHandler)).Methods("GET")
@@ -503,24 +503,163 @@ func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminCreateSellerResponse struct {
+	Seller    admin.SellerData     `json:"seller"`
+	Error     string               `json:"error"`
+}
+
+func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminCreateSellerResponse
+	var sellerData admin.SellerData
+	err := json.NewDecoder(r.Body).Decode(&sellerData)
+	if err != nil {
+		core.Error("failed to read seller data in create seller request: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sellerId, err := controller.CreateSeller(&sellerData)
+	if err != nil {
+		core.Error("failed to create seller: %v", err)
+		response.Error = err.Error()
+	} else {
+		sellerData.SellerId = sellerId
+		core.Log("create seller %x", sellerId)
+		core.Debug("%+v", sellerData)
+		response.Seller = sellerData
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadSellersResponse struct {
+	Sellers []admin.SellerData `json:"sellers"`
+	Error   string             `json:"error"`
+}
+
+func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
+	core.Log("read sellers")
+	sellers, err := controller.ReadSellers()
+	response := AdminReadSellersResponse{Sellers: sellers}
+	if err != nil {
+		core.Error("failed to read sellers: %v", err)
+		response.Error = err.Error()
+	}
+	core.Debug("sellers = %+v", sellers)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadSellerResponse struct {
+	Seller admin.SellerData `json:"seller"`
+	Error  string           `json:"error"`
+}
+
+func adminReadSellerHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sellerId, err := strconv.ParseUint(vars["sellerId"], 10, 64)
+	if err != nil {
+		// todo
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("read seller %x", sellerId)
+	seller, err := controller.ReadSeller(sellerId)
+	response := AdminReadSellerResponse{Seller: seller}
+	if err != nil {
+		response.Error = err.Error()
+	}
+	core.Debug("seller %x = %+v", sellerId, seller)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateSellerResponse struct {
+	Seller admin.SellerData     `json:"seller"`
+	Error    string             `json:"error"`
+}
+
+func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
+	var seller admin.SellerData
+	err := json.NewDecoder(r.Body).Decode(&seller)
+	if err != nil {
+		core.Error("failed to decode update seller request json: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("update seller %x", seller.SellerId)
+	response := AdminUpdateSellerResponse{Seller: seller}
+	err = controller.UpdateSeller(&seller)
+	if err != nil {
+		core.Error("failed to update seller: %v", err)
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", seller)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminDeleteSellerResponse struct {
+	Error    string             `json:"error"`
+}
+
+func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		core.Error("failed to read delete seller request body", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	r.Body.Close()
+	sellerId, err := strconv.ParseUint(string(body), 10, 64)
+	if err != nil {
+		core.Error("failed to parse seller id: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("delete seller %x", sellerId)
+	response := AdminDeleteSellerResponse{}
+	err = controller.DeleteSeller(sellerId)
+	if err != nil {
+		core.Error("failed to delete seller: %v", err)
+		response.Error = err.Error()
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminCreateBuyerResponse struct {
+	Buyer     admin.BuyerData   	`json:"buyer"`
+	Error     string               	`json:"error"`
+}
+
 func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
-	var buyer admin.BuyerData
-	err := json.NewDecoder(r.Body).Decode(&buyer)
+	var response AdminCreateBuyerResponse
+	var buyerData admin.BuyerData
+	err := json.NewDecoder(r.Body).Decode(&buyerData)
 	if err != nil {
 		core.Error("failed to read buyer data in create buyer request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	buyerId, err := controller.CreateBuyer(&buyer)
+	buyerId, err := controller.CreateBuyer(&buyerData)
 	if err != nil {
 		core.Error("failed to create buyer: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		response.Error = err.Error()
+	} else {
+		buyerData.BuyerId = buyerId
+		core.Log("create buyer %x", buyerId)
+		core.Debug("%+v", buyerData)
+		response.Buyer = buyerData
 	}
-	// todo
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	fmt.Fprintf(w, "%d", buyerId)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type AdminReadBuyersResponse struct {
@@ -600,113 +739,6 @@ func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 	err = controller.DeleteBuyer(buyerId)
 	if err != nil {
 		// todo
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
-	var sellerData admin.SellerData
-	err := json.NewDecoder(r.Body).Decode(&sellerData)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		core.Error("failed to read seller data in request: %v", err)
-		return
-	}
-	sellerId, err := controller.CreateSeller(&sellerData)
-	if err != nil {
-		core.Error("failed to create seller: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	core.Log("create seller: %x = %+v", sellerId, sellerData)
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	fmt.Fprintf(w, "%d", sellerId)
-}
-
-type AdminReadSellersResponse struct {
-	Sellers []admin.SellerData `json:"sellers"`
-	Error   string             `json:"error"`
-}
-
-func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read sellers")
-	sellers, err := controller.ReadSellers()
-	response := AdminReadSellersResponse{Sellers: sellers}
-	if err != nil {
-		core.Error("failed to read sellers: %v", err)
-		response.Error = err.Error()
-	}
-	core.Debug("sellers = %+v", sellers)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadSellerResponse struct {
-	Seller admin.SellerData `json:"seller"`
-	Error  string           `json:"error"`
-}
-
-func adminReadSellerHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	sellerId, err := strconv.ParseUint(vars["sellerId"], 10, 64)
-	if err != nil {
-		// todo
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	core.Log("read seller %x", sellerId)
-	seller, err := controller.ReadSeller(sellerId)
-	response := AdminReadSellerResponse{Seller: seller}
-	if err != nil {
-		response.Error = err.Error()
-	}
-	core.Debug("seller %x = %+v", sellerId, seller)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
-	var seller admin.SellerData
-	err := json.NewDecoder(r.Body).Decode(&seller)
-	if err != nil {
-		core.Error("failed to decode update seller request json: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	core.Log("update seller: %+v", seller)
-	err = controller.UpdateSeller(&seller)
-	if err != nil {
-		core.Error("failed to update seller: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	core.Debug("update seller %x = %+v", seller.SellerId, seller)
-	w.WriteHeader(http.StatusOK)
-}
-
-func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		core.Error("failed to read delete seller request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	sellerId, err := strconv.ParseUint(string(body), 10, 64)
-	if err != nil {
-		core.Error("failed to parse seller id: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	core.Log("delete seller: %x", sellerId)
-	err = controller.DeleteSeller(sellerId)
-	if err != nil {
-		core.Error("failed to delete seller: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
