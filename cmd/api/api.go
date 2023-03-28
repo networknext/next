@@ -369,24 +369,33 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminCreateCustomerResponse struct {
+	Customer  admin.CustomerData   `json:"customer"`
+	Error     string               `json:"error"`
+}
+
 func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminCreateCustomerResponse
 	var customerData admin.CustomerData
 	err := json.NewDecoder(r.Body).Decode(&customerData)
 	if err != nil {
-		core.Error("failed to read customer data in request: %v", err)
+		core.Error("failed to read customer data in create customer request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	customerId, err := controller.CreateCustomer(&customerData)
 	if err != nil {
 		core.Error("failed to create customer: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		response.Error = err.Error()
+	} else {
+		customerData.CustomerId = customerId
+		core.Log("create customer %x", customerId)
+		core.Debug("%+v", customerData)
+		response.Customer = customerData
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	core.Log("create customer: %x = %+v", customerId, customerData)
-	fmt.Fprintf(w, "%d", customerId)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type AdminReadCustomersResponse struct {
@@ -401,8 +410,10 @@ func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		core.Error("failed to read customers: %v", err)
 		response.Error = err.Error()
+	} else {
+		core.Debug("customers = %+v", customers)
 	}
-	core.Debug("customers = %+v", customers)
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -425,10 +436,17 @@ func adminReadCustomerHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		core.Error("failed to read customer: %v", err)
 		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", customer)
 	}
-	core.Debug("customer %x = %+v", customerId, customer)
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateCustomerResponse struct {
+	Customer admin.CustomerData `json:"customer"`
+	Error    string             `json:"error"`
 }
 
 func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
@@ -439,15 +457,22 @@ func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update customer: %+v", customer)
+	core.Log("update customer %x", customer.CustomerId)
+	response := AdminUpdateCustomerResponse{Customer: customer}
 	err = controller.UpdateCustomer(&customer)
 	if err != nil {
 		core.Error("failed to update customer: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", customer)
 	}
-	core.Debug("update customer %x = %+v", customer.CustomerId, customer)
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminDeleteCustomerResponse struct {
+	Error    string             `json:"error"`
 }
 
 func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
@@ -464,14 +489,16 @@ func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete customer: %x", customerId)
+	core.Log("delete customer %x", customerId)
+	response := AdminDeleteCustomerResponse{}
 	err = controller.DeleteCustomer(customerId)
 	if err != nil {
 		core.Error("failed to delete customer: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		response.Error = err.Error()
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -480,13 +507,13 @@ func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 	var buyer admin.BuyerData
 	err := json.NewDecoder(r.Body).Decode(&buyer)
 	if err != nil {
-		// todo
+		core.Error("failed to read buyer data in create buyer request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	buyerId, err := controller.CreateBuyer(&buyer)
 	if err != nil {
-		// todo
+		core.Error("failed to create buyer: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
