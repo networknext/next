@@ -108,6 +108,7 @@ func main() {
 
 		service.Router.HandleFunc("/admin/create_relay", isAuthorized(adminCreateRelayHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/relays", isAuthorized(adminReadRelaysHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/relay/{relayId}", isAuthorized(adminReadRelayHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_relay", isAuthorized(adminUpdateRelayHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_relay", isAuthorized(adminDeleteRelayHandler)).Methods("DELETE")
 
@@ -747,29 +748,38 @@ func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminCreateDatacenterResponse struct {
+	Datacenter  admin.DatacenterData   `json:"datacenter"`
+	Error       string                 `json:"error"`
+}
+
 func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminCreateDatacenterResponse
 	var datacenterData admin.DatacenterData
 	err := json.NewDecoder(r.Body).Decode(&datacenterData)
 	if err != nil {
-		core.Error("failed to read datacenter data in request: %v", err)
+		core.Error("failed to read datacenter data in create datacenter request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	datacenterId, err := controller.CreateDatacenter(&datacenterData)
 	if err != nil {
 		core.Error("failed to create datacenter: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		response.Error = err.Error()
+	} else {
+		datacenterData.DatacenterId = datacenterId
+		core.Log("create datacenter %x", datacenterId)
+		core.Debug("%+v", datacenterData)
+		response.Datacenter = datacenterData
 	}
-	core.Log("create datacenter: %x = %+v", datacenterId, datacenterData)
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	fmt.Fprintf(w, "%d", datacenterId)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type AdminReadDatacentersResponse struct {
-	Datacenters []admin.DatacenterData `json:"datacenters"`
-	Error       string                 `json:"error"`
+	Datacenters []admin.DatacenterData 	`json:"datacenters"`
+	Error     	string                  `json:"error"`
 }
 
 func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
@@ -779,8 +789,10 @@ func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		core.Error("failed to read datacenters: %v", err)
 		response.Error = err.Error()
+	} else {
+		core.Debug("datacenters = %+v", datacenters)
 	}
-	core.Debug("datacenters = %+v", datacenters)
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -801,11 +813,19 @@ func adminReadDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 	datacenter, err := controller.ReadDatacenter(datacenterId)
 	response := AdminReadDatacenterResponse{Datacenter: datacenter}
 	if err != nil {
+		core.Error("failed to read datacenter: %v", err)
 		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", datacenter)
 	}
-	core.Debug("datacenter %x = %+v", datacenterId, datacenter)
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateDatacenterResponse struct {
+	Datacenter admin.DatacenterData 	`json:"datacenter"`
+	Error    string             		`json:"error"`
 }
 
 func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
@@ -816,14 +836,22 @@ func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("update datacenter %x", datacenter.DatacenterId)
+	response := AdminUpdateDatacenterResponse{Datacenter: datacenter}
 	err = controller.UpdateDatacenter(&datacenter)
 	if err != nil {
 		core.Error("failed to update datacenter: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", datacenter)
 	}
-	core.Debug("update datacenter %x = %+v", datacenter.DatacenterId, datacenter)
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminDeleteDatacenterResponse struct {
+	Error    string             `json:"error"`
 }
 
 func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
@@ -840,87 +868,150 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete datacenter: %x", datacenterId)
+	core.Log("delete datacenter %x", datacenterId)
+	response := AdminDeleteDatacenterResponse{}
 	err = controller.DeleteDatacenter(datacenterId)
 	if err != nil {
 		core.Error("failed to delete datacenter: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		response.Error = err.Error()
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminCreateRelayResponse struct {
+	Relay     admin.RelayData      `json:"relay"`
+	Error     string               `json:"error"`
+}
+
 func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminCreateRelayResponse
 	var relayData admin.RelayData
 	err := json.NewDecoder(r.Body).Decode(&relayData)
 	if err != nil {
-		core.Error("create relay failed to read relay data in request: %v", err)
+		core.Error("failed to read relay data in create relay request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	relayId, err := controller.CreateRelay(&relayData)
 	if err != nil {
 		core.Error("failed to create relay: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		// todo: we definitely need a way to return this error to the caller here
-		return
+		response.Error = err.Error()
+	} else {
+		relayData.RelayId = relayId
+		core.Log("create relay %x", relayId)
+		core.Debug("%+v", relayData)
+		response.Relay = relayData
 	}
-	core.Log("create relay: %x = %+v", relayId, relayData)
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	fmt.Fprintf(w, "%d", relayId)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type AdminReadRelaysResponse struct {
-	Relays []admin.RelayData `json:"relays"`
-	Error  string            `json:"error"`
+	Relays    []admin.RelayData    `json:"relays"`
+	Error     string               `json:"error"`
 }
 
 func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	core.Log("read relays")
 	relays, err := controller.ReadRelays()
 	response := AdminReadRelaysResponse{Relays: relays}
 	if err != nil {
+		core.Error("failed to read relays: %v", err)
 		response.Error = err.Error()
+	} else {
+		core.Debug("relays = %+v", relays)
 	}
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadRelayResponse struct {
+	Relay    admin.RelayData    `json:"relay"`
+	Error    string             `json:"error"`
+}
+
+func adminReadRelayHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	relayId, err := strconv.ParseUint(vars["relayId"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("read relay %x", relayId)
+	relay, err := controller.ReadRelay(relayId)
+	response := AdminReadRelayResponse{Relay: relay}
+	if err != nil {
+		core.Error("failed to read relay: %v", err)
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", relay)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminUpdateRelayResponse struct {
+	Relay    admin.RelayData    `json:"relay"`
+	Error    string             `json:"error"`
 }
 
 func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
 	var relay admin.RelayData
 	err := json.NewDecoder(r.Body).Decode(&relay)
 	if err != nil {
+		core.Error("failed to decode update relay request json: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("update relay %x", relay.RelayId)
+	response := AdminUpdateRelayResponse{Relay: relay}
 	err = controller.UpdateRelay(&relay)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		core.Error("failed to update relay: %v", err)
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", relay)
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminDeleteRelayResponse struct {
+	Error    string             `json:"error"`
 }
 
 func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		core.Error("failed to read delete relay request body", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	r.Body.Close()
 	relayId, err := strconv.ParseUint(string(body), 10, 64)
 	if err != nil {
+		core.Error("failed to parse relay id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("delete relay %x", relayId)
+	response := AdminDeleteRelayResponse{}
 	err = controller.DeleteRelay(relayId)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		core.Error("failed to delete relay: %v", err)
+		response.Error = err.Error()
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

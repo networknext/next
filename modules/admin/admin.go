@@ -747,6 +747,65 @@ FROM
 	return relays, nil
 }
 
+func (controller *Controller) ReadRelay(relayId uint64) (RelayData, error) {
+	relay := RelayData{}
+	query := `
+SELECT
+	relay_id,
+	relay_name,
+	datacenter_id,
+	public_ip,
+	public_port,
+	internal_ip,
+	internal_port,
+	internal_group,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	version,
+	mrc,
+	port_speed,
+	max_sessions,
+	notes
+FROM
+	relays;`
+	rows, err := controller.pgsql.Query(query)
+	if err != nil {
+		return relay, fmt.Errorf("could not read relay: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		err := rows.Scan(
+			&relay.RelayId,
+			&relay.RelayName,
+			&relay.DatacenterId,
+			&relay.PublicIP,
+			&relay.PublicPort,
+			&relay.InternalIP,
+			&relay.InternalPort,
+			&relay.InternalGroup,
+			&relay.SSH_IP,
+			&relay.SSH_Port,
+			&relay.SSH_User,
+			&relay.PublicKeyBase64,
+			&relay.PrivateKeyBase64,
+			&relay.Version,
+			&relay.MRC,
+			&relay.PortSpeed,
+			&relay.MaxSessions,
+			&relay.Notes,
+		)
+		if err != nil {
+			return relay, fmt.Errorf("could not scan relay row: %v\n", err)
+		}
+		relay.RelayId = relayId
+		return relay, nil
+	}
+	return relay, fmt.Errorf("relay %x not found", relayId)
+}
+
 func (controller *Controller) UpdateRelay(relayData *RelayData) error {
 	// IMPORTANT: Cannot change relay id once created
 	sql := `

@@ -622,3 +622,6 @@ Nice to have:
 
 	--------------
 	
+	There should be a functional test to exercise all parts of the CRUD via terraform, and check results
+
+	--------------
