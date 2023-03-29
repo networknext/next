@@ -949,7 +949,7 @@ func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatac
 	return err
 }
 
-func (controller *Controller) ReadBuyerDatacenterSettings() ([]BuyerDatacenterSettings, error) {
+func (controller *Controller) ReadBuyerDatacenterSettingsList() ([]BuyerDatacenterSettings, error) {
 	settings := make([]BuyerDatacenterSettings, 0)
 	rows, err := controller.pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM buyer_datacenter_settings;")
 	if err != nil {
@@ -964,6 +964,23 @@ func (controller *Controller) ReadBuyerDatacenterSettings() ([]BuyerDatacenterSe
 		settings = append(settings, row)
 	}
 	return settings, nil
+}
+
+func (controller *Controller) ReadBuyerDatacenterSettings(buyerId uint64, datacenterId uint64) (BuyerDatacenterSettings, error) {
+	settings := BuyerDatacenterSettings{}
+	rows, err := controller.pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM buyer_datacenter_settings WHERE buyer_id = $1 and datacenter_id = $2;", buyerId, datacenterId)
+	if err != nil {
+		return settings, fmt.Errorf("could not read buyer datacenter settings: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&settings.BuyerId, &settings.DatacenterId, &settings.EnableAcceleration); err != nil {
+			return settings, fmt.Errorf("could not scan buyer datacenter settings row: %v\n", err)
+		}
+		return settings, nil
+	} else {
+		return settings, fmt.Errorf("buyer datacenter settings %x.%x not found", buyerId, datacenterId)
+	}
 }
 
 func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {

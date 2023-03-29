@@ -1195,17 +1195,50 @@ func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	fmt.Fprintf(w, "1")
 }
 
-type AdminReadBuyerDatacenterSettingsResponse struct {
-	BuyerDatacenterSettings []admin.BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
-	Error                   string                          `json:"error"`
+type AdminReadBuyerDatacenterSettingsListResponse struct {
+	Settings []admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                          `json:"error"`
 }
 
-func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	buyerDatacenterSettings, err := controller.ReadBuyerDatacenterSettings()
-	response := AdminReadBuyerDatacenterSettingsResponse{BuyerDatacenterSettings: buyerDatacenterSettings}
+func adminReadBuyerDatacenterSettingsListHandler(w http.ResponseWriter, r *http.Request) {
+	buyerDatacenterSettings, err := controller.ReadBuyerDatacenterSettingsList()
+	response := AdminReadBuyerDatacenterSettingsListResponse{Settings: buyerDatacenterSettings}
 	if err != nil {
 		response.Error = err.Error()
 	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type AdminReadBuyerDatacenterSettingsResponse struct {
+	Settings admin.BuyerDatacenterSettings   `json:"settings"`
+	Error    string                          `json:"error"`
+}
+
+func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	buyerId, err := strconv.ParseUint(vars["buyerId"], 10, 64)
+	if err != nil {
+		core.Error("read buyer datacenter settings could not parse buyer id")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	datacenterId, err := strconv.ParseUint(vars["datacenterId"], 10, 64)
+	if err != nil {
+		core.Error("read buyer datacenter settings could not parse datacenter id")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	core.Log("read buyer datacenter settings %x.%x", buyerId, datacenterId)
+	settings, err := controller.ReadBuyerDatacenterSettings(buyerId, datacenterId)
+	response := AdminReadBuyerDatacenterSettingsResponse{Settings: settings}
+	if err != nil {
+		core.Error("failed to read buyer datacenter settings: %v", err)
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", settings)
+	}
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
