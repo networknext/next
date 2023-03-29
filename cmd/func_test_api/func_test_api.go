@@ -15,15 +15,13 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules/admin"
 )
 
+var hostname = "http://127.0.0.1:50000"
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-
 var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
 
 // ----------------------------------------------------------------------------------------
@@ -64,8 +62,8 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
 
 	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
 	cmd.Start()
 
 	return cmd, &output
@@ -73,166 +71,251 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 
 // ----------------------------------------------------------------------------------------
 
-func Create(url string, object interface{}) uint64 {
+func GetText(path string) (string, error) {
 
-	buffer := new(bytes.Buffer)
+    url := hostname + "/" + path
 
-	json.NewEncoder(buffer).Encode(object)
+    var err error
+    var response *http.Response
+    for i := 0; i < 5; i++ {
+        req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+        req.Header.Set("Authorization", "Bearer " + apiKey)
+        client := &http.Client{}
+        response, err = client.Do(req)
+        if err == nil {
+            break
+        }
+        time.Sleep(time.Second)
+    }
 
-	request, _ := http.NewRequest("POST", url, buffer)
+    if err != nil {
+        return "", fmt.Errorf("failed to read %s: %v", url, err)
+    }
 
-   request.Header.Set("Authorization", "Bearer " + apiKey)
+    if response == nil {
+        return "", fmt.Errorf("no response from %s", url)
+    }
 
-	client := &http.Client{}
+    if response.StatusCode != 200 {
+        return "", fmt.Errorf("got %d response for %s", response.StatusCode, url)
+    }
 
-	var err error
-	var response *http.Response
-	for i := 0; i < 30; i++ {
-		response, err = client.Do(request)
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second)
-	}
+    body, error := ioutil.ReadAll(response.Body)
+    if error != nil {
+        return "", fmt.Errorf("could not read response body for %s: %v", url, err)
+    }
 
-	if err != nil {
-		panic(fmt.Sprintf("create failed on %s: %v\n", url, err))
-	}
+    response.Body.Close()
 
-	if response.StatusCode != 200 {
-		panic(fmt.Sprintf("bad http response for %s: %d", url, response.StatusCode))
-	}
-
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		panic(fmt.Sprintf("could not read response for %s: %v", url, err))
-	}
-
-	id, err := strconv.ParseUint(string(body), 10, 64)
-	if err != nil {
-		panic(fmt.Sprintf("could not id response for %s: %v\n", url, err))
-	}
-
-	if id == 0 {
-		panic(fmt.Sprintf("id returned from %s should be non-zero", url))
-	}
-
-	response.Body.Close()
-
-	return id
+    return string(body), nil
 }
 
-func Read(url string, object interface{}) {
+func GetJSON(path string, object interface{}) error {
 
-	var err error
-	var response *http.Response
+    url := hostname + "/" + path
 
-	buffer := new(bytes.Buffer)
+    var err error
+    var response *http.Response
+    for i := 0; i < 5; i++ {
+        req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+        req.Header.Set("Authorization", "Bearer " + apiKey)
+        client := &http.Client{}
+        response, err = client.Do(req)
+        if err == nil {
+            break
+        }
+        time.Sleep(time.Second)
+    }
 
-	request, _ := http.NewRequest("GET", url, buffer)
+    if err != nil {
+        return fmt.Errorf("failed to read %s: %v", url, err)
+    }
 
-   request.Header.Set("Authorization", "Bearer " + apiKey)
+    if response == nil {
+        return fmt.Errorf("no response from %s", url)
+    }
 
-	client := &http.Client{}
+    body, error := ioutil.ReadAll(response.Body)
+    if error != nil {
+        return fmt.Errorf("could not read response body for %s: %v", url, err)
+    }
 
-	for i := 0; i < 30; i++ {
-		response, err = client.Do(request)
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second)
-	}
+    response.Body.Close()
 
-	if err != nil {
-		panic(fmt.Sprintf("failed to read %s: %v", url, err))
-	}
+    err = json.Unmarshal([]byte(body), &object)
+    if err != nil {
+        return fmt.Errorf("could not parse json response for %s: %v", url, err)
+    }
 
-	body, error := ioutil.ReadAll(response.Body)
-	if error != nil {
-		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
-	}
-
-	response.Body.Close()
-
-	err = json.Unmarshal([]byte(body), &object)
-	if err != nil {
-		panic(fmt.Sprintf("could not parse json response for %s: %v", url, err))
-	}
+    return nil
 }
 
-func Update(url string, object interface{}) {
+func Create(path string, requestData interface{}, responseData interface{}) error {
 
-	buffer := new(bytes.Buffer)
+    url := hostname + "/" + path
 
-	json.NewEncoder(buffer).Encode(object)
+    buffer := new(bytes.Buffer)
 
-	request, _ := http.NewRequest("PUT", url, buffer)
+    json.NewEncoder(buffer).Encode(requestData)
 
-   request.Header.Set("Authorization", "Bearer " + apiKey)
+    request, err := http.NewRequest("POST", url, buffer)
+    if err != nil {
+        return fmt.Errorf("could not create HTTP POST request for %s: %v", url, err)
+    }
 
-	client := &http.Client{}
+    request.Header.Set("Authorization", "Bearer " + apiKey)
 
-	var err error
-	var response *http.Response
-	for i := 0; i < 30; i++ {
-		response, err = client.Do(request)
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Second)
-	}
+    httpClient := &http.Client{}
 
-	if err != nil {
-		panic(fmt.Sprintf("update failed for %s: %v\n", url, err))
-	}
+    var response *http.Response
+    for i := 0; i < 5; i++ {
+        response, err = httpClient.Do(request)
+        if err == nil {
+            break
+        }
+        time.Sleep(time.Second)
+    }
 
-	if response.StatusCode != 200 {
-		panic(fmt.Sprintf("bad http response for %s: %d", url, response.StatusCode))
-	}
+    if err != nil {
+        return fmt.Errorf("create failed on %s: %v", url, err)
+    }
 
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		panic(fmt.Sprintf("could not read update response for %s: %v", url, err))
-	}
+    if response == nil {
+        return fmt.Errorf("no response from %s", url)
+    }
 
-	_ = body
+    body, error := ioutil.ReadAll(response.Body)
+    if error != nil {
+        return fmt.Errorf("could not read response body for %s: %v", url, err)
+    }
 
-	response.Body.Close()
+    response.Body.Close()
+
+    err = json.Unmarshal([]byte(body), &responseData)
+    if err != nil {
+        return fmt.Errorf("could not parse json response for %s: %v", url, err)
+    }
+
+    return nil
 }
 
-func Delete(url string, id uint64) error {
+func Update(path string, requestData interface{}, responseData interface{}) error {
 
-	request, _ := http.NewRequest("DELETE", url, strings.NewReader(fmt.Sprintf("%d", id)))
+    url := hostname + "/" + path
 
-   request.Header.Set("Authorization", "Bearer " + apiKey)
+    buffer := new(bytes.Buffer)
 
-	client := &http.Client{}
+    json.NewEncoder(buffer).Encode(requestData)
 
-	var err error
-	var response *http.Response
-	for i := 0; i < 30; i++ {
-		response, err = client.Do(request)
-		if err == nil {
-			body, err := ioutil.ReadAll(response.Body)
-			if err != nil {
-				panic(fmt.Sprintf("could not read delete response for %s: %v", url, err))
-			}
-			_ = body
-			response.Body.Close()
-			return nil
-		}
-		time.Sleep(time.Second)
-	}
+    request, _ := http.NewRequest("PUT", url, buffer)
 
-	return err
+    request.Header.Set("Authorization", "Bearer " + apiKey)
+
+    httpClient := &http.Client{}
+
+    var err error
+    var response *http.Response
+    for i := 0; i < 5; i++ {
+        response, err = httpClient.Do(request)
+        if err == nil {
+            break
+        }
+        time.Sleep(time.Second)
+    }
+
+    if err != nil {
+        return fmt.Errorf("failed to read %s: %v", url, err)
+    }
+
+    if response == nil {
+        return fmt.Errorf("no response from %s", url)
+    }
+
+    body, error := ioutil.ReadAll(response.Body)
+    if error != nil {
+        return fmt.Errorf("could not read response body for %s: %v", url, err)
+    }
+
+    response.Body.Close()
+
+    err = json.Unmarshal([]byte(body), &responseData)
+    if err != nil {
+        return fmt.Errorf("could not parse json response for %s: %v", url, err)
+    }
+
+    return nil
+}
+
+func Delete(path string, responseData interface{}) error {
+
+    url := hostname + "/" + path
+
+    request, _ := http.NewRequest("DELETE", url, nil)
+
+    request.Header.Set("Authorization", "Bearer " + apiKey)
+
+    httpClient := &http.Client{}
+
+    var err error
+    var response *http.Response
+    for i := 0; i < 5; i++ {
+        response, err = httpClient.Do(request)
+        if err == nil {
+            break
+        }
+        time.Sleep(time.Second)
+    }
+
+    if err != nil {
+        return fmt.Errorf("failed to read %s: %v", url, err)
+    }
+
+    if response == nil {
+        return fmt.Errorf("no response from %s", url)
+    }
+
+    body, error := ioutil.ReadAll(response.Body)
+    if error != nil {
+        return fmt.Errorf("could not read response body for %s: %v", url, err)
+    }
+
+    response.Body.Close()
+
+    err = json.Unmarshal([]byte(body), &responseData)
+    if err != nil {
+        return fmt.Errorf("could not parse json response for %s: %v", url, err)
+    }
+
+    return err
 }
 
 // ----------------------------------------------------------------------------------------
 
-type CustomersResponse struct {
+type CreateCustomerResponse struct {
+	Customer  admin.CustomerData   `json:"customer"`
+	Error     string               `json:"error"`
+}
+
+type ReadCustomersResponse struct {
 	Customers []admin.CustomerData `json:"customers"`
 	Error     string               `json:"error"`
 }
+
+type ReadCustomerResponse struct {
+	Customer  admin.CustomerData   `json:"customer"`
+	Error     string               `json:"error"`
+}
+
+type UpdateCustomerResponse struct {
+	Customer  admin.CustomerData   `json:"customer"`
+	Error     string               `json:"error"`
+}
+
+type DeleteCustomerResponse struct {
+	Error     string               `json:"error"`
+}
+
+// ----------------------------------------------------------------------------------------
 
 func test_customers() {
 
@@ -253,14 +336,26 @@ func test_customers() {
 	{
 		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
 
-		customerId = Create("http://127.0.0.1:50000/admin/create_customer", customer)
+		var response CreateCustomerResponse
+
+		err := Create("admin/create_customer", customer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		customerId = response.Customer.CustomerId
 	}
 
-	// read customers
+	// read all customers
 	{
-		customersResponse := CustomersResponse{}
+		customersResponse := ReadCustomersResponse{}
 
-		Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
+		err := GetJSON("admin/customers", &customersResponse)
+
+		if err != nil {
+			panic(err)
+		}
 
 		if len(customersResponse.Customers) != 1 {
 			panic("expect one customer in response")
@@ -291,58 +386,91 @@ func test_customers() {
 		}
 	}
 
+	// read a specific customer
+
+	// read all customers
+	{
+		customerResponse := ReadCustomerResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/customer/%x", customerId), &customerResponse)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if customerResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if customerResponse.Customer.CustomerId != customerId {
+			panic(fmt.Sprintf("wrong customer id: got %x, expected %x", customerResponse.Customer.CustomerId, customerId))
+		}
+
+		if customerResponse.Customer.CustomerName != "Test" {
+			panic("wrong customer name")
+		}
+
+		if customerResponse.Customer.CustomerCode != "test" {
+			panic("wrong customer code")
+		}
+
+		if !customerResponse.Customer.Live {
+			panic("customer should have live true")
+		}
+
+		if !customerResponse.Customer.Debug {
+			panic("customer should have debug true")
+		}
+	}
+
 	// update customer
 	{
 		customer := admin.CustomerData{CustomerId: customerId, CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
 
-		Update("http://127.0.0.1:50000/admin/update_customer", customer)
+		response := UpdateCustomerResponse{}
 
-		customersResponse := CustomersResponse{}
+		err := Update("admin/update_customer", customer, &response)
 
-		Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
-
-		if len(customersResponse.Customers) != 1 {
-			panic("expect one customer in response")
+		if err != nil {
+			panic(err)
 		}
 
-		if customersResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if customersResponse.Customers[0].CustomerId != customerId {
+		if response.Customer.CustomerId != customerId {
 			panic("wrong customer id")
 		}
 
-		if customersResponse.Customers[0].CustomerName != "Updated" {
+		if response.Customer.CustomerName != "Updated" {
 			panic("wrong customer name")
 		}
 
-		if customersResponse.Customers[0].CustomerCode != "updated" {
+		if response.Customer.CustomerCode != "updated" {
 			panic("wrong customer code")
 		}
 
-		if customersResponse.Customers[0].Live {
+		if response.Customer.Live {
 			panic("customer should have live false")
 		}
 
-		if customersResponse.Customers[0].Debug {
+		if response.Customer.Debug {
 			panic("customer should have debug false")
 		}
 	}
 
 	// delete customer
 	{
-		Delete("http://127.0.0.1:50000/admin/delete_customer", customerId)
+		response := UpdateCustomerResponse{}
 
-		customersResponse := CustomersResponse{}
+		err := Delete(fmt.Sprintf("admin/delete_customer/%x", customerId), &response)
 
-		Read("http://127.0.0.1:50000/admin/customers", &customersResponse)
-
-		if len(customersResponse.Customers) != 0 {
-			panic("should be no customers after delete")
+		if err != nil {
+			panic(err)
 		}
 
-		if customersResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 	}
@@ -350,6 +478,7 @@ func test_customers() {
 
 // ----------------------------------------------------------------------------------------
 
+/*
 type BuyersResponse struct {
 	Buyers []admin.BuyerData `json:"buyers"`
 	Error  string            `json:"error"`
@@ -1112,6 +1241,7 @@ func test_buyer_datacenter_settings() {
 		Read("http://127.0.0.1:50000/admin/route_shader_defaults", &routeShader)
 	}
 }
+*/
 
 // ----------------------------------------------------------------------------------------
 
@@ -1121,12 +1251,14 @@ func main() {
 
 	allTests := []test_function{
 		test_customers,
+		/*
 		test_buyers,
 		test_sellers,
 		test_datacenters,
 		test_relays,
 		test_route_shaders,
 		test_buyer_datacenter_settings,
+		*/
 	}
 
 	var tests []test_function

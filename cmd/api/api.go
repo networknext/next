@@ -116,7 +116,6 @@ func main() {
 		service.Router.HandleFunc("/admin/route_shader/{routeShaderId}", isAuthorized(adminReadRouteShaderHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_route_shader", isAuthorized(adminUpdateRouteShaderHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_route_shader/{routeShaderId}", isAuthorized(adminDeleteRouteShaderHandler)).Methods("DELETE")
-		service.Router.HandleFunc("/admin/route_shader_defaults", isAuthorized(adminRouteShaderDefaultsHandler)).Methods("GET")
 
 		service.Router.HandleFunc("/admin/create_buyer_datacenter_settings", isAuthorized(adminCreateBuyerDatacenterSettingsHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/buyer_datacenter_settings", isAuthorized(adminReadBuyerDatacenterSettingsListHandler)).Methods("GET")
@@ -1005,12 +1004,6 @@ func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-func adminRouteShaderDefaultsHandler(w http.ResponseWriter, r *http.Request) {
-	routeShader := controller.RouteShaderDefaults()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(routeShader)
-}
 
 type AdminCreateRouteShaderResponse struct {
 	RouteShader  admin.RouteShaderData   `json:"route_shader"`

@@ -8,11 +8,11 @@ DONE
 
 	Make sure happy path passes
 
+	Make sure the next tool still works post-terraform changes
+
 TODO
 
 	Fix the API func test so it works with the REST API changes made to support terraform
-
-	Make sure the next tool still works post-terraform changes
 
 	Make sure all func tests pass
 

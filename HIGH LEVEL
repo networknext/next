@@ -54,15 +54,11 @@ TODO
 
 	------------
 
-	Get whole env up and working in dev.
-
-	------------
-
 	Multithreaded relay with session database per-socket thread (no contention)
 
 	------------
 
-	Rebuild portal (no auth).
+	Rebuild portal
 
 	------------	
 

@@ -1120,7 +1120,6 @@ func ssh(env Environment, regexes []string) {
 }
 
 func config(env Environment, regexes []string) {
-
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
