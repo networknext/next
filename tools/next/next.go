@@ -279,7 +279,6 @@ func getKeyValue(envFile string, keyName string) string {
 	if value[0] == '"' || value[0] == '\'' {
 		value = value[1:len(value)-1]
 	}
-
 	return value
 }
 
@@ -767,7 +766,7 @@ func getDatabase() *db.Database {
 		return cachedDatabase
 	}
 
-	if env.String() != "local" {
+	if env.Name != "local" {
 		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", env.DatabaseURL))
 		os.WriteFile("database.bin", database_binary, 0644)
 	}
@@ -778,6 +777,7 @@ func getDatabase() *db.Database {
 		os.Exit(1)
 		return nil
 	}
+
 	return cachedDatabase
 }
 

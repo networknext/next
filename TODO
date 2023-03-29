@@ -1,50 +1,109 @@
 DONE
 
-	Fix up server backend to run on port 40000 in local env, not 45000 (local, happy path, dev)
-
-	Make sure happy path passes
-
-	Make sure functional tests pass
-
-	Adjust terraform to use port 40000 for server backend
-
-	Update documentation to mention how to build and run in Docker.
-
-	Make a release with the docker update
-
-	Debug why "next database" can't read the GOB
-
-		"Not Authorized" :)
-
-	Verify that func test database passes
-
-	Deploy code to dev with terraform. 
-
 TODO
 
-	gaffer@batman backend % next database
+	Create a terraform provider for network next that drives the CRUD REST API
 
-		error: could not load database.bin: gob: bad data: field numbers out of bounds
+	https://github.com/spaceapegames/terraform-provider-example/blob/master/provider/provider.go
 
-	Need to debug what's up with this. What is being returned? Why is it fucked?
+	https://developer.hashicorp.com/terraform/registry/modules/publish
 
-	Could it be that the dev database.bin generated freaks out, because there is no data in SQL?
+	^--- can publish a module here
+
+	-----------------------------------
+
+	Good reference for documentation:
+
+	https://github.com/hashicorp/terraform/
+
+	-----------------------------------
+
+	Plugin framework
+
+	https://github.com/hashicorp/terraform-plugin-sdk
+
+	-----------------------------------
+
+	Lumen has VMs and bare metal via terraform!!!
+
+	https://registry.terraform.io/providers/LumenTech/lumen/latest/docs/guides/getting_started
+
+	-----------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
+
+	Then this needs to be plugged in to the dev terraform setup
+
+	https://registry.terraform.io/providers/vancluever/acme/latest/docs/guides/dns-providers-cloudflare
+
+	https://letsencrypt.org/how-it-works/
+
+	"We recommend that most people with shell access use the Certbot ACME client. It can automate certificate issuance and installation with no downtime. It also has expert modes for people who don’t want autoconfiguration. It’s easy to use, works on many operating systems, and has great documentation. Visit the Certbot site to get customized instructions for your operating system and web server."
+
+	https://certbot.eff.org
+
+	https://registry.terraform.io/providers/vancluever/acme/latest
+
+	https://itnext.io/lets-encrypt-certs-with-terraform-f870def3ce6d
+
+	https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/certificate_pack
+
+	https://itnext.io/lets-encrypt-certs-with-terraform-f870def3ce6d
+
+	https://blog.bryantluk.com/post/2018/06/02/terraform-and-lets-encrypt-on-google-cloud-platform/
+
+	https://cloud.google.com/certificate-authority-service/docs/using-terraform
+
+	https://xbery.medium.com/say-goodbye-to-lets-encrypt-welcome-google-managed-ssl-certificates-4d92831750e1
+
+	^------ winner. work directly with google. may need to bypass cloudflare?
 
 	-----------------------------------
 
 	API service must run over https in dev.
 
-	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
-
-	Then this needs to be plugged in to the dev 
-
 	-----------------------------------
 
 	Relay gateway service must run over https in dev.
-
-	-----------------------------------
-
-	Create a terraform provider for network next that drives the CRUD REST API
 
 	-----------------------------------
 
@@ -541,5 +600,33 @@ Nice to have:
 	--------------
 
 	Get raspberry backend, raspberry servers and raspberry clients running inside docker compose, so we can have a decent amount of activity to show by navigating to the portal URL locally.
+
+	--------------
+
+	Idea. "next status" gives a quick overview of the whole system, what services are up, what they are doing etc.
+
+	--------------
+
+	Try to simplify route shader parameters.
+
+	RTT Veto doesn't really need multiple values.
+
+	Latency Threshold would be much better named as "Minimum Latency Reduction" etc.
+
+	Why have "reduce latency" and "reduce packet loss" bools at all? Of *course* you always want this... etc.
+
+	--------------
+
+	API should have extensive logs for actions it performs. Right now it's completely silent.
+
+	core.Debug logs only.
+
+	--------------
+
+	API func tests needs to check new read item by id methods
+
+	--------------
+	
+	There should be a functional test to exercise all parts of the CRUD via terraform, and check results
 
 	--------------

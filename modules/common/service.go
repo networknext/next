@@ -445,12 +445,11 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	if service.Local {
 		config.BindAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", config.Port))
 	}
-	core.Log("udp port: %d", config.Port)
-	core.Log("udp num threads: %d", config.NumThreads)
-	core.Log("udp socket read buffer: %d", config.SocketReadBuffer)
-	core.Log("udp socket write buffer: %d", config.SocketWriteBuffer)
-	core.Log("udp max packet size: %d", config.MaxPacketSize)
 	core.Log("starting udp server on port %d", config.Port)
+	core.Debug("udp num threads: %d", config.NumThreads)
+	core.Debug("udp socket read buffer: %d", config.SocketReadBuffer)
+	core.Debug("udp socket write buffer: %d", config.SocketWriteBuffer)
+	core.Debug("udp max packet size: %d", config.MaxPacketSize)
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
@@ -835,6 +834,8 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 	if databaseURL == "" {
 		return
 	}
+
+	core.Debug("database url: %s", databaseURL)
 
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 

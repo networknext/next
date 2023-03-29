@@ -63,6 +63,23 @@ func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
 	return customers, nil
 }
 
+func (controller *Controller) ReadCustomer(customerId uint64) (CustomerData, error) {
+	customer := CustomerData{}
+	rows, err := controller.pgsql.Query("SELECT customer_name, customer_code, live, debug FROM customers WHERE customer_id = $1;", customerId)
+	if err != nil {
+		return customer, fmt.Errorf("could not read customer: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&customer.CustomerName, &customer.CustomerCode, &customer.Live, &customer.Debug); err != nil {
+			return customer, fmt.Errorf("could not scan customer row: %v\n", err)
+		}
+		customer.CustomerId = customerId
+		return customer, nil
+	}
+	return customer, fmt.Errorf("customer %x not found", customerId)
+}
+
 func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
 	// IMPORTANT: Cannot change customer id once created
 	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4 WHERE customer_id = $5;"
@@ -83,8 +100,8 @@ type RouteShaderData struct {
 	RouteShaderName           string  `json:"route_shader_name"`
 	ABTest                    bool    `json:"ab_test"`
 	AcceptableLatency         int     `json:"acceptable_latency"`
-	AcceptablePacketLoss      float32 `json:"acceptable_packet_loss"`
-	PacketLossSustained       float32 `json:"packet_loss_sustained"`
+	AcceptablePacketLoss      float64 `json:"acceptable_packet_loss"`
+	PacketLossSustained       float64 `json:"packet_loss_sustained"`
 	AnalysisOnly              bool    `json:"analysis_only"`
 	BandwidthEnvelopeUpKbps   int     `json:"bandwidth_envelope_up_kbps"`
 	BandwidthEnvelopeDownKbps int     `json:"bandwidth_envelope_down_kbps"`
@@ -93,7 +110,7 @@ type RouteShaderData struct {
 	Multipath                 bool    `json:"multipath"`
 	ReduceLatency             bool    `json:"reduce_latency"`
 	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
-	SelectionPercent          float32 `json:"selection_percent"`
+	SelectionPercent          float64 `json:"selection_percent"`
 	MaxLatencyTradeOff        int     `json:"max_latency_trade_off"`
 	MaxNextRTT                int     `json:"max_next_rtt"`
 	RouteSwitchThreshold      int     `json:"route_switch_threshold"`
@@ -110,8 +127,8 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data := RouteShaderData{}
 	data.ABTest = routeShader.ABTest
 	data.AcceptableLatency = int(routeShader.AcceptableLatency)
-	data.AcceptablePacketLoss = routeShader.AcceptablePacketLoss
-	data.PacketLossSustained = routeShader.PacketLossSustained
+	data.AcceptablePacketLoss = float64(routeShader.AcceptablePacketLoss)
+	data.PacketLossSustained = float64(routeShader.PacketLossSustained)
 	data.AnalysisOnly = routeShader.AnalysisOnly
 	data.BandwidthEnvelopeUpKbps = int(routeShader.BandwidthEnvelopeUpKbps)
 	data.BandwidthEnvelopeDownKbps = int(routeShader.BandwidthEnvelopeDownKbps)
@@ -120,7 +137,7 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data.Multipath = routeShader.Multipath
 	data.ReduceLatency = routeShader.ReduceLatency
 	data.ReducePacketLoss = routeShader.ReduceLatency
-	data.SelectionPercent = float32(routeShader.SelectionPercent)
+	data.SelectionPercent = float64(routeShader.SelectionPercent)
 	data.MaxLatencyTradeOff = int(routeShader.MaxLatencyTradeOff)
 	data.MaxNextRTT = int(routeShader.MaxNextRTT)
 	data.RouteSwitchThreshold = int(routeShader.RouteSwitchThreshold)
@@ -291,6 +308,80 @@ FROM
 	return routeShaders, nil
 }
 
+func (controller *Controller) ReadRouteShader(routeShaderId uint64) (RouteShaderData, error) {
+	routeShader := RouteShaderData{}
+	sql := `
+SELECT
+	route_shader_id,
+	route_shader_name,
+	ab_test,
+	acceptable_latency,
+	acceptable_packet_loss,
+	packet_loss_sustained,
+	analysis_only,
+	bandwidth_envelope_up_kbps,
+	bandwidth_envelope_down_kbps,
+	disable_network_next,
+	latency_threshold,
+	multipath,
+	reduce_latency,
+	reduce_packet_loss,
+	selection_percent,
+	max_latency_trade_off,
+	max_next_rtt,
+	route_switch_threshold,
+	route_select_threshold,
+	rtt_veto_default,
+	rtt_veto_multipath,
+	rtt_veto_packetloss,
+	force_next,
+	route_diversity
+FROM
+	route_shaders
+WHERE
+	route_shader_id = $1;`
+	rows, err := controller.pgsql.Query(sql, routeShaderId)
+	if err != nil {
+		return routeShader, fmt.Errorf("could not read route shader: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		err := rows.Scan(
+			&routeShader.RouteShaderId,
+			&routeShader.RouteShaderName,
+			&routeShader.ABTest,
+			&routeShader.AcceptableLatency,
+			&routeShader.AcceptablePacketLoss,
+			&routeShader.PacketLossSustained,
+			&routeShader.AnalysisOnly,
+			&routeShader.BandwidthEnvelopeUpKbps,
+			&routeShader.BandwidthEnvelopeDownKbps,
+			&routeShader.DisableNetworkNext,
+			&routeShader.LatencyThreshold,
+			&routeShader.Multipath,
+			&routeShader.ReduceLatency,
+			&routeShader.ReducePacketLoss,
+			&routeShader.SelectionPercent,
+			&routeShader.MaxLatencyTradeOff,
+			&routeShader.MaxNextRTT,
+			&routeShader.RouteSwitchThreshold,
+			&routeShader.RouteSelectThreshold,
+			&routeShader.RTTVeto_Default,
+			&routeShader.RTTVeto_Multipath,
+			&routeShader.RTTVeto_PacketLoss,
+			&routeShader.ForceNext,
+			&routeShader.RouteDiversity,
+		)
+		if err != nil {
+			return routeShader, fmt.Errorf("could not scan route shader row: %v\n", err)
+		}
+		routeShader.RouteShaderId = routeShaderId
+		return routeShader, nil
+	}
+	return routeShader, fmt.Errorf("route shader %x not found", routeShaderId)
+}
+
+
 func (controller *Controller) UpdateRouteShader(routeShaderData *RouteShaderData) error {
 	// IMPORTANT: Cannot change route shader id once created
 	sql := `
@@ -393,6 +484,23 @@ func (controller *Controller) ReadBuyers() ([]BuyerData, error) {
 	return buyers, nil
 }
 
+func (controller *Controller) ReadBuyer(buyerId uint64) (BuyerData, error) {
+	buyer := BuyerData{}
+	rows, err := controller.pgsql.Query("SELECT buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers WHERE buyer_id = $1;", buyerId)
+	if err != nil {
+		return buyer, fmt.Errorf("could not read buyer: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&buyer.BuyerName, &buyer.PublicKeyBase64, &buyer.CustomerId, &buyer.RouteShaderId); err != nil {
+			return buyer, fmt.Errorf("could not scan buyer row: %v\n", err)
+		}
+		buyer.BuyerId = buyerId
+		return buyer, nil
+	}
+	return buyer, fmt.Errorf("buyer %x not found", buyerId)
+}
+
 func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
 	// IMPORTANT: Cannot change buyer id once created
 	sql := "UPDATE buyers SET buyer_name = $1, public_key_base64 = $2, customer_id = $3, route_shader_id = $4 WHERE buyer_id = $5;"
@@ -449,6 +557,25 @@ func (controller *Controller) ReadSellers() ([]SellerData, error) {
 	return sellers, nil
 }
 
+func (controller *Controller) ReadSeller(sellerId uint64) (SellerData, error) {
+	seller := SellerData{}
+	rows, err := controller.pgsql.Query("SELECT seller_name, customer_id FROM sellers WHERE seller_id = $1;", sellerId)
+	if err != nil {
+		return seller, fmt.Errorf("could not read seller: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		customerId := sql.NullInt64{}
+		if err := rows.Scan(&seller.SellerName, &customerId); err != nil {
+			return seller, fmt.Errorf("could not scan seller row: %v\n", err)
+		}
+		seller.SellerId = sellerId
+		seller.CustomerId = uint64(customerId.Int64)
+		return seller, nil
+	}
+	return seller, fmt.Errorf("seller %x not found", sellerId)
+}
+
 func (controller *Controller) UpdateSeller(sellerData *SellerData) error {
 	// IMPORTANT: Cannot change seller id once created
 	var err error
@@ -474,8 +601,8 @@ type DatacenterData struct {
 	DatacenterId   uint64  `json:"datacenter_id"`
 	DatacenterName string  `json:"datacenter_name"`
 	NativeName     string  `json:"native_name"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
+	Latitude       float64 `json:"latitude"`
+	Longitude      float64 `json:"longitude"`
 	SellerId       uint64  `json:"seller_id"`
 	Notes          string  `json:"notes"`
 }
@@ -505,6 +632,23 @@ func (controller *Controller) ReadDatacenters() ([]DatacenterData, error) {
 		datacenters = append(datacenters, row)
 	}
 	return datacenters, nil
+}
+
+func (controller *Controller) ReadDatacenter(datacenterId uint64) (DatacenterData, error) {
+	datacenter := DatacenterData{}
+	rows, err := controller.pgsql.Query("SELECT datacenter_name, native_name, latitude, longitude, seller_id, notes FROM datacenters WHERE datacenter_id = $1;", datacenterId)
+	if err != nil {
+		return datacenter, fmt.Errorf("could not read datacenter: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&datacenter.DatacenterName, &datacenter.NativeName, &datacenter.Latitude, &datacenter.Longitude, &datacenter.SellerId, &datacenter.Notes); err != nil {
+			return datacenter, fmt.Errorf("could not scan datacenter row: %v\n", err)
+		}
+		datacenter.DatacenterId = datacenterId
+		return datacenter, nil
+	}
+	return datacenter, fmt.Errorf("datacenter %x not found", datacenterId)
 }
 
 func (controller *Controller) UpdateDatacenter(datacenterData *DatacenterData) error {
@@ -677,6 +821,67 @@ FROM
 	return relays, nil
 }
 
+func (controller *Controller) ReadRelay(relayId uint64) (RelayData, error) {
+	relay := RelayData{}
+	query := `
+SELECT
+	relay_id,
+	relay_name,
+	datacenter_id,
+	public_ip,
+	public_port,
+	internal_ip,
+	internal_port,
+	internal_group,
+	ssh_ip,
+	ssh_port,
+	ssh_user,
+	public_key_base64,
+	private_key_base64,
+	version,
+	mrc,
+	port_speed,
+	max_sessions,
+	notes
+FROM
+	relays
+WHERE
+	relay_id = $1;`
+	rows, err := controller.pgsql.Query(query, relayId)
+	if err != nil {
+		return relay, fmt.Errorf("could not read relay: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		err := rows.Scan(
+			&relay.RelayId,
+			&relay.RelayName,
+			&relay.DatacenterId,
+			&relay.PublicIP,
+			&relay.PublicPort,
+			&relay.InternalIP,
+			&relay.InternalPort,
+			&relay.InternalGroup,
+			&relay.SSH_IP,
+			&relay.SSH_Port,
+			&relay.SSH_User,
+			&relay.PublicKeyBase64,
+			&relay.PrivateKeyBase64,
+			&relay.Version,
+			&relay.MRC,
+			&relay.PortSpeed,
+			&relay.MaxSessions,
+			&relay.Notes,
+		)
+		if err != nil {
+			return relay, fmt.Errorf("could not scan relay row: %v\n", err)
+		}
+		relay.RelayId = relayId
+		return relay, nil
+	}
+	return relay, fmt.Errorf("relay %x not found", relayId)
+}
+
 func (controller *Controller) UpdateRelay(relayData *RelayData) error {
 	// IMPORTANT: Cannot change relay id once created
 	sql := `
@@ -733,9 +938,9 @@ func (controller *Controller) DeleteRelay(relayId uint64) error {
 // -----------------------------------------------------------------------
 
 type BuyerDatacenterSettings struct {
-	BuyerId            uint64 `json:"buyer_id"`
-	DatacenterId       uint64 `json:"datacenter_id"`
-	EnableAcceleration bool   `json:"enable_acceleration"`
+    BuyerId            uint64 `json:"buyer_id"`
+    DatacenterId       uint64 `json:"datacenter_id"`
+    EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
 func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
@@ -744,7 +949,7 @@ func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatac
 	return err
 }
 
-func (controller *Controller) ReadBuyerDatacenterSettings() ([]BuyerDatacenterSettings, error) {
+func (controller *Controller) ReadBuyerDatacenterSettingsList() ([]BuyerDatacenterSettings, error) {
 	settings := make([]BuyerDatacenterSettings, 0)
 	rows, err := controller.pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM buyer_datacenter_settings;")
 	if err != nil {
@@ -759,6 +964,23 @@ func (controller *Controller) ReadBuyerDatacenterSettings() ([]BuyerDatacenterSe
 		settings = append(settings, row)
 	}
 	return settings, nil
+}
+
+func (controller *Controller) ReadBuyerDatacenterSettings(buyerId uint64, datacenterId uint64) (BuyerDatacenterSettings, error) {
+	settings := BuyerDatacenterSettings{}
+	rows, err := controller.pgsql.Query("SELECT buyer_id, datacenter_id, enable_acceleration FROM buyer_datacenter_settings WHERE buyer_id = $1 and datacenter_id = $2;", buyerId, datacenterId)
+	if err != nil {
+		return settings, fmt.Errorf("could not read buyer datacenter settings: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&settings.BuyerId, &settings.DatacenterId, &settings.EnableAcceleration); err != nil {
+			return settings, fmt.Errorf("could not scan buyer datacenter settings row: %v\n", err)
+		}
+		return settings, nil
+	} else {
+		return settings, fmt.Errorf("buyer datacenter settings %x.%x not found", buyerId, datacenterId)
+	}
 }
 
 func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {
