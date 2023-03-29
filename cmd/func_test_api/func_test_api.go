@@ -343,35 +343,55 @@ type DeleteSellerResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
-// ...
+type CreateDatacenterResponse struct {
+	Datacenter     admin.DatacenterData    `json:"datacenter"`
+	Error          string               	`json:"error"`
+}
+
+type ReadDatacentersResponse struct {
+	Datacenters    []admin.DatacenterData  `json:"datacenters"`
+	Error          string               	`json:"error"`
+}
+
+type ReadDatacenterResponse struct {
+	Datacenter     admin.DatacenterData    `json:"datacenter"`
+	Error          string               	`json:"error"`
+}
+
+type UpdateDatacenterResponse struct {
+	Datacenter     admin.DatacenterData    `json:"datacenter"`
+	Error          string               	`json:"error"`
+}
+
+type DeleteDatacenterResponse struct {
+	Error          string               	`json:"error"`
+}
 
 // ----------------------------------------------------------------------------------------
 
-/*/
-type CreateBuyerResponse struct {
-	Buyer     admin.BuyerData      `json:"buyer"`
-	Error     string               `json:"error"`
+type CreateRelayResponse struct {
+	Relay          admin.RelayData         `json:"relay"`
+	Error          string               	`json:"error"`
 }
 
-type ReadBuyersResponse struct {
-	Buyers    []admin.BuyerData    `json:"buyers"`
-	Error     string               `json:"error"`
+type ReadRelaysResponse struct {
+	Relays    		[]admin.RelayData  		`json:"relays"`
+	Error          string               	`json:"error"`
 }
 
-type ReadBuyerResponse struct {
-	Buyer     admin.BuyerData      `json:"buyer"`
-	Error     string               `json:"error"`
+type ReadRelayResponse struct {
+	Relay          admin.RelayData         `json:"relay"`
+	Error          string               	`json:"error"`
 }
 
-type UpdateBuyerResponse struct {
-	Buyer     admin.BuyerData      `json:"buyer"`
-	Error     string               `json:"error"`
+type UpdateRelayResponse struct {
+	Relay          admin.RelayData         `json:"relay"`
+	Error          string               	`json:"error"`
 }
 
-type DeleteBuyerResponse struct {
-	Error     string               `json:"error"`
+type DeleteRelayResponse struct {
+	Error          string               	`json:"error"`
 }
-*/
 
 // ----------------------------------------------------------------------------------------
 
@@ -599,7 +619,7 @@ func test_sellers() {
 			panic("expect error string to be empty")
 		}
 
-		if sellersResponse.Sellers[0].SellerId != customerId {
+		if sellersResponse.Sellers[0].SellerId != sellerId {
 			panic("wrong seller id")
 		}
 
@@ -669,6 +689,367 @@ func test_sellers() {
 		response := UpdateSellerResponse{}
 
 		err := Delete(fmt.Sprintf("admin/delete_seller/%x", sellerId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+
+func test_datacenters() {
+
+	fmt.Printf("\ntest_datacenters\n\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create customer
+
+	customerId := uint64(0)
+	{
+		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
+
+		var response CreateCustomerResponse
+
+		err := Create("admin/create_customer", customer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		customerId = response.Customer.CustomerId
+	}
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+
+		var response CreateSellerResponse
+
+		err := Create("admin/create_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		sellerId = response.Seller.SellerId
+	}
+
+	// create datacenter
+
+	datacenterId := uint64(0)
+	{
+		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+
+		var response CreateDatacenterResponse
+
+		err := Create("admin/create_datacenter", datacenter, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		datacenterId = response.Datacenter.DatacenterId
+	}
+
+	// read all datacenters
+	{
+		response := ReadDatacentersResponse{}
+
+		err := GetJSON("admin/datacenters", &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(response.Datacenters) != 1 {
+			panic(fmt.Sprintf("expect one datacenter in response, got %d", len(response.Datacenters)))
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Datacenters[0].DatacenterId != datacenterId {
+			panic("wrong datacenter id")
+		}
+
+		if response.Datacenters[0].DatacenterName != "Test" {
+			panic("wrong datacenter name")
+		}
+
+		if response.Datacenters[0].Latitude != 100 {
+			panic("wrong latitude")
+		}
+
+		if response.Datacenters[0].Longitude != 200 {
+			panic("wrong longitude")
+		}
+
+		if response.Datacenters[0].Notes != "" {
+			panic("notes should be empty")
+		}
+	}
+
+	// read a specific datacenter
+	{
+		datacenterResponse := ReadDatacenterResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/datacenter/%x", datacenterId), &datacenterResponse)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if datacenterResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if datacenterResponse.Datacenter.DatacenterId != datacenterId {
+			panic(fmt.Sprintf("wrong datacenter id: got %x, expected %x", datacenterResponse.Datacenter.DatacenterId, datacenterId))
+		}
+
+		if datacenterResponse.Datacenter.DatacenterName != "Test" {
+			panic("wrong datacenter name")
+		}
+
+		if datacenterResponse.Datacenter.Latitude != 100.0 {
+			panic("wrong latitude on datacenter")
+		}
+
+		if datacenterResponse.Datacenter.Longitude != 200.0 {
+			panic("wrong longitude on datacenter")
+		}
+
+		if datacenterResponse.Datacenter.SellerId != sellerId {
+			panic("wrong seller id on datacenter")
+		}
+	}
+
+	// update datacenter
+	{
+		datacenter := admin.DatacenterData{DatacenterId: datacenterId, DatacenterName: "Updated", Latitude: 50, Longitude: 75, SellerId: sellerId}
+
+		response := UpdateDatacenterResponse{}
+
+		err := Update("admin/update_datacenter", datacenter, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Datacenter.DatacenterId != datacenterId {
+			panic("wrong datacenter id")
+		}
+
+		if response.Datacenter.DatacenterName != "Updated" {
+			panic("wrong datacenter name after update")
+		}
+	}
+
+	// delete datacenter
+	{
+		response := UpdateDatacenterResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_datacenter/%x", datacenterId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+
+func test_relays() {
+
+	fmt.Printf("\ntest_relays\n\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create customer
+
+	customerId := uint64(0)
+	{
+		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
+
+		var response CreateCustomerResponse
+
+		err := Create("admin/create_customer", customer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		customerId = response.Customer.CustomerId
+	}
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+
+		var response CreateSellerResponse
+
+		err := Create("admin/create_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		sellerId = response.Seller.SellerId
+	}
+
+	// create datacenter
+
+	datacenterId := uint64(0)
+	{
+		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+
+		var response CreateDatacenterResponse
+
+		err := Create("admin/create_datacenter", datacenter, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		datacenterId = response.Datacenter.DatacenterId
+	}
+
+	// create relay
+
+	relayId := uint64(0)
+	{
+		relay := admin.RelayData{RelayName: "Test", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
+
+		var response CreateRelayResponse
+
+		err := Create("admin/create_relay", relay, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		relayId = response.Relay.RelayId
+	}
+
+	// read all relays
+	{
+		response := ReadRelaysResponse{}
+
+		err := GetJSON("admin/relays", &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(response.Relays) != 1 {
+			panic(fmt.Sprintf("expect one relay in response, got %d", len(response.Relays)))
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Relays[0].RelayId != relayId {
+			panic("wrong relay id")
+		}
+
+		if response.Relays[0].RelayName != "Test" {
+			panic("wrong relay name")
+		}
+
+		// todo: check all fields
+	}
+
+	// read a specific relay
+	{
+		response := ReadRelayResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/relay/%x", relayId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Relay.RelayId != relayId {
+			panic(fmt.Sprintf("wrong relay id: got %x, expected %x", response.Relay.RelayId, relayId))
+		}
+
+		if response.Relay.RelayName != "Test" {
+			panic("wrong relay name")
+		}
+
+		// todo: check all fields
+	}
+
+	// update relay
+	{
+		relay := admin.RelayData{RelayId: relayId, RelayName: "Updated", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
+
+		response := UpdateRelayResponse{}
+
+		err := Update("admin/update_relay", relay, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Relay.RelayId != relayId {
+			panic("wrong relay id")
+		}
+
+		if response.Relay.RelayName != "Updated" {
+			panic("wrong relay name after update")
+		}
+
+		// todo: check all fields
+	}
+
+	// delete relay
+	{
+		response := UpdateRelayResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_relay/%x", relayId), &response)
 
 		if err != nil {
 			panic(err)
@@ -886,11 +1267,9 @@ func test_buyers() {
 		}
 	}
 }
-*/
 
 // ----------------------------------------------------------------------------------------
 
-/*
 func test_sellers() {
 
 	fmt.Printf("test_sellers\n")
@@ -988,7 +1367,104 @@ func test_sellers() {
 		}
 	}
 }
-*/
+
+func test_sellers() {
+
+	fmt.Printf("test_sellers\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Seller"}
+
+		sellerId = Create("http://127.0.0.1:50000/admin/create_seller", seller)
+	}
+
+	// read sellers
+	{
+		sellersResponse := SellersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
+
+		if len(sellersResponse.Sellers) != 1 {
+			panic("expect one seller in response")
+		}
+
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if sellersResponse.Sellers[0].SellerId != sellerId {
+			panic("wrong seller id")
+		}
+
+		if sellersResponse.Sellers[0].SellerName != "Seller" {
+			panic("wrong seller name")
+		}
+
+		if sellersResponse.Sellers[0].CustomerId != 0 {
+			panic("wrong customer id")
+		}
+	}
+
+	// update seller
+	{
+		seller := admin.SellerData{SellerId: sellerId, SellerName: "Updated"}
+
+		Update("http://127.0.0.1:50000/admin/update_seller", seller)
+
+		sellersResponse := SellersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
+
+		if len(sellersResponse.Sellers) != 1 {
+			panic("expect one seller in response")
+		}
+
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if sellersResponse.Sellers[0].SellerId != sellerId {
+			panic("wrong seller id")
+		}
+
+		if sellersResponse.Sellers[0].SellerName != "Updated" {
+			panic("wrong seller name")
+		}
+
+		if sellersResponse.Sellers[0].CustomerId != 0 {
+			panic("wrong customer id")
+		}
+	}
+
+	// delete seller
+	{
+		Delete("http://127.0.0.1:50000/admin/delete_seller", sellerId)
+
+		sellersResponse := SellersResponse{}
+
+		Read("http://127.0.0.1:50000/admin/sellers", &sellersResponse)
+
+		if len(sellersResponse.Sellers) != 0 {
+			panic("should be no sellers after delete")
+		}
+
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+}
 
 // ----------------------------------------------------------------------------------------
 
@@ -1520,11 +1996,11 @@ func main() {
 	allTests := []test_function{
 		test_customers,
 		test_sellers,
-		/*
-		test_buyers,
 		test_datacenters,
 		test_relays,
+		/*
 		test_route_shaders,
+		test_buyers,
 		test_buyer_datacenter_settings,
 		*/
 	}
@@ -1559,3 +2035,31 @@ func main() {
 		tests[i]()
 	}
 }
+
+
+/*/
+type CreateBuyerResponse struct {
+	Buyer     admin.BuyerData      `json:"buyer"`
+	Error     string               `json:"error"`
+}
+
+type ReadBuyersResponse struct {
+	Buyers    []admin.BuyerData    `json:"buyers"`
+	Error     string               `json:"error"`
+}
+
+type ReadBuyerResponse struct {
+	Buyer     admin.BuyerData      `json:"buyer"`
+	Error     string               `json:"error"`
+}
+
+type UpdateBuyerResponse struct {
+	Buyer     admin.BuyerData      `json:"buyer"`
+	Error     string               `json:"error"`
+}
+
+type DeleteBuyerResponse struct {
+	Error     string               `json:"error"`
+}
+*/
+
