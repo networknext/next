@@ -32,13 +32,17 @@ DONE
 
 	Ability to run system locally under docker compose.
 
+	Network Next terraform provider.
+
 TODO
+
+	Setup dev backend and relays in dev with terraform
+
+	------------
 
 	HTTPS for api service
 
 	HTTPS for relay gateway
-
-	Network Next terraform provider.
 
 	------------
 
