@@ -370,7 +370,7 @@ func main() {
 	var initCommand = &ffcli.Command{
 		Name:       "init",
 		ShortUsage: "next init <component>",
-		ShortHelp:  "Terraform init component, eg. 'next init backend', or 'next init relays'. Call this before first deploy, or after any new modules are added.",
+		ShortHelp:  "Terraform init component, eg. 'next init backend', or 'next init relays'.",
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) == 0 {
 				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
@@ -1106,7 +1106,7 @@ func ssh(env Environment, regexes []string) {
 		}
 		for i := range relays {
 			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+				fmt.Printf("%s does not have an SSH address\n", relays[i].Name)
 				continue
 			}
 			fmt.Printf("connecting to %s\n", relays[i].Name)
