@@ -938,9 +938,9 @@ func (controller *Controller) DeleteRelay(relayId uint64) error {
 // -----------------------------------------------------------------------
 
 type BuyerDatacenterSettings struct {
-	BuyerId            uint64 `json:"buyer_id"`
-	DatacenterId       uint64 `json:"datacenter_id"`
-	EnableAcceleration bool   `json:"enable_acceleration"`
+    BuyerId            uint64 `json:"buyer_id"`
+    DatacenterId       uint64 `json:"datacenter_id"`
+    EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
 func (controller *Controller) CreateBuyerDatacenterSettings(settings *BuyerDatacenterSettings) error {

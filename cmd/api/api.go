@@ -1141,21 +1141,36 @@ func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminCreateBuyerDatacenterSettingsResponse struct {
+	Settings     admin.BuyerDatacenterSettings   `json:"settings"`
+	Error        string                  		 `json:"error"`
+}
+
 func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminCreateBuyerDatacenterSettingsResponse
 	var settings admin.BuyerDatacenterSettings
 	err := json.NewDecoder(r.Body).Decode(&settings)
 	if err != nil {
+		core.Error("failed to read route shader data in create route shader request: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = controller.CreateBuyerDatacenterSettings(&settings)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		// todo
+		core.Debug("%+v\n", settings)
+		core.Error("failed to create buyer datacenter settings: %v", err)
+		response.Error = err.Error()
+	} else {
+		buyerId := settings.BuyerId
+		datacenterId := settings.DatacenterId
+		core.Log("create buyer datacenter settings %x.%x", buyerId, datacenterId)
+		core.Debug("%+v", settings)
+		response.Settings = settings
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/octet-stream")
-	fmt.Fprintf(w, "1")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type AdminReadBuyerDatacenterSettingsListResponse struct {
@@ -1238,7 +1253,7 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 	core.Log("delete buyer datacenter settings %x.%x", buyerId, datacenterId)
-	response := AdminDeleteRouteShaderResponse{}
+	response := AdminDeleteBuyerDatacenterSettingsResponse{}
 	err = controller.DeleteBuyerDatacenterSettings(buyerId, datacenterId)
 	if err != nil {
 		core.Error("failed to delete buyer datacenter settings: %v", err)
