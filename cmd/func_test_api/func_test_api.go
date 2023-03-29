@@ -317,9 +317,67 @@ type DeleteCustomerResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
+type CreateSellerResponse struct {
+	Seller     admin.SellerData    `json:"seller"`
+	Error     string               `json:"error"`
+}
+
+type ReadSellersResponse struct {
+	Sellers   []admin.SellerData   `json:"sellers"`
+	Error     string               `json:"error"`
+}
+
+type ReadSellerResponse struct {
+	Seller     admin.SellerData    `json:"seller"`
+	Error     string               `json:"error"`
+}
+
+type UpdateSellerResponse struct {
+	Seller     admin.SellerData    `json:"seller"`
+	Error     string               `json:"error"`
+}
+
+type DeleteSellerResponse struct {
+	Error     string               `json:"error"`
+}
+
+// ----------------------------------------------------------------------------------------
+
+// ...
+
+// ----------------------------------------------------------------------------------------
+
+/*/
+type CreateBuyerResponse struct {
+	Buyer     admin.BuyerData      `json:"buyer"`
+	Error     string               `json:"error"`
+}
+
+type ReadBuyersResponse struct {
+	Buyers    []admin.BuyerData    `json:"buyers"`
+	Error     string               `json:"error"`
+}
+
+type ReadBuyerResponse struct {
+	Buyer     admin.BuyerData      `json:"buyer"`
+	Error     string               `json:"error"`
+}
+
+type UpdateBuyerResponse struct {
+	Buyer     admin.BuyerData      `json:"buyer"`
+	Error     string               `json:"error"`
+}
+
+type DeleteBuyerResponse struct {
+	Error     string               `json:"error"`
+}
+*/
+
+// ----------------------------------------------------------------------------------------
+
 func test_customers() {
 
-	fmt.Printf("test_customers\n")
+	fmt.Printf("\ntest_customers\n\n")
 
 	clearDatabase()
 
@@ -387,8 +445,6 @@ func test_customers() {
 	}
 
 	// read a specific customer
-
-	// read all customers
 	{
 		customerResponse := ReadCustomerResponse{}
 
@@ -478,12 +534,179 @@ func test_customers() {
 
 // ----------------------------------------------------------------------------------------
 
-/*
-type BuyersResponse struct {
-	Buyers []admin.BuyerData `json:"buyers"`
-	Error  string            `json:"error"`
+func test_sellers() {
+
+	fmt.Printf("\ntest_sellers\n\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create customer
+
+	customerId := uint64(0)
+	{
+		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
+
+		var response CreateCustomerResponse
+
+		err := Create("admin/create_customer", customer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		customerId = response.Customer.CustomerId
+	}
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+
+		var response CreateSellerResponse
+
+		err := Create("admin/create_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		sellerId = response.Seller.SellerId
+	}
+
+	// read all sellers
+	{
+		sellersResponse := ReadSellersResponse{}
+
+		err := GetJSON("admin/sellers", &sellersResponse)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(sellersResponse.Sellers) != 1 {
+			panic("expect one seller in response")
+		}
+
+		if sellersResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if sellersResponse.Sellers[0].SellerId != customerId {
+			panic("wrong seller id")
+		}
+
+		if sellersResponse.Sellers[0].SellerName != "Test" {
+			panic("wrong seller name")
+		}
+	}
+
+	// read a specific seller
+	{
+		sellerResponse := ReadSellerResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/seller/%x", sellerId), &sellerResponse)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if sellerResponse.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if sellerResponse.Seller.SellerId != sellerId {
+			panic(fmt.Sprintf("wrong seller id: got %x, expected %x", sellerResponse.Seller.SellerId, sellerId))
+		}
+
+		if sellerResponse.Seller.SellerName != "Test" {
+			panic("wrong seller name")
+		}
+
+		if sellerResponse.Seller.CustomerId != customerId {
+			panic("wrong customer id on seller")
+		}
+	}
+
+	// update seller
+	{
+		seller := admin.SellerData{SellerId: sellerId, SellerName: "Updated", CustomerId: customerId}
+
+		response := UpdateSellerResponse{}
+
+		err := Update("admin/update_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Seller.SellerId != sellerId {
+			panic("wrong seller id")
+		}
+
+		if response.Seller.SellerName != "Updated" {
+			panic("wrong seller name")
+		}
+
+		if response.Seller.CustomerId != customerId {
+			panic("wrong seller customer id")
+		}
+	}
+
+	// delete seller
+	{
+		response := UpdateSellerResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_seller/%x", sellerId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
 }
 
+// ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ----------------------------------------------------------------------------------------
+
+// todo: come back once route shader is tested
+
+/*
 func test_buyers() {
 
 	fmt.Printf("test_buyers\n")
@@ -497,22 +720,21 @@ func test_buyers() {
 		api_cmd.Wait()
 	}()
 
-	// create customer (needed by buyer)
+	// create customer
 
 	customerId := uint64(0)
 	{
 		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
 
-		customerId = Create("http://127.0.0.1:50000/admin/create_customer", customer)
-	}
+		var response CreateCustomerResponse
 
-	// create route shader (needed by buyer)
+		err := Create("admin/create_customer", customer, &response)
 
-	routeShaderId := uint64(0)
-	{
-		routeShader := admin.RouteShaderData{}
+		if err != nil {
+			panic(err)
+		}
 
-		routeShaderId = Create("http://127.0.0.1:50000/admin/create_route_shader", routeShader)
+		customerId = response.Customer.CustomerId
 	}
 
 	// create buyer
@@ -523,108 +745,152 @@ func test_buyers() {
 	{
 		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
 
-		buyerId = Create("http://127.0.0.1:50000/admin/create_buyer", buyer)
-	}
+		var response CreateBuyerResponse
 
-	// read buyers
-	{
-		buyersResponse := BuyersResponse{}
+		err := Create("admin/create_buyer", buyer, &response)
 
-		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
-
-		if len(buyersResponse.Buyers) != 1 {
-			panic("expect one buyer in response")
+		if err != nil {
+			panic(err)
 		}
 
-		if buyersResponse.Error != "" {
+		buyerId = response.Buyer.BuyerId
+	}
+
+	// todo
+	_ = buyerId
+
+	/*
+	// read all buyers
+	{
+		buyersResponse := ReadCustomersResponse{}
+
+		err := GetJSON("admin/customers", &customersResponse)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(customersResponse.Customers) != 1 {
+			panic("expect one customer in response")
+		}
+
+		if customersResponse.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if buyersResponse.Buyers[0].BuyerId != buyerId {
-			panic("wrong buyer id")
-		}
-
-		if buyersResponse.Buyers[0].BuyerName != "Buyer" {
-			panic("wrong buyer name")
-		}
-
-		if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
-			panic("wrong public key base64")
-		}
-
-		if buyersResponse.Buyers[0].CustomerId != customerId {
+		if customersResponse.Customers[0].CustomerId != customerId {
 			panic("wrong customer id")
 		}
 
-		if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
-			panic("wrong route shader id")
+		if customersResponse.Customers[0].CustomerName != "Test" {
+			panic("wrong customer name")
+		}
+
+		if customersResponse.Customers[0].CustomerCode != "test" {
+			panic("wrong customer code")
+		}
+
+		if !customersResponse.Customers[0].Live {
+			panic("customer should have live true")
+		}
+
+		if !customersResponse.Customers[0].Debug {
+			panic("customer should have debug true")
 		}
 	}
 
-	// update buyer
+	// read a specific customer
 	{
-		buyer := admin.BuyerData{BuyerId: buyerId, BuyerName: "Updated", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+		customerResponse := ReadCustomerResponse{}
 
-		Update("http://127.0.0.1:50000/admin/update_buyer", buyer)
+		err := GetJSON(fmt.Sprintf("admin/customer/%x", customerId), &customerResponse)
 
-		buyersResponse := BuyersResponse{}
-
-		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
-
-		if len(buyersResponse.Buyers) != 1 {
-			panic("expect one buyer in response")
+		if err != nil {
+			panic(err)
 		}
 
-		if buyersResponse.Error != "" {
+		if customerResponse.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if buyersResponse.Buyers[0].BuyerId != buyerId {
-			panic("wrong buyer id")
+		if customerResponse.Customer.CustomerId != customerId {
+			panic(fmt.Sprintf("wrong customer id: got %x, expected %x", customerResponse.Customer.CustomerId, customerId))
 		}
 
-		if buyersResponse.Buyers[0].BuyerName != "Updated" {
-			panic("wrong buyer name")
+		if customerResponse.Customer.CustomerName != "Test" {
+			panic("wrong customer name")
 		}
 
-		if buyersResponse.Buyers[0].PublicKeyBase64 != dummyBase64 {
-			panic("wrong public key base64")
+		if customerResponse.Customer.CustomerCode != "test" {
+			panic("wrong customer code")
 		}
 
-		if buyersResponse.Buyers[0].CustomerId != customerId {
-			panic("wrong customer id")
+		if !customerResponse.Customer.Live {
+			panic("customer should have live true")
 		}
 
-		if buyersResponse.Buyers[0].RouteShaderId != routeShaderId {
-			panic("wrong route shader id")
+		if !customerResponse.Customer.Debug {
+			panic("customer should have debug true")
 		}
 	}
 
-	// delete buyer
+	// update customer
 	{
-		Delete("http://127.0.0.1:50000/admin/delete_buyer", buyerId)
+		customer := admin.CustomerData{CustomerId: customerId, CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
 
-		buyersResponse := BuyersResponse{}
+		response := UpdateCustomerResponse{}
 
-		Read("http://127.0.0.1:50000/admin/buyers", &buyersResponse)
+		err := Update("admin/update_customer", customer, &response)
 
-		if len(buyersResponse.Buyers) != 0 {
-			panic("should be no buyers after delete")
+		if err != nil {
+			panic(err)
 		}
 
-		if buyersResponse.Error != "" {
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Customer.CustomerId != customerId {
+			panic("wrong customer id")
+		}
+
+		if response.Customer.CustomerName != "Updated" {
+			panic("wrong customer name")
+		}
+
+		if response.Customer.CustomerCode != "updated" {
+			panic("wrong customer code")
+		}
+
+		if response.Customer.Live {
+			panic("customer should have live false")
+		}
+
+		if response.Customer.Debug {
+			panic("customer should have debug false")
+		}
+	}
+
+	// delete customer
+	{
+		response := UpdateCustomerResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_customer/%x", customerId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 	}
 }
+*/
 
 // ----------------------------------------------------------------------------------------
 
-type SellersResponse struct {
-	Sellers []admin.SellerData `json:"sellers"`
-	Error   string             `json:"error"`
-}
-
+/*
 func test_sellers() {
 
 	fmt.Printf("test_sellers\n")
@@ -722,9 +988,11 @@ func test_sellers() {
 		}
 	}
 }
+*/
 
 // ----------------------------------------------------------------------------------------
 
+/*
 type DatacentersResponse struct {
 	Datacenters []admin.DatacenterData `json:"datacenters"`
 	Error       string                 `json:"error"`
@@ -1251,9 +1519,9 @@ func main() {
 
 	allTests := []test_function{
 		test_customers,
+		test_sellers,
 		/*
 		test_buyers,
-		test_sellers,
 		test_datacenters,
 		test_relays,
 		test_route_shaders,
