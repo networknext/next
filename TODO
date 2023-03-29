@@ -1,34 +1,26 @@
 DONE
 
-TODO
-
 	Create a terraform provider for network next that drives the CRUD REST API
 
 	https://github.com/spaceapegames/terraform-provider-example/blob/master/provider/provider.go
 
 	https://developer.hashicorp.com/terraform/registry/modules/publish
 
-	^--- can publish a module here
+	Make sure happy path passes
 
-	-----------------------------------
+TODO
 
-	Good reference for documentation:
+	Fix the API func test so it works with the REST API changes made to support terraform
 
-	https://github.com/hashicorp/terraform/
+	Make sure the next tool still works post-terraform changes
 
-	-----------------------------------
+	Make sure all func tests pass
 
-	Plugin framework
+	----------------
 
-	https://github.com/hashicorp/terraform-plugin-sdk
+	Setup some relays in dev with terraform
 
-	-----------------------------------
-
-	Lumen has VMs and bare metal via terraform!!!
-
-	https://registry.terraform.io/providers/LumenTech/lumen/latest/docs/guides/getting_started
-
-	-----------------------------------
+	----------------
 
 
 
@@ -66,8 +58,8 @@ TODO
 
 
 
-
-
+	
+	----------------------
 
 	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
 
@@ -104,12 +96,6 @@ TODO
 	-----------------------------------
 
 	Relay gateway service must run over https in dev.
-
-	-----------------------------------
-
-	Next step has to be to actually setup some relays.
-
-	Let's do this via a terraform provider for network next.
 
 	-----------------------------------
 
@@ -630,3 +616,9 @@ Nice to have:
 	There should be a functional test to exercise all parts of the CRUD via terraform, and check results
 
 	--------------
+
+	Lumen has VMs and bare metal via terraform!!!
+
+	https://registry.terraform.io/providers/LumenTech/lumen/latest/docs/guides/getting_started
+
+	-----------------------------------
