@@ -1157,8 +1157,6 @@ func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	}
 	err = controller.CreateBuyerDatacenterSettings(&settings)
 	if err != nil {
-		// todo
-		core.Debug("%+v\n", settings)
 		core.Error("failed to create buyer datacenter settings: %v", err)
 		response.Error = err.Error()
 	} else {
@@ -1221,19 +1219,31 @@ func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(response)
 }
 
+type AdminUpdateBuyerDatacenterSettingsResponse struct {
+	Settings admin.BuyerDatacenterSettings 	`json:"settings"`
+	Error    string             			`json:"error"`
+}
+
 func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	var settings admin.BuyerDatacenterSettings
 	err := json.NewDecoder(r.Body).Decode(&settings)
 	if err != nil {
+		core.Error("failed to decode update buyer datacenter settings request json: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Log("update buyer datacenter settings %x.%x", settings.BuyerId, settings.DatacenterId)
+	response := AdminUpdateBuyerDatacenterSettingsResponse{Settings: settings}
 	err = controller.UpdateBuyerDatacenterSettings(&settings)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		core.Error("failed to update buyer datacenter settings: %v", err)
+		response.Error = err.Error()
+	} else {
+		core.Debug("%+v", settings)
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type AdminDeleteBuyerDatacenterSettingsResponse struct {
