@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -92,7 +91,7 @@ func main() {
 		service.Router.HandleFunc("/admin/sellers", isAuthorized(adminReadSellersHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/seller/{sellerId}", isAuthorized(adminReadSellerHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_seller", isAuthorized(adminUpdateSellerHandler)).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_seller{sellerId}", isAuthorized(adminDeleteSellerHandler)).Methods("DELETE")
+		service.Router.HandleFunc("/admin/delete_seller/{sellerId}", isAuthorized(adminDeleteSellerHandler)).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_buyer", isAuthorized(adminCreateBuyerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/buyers", isAuthorized(adminReadBuyersHandler)).Methods("GET")
@@ -480,14 +479,8 @@ type AdminDeleteCustomerResponse struct {
 }
 
 func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		core.Error("failed to read delete customer request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	customerId, err := strconv.ParseUint(string(body), 10, 64)
+	vars := mux.Vars(r)
+	customerId, err := strconv.ParseUint(vars["customerId"], 10, 64)
 	if err != nil {
 		core.Error("delete customer could not parse customer id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -610,16 +603,10 @@ type AdminDeleteSellerResponse struct {
 }
 
 func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	vars := mux.Vars(r)
+	sellerId, err := strconv.ParseUint(vars["sellerId"], 10, 64)
 	if err != nil {
-		core.Error("failed to read delete seller request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	sellerId, err := strconv.ParseUint(string(body), 10, 64)
-	if err != nil {
-		core.Error("delete seller could not parse seller id")
+		core.Error("delete seller could not parse seller id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -740,14 +727,8 @@ type AdminDeleteBuyerResponse struct {
 }
 
 func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		core.Error("failed to read delete buyer request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	buyerId, err := strconv.ParseUint(string(body), 10, 64)
+	vars := mux.Vars(r)
+	buyerId, err := strconv.ParseUint(vars["buyerId"], 10, 64)
 	if err != nil {
 		core.Error("delete buyer could not parse buyer id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -875,14 +856,8 @@ type AdminDeleteDatacenterResponse struct {
 }
 
 func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		core.Error("failed to read delete datacenter request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	datacenterId, err := strconv.ParseUint(string(body), 10, 64)
+	vars := mux.Vars(r)
+	datacenterId, err := strconv.ParseUint(vars["datacenterId"], 10, 64)
 	if err != nil {
 		core.Error("delete datacenter could not parse datacenter id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -1010,14 +985,8 @@ type AdminDeleteRelayResponse struct {
 }
 
 func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		core.Error("failed to read delete relay request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	relayId, err := strconv.ParseUint(string(body), 10, 64)
+	vars := mux.Vars(r)
+	relayId, err := strconv.ParseUint(vars["relayId"], 10, 64)
 	if err != nil {
 		core.Error("delete relay could not parse relay id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -1151,14 +1120,8 @@ type AdminDeleteRouteShaderResponse struct {
 }
 
 func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		core.Error("failed to read delete route shader request body", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	routeShaderId, err := strconv.ParseUint(string(body), 10, 64)
+	vars := mux.Vars(r)
+	routeShaderId, err := strconv.ParseUint(vars["routeShaderId"], 10, 64)
 	if err != nil {
 		core.Error("delete route shader could not parse route shader id: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -1258,6 +1221,10 @@ func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 }
 
+type AdminDeleteBuyerDatacenterSettingsResponse struct {
+	Error    string             `json:"error"`
+}
+
 func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	buyerId, err := strconv.ParseUint(vars["buyerId"], 10, 64)
@@ -1270,24 +1237,18 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	body, err := ioutil.ReadAll(r.Body)
-	_ = body
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	r.Body.Close()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	core.Log("delete buyer datacenter settings %x.%x", buyerId, datacenterId)
+	response := AdminDeleteRouteShaderResponse{}
 	err = controller.DeleteBuyerDatacenterSettings(buyerId, datacenterId)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		core.Error("failed to delete buyer datacenter settings: %v", err)
+		response.Error = err.Error()
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
+
 
 // ---------------------------------------------------------------------------------------------------------------------
 
