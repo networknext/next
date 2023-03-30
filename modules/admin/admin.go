@@ -186,7 +186,7 @@ VALUES
 	$16,
 	$17,
 	$18,
-	$19,
+	$19
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -353,28 +353,24 @@ SET
 	route_shader_name = $1, 
 	ab_test = $2,
 	acceptable_latency = $3,
-	acceptable_packet_loss = $4,
-	packet_loss_sustained = $5,
+	acceptable_packet_loss_instant = $4,
+	acceptable_packet_loss_sustained = $5,
 	analysis_only = $6,
 	bandwidth_envelope_up_kbps = $7,
 	bandwidth_envelope_down_kbps = $8,
 	disable_network_next = $9,
-	latency_threshold = $10,
+	latency_reduction_threshold = $10,
 	multipath = $11,
-	reduce_latency = $12,
-	reduce_packet_loss = $13,
-	selection_percent = $14,
-	max_latency_trade_off = $15,
-	max_next_rtt = $16,
-	route_switch_threshold = $17,
-	route_select_threshold = $18,
-	rtt_veto_default = $19,
-	rtt_veto_multipath = $20,
-	rtt_veto_packetloss = $21,
-	force_next = $22,
-	route_diversity = $23
+	selection_percent = $12,
+	max_latency_trade_off = $13,
+	max_next_rtt = $14,
+	route_switch_threshold = $15,
+	route_select_threshold = $16,
+	rtt_veto = $17,
+	force_next = $18,
+	route_diversity = $19
 WHERE
-	route_shader_id = $24;`
+	route_shader_id = $20;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
