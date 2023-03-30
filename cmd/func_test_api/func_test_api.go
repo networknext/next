@@ -447,6 +447,32 @@ type DeleteBuyerResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
+type CreateBuyerDatacenterSettingsResponse struct {
+	Settings    admin.BuyerDatacenterSettings   		`json:"settings"`
+	Error    	string               					`json:"error"`
+}
+
+type ReadBuyerDatacenterSettingsListResponse struct {
+	Settings    []admin.BuyerDatacenterSettings 		`json:"settings"`
+	Error    	string               					`json:"error"`
+}
+
+type ReadBuyerDatacenterSettingsResponse struct {
+	Settings    admin.BuyerDatacenterSettings       `json:"settings"`
+	Error    	string               					`json:"error"`
+}
+
+type UpdateBuyerDatacenterSettingsResponse struct {
+	Settings    admin.BuyerDatacenterSettings       `json:"settings"`
+	Error    	string               					`json:"error"`
+}
+
+type DeleteBuyerDatacenterSettingsResponse struct {
+	Error    	string               					`json:"error"`
+}
+
+// ----------------------------------------------------------------------------------------
+
 func test_customer() {
 
 	fmt.Printf("\ntest_customer\n\n")
@@ -1498,7 +1524,6 @@ func test_buyer() {
 
 // ----------------------------------------------------------------------------------------
 
-/*
 func test_buyer_datacenter_settings() {
 
 	fmt.Printf("test_buyer_datacenter_settings\n")
@@ -1518,130 +1543,214 @@ func test_buyer_datacenter_settings() {
 	{
 		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
 
-		customerId = Create("http://127.0.0.1:50000/admin/create_customer", customer)
+		var response CreateCustomerResponse
+
+		err := Create("admin/create_customer", customer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		customerId = response.Customer.CustomerId
 	}
 
 	// create route shader
 
 	routeShaderId := uint64(0)
 	{
-		routeShader := admin.RouteShaderData{}
+		routeShader :=	admin.RouteShaderData{
+			RouteShaderName: "Test",
+			ABTest: true,
+			AcceptableLatency: 10.0,
+			AcceptablePacketLoss: 0.1,
+			PacketLossSustained: 0.25,
+			AnalysisOnly: true,
+			BandwidthEnvelopeUpKbps: 1024,
+			BandwidthEnvelopeDownKbps: 512,
+			DisableNetworkNext: true,
+			LatencyThreshold: 10.0,
+			Multipath: true,
+			ReduceLatency: true,
+			ReducePacketLoss: true,
+			SelectionPercent: 100,
+			MaxLatencyTradeOff: 20,
+			MaxNextRTT: 200,
+			RouteSwitchThreshold: 10,
+			RouteSelectThreshold: 5,
+			RTTVeto_Default: 10,
+			RTTVeto_Multipath: 20,
+			RTTVeto_PacketLoss: 30,
+			ForceNext: true,
+			RouteDiversity: 5,
+		}
 
-		routeShaderId = Create("http://127.0.0.1:50000/admin/create_route_shader", routeShader)
+		var response CreateRouteShaderResponse
+
+		err := Create("admin/create_route_shader", routeShader, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		routeShaderId = response.RouteShader.RouteShaderId
 	}
 
 	// create buyer
 
-	dummyBase64 := "oaneuthoanuthath"
-
 	buyerId := uint64(0)
 	{
-		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+		buyer := admin.BuyerData{
+			BuyerName: "Test",
+			CustomerId: customerId,
+			RouteShaderId: routeShaderId,
+			PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
+		}
 
-		buyerId = Create("http://127.0.0.1:50000/admin/create_buyer", buyer)
+		var response CreateBuyerResponse
+
+		err := Create("admin/create_buyer", buyer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		buyerId = response.Buyer.BuyerId
 	}
 
 	// create seller
 
 	sellerId := uint64(0)
 	{
-		seller := admin.SellerData{SellerName: "Seller"}
+		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
 
-		sellerId = Create("http://127.0.0.1:50000/admin/create_seller", seller)
+		var response CreateSellerResponse
+
+		err := Create("admin/create_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		sellerId = response.Seller.SellerId
 	}
 
 	// create datacenter
 
 	datacenterId := uint64(0)
 	{
-		datacenter := admin.DatacenterData{DatacenterName: "Datacenter", Latitude: 100, Longitude: 200, SellerId: sellerId}
+		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
 
-		datacenterId = Create("http://127.0.0.1:50000/admin/create_datacenter", datacenter)
+		var response CreateDatacenterResponse
+
+		err := Create("admin/create_datacenter", datacenter, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		datacenterId = response.Datacenter.DatacenterId
 	}
 
 	// create buyer datacenter settings
-	{
-		settings := admin.BuyerDatacenterSettings{BuyerId: buyerId, DatacenterId: datacenterId, EnableAcceleration: true}
 
-		Create("http://127.0.0.1:50000/admin/create_buyer_datacenter_settings", settings)
+	expected := admin.BuyerDatacenterSettings{
+		BuyerId: buyerId,
+		DatacenterId: datacenterId,
+		EnableAcceleration: true,
 	}
 
-	// read buyer datacenter settings
 	{
-		buyerDatacenterSettingsResponse := BuyerDatacenterSettingsResponse{}
+		settings := expected
 
-		Read("http://127.0.0.1:50000/admin/buyer_datacenter_settings", &buyerDatacenterSettingsResponse)
+		var response CreateBuyerDatacenterSettingsResponse
 
-		if len(buyerDatacenterSettingsResponse.Settings) != 1 {
-			panic(fmt.Sprintf("expect one settings in response, got %d", len(buyerDatacenterSettingsResponse.Settings)))
+		err := Create("admin/create_buyer_datacenter_settings", settings, &response)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// read all settings
+	{
+		response := ReadBuyerDatacenterSettingsListResponse{}
+
+		err := GetJSON("admin/buyer_datacenter_settings", &response)
+
+		if err != nil {
+			panic(err)
 		}
 
-		if buyerDatacenterSettingsResponse.Error != "" {
+		if len(response.Settings) != 1 {
+			panic(fmt.Sprintf("expect one setting in response, got %d", len(response.Settings)))
+		}
+
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if buyerDatacenterSettingsResponse.Settings[0].BuyerId != buyerId {
-			panic("wrong buyer id")
-		}
-
-		if buyerDatacenterSettingsResponse.Settings[0].DatacenterId != datacenterId {
-			panic("wrong datacenter id")
-		}
-
-		if buyerDatacenterSettingsResponse.Settings[0].EnableAcceleration != true {
-			panic("wrong enable acceleration")
+		if response.Settings[0] != expected {
+			panic("buyer datacenter settings do not match expected")
 		}
 	}
 
-	// update buyer datacenter settings
+	// read specific settings
 	{
-		settings := admin.BuyerDatacenterSettings{BuyerId: buyerId, DatacenterId: datacenterId, EnableAcceleration: false}
+		response := ReadBuyerDatacenterSettingsResponse{}
 
-		Update("http://127.0.0.1:50000/admin/update_buyer_datacenter_settings", settings)
+		err := GetJSON(fmt.Sprintf("admin/buyer_datacenter_settings/%x/%x", buyerId, datacenterId), &response)
 
-		buyerDatacenterSettingsResponse := BuyerDatacenterSettingsResponse{}
-
-		Read("http://127.0.0.1:50000/admin/buyer_datacenter_settings", &buyerDatacenterSettingsResponse)
-
-		if len(buyerDatacenterSettingsResponse.Settings) != 1 {
-			panic(fmt.Sprintf("expect one settings in response, got %d", len(buyerDatacenterSettingsResponse.Settings)))
+		if err != nil {
+			panic(err)
 		}
 
-		if buyerDatacenterSettingsResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if buyerDatacenterSettingsResponse.Settings[0].BuyerId != buyerId {
-			panic("wrong buyer id")
-		}
-
-		if buyerDatacenterSettingsResponse.Settings[0].DatacenterId != datacenterId {
-			panic("wrong datacenter id")
-		}
-
-		if buyerDatacenterSettingsResponse.Settings[0].EnableAcceleration != false {
-			panic("wrong enable acceleration")
+		if response.Settings != expected {
+			panic("settings do not match expected")
 		}
 	}
 
-	// delete buyer datacenter settings
+	// update settings
 	{
-		Delete(fmt.Sprintf("http://127.0.0.1:50000/admin/delete_buyer_datacenter_settings/%d/%d", buyerId, datacenterId), 1)
+		expected.EnableAcceleration = false
 
-		buyerDatacenterSettingsResponse := BuyerDatacenterSettingsResponse{}
+		settings := expected
 
-		Read("http://127.0.0.1:50000/admin/buyer_datacenter_settings", &buyerDatacenterSettingsResponse)
+		response := UpdateBuyerDatacenterSettingsResponse{}
 
-		if len(buyerDatacenterSettingsResponse.Settings) != 0 {
-			panic("should be no settings after delete")
+		err := Update("admin/update_buyer_datacenter_settings", settings, &response)
+
+		if err != nil {
+			panic(err)
 		}
 
-		if buyerDatacenterSettingsResponse.Error != "" {
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings != expected {
+			panic("settings do not match expected")
+		}
+	}
+
+	// delete settings
+	{
+		response := DeleteBuyerDatacenterSettingsResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_buyer_datacenter_settings/%x/%x", buyerId, datacenterId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 	}
 }
-*/
 
 // ----------------------------------------------------------------------------------------
 
@@ -1656,9 +1765,7 @@ func main() {
 		test_relay,
 		test_route_shader,
 		test_buyer,
-		/*
-		test_buyer_datacenter_setting,
-		*/
+		test_buyer_datacenter_settings,
 	}
 
 	var tests []test_function
@@ -1691,31 +1798,3 @@ func main() {
 		tests[i]()
 	}
 }
-
-
-/*/
-type CreateBuyerResponse struct {
-	Buyer     admin.BuyerData      `json:"buyer"`
-	Error     string               `json:"error"`
-}
-
-type ReadBuyersResponse struct {
-	Buyers    []admin.BuyerData    `json:"buyers"`
-	Error     string               `json:"error"`
-}
-
-type ReadBuyerResponse struct {
-	Buyer     admin.BuyerData      `json:"buyer"`
-	Error     string               `json:"error"`
-}
-
-type UpdateBuyerResponse struct {
-	Buyer     admin.BuyerData      `json:"buyer"`
-	Error     string               `json:"error"`
-}
-
-type DeleteBuyerResponse struct {
-	Error     string               `json:"error"`
-}
-*/
-
