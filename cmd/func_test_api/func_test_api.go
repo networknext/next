@@ -421,6 +421,32 @@ type DeleteRouteShaderResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
+type CreateBuyerResponse struct {
+	Buyer    admin.BuyerData   	`json:"buyer"`
+	Error    string               `json:"error"`
+}
+
+type ReadBuyersResponse struct {
+	Buyers   []admin.BuyerData   	`json:"buyers"`
+	Error    string               `json:"error"`
+}
+
+type ReadBuyerResponse struct {
+	Buyer    admin.BuyerData   	`json:"buyer"`
+	Error    string               `json:"error"`
+}
+
+type UpdateBuyerResponse struct {
+	Buyer    admin.BuyerData   	`json:"buyer"`
+	Error    string               `json:"error"`
+}
+
+type DeleteBuyerResponse struct {
+	Error    string               `json:"error"`
+}
+
+// ----------------------------------------------------------------------------------------
+
 func test_customer() {
 
 	fmt.Printf("\ntest_customer\n\n")
@@ -564,7 +590,7 @@ func test_customer() {
 
 	// delete customer
 	{
-		response := UpdateCustomerResponse{}
+		response := DeleteCustomerResponse{}
 
 		err := Delete(fmt.Sprintf("admin/delete_customer/%x", customerId), &response)
 
@@ -716,7 +742,7 @@ func test_seller() {
 
 	// delete seller
 	{
-		response := UpdateSellerResponse{}
+		response := DeleteSellerResponse{}
 
 		err := Delete(fmt.Sprintf("admin/delete_seller/%x", sellerId), &response)
 
@@ -913,7 +939,7 @@ func test_datacenter() {
 
 	// delete datacenter
 	{
-		response := UpdateDatacenterResponse{}
+		response := DeleteDatacenterResponse{}
 
 		err := Delete(fmt.Sprintf("admin/delete_datacenter/%x", datacenterId), &response)
 
@@ -1135,7 +1161,7 @@ func test_relay() {
 
 	// delete relay
 	{
-		response := UpdateRelayResponse{}
+		response := DeleteRelayResponse{}
 
 		err := Delete(fmt.Sprintf("admin/delete_relay/%x", relayId), &response)
 
@@ -1276,7 +1302,7 @@ func test_route_shader() {
 
 	// delete route shader
 	{
-		response := UpdateRouteShaderResponse{}
+		response := DeleteRouteShaderResponse{}
 
 		err := Delete(fmt.Sprintf("admin/delete_route_shader/%x", routeShaderId), &response)
 
@@ -1290,108 +1316,11 @@ func test_route_shader() {
 	}
 }
 
-/*
-func test_route_shaders() {
-
-	fmt.Printf("test_route_shaders\n")
-
-	clearDatabase()
-
-	api_cmd, _ := api()
-
-	defer func() {
-		api_cmd.Process.Signal(os.Interrupt)
-		api_cmd.Wait()
-	}()
-
-	// create route shader
-
-	routeShaderId := uint64(0)
-	{
-		routeShader := admin.RouteShaderData{
-			RouteShaderName: "Route Shader"
-		}
-
-		routeShaderId = Create("http://127.0.0.1:50000/admin/create_route_shader", routeShader)
-	}
-
-	// read route shaders
-	{
-		routeShadersResponse := RouteShadersResponse{}
-
-		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
-
-		if routeShadersResponse.RouteShaders[0].RouteShaderName != "Route Shader" {
-			panic("wrong route shader name")
-		}
-
-		if len(routeShadersResponse.RouteShaders) != 1 {
-			panic("expect one route shader in response")
-		}
-
-		if routeShadersResponse.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
-			panic("wrong route shader id")
-		}
-	}
-
-	// update route shader
-	{
-		routeShader := admin.RouteShaderData{RouteShaderId: routeShaderId, RouteShaderName: "Updated"}
-
-		Update("http://127.0.0.1:50000/admin/update_route_shader", routeShader)
-
-		routeShadersResponse := RouteShadersResponse{}
-
-		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
-
-		if routeShadersResponse.RouteShaders[0].RouteShaderName != "Updated" {
-			panic("wrong route shader name")
-		}
-
-		if len(routeShadersResponse.RouteShaders) != 1 {
-			panic("expect one route shader in response")
-		}
-
-		if routeShadersResponse.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		if routeShadersResponse.RouteShaders[0].RouteShaderId != routeShaderId {
-			panic("wrong route shader id")
-		}
-	}
-
-	// delete route shader
-	{
-		Delete("http://127.0.0.1:50000/admin/delete_route_shader", routeShaderId)
-
-		routeShadersResponse := RouteShadersResponse{}
-
-		Read("http://127.0.0.1:50000/admin/route_shaders", &routeShadersResponse)
-
-		if len(routeShadersResponse.RouteShaders) != 0 {
-			panic("should be no route shaders after delete")
-		}
-
-		if routeShadersResponse.Error != "" {
-			panic("expect error string to be empty")
-		}
-	}
-}
-*/
-
 // ----------------------------------------------------------------------------------------
 
-// todo: come back once route shader is tested
-
-/*
 func test_buyer() {
 
-	fmt.Printf("test_buyer\n")
+	fmt.Printf("\ntest_buyer\n\n")
 
 	clearDatabase()
 
@@ -1419,13 +1348,59 @@ func test_buyer() {
 		customerId = response.Customer.CustomerId
 	}
 
+	// create route shader
+
+	routeShaderId := uint64(0)
+	{
+		routeShader :=	admin.RouteShaderData{
+			RouteShaderName: "Test",
+			ABTest: true,
+			AcceptableLatency: 10.0,
+			AcceptablePacketLoss: 0.1,
+			PacketLossSustained: 0.25,
+			AnalysisOnly: true,
+			BandwidthEnvelopeUpKbps: 1024,
+			BandwidthEnvelopeDownKbps: 512,
+			DisableNetworkNext: true,
+			LatencyThreshold: 10.0,
+			Multipath: true,
+			ReduceLatency: true,
+			ReducePacketLoss: true,
+			SelectionPercent: 100,
+			MaxLatencyTradeOff: 20,
+			MaxNextRTT: 200,
+			RouteSwitchThreshold: 10,
+			RouteSelectThreshold: 5,
+			RTTVeto_Default: 10,
+			RTTVeto_Multipath: 20,
+			RTTVeto_PacketLoss: 30,
+			ForceNext: true,
+			RouteDiversity: 5,
+		}
+
+		var response CreateRouteShaderResponse
+
+		err := Create("admin/create_route_shader", routeShader, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		routeShaderId = response.RouteShader.RouteShaderId
+	}
+
 	// create buyer
 
-	dummyBase64 := "oaneuthoanuthath"
+	expected := admin.BuyerData{
+		BuyerName: "Test",
+		CustomerId: customerId,
+		RouteShaderId: routeShaderId,
+		PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
+	}
 
 	buyerId := uint64(0)
 	{
-		buyer := admin.BuyerData{BuyerName: "Buyer", PublicKeyBase64: dummyBase64, CustomerId: customerId, RouteShaderId: routeShaderId}
+		buyer := expected
 
 		var response CreateBuyerResponse
 
@@ -1436,93 +1411,38 @@ func test_buyer() {
 		}
 
 		buyerId = response.Buyer.BuyerId
+
+		expected.BuyerId = buyerId
 	}
 
-	// todo
-	_ = buyerId
-
-	/*
 	// read all buyers
 	{
-		buyersResponse := ReadCustomersResponse{}
+		response := ReadBuyersResponse{}
 
-		err := GetJSON("admin/customers", &customersResponse)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if len(customersResponse.Customers) != 1 {
-			panic("expect one customer in response")
-		}
-
-		if customersResponse.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		if customersResponse.Customers[0].CustomerId != customerId {
-			panic("wrong customer id")
-		}
-
-		if customersResponse.Customers[0].CustomerName != "Test" {
-			panic("wrong customer name")
-		}
-
-		if customersResponse.Customers[0].CustomerCode != "test" {
-			panic("wrong customer code")
-		}
-
-		if !customersResponse.Customers[0].Live {
-			panic("customer should have live true")
-		}
-
-		if !customersResponse.Customers[0].Debug {
-			panic("customer should have debug true")
-		}
-	}
-
-	// read a specific customer
-	{
-		customerResponse := ReadCustomerResponse{}
-
-		err := GetJSON(fmt.Sprintf("admin/customer/%x", customerId), &customerResponse)
+		err := GetJSON("admin/buyers", &response)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if customerResponse.Error != "" {
+		if len(response.Buyers) != 1 {
+			panic(fmt.Sprintf("expect one buyer in response, got %d", len(response.Buyers)))
+		}
+
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if customerResponse.Customer.CustomerId != customerId {
-			panic(fmt.Sprintf("wrong customer id: got %x, expected %x", customerResponse.Customer.CustomerId, customerId))
-		}
-
-		if customerResponse.Customer.CustomerName != "Test" {
-			panic("wrong customer name")
-		}
-
-		if customerResponse.Customer.CustomerCode != "test" {
-			panic("wrong customer code")
-		}
-
-		if !customerResponse.Customer.Live {
-			panic("customer should have live true")
-		}
-
-		if !customerResponse.Customer.Debug {
-			panic("customer should have debug true")
+		if response.Buyers[0] != expected {
+			panic("buyer does not match expected")
 		}
 	}
 
-	// update customer
+	// read a specific buyer
 	{
-		customer := admin.CustomerData{CustomerId: customerId, CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
+		response := ReadBuyerResponse{}
 
-		response := UpdateCustomerResponse{}
-
-		err := Update("admin/update_customer", customer, &response)
+		err := GetJSON(fmt.Sprintf("admin/buyer/%x", buyerId), &response)
 
 		if err != nil {
 			panic(err)
@@ -1532,32 +1452,39 @@ func test_buyer() {
 			panic("expect error string to be empty")
 		}
 
-		if response.Customer.CustomerId != customerId {
-			panic("wrong customer id")
-		}
-
-		if response.Customer.CustomerName != "Updated" {
-			panic("wrong customer name")
-		}
-
-		if response.Customer.CustomerCode != "updated" {
-			panic("wrong customer code")
-		}
-
-		if response.Customer.Live {
-			panic("customer should have live false")
-		}
-
-		if response.Customer.Debug {
-			panic("customer should have debug false")
+		if response.Buyer != expected {
+			panic("buyer does not match expected")
 		}
 	}
 
-	// delete customer
+	// update buyer
 	{
-		response := UpdateCustomerResponse{}
+		expected.BuyerName = "Updated"
 
-		err := Delete(fmt.Sprintf("admin/delete_customer/%x", customerId), &response)
+		buyer := expected
+
+		response := UpdateBuyerResponse{}
+
+		err := Update("admin/update_buyer", buyer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Buyer != expected {
+			panic("buyer does not match expected")
+		}
+	}
+
+	// delete route shader
+	{
+		response := DeleteBuyerResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_buyer/%x", buyerId), &response)
 
 		if err != nil {
 			panic(err)
@@ -1571,11 +1498,7 @@ func test_buyer() {
 
 // ----------------------------------------------------------------------------------------
 
-type BuyerDatacenterSettingsResponse struct {
-	Settings []admin.BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
-	Error    string                          `json:"error"`
-}
-
+/*
 func test_buyer_datacenter_settings() {
 
 	fmt.Printf("test_buyer_datacenter_settings\n")
@@ -1717,13 +1640,6 @@ func test_buyer_datacenter_settings() {
 			panic("expect error string to be empty")
 		}
 	}
-
-	// get route shader defaults
-	{
-		routeShader := admin.RouteShaderData{}
-
-		Read("http://127.0.0.1:50000/admin/route_shader_defaults", &routeShader)
-	}
 }
 */
 
@@ -1739,8 +1655,8 @@ func main() {
 		test_datacenter,
 		test_relay,
 		test_route_shader,
-		/*
 		test_buyer,
+		/*
 		test_buyer_datacenter_setting,
 		*/
 	}
