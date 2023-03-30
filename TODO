@@ -10,15 +10,13 @@ DONE
 
 	Make sure the next tool still works post-terraform changes
 
-TODO
-
 	Fix the API func test so it works with the REST API changes made to support terraform
 
 	Make sure all func tests pass
 
-	----------------
+TODO
 
-	Setup some relays in dev with terraform
+	Setup some relays in dev with terraform!!!
 
 	----------------
 
@@ -603,22 +601,12 @@ Nice to have:
 
 	--------------
 
-	API should have extensive logs for actions it performs. Right now it's completely silent.
-
-	core.Debug logs only.
-
-	--------------
-
-	API func tests needs to check new read item by id methods
-
-	--------------
-	
-	There should be a functional test to exercise all parts of the CRUD via terraform, and check results
-
-	--------------
-
 	Lumen has VMs and bare metal via terraform!!!
 
 	https://registry.terraform.io/providers/LumenTech/lumen/latest/docs/guides/getting_started
+
+	-----------------------------------
+
+	Need a functional test for terraform.
 
 	-----------------------------------
