@@ -395,9 +395,9 @@ type DeleteRelayResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
-func test_customers() {
+func test_customer() {
 
-	fmt.Printf("\ntest_customers\n\n")
+	fmt.Printf("\ntest_customer\n\n")
 
 	clearDatabase()
 
@@ -466,35 +466,35 @@ func test_customers() {
 
 	// read a specific customer
 	{
-		customerResponse := ReadCustomerResponse{}
+		response := ReadCustomerResponse{}
 
-		err := GetJSON(fmt.Sprintf("admin/customer/%x", customerId), &customerResponse)
+		err := GetJSON(fmt.Sprintf("admin/customer/%x", customerId), &response)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if customerResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if customerResponse.Customer.CustomerId != customerId {
-			panic(fmt.Sprintf("wrong customer id: got %x, expected %x", customerResponse.Customer.CustomerId, customerId))
+		if response.Customer.CustomerId != customerId {
+			panic(fmt.Sprintf("wrong customer id: got %x, expected %x", response.Customer.CustomerId, customerId))
 		}
 
-		if customerResponse.Customer.CustomerName != "Test" {
+		if response.Customer.CustomerName != "Test" {
 			panic("wrong customer name")
 		}
 
-		if customerResponse.Customer.CustomerCode != "test" {
+		if response.Customer.CustomerCode != "test" {
 			panic("wrong customer code")
 		}
 
-		if !customerResponse.Customer.Live {
+		if !response.Customer.Live {
 			panic("customer should have live true")
 		}
 
-		if !customerResponse.Customer.Debug {
+		if !response.Customer.Debug {
 			panic("customer should have debug true")
 		}
 	}
@@ -554,9 +554,9 @@ func test_customers() {
 
 // ----------------------------------------------------------------------------------------
 
-func test_sellers() {
+func test_seller() {
 
-	fmt.Printf("\ntest_sellers\n\n")
+	fmt.Printf("\ntest_seller\n\n")
 
 	clearDatabase()
 
@@ -588,7 +588,7 @@ func test_sellers() {
 
 	sellerId := uint64(0)
 	{
-		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+		seller := admin.SellerData{SellerName: "Test"}
 
 		var response CreateSellerResponse
 
@@ -603,55 +603,59 @@ func test_sellers() {
 
 	// read all sellers
 	{
-		sellersResponse := ReadSellersResponse{}
+		response := ReadSellersResponse{}
 
-		err := GetJSON("admin/sellers", &sellersResponse)
+		err := GetJSON("admin/sellers", &response)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if len(sellersResponse.Sellers) != 1 {
+		if len(response.Sellers) != 1 {
 			panic("expect one seller in response")
 		}
 
-		if sellersResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if sellersResponse.Sellers[0].SellerId != sellerId {
+		if response.Sellers[0].SellerId != sellerId {
 			panic("wrong seller id")
 		}
 
-		if sellersResponse.Sellers[0].SellerName != "Test" {
+		if response.Sellers[0].SellerName != "Test" {
 			panic("wrong seller name")
+		}
+
+		if response.Sellers[0].CustomerId != 0 {
+			panic(fmt.Sprintf("wrong customer id on seller. expected %d, got %d", 0, response.Sellers[0].CustomerId))
 		}
 	}
 
 	// read a specific seller
 	{
-		sellerResponse := ReadSellerResponse{}
+		response := ReadSellerResponse{}
 
-		err := GetJSON(fmt.Sprintf("admin/seller/%x", sellerId), &sellerResponse)
+		err := GetJSON(fmt.Sprintf("admin/seller/%x", sellerId), &response)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if sellerResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if sellerResponse.Seller.SellerId != sellerId {
-			panic(fmt.Sprintf("wrong seller id: got %x, expected %x", sellerResponse.Seller.SellerId, sellerId))
+		if response.Seller.SellerId != sellerId {
+			panic(fmt.Sprintf("wrong seller id: got %x, expected %x", response.Seller.SellerId, sellerId))
 		}
 
-		if sellerResponse.Seller.SellerName != "Test" {
+		if response.Seller.SellerName != "Test" {
 			panic("wrong seller name")
 		}
 
-		if sellerResponse.Seller.CustomerId != customerId {
-			panic("wrong customer id on seller")
+		if response.Seller.CustomerId != 0 {
+			panic(fmt.Sprintf("wrong customer id on seller. expected %d, got %d", 0, response.Seller.CustomerId))
 		}
 	}
 
@@ -680,7 +684,7 @@ func test_sellers() {
 		}
 
 		if response.Seller.CustomerId != customerId {
-			panic("wrong seller customer id")
+			panic(fmt.Sprintf("wrong customer id on seller. expected %d, got %d", customerId, response.Seller.CustomerId))
 		}
 	}
 
@@ -702,9 +706,9 @@ func test_sellers() {
 
 // ----------------------------------------------------------------------------------------
 
-func test_datacenters() {
+func test_datacenter() {
 
-	fmt.Printf("\ntest_datacenters\n\n")
+	fmt.Printf("\ntest_datacenter\n\n")
 
 	clearDatabase()
 
@@ -800,6 +804,10 @@ func test_datacenters() {
 			panic("wrong longitude")
 		}
 
+		if response.Datacenters[0].SellerId != sellerId {
+			panic("wrong seller id on datacenter")
+		}
+
 		if response.Datacenters[0].Notes != "" {
 			panic("notes should be empty")
 		}
@@ -807,35 +815,35 @@ func test_datacenters() {
 
 	// read a specific datacenter
 	{
-		datacenterResponse := ReadDatacenterResponse{}
+		response := ReadDatacenterResponse{}
 
-		err := GetJSON(fmt.Sprintf("admin/datacenter/%x", datacenterId), &datacenterResponse)
+		err := GetJSON(fmt.Sprintf("admin/datacenter/%x", datacenterId), &response)
 
 		if err != nil {
 			panic(err)
 		}
 
-		if datacenterResponse.Error != "" {
+		if response.Error != "" {
 			panic("expect error string to be empty")
 		}
 
-		if datacenterResponse.Datacenter.DatacenterId != datacenterId {
-			panic(fmt.Sprintf("wrong datacenter id: got %x, expected %x", datacenterResponse.Datacenter.DatacenterId, datacenterId))
+		if response.Datacenter.DatacenterId != datacenterId {
+			panic(fmt.Sprintf("wrong datacenter id: got %x, expected %x", response.Datacenter.DatacenterId, datacenterId))
 		}
 
-		if datacenterResponse.Datacenter.DatacenterName != "Test" {
+		if response.Datacenter.DatacenterName != "Test" {
 			panic("wrong datacenter name")
 		}
 
-		if datacenterResponse.Datacenter.Latitude != 100.0 {
+		if response.Datacenter.Latitude != 100.0 {
 			panic("wrong latitude on datacenter")
 		}
 
-		if datacenterResponse.Datacenter.Longitude != 200.0 {
+		if response.Datacenter.Longitude != 200.0 {
 			panic("wrong longitude on datacenter")
 		}
 
-		if datacenterResponse.Datacenter.SellerId != sellerId {
+		if response.Datacenter.SellerId != sellerId {
 			panic("wrong seller id on datacenter")
 		}
 	}
@@ -863,6 +871,18 @@ func test_datacenters() {
 		if response.Datacenter.DatacenterName != "Updated" {
 			panic("wrong datacenter name after update")
 		}
+
+		if response.Datacenter.Latitude != 50.0 {
+			panic("wrong latitude on datacenter")
+		}
+
+		if response.Datacenter.Longitude != 75.0 {
+			panic("wrong longitude on datacenter")
+		}
+
+		if response.Datacenter.SellerId != sellerId {
+			panic("wrong seller id on datacenter")
+		}
 	}
 
 	// delete datacenter
@@ -883,9 +903,9 @@ func test_datacenters() {
 
 // ----------------------------------------------------------------------------------------
 
-func test_relays() {
+func test_relay() {
 
-	fmt.Printf("\ntest_relays\n\n")
+	fmt.Printf("\ntest_relay\n\n")
 
 	clearDatabase()
 
@@ -990,7 +1010,21 @@ func test_relays() {
 			panic("wrong relay name")
 		}
 
-		// todo: check all fields
+		if response.Relays[0].PublicIP != "127.0.0.1" {
+			panic("wrong public ip")
+		}
+
+		if response.Relays[0].InternalIP != "0.0.0.0" {
+			panic("wrong internal ip")
+		}
+
+		if response.Relays[0].SSH_IP != "127.0.0.1" {
+			panic("wrong ssh ip")
+		}
+
+		if response.Relays[0].Notes != "" {
+			panic("notes should be empty")
+		}
 	}
 
 	// read a specific relay
@@ -1658,30 +1692,7 @@ func test_relays() {
 			panic("expect error string to be empty")
 		}
 
-		if relaysResponse.Relays[0].RelayId != relayId {
-			panic("wrong relay id")
-		}
-
-		if relaysResponse.Relays[0].RelayName != "Relay" {
-			panic("wrong relay name")
-		}
-
-		if relaysResponse.Relays[0].PublicIP != "127.0.0.1" {
-			panic("wrong public ip")
-		}
-
-		if relaysResponse.Relays[0].InternalIP != "0.0.0.0" {
-			panic("wrong internal ip")
-		}
-
-		if relaysResponse.Relays[0].SSH_IP != "127.0.0.1" {
-			panic("wrong ssh ip")
-		}
-
-		if relaysResponse.Relays[0].Notes != "" {
-			panic("notes should be empty")
-		}
-	}
+4	}
 
 	// update relay
 	{
@@ -1994,14 +2005,14 @@ type test_function func()
 func main() {
 
 	allTests := []test_function{
-		test_customers,
-		test_sellers,
-		test_datacenters,
-		test_relays,
+		test_customer,
+		test_seller,
+		test_datacenter,
+		test_relay,
 		/*
-		test_route_shaders,
-		test_buyers,
-		test_buyer_datacenter_settings,
+		test_route_shader,
+		test_buyer,
+		test_buyer_datacenter_setting,
 		*/
 	}
 

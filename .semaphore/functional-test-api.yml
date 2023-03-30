@@ -65,29 +65,29 @@ blocks:
 
       jobs:
 
-        - name: "test_customers"
+        - name: "test_customer"
           commands:
-            - cd ./dist && ./func_test_api test_customers
+            - cd ./dist && ./func_test_api test_customer
 
-        - name: "test_buyers"
+        - name: "test_buyer"
           commands:
-            - cd ./dist && ./func_test_api test_buyers
+            - cd ./dist && ./func_test_api test_buyer
 
-        - name: "test_sellers"
+        - name: "test_seller"
           commands:
-            - cd ./dist && ./func_test_api test_sellers
+            - cd ./dist && ./func_test_api test_seller
 
-        - name: "test_datacenters"
+        - name: "test_datacenter"
           commands:
-            - cd ./dist && ./func_test_api test_datacenters
+            - cd ./dist && ./func_test_api test_datacenter
 
-        - name: "test_relays"
+        - name: "test_relay"
           commands:
-            - cd ./dist && ./func_test_api test_relays
+            - cd ./dist && ./func_test_api test_relay
 
-        - name: "test_route_shaders"
+        - name: "test_route_shader"
           commands:
-            - cd ./dist && ./func_test_api test_route_shaders
+            - cd ./dist && ./func_test_api test_route_shader
 
         - name: "test_buyer_datacenter_settings"
           commands:
