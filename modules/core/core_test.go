@@ -330,7 +330,6 @@ func Analyze(numRelays int, routes []core.RouteEntry) []int {
 	}
 
 	return buckets
-
 }
 
 type TestRelayData struct {
@@ -2625,7 +2624,7 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	test.sourceRelayCosts = []int32{10}
 
 	test.routeShader.Multipath = false
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	test.destRelays = []int32{1}
 
@@ -2780,7 +2779,7 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 
 	test.destRelays = []int32{1}
 
-	test.routeShader.LatencyThreshold = 20
+	test.routeShader.LatencyReductionThreshold = 20
 
 	result := test.TakeNetworkNext()
 
@@ -2846,7 +2845,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 
 	test.routeShader.AcceptableLatency = 100
 	test.routeShader.Multipath = false
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -2883,7 +2882,7 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 
 	test.routeShader.AcceptableLatency = 25
 	test.routeShader.Multipath = false
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -2919,7 +2918,7 @@ func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) 
 	test.destRelays = []int32{1}
 
 	test.routeShader.Multipath = false
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -2953,7 +2952,7 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 	test.destRelays = []int32{1}
 
 	test.routeShader.Multipath = false
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -2991,7 +2990,7 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
 	test.routeShader.AcceptableLatency = 100
 
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -3022,10 +3021,10 @@ func TestTakeNetworkNext_ReducePacketLoss_PLBelowSustained(t *testing.T) {
 
 	// Won't go next because of packet Loss
 	test.directPacketLoss = float32(5.0)
-	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.AcceptablePacketLossInstant = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.routeShader.PacketLossSustained = float32(2.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(2.0)
 
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
@@ -3067,10 +3066,10 @@ func TestTakeNetworkNext_ReducePacketLoss_PLEqualSustained(t *testing.T) {
 
 	// Won't go next because of packet Loss
 	test.directPacketLoss = float32(5.0)
-	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.AcceptablePacketLossInstant = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.routeShader.PacketLossSustained = float32(5.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(5.0)
 
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
@@ -3112,10 +3111,10 @@ func TestTakeNetworkNext_ReducePacketLoss_PLAboveSustained(t *testing.T) {
 
 	// Won't go next because of packet Loss
 	test.directPacketLoss = float32(5.0)
-	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.AcceptablePacketLossInstant = float32(20)
 
 	// Won't go next after 3 slices of sustained packet loss
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
@@ -3157,10 +3156,10 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T
 
 	// Won't go next because of packet Loss
 	test.directPacketLoss = float32(5.0)
-	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.AcceptablePacketLossInstant = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.routeShader.PacketLossSustained = float32(2.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(2.0)
 
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
@@ -3204,10 +3203,10 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) 
 
 	// Won't go next because of packet Loss
 	test.directPacketLoss = float32(5.0)
-	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.AcceptablePacketLossInstant = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.routeShader.PacketLossSustained = float32(2.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(2.0)
 
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
@@ -3325,7 +3324,7 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 
 	test.routeShader.AcceptableLatency = 25
 
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -3362,7 +3361,7 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 	test.destRelays = []int32{1}
 
 	test.routeShader.Multipath = true
-	test.routeShader.PacketLossSustained = float32(10.0)
+	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
 	result := test.TakeNetworkNext()
 
@@ -3924,18 +3923,13 @@ func TestStayOnNetworkNext_ReducePacketLoss_LatencyTradeOff(t *testing.T) {
 	test := NewTestData(env)
 
 	test.directLatency = int32(10)
-
 	test.nextLatency = int32(20)
-
 	test.predictedLatency = int32(0)
-
 	test.directPacketLoss = float32(0)
-
 	test.nextPacketLoss = float32(0)
 
 	test.sourceRelays = []int32{0}
 	test.sourceRelayCosts = []int32{10}
-
 	test.destRelays = []int32{1}
 
 	test.routeState.Next = true
@@ -4246,7 +4240,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
 
 	test.directLatency = int32(10)
 
-	test.nextLatency = int32(50)
+	test.nextLatency = int32(100)
 
 	test.predictedLatency = int32(0)
 
@@ -4283,7 +4277,7 @@ func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
 
 	// now latency is not worse, we should recover
 
-	test.nextLatency = int32(5)
+	test.nextLatency = int32(1)
 
 	result, nextRouteSwitched = test.StayOnNetworkNext()
 
@@ -4314,7 +4308,7 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	test := NewTestData(env)
 
-	test.directLatency = int32(30)
+	test.directLatency = int32(10)
 
 	test.directPacketLoss = float32(0)
 
@@ -4323,7 +4317,6 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	test.destRelays = []int32{1}
 
-	test.routeShader.ReduceLatency = false
 	test.routeShader.ForceNext = true
 
 	test.routeState.Next = false
@@ -4353,7 +4346,6 @@ func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
 
 	test.directLatency = int32(30)
 
-	test.routeShader.ReduceLatency = false
 	test.routeShader.ForceNext = true
 
 	test.routeState.Next = false
@@ -4382,8 +4374,6 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 
 	test := NewTestData(env)
 
-	test.routeShader.ReduceLatency = false
-
 	test.directLatency = int32(30)
 
 	test.nextLatency = int32(60)
@@ -4396,8 +4386,6 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 	test.sourceRelayCosts = []int32{10}
 
 	test.destRelays = []int32{1}
-
-	test.routeShader.ReduceLatency = false
 
 	test.routeState.Next = true
 	test.routeState.ForcedNext = true
@@ -4439,7 +4427,6 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 
 	test.destRelays = []int32{}
 
-	test.routeShader.ReduceLatency = false
 	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)
@@ -4487,7 +4474,6 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	test.destRelays = []int32{1}
 
-	test.routeShader.ReduceLatency = false
 	test.routeShader.ForceNext = true
 
 	test.currentRouteNumRelays = int32(2)

@@ -366,7 +366,7 @@ func ProcessRouteMatrix(service *common.Service) {
 				core.Debug("route matrix rtt bucket 40-45ms: %.1f%%", analysis.RTTBucket_40_45ms)
 				core.Debug("route matrix rtt bucket 45-50ms: %.1f%%", analysis.RTTBucket_45_50ms)
 				core.Debug("route matrix rtt bucket 50ms+: %.1f%%", analysis.RTTBucket_50ms_Plus)
-				
+
 				totalPercent := analysis.RTTBucket_NoImprovement +
 					analysis.RTTBucket_0_5ms +
 					analysis.RTTBucket_5_10ms +

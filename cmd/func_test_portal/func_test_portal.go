@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"time"
-	"bytes"
 
 	"github.com/networknext/backend/modules/common"
 	"github.com/networknext/backend/modules/envvar"
@@ -166,7 +166,7 @@ func Get(url string, object interface{}) {
 
 	request, _ := http.NewRequest("GET", url, buffer)
 
-   request.Header.Set("Authorization", "Bearer " + apiKey)
+	request.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{}
 

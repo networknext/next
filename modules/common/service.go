@@ -124,7 +124,7 @@ func CreateService(serviceName string) *Service {
 	if service.CommitMessage != "" {
 		core.Log("commit message: %s", service.CommitMessage)
 	}
-	
+
 	if service.CommitHash != "" {
 		core.Log("commit hash: %s", service.CommitHash)
 	}

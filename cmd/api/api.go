@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/networknext/backend/modules/admin"
 	"github.com/networknext/backend/modules/common"
@@ -164,7 +164,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 				return []byte(privateKey), nil
 			})
 
-			if token == nil ||err != nil {
+			if token == nil || err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, err.Error())
 			}
@@ -175,7 +175,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 			w.WriteHeader(http.StatusUnauthorized)
 			fmt.Fprintf(w, "Not Authorized")
-			
+
 		}
 	}
 }
@@ -371,8 +371,8 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateCustomerResponse struct {
-	Customer  admin.CustomerData   `json:"customer"`
-	Error     string               `json:"error"`
+	Customer admin.CustomerData `json:"customer"`
+	Error    string             `json:"error"`
 }
 
 func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
@@ -474,7 +474,7 @@ func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminDeleteCustomerResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
@@ -500,8 +500,8 @@ func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateSellerResponse struct {
-	Seller    admin.SellerData     `json:"seller"`
-	Error     string               `json:"error"`
+	Seller admin.SellerData `json:"seller"`
+	Error  string           `json:"error"`
 }
 
 func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
@@ -571,8 +571,8 @@ func adminReadSellerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminUpdateSellerResponse struct {
-	Seller admin.SellerData     `json:"seller"`
-	Error    string             `json:"error"`
+	Seller admin.SellerData `json:"seller"`
+	Error  string           `json:"error"`
 }
 
 func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
@@ -598,7 +598,7 @@ func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminDeleteSellerResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
@@ -624,8 +624,8 @@ func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateBuyerResponse struct {
-	Buyer     admin.BuyerData   	`json:"buyer"`
-	Error     string               	`json:"error"`
+	Buyer admin.BuyerData `json:"buyer"`
+	Error string          `json:"error"`
 }
 
 func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
@@ -670,8 +670,8 @@ func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadBuyerResponse struct {
-	Buyer    admin.BuyerData 	`json:"buyer"`
-	Error    string             `json:"error"`
+	Buyer admin.BuyerData `json:"buyer"`
+	Error string          `json:"error"`
 }
 
 func adminReadBuyerHandler(w http.ResponseWriter, r *http.Request) {
@@ -695,8 +695,8 @@ func adminReadBuyerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminUpdateBuyerResponse struct {
-	Buyer    admin.BuyerData 	`json:"buyer"`
-	Error    string             `json:"error"`
+	Buyer admin.BuyerData `json:"buyer"`
+	Error string          `json:"error"`
 }
 
 func adminUpdateBuyerHandler(w http.ResponseWriter, r *http.Request) {
@@ -722,7 +722,7 @@ func adminUpdateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminDeleteBuyerResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
@@ -748,8 +748,8 @@ func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateDatacenterResponse struct {
-	Datacenter  admin.DatacenterData   `json:"datacenter"`
-	Error       string                 `json:"error"`
+	Datacenter admin.DatacenterData `json:"datacenter"`
+	Error      string               `json:"error"`
 }
 
 func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
@@ -777,8 +777,8 @@ func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadDatacentersResponse struct {
-	Datacenters []admin.DatacenterData 	`json:"datacenters"`
-	Error     	string                  `json:"error"`
+	Datacenters []admin.DatacenterData `json:"datacenters"`
+	Error       string                 `json:"error"`
 }
 
 func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
@@ -824,8 +824,8 @@ func adminReadDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminUpdateDatacenterResponse struct {
-	Datacenter admin.DatacenterData 	`json:"datacenter"`
-	Error    string             		`json:"error"`
+	Datacenter admin.DatacenterData `json:"datacenter"`
+	Error      string               `json:"error"`
 }
 
 func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
@@ -851,7 +851,7 @@ func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminDeleteDatacenterResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
@@ -877,8 +877,8 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateRelayResponse struct {
-	Relay     admin.RelayData      `json:"relay"`
-	Error     string               `json:"error"`
+	Relay admin.RelayData `json:"relay"`
+	Error string          `json:"error"`
 }
 
 func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
@@ -906,8 +906,8 @@ func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadRelaysResponse struct {
-	Relays    []admin.RelayData    `json:"relays"`
-	Error     string               `json:"error"`
+	Relays []admin.RelayData `json:"relays"`
+	Error  string            `json:"error"`
 }
 
 func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
@@ -926,8 +926,8 @@ func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadRelayResponse struct {
-	Relay    admin.RelayData    `json:"relay"`
-	Error    string             `json:"error"`
+	Relay admin.RelayData `json:"relay"`
+	Error string          `json:"error"`
 }
 
 func adminReadRelayHandler(w http.ResponseWriter, r *http.Request) {
@@ -953,8 +953,8 @@ func adminReadRelayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminUpdateRelayResponse struct {
-	Relay    admin.RelayData    `json:"relay"`
-	Error    string             `json:"error"`
+	Relay admin.RelayData `json:"relay"`
+	Error string          `json:"error"`
 }
 
 func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
@@ -980,7 +980,7 @@ func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminDeleteRelayResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
@@ -1006,8 +1006,8 @@ func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateRouteShaderResponse struct {
-	RouteShader  admin.RouteShaderData   `json:"route_shader"`
-	Error        string                  `json:"error"`
+	RouteShader admin.RouteShaderData `json:"route_shader"`
+	Error       string                `json:"error"`
 }
 
 func adminCreateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
@@ -1109,7 +1109,7 @@ func adminUpdateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminDeleteRouteShaderResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
@@ -1135,8 +1135,8 @@ func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateBuyerDatacenterSettingsResponse struct {
-	Settings     admin.BuyerDatacenterSettings   `json:"settings"`
-	Error        string                  		 `json:"error"`
+	Settings admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                        `json:"error"`
 }
 
 func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1180,8 +1180,8 @@ func adminReadBuyerDatacenterSettingsListHandler(w http.ResponseWriter, r *http.
 }
 
 type AdminReadBuyerDatacenterSettingsResponse struct {
-	Settings admin.BuyerDatacenterSettings   `json:"settings"`
-	Error    string                          `json:"error"`
+	Settings admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                        `json:"error"`
 }
 
 func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1213,8 +1213,8 @@ func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Requ
 }
 
 type AdminUpdateBuyerDatacenterSettingsResponse struct {
-	Settings admin.BuyerDatacenterSettings 	`json:"settings"`
-	Error    string             			`json:"error"`
+	Settings admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                        `json:"error"`
 }
 
 func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1240,7 +1240,7 @@ func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 }
 
 type AdminDeleteBuyerDatacenterSettingsResponse struct {
-	Error    string             `json:"error"`
+	Error string `json:"error"`
 }
 
 func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1266,7 +1266,6 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 

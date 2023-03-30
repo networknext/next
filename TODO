@@ -16,6 +16,16 @@ DONE
 
 TODO
 
+	Simplify route shader
+
+	Document terraform plugin
+
+	Publish terraform plugin
+
+	Implement terraform func test based on public provider
+
+	----------------
+
 	Setup some relays in dev with terraform!!!
 
 	----------------

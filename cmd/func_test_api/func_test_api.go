@@ -73,227 +73,227 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 
 func GetText(path string) (string, error) {
 
-    url := hostname + "/" + path
+	url := hostname + "/" + path
 
-    var err error
-    var response *http.Response
-    for i := 0; i < 5; i++ {
-        req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-        req.Header.Set("Authorization", "Bearer " + apiKey)
-        client := &http.Client{}
-        response, err = client.Do(req)
-        if err == nil {
-            break
-        }
-        time.Sleep(time.Second)
-    }
+	var err error
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
-    if err != nil {
-        return "", fmt.Errorf("failed to read %s: %v", url, err)
-    }
+	if err != nil {
+		return "", fmt.Errorf("failed to read %s: %v", url, err)
+	}
 
-    if response == nil {
-        return "", fmt.Errorf("no response from %s", url)
-    }
+	if response == nil {
+		return "", fmt.Errorf("no response from %s", url)
+	}
 
-    if response.StatusCode != 200 {
-        return "", fmt.Errorf("got %d response for %s", response.StatusCode, url)
-    }
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("got %d response for %s", response.StatusCode, url)
+	}
 
-    body, error := ioutil.ReadAll(response.Body)
-    if error != nil {
-        return "", fmt.Errorf("could not read response body for %s: %v", url, err)
-    }
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return "", fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
 
-    response.Body.Close()
+	response.Body.Close()
 
-    return string(body), nil
+	return string(body), nil
 }
 
 func GetJSON(path string, object interface{}) error {
 
-    url := hostname + "/" + path
+	url := hostname + "/" + path
 
-    var err error
-    var response *http.Response
-    for i := 0; i < 5; i++ {
-        req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-        req.Header.Set("Authorization", "Bearer " + apiKey)
-        client := &http.Client{}
-        response, err = client.Do(req)
-        if err == nil {
-            break
-        }
-        time.Sleep(time.Second)
-    }
+	var err error
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
-    if err != nil {
-        return fmt.Errorf("failed to read %s: %v", url, err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %v", url, err)
+	}
 
-    if response == nil {
-        return fmt.Errorf("no response from %s", url)
-    }
+	if response == nil {
+		return fmt.Errorf("no response from %s", url)
+	}
 
-    body, error := ioutil.ReadAll(response.Body)
-    if error != nil {
-        return fmt.Errorf("could not read response body for %s: %v", url, err)
-    }
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
 
-    response.Body.Close()
+	response.Body.Close()
 
-    err = json.Unmarshal([]byte(body), &object)
-    if err != nil {
-        return fmt.Errorf("could not parse json response for %s: %v", url, err)
-    }
+	err = json.Unmarshal([]byte(body), &object)
+	if err != nil {
+		return fmt.Errorf("could not parse json response for %s: %v", url, err)
+	}
 
-    return nil
+	return nil
 }
 
 func Create(path string, requestData interface{}, responseData interface{}) error {
 
-    url := hostname + "/" + path
+	url := hostname + "/" + path
 
-    buffer := new(bytes.Buffer)
+	buffer := new(bytes.Buffer)
 
-    json.NewEncoder(buffer).Encode(requestData)
+	json.NewEncoder(buffer).Encode(requestData)
 
-    request, err := http.NewRequest("POST", url, buffer)
-    if err != nil {
-        return fmt.Errorf("could not create HTTP POST request for %s: %v", url, err)
-    }
+	request, err := http.NewRequest("POST", url, buffer)
+	if err != nil {
+		return fmt.Errorf("could not create HTTP POST request for %s: %v", url, err)
+	}
 
-    request.Header.Set("Authorization", "Bearer " + apiKey)
+	request.Header.Set("Authorization", "Bearer "+apiKey)
 
-    httpClient := &http.Client{}
+	httpClient := &http.Client{}
 
-    var response *http.Response
-    for i := 0; i < 5; i++ {
-        response, err = httpClient.Do(request)
-        if err == nil {
-            break
-        }
-        time.Sleep(time.Second)
-    }
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		response, err = httpClient.Do(request)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
-    if err != nil {
-        return fmt.Errorf("create failed on %s: %v", url, err)
-    }
+	if err != nil {
+		return fmt.Errorf("create failed on %s: %v", url, err)
+	}
 
-    if response == nil {
-        return fmt.Errorf("no response from %s", url)
-    }
+	if response == nil {
+		return fmt.Errorf("no response from %s", url)
+	}
 
-    body, error := ioutil.ReadAll(response.Body)
-    if error != nil {
-        return fmt.Errorf("could not read response body for %s: %v", url, err)
-    }
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
 
-    response.Body.Close()
+	response.Body.Close()
 
-    err = json.Unmarshal([]byte(body), &responseData)
-    if err != nil {
-        return fmt.Errorf("could not parse json response for %s: %v", url, err)
-    }
+	err = json.Unmarshal([]byte(body), &responseData)
+	if err != nil {
+		return fmt.Errorf("could not parse json response for %s: %v", url, err)
+	}
 
-    return nil
+	return nil
 }
 
 func Update(path string, requestData interface{}, responseData interface{}) error {
 
-    url := hostname + "/" + path
+	url := hostname + "/" + path
 
-    buffer := new(bytes.Buffer)
+	buffer := new(bytes.Buffer)
 
-    json.NewEncoder(buffer).Encode(requestData)
+	json.NewEncoder(buffer).Encode(requestData)
 
-    request, _ := http.NewRequest("PUT", url, buffer)
+	request, _ := http.NewRequest("PUT", url, buffer)
 
-    request.Header.Set("Authorization", "Bearer " + apiKey)
+	request.Header.Set("Authorization", "Bearer "+apiKey)
 
-    httpClient := &http.Client{}
+	httpClient := &http.Client{}
 
-    var err error
-    var response *http.Response
-    for i := 0; i < 5; i++ {
-        response, err = httpClient.Do(request)
-        if err == nil {
-            break
-        }
-        time.Sleep(time.Second)
-    }
+	var err error
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		response, err = httpClient.Do(request)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
-    if err != nil {
-        return fmt.Errorf("failed to read %s: %v", url, err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %v", url, err)
+	}
 
-    if response == nil {
-        return fmt.Errorf("no response from %s", url)
-    }
+	if response == nil {
+		return fmt.Errorf("no response from %s", url)
+	}
 
-    body, error := ioutil.ReadAll(response.Body)
-    if error != nil {
-        return fmt.Errorf("could not read response body for %s: %v", url, err)
-    }
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
 
-    response.Body.Close()
+	response.Body.Close()
 
-    err = json.Unmarshal([]byte(body), &responseData)
-    if err != nil {
-        return fmt.Errorf("could not parse json response for %s: %v", url, err)
-    }
+	err = json.Unmarshal([]byte(body), &responseData)
+	if err != nil {
+		return fmt.Errorf("could not parse json response for %s: %v", url, err)
+	}
 
-    return nil
+	return nil
 }
 
 func Delete(path string, responseData interface{}) error {
 
-    url := hostname + "/" + path
+	url := hostname + "/" + path
 
-    request, _ := http.NewRequest("DELETE", url, nil)
+	request, _ := http.NewRequest("DELETE", url, nil)
 
-    request.Header.Set("Authorization", "Bearer " + apiKey)
+	request.Header.Set("Authorization", "Bearer "+apiKey)
 
-    httpClient := &http.Client{}
+	httpClient := &http.Client{}
 
-    var err error
-    var response *http.Response
-    for i := 0; i < 5; i++ {
-        response, err = httpClient.Do(request)
-        if err == nil {
-            break
-        }
-        time.Sleep(time.Second)
-    }
+	var err error
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		response, err = httpClient.Do(request)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
-    if err != nil {
-        return fmt.Errorf("failed to read %s: %v", url, err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %v", url, err)
+	}
 
-    if response == nil {
-        return fmt.Errorf("no response from %s", url)
-    }
+	if response == nil {
+		return fmt.Errorf("no response from %s", url)
+	}
 
-    body, error := ioutil.ReadAll(response.Body)
-    if error != nil {
-        return fmt.Errorf("could not read response body for %s: %v", url, err)
-    }
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
 
-    response.Body.Close()
+	response.Body.Close()
 
-    err = json.Unmarshal([]byte(body), &responseData)
-    if err != nil {
-        return fmt.Errorf("could not parse json response for %s: %v", url, err)
-    }
+	err = json.Unmarshal([]byte(body), &responseData)
+	if err != nil {
+		return fmt.Errorf("could not parse json response for %s: %v", url, err)
+	}
 
-    return err
+	return err
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateCustomerResponse struct {
-	Customer  admin.CustomerData   `json:"customer"`
-	Error     string               `json:"error"`
+	Customer admin.CustomerData `json:"customer"`
+	Error    string             `json:"error"`
 }
 
 type ReadCustomersResponse struct {
@@ -302,173 +302,173 @@ type ReadCustomersResponse struct {
 }
 
 type ReadCustomerResponse struct {
-	Customer  admin.CustomerData   `json:"customer"`
-	Error     string               `json:"error"`
+	Customer admin.CustomerData `json:"customer"`
+	Error    string             `json:"error"`
 }
 
 type UpdateCustomerResponse struct {
-	Customer  admin.CustomerData   `json:"customer"`
-	Error     string               `json:"error"`
+	Customer admin.CustomerData `json:"customer"`
+	Error    string             `json:"error"`
 }
 
 type DeleteCustomerResponse struct {
-	Error     string               `json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateSellerResponse struct {
-	Seller     admin.SellerData    `json:"seller"`
-	Error     string               `json:"error"`
+	Seller admin.SellerData `json:"seller"`
+	Error  string           `json:"error"`
 }
 
 type ReadSellersResponse struct {
-	Sellers   []admin.SellerData   `json:"sellers"`
-	Error     string               `json:"error"`
+	Sellers []admin.SellerData `json:"sellers"`
+	Error   string             `json:"error"`
 }
 
 type ReadSellerResponse struct {
-	Seller     admin.SellerData    `json:"seller"`
-	Error     string               `json:"error"`
+	Seller admin.SellerData `json:"seller"`
+	Error  string           `json:"error"`
 }
 
 type UpdateSellerResponse struct {
-	Seller     admin.SellerData    `json:"seller"`
-	Error     string               `json:"error"`
+	Seller admin.SellerData `json:"seller"`
+	Error  string           `json:"error"`
 }
 
 type DeleteSellerResponse struct {
-	Error     string               `json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateDatacenterResponse struct {
-	Datacenter     admin.DatacenterData    `json:"datacenter"`
-	Error          string               	`json:"error"`
+	Datacenter admin.DatacenterData `json:"datacenter"`
+	Error      string               `json:"error"`
 }
 
 type ReadDatacentersResponse struct {
-	Datacenters    []admin.DatacenterData  `json:"datacenters"`
-	Error          string               	`json:"error"`
+	Datacenters []admin.DatacenterData `json:"datacenters"`
+	Error       string                 `json:"error"`
 }
 
 type ReadDatacenterResponse struct {
-	Datacenter     admin.DatacenterData    `json:"datacenter"`
-	Error          string               	`json:"error"`
+	Datacenter admin.DatacenterData `json:"datacenter"`
+	Error      string               `json:"error"`
 }
 
 type UpdateDatacenterResponse struct {
-	Datacenter     admin.DatacenterData    `json:"datacenter"`
-	Error          string               	`json:"error"`
+	Datacenter admin.DatacenterData `json:"datacenter"`
+	Error      string               `json:"error"`
 }
 
 type DeleteDatacenterResponse struct {
-	Error          string               	`json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateRelayResponse struct {
-	Relay          admin.RelayData         `json:"relay"`
-	Error          string               	`json:"error"`
+	Relay admin.RelayData `json:"relay"`
+	Error string          `json:"error"`
 }
 
 type ReadRelaysResponse struct {
-	Relays    		[]admin.RelayData  		`json:"relays"`
-	Error          string               	`json:"error"`
+	Relays []admin.RelayData `json:"relays"`
+	Error  string            `json:"error"`
 }
 
 type ReadRelayResponse struct {
-	Relay          admin.RelayData         `json:"relay"`
-	Error          string               	`json:"error"`
+	Relay admin.RelayData `json:"relay"`
+	Error string          `json:"error"`
 }
 
 type UpdateRelayResponse struct {
-	Relay          admin.RelayData         `json:"relay"`
-	Error          string               	`json:"error"`
+	Relay admin.RelayData `json:"relay"`
+	Error string          `json:"error"`
 }
 
 type DeleteRelayResponse struct {
-	Error          string               	`json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateRouteShaderResponse struct {
-	RouteShader    admin.RouteShaderData   `json:"route_shader"`
-	Error          string               	`json:"error"`
+	RouteShader admin.RouteShaderData `json:"route_shader"`
+	Error       string                `json:"error"`
 }
 
 type ReadRouteShadersResponse struct {
-	RouteShaders   []admin.RouteShaderData `json:"route_shaders"`
-	Error          string               	`json:"error"`
+	RouteShaders []admin.RouteShaderData `json:"route_shaders"`
+	Error        string                  `json:"error"`
 }
 
 type ReadRouteShaderResponse struct {
-	RouteShader    admin.RouteShaderData   `json:"route_shader"`
-	Error          string               	`json:"error"`
+	RouteShader admin.RouteShaderData `json:"route_shader"`
+	Error       string                `json:"error"`
 }
 
 type UpdateRouteShaderResponse struct {
-	RouteShader    admin.RouteShaderData   `json:"route_shader"`
-	Error          string               	`json:"error"`
+	RouteShader admin.RouteShaderData `json:"route_shader"`
+	Error       string                `json:"error"`
 }
 
 type DeleteRouteShaderResponse struct {
-	Error          string               	`json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateBuyerResponse struct {
-	Buyer    admin.BuyerData   	`json:"buyer"`
-	Error    string               `json:"error"`
+	Buyer admin.BuyerData `json:"buyer"`
+	Error string          `json:"error"`
 }
 
 type ReadBuyersResponse struct {
-	Buyers   []admin.BuyerData   	`json:"buyers"`
-	Error    string               `json:"error"`
+	Buyers []admin.BuyerData `json:"buyers"`
+	Error  string            `json:"error"`
 }
 
 type ReadBuyerResponse struct {
-	Buyer    admin.BuyerData   	`json:"buyer"`
-	Error    string               `json:"error"`
+	Buyer admin.BuyerData `json:"buyer"`
+	Error string          `json:"error"`
 }
 
 type UpdateBuyerResponse struct {
-	Buyer    admin.BuyerData   	`json:"buyer"`
-	Error    string               `json:"error"`
+	Buyer admin.BuyerData `json:"buyer"`
+	Error string          `json:"error"`
 }
 
 type DeleteBuyerResponse struct {
-	Error    string               `json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
 
 type CreateBuyerDatacenterSettingsResponse struct {
-	Settings    admin.BuyerDatacenterSettings   		`json:"settings"`
-	Error    	string               					`json:"error"`
+	Settings admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                        `json:"error"`
 }
 
 type ReadBuyerDatacenterSettingsListResponse struct {
-	Settings    []admin.BuyerDatacenterSettings 		`json:"settings"`
-	Error    	string               					`json:"error"`
+	Settings []admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                          `json:"error"`
 }
 
 type ReadBuyerDatacenterSettingsResponse struct {
-	Settings    admin.BuyerDatacenterSettings       `json:"settings"`
-	Error    	string               					`json:"error"`
+	Settings admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                        `json:"error"`
 }
 
 type UpdateBuyerDatacenterSettingsResponse struct {
-	Settings    admin.BuyerDatacenterSettings       `json:"settings"`
-	Error    	string               					`json:"error"`
+	Settings admin.BuyerDatacenterSettings `json:"settings"`
+	Error    string                        `json:"error"`
 }
 
 type DeleteBuyerDatacenterSettingsResponse struct {
-	Error    	string               					`json:"error"`
+	Error string `json:"error"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -1219,29 +1219,25 @@ func test_route_shader() {
 	// create route shader
 
 	expected := admin.RouteShaderData{
-		RouteShaderName: "Test",
-		ABTest: true,
-		AcceptableLatency: 10.0,
-		AcceptablePacketLoss: 0.1,
-		PacketLossSustained: 0.25,
-		AnalysisOnly: true,
-		BandwidthEnvelopeUpKbps: 1024,
-		BandwidthEnvelopeDownKbps: 512,
-		DisableNetworkNext: true,
-		LatencyThreshold: 10.0,
-		Multipath: true,
-		ReduceLatency: true,
-		ReducePacketLoss: true,
-		SelectionPercent: 100,
-		MaxLatencyTradeOff: 20,
-		MaxNextRTT: 200,
-		RouteSwitchThreshold: 10,
-		RouteSelectThreshold: 5,
-		RTTVeto_Default: 10,
-		RTTVeto_Multipath: 20,
-		RTTVeto_PacketLoss: 30,
-		ForceNext: true,
-		RouteDiversity: 5,
+		RouteShaderName:               "Test",
+		ABTest:                        true,
+		AcceptableLatency:             10.0,
+		AcceptablePacketLossInstant:   1.0,
+		AcceptablePacketLossSustained: 0.1,
+		AnalysisOnly:                  true,
+		BandwidthEnvelopeUpKbps:       1024,
+		BandwidthEnvelopeDownKbps:     512,
+		DisableNetworkNext:            true,
+		LatencyReductionThreshold:     10.0,
+		Multipath:                     true,
+		SelectionPercent:              100,
+		MaxLatencyTradeOff:            20,
+		MaxNextRTT:                    200,
+		RouteSwitchThreshold:          10,
+		RouteSelectThreshold:          5,
+		RTTVeto:                       10,
+		ForceNext:                     true,
+		RouteDiversity:                5,
 	}
 
 	routeShaderId := uint64(0)
@@ -1378,30 +1374,26 @@ func test_buyer() {
 
 	routeShaderId := uint64(0)
 	{
-		routeShader :=	admin.RouteShaderData{
-			RouteShaderName: "Test",
-			ABTest: true,
-			AcceptableLatency: 10.0,
-			AcceptablePacketLoss: 0.1,
-			PacketLossSustained: 0.25,
-			AnalysisOnly: true,
-			BandwidthEnvelopeUpKbps: 1024,
-			BandwidthEnvelopeDownKbps: 512,
-			DisableNetworkNext: true,
-			LatencyThreshold: 10.0,
-			Multipath: true,
-			ReduceLatency: true,
-			ReducePacketLoss: true,
-			SelectionPercent: 100,
-			MaxLatencyTradeOff: 20,
-			MaxNextRTT: 200,
-			RouteSwitchThreshold: 10,
-			RouteSelectThreshold: 5,
-			RTTVeto_Default: 10,
-			RTTVeto_Multipath: 20,
-			RTTVeto_PacketLoss: 30,
-			ForceNext: true,
-			RouteDiversity: 5,
+		routeShader := admin.RouteShaderData{
+			RouteShaderName:               "Test",
+			ABTest:                        true,
+			AcceptableLatency:             10.0,
+			AcceptablePacketLossInstant:   0.25,
+			AcceptablePacketLossSustained: 0.01,
+			AnalysisOnly:                  true,
+			BandwidthEnvelopeUpKbps:       1024,
+			BandwidthEnvelopeDownKbps:     512,
+			DisableNetworkNext:            true,
+			LatencyReductionThreshold:     10.0,
+			Multipath:                     true,
+			SelectionPercent:              100,
+			MaxLatencyTradeOff:            20,
+			MaxNextRTT:                    200,
+			RouteSwitchThreshold:          10,
+			RouteSelectThreshold:          5,
+			RTTVeto:                       10,
+			ForceNext:                     true,
+			RouteDiversity:                5,
 		}
 
 		var response CreateRouteShaderResponse
@@ -1418,9 +1410,9 @@ func test_buyer() {
 	// create buyer
 
 	expected := admin.BuyerData{
-		BuyerName: "Test",
-		CustomerId: customerId,
-		RouteShaderId: routeShaderId,
+		BuyerName:       "Test",
+		CustomerId:      customerId,
+		RouteShaderId:   routeShaderId,
 		PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
 	}
 
@@ -1558,30 +1550,26 @@ func test_buyer_datacenter_settings() {
 
 	routeShaderId := uint64(0)
 	{
-		routeShader :=	admin.RouteShaderData{
-			RouteShaderName: "Test",
-			ABTest: true,
-			AcceptableLatency: 10.0,
-			AcceptablePacketLoss: 0.1,
-			PacketLossSustained: 0.25,
-			AnalysisOnly: true,
-			BandwidthEnvelopeUpKbps: 1024,
-			BandwidthEnvelopeDownKbps: 512,
-			DisableNetworkNext: true,
-			LatencyThreshold: 10.0,
-			Multipath: true,
-			ReduceLatency: true,
-			ReducePacketLoss: true,
-			SelectionPercent: 100,
-			MaxLatencyTradeOff: 20,
-			MaxNextRTT: 200,
-			RouteSwitchThreshold: 10,
-			RouteSelectThreshold: 5,
-			RTTVeto_Default: 10,
-			RTTVeto_Multipath: 20,
-			RTTVeto_PacketLoss: 30,
-			ForceNext: true,
-			RouteDiversity: 5,
+		routeShader := admin.RouteShaderData{
+			RouteShaderName:               "Test",
+			ABTest:                        true,
+			AcceptableLatency:             10.0,
+			AcceptablePacketLossInstant:   0.25,
+			AcceptablePacketLossSustained: 0.01,
+			AnalysisOnly:                  true,
+			BandwidthEnvelopeUpKbps:       1024,
+			BandwidthEnvelopeDownKbps:     512,
+			DisableNetworkNext:            true,
+			LatencyReductionThreshold:     10.0,
+			Multipath:                     true,
+			SelectionPercent:              100,
+			MaxLatencyTradeOff:            20,
+			MaxNextRTT:                    200,
+			RouteSwitchThreshold:          10,
+			RouteSelectThreshold:          5,
+			RTTVeto:                       10,
+			ForceNext:                     true,
+			RouteDiversity:                5,
 		}
 
 		var response CreateRouteShaderResponse
@@ -1600,9 +1588,9 @@ func test_buyer_datacenter_settings() {
 	buyerId := uint64(0)
 	{
 		buyer := admin.BuyerData{
-			BuyerName: "Test",
-			CustomerId: customerId,
-			RouteShaderId: routeShaderId,
+			BuyerName:       "Test",
+			CustomerId:      customerId,
+			RouteShaderId:   routeShaderId,
 			PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
 		}
 
@@ -1654,8 +1642,8 @@ func test_buyer_datacenter_settings() {
 	// create buyer datacenter settings
 
 	expected := admin.BuyerDatacenterSettings{
-		BuyerId: buyerId,
-		DatacenterId: datacenterId,
+		BuyerId:            buyerId,
+		DatacenterId:       datacenterId,
 		EnableAcceleration: true,
 	}
 

@@ -108,11 +108,11 @@ func GetJSON(url string, object interface{}) {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-   	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-	   req.Header.Set("Authorization", "Bearer " + apiKey)
-	   client := &http.Client{}
-   	response, err = client.Do(req)
-			if err == nil {
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
+		if err == nil {
 			break
 		}
 		time.Sleep(time.Second)
@@ -144,10 +144,10 @@ func GetBinary(url string) []byte {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-   	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-	   req.Header.Set("Authorization", "Bearer " + apiKey)
-	   client := &http.Client{}
-   	response, err = client.Do(req)
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
 		if err == nil {
 			break
 		}

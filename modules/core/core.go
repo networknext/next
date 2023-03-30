@@ -1091,54 +1091,46 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 }
 
 type RouteShader struct {
-	DisableNetworkNext        bool    `json:"disable_network_next"`
-	AnalysisOnly              bool    `json:"analysis_only"`
-	SelectionPercent          int     `json:"selection_percentage"`
-	ABTest                    bool    `json:"ab_test"`
-	ReduceLatency             bool    `json:"reduce_latency"`
-	ReducePacketLoss          bool    `json:"reduce_packet_loss"`
-	Multipath                 bool    `json:"multipath"`
-	AcceptableLatency         int32   `json:"acceptable_latency"`
-	LatencyThreshold          int32   `json:"latency_threshold"`
-	AcceptablePacketLoss      float32 `json:"acceptable_packet_loss"`
-	PacketLossSustained       float32 `json:"packet_loss_sustained"`
-	BandwidthEnvelopeUpKbps   int32   `json:"bandwidth_envelope_up_kbps"`
-	BandwidthEnvelopeDownKbps int32   `json:"bandwidth_envelope_down_kbps"`
-	RouteSelectThreshold      int32   `json:"route_select_threshold"`
-	RouteSwitchThreshold      int32   `json:"route_switch_threshold"`
-	MaxLatencyTradeOff        int32   `json:"max_latency_trade_off"`
-	RTTVeto_Default           int32   `json:"rtt_veto_default"`
-	RTTVeto_Multipath         int32   `json:"rtt_veto_multipath"`
-	RTTVeto_PacketLoss        int32   `json:"rtt_veto_packet_loss"`
-	MaxNextRTT                int32   `json:"max_next_rtt"`
-	ForceNext                 bool    `json:"force_next"`
-	RouteDiversity            int32   `json:"route_diversity"`
+	DisableNetworkNext            bool    `json:"disable_network_next"`
+	AnalysisOnly                  bool    `json:"analysis_only"`
+	SelectionPercent              int     `json:"selection_percentage"`
+	ABTest                        bool    `json:"ab_test"`
+	Multipath                     bool    `json:"multipath"`
+	AcceptableLatency             int32   `json:"acceptable_latency"`
+	LatencyReductionThreshold     int32   `json:"latency_reduction_threshold"`
+	AcceptablePacketLossInstant   float32 `json:"acceptable_packet_loss_instant"`
+	AcceptablePacketLossSustained float32 `json:"acceptable_packet_loss_sustained"`
+	BandwidthEnvelopeUpKbps       int32   `json:"bandwidth_envelope_up_kbps"`
+	BandwidthEnvelopeDownKbps     int32   `json:"bandwidth_envelope_down_kbps"`
+	RouteSelectThreshold          int32   `json:"route_select_threshold"`
+	RouteSwitchThreshold          int32   `json:"route_switch_threshold"`
+	MaxLatencyTradeOff            int32   `json:"max_latency_trade_off"`
+	RTTVeto                       int32   `json:"rtt_veto"`
+	MaxNextRTT                    int32   `json:"max_next_rtt"`
+	ForceNext                     bool    `json:"force_next"`
+	RouteDiversity                int32   `json:"route_diversity"`
 }
 
 func NewRouteShader() RouteShader {
 	return RouteShader{
-		DisableNetworkNext:        false,
-		AnalysisOnly:              false,
-		SelectionPercent:          100,
-		ABTest:                    false,
-		ReduceLatency:             true,
-		ReducePacketLoss:          true,
-		Multipath:                 true,
-		AcceptableLatency:         0,
-		LatencyThreshold:          10,
-		AcceptablePacketLoss:      0.1,
-		PacketLossSustained:       0.01,
-		BandwidthEnvelopeUpKbps:   1024,
-		BandwidthEnvelopeDownKbps: 1024,
-		RouteSelectThreshold:      5,
-		RouteSwitchThreshold:      10,
-		MaxLatencyTradeOff:        20,
-		RTTVeto_Default:           -10,
-		RTTVeto_Multipath:         -20,
-		RTTVeto_PacketLoss:        -30,
-		MaxNextRTT:                250,
-		ForceNext:                 false,
-		RouteDiversity:            0,
+		DisableNetworkNext:            false,
+		AnalysisOnly:                  false,
+		SelectionPercent:              100,
+		ABTest:                        false,
+		Multipath:                     true,
+		AcceptableLatency:             0,
+		LatencyReductionThreshold:     10,
+		AcceptablePacketLossInstant:   0.1,
+		AcceptablePacketLossSustained: 0.01,
+		BandwidthEnvelopeUpKbps:       1024,
+		BandwidthEnvelopeDownKbps:     1024,
+		RouteSelectThreshold:          5,
+		RouteSwitchThreshold:          10,
+		MaxLatencyTradeOff:            20,
+		RTTVeto:                       10,
+		MaxNextRTT:                    250,
+		ForceNext:                     false,
+		RouteDiversity:                0,
 	}
 }
 
@@ -1296,37 +1288,35 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	// should we try to reduce latency?
 
 	reduceLatency := false
-	if routeShader.ReduceLatency {
-		if directLatency > routeShader.AcceptableLatency {
-			if debug != nil {
-				*debug += "try to reduce latency\n"
-			}
-			maxCost = directLatency - (routeShader.LatencyThreshold + routeShader.RouteSelectThreshold)
-			reduceLatency = true
-		} else {
-			if debug != nil {
-				*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %d, latency threshold = %d\n", directLatency, routeShader.LatencyThreshold)
-			}
-			maxCost = -1
+	if directLatency > routeShader.AcceptableLatency {
+		if debug != nil {
+			*debug += "try to reduce latency\n"
 		}
+		maxCost = directLatency - (routeShader.LatencyReductionThreshold + routeShader.RouteSelectThreshold)
+		reduceLatency = true
+	} else {
+		if debug != nil {
+			*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %d, latency threshold = %d\n", directLatency, routeShader.LatencyReductionThreshold)
+		}
+		maxCost = -1
 	}
 
 	// should we try to reduce packet loss?
 
 	// Check if the session is seeing sustained packet loss and increment/reset the counter
 
-	if directPacketLoss >= routeShader.PacketLossSustained {
+	if directPacketLoss >= routeShader.AcceptablePacketLossSustained {
 		if routeState.PLSustainedCounter < 3 {
 			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
 		}
 	}
 
-	if directPacketLoss < routeShader.PacketLossSustained {
+	if directPacketLoss < routeShader.AcceptablePacketLossSustained {
 		routeState.PLSustainedCounter = 0
 	}
 
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && ((directPacketLoss > routeShader.AcceptablePacketLoss) || routeState.PLSustainedCounter == 3) {
+	if (directPacketLoss > routeShader.AcceptablePacketLossInstant) || routeState.PLSustainedCounter == 3 {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
@@ -1342,6 +1332,8 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		}
 		maxCost = math.MaxInt32
 		routeState.ForcedNext = true
+		reduceLatency = false
+		reducePacketLoss = false
 	}
 
 	// get the initial best route
@@ -1464,23 +1456,19 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	if !routeShader.ForceNext {
 
-		rttVeto := routeShader.RTTVeto_Default
+		rttVeto := routeShader.RTTVeto
 
 		if routeState.ReducePacketLoss {
-			rttVeto = routeShader.RTTVeto_PacketLoss
-		}
-
-		if routeState.Multipath {
-			rttVeto = routeShader.RTTVeto_Multipath
+			rttVeto += routeShader.MaxLatencyTradeOff
 		}
 
 		if !routeState.Multipath {
 
 			// If we make latency worse and we are not in multipath, leave network next right away
 
-			if nextLatency > (directLatency - rttVeto) {
+			if nextLatency > (directLatency + rttVeto) {
 				if debug != nil {
-					*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+					*debug += fmt.Sprintf("aborting route because we made latency worse: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency+rttVeto)
 				}
 				routeState.LatencyWorse = true
 				return false, false
@@ -1490,11 +1478,11 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 			// If we are in multipath, only leave network next if we make latency worse three slices in a row
 
-			if nextLatency > (directLatency - rttVeto) {
+			if nextLatency > (directLatency + rttVeto) {
 				routeState.LatencyWorseCounter++
 				if routeState.LatencyWorseCounter == 3 {
 					if debug != nil {
-						*debug += fmt.Sprintf("aborting route because we made latency worse 3X: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency-rttVeto)
+						*debug += fmt.Sprintf("aborting route because we made latency worse 3X: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency+rttVeto)
 					}
 					routeState.LatencyWorse = true
 					return false, false

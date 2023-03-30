@@ -277,7 +277,7 @@ func getKeyValue(envFile string, keyName string) string {
 	}
 	value = value[:len(value)-1]
 	if value[0] == '"' || value[0] == '\'' {
-		value = value[1:len(value)-1]
+		value = value[1 : len(value)-1]
 	}
 	return value
 }
@@ -792,10 +792,10 @@ func GetJSON(url string, object interface{}) {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
-	   client := &http.Client{}
-   	response, err = client.Do(req)
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+env.APIKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -824,10 +824,10 @@ func GetText(url string) string {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
-	   client := &http.Client{}
-   	response, err = client.Do(req)
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+env.APIKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -862,10 +862,10 @@ func GetBinary(url string) []byte {
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
-	   req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-	   req.Header.Set("Authorization", "Bearer " + env.APIKey)
-	   client := &http.Client{}
-   	response, err = client.Do(req)
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+		req.Header.Set("Authorization", "Bearer "+env.APIKey)
+		client := &http.Client{}
+		response, err = client.Do(req)
 		if err == nil {
 			break
 		}
@@ -950,11 +950,11 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		}
 		// todo: relay flags are not passed up yet -- random data
 		/*
-		if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
-			relay.Status = "shutting down"
-		} else {
-			*/
-			relay.Status = "online"
+			if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
+				relay.Status = "shutting down"
+			} else {
+		*/
+		relay.Status = "online"
 		// }
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
