@@ -1,38 +1,18 @@
 DONE
 
-	Create a terraform provider for network next that drives the CRUD REST API
-
-	https://github.com/spaceapegames/terraform-provider-example/blob/master/provider/provider.go
-
-	https://developer.hashicorp.com/terraform/registry/modules/publish
-
-	Make sure happy path passes
-
-	Make sure the next tool still works post-terraform changes
-
-	Fix the API func test so it works with the REST API changes made to support terraform
-
-	Make sure all func tests pass
-
-	Simplify route shader
-
-	Fix API func test after route shader chanegs
-
-	Update terraform provider with route shader changes and test
-
-	Make sure all func tests pass
-
-	Implement default values in the terraform provider
-
-	Document terraform plugin
-
 	Sketch out buyer and relay keypair resources and data sources in tf provider
-
-TODO
 
 	Implement REST API for buyer and relay keypairs
 
+	Actually implement keygen for relay keypair in admin.go
+
+TODO
+
+	Implement keygen for buyer keypair in admin.go
+
 	Test buyer and relay keypairs in terraform
+
+	----------------
 
 	Publish terraform plugin
 
@@ -644,4 +624,3 @@ Nice to have:
 	Relay name should get validated to have the datacenter name substring in it
 
 	-----------------------------------
-	

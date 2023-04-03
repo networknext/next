@@ -2,10 +2,14 @@ package admin
 
 import (
 	"database/sql"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"crypto/ed25519"
 
 	"github.com/networknext/backend/modules/core"
 
+	"golang.org/x/crypto/nacl/box"
 	_ "github.com/lib/pq"
 )
 
@@ -960,12 +964,23 @@ type BuyerKeypairData struct {
 }
 
 func (controller *Controller) CreateBuyerKeypair(buyerKeypairData *BuyerKeypairData) (uint64, error) {
-	// todo
-	publicKeyBase64 := "aaaaa"
-	privateKeyBase64 := "bbbbb"
+	buyerKeypairId := uint64(0)
+	buyerId := make([]byte, 8)
+	rand.Read(buyerId)
+	publicKey, privateKey, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		return buyerKeypairId, fmt.Errorf("could not generate buyer keypair: %v", err)
+	}
+	buyerPublicKey := make([]byte, 0)
+	buyerPublicKey = append(buyerPublicKey, buyerId...)
+	buyerPublicKey = append(buyerPublicKey, publicKey...)
+	buyerPrivateKey := make([]byte, 0)
+	buyerPrivateKey = append(buyerPrivateKey, buyerId...)
+	buyerPrivateKey = append(buyerPrivateKey, privateKey...)
+	publicKeyBase64 := base64.StdEncoding.EncodeToString(buyerPublicKey[:])
+	privateKeyBase64 := base64.StdEncoding.EncodeToString(buyerPrivateKey[:])
 	sql := "INSERT INTO buyer_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING buyer_keypair_id;"
 	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
-	buyerKeypairId := uint64(0)
 	if err := result.Scan(&buyerKeypairId); err != nil {
 		return 0, fmt.Errorf("could not insert buyer keypair: %v\n", err)
 	}
@@ -1024,12 +1039,15 @@ type RelayKeypairData struct {
 }
 
 func (controller *Controller) CreateRelayKeypair(relayKeypairData *RelayKeypairData) (uint64, error) {
-	// todo
-	publicKeyBase64 := "aaaaa"
-	privateKeyBase64 := "bbbbb"
+	relayKeypairId := uint64(0)
+	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		return relayKeypairId, fmt.Errorf("could not generate relay keypair")
+	}
+	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
+	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
 	sql := "INSERT INTO relay_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING relay_keypair_id;"
 	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
-	relayKeypairId := uint64(0)
 	if err := result.Scan(&relayKeypairId); err != nil {
 		return 0, fmt.Errorf("could not insert relay keypair: %v\n", err)
 	}
