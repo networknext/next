@@ -952,3 +952,131 @@ func (controller *Controller) DeleteBuyerDatacenterSettings(buyerId uint64, data
 }
 
 // -----------------------------------------------------------------------
+
+type BuyerKeypairData struct {
+	BuyerKeypairId   uint64 `json:"buyer_keypair_id"`
+	PublicKeyBase64  string `json:"public_key_base64"`
+	PrivateKeyBase64 string `json:"private_key_base64"`
+}
+
+func (controller *Controller) CreateBuyerKeypair(buyerKeypairData *BuyerKeypairData) (uint64, error) {
+	// todo
+	publicKeyBase64 := "aaaaa"
+	privateKeyBase64 := "bbbbb"
+	sql := "INSERT INTO buyer_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING buyer_keypair_id;"
+	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
+	buyerKeypairId := uint64(0)
+	if err := result.Scan(&buyerKeypairId); err != nil {
+		return 0, fmt.Errorf("could not insert buyer keypair: %v\n", err)
+	}
+	return buyerKeypairId, nil
+}
+
+func (controller *Controller) ReadBuyerKeypairs() ([]BuyerKeypairData, error) {
+	buyerKeypairs := make([]BuyerKeypairData, 0)
+	rows, err := controller.pgsql.Query("SELECT buyer_keypair_id, public_key_base64, private_key_base64 FROM buyer_keypairs;")
+	if err != nil {
+		return nil, fmt.Errorf("could not read buyer keypairs: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := BuyerKeypairData{}
+		if err := rows.Scan(&row.BuyerKeypairId, &row.PublicKeyBase64, &row.PrivateKeyBase64); err != nil {
+			return nil, fmt.Errorf("could not scan buyer keypair row: %v\n", err)
+		}
+		buyerKeypairs = append(buyerKeypairs, row)
+	}
+	return buyerKeypairs, nil
+}
+
+func (controller *Controller) ReadBuyerKeypair(buyerKeypairId uint64) (BuyerKeypairData, error) {
+	buyerKeypair := BuyerKeypairData{}
+	rows, err := controller.pgsql.Query("SELECT buyer_keypair_id, public_key_base64, private_key_base64 WHERE buyer_keypair_id = $1;", buyerKeypairId)
+	if err != nil {
+		return buyerKeypair, fmt.Errorf("could not read buyer keypair: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&buyerKeypair.BuyerKeypairId, &buyerKeypair.PublicKeyBase64, &buyerKeypair.PrivateKeyBase64); err != nil {
+			return buyerKeypair, fmt.Errorf("could not scan buyer keypair row: %v\n", err)
+		}
+		return buyerKeypair, nil
+	}
+	return buyerKeypair, fmt.Errorf("buyer keypair %x not found", buyerKeypairId)
+}
+
+func (controller *Controller) UpdateBuyerKeypair(buyerKeypairData *BuyerKeypairData) error {
+	return fmt.Errorf("updating buyer keypair is not supported")
+}
+
+func (controller *Controller) DeleteBuyerKeypair(buyerKeypairId uint64) error {
+	sql := "DELETE FROM buyer_keypairs WHERE buyer_keypair_id = $1;"
+	_, err := controller.pgsql.Exec(sql, buyerKeypairId)
+	return err
+}
+
+// -----------------------------------------------------------------------
+
+type RelayKeypairData struct {
+	RelayKeypairId   uint64 `json:"relay_keypair_id"`
+	PublicKeyBase64  string `json:"public_key_base64"`
+	PrivateKeyBase64 string `json:"private_key_base64"`
+}
+
+func (controller *Controller) CreateRelayKeypair(relayKeypairData *RelayKeypairData) (uint64, error) {
+	// todo
+	publicKeyBase64 := "aaaaa"
+	privateKeyBase64 := "bbbbb"
+	sql := "INSERT INTO relay_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING relay_keypair_id;"
+	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
+	relayKeypairId := uint64(0)
+	if err := result.Scan(&relayKeypairId); err != nil {
+		return 0, fmt.Errorf("could not insert relay keypair: %v\n", err)
+	}
+	return relayKeypairId, nil
+}
+
+func (controller *Controller) ReadRelayKeypairs() ([]RelayKeypairData, error) {
+	relayKeypairs := make([]RelayKeypairData, 0)
+	rows, err := controller.pgsql.Query("SELECT relay_keypair_id, public_key_base64, private_key_base64 FROM relay_keypairs;")
+	if err != nil {
+		return nil, fmt.Errorf("could not read relay keypairs: %v\n", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		row := RelayKeypairData{}
+		if err := rows.Scan(&row.RelayKeypairId, &row.PublicKeyBase64, &row.PrivateKeyBase64); err != nil {
+			return nil, fmt.Errorf("could not scan relay keypair row: %v\n", err)
+		}
+		relayKeypairs = append(relayKeypairs, row)
+	}
+	return relayKeypairs, nil
+}
+
+func (controller *Controller) ReadRelayKeypair(relayKeypairId uint64) (RelayKeypairData, error) {
+	relayKeypair := RelayKeypairData{}
+	rows, err := controller.pgsql.Query("SELECT relay_keypair_id, public_key_base64, private_key_base64 WHERE relay_keypair_id = $1;", relayKeypairId)
+	if err != nil {
+		return relayKeypair, fmt.Errorf("could not read relay keypair: %v\n", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&relayKeypair.RelayKeypairId, &relayKeypair.PublicKeyBase64, &relayKeypair.PrivateKeyBase64); err != nil {
+			return relayKeypair, fmt.Errorf("could not scan relay keypair row: %v\n", err)
+		}
+		return relayKeypair, nil
+	}
+	return relayKeypair, fmt.Errorf("relay keypair %x not found", relayKeypairId)
+}
+
+func (controller *Controller) UpdateRelayKeypair(relayKeypairData *RelayKeypairData) error {
+	return fmt.Errorf("updating relay keypair is not supported")
+}
+
+func (controller *Controller) DeleteRelayKeypair(relayKeypairId uint64) error {
+	sql := "DELETE FROM relay_keypairs WHERE relay_keypair_id = $1;"
+	_, err := controller.pgsql.Exec(sql, relayKeypairId)
+	return err
+}
+
+// -----------------------------------------------------------------------

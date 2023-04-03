@@ -14,15 +14,35 @@ DONE
 
 	Make sure all func tests pass
 
-TODO
-
 	Simplify route shader
+
+	Fix API func test after route shader chanegs
+
+	Update terraform provider with route shader changes and test
+
+	Make sure all func tests pass
+
+	Implement default values in the terraform provider
 
 	Document terraform plugin
 
+	Sketch out buyer and relay keypair resources and data sources in tf provider
+
+TODO
+
+	Implement REST API for buyer and relay keypairs
+
+	Test buyer and relay keypairs in terraform
+
 	Publish terraform plugin
 
-	Implement terraform func test based on public provider
+	Review provider docs and adjust as needed
+
+	Implement terraform func test in semaphore based on public provider
+
+	----------------
+
+	Generate terraform files from config and create entire dev database with terraform
 
 	----------------
 
@@ -620,3 +640,8 @@ Nice to have:
 	Need a functional test for terraform.
 
 	-----------------------------------
+
+	Relay name should get validated to have the datacenter name substring in it
+
+	-----------------------------------
+	
