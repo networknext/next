@@ -2,7 +2,7 @@
 
 <br>
 
-Network Next is an analytics platform and network accelerator for multiplayer games.
+Network Next accelerate is a network acceleration and analytics platform for multiplayer games.
 
 # Run with Docker Compose
 
@@ -10,7 +10,7 @@ You can run a Network Next test environment locally with docker compose on any O
 
 1. Install Docker from http://docker.com
 
-2. Download the latest release from https://github.com/networknext/backend/releases
+2. Download the latest release from https://github.com/networknext/accelerate/releases
 
 3. Bring the system up
 
@@ -19,30 +19,30 @@ You can run a Network Next test environment locally with docker compose on any O
 You will initially see a lot of output like:
 
 ```console
-backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
-backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Redis version=6.2.11, bits=64, commit=00000000, modified=0, pid=1, just started
-backend-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
-backend-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * monotonic clock: POSIX clock_gettime
-backend-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * Running mode=standalone, port=6379.
-backend-redis-1            | 1:M 23 Mar 2023 14:58:22.284 # Server initialized
-backend-redis-1            | 1:M 23 Mar 2023 14:58:22.286 * Ready to accept connections
-backend-magic_backend-1    | magic_backend
-backend-magic_backend-1    | env: docker
-backend-magic_backend-1    | starting http server on port 80
-backend-postgres-1         |
-backend-postgres-1         | PostgreSQL Database directory appears to contain a database; Skipping initialization
-backend-postgres-1         |
-backend-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  starting PostgreSQL 14.7 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 12.2.1_git20220924-r4) 12.2.1 20220924, 64-bit
-backend-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
-backend-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv6 address "::", port 5432
-backend-postgres-1         | 2023-03-23 14:58:22.488 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
-backend-postgres-1         | 2023-03-23 14:58:22.491 UTC [22] LOG:  database system was shut down at 2023-03-23 14:55:04 UTC
-backend-postgres-1         | 2023-03-23 14:58:22.494 UTC [1] LOG:  database system is ready to accept connections
-backend-map_cruncher-1     | map_cruncher
-backend-map_cruncher-1     | env: docker
-backend-map_cruncher-1     | started leader election
-backend-map_cruncher-1     | starting http server on port 80
-backend-portal_cruncher-1  | portal_cruncher
+accelerate-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+accelerate-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Redis version=6.2.11, bits=64, commit=00000000, modified=0, pid=1, just started
+accelerate-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * monotonic clock: POSIX clock_gettime
+accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * Running mode=standalone, port=6379.
+accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.284 # Server initialized
+accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.286 * Ready to accept connections
+accelerate-magic_backend-1    | magic_backend
+accelerate-magic_backend-1    | env: docker
+accelerate-magic_backend-1    | starting http server on port 80
+accelerate-postgres-1         |
+accelerate-postgres-1         | PostgreSQL Database directory appears to contain a database; Skipping initialization
+accelerate-postgres-1         |
+accelerate-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  starting PostgreSQL 14.7 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 12.2.1_git20220924-r4) 12.2.1 20220924, 64-bit
+accelerate-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+accelerate-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+accelerate-postgres-1         | 2023-03-23 14:58:22.488 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+accelerate-postgres-1         | 2023-03-23 14:58:22.491 UTC [22] LOG:  database system was shut down at 2023-03-23 14:55:04 UTC
+accelerate-postgres-1         | 2023-03-23 14:58:22.494 UTC [1] LOG:  database system is ready to accept connections
+accelerate-map_cruncher-1     | map_cruncher
+accelerate-map_cruncher-1     | env: docker
+accelerate-map_cruncher-1     | started leader election
+accelerate-map_cruncher-1     | starting http server on port 80
+accelerate-portal_cruncher-1  | portal_cruncher
 ```
 
 Do not be concerned if you see errors relating to the "api" service or "postgres" on the first run. *It is normal the first time it runs for postgres to initialize and then restart. This causes the "api" service to need to restart a few times before it can properly connect to postgres.*
@@ -52,19 +52,19 @@ On subsequent runs, "postgres" and "api" will start clean.
 After about one minute, you should see output like:
 
 ```console
-backend-client-1           | 0.557106: info: client upgraded to session 3fd88eb577d0826
-backend-client-1           | 3.449071: info: client pinging 5 near relays
-backend-client-1           | 3.449525: info: client direct route
-backend-client-1           | 13.464149: info: client near relay pings completed
-backend-client-1           | 13.464641: info: client direct route
-backend-client-1           | 23.483219: info: client direct route
-backend-client-1           | 33.480910: info: client direct route
-backend-client-1           | 43.494686: info: client direct route
-backend-client-1           | 53.525247: info: client direct route
-backend-client-1           | 63.549006: info: client next route
-backend-client-1           | 63.549072: info: client multipath enabled
-backend-client-1           | 73.517053: info: client continues route
-backend-client-1           | 83.499405: info: client continues route
+accelerate-client-1           | 0.557106: info: client upgraded to session 3fd88eb577d0826
+accelerate-client-1           | 3.449071: info: client pinging 5 near relays
+accelerate-client-1           | 3.449525: info: client direct route
+accelerate-client-1           | 13.464149: info: client near relay pings completed
+accelerate-client-1           | 13.464641: info: client direct route
+accelerate-client-1           | 23.483219: info: client direct route
+accelerate-client-1           | 33.480910: info: client direct route
+accelerate-client-1           | 43.494686: info: client direct route
+accelerate-client-1           | 53.525247: info: client direct route
+accelerate-client-1           | 63.549006: info: client next route
+accelerate-client-1           | 63.549072: info: client multipath enabled
+accelerate-client-1           | 73.517053: info: client continues route
+accelerate-client-1           | 83.499405: info: client continues route
 ```
    
 This indicates that the test environment is working correctly.
@@ -111,9 +111,9 @@ This indicates that the test environment is working correctly.
 
 7. Clone repo and cd into it
 
-	`git clone git@github.com:networknext/backend.git`
+	`git clone git@github.com:networknext/accelerate.git`
 
-	`cd backend`
+	`cd accelerate`
 
 8. Select local environment
 
@@ -130,7 +130,7 @@ This indicates that the test environment is working correctly.
 	You should see output like:
 
 ```console
-root@linux:~/backend# make build
+root@linux:~/accelerate# make build
 dist/func_test_sdk5
 dist/relay
 dist/func_backend
@@ -153,18 +153,18 @@ dist/server_backend
 dist/relay_gateway
 dist/relay_backend
 ./run test
-?   	github.com/networknext/backend/modules/admin	[no test files]
-?   	github.com/networknext/backend/modules/constants	[no test files]
-?   	github.com/networknext/backend/modules/database	[no test files]
-?   	github.com/networknext/backend/modules/envvar	[no test files]
-ok  	github.com/networknext/backend/modules/common	0.210s
-ok  	github.com/networknext/backend/modules/core	0.382s
-ok  	github.com/networknext/backend/modules/crypto	0.379s
-ok  	github.com/networknext/backend/modules/encoding	0.255s
-ok  	github.com/networknext/backend/modules/handlers	0.306s
-ok  	github.com/networknext/backend/modules/messages	0.223s
-ok  	github.com/networknext/backend/modules/packets	0.885s
-ok  	github.com/networknext/backend/modules/portal	0.281s
+?   	github.com/networknext/accelerate/modules/admin	[no test files]
+?   	github.com/networknext/accelerate/modules/constants	[no test files]
+?   	github.com/networknext/accelerate/modules/database	[no test files]
+?   	github.com/networknext/accelerate/modules/envvar	[no test files]
+ok  	github.com/networknext/accelerate/modules/common	0.210s
+ok  	github.com/networknext/accelerate/modules/core		0.382s
+ok  	github.com/networknext/accelerate/modules/crypto	0.379s
+ok  	github.com/networknext/accelerate/modules/encoding	0.255s
+ok  	github.com/networknext/accelerate/modules/handlers	0.306s
+ok  	github.com/networknext/accelerate/modules/messages	0.223s
+ok  	github.com/networknext/accelerate/modules/packets	0.885s
+ok  	github.com/networknext/accelerate/modules/portal	0.281s
 ```
 
 11. Run happy path
@@ -174,7 +174,7 @@ ok  	github.com/networknext/backend/modules/portal	0.281s
     You should see something like:
 
 ```console
-root@linux:~/backend# run happy-path
+root@linux:~/accelerate# run happy-path
 
 don't worry. be happy.
 
@@ -305,9 +305,9 @@ verifying map cruncher received map update messages ... OK
 
 8. Clone repo and cd into it
 
-   `git clone git@github.com:networknext/backend.git`
+   `git clone git@github.com:networknext/accelerate.git`
 
-   `cd backend`
+   `cd accelerate`
 
 9. Select local environment
 
@@ -320,7 +320,7 @@ verifying map cruncher received map update messages ... OK
    You should see output like:
 
 ```console
-gaffer@macbook backend % make build
+gaffer@macbook accelerate % make build
 dist/func_test_sdk5
 dist/relay
 dist/func_backend
@@ -343,18 +343,18 @@ dist/server_backend
 dist/relay_gateway
 dist/relay_backend
 ./run test
-?     github.com/networknext/backend/modules/admin [no test files]
-?     github.com/networknext/backend/modules/constants   [no test files]
-?     github.com/networknext/backend/modules/database [no test files]
-?     github.com/networknext/backend/modules/envvar   [no test files]
-ok    github.com/networknext/backend/modules/common   0.210s
-ok    github.com/networknext/backend/modules/core  0.382s
-ok    github.com/networknext/backend/modules/crypto   0.379s
-ok    github.com/networknext/backend/modules/encoding 0.255s
-ok    github.com/networknext/backend/modules/handlers 0.306s
-ok    github.com/networknext/backend/modules/messages 0.223s
-ok    github.com/networknext/backend/modules/packets  0.885s
-ok    github.com/networknext/backend/modules/portal   0.281s
+?     github.com/networknext/accelerate/modules/admin [no test files]
+?     github.com/networknext/accelerate/modules/constants   [no test files]
+?     github.com/networknext/accelerate/modules/database [no test files]
+?     github.com/networknext/accelerate/modules/envvar   [no test files]
+ok    github.com/networknext/accelerate/modules/common   0.210s
+ok    github.com/networknext/accelerate/modules/core  0.382s
+ok    github.com/networknext/accelerate/modules/crypto   0.379s
+ok    github.com/networknext/accelerate/modules/encoding 0.255s
+ok    github.com/networknext/accelerate/modules/handlers 0.306s
+ok    github.com/networknext/accelerate/modules/messages 0.223s
+ok    github.com/networknext/accelerate/modules/packets  0.885s
+ok    github.com/networknext/accelerate/modules/portal   0.281s
 ```
 
 11. Run happy path
@@ -364,7 +364,7 @@ ok    github.com/networknext/backend/modules/portal   0.281s
    You should see output like:
 
 ```console
-gaffer@macbook backend % run happy-path
+gaffer@macbook accelerate % run happy-path
 
 don't worry. be happy.
 
