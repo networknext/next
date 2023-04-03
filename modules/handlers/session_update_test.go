@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
-	db "github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/handlers"
-	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/crypto"
+	db "github.com/networknext/accelerate/modules/database"
+	"github.com/networknext/accelerate/modules/encoding"
+	"github.com/networknext/accelerate/modules/handlers"
+	"github.com/networknext/accelerate/modules/packets"
 
 	"github.com/stretchr/testify/assert"
 )

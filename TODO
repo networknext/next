@@ -6,17 +6,23 @@ DONE
 
 	Actually implement keygen for relay keypair in admin.go
 
-TODO
-
 	Implement keygen for buyer keypair in admin.go
 
-	Test buyer and relay keypairs in terraform
+	Rename repo to "accelerate"
+
+TODO
+
+	Clean up everything according to new name
 
 	----------------
 
 	Publish terraform plugin
 
+	Test buyer and relay keypairs in terraform
+
 	Review provider docs and adjust as needed
+
+	----------------
 
 	Implement terraform func test in semaphore based on public provider
 

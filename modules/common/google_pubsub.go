@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/accelerate/modules/core"
 	"google.golang.org/api/option"
 )
 

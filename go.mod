@@ -1,4 +1,4 @@
-module github.com/networknext/backend
+module github.com/networknext/accelerate
 
 go 1.18
 

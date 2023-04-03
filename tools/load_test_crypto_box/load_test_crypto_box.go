@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/crypto"
+	"github.com/networknext/accelerate/modules/envvar"
 )
 
 func RunCryptoBoxThread(ctx context.Context, numMessages int, messageSize int) {

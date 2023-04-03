@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/accelerate/modules/encoding"
 )
 
 const MapWidth = 360

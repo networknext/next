@@ -14,9 +14,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/crypto"
 )
 
 func FuckOffGolang() {

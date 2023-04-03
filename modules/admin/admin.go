@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"crypto/ed25519"
 
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/accelerate/modules/core"
 
 	"golang.org/x/crypto/nacl/box"
 	_ "github.com/lib/pq"

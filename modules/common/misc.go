@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/accelerate/modules/core"
 )
 
 func RandomBool() bool {

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/accelerate/modules/core"
 
 	_ "github.com/lib/pq"
 	"github.com/modood/table"

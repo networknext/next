@@ -15,8 +15,8 @@ import (
 	crypto_rand "crypto/rand"
 	math_rand "math/rand"
 
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/crypto"
 )
 
 var DebugLogs bool

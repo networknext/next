@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/backend/modules/admin"
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/accelerate/modules/admin"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/accelerate/modules/portal"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"

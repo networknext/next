@@ -30,12 +30,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/admin"
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
-	db "github.com/networknext/backend/modules/database"
-	"github.com/networknext/backend/modules/portal"
+	"github.com/networknext/accelerate/modules/admin"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/core"
+	db "github.com/networknext/accelerate/modules/database"
+	"github.com/networknext/accelerate/modules/portal"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/modood/table"

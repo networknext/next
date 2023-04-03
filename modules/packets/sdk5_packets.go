@@ -10,10 +10,10 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/crypto"
+	"github.com/networknext/accelerate/modules/encoding"
 )
 
 // ------------------------------------------------------------

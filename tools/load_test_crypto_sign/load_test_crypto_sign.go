@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/accelerate/modules/crypto"
+	"github.com/networknext/accelerate/modules/envvar"
 )
 
 func RunCryptoSignThread(ctx context.Context, numMessages int, messageSize int) {

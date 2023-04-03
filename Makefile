@@ -13,7 +13,7 @@ endif
 
 SDKNAME5 = libnext5
 
-MODULE ?= "github.com/networknext/backend/modules/common"
+MODULE ?= "github.com/networknext/accelerate/modules/common"
 
 BUILD_TIME ?= $(shell date -u +'%Y-%m-%d|%H:%M:%S')
 COMMIT_MESSAGE ?= $(shell git log -1 --pretty=%B | tr "\n" " " | tr \' '*')

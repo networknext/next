@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/accelerate/modules/encoding"
 )
 
 const (

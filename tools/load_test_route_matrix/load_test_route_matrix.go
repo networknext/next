@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/constants"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/constants"
 )
 
 func RunRouteMatrixThread(ctx context.Context) {

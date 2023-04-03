@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/encoding"
 )
 
 const (

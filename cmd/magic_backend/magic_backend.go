@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/envvar"
 )
 
 var magicUpdateSeconds int

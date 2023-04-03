@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/handlers"
-	"github.com/networknext/backend/modules/messages"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/accelerate/modules/handlers"
+	"github.com/networknext/accelerate/modules/messages"
 )
 
 var service *common.Service

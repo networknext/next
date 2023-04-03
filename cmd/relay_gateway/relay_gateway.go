@@ -7,13 +7,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/networknext/backend/modules/common"
-	"github.com/networknext/backend/modules/constants"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/packets"
+	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/crypto"
+	"github.com/networknext/accelerate/modules/encoding"
+	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/accelerate/modules/packets"
 )
 
 var redisHostname string

@@ -1,7 +1,7 @@
 package packets
 
 import (
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/accelerate/modules/encoding"
 )
 
 type Packet interface {

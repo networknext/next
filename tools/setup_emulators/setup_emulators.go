@@ -9,8 +9,9 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
-	"github.com/networknext/backend/modules/envvar"
 	// "google.golang.org/api/option"
+	
+	"github.com/networknext/accelerate/modules/envvar"
 )
 
 const (
