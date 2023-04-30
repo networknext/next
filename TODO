@@ -166,121 +166,6 @@ TODO
 
 
 
-	-----------------------
-
-	Spin up relays with terraform and verify they are showing up in dev
-
-	-----------------------
-
-	Verify that I can run raspberry clients locally and they hit the raspberry backend and connect to servers and upgrade.
-
-	-----------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-
-
-
-
-
 	--------------
 
 	Strange behavior in redis streams if I reduce the channel size from 10k to 1k. 
@@ -628,5 +513,11 @@ Nice to have:
 	-----------------------------------
 
 	Relay name should get validated to have the datacenter name substring in it
+
+	-----------------------------------
+
+	XBox preferred port. Do we need to do anything?
+
+	https://learn.microsoft.com/en-us/gaming/gdk/_content/gc/networking/overviews/game-mesh/preferred-local-udp-multiplayer-port-networking
 
 	-----------------------------------
