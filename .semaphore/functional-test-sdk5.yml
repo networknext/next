@@ -27,7 +27,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
 
-            - cd ~/backend
+            - cd ~/accelerate
             - make clean
             - make dist/relay dist/func_server dist/func_client dist/func_backend dist/func_test_sdk5
 

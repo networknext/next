@@ -17,7 +17,7 @@ blocks:
           commands:
             - checkout
             - sudo apt-get install -y libsodium-dev redis-server
-            - cd ~/backend
+            - cd ~/accelerate
             - make rebuild
             - ./next select local
             - ./run test
