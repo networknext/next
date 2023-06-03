@@ -3828,7 +3828,6 @@ struct relay_t
     relay_address_t relay_internal_address;
     bool has_internal_address;
     relay_platform_socket_t * socket;
-    relay_platform_mutex_t * mutex;                // todo: what is the mutex here for again?
     uint64_t last_update_response_timestamp;
     double last_update_response_time;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
@@ -3988,8 +3987,15 @@ void clamp( int & value, int min, int max )
     }
 }
 
-int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_t * relay )
+int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory )
 {
+    (void) curl;
+    (void) hostname;
+    (void) update_response_memory;
+
+    // todo: pump latest messages from relay threads, update cache of stats per-relay thread
+
+    /*
     // build update data
 
     uint8_t update_version = 1;
@@ -4006,10 +4012,8 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     relay_write_uint64( &p, timestamp );
 
-    relay_platform_mutex_acquire( relay->mutex );
     relay_stats_t stats;
     relay_manager_get_stats( relay->relay_manager, &stats );
-    relay_platform_mutex_release( relay->mutex );
 
     relay_write_uint32( &p, stats.num_relays );
     for ( int i = 0; i < stats.num_relays; ++i )
@@ -4029,9 +4033,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
     }
 
-    relay_platform_mutex_acquire( relay->mutex );
     uint64_t sessions = relay->sessions->size();
-    relay_platform_mutex_release( relay->mutex );
     
     // todo: fill bandwidth
     uint32_t envelope_bandwidth_up_kbps = 0;
@@ -4255,7 +4257,6 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         return RELAY_ERROR;
     }
 
-    relay_platform_mutex_acquire( relay->mutex );
     relay->num_relays = num_relays;
     for ( int i = 0; i < int(num_relays); ++i )
     {
@@ -4267,7 +4268,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     memcpy( relay->upcoming_magic, &upcoming_magic, 8 );
     memcpy( relay->current_magic, &current_magic, 8 );
     memcpy( relay->previous_magic, &previous_magic, 8 );
-    relay_platform_mutex_release( relay->mutex );
+    */
 
     return RELAY_OK;
 }
@@ -4302,7 +4303,7 @@ uint64_t relay_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
-static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_function( void * context )
+static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
 
@@ -4356,11 +4357,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
-            relay_platform_mutex_acquire( relay->mutex );
             const uint8_t * p = packet_data + 1;
             uint64_t sequence = relay_read_uint64( &p );
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
-            relay_platform_mutex_release( relay->mutex );
         }
 
 // ==================================================================================================================================================================================
@@ -4401,11 +4400,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             uint8_t current_magic[8];
             uint8_t previous_magic[8];
 
-            relay_platform_mutex_acquire( relay->mutex );
             memcpy( &upcoming_magic, relay->upcoming_magic, 8 );
             memcpy( &current_magic, relay->current_magic, 8 );
             memcpy( &previous_magic, relay->previous_magic, 8 );
-            relay_platform_mutex_release( relay->mutex );
 
             if ( ! ( relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
                      relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
@@ -4471,7 +4468,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { token.session_id, token.session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 if ( relay->sessions->find(key) == relay->sessions->end() )
                 {
                     relay_session_t * session = (relay_session_t*) malloc( sizeof( relay_session_t ) );
@@ -4498,7 +4494,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SESSION_CREATED]++;
                 }
-                relay_platform_mutex_release( relay->mutex );
 
                 const uint8_t * token_data = p;
                 int token_bytes = packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
@@ -4587,9 +4582,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { session_id, session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
 
                 if ( !session )
                 {
@@ -4606,9 +4599,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored route response packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(key);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
 
@@ -4722,9 +4713,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { token.session_id, token.session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
 
                 if ( !session )
                 {
@@ -4740,9 +4729,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored continue request. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(key);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
 
@@ -4840,9 +4827,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { session_id, session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
 
                 if ( !session )
                 {
@@ -4859,9 +4844,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored continue response packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(key);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
 
@@ -4977,9 +4960,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { session_id, session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -4996,9 +4977,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored client to server packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(hash);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
                 */
@@ -5120,9 +5099,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { session_id, session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5138,9 +5115,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored server to client packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(key);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
 
@@ -5254,9 +5229,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { session_id, session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5272,9 +5245,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored session ping packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(key);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
 
@@ -5387,9 +5358,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 session_key_t key = { session_id, session_version };
 
-                relay_platform_mutex_acquire( relay->mutex );
                 relay_session_t * session = (*(relay->sessions))[key];
-                relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -5405,9 +5374,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     printf( "[%s] ignored session pong packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
-                    relay_platform_mutex_acquire( relay->mutex );
                     relay->sessions->erase(key);
-                    relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
 
@@ -5531,14 +5498,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
 // ========================================================================================================================================
 
+// todo: bring back ping thread, but this time with its own ping_t data and driven by messages
+/*
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
 
     while ( !quit )
     {
-        relay_platform_mutex_acquire( relay->mutex );
-
         if ( relay->relays_dirty )
         {
             relay_manager_update( relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses );
@@ -5567,8 +5534,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             }
         }
 
-        relay_platform_mutex_release( relay->mutex );
-
         for ( int i = 0; i < num_pings; ++i )
         {
             uint8_t packet_data[1+8];
@@ -5595,6 +5560,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
     RELAY_PLATFORM_THREAD_RETURN();
 }
+*/
 
 // ========================================================================================================================================
 
@@ -5841,6 +5807,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    // todo: we need an array of relay structs here, not just one
+
     relay_t relay;
 
     memset( &relay, 0, sizeof(relay_t) );
@@ -5850,7 +5818,6 @@ int main( int argc, const char ** argv )
     relay.relay_internal_address = relay_internal_address;
     relay.has_internal_address = has_internal_address;
     relay.socket = nullptr;
-    relay.mutex = nullptr;
     relay.sessions = new std::map<session_key_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
@@ -5867,12 +5834,6 @@ int main( int argc, const char ** argv )
 #endif // #if RELAY_DEVELOPMENT
 
     relay.socket = socket;
-    relay.mutex = relay_platform_mutex_create();
-    if ( !relay.mutex )
-    {
-        printf( "\nerror: could not create ping thread\n\n" );
-        quit = 1;
-    }
 
     relay.relay_manager = relay_manager_create();
     if ( !relay.relay_manager )
@@ -5881,19 +5842,22 @@ int main( int argc, const char ** argv )
         quit = 1;
     }
 
-    relay_platform_thread_t * receive_thread = relay_platform_thread_create( receive_thread_function, &relay );
-    if ( !receive_thread )
+    relay_platform_thread_t * relay_thread = relay_platform_thread_create( relay_thread_function, &relay );
+    if ( !relay_thread )
     {
         printf( "\nerror: could not create receive thread\n\n" );
         quit = 1;
     }
 
+    // todo: ping thread must not run off the relay_t -- it needs its own data updated once per-second
+    /*
     relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, &relay );
     if ( !ping_thread )
     {
         printf( "\nerror: could not create ping thread\n\n" );
         quit = 1;
     }
+    */
 
     signal( SIGINT, interrupt_handler );
     signal( SIGTERM, interrupt_handler );
@@ -5907,7 +5871,7 @@ int main( int argc, const char ** argv )
 
     while ( !quit )
     {
-        if ( relay_update( curl, relay_backend_hostname, update_response_memory, &relay ) == RELAY_OK )
+        if ( relay_update( curl, relay_backend_hostname, update_response_memory ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -5922,7 +5886,6 @@ int main( int argc, const char ** argv )
             }
         }
 
-        relay_platform_mutex_acquire( relay.mutex );
         std::map<session_key_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
         {
@@ -5939,7 +5902,6 @@ int main( int argc, const char ** argv )
                 iter++;
             }
         }
-        relay_platform_mutex_release( relay.mutex );
 
         relay_platform_sleep( 1.0 );
     }
@@ -5947,7 +5909,7 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, update_response_memory, &relay ) != RELAY_OK )
+        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, update_response_memory ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }
@@ -5961,17 +5923,20 @@ int main( int argc, const char ** argv )
     printf( "\n\nCleaning up\n\n" );
     fflush( stdout );
 
-    if ( receive_thread )
+    if ( relay_thread )
     {
-        relay_platform_thread_join( receive_thread );
-        relay_platform_thread_destroy( receive_thread );
+        relay_platform_thread_join( relay_thread );
+        relay_platform_thread_destroy( relay_thread );
     }
 
+    // todo: bring back ping thread
+    /*
     if ( ping_thread )
     {
         relay_platform_thread_join( ping_thread );
         relay_platform_thread_destroy( ping_thread );
     }
+    */
 
     free( update_response_memory );
 
@@ -5983,8 +5948,6 @@ int main( int argc, const char ** argv )
     delete relay.sessions;
 
     relay_manager_destroy( relay.relay_manager );
-
-    relay_platform_mutex_destroy( relay.mutex );
 
     relay_platform_socket_destroy( socket );
 
