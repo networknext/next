@@ -5578,6 +5578,19 @@ int main( int argc, const char ** argv )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
+    int num_threads = 1;
+    const char * num_threads_env = relay_platform_getenv( "RELAY_NUM_THREADS" );
+    if ( num_threads_env )
+    {
+        num_threads = atoi( num_threads_env );
+        if ( num_threads < 1 )
+        {
+            num_threads = 1;
+        }
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
     const char * relay_name = relay_platform_getenv( "RELAY_NAME" );
     if ( !relay_name )
     {
@@ -5762,92 +5775,87 @@ int main( int argc, const char ** argv )
 
 #endif // #if RELAY_DEVELOPMENT
 
-    // -----------------------------------------------------------------------------------------------------------------------------
-
     // IMPORTANT: Bind to 127.0.0.1 if specified, otherwise bind to 0.0.0.0
     relay_address_t bind_address;
     if ( relay_public_address.data.ipv4[0] == 127 && relay_public_address.data.ipv4[1] == 0 && relay_public_address.data.ipv4[2] == 0 && relay_public_address.data.ipv4[3] == 1 )
     {
-        printf( "\nBinding to 127.0.0.1:%d\n", relay_public_address.port );
+        printf( "\nBind address is 127.0.0.1:%d\n", relay_public_address.port );
         bind_address = relay_public_address;
     }
     else
     {
-        printf( "\nBinding to 0.0.0.0:%d\n", relay_public_address.port );
+        printf( "\nBind address is 0.0.0.0:%d\n", relay_public_address.port );
         memset( &bind_address, 0, sizeof(bind_address) );
         bind_address.type = RELAY_ADDRESS_IPV4;
         bind_address.port = relay_public_address.port;
     }
 
-    relay_platform_socket_t * socket = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
-    if ( socket == NULL )
-    {
-        printf( "\ncould not create socket\n\n" );
-        relay_term();
-        return 1;
-    }
+    // =============================================================================================================================
 
-    relay_public_address.port = bind_address.port;
-
-    printf( "\nRelay socket opened on port %d\n\n", relay_public_address.port );
+    // create sockets
 
     char relay_public_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_public_address, relay_public_address_buffer );
-    printf( "Relay public address is '%s'\n", relay_address_string );
+    printf( "Public address is %s\n", relay_address_string );
 
-    fflush( stdout );
-
-    CURL * curl = curl_easy_init();
-    if ( !curl )
+    relay_platform_socket_t * socket[num_threads];
+    memset( &socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
+    for ( int i = 0; i < num_threads; i++ )
     {
-        printf( "\nerror: could not initialize curl\n\n" );
-        relay_platform_socket_destroy( socket );
-        curl_easy_cleanup( curl );
-        relay_term();
-        return 1;
+        printf( "Creating relay socket %d\n", i );
+        socket[i] = relay_platform_socket_create( &bind_address, RELAY_PLATFORM_SOCKET_BLOCKING, 0.1f, 100 * 1024, 100 * 1024 );
+        if ( socket[i] == NULL )
+        {
+            printf( "\ncould not create relay socket :(\n\n" );
+            relay_term();
+            fflush( stdout );
+            return 1;
+        }
     }
 
-    // todo: we need an array of relay structs here, not just one
+    // create relay threads
 
-    relay_t relay;
+    relay_t relay[num_threads];
 
-    memset( &relay, 0, sizeof(relay_t) );
+    memset( &relay, 0, sizeof(relay_t) * num_threads );
 
-    relay.relay_manager = nullptr;
-    relay.relay_public_address = relay_public_address;
-    relay.relay_internal_address = relay_internal_address;
-    relay.has_internal_address = has_internal_address;
-    relay.socket = nullptr;
-    relay.sessions = new std::map<session_key_t, relay_session_t*>();
-    memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
-    memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
-    memcpy( relay.relay_backend_public_key, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES );
-    relay.relays_dirty = false;
-    relay.num_relays = 0;
-    memset( relay.relay_ids, 0, sizeof(relay.relay_ids) );
-    memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
-    relay.envelope_bandwidth_kbps_up = 0;
-    relay.envelope_bandwidth_kbps_down = 0;
+    for ( int i = 0; i < num_threads; i++ )
+    {
+        printf( "Creating relay thread %d\n", i );
+
+        relay[i].socket = socket[i];
+        relay[i].relay_public_address = relay_public_address;
+        relay[i].relay_internal_address = relay_internal_address;
+        relay[i].has_internal_address = has_internal_address;
+        relay[i].sessions = new std::map<session_key_t, relay_session_t*>();
+        memcpy( relay[i].relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
+        memcpy( relay[i].relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
+        memcpy( relay[i].relay_backend_public_key, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES );
 #if RELAY_DEVELOPMENT
-    relay.fake_packet_loss_percent = relay_fake_packet_loss_percent;
-    relay.fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
+        relay[i].fake_packet_loss_percent = relay_fake_packet_loss_percent;
+        relay[i].fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
 
-    relay.socket = socket;
+        /*
+        relay.relay_manager = relay_manager_create();
+        if ( !relay.relay_manager )
+        {
+            printf( "\nerror: could not create relay manager\n\n" );
+            quit = 1;
+        }
+        */
 
-    relay.relay_manager = relay_manager_create();
-    if ( !relay.relay_manager )
-    {
-        printf( "\nerror: could not create relay manager\n\n" );
-        quit = 1;
+        relay_platform_thread_t * relay_thread = relay_platform_thread_create( relay_thread_function, &relay[i] );
+        if ( !relay_thread )
+        {
+            printf( "\nerror: could not create relay thread :(\n\n" );
+            relay_term();
+            fflush( stdout );
+            return 1;
+        }
     }
 
-    relay_platform_thread_t * relay_thread = relay_platform_thread_create( relay_thread_function, &relay );
-    if ( !relay_thread )
-    {
-        printf( "\nerror: could not create receive thread\n\n" );
-        quit = 1;
-    }
+    // =============================================================================================================================
 
     // todo: ping thread must not run off the relay_t -- it needs its own data updated once per-second
     /*
@@ -5858,6 +5866,18 @@ int main( int argc, const char ** argv )
         quit = 1;
     }
     */
+
+    // main thread below
+
+    printf( "Starting main thread\n" );
+
+    CURL * curl = curl_easy_init();
+    if ( !curl )
+    {
+        printf( "\nerror: could not initialize curl :(\n\n" );
+        curl_easy_cleanup( curl );
+        return 1;
+    }
 
     signal( SIGINT, interrupt_handler );
     signal( SIGTERM, interrupt_handler );
@@ -5886,6 +5906,8 @@ int main( int argc, const char ** argv )
             }
         }
 
+        // todo: do this another way
+        /*
         std::map<session_key_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
         {
@@ -5902,6 +5924,7 @@ int main( int argc, const char ** argv )
                 iter++;
             }
         }
+        */
 
         relay_platform_sleep( 1.0 );
     }
@@ -5920,14 +5943,18 @@ int main( int argc, const char ** argv )
         }
     }
 
-    printf( "\n\nCleaning up\n\n" );
+    printf( "\n\nCleaning up\n" );
+
     fflush( stdout );
 
+    // todo: bring back
+    /*
     if ( relay_thread )
     {
         relay_platform_thread_join( relay_thread );
         relay_platform_thread_destroy( relay_thread );
     }
+    */
 
     // todo: bring back ping thread
     /*
@@ -5940,6 +5967,8 @@ int main( int argc, const char ** argv )
 
     free( update_response_memory );
 
+    // todo
+    /*
     for ( std::map<session_key_t, relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end(); ++itor )
     {
         delete itor->second;
@@ -5950,6 +5979,7 @@ int main( int argc, const char ** argv )
     relay_manager_destroy( relay.relay_manager );
 
     relay_platform_socket_destroy( socket );
+    */
 
     curl_easy_cleanup( curl );
 
