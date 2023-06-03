@@ -36,6 +36,10 @@ DONE
 
 TODO
 
+	Multithreaded relay with session database per-socket thread (no contention)
+
+	------------
+
 	Setup dev backend and relays in dev with terraform
 
 	------------
@@ -54,24 +58,18 @@ TODO
 
 	------------
 
-	Multithreaded relay with session database per-socket thread (no contention)
-
-	------------
-
 	Rebuild portal
 
 	------------	
 
-	Configuration step (generate unique keys etc.)
-
-	Run through setup on a new google cloud organization and check everything.
-
 	Document *everything*.
 
-	(Ready for WB)
+	------------
 
-	Multipath with two next routes.
+	Load testing
 
-	(Ready for Psyonix pitch)
+	------------
 
-	(Ready for Unity etc...)
+	Raspberry pi testing
+
+	------------

@@ -1,18 +1,12 @@
 DONE
 
-	Sketch out buyer and relay keypair resources and data sources in tf provider
-
-	Implement REST API for buyer and relay keypairs
-
-	Actually implement keygen for relay keypair in admin.go
-
-	Implement keygen for buyer keypair in admin.go
-
-	Rename repo to "accelerate"
-
 TODO
 
 	Clean up everything according to new name
+
+	----------------
+
+	Update terraform plugin to new accelerate name
 
 	----------------
 
@@ -519,5 +513,11 @@ Nice to have:
 	XBox preferred port. Do we need to do anything?
 
 	https://learn.microsoft.com/en-us/gaming/gdk/_content/gc/networking/overviews/game-mesh/preferred-local-udp-multiplayer-port-networking
+
+	-----------------------------------
+
+	Idea. Accumulated event flags, per-session summary.
+
+	Allows to quickly look at sessions that experienced certain events vs. not, without needing to look at slices.
 
 	-----------------------------------

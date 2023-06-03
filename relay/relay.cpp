@@ -3348,7 +3348,6 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
     // calculate mean RTT
 
     double mean_rtt = 0.0;
-    int num_pings = 0;
     int num_pongs = 0;
 
     for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
@@ -3362,7 +3361,6 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
                 mean_rtt += 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
                 num_pongs++;
             }
-            num_pings++;
         }
     }
 
@@ -3812,6 +3810,17 @@ struct relay_session_t
     relay_replay_protection_t replay_protection_client_to_server;
 };
 
+struct session_key_t 
+{
+    uint64_t session_id;
+    uint8_t session_version;
+};
+
+bool operator < ( const session_key_t & a, const session_key_t & b ) 
+{
+    return a.session_version < b.session_version || a.session_id < b.session_version;
+}
+
 struct relay_t
 {
     relay_manager_t * relay_manager;
@@ -3819,13 +3828,13 @@ struct relay_t
     relay_address_t relay_internal_address;
     bool has_internal_address;
     relay_platform_socket_t * socket;
-    relay_platform_mutex_t * mutex;
+    relay_platform_mutex_t * mutex;                // todo: what is the mutex here for again?
     uint64_t last_update_response_timestamp;
     double last_update_response_time;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
-    std::map<uint64_t, relay_session_t*> * sessions;
+    std::map<session_key_t, relay_session_t*> * sessions;
     bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
@@ -3834,7 +3843,8 @@ struct relay_t
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
-    std::atomic<uint64_t> envelope_bandwidth_kbps_up;               // todo: these should probably be in bytes up/down instead
+    // todo: we should be calculating actual bandwidth usage as well here
+    std::atomic<uint64_t> envelope_bandwidth_kbps_up;
     std::atomic<uint64_t> envelope_bandwidth_kbps_down;
     std::atomic<uint64_t> counters[NUM_RELAY_COUNTERS];
 #if RELAY_DEVELOPMENT
@@ -4459,11 +4469,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: this needs to be fixed
-                uint64_t hash = token.session_id ^ token.session_version;
+                session_key_t key = { token.session_id, token.session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                if ( relay->sessions->find(hash) == relay->sessions->end() )
+                if ( relay->sessions->find(key) == relay->sessions->end() )
                 {
                     relay_session_t * session = (relay_session_t*) malloc( sizeof( relay_session_t ) );
                     assert( session );
@@ -4481,7 +4490,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
                     relay_replay_protection_reset( &session->replay_protection_client_to_server );
                     relay_replay_protection_reset( &session->replay_protection_server_to_client );
-                    relay->sessions->insert( std::make_pair(hash, session) );
+                    relay->sessions->insert( std::make_pair(key, session) );
                     relay->envelope_bandwidth_kbps_up += session->kbps_up;
                     relay->envelope_bandwidth_kbps_down += session->kbps_down;
 #if INTENSIVE_RELAY_DEBUGGING
@@ -4576,11 +4585,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: this hash trick here has to go
-                uint64_t hash = session_id ^ session_version;
+                session_key_t key = { session_id, session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
 
                 if ( !session )
@@ -4599,7 +4607,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
-                    relay->sessions->erase(hash);
+                    relay->sessions->erase(key);
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
@@ -4712,11 +4720,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: this needs to go
-                uint64_t hash = token.session_id ^ token.session_version;
+                session_key_t key = { token.session_id, token.session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
 
                 if ( !session )
@@ -4734,7 +4741,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
-                    relay->sessions->erase(hash);
+                    relay->sessions->erase(key);
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
@@ -4831,11 +4838,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: nope
-                uint64_t hash = session_id ^ session_version;
+                session_key_t key = { session_id, session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
 
                 if ( !session )
@@ -4854,7 +4860,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
-                    relay->sessions->erase(hash);
+                    relay->sessions->erase(key);
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
@@ -4969,11 +4975,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: nope
-                uint64_t hash = session_id ^ session_version;
+                session_key_t key = { session_id, session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
@@ -5113,11 +5118,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: nope
-                uint64_t hash = session_id ^ session_version;
+                session_key_t key = { session_id, session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
@@ -5135,7 +5139,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
-                    relay->sessions->erase(hash);
+                    relay->sessions->erase(key);
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
@@ -5248,11 +5252,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: nope
-                uint64_t hash = session_id ^ session_version;
+                session_key_t key = { session_id, session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
@@ -5270,7 +5273,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
-                    relay->sessions->erase(hash);
+                    relay->sessions->erase(key);
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
@@ -5382,11 +5385,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                // todo: nope
-                uint64_t hash = session_id ^ session_version;
+                session_key_t key = { session_id, session_version };
 
                 relay_platform_mutex_acquire( relay->mutex );
-                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_session_t * session = (*(relay->sessions))[key];
                 relay_platform_mutex_release( relay->mutex );
                 if ( !session )
                 {
@@ -5404,7 +5406,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
                     relay_platform_mutex_acquire( relay->mutex );
-                    relay->sessions->erase(hash);
+                    relay->sessions->erase(key);
                     relay_platform_mutex_release( relay->mutex );
                     continue;
                 }
@@ -5849,7 +5851,7 @@ int main( int argc, const char ** argv )
     relay.has_internal_address = has_internal_address;
     relay.socket = nullptr;
     relay.mutex = nullptr;
-    relay.sessions = new std::map<uint64_t, relay_session_t*>();
+    relay.sessions = new std::map<session_key_t, relay_session_t*>();
     memcpy( relay.relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
     memcpy( relay.relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
     memcpy( relay.relay_backend_public_key, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES );
@@ -5921,7 +5923,7 @@ int main( int argc, const char ** argv )
         }
 
         relay_platform_mutex_acquire( relay.mutex );
-        std::map<uint64_t, relay_session_t*>::iterator iter = relay.sessions->begin();
+        std::map<session_key_t, relay_session_t*>::iterator iter = relay.sessions->begin();
         while ( iter != relay.sessions->end() )
         {
             if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) )
@@ -5973,7 +5975,7 @@ int main( int argc, const char ** argv )
 
     free( update_response_memory );
 
-    for ( std::map<uint64_t, relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end(); ++itor )
+    for ( std::map<session_key_t, relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end(); ++itor )
     {
         delete itor->second;
     }
