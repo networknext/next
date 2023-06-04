@@ -155,6 +155,38 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         return NULL;
     }
 
+    // set non-blocking io and receive timeout
+
+    if ( socket_type == RELAY_PLATFORM_SOCKET_NON_BLOCKING )
+    {
+        if ( fcntl( socket->handle, F_SETFL, O_NONBLOCK, 1 ) == -1 )
+        {
+            printf( "failed to set socket to non-blocking\n" );
+            relay_platform_socket_destroy( socket );
+            return NULL;
+        }
+    }
+    else if ( timeout_seconds > 0.0f )
+    {
+        // todo
+        printf( "set receive timeout\n" );
+
+        // set receive timeout
+        struct timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = (int) ( timeout_seconds * 1000000.0 );
+        if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( tv ) ) != 0 )
+        {
+            printf( "failed to set socket receive timeout\n" );
+            relay_platform_socket_destroy( socket );
+            return NULL;
+        }
+    }
+    else
+    {
+        // socket is blocking with no timeout
+    }
+
     // bind to port
 
     if ( address->type == RELAY_ADDRESS_IPV6 )
@@ -222,35 +254,6 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
             }
             address->port = relay_platform_ntohs( sin.sin_port );
         }
-    }
-
-    // set non-blocking io and receive timeout
-
-    if ( socket_type == RELAY_PLATFORM_SOCKET_NON_BLOCKING )
-    {
-        if ( fcntl( socket->handle, F_SETFL, O_NONBLOCK, 1 ) == -1 )
-        {
-            printf( "failed to set socket to non-blocking\n" );
-            relay_platform_socket_destroy( socket );
-            return NULL;
-        }
-    }
-    else if ( timeout_seconds > 0.0f )
-    {
-        // set receive timeout
-        struct timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = (int) ( timeout_seconds * 1000000.0 );
-        if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( tv ) ) < 0 )
-        {
-            printf( "failed to set socket receive timeout\n" );
-            relay_platform_socket_destroy( socket );
-            return NULL;
-        }
-    }
-    else
-    {
-        // socket is blocking with no timeout
     }
 
     return socket;

@@ -3939,6 +3939,7 @@ bool operator < ( const session_key_t & a, const session_key_t & b )
 
 struct relay_t
 {
+    int thread_index;
     relay_platform_socket_t * socket;
     relay_address_t relay_public_address;
     relay_address_t relay_internal_address;
@@ -4428,10 +4429,22 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
+    double last_stats_message_time = relay_platform_time();
+
     while ( !quit )
     {
         relay_address_t from;
         int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
+
+        double current_time = relay_platform_time();
+
+        if ( last_stats_message_time + 0.1 <= current_time )
+        {
+            // todo: track thread number here
+            printf( "stats message relay thread %d\n", relay->thread_index );
+            last_stats_message_time = current_time;
+        }
+
         if ( packet_bytes == 0 )
             continue;
 
@@ -5943,6 +5956,7 @@ int main( int argc, const char ** argv )
     {
         printf( "Creating relay thread %d\n", i );
 
+        relay[i].thread_index = i;
         relay[i].socket = socket[i];
         relay[i].relay_public_address = relay_public_address;
         relay[i].relay_internal_address = relay_internal_address;
