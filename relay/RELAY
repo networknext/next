@@ -16,26 +16,22 @@ DONE
 
 	Pump to receive the stats messages before doing the relay update on main thread.
 
-RELAY
-	
-	------------------
-
 	Implement the session timeout in map (via walk), once per-second.
 
 	This is necessary to clean up, and also drive the sessions destroyed.
 
-	------------------
+	Implement cleanup for the sessions map on shutdown.
 
 	Actually fill out the stats message
 
-	Actually process and cache the most recent stats messages per-relay thread
+	Process and store the most recent stats per-relay thread
 
-	Combine all the stats into a struct that gets passed into the relay update method
+	Accumulate across all relay threads and pass this combined stats into relay update
 
-	Verify that we have all the data we need to actually pass up a relay update
+RELAY
 
-	Print out the relay stats data (aggregate) each update (temporary) -- so I can visually inspect it.
-
+	Bring back the implementation of the relay update. Verify that I have all the data that it needs...
+	
 	------------------
 
 	Extend the code to fill in the bytes sent/received and start/end time, and convert to kbps in update stats

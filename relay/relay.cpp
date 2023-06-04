@@ -3894,8 +3894,6 @@ struct relay_stats_message_t
 {
     int thread_index;
     uint32_t session_count;
-    uint64_t actual_bandwidth_kbps_send;
-    uint64_t actual_bandwidth_kbps_receive;
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[NUM_RELAY_COUNTERS];
@@ -4111,11 +4109,12 @@ void clamp( int & value, int min, int max )
     }
 }
 
-int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory )
+int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_stats_message_t * stats )
 {
     (void) curl;
     (void) hostname;
     (void) update_response_memory;
+    (void) stats;
 
     /*
     // build update data
@@ -4447,10 +4446,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( last_stats_message_time + 0.1 <= current_time )
         {
-            relay_stats_message_t * message = (relay_stats_message_t*) malloc( sizeof(relay_stats_message_t) );
+#if INTENSIVE_RELAY_DEBUGGING
+            printf( "thread %d sent stats message\n", relay->thread_index );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            // todo: fill in the stats message
+            relay_stats_message_t * message = (relay_stats_message_t*) malloc( sizeof(relay_stats_message_t) );
             message->thread_index = relay->thread_index;
+            message->session_count = relay->sessions->size();
+            message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
+            message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_up;
+            memcpy( message->counters, relay->counters, sizeof(uint64_t) * NUM_RELAY_COUNTERS );
             
             relay_platform_mutex_acquire( relay->stats_mutex );
             relay_queue_push( relay->stats_queue, message );
@@ -4463,8 +4468,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( last_check_for_timeouts_time + 1.0 <= current_time )
         {
-            // todo
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "thread %d check for timeouts\n", relay->thread_index );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
             std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
             while ( iter != relay->sessions->end() )
@@ -4476,6 +4482,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
                     iter = relay->sessions->erase( iter );
+                    // todo: I think we need to subtract from kbps up/down here?
                 }
                 else
                 {
@@ -6084,6 +6091,10 @@ int main( int argc, const char ** argv )
 
     int update_attempts = 0;
 
+    relay_stats_message_t relay_thread_stats[num_threads];
+
+    memset( &relay_thread_stats, 0, sizeof(relay_stats_message_t) * num_threads );
+
     while ( !quit )
     {
         while ( true )
@@ -6095,12 +6106,28 @@ int main( int argc, const char ** argv )
             {
                 break;
             }
-
-            // todo: process message
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "processing stats message from relay thread %d\n", message->thread_index );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_thread_stats[message->thread_index] = *message;
         }
 
-        if ( relay_update( curl, relay_backend_hostname, update_response_memory ) == RELAY_OK )
+        relay_stats_message_t combined_stats;
+        
+        memset( &combined_stats, 0, sizeof(relay_stats_message_t) );
+
+        for ( int i = 0; i < num_threads; i++ )
+        {
+            combined_stats.session_count += relay_thread_stats[i].session_count;
+            combined_stats.envelope_bandwidth_kbps_up += relay_thread_stats[i].envelope_bandwidth_kbps_up;
+            combined_stats.envelope_bandwidth_kbps_down += relay_thread_stats[i].envelope_bandwidth_kbps_down;
+            for ( int j = 0; j < num_threads; j++ )
+            {
+                combined_stats.counters[j] += relay_thread_stats[i].counters[j];
+            }
+        }
+
+        if ( relay_update( curl, relay_backend_hostname, update_response_memory, &combined_stats ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -6121,7 +6148,7 @@ int main( int argc, const char ** argv )
     if ( relay_clean_shutdown )
     {
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, update_response_memory ) != RELAY_OK )
+        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, update_response_memory, NULL ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }
@@ -6158,18 +6185,21 @@ int main( int argc, const char ** argv )
         relay_platform_socket_destroy( socket[i] );
 
         socket[i] = NULL;
+    }
 
-        // todo: need to do per-relay thread cleanup here as needed
-        /*
-        for ( std::map<session_key_t, relay_session_t*>::iterator itor = relay.sessions->begin(); itor != relay.sessions->end(); ++itor )
+    for ( int i = 0; i < num_threads; i++ )
+    {
+        printf( "Destroying relay thread data %d\n", i );
+
+        for ( std::map<session_key_t, relay_session_t*>::iterator itor = relay->sessions->begin(); itor != relay->sessions->end(); ++itor )
         {
             delete itor->second;
         }
 
-        delete relay.sessions;
+        delete relay->sessions;
 
-        relay_manager_destroy( relay.relay_manager );
-        */
+        // todo: need to decide if we keep this or not
+        // relay_manager_destroy( relay->relay_manager );
     }
 
     printf( "Destroying message queues\n" );
