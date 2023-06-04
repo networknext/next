@@ -598,7 +598,7 @@ void next_free( void * context, void * p )
     return next_free_function( context, p );
 }
 
-__inline void clear_and_free( void * context, void * p, size_t p_size )
+void clear_and_free( void * context, void * p, size_t p_size )
 {
     memset( p, 0, p_size );
     next_free( context, p );

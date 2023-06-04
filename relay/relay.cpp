@@ -15,8 +15,6 @@
 #include <map>
 #include <float.h>
 #include <signal.h>
-#include <atomic>
-
 #include "curl/curl.h"
 
 #define RELAY_DEVELOPMENT                                          1
@@ -85,68 +83,68 @@
 
 #define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    10
 #define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                                                11
-#define RELAY_COUNTER_RELAY_PONG_PACKET_SENT                                                     12
-#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                                                  13
+#define RELAY_COUNTER_RELAY_PONG_PACKET_SENT                                                    12
+#define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                                                13
 
 #define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 20
 #define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 21
 #define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      22
 
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED                                                 30
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_BAD_SIZE                                                 31
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                                    32
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED                                           33
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                     34
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                      35
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED                                             30
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_BAD_SIZE                                             31
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                                 32
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED                                        33
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                   34
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                 35
 
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                                                  40
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                                            40
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_BAD_SIZE                                            41
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                                  42
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                                 43
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED                                       44
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                                      45
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                                 46
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                               42
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                              43
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED                                     44
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                                    45
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                               46
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS              47
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS            48
 
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED                                          50
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_BAD_SIZE                                          51
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                                 52
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                              52
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED                                     53
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED                                   54
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                   55
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                 56
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                55
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS              56
 
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED                                            60
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_BAD_SIZE                                            61
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED                                         60
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_BAD_SIZE                                         61
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                            62
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                                 63
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                            64
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED                                     65
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                               66
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS              67
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS            68
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                           64
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED                                  65
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                            66
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS           67
+#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS         68
 
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED                                             70
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED                                          70
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL                                         71
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG                                             72
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER                              73
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION                             74
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED                                     75
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED                                     76
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER                             77
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                 78
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                 79
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG                                           72
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER                             73
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION                            74
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED                                   75
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED                                  76
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER                           77
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                78
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS              79
 
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED                                             80
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED                                          80
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL                                         81
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG                                             82
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG                                           82
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER                             83
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                            84
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED                                    85
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED                                     86
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER                             87
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS             88
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED                                   85
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED                                  86
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER                           87
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS            88
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS          89
 
 #define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              90
@@ -3786,6 +3784,124 @@ void relay_manager_destroy( relay_manager_t * manager )
 
 // -----------------------------------------------------------------------------
 
+struct relay_queue_t
+{
+    int size;
+    int num_entries;
+    int start_index;
+    void ** entries;
+};
+
+void relay_queue_destroy( relay_queue_t * queue );
+
+relay_queue_t * relay_queue_create( int size )
+{
+    relay_queue_t * queue = (relay_queue_t*) malloc( sizeof(relay_queue_t) );
+    assert( queue );
+    if ( !queue )
+        return NULL;
+
+    queue->size = size;
+    queue->num_entries = 0;
+    queue->start_index = 0;
+    queue->entries = (void**) malloc( size * sizeof(void*) );
+
+    assert( queue->entries );
+
+    if ( !queue->entries )
+    {
+        relay_queue_destroy( queue );
+        return NULL;
+    }
+
+    return queue;
+}
+
+void relay_queue_clear( relay_queue_t * queue );
+
+void relay_queue_destroy( relay_queue_t * queue )
+{
+    relay_queue_clear( queue );
+
+    free( queue->entries );
+
+    memset( queue, 0, sizeof(relay_queue_t) );
+    
+    free( queue );
+}
+
+void relay_queue_clear( relay_queue_t * queue )
+{
+    const int queue_size = queue->size;
+    const int start_index = queue->start_index;
+
+    for ( int i = 0; i < queue->num_entries; ++i )
+    {
+        const int index = (start_index + i ) % queue_size;
+        free( queue->entries[index] );
+        queue->entries[index] = NULL;
+    }
+
+    queue->num_entries = 0;
+    queue->start_index = 0;
+}
+
+bool relay_queue_push( relay_queue_t * queue, void * entry )
+{
+    assert( entry );
+
+    if ( queue->num_entries == queue->size )
+    {
+        free( entry );
+        return false;
+    }
+
+    int index = ( queue->start_index + queue->num_entries ) % queue->size;
+
+    queue->entries[index] = entry;
+    queue->num_entries++;
+
+    return true;
+}
+
+void * relay_queue_pop( relay_queue_t * queue )
+{
+    if ( queue->num_entries == 0 )
+        return NULL;
+
+    void * entry = queue->entries[queue->start_index];
+
+    queue->start_index = ( queue->start_index + 1 ) % queue->size;
+    queue->num_entries--;
+
+    return entry;
+}
+
+// -----------------------------------------------------------------------------
+
+struct relay_control_message_t 
+{
+    int num_relays;
+    uint64_t relay_ids[MAX_RELAYS];
+    relay_address_t relay_addresses[MAX_RELAYS];
+    uint8_t relay_internal[MAX_RELAYS];
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
+};
+
+struct relay_stats_message_t
+{
+    uint32_t session_count;
+    uint64_t actual_bandwidth_kbps_up;
+    uint64_t actual_bandwidth_kbps_down;
+    uint64_t envelope_bandwidth_kbps_up;
+    uint64_t envelope_bandwidth_kbps_down;
+    uint64_t counters[NUM_RELAY_COUNTERS];
+};
+
+// -----------------------------------------------------------------------------
+
 #define RELAY_TOKEN_BYTES 32
 #define RESPONSE_MAX_BYTES 1024 * 1024
 
@@ -3823,33 +3939,36 @@ bool operator < ( const session_key_t & a, const session_key_t & b )
 
 struct relay_t
 {
-    relay_manager_t * relay_manager;
+    relay_platform_socket_t * socket;
     relay_address_t relay_public_address;
     relay_address_t relay_internal_address;
     bool has_internal_address;
-    relay_platform_socket_t * socket;
     uint64_t last_update_response_timestamp;
     double last_update_response_time;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     std::map<session_key_t, relay_session_t*> * sessions;
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
+    uint64_t envelope_bandwidth_kbps_up;
+    uint64_t envelope_bandwidth_kbps_down;
+    uint64_t counters[NUM_RELAY_COUNTERS];
+#if RELAY_DEVELOPMENT
+    float fake_packet_loss_percent;
+    float fake_packet_loss_start_time;
+#endif // #if RELAY_DEVELOPMENT
+
+    // todo: old stuff that needs to be converted
+    /*
+    relay_manager_t * relay_manager;
     bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
     uint8_t relay_internal[MAX_RELAYS];
-    uint8_t upcoming_magic[8];
-    uint8_t current_magic[8];
-    uint8_t previous_magic[8];
-    // todo: we should be calculating actual bandwidth usage as well here
-    std::atomic<uint64_t> envelope_bandwidth_kbps_up;
-    std::atomic<uint64_t> envelope_bandwidth_kbps_down;
-    std::atomic<uint64_t> counters[NUM_RELAY_COUNTERS];
-#if RELAY_DEVELOPMENT
-    float fake_packet_loss_percent;
-    float fake_packet_loss_start_time;
-#endif // #if RELAY_DEVELOPMENT
+    */
 };
 
 struct curl_buffer_t
@@ -4357,9 +4476,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
+            // todo: instead of processing it here, we need to put it on a queue for another thread to read
+            /*
             const uint8_t * p = packet_data + 1;
             uint64_t sequence = relay_read_uint64( &p );
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
+            */
         }
 
 // ==================================================================================================================================================================================
@@ -5498,7 +5620,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
 // ========================================================================================================================================
 
-// todo: bring back ping thread, but this time with its own ping_t data and driven by messages
+// todo: I don't think we have a ping thread anymore ...
 /*
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
 {
@@ -5572,9 +5694,7 @@ int main( int argc, const char ** argv )
         exit(0);
     }
 
-    printf( "\nNetwork Next Relay (%s)\n", RELAY_VERSION );
-
-    printf( "\nEnvironment:\n\n" );
+    printf( "Network Next Relay (%s)\n", RELAY_VERSION );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -5598,7 +5718,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "    relay name is '%s'\n", relay_name );
+    printf( "Relay name is '%s'\n", relay_name );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -5617,7 +5737,7 @@ int main( int argc, const char ** argv )
     }
 
     char public_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-    printf( "    relay public address is '%s'\n", relay_address_to_string( &relay_public_address, public_address_buffer ) );
+    printf( "Relay public address is %s\n", relay_address_to_string( &relay_public_address, public_address_buffer ) );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -5634,7 +5754,7 @@ int main( int argc, const char ** argv )
         }
 
         char internal_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        printf( "    relay internal address is '%s'\n", relay_address_to_string( &relay_internal_address, internal_address_buffer ) );
+        printf( "Relay internal address is %s\n", relay_address_to_string( &relay_internal_address, internal_address_buffer ) );
         has_internal_address = true;
     }
 
@@ -5654,7 +5774,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "    relay public key is '%s'\n", relay_public_key_env );
+    printf( "Relay public key is %s\n", relay_public_key_env );
 
     const char * relay_private_key_env = relay_platform_getenv( "RELAY_PRIVATE_KEY" );
     if ( !relay_private_key_env )
@@ -5670,7 +5790,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "    relay private key is '%s'\n", relay_private_key_env );
+    printf( "Relay private key is %s\n", relay_private_key_env );
 
     // verify that we can encrypt and decrypt with the relay keypair
     {
@@ -5726,7 +5846,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "    router public key is '%s'\n", relay_backend_public_key_env );
+    printf( "Router public key is %s\n", relay_backend_public_key_env );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -5737,7 +5857,7 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
-    printf( "    relay backend hostname is '%s'\n", relay_backend_hostname );
+    printf( "Relay backend hostname is %s\n", relay_backend_hostname );
 
     if ( relay_initialize() != RELAY_OK )
     {
@@ -5758,7 +5878,7 @@ int main( int argc, const char ** argv )
 
     if ( relay_fake_packet_loss_percent > 0.0f )
     {
-        printf( "    fake packet loss is %.1f percent\n", relay_fake_packet_loss_percent );
+        printf( "Fake packet loss is %.1f percent\n", relay_fake_packet_loss_percent );
     }
 
     float relay_fake_packet_loss_start_time = -1.0f;
@@ -5770,7 +5890,7 @@ int main( int argc, const char ** argv )
 
     if ( relay_fake_packet_loss_start_time >= 0.0f )
     {
-        printf( "    fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
+        printf( "Fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
     }
 
 #endif // #if RELAY_DEVELOPMENT
@@ -5779,12 +5899,12 @@ int main( int argc, const char ** argv )
     relay_address_t bind_address;
     if ( relay_public_address.data.ipv4[0] == 127 && relay_public_address.data.ipv4[1] == 0 && relay_public_address.data.ipv4[2] == 0 && relay_public_address.data.ipv4[3] == 1 )
     {
-        printf( "\nBind address is 127.0.0.1:%d\n", relay_public_address.port );
+        printf( "Bind address is 127.0.0.1:%d\n", relay_public_address.port );
         bind_address = relay_public_address;
     }
     else
     {
-        printf( "\nBind address is 0.0.0.0:%d\n", relay_public_address.port );
+        printf( "Bind address is 0.0.0.0:%d\n", relay_public_address.port );
         memset( &bind_address, 0, sizeof(bind_address) );
         bind_address.type = RELAY_ADDRESS_IPV4;
         bind_address.port = relay_public_address.port;
