@@ -5987,6 +5987,8 @@ int main( int argc, const char ** argv )
             fflush( stdout );
             return 1;
         }
+
+        relay_platform_sleep( 0.1 / num_threads );
     }
 
     // =============================================================================================================================
