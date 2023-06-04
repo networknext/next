@@ -3893,8 +3893,8 @@ struct relay_control_message_t
 struct relay_stats_message_t
 {
     uint32_t session_count;
-    uint64_t actual_bandwidth_kbps_up;
-    uint64_t actual_bandwidth_kbps_down;
+    uint64_t actual_bandwidth_kbps_send;
+    uint64_t actual_bandwidth_kbps_receive;
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[NUM_RELAY_COUNTERS];
