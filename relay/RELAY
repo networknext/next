@@ -1,0 +1,176 @@
+DONE
+
+	Get a pump going 10 times per-second in the relay thread.
+		
+	Stagger the 0.1 sec update with sleeps at the start of each relay thread
+
+RELAY
+
+	Add a stats message queue and stats message mutex in main.
+
+	Stick it in the relay_t via pointers so it's accessible there from key data.
+
+	Build the stats message and queue it up on the message queue from inside the relay thread.
+
+	Pump to receive the stats messages before doing the relay update on main thread.
+
+	Print out enough stuff to verify that it's all working...
+
+	------------------
+
+	Extend the code to fill in the bytes sent/received and start/end time, and convert to kbps in update stats
+
+	Consider sending off number of packets sent, received as well... use counters, then delta off at the time.
+
+	------------------
+
+	Now generate messages from the main thread to each relay thread (unique).
+
+	In each message, modulo a *hash* of the relay address for the relays to ping, so each relay thread gets a unique subset of pings, and this is stable, even if the relay index changes over time.
+
+	Add enough prints to verify that each relay thread gets the correct set of other relays to ping, from the update response.
+
+	------------------
+
+	Now we have to actually implement relay pings and process pongs.
+
+	Ideally, pong processing would be made stateless, eg. the send time for the ping is contained in the pong packet.
+
+	That way it can be very lightly processed on the the receiving relay thread, and the ms delta can be calculated without needing any stateful lookup.
+
+	Then the main thread could just process the pong responses (timing insensitive...)
+
+	But this will change how we process pongs, especially with the sliding window.
+
+	Do we want to do this, or redo how ping processing is done entirely to make it stateless?
+
+	I kind of feel like we don't need a long history of ping data, except to calculate jitter...
+
+	We could maybe change jitter so it is calculated from the 1 sec samples on the relay backend, not on the relay.
+
+	This way the relay could be simpler, it's just, ok here is the worst latency since the last update?
+
+	I mean the pings and the relay updates are both at 1 second, I believe? or 10 seconds?
+
+	If it's at 10 seconds, then we want to do some sort of average, or max latency in the time.
+
+	We also need to calculate packet loss, so we need to know ones that aren't received.
+
+	This indicates we need at least some statefulness is required... fuck.
+
+	------------------
+
+	We can probably just store the sequence in the pong response, as we already do, and then use it to infer any missing packets.
+
+	We could try to detect gaps? But then we maybe have to widen the filter, eg. not do only since the last update, but in the last 20 seconds? Or similar?
+
+	Not sure. Need to think really hard about what we really want to do here....
+
+	------------------
+
+	How will relay pings work? They absolutely need to come from the same port number as real packets are sent and received, but they will be returned on effectively random thread numbers on the regular receive.
+
+	It seems that we need to distribute pings across all send threads (no distinct ping send/receive thread...), and we will need to load balance the pings somehow?
+
+	Need to think this through, this could be the achilles heel.
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	------------------
+
+	For security we need a monotically strictly non-decreasing time value from the relay.
+
+	The relay backend then would discard any old packets that it has already seen.
+
+	But is this really necessary with HTTPS? I mean, yes, anybody can HTTPS connect and then replay packet frames (if they really wanted to...)
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	------------------
+
+	Multiple relay threads. Each thread has its own relay database.
+
+	------------------
+
+	Way for the main thread to communicate essential information to the relay threads, eg. queue where set of known relay data as needed, plus magic values is pushed once every 10 seconds or whatever.
+
+	------------------
+
+	Way for each relay thread to communicate essential information back to the main thread, once per-second, eg. the session counts in that threads session database etc.
+
+	------------------
+
+	Need to bring back version auto update into the relay, but have it disable by default, enabled by env var.
+
+	------------------
+
+	Ideally, relay should have multiple HTTPS connections to backends, and process the union of relays across all backends. But is this overcomplication?
+
+	------------------
+
+	Relay should have functional tests, these should be separate from sdk func tests, and runnable inside semaphore.
+
+	------------------
+
+	Relay should have load test harness framework (totally separate from the SDK and backend...)
+
+	------------------
+
+	Relay should be load tested in google cloud
+
+	------------------
