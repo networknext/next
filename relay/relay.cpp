@@ -3936,6 +3936,16 @@ bool operator < ( const session_key_t & a, const session_key_t & b )
     return a.session_version < b.session_version || a.session_id < b.session_version;
 }
 
+struct main_t
+{
+    relay_address_t relay_public_address;
+    relay_address_t relay_internal_address;
+    bool has_internal_address;
+    uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
+    uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
+    uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
+};
+
 struct relay_t
 {
     int thread_index;
@@ -3961,7 +3971,6 @@ struct relay_t
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
-
 
     // todo: old stuff that needs to be converted
     /*
@@ -4109,14 +4118,8 @@ void clamp( int & value, int min, int max )
     }
 }
 
-int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_stats_message_t * stats )
+int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_address_t * relay_public_address, relay_stats_message_t * stats )
 {
-    (void) curl;
-    (void) hostname;
-    (void) update_response_memory;
-    (void) stats;
-
-    /*
     // build update data
 
     uint8_t update_version = 1;
@@ -4127,12 +4130,16 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     uint8_t * p = update_data;
     relay_write_uint8( &p, update_version );
-    relay_write_address_variable( &p, &relay->relay_public_address );
+    relay_write_address_variable( &p, relay_public_address );
 
-    uint8_t * encrypt_buffer = p;
+    // todo: we need the relay public address
+
+    // uint8_t * encrypt_buffer = p;
 
     relay_write_uint64( &p, timestamp );
 
+    // todo: bring back once relay pings are sorted out
+    /*
     relay_stats_t stats;
     relay_manager_get_stats( relay->relay_manager, &stats );
 
@@ -4153,20 +4160,30 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
     }
+    */
 
-    uint64_t sessions = relay->sessions->size();
-    
-    // todo: fill bandwidth
+    // todo: temporary
+    uint32_t num_relays = 0;
+    relay_write_uint32( &p, num_relays );
+
+    uint64_t session_count = 0;
     uint32_t envelope_bandwidth_up_kbps = 0;
     uint32_t envelope_bandwidth_down_kbps = 0;
     uint32_t actual_bandwidth_up_kbps = 0;
     uint32_t actual_bandwidth_down_kbps = 0;
 
-    relay_write_uint32( &p, sessions );
+    if ( stats )
+    {
+        session_count = stats->session_count;
+        envelope_bandwidth_up_kbps = stats->envelope_bandwidth_kbps_up;
+        envelope_bandwidth_down_kbps = stats->envelope_bandwidth_kbps_down;
+    }
+
+    relay_write_uint32( &p, session_count );
     relay_write_uint32( &p, envelope_bandwidth_up_kbps );
     relay_write_uint32( &p, envelope_bandwidth_down_kbps );
-    relay_write_uint32( &p, actual_bandwidth_up_kbps );
-    relay_write_uint32( &p, actual_bandwidth_down_kbps );
+    relay_write_uint32( &p, actual_bandwidth_up_kbps );         // todo: fill this or remove?
+    relay_write_uint32( &p, actual_bandwidth_down_kbps );       // todo: fill this or remove?
 
     // todo: stash shutting down flag
     uint64_t relay_flags = 0;
@@ -4177,17 +4194,30 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_write_uint32( &p, NUM_RELAY_COUNTERS );
     for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
     {
-        relay_write_uint64(&p, relay->counters[i]);
+        if ( stats )
+        {
+            relay_write_uint64( &p, stats->counters[i] );
+        }
+        else
+        {
+            relay_write_uint64( &p, 0 );
+        }
     }
 
     // encrypt data after relay address
 
+    // todo
+    /*
     const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
 
     uint8_t nonce[crypto_box_NONCEBYTES];
     relay_random_bytes( nonce, crypto_box_NONCEBYTES );
 
-    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay->relay_backend_public_key, relay->relay_private_key ) != 0 )
+    // todo: need keys here
+    // relay_backend_public_key
+    // relay_private_key
+
+    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay_backend_public_key, relay_private_key ) != 0 )
     {
         printf( "error: failed to encrypt relay update\n" );
         return RELAY_ERROR;
@@ -4198,6 +4228,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     memcpy( p, nonce, crypto_box_NONCEBYTES );
 
     p += crypto_box_NONCEBYTES;
+    */
 
     const int update_data_length = p - update_data;
 
@@ -4217,7 +4248,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     curl_easy_setopt( curl, CURLOPT_URL, update_url );
     curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)update_data_length );
+    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t) update_data_length );
     curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
     curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
     curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
@@ -4260,10 +4291,11 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         return RELAY_ERROR;
     }
 
-    uint64_t response_timestamp = relay_read_uint64( &q );
+    // uint64_t response_timestamp = relay_read_uint64( &q );
 
-    // todo: stash timestamp in relay, use it for next relay update
+    // todo: we need a data pointer for this main thread (eg. relay_main_thread_t)
 
+    /*
     if ( relay->last_update_response_time == 0 )
     {
         printf( "Relay initialized\n" );
@@ -4272,8 +4304,9 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     relay->last_update_response_timestamp = response_timestamp;
     relay->last_update_response_time = relay_platform_time();
+    */
 
-    uint32_t num_relays = relay_read_uint32( &q );
+    num_relays = relay_read_uint32( &q );
 
     if ( num_relays > MAX_RELAYS )
     {
@@ -4328,16 +4361,19 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_read_address_variable( &q, &expected_internal_address );
     }
 
-    if ( !relay_address_equal( &expected_public_address, &relay->relay_public_address ) )
+    if ( !relay_address_equal( &expected_public_address, relay_public_address ) )
     {
         char relay_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         char expected_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        relay_address_to_string( &relay->relay_public_address, relay_public_address_string );
+        relay_address_to_string( relay_public_address, relay_public_address_string );
         relay_address_to_string( &expected_public_address, expected_public_address_string );
         printf( "error: relay is misconfigured. public address is set to '%s', but it should be '%s'\n", relay_public_address_string, expected_public_address_string );
         return RELAY_ERROR;
     }
 
+    // todo: we need to know the relay has_internal_address here
+
+    /*
     if ( ( expected_has_internal_address != 0 ) != relay->has_internal_address )
     {
         printf( "error: relay is misconfigured. it doesn't have an internal address, but it should\n" );
@@ -4353,12 +4389,16 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         printf( "error: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n", relay_internal_address_string, expected_internal_address_string );
         return RELAY_ERROR;
     }
+    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
     relay_read_bytes( &q, expected_relay_public_key, crypto_box_PUBLICKEYBYTES );
     relay_read_bytes( &q, expected_relay_backend_public_key, crypto_box_PUBLICKEYBYTES );
 
+    // todo: need relay_public_key and relay_backend_public_key here
+
+    /*
     if ( memcmp( relay->relay_public_key, expected_relay_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
         printf( "error: relay is misconfigured. relay public key does not match expected value\n" );
@@ -4370,14 +4410,20 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         printf( "error: relay is misconfigured. relay backend public key does not match expected value\n" );
         return RELAY_ERROR;
     }
+    */
 
+    //
+    /*
     relay_route_token_t token;
     if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
     {
         printf( "error: relay is misconfigured. could not decrypt test token\n" );
         return RELAY_ERROR;
     }
+    */
 
+    // todo: lots of work to grab this data and post to all relay threads via control message
+    /*
     relay->num_relays = num_relays;
     for ( int i = 0; i < int(num_relays); ++i )
     {
