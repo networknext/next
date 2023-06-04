@@ -4433,12 +4433,17 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
     double last_stats_message_time = relay_platform_time();
 
+    double last_check_for_timeouts_time = relay_platform_time();
+
     while ( !quit )
     {
         relay_address_t from;
+
         int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
 
         double current_time = relay_platform_time();
+
+        // send stats message to main thread 10 times per-second
 
         if ( last_stats_message_time + 0.1 <= current_time )
         {
@@ -4454,25 +4459,32 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             last_stats_message_time = current_time;
         }
 
-        // todo: we have to do cleanup here on the map of sessions, once per-second
-        /*
-        std::map<session_key_t, relay_session_t*>::iterator iter = relay.sessions->begin();
-        while ( iter != relay.sessions->end() )
+        // check for timeouts once per-second
+
+        if ( last_check_for_timeouts_time + 1.0 <= current_time )
         {
-            if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) )
+            // todo
+            printf( "thread %d check for timeouts\n", relay->thread_index );
+
+            std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
+            while ( iter != relay->sessions->end() )
             {
+                if ( iter->second && iter->second->expire_timestamp < relay_timestamp( relay ) )
+                {
 #if INTENSIVE_RELAY_DEBUGGING
-                printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
+                    printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay.counters[RELAY_COUNTER_SESSION_DESTROYED]++;
-                iter = relay.sessions->erase( iter );
+                    relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
+                    iter = relay->sessions->erase( iter );
+                }
+                else
+                {
+                    iter++;
+                }
             }
-            else
-            {
-                iter++;
-            }
+
+            last_check_for_timeouts_time = current_time;
         }
-        */
 
         if ( packet_bytes == 0 )
             continue;

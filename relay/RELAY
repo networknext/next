@@ -18,6 +18,14 @@ DONE
 
 RELAY
 	
+	------------------
+
+	Implement the session timeout in map (via walk), once per-second.
+
+	This is necessary to clean up, and also drive the sessions destroyed.
+
+	------------------
+
 	Actually fill out the stats message
 
 	Actually process and cache the most recent stats messages per-relay thread
@@ -27,12 +35,6 @@ RELAY
 	Verify that we have all the data we need to actually pass up a relay update
 
 	Print out the relay stats data (aggregate) each update (temporary) -- so I can visually inspect it.
-
-	------------------
-
-	Implement the session timeout in map (via walk), once per-second.
-
-	This is necessary to clean up, and also drive the sessions destroyed.
 
 	------------------
 
