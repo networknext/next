@@ -168,9 +168,6 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
     }
     else if ( timeout_seconds > 0.0f )
     {
-        // todo
-        printf( "set receive timeout\n" );
-
         // set receive timeout
         struct timeval tv;
         tv.tv_sec = 0;

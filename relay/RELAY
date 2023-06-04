@@ -4,17 +4,35 @@ DONE
 		
 	Stagger the 0.1 sec update with sleeps at the start of each relay thread
 
-RELAY
+	Add a stats message queue in main.
 
-	Add a stats message queue and stats message mutex in main.
+	Make sure we shut down clean on control-C.
 
-	Stick it in the relay_t via pointers so it's accessible there from key data.
+	Add stats message mutex in main.
 
-	Build the stats message and queue it up on the message queue from inside the relay thread.
+	Stick message queue and mutex into the relay_t via pointers so it's accessible there from key data.
+
+	Queue up the stats message from inside the relay thread.
 
 	Pump to receive the stats messages before doing the relay update on main thread.
 
-	Print out enough stuff to verify that it's all working...
+RELAY
+	
+	Actually fill out the stats message
+
+	Actually process and cache the most recent stats messages per-relay thread
+
+	Combine all the stats into a struct that gets passed into the relay update method
+
+	Verify that we have all the data we need to actually pass up a relay update
+
+	Print out the relay stats data (aggregate) each update (temporary) -- so I can visually inspect it.
+
+	------------------
+
+	Implement the session timeout in map (via walk), once per-second.
+
+	This is necessary to clean up, and also drive the sessions destroyed.
 
 	------------------
 
