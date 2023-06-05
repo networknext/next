@@ -1,54 +1,14 @@
 DONE
 
-	Get a pump going 10 times per-second in the relay thread.
-		
-	Stagger the 0.1 sec update with sleeps at the start of each relay thread
-
-	Add a stats message queue in main.
-
-	Make sure we shut down clean on control-C.
-
-	Add stats message mutex in main.
-
-	Stick message queue and mutex into the relay_t via pointers so it's accessible there from key data.
-
-	Queue up the stats message from inside the relay thread.
-
-	Pump to receive the stats messages before doing the relay update on main thread.
-
-	Implement the session timeout in map (via walk), once per-second.
-
-	This is necessary to clean up, and also drive the sessions destroyed.
-
-	Implement cleanup for the sessions map on shutdown.
-
-	Actually fill out the stats message
-
-	Process and store the most recent stats per-relay thread
-
-	Accumulate across all relay threads and pass this combined stats into relay update
-
-	Create new main_t to store all data needed for the main thread update (talk to relay backend)
-
-	Rename relay_update to main_update and pass in main_t*
-
-	Bring back most of the functionality for main update
-	
-	Define the control message, which should be the set of relays, and the magic values etc.
-
-	Extend the relay data to include "control" message as the control data, so it is clear where it comes from.
-
-	Setup an array of message queues and mutexes, one per-thread, so the main thread can queue up messages to each relay thread.
-
-	Relay thread pumps control messages once per-second to get latest control data.
-
-	Main thread sends control messages to each relay thread after receiving update response.
-
 RELAY
+
+	Setup a relay backend to run in the background, so the relay can actually talk to it and get a relay update response.
 
 	------------------
 
-	Now we have to actually implement relay pings and process pongs.
+	Implement pings and pongs
+
+	------------------
 
 	Ideally, pong processing would be made stateless, eg. the send time for the ping is contained in the pong packet.
 
