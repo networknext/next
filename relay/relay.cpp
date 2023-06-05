@@ -3881,6 +3881,8 @@ void * relay_queue_pop( relay_queue_t * queue )
 
 struct relay_control_message_t 
 {
+    uint64_t last_update_response_timestamp;
+    double last_update_response_time;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
@@ -3973,19 +3975,7 @@ struct relay_t
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
-
-    // todo: control_message_t control; ?
-
-    // todo: fill in from control message
-    int num_relays;
-    uint64_t relay_ids[MAX_RELAYS];
-    relay_address_t relay_addresses[MAX_RELAYS];
-    uint8_t relay_internal[MAX_RELAYS];
-    uint64_t last_update_response_timestamp;                   
-    double last_update_response_time;
-    uint8_t upcoming_magic[8];
-    uint8_t current_magic[8];
-    uint8_t previous_magic[8];
+    relay_control_message_t control;
 
     // todo: old stuff
     /*
@@ -4441,8 +4431,8 @@ uint64_t relay_timestamp( relay_t * relay )
 {
     assert( relay );
     double current_time = relay_platform_time();
-    uint64_t seconds_since_last_response = uint64_t( floor( current_time - relay->last_update_response_time ) );
-    return relay->last_update_response_timestamp + seconds_since_last_response;
+    uint64_t seconds_since_last_response = uint64_t( floor( current_time - relay->control.last_update_response_time ) );
+    return relay->control.last_update_response_timestamp + seconds_since_last_response;
 }
 
 uint64_t relay_clean_sequence( uint64_t sequence )
@@ -4523,7 +4513,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         if ( packet_bytes == 0 )
             continue;
 
-        if ( relay->last_update_response_time == 0 )
+        if ( relay->control.last_update_response_time == 0 )
             continue;
 
         relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
@@ -4610,9 +4600,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint8_t current_magic[8];
             uint8_t previous_magic[8];
 
-            memcpy( &upcoming_magic, relay->upcoming_magic, 8 );
-            memcpy( &current_magic, relay->current_magic, 8 );
-            memcpy( &previous_magic, relay->previous_magic, 8 );
+            memcpy( &upcoming_magic, relay->control.upcoming_magic, 8 );
+            memcpy( &current_magic, relay->control.current_magic, 8 );
+            memcpy( &previous_magic, relay->control.previous_magic, 8 );
 
             if ( ! ( relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
                      relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||

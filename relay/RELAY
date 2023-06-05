@@ -34,11 +34,11 @@ DONE
 
 	Bring back most of the functionality for main update
 	
-RELAY
-
 	Define the control message, which should be the set of relays, and the magic values etc.
 
 	Extend the relay data to include "control" message as the control data, so it is clear where it comes from.
+
+RELAY
 
 	Setup an array of message queues and mutexes, one per-thread, so the main thread can queue up messages to each relay thread.
 
