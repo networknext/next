@@ -3958,6 +3958,12 @@ struct main_t
     relay_platform_mutex_t ** control_mutex;
 };
 
+struct ping_t
+{
+    relay_manager_t * relay_manager;
+    relay_control_message_t control;
+};
+
 struct relay_t
 {
     int thread_index;
@@ -3981,12 +3987,6 @@ struct relay_t
     float fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
     relay_control_message_t control;
-
-    // todo: old stuff
-    /*
-    relay_manager_t * relay_manager;
-    bool relays_dirty;
-    */
 };
 
 struct curl_buffer_t
@@ -4402,19 +4402,18 @@ int main_update( main_t * main )
     
         memset( message, 0, sizeof(relay_control_message_t) );
 
-        // todo: fill control message
-        /*
-        relay->num_relays = num_relays;
-        for ( int i = 0; i < int(num_relays); ++i )
+        message->num_relays = num_relays;
+
+        for ( int i = 0; i < int(num_relays); i++ )
         {
-            relay->relay_ids[i] = relay_ping_data[i].id;
-            relay->relay_addresses[i] = relay_ping_data[i].address;
-            relay->relay_internal[i] = relay_ping_data[i].internal;
+            message->relay_ids[i] = relay_ping_data[i].id;
+            message->relay_addresses[i] = relay_ping_data[i].address;
+            message->relay_internal[i] = relay_ping_data[i].internal;
         }
-        memcpy( relay->upcoming_magic, &upcoming_magic, 8 );
-        memcpy( relay->current_magic, &current_magic, 8 );
-        memcpy( relay->previous_magic, &previous_magic, 8 );
-        */
+
+        memcpy( message->upcoming_magic, &upcoming_magic, 8 );
+        memcpy( message->current_magic, &current_magic, 8 );
+        memcpy( message->previous_magic, &previous_magic, 8 );
 
 #if INTENSIVE_RELAY_DEBUGGING
         printf( "send control message to relay thread %d\n", i );
@@ -4531,9 +4530,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( last_pump_control_messages_time + 1.0 <= current_time )
         {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "thread %d pump control messages\n", relay->thread_index );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
             while ( true )
             {
@@ -4544,11 +4543,23 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 {
                     break;
                 }
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "processing control message on relay thread %d\n", relay->thread_index );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->control = *message;
                 free( message );
+
+                // todo
+                if ( relay->control.num_relays != 0 )
+                {
+                    printf( "----------------------------------------------------\n" );
+                    for ( int i = 0; i < relay->control.num_relays; i++ )
+                    {
+                        char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                        printf( "%d: %s\n", i, relay_address_to_string( &relay->control.relay_addresses[i], address_string ) );
+                    }
+                    printf( "----------------------------------------------------\n" );
+                }
             }
 
             last_pump_control_messages_time = current_time;
@@ -5750,14 +5761,17 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
 // ========================================================================================================================================
 
-// todo: I don't think we have a ping thread anymore ...
-/*
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
 {
-    relay_t * relay = (relay_t*) context;
+    ping_t * ping = (ping_t*) context;
 
     while ( !quit )
     {
+        // todo
+
+        (void) ping;
+
+        /*
         if ( relay->relays_dirty )
         {
             relay_manager_update( relay->relay_manager, relay->num_relays, relay->relay_ids, relay->relay_addresses );
@@ -5806,13 +5820,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
             relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
         }
+        */
 
         relay_platform_sleep( 1.0 / 100.0 );
     }
 
     RELAY_PLATFORM_THREAD_RETURN();
 }
-*/
 
 // ========================================================================================================================================
 
@@ -6110,16 +6124,6 @@ int main( int argc, const char ** argv )
         relay[i].fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
 
-        // todo: do we use this?
-        /*
-        relay.relay_manager = relay_manager_create();
-        if ( !relay.relay_manager )
-        {
-            printf( "\nerror: could not create relay manager\n\n" );
-            quit = 1;
-        }
-        */
-
         relay_thread[i] = relay_platform_thread_create( relay_thread_function, &relay[i] );
         if ( !relay_thread[i] )
         {
@@ -6134,15 +6138,39 @@ int main( int argc, const char ** argv )
 
     // =============================================================================================================================
 
-    // todo: ping thread must not run off the relay_t -- it needs its own data updated once per-second
-    /*
-    relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, &relay );
+    ping_t ping;
+
+    memset( &ping, 0, sizeof(ping_t) );
+
+    ping.relay_manager = relay_manager_create();
+    if ( !ping.relay_manager )
+    {
+        printf( "\nerror: could not create relay manager :(\n\n" );
+        relay_term();
+        fflush( stdout );
+        return 1;
+    }
+
+    relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, &ping );
     if ( !ping_thread )
     {
         printf( "\nerror: could not create ping thread\n\n" );
-        quit = 1;
+        relay_term();
+        fflush( stdout );
+        return 1;
     }
+
+    // todo: ping thread must not run off the relay_t -- it needs its own data updated once per-second
+    /*
     */
+
+    // create ping thread
+
+        // todo: do we use this?
+        /*
+        */
+
+    // =============================================================================================================================
 
     // main thread below
 
@@ -6235,6 +6263,10 @@ int main( int argc, const char ** argv )
         relay_platform_sleep( 1.0 );
     }
 
+    // ==============================================================================================================================
+
+    // todo: add logs for the clean shutdown
+
     if ( relay_clean_shutdown )
     {
         main.shutting_down = true;
@@ -6253,22 +6285,22 @@ int main( int argc, const char ** argv )
 
     printf( "\nCleaning up\n" );
 
+    printf( "Waiting for ping thread\n" );
+
+    relay_platform_thread_join( ping_thread );
+    relay_platform_thread_destroy( ping_thread );
+
+    printf( "Destroying ping thread data\n" );
+
+    relay_manager_destroy( ping.relay_manager );
+
     for ( int i = 0; i < num_threads; i++ )
     {
         printf( "Waiting for relay thread %d\n", i );
+
         relay_platform_thread_join( relay_thread[i] );
         relay_platform_thread_destroy( relay_thread[i] );
-        relay_thread[i] = NULL;
     }
-
-    // todo: bring back ping thread
-    /*
-    if ( ping_thread )
-    {
-        relay_platform_thread_join( ping_thread );
-        relay_platform_thread_destroy( ping_thread );
-    }
-    */
 
     for ( int i = 0; i < num_threads; i++ )
     {
@@ -6289,9 +6321,6 @@ int main( int argc, const char ** argv )
         }
 
         delete relay->sessions;
-
-        // todo: need to decide if we keep this or not
-        // relay_manager_destroy( relay->relay_manager );
     }
 
     printf( "Destroying message queues\n" );

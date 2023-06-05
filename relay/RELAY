@@ -1,54 +1,32 @@
 DONE
 
+	Print out set of relays when control message is received
+
+	Verify that the relay threads see the pings
+
+	Make the ping thread own the relay manager.
+
+	Create a ping thread.
+
 RELAY
 
-	Setup a relay backend to run in the background, so the relay can actually talk to it and get a relay update response.
+	Setup mutex and queues for control messages sent to ping thread.
+
+	Send the control message to the ping thread.
+
+	Pump control messages on the ping thread, and pass them in to the relay manager.
+
+	Print out control data relays when received on ping thread.
 
 	------------------
 
-	Implement pings and pongs
+	Pass in num_threads to ping_t and add n sockets to the ping_t
 
-	------------------
+	Create n sockets (num threads?) on the ping thread bound to 127.0.0.1:0 on main thread
 
-	Ideally, pong processing would be made stateless, eg. the send time for the ping is contained in the pong packet.
+	Destroy the n ping sockets on main thread in cleanup
 
-	That way it can be very lightly processed on the the receiving relay thread, and the ms delta can be calculated without needing any stateful lookup.
-
-	Then the main thread could just process the pong responses (timing insensitive...)
-
-	But this will change how we process pongs, especially with the sliding window.
-
-	Do we want to do this, or redo how ping processing is done entirely to make it stateless?
-
-	I kind of feel like we don't need a long history of ping data, except to calculate jitter...
-
-	We could maybe change jitter so it is calculated from the 1 sec samples on the relay backend, not on the relay.
-
-	This way the relay could be simpler, it's just, ok here is the worst latency since the last update?
-
-	I mean the pings and the relay updates are both at 1 second, I believe? or 10 seconds?
-
-	If it's at 10 seconds, then we want to do some sort of average, or max latency in the time.
-
-	We also need to calculate packet loss, so we need to know ones that aren't received.
-
-	This indicates we need at least some statefulness is required... fuck.
-
-	------------------
-
-	We can probably just store the sequence in the pong response, as we already do, and then use it to infer any missing packets.
-
-	We could try to detect gaps? But then we maybe have to widen the filter, eg. not do only since the last update, but in the last 20 seconds? Or similar?
-
-	Not sure. Need to think really hard about what we really want to do here....
-
-	------------------
-
-	How will relay pings work? They absolutely need to come from the same port number as real packets are sent and received, but they will be returned on effectively random thread numbers on the regular receive.
-
-	It seems that we need to distribute pings across all send threads (no distinct ping send/receive thread...), and we will need to load balance the pings somehow?
-
-	Need to think this through, this could be the achilles heel.
+	Pass the primary ping socket address (first socket port...), into the relay_t, so all relay threads know where to forward the pongs received (after packet filter.)
 
 	------------------
 
@@ -85,15 +63,6 @@ RELAY
 
 
 
-	------------------
-
-	For security we need a monotically strictly non-decreasing time value from the relay.
-
-	The relay backend then would discard any old packets that it has already seen.
-
-	But is this really necessary with HTTPS? I mean, yes, anybody can HTTPS connect and then replay packet frames (if they really wanted to...)
-
-	------------------
 
 
 
@@ -115,19 +84,6 @@ RELAY
 
 
 
-
-
-	------------------
-
-	Multiple relay threads. Each thread has its own relay database.
-
-	------------------
-
-	Way for the main thread to communicate essential information to the relay threads, eg. queue where set of known relay data as needed, plus magic values is pushed once every 10 seconds or whatever.
-
-	------------------
-
-	Way for each relay thread to communicate essential information back to the main thread, once per-second, eg. the session counts in that threads session database etc.
 
 	------------------
 
@@ -148,5 +104,9 @@ RELAY
 	------------------
 
 	Relay should be load tested in google cloud
+
+	------------------
+
+	Relay should be load tested in bare metal with 1G NIC, 10G NIC
 
 	------------------
