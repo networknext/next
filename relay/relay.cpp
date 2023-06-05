@@ -3949,6 +3949,8 @@ struct main_t
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
+    uint64_t last_update_response_timestamp;
+    double last_update_response_time;
 };
 
 struct relay_t
@@ -3958,17 +3960,12 @@ struct relay_t
     relay_address_t relay_public_address;
     relay_address_t relay_internal_address;
     bool has_internal_address;
-    uint64_t last_update_response_timestamp;
-    double last_update_response_time;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     std::map<session_key_t, relay_session_t*> * sessions;
     relay_platform_mutex_t * stats_mutex;
     relay_queue_t * stats_queue;
-    uint8_t upcoming_magic[8];
-    uint8_t current_magic[8];
-    uint8_t previous_magic[8];
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[NUM_RELAY_COUNTERS];
@@ -3976,10 +3973,19 @@ struct relay_t
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
+
+    // todo: control_message_t control; ?
+
+    // todo: fill in from control message
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
     uint8_t relay_internal[MAX_RELAYS];
+    uint64_t last_update_response_timestamp;                   
+    double last_update_response_time;
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     // todo: old stuff
     /*
@@ -4137,9 +4143,7 @@ int main_update( main_t * main )
     relay_write_uint8( &p, update_version );
     relay_write_address_variable( &p, &main->relay_public_address );
 
-    // todo: we need the relay public address
-
-    // uint8_t * encrypt_buffer = p;
+    uint8_t * encrypt_buffer = p;
 
     relay_write_uint64( &p, timestamp );
 
@@ -4187,8 +4191,8 @@ int main_update( main_t * main )
     relay_write_uint32( &p, actual_bandwidth_up_kbps );         // todo: fill this
     relay_write_uint32( &p, actual_bandwidth_down_kbps );       // todo: fill this
 
-    // todo: stash shutting down flag
-    uint64_t relay_flags = 0;
+    const uint64_t SHUTTING_DOWN = 1;
+    uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
     relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH);
@@ -4201,8 +4205,6 @@ int main_update( main_t * main )
 
     // encrypt data after relay address
 
-    // todo
-    /*
     const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
 
     uint8_t nonce[crypto_box_NONCEBYTES];
@@ -4212,7 +4214,7 @@ int main_update( main_t * main )
     // relay_backend_public_key
     // relay_private_key
 
-    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, relay_backend_public_key, relay_private_key ) != 0 )
+    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, main->relay_backend_public_key, main->relay_private_key ) != 0 )
     {
         printf( "error: failed to encrypt relay update\n" );
         return RELAY_ERROR;
@@ -4223,7 +4225,6 @@ int main_update( main_t * main )
     memcpy( p, nonce, crypto_box_NONCEBYTES );
 
     p += crypto_box_NONCEBYTES;
-    */
 
     const int update_data_length = p - update_data;
 
@@ -4286,20 +4287,16 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
-    // uint64_t response_timestamp = relay_read_uint64( &q );
+    uint64_t response_timestamp = relay_read_uint64( &q );
 
-    // todo: we need a data pointer for this main thread (eg. relay_main_thread_t)
-
-    /*
-    if ( relay->last_update_response_time == 0 )
+    if ( main->last_update_response_time == 0 )
     {
         printf( "Relay initialized\n" );
         fflush( stdout );
     }
 
-    relay->last_update_response_timestamp = response_timestamp;
-    relay->last_update_response_time = relay_platform_time();
-    */
+    main->last_update_response_timestamp = response_timestamp;
+    main->last_update_response_time = relay_platform_time();
 
     num_relays = relay_read_uint32( &q );
 
@@ -4366,56 +4363,45 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
-    // todo: we need to know the relay has_internal_address here
-
-    /*
-    if ( ( expected_has_internal_address != 0 ) != relay->has_internal_address )
+    if ( ( expected_has_internal_address != 0 ) != main->has_internal_address )
     {
         printf( "error: relay is misconfigured. it doesn't have an internal address, but it should\n" );
         return RELAY_ERROR;
     }
 
-    if ( ( expected_has_internal_address != 0 ) && relay->has_internal_address && !relay_address_equal( &relay->relay_internal_address, &expected_internal_address ) )
+    if ( ( expected_has_internal_address != 0 ) && main->has_internal_address && !relay_address_equal( &main->relay_internal_address, &expected_internal_address ) )
     {
         char relay_internal_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         char expected_internal_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        relay_address_to_string( &relay->relay_internal_address, relay_internal_address_string );
+        relay_address_to_string( &main->relay_internal_address, relay_internal_address_string );
         relay_address_to_string( &expected_internal_address, expected_internal_address_string );
         printf( "error: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n", relay_internal_address_string, expected_internal_address_string );
         return RELAY_ERROR;
     }
-    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
     relay_read_bytes( &q, expected_relay_public_key, crypto_box_PUBLICKEYBYTES );
     relay_read_bytes( &q, expected_relay_backend_public_key, crypto_box_PUBLICKEYBYTES );
 
-    // todo: need relay_public_key and relay_backend_public_key here
-
-    /*
-    if ( memcmp( relay->relay_public_key, expected_relay_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
+    if ( memcmp( main->relay_public_key, expected_relay_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
         printf( "error: relay is misconfigured. relay public key does not match expected value\n" );
         return RELAY_ERROR;
     }
 
-    if ( memcmp( relay->relay_backend_public_key, expected_relay_backend_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
+    if ( memcmp( main->relay_backend_public_key, expected_relay_backend_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
         printf( "error: relay is misconfigured. relay backend public key does not match expected value\n" );
         return RELAY_ERROR;
     }
-    */
 
-    //
-    /*
     relay_route_token_t token;
-    if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
+    if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, main->relay_backend_public_key, main->relay_private_key ) != RELAY_OK )
     {
         printf( "error: relay is misconfigured. could not decrypt test token\n" );
         return RELAY_ERROR;
     }
-    */
 
     // todo: lots of work to grab this data and post to all relay threads via control message
     /*

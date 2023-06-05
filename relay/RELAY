@@ -32,23 +32,19 @@ DONE
 
 	Rename relay_update to main_update and pass in main_t*
 
+	Bring back most of the functionality for main update
+	
 RELAY
 
-	Now start to bring back the 
-	
-	------------------
+	Define the control message, which should be the set of relays, and the magic values etc.
 
-	Extend the code to fill in the bytes sent/received and start/end time, and convert to kbps in update stats
+	Extend the relay data to include "control" message as the control data, so it is clear where it comes from.
 
-	Consider sending off number of packets sent, received as well... use counters, then delta off at the time.
+	Setup an array of message queues and mutexes, one per-thread, so the main thread can queue up messages to each relay thread.
 
-	------------------
+	Main thread sends control messages to each relay thread.
 
-	Now generate messages from the main thread to each relay thread (unique).
-
-	In each message, modulo a *hash* of the relay address for the relays to ping, so each relay thread gets a unique subset of pings, and this is stable, even if the relay index changes over time.
-
-	Add enough prints to verify that each relay thread gets the correct set of other relays to ping, from the update response.
+	Relay thread pumps control messages once per-second.
 
 	------------------
 
