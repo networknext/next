@@ -38,13 +38,13 @@ DONE
 
 	Extend the relay data to include "control" message as the control data, so it is clear where it comes from.
 
-RELAY
-
 	Setup an array of message queues and mutexes, one per-thread, so the main thread can queue up messages to each relay thread.
 
-	Main thread sends control messages to each relay thread.
+	Relay thread pumps control messages once per-second to get latest control data.
 
-	Relay thread pumps control messages once per-second.
+	Main thread sends control messages to each relay thread after receiving update response.
+
+RELAY
 
 	------------------
 

@@ -3941,6 +3941,7 @@ bool operator < ( const session_key_t & a, const session_key_t & b )
 struct main_t
 {
     CURL * curl;
+    int num_threads;
     const char * hostname;
     uint8_t * update_response_memory;
     relay_stats_message_t stats;
@@ -3953,6 +3954,8 @@ struct main_t
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint64_t last_update_response_timestamp;
     double last_update_response_time;
+    relay_queue_t ** control_queue;
+    relay_platform_mutex_t ** control_mutex;
 };
 
 struct relay_t
@@ -3968,6 +3971,8 @@ struct relay_t
     std::map<session_key_t, relay_session_t*> * sessions;
     relay_platform_mutex_t * stats_mutex;
     relay_queue_t * stats_queue;
+    relay_platform_mutex_t * control_mutex;
+    relay_queue_t * control_queue;
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[NUM_RELAY_COUNTERS];
@@ -4200,10 +4205,6 @@ int main_update( main_t * main )
     uint8_t nonce[crypto_box_NONCEBYTES];
     relay_random_bytes( nonce, crypto_box_NONCEBYTES );
 
-    // todo: need keys here
-    // relay_backend_public_key
-    // relay_private_key
-
     if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, main->relay_backend_public_key, main->relay_private_key ) != 0 )
     {
         printf( "error: failed to encrypt relay update\n" );
@@ -4393,20 +4394,36 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
-    // todo: lots of work to grab this data and post to all relay threads via control message
-    /*
-    relay->num_relays = num_relays;
-    for ( int i = 0; i < int(num_relays); ++i )
+    // send control message to all relay threads
+
+    for ( int i = 0; i < main->num_threads; i++ )
     {
-        relay->relay_ids[i] = relay_ping_data[i].id;
-        relay->relay_addresses[i] = relay_ping_data[i].address;
-        relay->relay_internal[i] = relay_ping_data[i].internal;
+        relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
+    
+        memset( message, 0, sizeof(relay_control_message_t) );
+
+        // todo: fill control message
+        /*
+        relay->num_relays = num_relays;
+        for ( int i = 0; i < int(num_relays); ++i )
+        {
+            relay->relay_ids[i] = relay_ping_data[i].id;
+            relay->relay_addresses[i] = relay_ping_data[i].address;
+            relay->relay_internal[i] = relay_ping_data[i].internal;
+        }
+        memcpy( relay->upcoming_magic, &upcoming_magic, 8 );
+        memcpy( relay->current_magic, &current_magic, 8 );
+        memcpy( relay->previous_magic, &previous_magic, 8 );
+        */
+
+#if INTENSIVE_RELAY_DEBUGGING
+        printf( "send control message to relay thread %d\n", i );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+        relay_platform_mutex_acquire( main->control_mutex[i] );
+        relay_queue_push( main->control_queue[i], message );
+        relay_platform_mutex_release( main->control_mutex[i] );
     }
-    relay->relays_dirty = true;
-    memcpy( relay->upcoming_magic, &upcoming_magic, 8 );
-    memcpy( relay->current_magic, &current_magic, 8 );
-    memcpy( relay->previous_magic, &previous_magic, 8 );
-    */
 
     return RELAY_OK;
 }
@@ -4448,8 +4465,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
     double last_stats_message_time = relay_platform_time();
-
     double last_check_for_timeouts_time = relay_platform_time();
+    double last_pump_control_messages_time = relay_platform_time();
 
     while ( !quit )
     {
@@ -4510,11 +4527,44 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             last_check_for_timeouts_time = current_time;
         }
 
+        // pump control messages once per-second
+
+        if ( last_pump_control_messages_time + 1.0 <= current_time )
+        {
+// #if INTENSIVE_RELAY_DEBUGGING
+            printf( "thread %d pump control messages\n", relay->thread_index );
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+            while ( true )
+            {
+                relay_platform_mutex_acquire( relay->control_mutex );
+                relay_control_message_t * message = (relay_control_message_t*) relay_queue_pop( relay->control_queue );
+                relay_platform_mutex_release( relay->control_mutex );
+                if ( message == NULL )
+                {
+                    break;
+                }
+// #if INTENSIVE_RELAY_DEBUGGING
+                printf( "processing control message on relay thread %d\n", relay->thread_index );
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay->control = *message;
+                free( message );
+            }
+
+            last_pump_control_messages_time = current_time;
+        }
+
+        // ignore zero byte packets
+
         if ( packet_bytes == 0 )
             continue;
 
+        // don't process any packets until we have received the first relay update response
+
         if ( relay->control.last_update_response_time == 0 )
             continue;
+
+        // process packet
 
         relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
         relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
@@ -6001,10 +6051,15 @@ int main( int argc, const char ** argv )
     printf( "Creating message queues\n" );
 
     relay_queue_t * stats_queue = relay_queue_create( num_threads * 64 );
-
     relay_platform_mutex_t * stats_mutex = relay_platform_mutex_create();
 
-    // ...
+    relay_queue_t * control_queue[num_threads];
+    relay_platform_mutex_t * control_mutex[num_threads];
+    for ( int i = 0; i < num_threads; i++ )
+    {
+        control_queue[i] = relay_queue_create( 64 );
+        control_mutex[i] = relay_platform_mutex_create();
+    }
 
     // =============================================================================================================================
 
@@ -6045,6 +6100,8 @@ int main( int argc, const char ** argv )
         relay[i].sessions = new std::map<session_key_t, relay_session_t*>();
         relay[i].stats_queue = stats_queue;
         relay[i].stats_mutex = stats_mutex;
+        relay[i].control_queue = control_queue[i];
+        relay[i].control_mutex = control_mutex[i];
         memcpy( relay[i].relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
         memcpy( relay[i].relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
         memcpy( relay[i].relay_backend_public_key, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES );
@@ -6053,6 +6110,7 @@ int main( int argc, const char ** argv )
         relay[i].fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
 
+        // todo: do we use this?
         /*
         relay.relay_manager = relay_manager_create();
         if ( !relay.relay_manager )
@@ -6117,6 +6175,7 @@ int main( int argc, const char ** argv )
     memset( &main, 0, sizeof(main_t) );
 
     main.curl = curl;
+    main.num_threads = num_threads;
     main.hostname = relay_backend_hostname;
     main.update_response_memory = update_response_memory;
     main.relay_public_address = relay_public_address;
@@ -6125,14 +6184,16 @@ int main( int argc, const char ** argv )
     memcpy( main.relay_public_key, relay_public_key, sizeof(relay_public_key) );
     memcpy( main.relay_private_key, relay_private_key, sizeof(relay_private_key) );
     memcpy( main.relay_backend_public_key, relay_backend_public_key, sizeof(relay_backend_public_key) );
-
+    main.control_queue = control_queue;
+    main.control_mutex = control_mutex;
+    
     while ( !quit )
     {
         while ( true )
         {
-            relay_platform_mutex_acquire( relay->stats_mutex );
+            relay_platform_mutex_acquire( stats_mutex );
             relay_stats_message_t * message = (relay_stats_message_t*) relay_queue_pop( stats_queue );
-            relay_platform_mutex_release( relay->stats_mutex );
+            relay_platform_mutex_release( stats_mutex );
             if ( message == NULL )
             {
                 break;
@@ -6238,6 +6299,13 @@ int main( int argc, const char ** argv )
     relay_queue_destroy( stats_queue );
 
     relay_platform_mutex_destroy( stats_mutex );
+
+    for ( int i = 0; i < num_threads; i++ )
+    {
+        relay_queue_destroy( control_queue[i] );
+
+        relay_platform_mutex_destroy( control_mutex[i] );
+    }
 
     printf( "Cleaning up curl\n" );
 
