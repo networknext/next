@@ -30,19 +30,25 @@ DONE
 
 	Logic to send pings from ping thread w. relay manager
 
-RELAY
-
 	Pump recv on primary [0] ping socket.
 
 	At this point the ping thread structure should be complete.
 
-	Implement internal ping packet to send to 127.0.0.1:relay port
+	Add new "LOCAL_PING" and "LOCAL_PONG" packet types.
 
-	Implement code to listen for internal pong packet on primary [0] ping socket.
+	Implement internal ping packet to send to 127.0.0.1:relay port (cache address at top of ping function)
 
-	Implement code in relay thread to listen for internal ping, and translate it to a real ping sent to the address.
+RELAY
+
+	Implement code in relay thread to listen for internal ping. Print out.
+
+	Process the local ping and send a real ping via the relay thread socket.
+
+	------------------
 
 	Implement code in relay thread to listen for relay pong packets, and translate them into internal pong packets sent to primary ping socket address [0].
+
+	Implement code to listen for internal pong packet on primary [0] ping socket.
 
 	Verify that pings and pongs work.
 

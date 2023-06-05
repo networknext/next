@@ -3909,6 +3909,9 @@ struct relay_stats_message_t
 #define RELAY_PING_PACKET 75
 #define RELAY_PONG_PACKET 76
 
+#define RELAY_LOCAL_PING_PACKET 77
+#define RELAY_LOCAL_PONG_PACKET 78
+
 struct relay_session_t
 {
     uint64_t expire_timestamp;
@@ -5797,6 +5800,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
     double last_pump_control_messages_time = relay_platform_time();
     double last_ping_time = relay_platform_time();
 
+    relay_address_t local_relay_address;
+    local_relay_address.type = RELAY_ADDRESS_IPV4;
+    local_relay_address.data.ipv4[0] = 127;
+    local_relay_address.data.ipv4[1] = 0;
+    local_relay_address.data.ipv4[2] = 0;
+    local_relay_address.data.ipv4[3] = 1;
+    local_relay_address.port = ping->relay_port;
+
     while ( !quit )
     {
         // pump internal packets on the primary [0] socket only
@@ -5881,31 +5892,22 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             for ( int i = 0; i < num_pings; ++i )
             {
                 uint8_t packet_data[1+8];
-                packet_data[0] = RELAY_PING_PACKET;
+                packet_data[0] = RELAY_LOCAL_PING_PACKET;
                 uint8_t * p = packet_data + 1;
+                relay_write_address( &p, &pings[i].address );
                 relay_write_uint64( &p, pings[i].sequence );
-
-    // #if INTENSIVE_RELAY_DEBUGGING
-                char to_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
-                relay_address_to_string( &pings[i].address, to_address );
-                printf( "sending relay ping packet to %s\n", to_address );
-    // #endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 const int packet_bytes = 1 + 8;
 
-                // todo: modulo to get socket index
+                const int socket_index = i % ping->num_sockets;
 
-                // todo: send to local relay address (cache this earlier...)
+// #if INTENSIVE_RELAY_DEBUGGING
+                char to_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                relay_address_to_string( &local_relay_address, to_address );
+                printf( "sending local ping packet to %s on ping socket %d\n", to_address, socket_index );
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-                // todo: prefix packet with ipv4 public address of relay
-
-                // todo: new packet type "LOCAL PING"
-
-                (void) packet_data;
-                (void) packet_bytes;
-                /*
-                relay_platform_socket_send_packet( ping->socket, &pings[i].address, packet_data, packet_bytes );
-                */
+                relay_platform_socket_send_packet( ping->socket[socket_index], &pings[i].address, packet_data, packet_bytes );
             }
 
             last_ping_time = current_time;
