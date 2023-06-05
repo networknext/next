@@ -28,9 +28,13 @@ DONE
 
 	Accumulate across all relay threads and pass this combined stats into relay update
 
+	Create new main_t to store all data needed for the main thread update (talk to relay backend)
+
+	Rename relay_update to main_update and pass in main_t*
+
 RELAY
 
-	Bring back the implementation of the relay update. Verify that I have all the data that it needs...
+	Now start to bring back the 
 	
 	------------------
 

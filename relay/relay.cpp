@@ -3938,9 +3938,14 @@ bool operator < ( const session_key_t & a, const session_key_t & b )
 
 struct main_t
 {
+    CURL * curl;
+    const char * hostname;
+    uint8_t * update_response_memory;
+    relay_stats_message_t stats;
     relay_address_t relay_public_address;
     relay_address_t relay_internal_address;
     bool has_internal_address;
+    bool shutting_down;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
@@ -3971,15 +3976,15 @@ struct relay_t
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
-
-    // todo: old stuff that needs to be converted
-    /*
-    relay_manager_t * relay_manager;
-    bool relays_dirty;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
     uint8_t relay_internal[MAX_RELAYS];
+
+    // todo: old stuff
+    /*
+    relay_manager_t * relay_manager;
+    bool relays_dirty;
     */
 };
 
@@ -4118,7 +4123,7 @@ void clamp( int & value, int min, int max )
     }
 }
 
-int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_memory, relay_address_t * relay_public_address, relay_stats_message_t * stats )
+int main_update( main_t * main )
 {
     // build update data
 
@@ -4130,7 +4135,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
 
     uint8_t * p = update_data;
     relay_write_uint8( &p, update_version );
-    relay_write_address_variable( &p, relay_public_address );
+    relay_write_address_variable( &p, &main->relay_public_address );
 
     // todo: we need the relay public address
 
@@ -4172,18 +4177,15 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     uint32_t actual_bandwidth_up_kbps = 0;
     uint32_t actual_bandwidth_down_kbps = 0;
 
-    if ( stats )
-    {
-        session_count = stats->session_count;
-        envelope_bandwidth_up_kbps = stats->envelope_bandwidth_kbps_up;
-        envelope_bandwidth_down_kbps = stats->envelope_bandwidth_kbps_down;
-    }
+    session_count = main->stats.session_count;
+    envelope_bandwidth_up_kbps = main->stats.envelope_bandwidth_kbps_up;
+    envelope_bandwidth_down_kbps = main->stats.envelope_bandwidth_kbps_down;
 
     relay_write_uint32( &p, session_count );
     relay_write_uint32( &p, envelope_bandwidth_up_kbps );
     relay_write_uint32( &p, envelope_bandwidth_down_kbps );
-    relay_write_uint32( &p, actual_bandwidth_up_kbps );         // todo: fill this or remove?
-    relay_write_uint32( &p, actual_bandwidth_down_kbps );       // todo: fill this or remove?
+    relay_write_uint32( &p, actual_bandwidth_up_kbps );         // todo: fill this
+    relay_write_uint32( &p, actual_bandwidth_down_kbps );       // todo: fill this
 
     // todo: stash shutting down flag
     uint64_t relay_flags = 0;
@@ -4194,14 +4196,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     relay_write_uint32( &p, NUM_RELAY_COUNTERS );
     for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
     {
-        if ( stats )
-        {
-            relay_write_uint64( &p, stats->counters[i] );
-        }
-        else
-        {
-            relay_write_uint64( &p, 0 );
-        }
+        relay_write_uint64( &p, main->stats.counters[i] );
     }
 
     // encrypt data after relay address
@@ -4239,26 +4234,26 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     curl_buffer_t update_response_buffer;
     update_response_buffer.size = 0;
     update_response_buffer.max_size = RESPONSE_MAX_BYTES;
-    update_response_buffer.data = (uint8_t*) update_response_memory;
+    update_response_buffer.data = (uint8_t*) main->update_response_memory;
 
     char update_url[1024];
-    snprintf( update_url, sizeof(update_url), "%s/relay_update", hostname );
+    snprintf( update_url, sizeof(update_url), "%s/relay_update", main->hostname );
 
-    curl_easy_setopt( curl, CURLOPT_BUFFERSIZE, 1024000L );
-    curl_easy_setopt( curl, CURLOPT_URL, update_url );
-    curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDS, update_data );
-    curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t) update_data_length );
-    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
-    curl_easy_setopt( curl, CURLOPT_USERAGENT, "network next relay" );
-    curl_easy_setopt( curl, CURLOPT_MAXREDIRS, 50L );
-    curl_easy_setopt( curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
-    curl_easy_setopt( curl, CURLOPT_TCP_KEEPALIVE, 1L );
-    curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
-    curl_easy_setopt( curl, CURLOPT_WRITEDATA, &update_response_buffer );
-    curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 1024000L );
+    curl_easy_setopt( main->curl, CURLOPT_URL, update_url );
+    curl_easy_setopt( main->curl, CURLOPT_NOPROGRESS, 1L );
+    curl_easy_setopt( main->curl, CURLOPT_POSTFIELDS, update_data );
+    curl_easy_setopt( main->curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t) update_data_length );
+    curl_easy_setopt( main->curl, CURLOPT_HTTPHEADER, slist );
+    curl_easy_setopt( main->curl, CURLOPT_USERAGENT, "network next relay" );
+    curl_easy_setopt( main->curl, CURLOPT_MAXREDIRS, 50L );
+    curl_easy_setopt( main->curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
+    curl_easy_setopt( main->curl, CURLOPT_TCP_KEEPALIVE, 1L );
+    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, long( 1000 ) );
+    curl_easy_setopt( main->curl, CURLOPT_WRITEDATA, &update_response_buffer );
+    curl_easy_setopt( main->curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
 
-    CURLcode ret = curl_easy_perform( curl );
+    CURLcode ret = curl_easy_perform( main->curl );
 
     curl_slist_free_all( slist );
     slist = NULL;
@@ -4270,7 +4265,7 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
     }
 
     long code;
-    curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &code );
+    curl_easy_getinfo( main->curl, CURLINFO_RESPONSE_CODE, &code );
     if ( code != 200 )
     {
         printf( "error: relay update response was %d, expected 200\n", int(code) );
@@ -4361,11 +4356,11 @@ int relay_update( CURL * curl, const char * hostname, uint8_t * update_response_
         relay_read_address_variable( &q, &expected_internal_address );
     }
 
-    if ( !relay_address_equal( &expected_public_address, relay_public_address ) )
+    if ( !relay_address_equal( &expected_public_address, &main->relay_public_address ) )
     {
         char relay_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         char expected_public_address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-        relay_address_to_string( relay_public_address, relay_public_address_string );
+        relay_address_to_string( &main->relay_public_address, relay_public_address_string );
         relay_address_to_string( &expected_public_address, expected_public_address_string );
         printf( "error: relay is misconfigured. public address is set to '%s', but it should be '%s'\n", relay_public_address_string, expected_public_address_string );
         return RELAY_ERROR;
@@ -6141,6 +6136,20 @@ int main( int argc, const char ** argv )
 
     memset( &relay_thread_stats, 0, sizeof(relay_stats_message_t) * num_threads );
 
+    main_t main;
+
+    memset( &main, 0, sizeof(main_t) );
+
+    main.curl = curl;
+    main.hostname = relay_backend_hostname;
+    main.update_response_memory = update_response_memory;
+    main.relay_public_address = relay_public_address;
+    main.relay_internal_address = relay_internal_address;
+    main.has_internal_address = has_internal_address;
+    memcpy( main.relay_public_key, relay_public_key, sizeof(relay_public_key) );
+    memcpy( main.relay_private_key, relay_private_key, sizeof(relay_private_key) );
+    memcpy( main.relay_backend_public_key, relay_backend_public_key, sizeof(relay_backend_public_key) );
+
     while ( !quit )
     {
         while ( true )
@@ -6158,22 +6167,20 @@ int main( int argc, const char ** argv )
             relay_thread_stats[message->thread_index] = *message;
         }
 
-        relay_stats_message_t combined_stats;
-        
-        memset( &combined_stats, 0, sizeof(relay_stats_message_t) );
+        memset( &main.stats, 0, sizeof(relay_stats_message_t) );
 
         for ( int i = 0; i < num_threads; i++ )
         {
-            combined_stats.session_count += relay_thread_stats[i].session_count;
-            combined_stats.envelope_bandwidth_kbps_up += relay_thread_stats[i].envelope_bandwidth_kbps_up;
-            combined_stats.envelope_bandwidth_kbps_down += relay_thread_stats[i].envelope_bandwidth_kbps_down;
+            main.stats.session_count += relay_thread_stats[i].session_count;
+            main.stats.envelope_bandwidth_kbps_up += relay_thread_stats[i].envelope_bandwidth_kbps_up;
+            main.stats.envelope_bandwidth_kbps_down += relay_thread_stats[i].envelope_bandwidth_kbps_down;
             for ( int j = 0; j < num_threads; j++ )
             {
-                combined_stats.counters[j] += relay_thread_stats[i].counters[j];
+                main.stats.counters[j] += relay_thread_stats[i].counters[j];
             }
         }
 
-        if ( relay_update( curl, relay_backend_hostname, update_response_memory, &combined_stats ) == RELAY_OK )
+        if ( main_update( &main ) == RELAY_OK )
         {
             update_attempts = 0;
         }
@@ -6193,8 +6200,10 @@ int main( int argc, const char ** argv )
 
     if ( relay_clean_shutdown )
     {
+        main.shutting_down = true;
+
         uint seconds = 0;
-        while ( seconds++ < 60 && relay_update( curl, relay_backend_hostname, update_response_memory, NULL ) != RELAY_OK )
+        while ( seconds++ < 60 && main_update( &main ) != RELAY_OK )
         {
             relay_platform_sleep( 1.0 );
         }
