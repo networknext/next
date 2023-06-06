@@ -4430,6 +4430,9 @@ int main_update( main_t * main )
         memcpy( message->current_magic, &current_magic, 8 );
         memcpy( message->previous_magic, &previous_magic, 8 );
 
+        message->last_update_response_time = main->last_update_response_time;
+        message->last_update_response_timestamp = main->last_update_response_timestamp;
+
 #if INTENSIVE_RELAY_DEBUGGING
         printf( "send control message to relay thread %d\n", i );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
@@ -4457,6 +4460,9 @@ int main_update( main_t * main )
     memcpy( message->upcoming_magic, &upcoming_magic, 8 );
     memcpy( message->current_magic, &current_magic, 8 );
     memcpy( message->previous_magic, &previous_magic, 8 );
+
+    message->last_update_response_time = main->last_update_response_time;
+    message->last_update_response_timestamp = main->last_update_response_timestamp;
 
 #if INTENSIVE_RELAY_DEBUGGING
     printf( "send control message to ping thread\n" );
@@ -4531,7 +4537,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
             message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_up;
             memcpy( message->counters, relay->counters, sizeof(uint64_t) * NUM_RELAY_COUNTERS );
-            
+
             relay_platform_mutex_acquire( relay->stats_mutex );
             relay_queue_push( relay->stats_queue, message );
             relay_platform_mutex_release( relay->stats_mutex );
@@ -4595,33 +4601,69 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             last_pump_control_messages_time = current_time;
         }
 
-        // ignore zero byte packets
+        // ignore packets that are too small
 
-        if ( packet_bytes == 0 )
+        if ( packet_bytes < 1 )
             continue;
+
+        const uint8_t packet_id = packet_data[0];
 
         // don't process any packets until we have received the first relay update response
 
         if ( relay->control.last_update_response_time == 0 )
             continue;
 
-        // process packet
+        // ===================================================================================================================================================
 
-        relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
-        relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
+        // local packets
 
-#if RELAY_DEVELOPMENT
-        if ( relay->fake_packet_loss_start_time >= 0.0f )
+        const bool local = from.type == RELAY_ADDRESS_IPV4 && from.data.ipv4[0] == 127 && from.data.ipv4[1] == 0 && from.data.ipv4[2] == 0 && from.data.ipv4[3] == 1;
+
+        if ( local )
         {
-            const double current_time = relay_platform_time();
-            if ( current_time >= relay->fake_packet_loss_start_time && ( ( rand() % 100 ) < relay->fake_packet_loss_percent ) )
+            if ( packet_id == RELAY_LOCAL_PING_PACKET )
             {
-                continue;
+                const uint8_t * p = packet_data + 1;
+                relay_address_t to_address;
+                relay_read_address( &p, &to_address );
+                uint64_t sequence = relay_read_uint64( &p );
+
+                uint8_t forward_packet_data[256];
+                forward_packet_data[0] = RELAY_PING_PACKET;
+                uint8_t * q = forward_packet_data + 1;
+                relay_write_uint64( &q, sequence );
+
+                const int forward_packet_bytes = q - forward_packet_data;
+
+#if INTENSIVE_RELAY_DEBUGGING
+                char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+                relay_address_to_string( &to_address, address_string );
+                printf( "sending ping packet to %s on relay thread %d\n", address_string, relay->thread_index );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                relay_platform_socket_send_packet( relay->socket, &to_address, forward_packet_data, forward_packet_bytes );
             }
         }
-#endif // #if RELAY_DEVELOPMENT
+        else
+        {
+            relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
+            relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
 
-        int packet_id = packet_data[0];
+#if RELAY_DEVELOPMENT
+            if ( relay->fake_packet_loss_start_time >= 0.0f )
+            {
+                const double current_time = relay_platform_time();
+                if ( current_time >= relay->fake_packet_loss_start_time && ( ( rand() % 100 ) < relay->fake_packet_loss_percent ) )
+                {
+                    continue;
+                }
+            }
+#endif // #if RELAY_DEVELOPMENT
+        }
+
+        // ===================================================================================================================================================
+
+        // todo: these need to really be protected with packet filter checks
 
         if ( packet_id == RELAY_PING_PACKET && packet_bytes == 1 + 8 )
         {
@@ -4643,19 +4685,31 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             printf("relay pong packet\n");
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
+            relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
-            // todo: instead of processing it here, we need to put it on a queue for another thread to read
-            /*
             const uint8_t * p = packet_data + 1;
             uint64_t sequence = relay_read_uint64( &p );
-            relay_manager_process_pong( relay->relay_manager, &from, sequence );
-            */
+
+            uint8_t forward_packet_data[256];
+            forward_packet_data[0] = RELAY_LOCAL_PONG_PACKET;
+            uint8_t * q = forward_packet_data + 1;
+            relay_write_address( &q, &from );
+            relay_write_uint64( &q, sequence );
+
+            const int forward_packet_bytes = q - forward_packet_data;
+
+#if INTENSIVE_RELAY_DEBUGGING
+            char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_address_to_string( &from, address_string );
+            printf( "sending pong packet from %s to ping thread from relay thread %d\n", address_string, relay->thread_index );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+            relay_platform_socket_send_packet( relay->socket, &relay->ping_address, forward_packet_data, forward_packet_bytes );
         }
 
 // ==================================================================================================================================================================================
 
-        else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
+        if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
         {
 #if INTENSIVE_RELAY_DEBUGGING
             char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5891,36 +5945,48 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
             for ( int i = 0; i < num_pings; ++i )
             {
-                uint8_t packet_data[1+8];
+                uint8_t packet_data[256];
                 packet_data[0] = RELAY_LOCAL_PING_PACKET;
                 uint8_t * p = packet_data + 1;
                 relay_write_address( &p, &pings[i].address );
                 relay_write_uint64( &p, pings[i].sequence );
 
-                const int packet_bytes = 1 + 8;
+                const int packet_bytes = p - packet_data;
 
                 const int socket_index = i % ping->num_sockets;
 
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 char to_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                 relay_address_to_string( &local_relay_address, to_address );
                 printf( "sending local ping packet to %s on ping socket %d\n", to_address, socket_index );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
-                relay_platform_socket_send_packet( ping->socket[socket_index], &pings[i].address, packet_data, packet_bytes );
+                relay_platform_socket_send_packet( ping->socket[socket_index], &local_relay_address, packet_data, packet_bytes );
             }
 
             last_ping_time = current_time;
         }
 
-        // receive pong packets
+        // process packets
 
-        if ( packet_bytes == 0 )
+        if ( packet_bytes < 1 )
             continue;
 
-        // todo: check if internal pong packet
+        const uint8_t packet_type = packet_data[0];
 
-        // todo: process internal pong
+        if ( packet_type == RELAY_LOCAL_PONG_PACKET )
+        {
+// #if INTENSIVE_RELAY_DEBUGGING
+            printf( "local pong packet\n" );
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+            const uint8_t * p = packet_data + 1;
+            relay_address_t from_address;
+            relay_read_address( &p, &from_address );
+            uint64_t sequence = relay_read_uint64( &p );
+
+            relay_manager_process_pong( ping->relay_manager, &from_address, sequence );
+        }
     }
 
     RELAY_PLATFORM_THREAD_RETURN();

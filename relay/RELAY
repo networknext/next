@@ -38,27 +38,37 @@ DONE
 
 	Implement internal ping packet to send to 127.0.0.1:relay port (cache address at top of ping function)
 
-RELAY
+	Extend local packets to send/recv ping, and pong. Needs comms for each packet in both directions from ping thread.
 
 	Implement code in relay thread to listen for internal ping. Print out.
 
+	For some reason, relay thread is not receiving local send ping packets.
+
+	Not sure why?
+
+	It was a bug where the last relay update response time wasn't set on control. Fixed, and the local ping packets work.
+
 	Process the local ping and send a real ping via the relay thread socket.
 
-	------------------
+	Listen for real pings on the relay thread, and reply with pong.
+
+	Verify with multiple relays that pings are sent and received.
+
+	Clean up the extra packet types. Only need internal send ping, internal receive pong.
+
+RELAY
 
 	Implement code in relay thread to listen for relay pong packets, and translate them into internal pong packets sent to primary ping socket address [0].
 
 	Implement code to listen for internal pong packet on primary [0] ping socket.
 
-	Verify that pings and pongs work.
+	Handle the pong and insert it into the relay manager.
 
 	------------------
 
 	Now work out what we need to do to get pings/pongs setup to use basic and advanced packet filter.
 
-	At minimum there will need to be some awareness of internal vs. external addresses in the relay thread on send/recv.
-
-	The internal ping thread shouldn't need to worry about this. Internal ping/pong packets can be raw.
+	Make sure we only respond to a ping, if we know about that relay in our list (ping thread).
 
 	------------------
 
