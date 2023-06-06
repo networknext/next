@@ -3901,6 +3901,8 @@ struct relay_stats_message_t
     uint64_t counters[NUM_RELAY_COUNTERS];
 };
 
+struct ping_stats_message_t : public relay_stats_t {};
+
 // -----------------------------------------------------------------------------
 
 #define RELAY_TOKEN_BYTES 32
@@ -4153,11 +4155,9 @@ int main_update( main_t * main )
 
     relay_write_uint64( &p, timestamp );
 
-    // todo: bring back once relay pings are sorted out
-    /*
-    relay_stats_t stats;
-    relay_manager_get_stats( relay->relay_manager, &stats );
+    // todo: pump ping stats messages
 
+    /*
     relay_write_uint32( &p, stats.num_relays );
     for ( int i = 0; i < stats.num_relays; ++i )
     {
@@ -5315,6 +5315,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     continue;
                 }
 
+                // todo
                 /*
                 if ( session->expire_timestamp < relay_timestamp( relay ) )
                 {
@@ -5853,6 +5854,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
     double last_pump_control_messages_time = relay_platform_time();
     double last_ping_time = relay_platform_time();
+    double last_ping_stats_time = relay_platform_time();
 
     relay_address_t local_relay_address;
     local_relay_address.type = RELAY_ADDRESS_IPV4;
@@ -5909,7 +5911,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             relay_manager_update( ping->relay_manager, ping->control.num_relays, ping->control.relay_ids, ping->control.relay_addresses );
 
             /*
-            // todo
             printf( "----------------------------------------------------\n" );
             for ( int i = 0; i < ping->control.num_relays; i++ )
             {
@@ -5918,6 +5919,24 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             }
             printf( "----------------------------------------------------\n" );
             */
+        }
+
+        // post relay stats message for main thread
+
+        if ( last_ping_stats_time + 0.1 <= current_time )
+        {
+// #if INTENSIVE_RELAY_DEBUGGING
+            printf( "ping thread post ping stats message\n" );
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+            /*
+            relay_stats_t stats;
+            relay_manager_get_stats( relay->relay_manager, &stats );
+            */
+
+            // todo: send the ping stats message to main thread
+
+            last_ping_stats_time = current_time;
         }
 
         // send pings

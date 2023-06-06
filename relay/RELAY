@@ -56,17 +56,39 @@ DONE
 
 	Clean up the extra packet types. Only need internal send ping, internal receive pong.
 
-RELAY
-
 	Implement code in relay thread to listen for relay pong packets, and translate them into internal pong packets sent to primary ping socket address [0].
 
 	Implement code to listen for internal pong packet on primary [0] ping socket.
 
 	Handle the pong and insert it into the relay manager.
 
+	Verify that we have pongs working end-to-end with multiple relays.
+
+	The ping thread needs to send ping data to the main thread, so it can be uploaded in the next relay update to backend.
+
+	It should be done 10X per-second, since the upload is once per-second.
+
+	What should this message be called?
+
+		relay_ping_data_message_t ?
+
+	Sure. Why not.
+
+	Sketch out the ping_stats_message_t
+
+RELAY
+
+	Fill out the ping stats and post it to main thread.
+
+	Pump the ping stats on main thread, before the relay update, save local (copy).
+
+	Use the stashed local most recent ping stats in the relay update on main thread.
+
+	Print out the ping stats to verify they are actually really working end-to-end and uploading good ping stats to the relay backend.
+
 	------------------
 
-	Now work out what we need to do to get pings/pongs setup to use basic and advanced packet filter.
+	Work out what we need to do to get pings/pongs setup to use basic and advanced packet filter.
 
 	Make sure we only respond to a ping, if we know about that relay in our list (ping thread).
 
