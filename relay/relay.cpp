@@ -3963,6 +3963,9 @@ struct main_t
     relay_platform_mutex_t ** relay_control_mutex;
     relay_queue_t * ping_control_queue;
     relay_platform_mutex_t * ping_control_mutex;
+    relay_queue_t * ping_stats_queue;
+    relay_platform_mutex_t * ping_stats_mutex;
+    ping_stats_message_t ping_stats;
 };
 
 struct ping_t
@@ -3974,6 +3977,8 @@ struct ping_t
     relay_control_message_t control;
     relay_queue_t * control_queue;
     relay_platform_mutex_t * control_mutex;
+    relay_queue_t * ping_stats_queue;
+    relay_platform_mutex_t * ping_stats_mutex;
 };
 
 struct relay_t
@@ -4139,6 +4144,24 @@ void clamp( int & value, int min, int max )
 
 int main_update( main_t * main )
 {
+    // pump ping stats messages
+
+    while ( true )
+    {
+        relay_platform_mutex_acquire( main->ping_stats_mutex );
+        ping_stats_message_t * message = (ping_stats_message_t*) relay_queue_pop( main->ping_stats_queue );
+        relay_platform_mutex_release( main->ping_stats_mutex );
+        if ( message == NULL )
+        {
+            break;
+        }
+#if INTENSIVE_RELAY_DEBUGGING
+        printf( "processing ping stats message on main thread\n" );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+        main->ping_stats = *message;
+        free( message );
+    }
+
     // build update data
 
     uint8_t update_version = 1;
@@ -4155,16 +4178,13 @@ int main_update( main_t * main )
 
     relay_write_uint64( &p, timestamp );
 
-    // todo: pump ping stats messages
-
-    /*
-    relay_write_uint32( &p, stats.num_relays );
-    for ( int i = 0; i < stats.num_relays; ++i )
+    relay_write_uint32( &p, main->ping_stats.num_relays );
+    for ( int i = 0; i < main->ping_stats.num_relays; ++i )
     {
-        relay_write_uint64( &p, stats.relay_ids[i] );
-        float rtt = stats.relay_rtt[i];
-        float jitter = stats.relay_jitter[i];
-        float packet_loss = stats.relay_packet_loss[i] / 100.0f * 65535.0f;
+        relay_write_uint64( &p, main->ping_stats.relay_ids[i] );
+        float rtt = main->ping_stats.relay_rtt[i];
+        float jitter = main->ping_stats.relay_jitter[i];
+        float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
         int integer_rtt = int( rtt + 0.5f );
         int integer_jitter = int( jitter + 0.5f );
         int integer_packet_loss = int( packet_loss + 0.5f );
@@ -4175,11 +4195,6 @@ int main_update( main_t * main )
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
     }
-    */
-
-    // todo: temporary
-    uint32_t num_relays = 0;
-    relay_write_uint32( &p, num_relays );
 
     uint64_t session_count = 0;
     uint32_t envelope_bandwidth_up_kbps = 0;
@@ -4304,7 +4319,7 @@ int main_update( main_t * main )
     main->last_update_response_timestamp = response_timestamp;
     main->last_update_response_time = relay_platform_time();
 
-    num_relays = relay_read_uint32( &q );
+    int num_relays = relay_read_uint32( &q );
 
     if ( num_relays > MAX_RELAYS )
     {
@@ -4324,7 +4339,7 @@ int main_update( main_t * main )
     relay_ping_data_t relay_ping_data[MAX_RELAYS];
     memset( relay_ping_data, 0, sizeof(relay_ping_data) );
 
-    for ( uint32_t i = 0; i < num_relays; ++i )
+    for ( int i = 0; i < num_relays; i++ )
     {
         relay_ping_data[i].id = relay_read_uint64( &q );
         relay_read_address_variable( &q, &relay_ping_data[i].address );
@@ -4561,9 +4576,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
                     relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
                     iter = relay->sessions->erase( iter );
-                    // todo: I think we need to subtract from kbps up/down here?
                 }
                 else
                 {
@@ -4943,6 +4959,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
@@ -5073,6 +5091,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue request. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
@@ -5188,6 +5208,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue response packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
@@ -5322,6 +5344,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored client to server packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_SESSION_EXPIRED]++;
                     relay->sessions->erase(hash);
                     continue;
@@ -5460,6 +5484,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored server to client packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
@@ -5590,6 +5616,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
@@ -5719,6 +5747,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. session expired [sdk5]\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->envelope_bandwidth_kbps_up -= session->kbps_up;
+                    relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                     relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
@@ -5925,16 +5955,17 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         if ( last_ping_stats_time + 0.1 <= current_time )
         {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "ping thread post ping stats message\n" );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            /*
-            relay_stats_t stats;
-            relay_manager_get_stats( relay->relay_manager, &stats );
-            */
+            ping_stats_message_t * message = (ping_stats_message_t*) malloc( sizeof(ping_stats_message_t) );
 
-            // todo: send the ping stats message to main thread
+            relay_manager_get_stats( ping->relay_manager, message );
+
+            relay_platform_mutex_acquire( ping->ping_stats_mutex );
+            relay_queue_push( ping->ping_stats_queue, message );
+            relay_platform_mutex_release( ping->ping_stats_mutex );
 
             last_ping_stats_time = current_time;
         }
@@ -5995,9 +6026,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         if ( packet_type == RELAY_LOCAL_PONG_PACKET )
         {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "local pong packet\n" );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
             const uint8_t * p = packet_data + 1;
             relay_address_t from_address;
@@ -6261,6 +6292,9 @@ int main( int argc, const char ** argv )
     relay_queue_t * ping_control_queue = relay_queue_create( 64 );
     relay_platform_mutex_t * ping_control_mutex = relay_platform_mutex_create();
 
+    relay_queue_t * ping_stats_queue = relay_queue_create( 64 );
+    relay_platform_mutex_t * ping_stats_mutex = relay_platform_mutex_create();
+
     // =============================================================================================================================
 
     // create internal ping sockets (loopback only)
@@ -6310,6 +6344,8 @@ int main( int argc, const char ** argv )
     ping.socket = ping_socket;
     ping.control_queue = ping_control_queue;
     ping.control_mutex = ping_control_mutex;
+    ping.ping_stats_queue = ping_stats_queue;
+    ping.ping_stats_mutex = ping_stats_mutex;
 
     ping.relay_manager = relay_manager_create();
     if ( !ping.relay_manager )
@@ -6436,6 +6472,8 @@ int main( int argc, const char ** argv )
     main.relay_control_mutex = relay_control_mutex;
     main.ping_control_queue = ping_control_queue;
     main.ping_control_mutex = ping_control_mutex;
+    main.ping_stats_queue = ping_stats_queue;
+    main.ping_stats_mutex = ping_stats_mutex;
     
     while ( !quit )
     {
@@ -6566,6 +6604,10 @@ int main( int argc, const char ** argv )
     relay_queue_destroy( ping_control_queue );
 
     relay_platform_mutex_destroy( ping_control_mutex );
+
+    relay_queue_destroy( ping_stats_queue );
+
+    relay_platform_mutex_destroy( ping_stats_mutex );
 
     printf( "Cleaning up curl\n" );
 

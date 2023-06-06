@@ -295,7 +295,7 @@ func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayMa
 				costString := ""
 				index := core.TriMatrixIndex(i, j)
 				cost := costMatrix.Costs[index]
-				if cost >= 0 {
+				if cost >= 0 && cost < 255 {
 					costString = fmt.Sprintf("%d", cost)
 				} else {
 					nope = true
