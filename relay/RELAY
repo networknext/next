@@ -2,13 +2,15 @@ DONE
 
 	Double check envelope kbps up/down is properly added/subtracted when sessions are created, destroyed and timed out.
 
-RELAY
-
-	Calculate actual bandwidth up/down for relay
+	Calculate packets sent/received per-second for relay
 
 	Calculate bandwidth sent/received for relay
 
-	Calculate packets sent/received per-second for relay
+RELAY
+
+	Calculate near pings per-second
+
+	Calculate relay pings per-second
 
 	------------------
 

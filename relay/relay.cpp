@@ -3898,6 +3898,10 @@ struct relay_stats_message_t
     uint32_t session_count;
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
+    double packets_sent_per_second;
+    double packets_received_per_second;
+    double bandwidth_sent_kbps;
+    double bandwidth_received_kbps;
     uint64_t counters[NUM_RELAY_COUNTERS];
 };
 
@@ -3997,6 +4001,11 @@ struct relay_t
     relay_queue_t * stats_queue;
     relay_platform_mutex_t * control_mutex;
     relay_queue_t * control_queue;
+    double last_stats_time;
+    uint64_t last_stats_packets_sent;
+    uint64_t last_stats_packets_received;
+    uint64_t last_stats_bytes_sent;
+    uint64_t last_stats_bytes_received;
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[NUM_RELAY_COUNTERS];
@@ -4206,15 +4215,13 @@ int main_update( main_t * main )
     envelope_bandwidth_up_kbps = main->stats.envelope_bandwidth_kbps_up;
     envelope_bandwidth_down_kbps = main->stats.envelope_bandwidth_kbps_down;
 
+    // todo: write final stats here
+
     relay_write_uint32( &p, session_count );
     relay_write_uint32( &p, envelope_bandwidth_up_kbps );
     relay_write_uint32( &p, envelope_bandwidth_down_kbps );
-    relay_write_uint32( &p, actual_bandwidth_up_kbps );
+    relay_write_float32( &p, actual_bandwidth_up_kbps );
     relay_write_uint32( &p, actual_bandwidth_down_kbps );
-
-    // todo: actual bandwidth up/down could be calculated
-    // todo: bandwidth sent/received could also be calculated
-    // todo: packets sent/received would be nice here
 
     const uint64_t SHUTTING_DOWN = 1;
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
@@ -4546,11 +4553,41 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             printf( "thread %d sent stats message\n", relay->thread_index );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
+            double time_since_last_update = current_time - relay->last_stats_time;
+
+            relay->last_stats_time = current_time;
+
+            uint64_t packets_sent_since_last_update = ( relay->counters[RELAY_COUNTER_PACKETS_SENT] > relay->last_stats_packets_sent ) ? relay->counters[RELAY_COUNTER_PACKETS_SENT] - relay->last_stats_packets_sent : 0;
+            uint64_t packets_received_since_last_update = ( relay->counters[RELAY_COUNTER_PACKETS_RECEIVED] > relay->last_stats_packets_received ) ? relay->counters[RELAY_COUNTER_PACKETS_RECEIVED] - relay->last_stats_packets_received : 0;
+
+            uint64_t bytes_sent_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_SENT] > relay->last_stats_bytes_sent ) ? relay->counters[RELAY_COUNTER_BYTES_SENT] - relay->last_stats_bytes_sent : 0;
+            uint64_t bytes_received_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_RECEIVED] > relay->last_stats_bytes_received ) ? relay->counters[RELAY_COUNTER_BYTES_RECEIVED] - relay->last_stats_bytes_received : 0;
+
+            double packets_sent_per_second = 0.0;
+            double packets_received_per_second = 0.0;
+            double bytes_sent_per_second = 0.0;
+            double bytes_received_per_second = 0.0;
+            if ( time_since_last_update > 0.0 )
+            {
+                packets_sent_per_second = packets_sent_since_last_update / time_since_last_update;
+                packets_received_per_second = packets_received_since_last_update / time_since_last_update;
+                bytes_sent_per_second = bytes_sent_since_last_update / time_since_last_update;
+                bytes_received_per_second = bytes_received_since_last_update / time_since_last_update;
+            }
+
+            double bandwidth_sent_kbps = bytes_sent_per_second * 8.0 / 1000.0;
+            double bandwidth_received_kbps = bytes_received_per_second * 8.0 / 1000.0;
+
             relay_stats_message_t * message = (relay_stats_message_t*) malloc( sizeof(relay_stats_message_t) );
+            memset( message, 0, sizeof(relay_stats_message_t) );
             message->thread_index = relay->thread_index;
             message->session_count = relay->sessions->size();
             message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
             message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_up;
+            message->packets_sent_per_second = packets_sent_per_second;
+            message->packets_received_per_second = packets_received_per_second;
+            message->bandwidth_sent_kbps = bandwidth_sent_kbps;
+            message->bandwidth_received_kbps = bandwidth_received_kbps;
             memcpy( message->counters, relay->counters, sizeof(uint64_t) * NUM_RELAY_COUNTERS );
 
             relay_platform_mutex_acquire( relay->stats_mutex );
@@ -6499,6 +6536,10 @@ int main( int argc, const char ** argv )
             main.stats.session_count += relay_thread_stats[i].session_count;
             main.stats.envelope_bandwidth_kbps_up += relay_thread_stats[i].envelope_bandwidth_kbps_up;
             main.stats.envelope_bandwidth_kbps_down += relay_thread_stats[i].envelope_bandwidth_kbps_down;
+            main.stats.packets_sent_per_second += relay_thread_stats[i].packets_sent_per_second;
+            main.stats.packets_received_per_second += relay_thread_stats[i].packets_received_per_second;
+            main.stats.bandwidth_sent_kbps += relay_thread_stats[i].bandwidth_sent_kbps;
+            main.stats.bandwidth_received_kbps += relay_thread_stats[i].bandwidth_received_kbps;
             for ( int j = 0; j < num_threads; j++ )
             {
                 main.stats.counters[j] += relay_thread_stats[i].counters[j];
