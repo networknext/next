@@ -1,46 +1,20 @@
 DONE
 
-	Double check envelope kbps up/down is properly added/subtracted when sessions are created, destroyed and timed out.
-
-	Calculate packets sent/received per-second for relay
-
-	Calculate bandwidth sent/received for relay
-
-	Calculate near pings per-second
-
-	Calculate relay pings per-second
-
-	Print out all stats and make sure they are valid.
-
-	Verify with multiple relays that all stats make sense
-
-	(packets sent and received, bandwidth sent and received, relay pings received per-second etc...)
-
-	Extend relay to send up start time and current time to relay backend (timestamp).
-
-	Plumb all the relay stats up to the relay backend.
-
-	Update messages.PortalRelayUpdateMessage with new data
-
-	Update portal redis storage with new data
-
-	Update processing in portal cruncher for relay message
-
-RELAY
-
 	Update messages.AnalyticsRelayUpdateMessage with new data
 
 	Update analytics to make sure everything is plumbed end-to-end.
+
+	Does the happy path work with the new relay? Yes!
+
+RELAY
+
+	Do the func tests work with the new relay?
 
 	------------------
 
 	Work out what we need to do to get pings/pongs setup to use basic and advanced packet filter.
 
 	Make sure we only respond to a ping, if we know about that relay in our list (ping thread).
-
-	------------------
-
-	Make sure the func tests pass with the relay
 
 	------------------
 
