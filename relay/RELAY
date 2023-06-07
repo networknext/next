@@ -1,141 +1,19 @@
 DONE
 
-	Update messages.AnalyticsRelayUpdateMessage with new data
+	Fixed session map issue issue causing problems with multiple sessions on relays.
 
-	Update analytics to make sure everything is plumbed end-to-end.
-
-	Does the happy path work with the new relay? Yes!
-
-	Do the func tests work with the new relay?
-
-	Func test sdk5 does not pass.
-
-	The reason is because the func tests are binding relays to port 0.
-
-	They need to be adjusted to specify the relay port number...	
- 
-	It seems like many relay involving func tests pass now, but, there is a 100% fail here:
-
-		run func-test-sdk5 test_reconnect_next
-
-	This is reproducible on Mac.
-
-	What's going on here?
-
-		100056.898974: info: client next route
-		100056.899005: debug: client sent route update ack packet to server
-		100056.899018: debug: client sent route request to relay: 127.0.0.1:2000
-		100057.159261: debug: client sent route request to relay: 127.0.0.1:2000
-		100057.410995: debug: client sent route request to relay: 127.0.0.1:2000
-		100057.676400: debug: client sent route request to relay: 127.0.0.1:2000
-		100057.932303: debug: client sent route request to relay: 127.0.0.1:2000
-		100058.186497: debug: client sent route request to relay: 127.0.0.1:2000
-		100058.451540: debug: client sent route request to relay: 127.0.0.1:2000
-		100058.719913: debug: client sent route request to relay: 127.0.0.1:2000
-		100058.972821: debug: client sent route request to relay: 127.0.0.1:2000
-		100059.230567: debug: client sent route request to relay: 127.0.0.1:2000
-		100059.490487: debug: client sent route request to relay: 127.0.0.1:2000
-		100059.742404: debug: client sent route request to relay: 127.0.0.1:2000
-		100060.015678: debug: client sent route request to relay: 127.0.0.1:2000
-		100060.269341: debug: client sent route request to relay: 127.0.0.1:2000
-		100060.529276: debug: client sent route request to relay: 127.0.0.1:2000
-		100060.800092: debug: client sent route request to relay: 127.0.0.1:2000
-		100061.064477: debug: client sent route request to relay: 127.0.0.1:2000
-		100061.321332: debug: client sent route request to relay: 127.0.0.1:2000
-		100061.577104: debug: client sent route request to relay: 127.0.0.1:2000
-		100061.832484: debug: client sent route request to relay: 127.0.0.1:2000
-		100061.932936: error: client route request timed out
-		100061.932969: info: client fallback to direct
-		100072.412011: info: client closed session to 127.0.0.1:32202
-
-	It seems like on the reconnect, the route request is not getting a response through the relays.
-
-	However, it seems that the server is getting the route request and replying:
-
-		100056.899212: debug: server received route request packet from relay for session 3a33242737c638a4
-		100056.899219: debug: server added pending route for session 3a33242737c638a4
-		100056.899235: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100057.159598: debug: server received route request packet from relay for session 3a33242737c638a4
-		100057.159616: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100057.411740: debug: server received route request packet from relay for session 3a33242737c638a4
-		100057.411782: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100057.473123: debug: server received client stats packet for session 3a33242737c638a4
-		100057.677210: debug: server received route request packet from relay for session 3a33242737c638a4
-		100057.677249: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100057.932583: debug: server received route request packet from relay for session 3a33242737c638a4
-		100057.932607: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100058.186952: debug: server received route request packet from relay for session 3a33242737c638a4
-		100058.186985: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100058.452179: debug: server received route request packet from relay for session 3a33242737c638a4
-		100058.452221: debug: server sent route response packet to relay for session 3a33242737c638a4
-		100058.490553: debug: server received client stats packet for session 3a33242737c638a4
-
-	This seems to indicate to me that there is something going wrong on the relays, in the return direction.
-
-	On semaphore, only the following tests fail:
-
-		test_reconnect_next
-		test_connect_to_another_server_next
-		test_server_under_load
-
-	What all these have in common is more than one session going through the relay.
-
-	Is something wrong with the session map?
-
-	Seems like the appropriate thing to do now is to try to run the whole backend locally with relays and reproduce some problem.
-
-	And... I can reproduce on the second client connect:
-
-		100010.562065: info: client near relay pings completed
-		100010.562577: info: client next route
-		100010.562599: info: client multipath enabled
-		100010.562643: debug: client sent route update ack packet to server
-		100010.562716: debug: client sent route request to relay: 127.0.0.1:2000
-		100010.828308: debug: client sent route request to relay: 127.0.0.1:2000
-		100011.081904: debug: client sent route request to relay: 127.0.0.1:2000
-		100011.336933: debug: client sent route request to relay: 127.0.0.1:2000
-		100011.591404: debug: client sent route request to relay: 127.0.0.1:2000
-		100011.845946: debug: client sent route request to relay: 127.0.0.1:2000
-		100012.097628: debug: client sent route request to relay: 127.0.0.1:2000
-		100012.354175: debug: client sent route request to relay: 127.0.0.1:2000
-		100012.621804: debug: client sent route request to relay: 127.0.0.1:2000
-		100012.884413: debug: client sent route request to relay: 127.0.0.1:2000
-		100013.147615: debug: client sent route request to relay: 127.0.0.1:2000
-		100013.401715: debug: client sent route request to relay: 127.0.0.1:2000
-		100013.659262: debug: client sent route request to relay: 127.0.0.1:2000
-		100013.926579: debug: client sent route request to relay: 127.0.0.1:2000
-		100014.190196: debug: client sent route request to relay: 127.0.0.1:2000
-		100014.440455: debug: client sent route request to relay: 127.0.0.1:2000
-		100014.698131: debug: client sent route request to relay: 127.0.0.1:2000
-		100014.953606: debug: client sent route request to relay: 127.0.0.1:2000
-		100015.205016: debug: client sent route request to relay: 127.0.0.1:2000
-		100015.472728: debug: client sent route request to relay: 127.0.0.1:2000
-		100015.570449: error: client route request timed out
-		100015.570491: info: client fallback to direct
-
-	Now we just need to add logs until the repro is clear.
-
-	Right now it seems that running the relay with more logs, eg. for unexpected packets is helpful for diagnosing why packets get ignored it.
-
-	Turn this on, and make it less chatty so I can actually have it on during development.
-
-	The failure is here:
-
-		ignored route response packet. packet already received (1 <= 481)
-
-	It seems I can reproduce this by having multiple sessions on the same relay.
-
-	I think wires are getting cross when looking up sessions.
-
-	???
-
-	Confirmed. Caught it in the act.
-
-	Fixed :)
+	Happy path is still failing on semaphore.
 
 RELAY
 
-	Now I need to work out why the happy path is not working on Linux.
+	I think the correct thing now is to run the whole backend manually on linux and explore what's going on.
+
+	It seems that the happy path is failing because the route request is sent across, but the response doen't come back.
+
+	But it's strange that the happy path doesn't work on linux, when it does work on mac, and all the func tests for the sdk pass (both linux and mac)...
+
+	How could this be?
+	
 
 
 
@@ -164,6 +42,17 @@ RELAY
 
 
 
+
+
+
+
+
+
+	------------------
+
+	Heisenbug on backend func test:
+
+		error: received too many messages!
 
 	------------------
 
@@ -171,9 +60,7 @@ RELAY
 
 	Make sure we only respond to a ping, if we know about that relay in our list (ping thread).
 
-	------------------
-
-	Fix the relay so that session expire comes back. Debug why it was having problems?
+	Make sure relay pongs are smaller than relay pings, so we can't have amplification.
 
 	------------------
 
