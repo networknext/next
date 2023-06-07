@@ -146,18 +146,21 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
     // set reuse address and port options
 
-[        const int enable = 1;
-
-    if ( setsockopt( socket->handle, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int) ) != 0 )
+    if ( address->port != 0 )
     {
-        printf( "failed to set socket reuse address" );
-        return NULL;
-    }
+        const int enable = 1;
 
-    if ( setsockopt( socket->handle, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int) ) != 0 )
-    {
-        printf( "failed to set socket reuse port" );
-        return NULL;
+        if ( setsockopt( socket->handle, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int) ) != 0 )
+        {
+            printf( "failed to set socket reuse address" );
+            return NULL;
+        }
+
+        if ( setsockopt( socket->handle, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int) ) != 0 )
+        {
+            printf( "failed to set socket reuse port" );
+            return NULL;
+        }
     }
 
     // bind to port
