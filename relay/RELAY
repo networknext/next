@@ -14,8 +14,6 @@ DONE
 
 	They need to be adjusted to specify the relay port number...	
  
- RELAY
-
 	It seems like many relay involving func tests pass now, but, there is a 100% fail here:
 
 		run func-test-sdk5 test_reconnect_next
@@ -84,6 +82,54 @@ DONE
 
 	Is something wrong with the session map?
 
+RELAY
+
+	Seems like the appropriate thing to do now is to try to run the whole backend locally with relays and reproduce some problem.
+
+	And... I can reproduce on the second client connect:
+
+		100010.562065: info: client near relay pings completed
+		100010.562577: info: client next route
+		100010.562599: info: client multipath enabled
+		100010.562643: debug: client sent route update ack packet to server
+		100010.562716: debug: client sent route request to relay: 127.0.0.1:2000
+		100010.828308: debug: client sent route request to relay: 127.0.0.1:2000
+		100011.081904: debug: client sent route request to relay: 127.0.0.1:2000
+		100011.336933: debug: client sent route request to relay: 127.0.0.1:2000
+		100011.591404: debug: client sent route request to relay: 127.0.0.1:2000
+		100011.845946: debug: client sent route request to relay: 127.0.0.1:2000
+		100012.097628: debug: client sent route request to relay: 127.0.0.1:2000
+		100012.354175: debug: client sent route request to relay: 127.0.0.1:2000
+		100012.621804: debug: client sent route request to relay: 127.0.0.1:2000
+		100012.884413: debug: client sent route request to relay: 127.0.0.1:2000
+		100013.147615: debug: client sent route request to relay: 127.0.0.1:2000
+		100013.401715: debug: client sent route request to relay: 127.0.0.1:2000
+		100013.659262: debug: client sent route request to relay: 127.0.0.1:2000
+		100013.926579: debug: client sent route request to relay: 127.0.0.1:2000
+		100014.190196: debug: client sent route request to relay: 127.0.0.1:2000
+		100014.440455: debug: client sent route request to relay: 127.0.0.1:2000
+		100014.698131: debug: client sent route request to relay: 127.0.0.1:2000
+		100014.953606: debug: client sent route request to relay: 127.0.0.1:2000
+		100015.205016: debug: client sent route request to relay: 127.0.0.1:2000
+		100015.472728: debug: client sent route request to relay: 127.0.0.1:2000
+		100015.570449: error: client route request timed out
+		100015.570491: info: client fallback to direct
+
+	Now we just need to add logs until the repro is clear.
+
+	Right now it seems that running the relay with more logs, eg. for unexpected packets is helpful for diagnosing why packets get ignored it.
+
+	Turn this on, and make it less chatty so I can actually have it on during development.
+
+	The failure is here:
+
+		ignored route response packet. packet already received (1 <= 481)
+
+	It seems I can reproduce this by having multiple sessions on the same relay.
+
+	I think wires are getting cross when looking up sessions.
+
+	???
 	
 
 
