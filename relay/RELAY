@@ -82,8 +82,6 @@ DONE
 
 	Is something wrong with the session map?
 
-RELAY
-
 	Seems like the appropriate thing to do now is to try to run the whole backend locally with relays and reproduce some problem.
 
 	And... I can reproduce on the second client connect:
@@ -130,7 +128,14 @@ RELAY
 	I think wires are getting cross when looking up sessions.
 
 	???
-	
+
+	Confirmed. Caught it in the act.
+
+	Fixed :)
+
+RELAY
+
+	Now I need to work out why the happy path is not working on Linux.
 
 
 

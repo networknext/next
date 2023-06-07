@@ -26,7 +26,7 @@
 
 #define RELAY_MTU                                               1300
 
-#define RELAY_HEADER_BYTES_SDK5                                   33
+#define RELAY_HEADER_BYTES                                        33
 
 #define RELAY_ADDRESS_BYTES                                       19
 #define RELAY_ADDRESS_BYTES_SHORT                                  7
@@ -41,22 +41,22 @@
 #define RELAY_CONTINUE_TOKEN_BYTES                                17
 #define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
 
-#define RELAY_PING_TOKEN_BYTES_SDK5                               46
-#define RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5                     86
+#define RELAY_PING_TOKEN_BYTES                                    46
+#define RELAY_ENCRYPTED_PING_TOKEN_BYTES                          86
 
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
 
-#define RELAY_ROUTE_REQUEST_PACKET_SDK5                            9
-#define RELAY_ROUTE_RESPONSE_PACKET_SDK5                          10
-#define RELAY_CLIENT_TO_SERVER_PACKET_SDK5                        11
-#define RELAY_SERVER_TO_CLIENT_PACKET_SDK5                        12
-#define RELAY_SESSION_PING_PACKET_SDK5                            13
-#define RELAY_SESSION_PONG_PACKET_SDK5                            14
-#define RELAY_CONTINUE_REQUEST_PACKET_SDK5                        15
-#define RELAY_CONTINUE_RESPONSE_PACKET_SDK5                       16
-#define RELAY_NEAR_PING_PACKET_SDK5                               20
-#define RELAY_NEAR_PONG_PACKET_SDK5                               21
+#define RELAY_ROUTE_REQUEST_PACKET                                 9
+#define RELAY_ROUTE_RESPONSE_PACKET                               10
+#define RELAY_CLIENT_TO_SERVER_PACKET                             11
+#define RELAY_SERVER_TO_CLIENT_PACKET                             12
+#define RELAY_SESSION_PING_PACKET                                 13
+#define RELAY_SESSION_PONG_PACKET                                 14
+#define RELAY_CONTINUE_REQUEST_PACKET                             15
+#define RELAY_CONTINUE_RESPONSE_PACKET                            16
+#define RELAY_NEAR_PING_PACKET                                    20
+#define RELAY_NEAR_PONG_PACKET                                    21
 
 #define RELAY_PING_HISTORY_ENTRY_COUNT                           256
 
@@ -2740,7 +2740,7 @@ int relay_write_header_sdk5( int direction, uint8_t type, uint64_t sequence, uin
         assert( ( sequence & ( 1ULL << 63 ) ) == 0 );
     }
 
-    if ( type == RELAY_SESSION_PING_PACKET_SDK5 || type == RELAY_SESSION_PONG_PACKET_SDK5 || type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    if ( type == RELAY_SESSION_PING_PACKET || type == RELAY_SESSION_PONG_PACKET || type == RELAY_ROUTE_RESPONSE_PACKET || type == RELAY_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
         assert( sequence & ( 1ULL << 62 ) );
@@ -2778,7 +2778,7 @@ int relay_write_header_sdk5( int direction, uint8_t type, uint64_t sequence, uin
 
     buffer += encrypted_length;
 
-    assert( int( buffer - start ) == RELAY_HEADER_BYTES_SDK5 );
+    assert( int( buffer - start ) == RELAY_HEADER_BYTES );
 
     return RELAY_OK;
 }
@@ -2789,7 +2789,7 @@ int relay_peek_header_sdk5( int direction, int packet_type, uint64_t * sequence,
 
     assert( buffer );
 
-    if ( buffer_length < RELAY_HEADER_BYTES_SDK5 )
+    if ( buffer_length < RELAY_HEADER_BYTES )
         return RELAY_ERROR;
 
     packet_sequence = relay_read_uint64( &buffer );
@@ -2807,7 +2807,7 @@ int relay_peek_header_sdk5( int direction, int packet_type, uint64_t * sequence,
             return RELAY_ERROR;
     }
 
-    if ( packet_type == RELAY_SESSION_PING_PACKET_SDK5 || packet_type == RELAY_SESSION_PONG_PACKET_SDK5 || packet_type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || packet_type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    if ( packet_type == RELAY_SESSION_PING_PACKET || packet_type == RELAY_SESSION_PONG_PACKET || packet_type == RELAY_ROUTE_RESPONSE_PACKET || packet_type == RELAY_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
         assert( packet_sequence & ( 1ULL << 62 ) );
@@ -2830,7 +2830,7 @@ int relay_verify_header_sdk5( int direction, int packet_type, const uint8_t * pr
     assert( private_key );
     assert( buffer );
 
-    if ( buffer_length < RELAY_HEADER_BYTES_SDK5 )
+    if ( buffer_length < RELAY_HEADER_BYTES )
     {
         return RELAY_ERROR;
     }
@@ -2856,7 +2856,7 @@ int relay_verify_header_sdk5( int direction, int packet_type, const uint8_t * pr
         }
     }
 
-    if ( packet_type == RELAY_SESSION_PING_PACKET_SDK5 || packet_type == RELAY_SESSION_PONG_PACKET_SDK5 || packet_type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || packet_type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    if ( packet_type == RELAY_SESSION_PING_PACKET || packet_type == RELAY_SESSION_PONG_PACKET || packet_type == RELAY_ROUTE_RESPONSE_PACKET || packet_type == RELAY_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
         assert( packet_sequence & ( 1ULL << 62 ) );
@@ -3406,7 +3406,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 int relay_write_route_request_packet_sdk5( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_ROUTE_REQUEST_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_ROUTE_REQUEST_PACKET );
     uint8_t * a = p; p += 15;
     relay_write_bytes( &p, token_data, token_bytes );
     uint8_t * b = p; p += 2;
@@ -3419,14 +3419,14 @@ int relay_write_route_request_packet_sdk5( uint8_t * packet_data, const uint8_t 
 int relay_write_route_response_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_ROUTE_RESPONSE_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_ROUTE_RESPONSE_PACKET );
     uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES;
     send_sequence |= uint64_t(1) << 63;
     send_sequence |= uint64_t(1) << 62;
-    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
@@ -3438,7 +3438,7 @@ int relay_write_route_response_packet_sdk5( uint8_t * packet_data, uint64_t send
 int relay_write_continue_request_packet_sdk5( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CONTINUE_REQUEST_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_CONTINUE_REQUEST_PACKET );
     uint8_t * a = p; p += 15;
     relay_write_bytes( &p, token_data, token_bytes );
     uint8_t * b = p; p += 2;
@@ -3451,14 +3451,14 @@ int relay_write_continue_request_packet_sdk5( uint8_t * packet_data, const uint8
 int relay_write_continue_response_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CONTINUE_RESPONSE_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_CONTINUE_RESPONSE_PACKET );
     uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES;
     send_sequence |= uint64_t(1) << 63;
     send_sequence |= uint64_t(1) << 62;
-    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
@@ -3475,12 +3475,12 @@ int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t se
     assert( game_packet_bytes >= 0 );
     assert( game_packet_bytes <= RELAY_MTU );
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CLIENT_TO_SERVER_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_CLIENT_TO_SERVER_PACKET );
     uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
-    if ( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-    if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
@@ -3498,13 +3498,13 @@ int relay_write_server_to_client_packet_sdk5( uint8_t * packet_data, uint64_t se
     assert( game_packet_bytes >= 0 );
     assert( game_packet_bytes <= RELAY_MTU );
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_SERVER_TO_CLIENT_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_SERVER_TO_CLIENT_PACKET );
     uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES;
     send_sequence |= uint64_t(1) << 63;
-    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
@@ -3519,13 +3519,13 @@ int relay_write_session_ping_packet_sdk5( uint8_t * packet_data, uint64_t send_s
     assert( packet_data );
     assert( private_key );
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_SESSION_PING_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_SESSION_PING_PACKET );
     uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES;
     send_sequence |= uint64_t(1) << 62;
-    if ( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-    if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
     relay_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
@@ -3540,14 +3540,14 @@ int relay_write_session_pong_packet_sdk5( uint8_t * packet_data, uint64_t send_s
     assert( packet_data );
     assert( private_key );
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_SESSION_PONG_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_SESSION_PONG_PACKET );
     uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES;
     send_sequence |= uint64_t(1) << 63;
     send_sequence |= uint64_t(1) << 62;
-    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SESSION_PONG_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SESSION_PONG_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SESSION_PONG_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SESSION_PONG_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
     relay_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
@@ -3560,7 +3560,7 @@ int relay_write_session_pong_packet_sdk5( uint8_t * packet_data, uint64_t send_s
 int relay_write_pong_packet_sdk5( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_NEAR_PONG_PACKET_SDK5 );
+    relay_write_uint8( &p, RELAY_NEAR_PONG_PACKET );
     uint8_t * a = p; p += 15;
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, session_id );
@@ -3947,7 +3947,7 @@ struct session_key_t
 
 bool operator < ( const session_key_t & a, const session_key_t & b ) 
 {
-    return a.session_version < b.session_version || a.session_id < b.session_version;
+    return a.session_id < b.session_id || ( a.session_id == b.session_id && a.session_version < b.session_version );
 }
 
 struct main_t
@@ -4857,7 +4857,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
 // ==================================================================================================================================================================================
 
-        if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
+        if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET && packet_id <= RELAY_NEAR_PONG_PACKET )
         {
 // #if INTENSIVE_RELAY_DEBUGGING
             char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -4923,18 +4923,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             packet_bytes -= 18;
 
-            if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
+            if ( packet_id == RELAY_ROUTE_REQUEST_PACKET )
             {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received route request packet\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED]++;
 
                 if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. bad packet size (%d)\n", from_string, packet_bytes );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_BAD_SIZE]++;
                     continue;
                 }
@@ -4942,20 +4942,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay_route_token_t token;
                 if ( relay_read_encrypted_route_token( &p, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. could not read route token\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN]++;
                     continue;
                 }
 
-                // todo: maybe log these
                 uint64_t current_timestamp = relay_timestamp( relay );
                 if ( token.expire_timestamp < current_timestamp )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignoring route request. route token expired\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                     continue;
                 }
@@ -5005,11 +5004,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                         assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
                         assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                         char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                         relay_address_to_string( &token.next_address, next_hop_address );
                         printf( "[%s] forwarding route request packet to next hop %s (public address)\n", from_string, next_hop_address );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     
                         relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
@@ -5028,11 +5027,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                         assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
                         assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                         char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                         relay_address_to_string( &token.next_address, next_hop_address );
                         printf( "[%s] forwarding route request packet to next hop %s (internal address)\n", from_string, next_hop_address );
-// #endif // #if #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if #if INTENSIVE_RELAY_DEBUGGING
                     
                         relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
@@ -5042,18 +5041,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK5 )
+            else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
             {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received route response packet\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED]++;
 
-                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
+                if ( packet_bytes != RELAY_HEADER_BYTES )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. wrong packet size (%d)\n", from_string, packet_bytes );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_BAD_SIZE]++;
                     continue;
                 }
@@ -5065,9 +5064,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 uint8_t session_version;
                 if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. could not peek header\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER]++;
                     continue;
                 }
@@ -5078,9 +5077,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 if ( !session )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. could not find session\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                     continue;
                 }
@@ -5099,18 +5098,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 if ( clean_sequence <= session->server_to_client_sequence )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. packet already received (%" PRId64 " <= %" PRId64 ")\n", from_string, clean_sequence, session->server_to_client_sequence );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                     continue;
                 }
 
                 if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored route response packet. header did not verify\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY]++;
                     continue;
                 }
@@ -5132,11 +5131,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                         assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
                         assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                         char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                         relay_address_to_string( &session->prev_address, prev_hop_address );
                         printf( "[%s] forwarding route response packet to previous hop %s\n", from_string, prev_hop_address );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                         relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
 
@@ -5154,11 +5153,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                         assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
                         assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                         char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                         relay_address_to_string( &session->prev_address, prev_hop_address );
                         printf( "[%s] forwarding route response packet to previous hop %s\n", from_string, prev_hop_address );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                         relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
 
@@ -5168,7 +5167,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK5 )
+            else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received route continue request packet\n", from_string );
@@ -5197,9 +5196,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 // todo: print for expired tokens?
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "ignored continue request. token expired\n" );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                     continue;
                 }
@@ -5288,14 +5287,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 }
                 }
             }
-            else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+            else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received route continue response packet\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED]++;
 
-                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
+                if ( packet_bytes != RELAY_HEADER_BYTES )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored continue response packet. wrong packet size (%d)\n", from_string, packet_bytes );
@@ -5412,14 +5411,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK5 )
+            else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received client to server packet\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED]++;
 
-                if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
+                if ( packet_bytes <= RELAY_HEADER_BYTES )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored client to server packet. packet too small (%d)\n", from_string, packet_bytes );
@@ -5428,7 +5427,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     continue;
                 }
 
-                if ( packet_bytes > RELAY_HEADER_BYTES_SDK5 + RELAY_MTU )
+                if ( packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored client to server packet. packet too big (%d)\n", from_string, packet_bytes );
@@ -5495,8 +5494,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
 
-                const_p += RELAY_HEADER_BYTES_SDK5;
-                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES_SDK5;
+                const_p += RELAY_HEADER_BYTES;
+                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
                 uint8_t game_packet_data[game_packet_bytes];
                 relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
@@ -5549,14 +5548,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK5 )
+            else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received server to client packet\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED]++;
 
-                if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
+                if ( packet_bytes <= RELAY_HEADER_BYTES )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored server to client packet. packet too small (%d)\n", from_string, packet_bytes );
@@ -5565,7 +5564,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     continue;
                 }
 
-                if ( packet_bytes > RELAY_HEADER_BYTES_SDK5 + RELAY_MTU )
+                if ( packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored server to client packet. packet too big (%d)\n", from_string, packet_bytes );
@@ -5632,8 +5631,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
 
-                const_p += RELAY_HEADER_BYTES_SDK5;
-                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES_SDK5;
+                const_p += RELAY_HEADER_BYTES;
+                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
                 uint8_t game_packet_data[game_packet_bytes];
                 relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
@@ -5688,14 +5687,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK5 )
+            else if ( packet_id == RELAY_SESSION_PING_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received session ping packet\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED]++;
 
-                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
+                if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session ping packet. bad packet size (%d)\n", from_string, packet_bytes );
@@ -5762,7 +5761,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 session->client_to_server_sequence = clean_sequence;
 
-                const_p += RELAY_HEADER_BYTES_SDK5;
+                const_p += RELAY_HEADER_BYTES;
                 uint64_t ping_sequence = relay_read_uint64( &const_p );
 
                 uint8_t next_address_data[32];
@@ -5816,14 +5815,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK5 )
+            else if ( packet_id == RELAY_SESSION_PONG_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "received session pong packet\n" );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED]++;
 
-                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
+                if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored session pong packet. bad packet size (%d)\n", from_string, packet_bytes );
@@ -5891,7 +5890,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 session->server_to_client_sequence = clean_sequence;
 
-                const_p += RELAY_HEADER_BYTES_SDK5;
+                const_p += RELAY_HEADER_BYTES;
                 uint64_t ping_sequence = relay_read_uint64( &const_p );
 
                 uint8_t prev_address_data[32];
@@ -5943,14 +5942,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     }
                 }
             }
-            else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
+            else if ( packet_id == RELAY_NEAR_PING_PACKET )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] received near relay ping packet\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
-                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
+                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
                     printf( "[%s] ignored relay near ping packet. bad packet size (%d)\n", from_string, packet_bytes );
