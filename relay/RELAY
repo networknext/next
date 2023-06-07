@@ -12,9 +12,40 @@ RELAY
 
 	Func test sdk5 does not pass.
 
-	Happy path does not pass on linux.
+	The reason is because the func tests are binding relays to port 0.
 
-	Is it a heisenbug, or the relay is not working on linux?
+	They need to be adjusted to specify the relay port number...	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------------
 

@@ -67,7 +67,7 @@ type RelayConfig struct {
 	fake_packet_loss_start_time float32
 }
 
-func relay(name string, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
+func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	var config RelayConfig
 	if len(configArray) == 1 {
@@ -82,7 +82,7 @@ func relay(name string, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NAME=%s", name))
-	cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1:0")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_ADDRESS=127.0.0.1:%d", port))
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPublicKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPrivateKey))
@@ -508,9 +508,9 @@ func test_network_next_route() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -577,9 +577,9 @@ func test_fallback_to_direct_backend() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -644,9 +644,9 @@ func test_fallback_to_direct_client_side() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -764,9 +764,9 @@ func test_disable_on_server() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -828,9 +828,9 @@ func test_disable_on_client() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -893,9 +893,9 @@ func test_route_switching() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("ROUTE_SWITCHING")
 
@@ -956,9 +956,9 @@ func test_on_off() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("ON_OFF")
 
@@ -1023,9 +1023,9 @@ func test_on_on_off() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("ON_ON_OFF")
 
@@ -1190,9 +1190,9 @@ func test_reconnect_next() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -1320,9 +1320,9 @@ func test_connect_to_another_server_next() {
 	serverConfig2.server_port = 32203
 	server_2_cmd, server_stdout := server(serverConfig2)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -1388,9 +1388,9 @@ func test_multipath() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("MULTIPATH")
 
@@ -1456,9 +1456,9 @@ func test_multipath_next_packet_loss() {
 		fake_packet_loss_start_time: 20.0,
 	}
 
-	relay_1_cmd, _ := relay("relay.1", relayConfig)
-	relay_2_cmd, _ := relay("relay.2", relayConfig)
-	relay_3_cmd, _ := relay("relay.3", relayConfig)
+	relay_1_cmd, _ := relay("relay.1", 2000, relayConfig)
+	relay_2_cmd, _ := relay("relay.2", 2001, relayConfig)
+	relay_3_cmd, _ := relay("relay.3", 2002, relayConfig)
 
 	backend_cmd, backend_stdout := backend("MULTIPATH")
 
@@ -1521,9 +1521,9 @@ func test_multipath_fallback_to_direct() {
 		fake_packet_loss_start_time: 20.0,
 	}
 
-	relay_1_cmd, _ := relay("relay.1", relayConfig)
-	relay_2_cmd, _ := relay("relay.2", relayConfig)
-	relay_3_cmd, _ := relay("relay.3", relayConfig)
+	relay_1_cmd, _ := relay("relay.1", 2000, relayConfig)
+	relay_2_cmd, _ := relay("relay.2", 2001, relayConfig)
+	relay_3_cmd, _ := relay("relay.3", 2002, relayConfig)
 
 	backend_cmd, backend_stdout := backend("MULTIPATH")
 
@@ -1638,9 +1638,9 @@ func test_packet_loss_next() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -1709,9 +1709,9 @@ func test_server_under_load() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -1780,9 +1780,9 @@ func test_session_update_retry() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("FORCE_RETRY")
 
@@ -1853,9 +1853,9 @@ func test_packet_loss() {
 		fake_packet_loss_start_time: 10.0,
 	}
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1", relayConfig)
-	relay_2_cmd, relay_2_stdout := relay("relay.2", relayConfig)
-	relay_3_cmd, relay_3_stdout := relay("relay.3", relayConfig)
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000, relayConfig)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001, relayConfig)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002, relayConfig)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -1976,9 +1976,9 @@ func test_next_bandwidth() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("BANDWIDTH")
 
@@ -2046,9 +2046,9 @@ func test_next_bandwidth_over_limit() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -2112,9 +2112,9 @@ func test_jitter() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("JITTER")
 
@@ -2233,9 +2233,9 @@ func test_next_stats() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("NEXT_STATS")
 
@@ -2297,9 +2297,9 @@ func test_report_session() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, relay_1_stdout := relay("relay.1")
-	relay_2_cmd, relay_2_stdout := relay("relay.2")
-	relay_3_cmd, relay_3_stdout := relay("relay.3")
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
@@ -2364,9 +2364,9 @@ func test_client_ping_timed_out() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1")
-	relay_2_cmd, _ := relay("relay.2")
-	relay_3_cmd, _ := relay("relay.3")
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 

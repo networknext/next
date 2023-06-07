@@ -6404,6 +6404,14 @@ int main( int argc, const char ** argv )
         bind_address.port = relay_public_address.port;
     }
 
+    // IMPORTANT: We can no longer bind to 0 now that we are using SO_REUSEPORT.
+    if ( bind_address.port == 0 )
+    {
+        printf( "\nerror: you must specify a valid port number!\n" );
+        relay_term();
+        return 1;
+    }
+    
     char relay_public_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
     const char * relay_address_string = relay_address_to_string( &relay_public_address, relay_public_address_buffer );
     printf( "Public address is %s\n", relay_address_string );
