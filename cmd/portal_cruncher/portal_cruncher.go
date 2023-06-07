@@ -244,11 +244,16 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 		NumSessions:               message.SessionCount,
 		EnvelopeBandwidthUpKbps:   message.EnvelopeBandwidthUpKbps,
 		EnvelopeBandwidthDownKbps: message.EnvelopeBandwidthDownKbps,
-		ActualBandwidthUpKbps:     message.ActualBandwidthUpKbps,
-		ActualBandwidthDownKbps:   message.ActualBandwidthDownKbps,
+		PacketsSentPerSecond:      message.PacketsSentPerSecond,
+		PacketsReceivedPerSecond:  message.PacketsReceivedPerSecond,
+		BandwidthSentKbps:         message.BandwidthSentKbps,
+		BandwidthReceivedKbps:     message.BandwidthReceivedKbps,
+		NearPingsPerSecond:        message.NearPingsPerSecond,
+		RelayPingsPerSecond:       message.RelayPingsPerSecond,
 		RelayFlags:                message.RelayFlags,
 		NumRoutable:               message.NumRoutable,
 		NumUnroutable:             message.NumUnroutable,
+		CurrentTime:               message.CurrentTime,
 	}
 
 	relayInserter[threadNumber].Insert(&relayData, &relaySample)

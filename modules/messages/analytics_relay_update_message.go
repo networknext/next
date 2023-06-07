@@ -23,11 +23,17 @@ type AnalyticsRelayUpdateMessage struct {
 	MaxSessions               uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
-	ActualBandwidthUpKbps     uint32
-	ActualBandwidthDownKbps   uint32
+	PacketsSentPerSecond	  float32
+	PacketsReceivedPerSecond  float32
+	BandwidthSentKbps		  float32
+	BandwidthReceivedKbps     float32
+	NearPingsPerSecond        float32
+	RelayPingsPerSecond       float32
 	RelayFlags                uint64
 	NumRoutable               uint32
 	NumUnroutable             uint32
+	StartTime                 uint64
+	CurrentTime               uint64
 	NumRelayCounters          uint32
 	RelayCounters             [constants.NumRelayCounters]uint64
 }
@@ -72,12 +78,28 @@ func (message *AnalyticsRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read envelope bandwidth down kbps")
 	}
 
-	if !encoding.ReadUint32(buffer, &index, &message.ActualBandwidthUpKbps) {
-		return fmt.Errorf("failed to read actual bandwidth up kbps")
+	if !encoding.ReadFloat32(buffer, &index, &message.PacketsSentPerSecond) {
+		return fmt.Errorf("failed to read packets sent per-second")
 	}
 
-	if !encoding.ReadUint32(buffer, &index, &message.ActualBandwidthDownKbps) {
-		return fmt.Errorf("failed to read actual bandwidth down kbps")
+	if !encoding.ReadFloat32(buffer, &index, &message.PacketsReceivedPerSecond) {
+		return fmt.Errorf("failed to read packets received per-second")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthSentKbps) {
+		return fmt.Errorf("failed to read bandwidth sent kbps")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.BandwidthReceivedKbps) {
+		return fmt.Errorf("failed to read bandwidth received kbps")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.NearPingsPerSecond) {
+		return fmt.Errorf("failed to read near pings per-second")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &message.RelayPingsPerSecond) {
+		return fmt.Errorf("failed to read relay pings per-second")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayFlags) {
@@ -90,6 +112,14 @@ func (message *AnalyticsRelayUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumUnroutable) {
 		return fmt.Errorf("failed to read num unroutable")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
+		return fmt.Errorf("failed to read num start time")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.CurrentTime) {
+		return fmt.Errorf("failed to read num current time")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.NumRelayCounters) {
@@ -118,13 +148,23 @@ func (message *AnalyticsRelayUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.RelayId)
 	encoding.WriteUint32(buffer, &index, message.SessionCount)
 	encoding.WriteUint32(buffer, &index, message.MaxSessions)
+
 	encoding.WriteUint32(buffer, &index, message.EnvelopeBandwidthUpKbps)
 	encoding.WriteUint32(buffer, &index, message.EnvelopeBandwidthDownKbps)
-	encoding.WriteUint32(buffer, &index, message.ActualBandwidthUpKbps)
-	encoding.WriteUint32(buffer, &index, message.ActualBandwidthDownKbps)
+	encoding.WriteFloat32(buffer, &index, message.PacketsSentPerSecond)
+	encoding.WriteFloat32(buffer, &index, message.PacketsReceivedPerSecond)
+	encoding.WriteFloat32(buffer, &index, message.BandwidthSentKbps)
+	encoding.WriteFloat32(buffer, &index, message.BandwidthReceivedKbps)
+	encoding.WriteFloat32(buffer, &index, message.NearPingsPerSecond)
+	encoding.WriteFloat32(buffer, &index, message.RelayPingsPerSecond)
+
 	encoding.WriteUint64(buffer, &index, message.RelayFlags)
 	encoding.WriteUint32(buffer, &index, message.NumRoutable)
 	encoding.WriteUint32(buffer, &index, message.NumUnroutable)
+
+	encoding.WriteUint64(buffer, &index, message.StartTime)
+	encoding.WriteUint64(buffer, &index, message.CurrentTime)
+
 	encoding.WriteUint32(buffer, &index, message.NumRelayCounters)
 	for i := 0; i < int(message.NumRelayCounters); i++ {
 		encoding.WriteUint64(buffer, &index, message.RelayCounters[i])
@@ -143,15 +183,24 @@ func (message *AnalyticsRelayUpdateMessage) Save() (map[string]bigquery.Value, s
 	if message.MaxSessions != 0 {
 		bigquery_message["max_sessions"] = int(message.MaxSessions)
 	}
+	
 	bigquery_message["envelope_bandwidth_up_kbps"] = int(message.EnvelopeBandwidthUpKbps)
 	bigquery_message["envelope_bandwidth_down_kbps"] = int(message.EnvelopeBandwidthDownKbps)
-	bigquery_message["actual_bandwidth_up_kbps"] = int(message.ActualBandwidthUpKbps)
-	bigquery_message["actual_bandwidth_down_kbps"] = int(message.ActualBandwidthDownKbps)
+	bigquery_message["packets_sent_per_second"] = float64(message.PacketsSentPerSecond)
+	bigquery_message["packets_received_per_second"] = float64(message.PacketsReceivedPerSecond)
+	bigquery_message["bandwidth_sent_kbps"] = float64(message.BandwidthSentKbps)
+	bigquery_message["bandwidth_received_kbps"] = float64(message.BandwidthReceivedKbps)
+	bigquery_message["near_pings_per_second"] = float64(message.NearPingsPerSecond)
+	bigquery_message["relay_pings_per_second"] = float64(message.RelayPingsPerSecond)
+
 	if message.RelayFlags != 0 {
 		bigquery_message["relay_flags"] = int(message.RelayFlags)
 	}
 	bigquery_message["num_routable"] = int(message.NumRoutable)
 	bigquery_message["num_unroutable"] = int(message.NumUnroutable)
+
+	bigquery_message["start_time"] = int(message.StartTime)
+	bigquery_message["current_time"] = int(message.CurrentTime)
 
 	relay_counters := make([]bigquery.Value, message.NumRelayCounters)
 	for i := 0; i < int(message.NumRelayCounters); i++ {

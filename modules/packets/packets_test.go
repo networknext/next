@@ -453,10 +453,11 @@ func RelayPacketReadWriteTest[P packets.RelayPacket](writePacket P, readPacket P
 func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 
 	packet := packets.RelayUpdateRequestPacket{
-		Version:    uint8(common.RandomInt(packets.RelayUpdateRequestPacket_VersionMin, packets.RelayUpdateRequestPacket_VersionMax)),
-		Timestamp:  rand.Uint64(),
-		Address:    common.RandomAddress(),
-		NumSamples: uint32(common.RandomInt(0, constants.MaxRelays-1)),
+		Version:     uint8(common.RandomInt(packets.RelayUpdateRequestPacket_VersionMin, packets.RelayUpdateRequestPacket_VersionMax)),
+		CurrentTime: rand.Uint64(),
+		StartTime:   rand.Uint64(),
+		Address:     common.RandomAddress(),
+		NumSamples:  uint32(common.RandomInt(0, constants.MaxRelays-1)),
 	}
 
 	for i := 0; i < int(packet.NumSamples); i++ {
@@ -469,8 +470,13 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 	packet.SessionCount = rand.Uint32()
 	packet.EnvelopeBandwidthUpKbps = rand.Uint32()
 	packet.EnvelopeBandwidthDownKbps = rand.Uint32()
-	packet.ActualBandwidthUpKbps = rand.Uint32()
-	packet.ActualBandwidthDownKbps = rand.Uint32()
+	packet.PacketsSentPerSecond = float32(common.RandomInt(0, 1000))
+	packet.PacketsReceivedPerSecond = float32(common.RandomInt(0, 1000))
+	packet.BandwidthSentKbps = float32(common.RandomInt(0, 1000))
+	packet.BandwidthReceivedKbps = float32(common.RandomInt(0, 1000))
+	packet.NearPingsPerSecond = float32(common.RandomInt(0, 1000))
+	packet.RelayPingsPerSecond = float32(common.RandomInt(0, 1000))
+
 	packet.RelayFlags = rand.Uint64()
 	packet.RelayVersion = common.RandomString(constants.MaxRelayVersionLength)
 

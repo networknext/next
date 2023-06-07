@@ -89,16 +89,26 @@ func GenerateRandomAnalyticsRelayToRelayPingMessage() messages.AnalyticsRelayToR
 func GenerateRandomAnalyticsRelayUpdateMessage() messages.AnalyticsRelayUpdateMessage {
 
 	message := messages.AnalyticsRelayUpdateMessage{
+
 		Version:                   byte(common.RandomInt(messages.AnalyticsRelayUpdateMessageVersion_Min, messages.AnalyticsRelayUpdateMessageVersion_Max)),
 		Timestamp:                 uint64(time.Now().Unix()),
 		RelayId:                   rand.Uint64(),
 		SessionCount:              rand.Uint32(),
 		MaxSessions:               rand.Uint32(),
+
 		EnvelopeBandwidthUpKbps:   rand.Uint32(),
 		EnvelopeBandwidthDownKbps: rand.Uint32(),
-		ActualBandwidthUpKbps:     rand.Uint32(),
-		ActualBandwidthDownKbps:   rand.Uint32(),
+		PacketsSentPerSecond:      float32(common.RandomInt(0,1000)),
+		PacketsReceivedPerSecond:  float32(common.RandomInt(0,1000)),
+		BandwidthSentKbps:         float32(common.RandomInt(0,1000)),
+		BandwidthReceivedKbps:     float32(common.RandomInt(0,1000)),
+		NearPingsPerSecond:		   float32(common.RandomInt(0,1000)),
+		RelayPingsPerSecond:       float32(common.RandomInt(0,1000)),
+
 		RelayFlags:                rand.Uint64(),
+		StartTime:                 rand.Uint64(),
+		CurrentTime:               rand.Uint64(),
+
 		NumRelayCounters:          constants.NumRelayCounters,
 	}
 
@@ -343,12 +353,12 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 		MaxSessions:               rand.Uint32(),
 		EnvelopeBandwidthUpKbps:   rand.Uint32(),
 		EnvelopeBandwidthDownKbps: rand.Uint32(),
-		ActualBandwidthUpKbps:     rand.Uint32(),
-		ActualBandwidthDownKbps:   rand.Uint32(),
+		// todo: add new stats here
 		RelayFlags:                rand.Uint64(),
 		RelayAddress:              common.RandomAddress(),
 		RelayVersion:              common.RandomString(constants.MaxRelayVersionLength),
 		StartTime:                 rand.Uint64(),
+		CurrentTime:               rand.Uint64(),
 	}
 
 	return message

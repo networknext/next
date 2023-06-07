@@ -759,13 +759,18 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
 						EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
 						EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
-						ActualBandwidthUpKbps:     relayUpdateRequest.ActualBandwidthUpKbps,
-						ActualBandwidthDownKbps:   relayUpdateRequest.ActualBandwidthDownKbps,
+						PacketsSentPerSecond:	   relayUpdateRequest.PacketsSentPerSecond,
+						PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
+						BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
+						BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
+						NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
+						RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
 						RelayFlags:                relayUpdateRequest.RelayFlags,
 						NumRoutable:               uint32(numRoutable),
 						NumUnroutable:             uint32(numUnroutable),
+						StartTime:                 relayUpdateRequest.StartTime,
+						CurrentTime:               relayUpdateRequest.CurrentTime,
 						RelayAddress:              relayAddress,
-						// todo: StartTime
 					}
 
 					if service.IsLeader() {
@@ -787,13 +792,19 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
 						EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
 						EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
-						ActualBandwidthUpKbps:     relayUpdateRequest.ActualBandwidthUpKbps,
-						ActualBandwidthDownKbps:   relayUpdateRequest.ActualBandwidthDownKbps,
+						PacketsSentPerSecond:	   relayUpdateRequest.PacketsSentPerSecond,
+						PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
+						BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
+						BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
+						NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
+						RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
 						RelayFlags:                relayUpdateRequest.RelayFlags,
 						NumRelayCounters:          relayUpdateRequest.NumRelayCounters,
 						RelayCounters:             relayUpdateRequest.RelayCounters,
 						NumRoutable:               uint32(numRoutable),
 						NumUnroutable:             uint32(numUnroutable),
+						StartTime:                 relayUpdateRequest.StartTime,
+						CurrentTime:               relayUpdateRequest.CurrentTime,
 					}
 
 					if service.IsLeader() {

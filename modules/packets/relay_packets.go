@@ -32,7 +32,8 @@ type RelayPacket interface {
 type RelayUpdateRequestPacket struct {
 	Version                   uint8
 	Address                   net.UDPAddr
-	Timestamp                 uint64
+	StartTime                 uint64
+	CurrentTime               uint64
 	NumSamples                uint32
 	SampleRelayId             [constants.MaxRelays]uint64
 	SampleRTT                 [constants.MaxRelays]uint8  // [0,255] milliseconds
@@ -41,8 +42,12 @@ type RelayUpdateRequestPacket struct {
 	SessionCount              uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
-	ActualBandwidthUpKbps     uint32
-	ActualBandwidthDownKbps   uint32
+	PacketsSentPerSecond      float32
+	PacketsReceivedPerSecond  float32
+	BandwidthSentKbps         float32
+	BandwidthReceivedKbps     float32
+	NearPingsPerSecond        float32
+	RelayPingsPerSecond       float32
 	RelayFlags                uint64
 	RelayVersion              string
 	NumRelayCounters          uint32
@@ -59,7 +64,8 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 
 	encoding.WriteUint8(buffer, &index, packet.Version)
 	encoding.WriteAddress(buffer, &index, &packet.Address)
-	encoding.WriteUint64(buffer, &index, packet.Timestamp)
+	encoding.WriteUint64(buffer, &index, packet.CurrentTime)
+	encoding.WriteUint64(buffer, &index, packet.StartTime)
 
 	encoding.WriteUint32(buffer, &index, packet.NumSamples)
 	for i := 0; i < int(packet.NumSamples); i++ {
@@ -72,8 +78,12 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, packet.SessionCount)
 	encoding.WriteUint32(buffer, &index, packet.EnvelopeBandwidthUpKbps)
 	encoding.WriteUint32(buffer, &index, packet.EnvelopeBandwidthDownKbps)
-	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthUpKbps)
-	encoding.WriteUint32(buffer, &index, packet.ActualBandwidthDownKbps)
+	encoding.WriteFloat32(buffer, &index, packet.PacketsSentPerSecond)
+	encoding.WriteFloat32(buffer, &index, packet.PacketsReceivedPerSecond)
+	encoding.WriteFloat32(buffer, &index, packet.BandwidthSentKbps)
+	encoding.WriteFloat32(buffer, &index, packet.BandwidthReceivedKbps)
+	encoding.WriteFloat32(buffer, &index, packet.NearPingsPerSecond)
+	encoding.WriteFloat32(buffer, &index, packet.RelayPingsPerSecond)
 
 	encoding.WriteUint64(buffer, &index, packet.RelayFlags)
 	encoding.WriteString(buffer, &index, packet.RelayVersion, constants.MaxRelayVersionLength)
@@ -100,8 +110,12 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read relay address")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &packet.Timestamp) {
-		return errors.New("could not read timestamp")
+	if !encoding.ReadUint64(buffer, &index, &packet.CurrentTime) {
+		return errors.New("could not read current time")
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &packet.StartTime) {
+		return errors.New("could not read start time")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &packet.NumSamples) {
@@ -143,12 +157,28 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read envelope bandwidth down kbps")
 	}
 
-	if !encoding.ReadUint32(buffer, &index, &packet.ActualBandwidthUpKbps) {
-		return errors.New("could not read actual bandwidth up kbps")
+	if !encoding.ReadFloat32(buffer, &index, &packet.PacketsSentPerSecond) {
+		return errors.New("could not read packets sent per-second")
 	}
 
-	if !encoding.ReadUint32(buffer, &index, &packet.ActualBandwidthDownKbps) {
-		return errors.New("could not read actual bandwidth down kbps")
+	if !encoding.ReadFloat32(buffer, &index, &packet.PacketsReceivedPerSecond) {
+		return errors.New("could not read packets received per-second")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &packet.BandwidthSentKbps) {
+		return errors.New("could not read bandwidth sent kbps")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &packet.BandwidthReceivedKbps) {
+		return errors.New("could not read bandwidth received kbps")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &packet.NearPingsPerSecond) {
+		return errors.New("could not read near pings per-second")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &packet.RelayPingsPerSecond) {
+		return errors.New("could not read relay pings per-second")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &packet.RelayFlags) {

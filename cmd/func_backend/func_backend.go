@@ -280,13 +280,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	currentTimestamp := uint64(time.Now().Unix())
 
-	if requestPacket.Timestamp < currentTimestamp-10 {
+	if requestPacket.CurrentTime < currentTimestamp-10 {
 		core.Error("relay update is too old")
 		writer.WriteHeader(http.StatusBadRequest) // 400
 		return
 	}
 
-	if requestPacket.Timestamp > currentTimestamp+10 {
+	if requestPacket.CurrentTime > currentTimestamp+10 {
 		core.Error("relay update is in the future")
 		writer.WriteHeader(http.StatusBadRequest) // 400
 		return

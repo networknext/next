@@ -1947,7 +1947,7 @@ func test_relay_backend() {
 					requestPacket := packets.RelayUpdateRequestPacket{}
 
 					requestPacket.Version = packets.RelayUpdateRequestPacket_VersionWrite
-					requestPacket.Timestamp = uint64(time.Now().Unix())
+					requestPacket.CurrentTime = uint64(time.Now().Unix())
 					requestPacket.Address = relayAddresses[index]
 					requestPacket.NumSamples = NumRelays
 					requestPacket.NumRelayCounters = constants.NumRelayCounters

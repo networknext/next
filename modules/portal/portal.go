@@ -545,30 +545,40 @@ type RelaySample struct {
 	NumSessions               uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
-	ActualBandwidthUpKbps     uint32
-	ActualBandwidthDownKbps   uint32
+	PacketsSentPerSecond      float32
+	PacketsReceivedPerSecond  float32
+	BandwidthSentKbps         float32
+	BandwidthReceivedKbps     float32
+	NearPingsPerSecond        float32
+	RelayPingsPerSecond       float32
 	RelayFlags                uint64
 	NumRoutable               uint32
 	NumUnroutable             uint32
+	CurrentTime               uint64
 }
 
 func (data *RelaySample) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%x|%d|%d",
+	return fmt.Sprintf("%x|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%x|%d|%d|%x",
 		data.Timestamp,
 		data.NumSessions,
 		data.EnvelopeBandwidthUpKbps,
 		data.EnvelopeBandwidthDownKbps,
-		data.ActualBandwidthUpKbps,
-		data.ActualBandwidthDownKbps,
+		data.PacketsSentPerSecond,
+		data.PacketsReceivedPerSecond,
+		data.BandwidthSentKbps,
+		data.BandwidthReceivedKbps,
+		data.NearPingsPerSecond,
+		data.RelayPingsPerSecond,
 		data.RelayFlags,
 		data.NumRoutable,
 		data.NumUnroutable,
+		data.CurrentTime,
 	)
 }
 
 func (data *RelaySample) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 9 {
+	if len(values) != 14 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -587,23 +597,43 @@ func (data *RelaySample) Parse(value string) {
 	if err != nil {
 		return
 	}
-	actualBandwidthUpKbps, err := strconv.ParseUint(values[4], 10, 32)
+	packetsSentPerSecond, err := strconv.ParseFloat(values[4], 32)
 	if err != nil {
 		return
 	}
-	actualBandwidthDownKbps, err := strconv.ParseUint(values[5], 10, 32)
+	packetsReceivedPerSecond, err := strconv.ParseFloat(values[5], 32)
 	if err != nil {
 		return
 	}
-	relayFlags, err := strconv.ParseUint(values[6], 16, 64)
+	bandwidthSentKbps, err := strconv.ParseFloat(values[6], 32)
 	if err != nil {
 		return
 	}
-	numRoutable, err := strconv.ParseUint(values[7], 10, 32)
+	bandwidthReceivedKbps, err := strconv.ParseFloat(values[7], 32)
 	if err != nil {
 		return
 	}
-	numUnroutable, err := strconv.ParseUint(values[8], 10, 32)
+	nearPingsPerSecond, err := strconv.ParseFloat(values[8], 32)
+	if err != nil {
+		return
+	}
+	relayPingsPerSecond, err := strconv.ParseFloat(values[9], 32)
+	if err != nil {
+		return
+	}
+	relayFlags, err := strconv.ParseUint(values[10], 16, 64)
+	if err != nil {
+		return
+	}
+	numRoutable, err := strconv.ParseUint(values[11], 10, 32)
+	if err != nil {
+		return
+	}
+	numUnroutable, err := strconv.ParseUint(values[12], 10, 32)
+	if err != nil {
+		return
+	}
+	currentTime, err := strconv.ParseUint(values[13], 16, 64)
 	if err != nil {
 		return
 	}
@@ -611,11 +641,16 @@ func (data *RelaySample) Parse(value string) {
 	data.NumSessions = uint32(numSessions)
 	data.EnvelopeBandwidthUpKbps = uint32(envelopeBandwidthUpKbps)
 	data.EnvelopeBandwidthDownKbps = uint32(envelopeBandwidthDownKbps)
-	data.ActualBandwidthUpKbps = uint32(actualBandwidthUpKbps)
-	data.ActualBandwidthDownKbps = uint32(actualBandwidthDownKbps)
+	data.PacketsSentPerSecond = float32(packetsSentPerSecond)
+	data.PacketsReceivedPerSecond = float32(packetsReceivedPerSecond)
+	data.BandwidthSentKbps = float32(bandwidthSentKbps)
+	data.BandwidthReceivedKbps = float32(bandwidthReceivedKbps)
+	data.NearPingsPerSecond = float32(nearPingsPerSecond)
+	data.RelayPingsPerSecond = float32(relayPingsPerSecond)
 	data.RelayFlags = relayFlags
 	data.NumRoutable = uint32(numRoutable)
 	data.NumUnroutable = uint32(numUnroutable)
+	data.CurrentTime = uint64(currentTime)
 }
 
 func GenerateRandomRelaySample() *RelaySample {
@@ -624,11 +659,16 @@ func GenerateRandomRelaySample() *RelaySample {
 	data.NumSessions = rand.Uint32()
 	data.EnvelopeBandwidthUpKbps = rand.Uint32()
 	data.EnvelopeBandwidthDownKbps = rand.Uint32()
-	data.ActualBandwidthUpKbps = rand.Uint32()
-	data.ActualBandwidthDownKbps = rand.Uint32()
+	data.PacketsSentPerSecond = float32(common.RandomInt(0,1000))
+	data.PacketsReceivedPerSecond = float32(common.RandomInt(0,1000))
+	data.BandwidthSentKbps = float32(common.RandomInt(0,1000))
+	data.BandwidthReceivedKbps = float32(common.RandomInt(0,1000))
+	data.NearPingsPerSecond = float32(common.RandomInt(0,1000))
+	data.RelayPingsPerSecond = float32(common.RandomInt(0,1000))
 	data.RelayFlags = rand.Uint64()
 	data.NumRoutable = rand.Uint32()
 	data.NumUnroutable = rand.Uint32()
+	data.CurrentTime = rand.Uint64()
 	return &data
 }
 
