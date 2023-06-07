@@ -10,6 +10,12 @@ RELAY
 
 	Do the func tests work with the new relay?
 
+	Func test sdk5 does not pass.
+
+	Happy path does not pass on linux.
+
+	Is it a heisenbug, or the relay is not working on linux?
+
 	------------------
 
 	Work out what we need to do to get pings/pongs setup to use basic and advanced packet filter.
