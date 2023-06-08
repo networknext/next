@@ -4,55 +4,11 @@ DONE
 
 	Happy path is still failing on semaphore.
 
+	Add logs for the relay clean shutdown
+
 RELAY
 
-	I think the correct thing now is to run the whole backend manually on linux and explore what's going on.
-
-	It seems that the happy path is failing because the route request is sent across, but the response doen't come back.
-
-	But it's strange that the happy path doesn't work on linux, when it does work on mac, and all the func tests for the sdk pass (both linux and mac)...
-
-	How could this be?
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	------------------
-
-	Heisenbug on backend func test:
-
-		error: received too many messages!
+	Bring back the relay version update so it works, but have it off by default, enabled with an env var that is set when relays are properly setup via terraform.
 
 	------------------
 
@@ -64,14 +20,6 @@ RELAY
 
 	------------------
 
-	Add logs for the relay clean shutdown
-
-	------------------
-
-	Bring back the relay version update so it works, but have it off by default, enabled with an env var that is set when relays are properly setup via terraform.
-
-	------------------
-
 	Relay should have functional tests, these should be separate from sdk func tests, and runnable inside semaphore.
 
 	------------------
@@ -80,7 +28,7 @@ RELAY
 
 	------------------
 
-	Relay should be load tested in google cloud
+	Relay should be load tested in google cloud (driven by terraform)
 
 	------------------
 
