@@ -5990,96 +5990,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
 // ========================================================================================================================================
 
-struct upgrade_t 
-{
-    relay_platform_mutex_t * mutex;
-    const char * current_version;
-    const char * target_version;
-    const char * bucket_url;
-    bool upgrading;
-};
-
-// https://storage.googleapis.com/relay_artifacts
-
-void * upgrade_thread_function( void * data )
-{
-    upgrade_t * upgrade = (upgrade_t*) data;
-
-    printf( "relay upgrading from %s -> %s\n", upgrade->current_version, upgrade->target_version );
-
-    char command[1024];
-    snprintf( command, sizeof(command), "rm -f relay-%s", upgrade->target_version );
-    int result = system( command );
-    (void) result;
-
-    snprintf( command, sizeof(command), "wget %s/relay-%s", upgrade->bucket_url, upgrade->target_version );
-    if ( system( command ) != 0 )
-    {
-        printf( "error: failed to download relay version %s\n", upgrade->target_version );
-        relay_platform_sleep( 60.0 );
-        relay_platform_mutex_acquire( upgrade->mutex );
-        upgrade->upgrading = false;
-        relay_platform_mutex_release( upgrade->mutex );
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    printf( "successfully downloaded relay-%s\n", upgrade->target_version );
-
-    snprintf( command, sizeof(command), "chmod +x relay-%s", upgrade->target_version );
-    if ( system( command ) != 0 ) 
-    {
-        printf( "error: failed to chmod +x relay-%s\n", upgrade->target_version );
-        relay_platform_sleep( 60.0 );
-        relay_platform_mutex_acquire( upgrade->mutex );
-        upgrade->upgrading = false;
-        relay_platform_mutex_release( upgrade->mutex );
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    printf( "chmod +x relay-%s succeeded\n", upgrade->target_version );
-
-    /*
-    snprintf( command, sizeof(command), "./relay-%s version", version );
-    FILE * file = popen( command, "r" );
-    char buffer[1024];
-    if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr(buffer, version) == NULL )
-    {
-    pclose( file );
-    LOG(ERROR, "relay binary is bad");
-    std::this_thread::sleep_for(60s);
-    upgrading = false;
-    return NULL;
-    }
-    pclose( file );
-
-    LOG(INFO, "relay binary is good");
-
-    result = system( "rm -f relay 2>/dev/null" );
-    (void) result;
-
-    snprintf( command, sizeof(command), "mv relay-%s relay", version );
-    if ( system( command ) != 0 )
-    {
-    LOG(ERROR, "could not install new relay binary");
-    std::this_thread::sleep_for(60s);
-    upgrading = false;
-    return NULL;
-    }
-
-    LOG(INFO, "new relay binary is installed");
-
-    should_clean_shutdown = true;
-    alive = false;
-    upgrading = false;
-
-    return NULL;
-    */
-
-    RELAY_PLATFORM_THREAD_RETURN();
-}
-
-// ========================================================================================================================================
-
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_function( void * context )
 {
     ping_t * ping = (ping_t*) context;
@@ -6242,6 +6152,98 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             relay_manager_process_pong( ping->relay_manager, &from_address, sequence );
         }
     }
+
+    RELAY_PLATFORM_THREAD_RETURN();
+}
+
+// ========================================================================================================================================
+
+struct upgrade_t 
+{
+    relay_platform_mutex_t * mutex;
+    const char * current_version;
+    const char * target_version;
+    const char * bucket_url;
+    bool upgrading;
+};
+
+// https://storage.googleapis.com/relay_artifacts
+
+void * upgrade_thread_function( void * data )
+{
+    upgrade_t * upgrade = (upgrade_t*) data;
+
+    printf( "relay upgrading from %s -> %s\n", upgrade->current_version, upgrade->target_version );
+
+    char command[1024];
+    snprintf( command, sizeof(command), "rm -f relay-%s", upgrade->target_version );
+    int result = system( command );
+    (void) result;
+
+    snprintf( command, sizeof(command), "wget %s/relay-%s", upgrade->bucket_url, upgrade->target_version );
+    if ( system( command ) != 0 )
+    {
+        printf( "error: failed to download relay version %s\n", upgrade->target_version );
+        relay_platform_sleep( 60.0 );
+        relay_platform_mutex_acquire( upgrade->mutex );
+        upgrade->upgrading = false;
+        relay_platform_mutex_release( upgrade->mutex );
+        RELAY_PLATFORM_THREAD_RETURN();
+    }
+
+    printf( "successfully downloaded relay-%s\n", upgrade->target_version );
+
+    snprintf( command, sizeof(command), "chmod +x relay-%s", upgrade->target_version );
+    if ( system( command ) != 0 ) 
+    {
+        printf( "error: failed to chmod +x relay-%s\n", upgrade->target_version );
+        relay_platform_sleep( 60.0 );
+        relay_platform_mutex_acquire( upgrade->mutex );
+        upgrade->upgrading = false;
+        relay_platform_mutex_release( upgrade->mutex );
+        RELAY_PLATFORM_THREAD_RETURN();
+    }
+
+    printf( "chmod +x relay-%s succeeded\n", upgrade->target_version );
+
+    snprintf( command, sizeof(command), "./relay-%s version", upgrade->target_version );
+    FILE * file = popen( command, "r" );
+    char buffer[1024];
+    if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr( buffer, upgrade->target_version ) == NULL )
+    {
+        pclose( file );
+        relay_platform_sleep( 60.0 );
+        relay_platform_mutex_acquire( upgrade->mutex );
+        upgrade->upgrading = false;
+        relay_platform_mutex_release( upgrade->mutex );
+        RELAY_PLATFORM_THREAD_RETURN();
+    }
+    pclose( file );
+
+    printf( "relay binary is good\n" );
+
+    result = system( "rm -f relay 2>/dev/null" );
+    (void) result;
+
+    snprintf( command, sizeof(command), "mv relay-%s relay", upgrade->target_version );
+    if ( system( command ) != 0 )
+    {
+        printf( "error: could not install new relay binary\n" );
+        relay_platform_sleep( 60.0 );
+        relay_platform_mutex_acquire( upgrade->mutex );
+        upgrade->upgrading = false;
+        relay_platform_mutex_release( upgrade->mutex );
+        RELAY_PLATFORM_THREAD_RETURN();
+    }
+
+    printf( "new relay binary is installed\n" );
+
+    relay_platform_mutex_acquire( upgrade->mutex );
+    upgrade->upgrading = false;
+    relay_platform_mutex_release( upgrade->mutex );
+
+    quit = true;
+    relay_clean_shutdown = true;
 
     RELAY_PLATFORM_THREAD_RETURN();
 }
@@ -6816,6 +6818,7 @@ int main( int argc, const char ** argv )
 }
 
 
+// todo: move this into main update when processing relay update response
 /*
     if (response.target_version[0] != '\0' && strcmp(RELAY_VERSION, response.target_version.c_str()) != 0) {
 
