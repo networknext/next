@@ -3954,10 +3954,11 @@ struct upgrade_t
 {
     relay_platform_thread_t * thread;
     relay_platform_mutex_t * mutex;
+    const char * relay_upgrade_url;
     char current_version[1024];
     char target_version[1024];
-    char bucket_url[1024];
     bool upgrading;
+    double last_check_time;
 };
 
 struct main_t
@@ -4209,7 +4210,7 @@ void * upgrade_thread_function( void * data )
         RELAY_PLATFORM_THREAD_RETURN();
     }
 
-    snprintf( command, sizeof(command), "wget %s/relay-%s", upgrade->bucket_url, upgrade->target_version );
+    snprintf( command, sizeof(command), "wget %s/relay-%s", upgrade->relay_upgrade_url, upgrade->target_version );
     if ( system( command ) != 0 )
     {
         printf( "error: failed to download relay version %s\n", upgrade->target_version );
@@ -4707,18 +4708,16 @@ int main_update( main_t * main )
 
     // automatic version updates
 
-    // todo: hack for testing
-    strcpy( target_version, "2.0.21" );
-
-    if ( target_version[0] != '\0' && strcmp( RELAY_VERSION, target_version ) != 0 ) 
+    if ( main->upgrade.relay_upgrade_url && target_version[0] != '\0' && strcmp( RELAY_VERSION, target_version ) != 0 ) 
     {
         relay_platform_mutex_acquire( main->upgrade.mutex );
         const bool upgrading = main->upgrade.upgrading;
         relay_platform_mutex_release( main->upgrade.mutex );
         
-        if ( !upgrading )
+        if ( !upgrading && main->upgrade.last_check_time + 60.0 < current_time )
         {
-            // todo: copy across bucket
+            main->upgrade.last_check_time = current_time;
+            
             strncpy( main->upgrade.current_version, RELAY_VERSION, sizeof(main->upgrade.current_version) - 1 );
             strncpy( main->upgrade.target_version, target_version, sizeof(main->upgrade.target_version) - 1 );
 
@@ -4728,23 +4727,6 @@ int main_update( main_t * main )
                 printf( "warning: could not create upgrade thread\n" );
                 main->upgrade.upgrading = false;
             }
-
-            // todo: start upgrade thread
-
-            /*
-            upgrading = true;
-
-            static pthread_t upgrade_thread;
-            static char target_version[1024];
-            strcpy( target_version, response.target_version.c_str() );
-            int err = pthread_create( &upgrade_thread, NULL, &upgrade_thread_function, target_version );
-            if ( err )
-            {
-                LOG(ERROR, "could not create upgrade thread");
-                upgrading = false;          
-                return UpdateResult::Success;
-            }
-            */
         }
     }
 
@@ -5358,7 +5340,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     continue;
                 }
 
-                // todo: print for expired tokens?
                 if ( token.expire_timestamp < relay_timestamp( relay ) )
                 {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -6350,6 +6331,15 @@ int main( int argc, const char ** argv )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
+    const char * relay_upgrade_url = relay_platform_getenv( "RELAY_UPGRADE_URL" );
+
+    if ( relay_upgrade_url )
+    {
+        printf( "Relay upgrade url is '%s'\n", relay_upgrade_url );
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
     const char * relay_name = relay_platform_getenv( "RELAY_NAME" );
     if ( !relay_name )
     {
@@ -6763,6 +6753,7 @@ int main( int argc, const char ** argv )
     main.relay_stats_queue = relay_stats_queue;
     main.relay_stats_mutex = relay_stats_mutex;
     main.upgrade.mutex = relay_platform_mutex_create();
+    main.upgrade.relay_upgrade_url = relay_upgrade_url;
     
     while ( !quit )
     {
@@ -6820,7 +6811,7 @@ int main( int argc, const char ** argv )
         relay_platform_thread_destroy( main.upgrade.thread );
     }
 
-    printf( "Cleaning up main data\n" );
+    printf( "Cleaning up upgrade data\n" );
 
     relay_platform_mutex_destroy( main.upgrade.mutex );
 

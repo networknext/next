@@ -6,21 +6,21 @@ DONE
 
 	Add logs for the relay clean shutdown
 
-RELAY
-
 	Bring back the relay version update so it works, but have it off by default, enabled with an env var that is set when relays are properly setup via terraform.
 
-	------------------
+RELAY
 
-	Work out what we need to do to get pings/pongs setup to use basic and advanced packet filter.
-
-	Make sure we only respond to a ping, if we know about that relay in our list (ping thread).
-
-	Make sure relay pongs are smaller than relay pings, so we can't have amplification.
+	Setup relay pings and pongs to use the packet filters (chonkle + pittle)
 
 	------------------
 
-	Relay should have functional tests, these should be separate from sdk func tests, and runnable inside semaphore.
+	Debug why the happy path is not working on linux
+
+	------------------
+
+	Relay should have functional tests, separate from sdk func tests, and runnable inside semaphore.
+
+	Start with the absolute basics of the relay functionality, and test everything from top to bottom.
 
 	------------------
 
