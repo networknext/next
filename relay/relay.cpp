@@ -81,6 +81,7 @@
 #define RELAY_COUNTER_SESSION_CREATED                                                            6
 #define RELAY_COUNTER_SESSION_CONTINUED                                                          7
 #define RELAY_COUNTER_SESSION_DESTROYED                                                          8
+#define RELAY_COUNTER_SESSION_EXPIRED                                                            9
 
 #define RELAY_COUNTER_RELAY_PING_PACKET_SENT                                                    10
 #define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                                                11
@@ -102,7 +103,6 @@
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_BAD_SIZE                                            41
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                               42
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                              43
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED                                     44
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                                    45
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                               46
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS              47
@@ -112,7 +112,6 @@
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_BAD_SIZE                                          51
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                              52
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED                                     53
-#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED                                   54
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                55
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS              56
 
@@ -121,7 +120,6 @@
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                            62
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                                 63
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                           64
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED                                  65
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                            66
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS           67
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS         68
@@ -131,7 +129,6 @@
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG                                           72
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER                             73
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION                            74
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED                                   75
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED                                  76
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER                           77
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                78
@@ -142,7 +139,6 @@
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG                                           82
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER                             83
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                            84
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED                                   85
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED                                  86
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER                           87
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS            88
@@ -152,7 +148,6 @@
 #define RELAY_COUNTER_SESSION_PING_PACKET_BAD_PACKET_SIZE                                       91
 #define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 92
 #define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                93
-#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED                                       94
 #define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      95
 #define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               96
 #define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    97
@@ -162,7 +157,6 @@
 #define RELAY_COUNTER_SESSION_PONG_PACKET_BAD_SIZE                                             101
 #define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                102
 #define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                               103
-#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED                                      104
 #define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                     105
 #define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                              106
 #define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS               107
@@ -5236,7 +5230,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
@@ -5366,7 +5360,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", token.session_id, token.session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
@@ -5481,7 +5475,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
@@ -5613,7 +5607,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
@@ -5750,7 +5744,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
@@ -5880,7 +5874,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
@@ -6009,7 +6003,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                     relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                     relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                    relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
+                    relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                     relay->sessions->erase(key);
                     continue;
                 }
