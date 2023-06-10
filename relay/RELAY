@@ -8,9 +8,25 @@ DONE
 
 	Bring back the relay version update so it works, but have it off by default, enabled with an env var that is set when relays are properly setup via terraform.
 
+	Setup relay pings and pongs to use the packet filters (chonkle + pittle)
+
 RELAY
 
-	Setup relay pings and pongs to use the packet filters (chonkle + pittle)
+	Verify that relay pings work
+
+	Verify that func tests pass
+
+	------------------
+
+	Implement the near relay ping token
+
+	Significant work end-to-end from server backend down to SDK, then up to relay in pings.
+
+	Basic idea, have a token, secured by server backend key that specifies IP address and a timestamp when the ping token expires.
+
+	One token per-near relay. Otherwise, too expensive when pinging.
+
+	Might need > 1500 byte response packet down to SDK, need to do the math....
 
 	------------------
 
