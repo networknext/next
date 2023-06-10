@@ -10,12 +10,49 @@ DONE
 
 	Setup relay pings and pongs to use the packet filters (chonkle + pittle)
 
-RELAY
-
 	Verify that relay pings work
 
 	Verify that func tests pass
 
+RELAY
+
+	Relay pings need only a signature
+
+	To make this efficient, only the signatures need to be sent down per-token, the other data, which is the address of the relay, and the public address of the client is already known -- and we need to send the expire timestamp only once.
+
+	This we can look at the signature length, multiply it by 32, and add 8, and this will be the cost of sending down ping tokens to the SDK.
+
+	Public key size is 64 bytes (crypto_sign_PUBLICKEYBYTES)
+
+	64 * 32 = 2048 bytes.
+
+	That's pretty large, I guess we'll need to have fragmented packets.
+
+	Is there a non-public key version that I could test with smaller signature?
+
+	Yes, there is crypto_auth_BYTES for crypto_auth
+
+		#define MESSAGE (const unsigned char *) "test"
+		#define MESSAGE_LEN 4
+
+		unsigned char key[crypto_auth_KEYBYTES];
+		unsigned char mac[crypto_auth_BYTES];
+
+		crypto_auth_keygen(key);
+		crypto_auth(mac, MESSAGE, MESSAGE_LEN, key);
+
+		if (crypto_auth_verify(mac, MESSAGE, MESSAGE_LEN, key) != 0) {
+		    /* message forged! */
+		}
+
+	What is the size of crypto_auth_BYTES?
+
+	32 bytes.
+
+	So it would be 32*32 = 1024 bytes.
+
+	Should probably just use the public key version, because 1024 is still so large it won't fit into a single 1500 byte fragment. So, why not just go to 2048 w. better security (eg. relays could be run by third parties, they don't need to know a secret key...)
+	
 	------------------
 
 	Implement the near relay ping token
