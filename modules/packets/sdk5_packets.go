@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net"
 
+	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/core"
 	"github.com/networknext/accelerate/modules/crypto"
@@ -402,6 +403,7 @@ type SDK5_SessionUpdateResponsePacket struct {
 	NumNearRelays        int32
 	NearRelayIds         [SDK5_MaxNearRelays]uint64
 	NearRelayAddresses   [SDK5_MaxNearRelays]net.UDPAddr
+	NearRelayPingTokens  [SDK5_MaxNearRelays][constants.NearRelayPingSignatureBytes]byte
 	NumTokens            int32
 	Tokens               []byte
 	Multipath            bool
@@ -431,6 +433,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 		for i := int32(0); i < packet.NumNearRelays; i++ {
 			stream.SerializeUint64(&packet.NearRelayIds[i])
 			stream.SerializeAddress(&packet.NearRelayAddresses[i])
+			stream.SerializeBytes(packet.NearRelayPingTokens[i][:])
 		}
 	}
 

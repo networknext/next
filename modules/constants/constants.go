@@ -88,4 +88,6 @@ const (
 	RelayStatus_Offline      = 0
 	RelayStatus_Online       = 1
 	RelayStatus_ShuttingDown = 2
+
+	NearRelayPingSignatureBytes = 32
 )

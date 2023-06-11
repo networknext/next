@@ -1,58 +1,86 @@
 DONE
 
-	Fixed session map issue issue causing problems with multiple sessions on relays.
+	I'm going to use the crypto_auth symmetric signature (32 bytes).
 
-	Happy path is still failing on semaphore.
+	The reason for this is the current use-case of network next doesn't have relays run by anybody except the system owner, so there is no problem having a symmetric key shared with relays in this case. It doesn't provide an attacker with anything other than the ability to generate ping tokens.
 
-	Add logs for the relay clean shutdown
+	And managing a brand new set of keygen for public/private keypairs on the relay backend, server backend and SDK side would be a HUGE pain in the ass.
 
-	Bring back the relay version update so it works, but have it off by default, enabled with an env var that is set when relays are properly setup via terraform.
+	And it's half the size. 32 bytes per-signature vs. 64.
 
-	Setup relay pings and pongs to use the packet filters (chonkle + pittle)
+	Do it.
 
-	Verify that relay pings work
+	Extend crypto with crypto_auth methods from sodium.
 
-	Verify that func tests pass
+	Unit test crypto auth methods.
+
+	Implement generate ping token signature function with crypto auth methods.
+
+	Unit test ping token signature in golang.
+
+	Include ping token signatures in the session update response packet in golang.
 
 RELAY
 
-	Relay pings need only a signature
+	Make sure unit tests include the near relay ping tokens in golang.
 
-	To make this efficient, only the signatures need to be sent down per-token, the other data, which is the address of the relay, and the public address of the client is already known -- and we need to send the expire timestamp only once.
+	-------
 
-	This we can look at the signature length, multiply it by 32, and add 8, and this will be the cost of sending down ping tokens to the SDK.
+	Include ping token signatures in the SDK5 session update response packet.
 
-	Public key size is 64 bytes (crypto_sign_PUBLICKEYBYTES)
+	Make sure C++ unit tests include ping token signatures in session update response.
 
-	64 * 32 = 2048 bytes.
+	-------
 
-	That's pretty large, I guess we'll need to have fragmented packets.
+	Actually calculate and send down the ping token signatures to the SDK
 
-	Is there a non-public key version that I could test with smaller signature?
+	Implement code in the SDK to pass up the signature (32 bytes) in near relay ping packets.
 
-	Yes, there is crypto_auth_BYTES for crypto_auth
+	Implement code in the relay to verify the ping token signature in near relay ping packets.
 
-		#define MESSAGE (const unsigned char *) "test"
-		#define MESSAGE_LEN 4
 
-		unsigned char key[crypto_auth_KEYBYTES];
-		unsigned char mac[crypto_auth_BYTES];
 
-		crypto_auth_keygen(key);
-		crypto_auth(mac, MESSAGE, MESSAGE_LEN, key);
 
-		if (crypto_auth_verify(mac, MESSAGE, MESSAGE_LEN, key) != 0) {
-		    /* message forged! */
-		}
 
-	What is the size of crypto_auth_BYTES?
 
-	32 bytes.
 
-	So it would be 32*32 = 1024 bytes.
 
-	Should probably just use the public key version, because 1024 is still so large it won't fit into a single 1500 byte fragment. So, why not just go to 2048 w. better security (eg. relays could be run by third parties, they don't need to know a secret key...)
-	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	------------------
 
 	Implement the near relay ping token

@@ -23,6 +23,9 @@ const (
 	Sign_SignatureSize  = 64
 	Sign_PublicKeySize  = 32
 	Sign_PrivateKeySize = 64
+
+	Auth_SignatureSize = 32
+	Auth_KeySize = 32
 )
 
 // ----------------------------------------------------
@@ -76,6 +79,24 @@ func Sign(data []byte, privateKey []byte) []byte {
 
 func Verify(data []byte, publicKey []byte, signature []byte) bool {
 	return ed25519.Verify(ed25519.PublicKey(publicKey), data, signature)
+}
+
+// ----------------------------------------------------
+
+func Auth_Key() []byte {
+	key := make([]byte, Auth_KeySize)
+	C.crypto_auth_keygen((*C.uchar)(&key[0]))
+	return key
+}
+
+func Auth_Sign(data []byte, key []byte, signature []byte) {
+	length := len(data)
+	C.crypto_auth((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), C.ulonglong(length), (*C.uchar)(&key[0]))
+}
+
+func Auth_Verify(data []byte, key []byte, signature []byte) bool {
+	length := len(data)
+	return C.crypto_auth_verify((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), C.ulonglong(length), (*C.uchar)(&key[0])) == 0
 }
 
 // ----------------------------------------------------

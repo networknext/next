@@ -21,7 +21,7 @@ func Test_Sign(t *testing.T) {
 	assert.True(t, crypto.Verify(data, publicKey, signature))
 }
 
-func Test_Encrypt(t *testing.T) {
+func Test_Auth(t *testing.T) {
 
 	senderPublicKey, senderPrivateKey := crypto.Box_KeyPair()
 
@@ -34,7 +34,7 @@ func Test_Encrypt(t *testing.T) {
 
 	data := make([]byte, 256)
 	for i := range data {
-		data[i] = byte(data[i])
+		data[i] = byte(i)
 	}
 
 	encryptedData := make([]byte, 256+crypto.Box_MacSize)
@@ -63,4 +63,30 @@ func Test_Encrypt(t *testing.T) {
 	err = crypto.Box_Decrypt(senderPublicKey[:], receiverPrivateKey[:], nonce, encryptedData, encryptedBytes)
 
 	assert.Error(t, err)
+}
+
+func Test_Encrypt(t *testing.T) {
+
+	// verify that we can sign data and verify
+
+	key := crypto.Auth_Key()
+
+	data := make([]byte, 256)
+	for i := range data {
+		data[i] = byte(i)
+	}
+
+	signature := make([]byte, crypto.Auth_SignatureSize)
+
+	crypto.Auth_Sign(data, key, signature)
+
+	assert.True(t, crypto.Auth_Verify(data, key, signature))
+
+	// modify the data, and the verify should fail
+
+	for i := range data {
+		data[i] = 0
+	}
+
+	assert.False(t, crypto.Auth_Verify(data, key, signature))
 }

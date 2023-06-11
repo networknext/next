@@ -7,21 +7,18 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"os"
 	"sort"
 	"testing"
 	"time"
+	"encoding/binary"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/crypto"
 )
-
-func FuckOffGolang() {
-	fmt.Fprintf(os.Stdout, "I'm sick of adding and removing the fmt and os imports as I work")
-}
 
 func RelayHash64(name string) uint64 {
 	hash := fnv.New64a()
@@ -4933,5 +4930,26 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 		packetLength := i % len(output)
 		assert.Equal(t, false, core.BasicPacketFilter(output[:], packetLength))
 		assert.Equal(t, false, core.AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
+	}
+}
+
+func TestPingTokenSignatures(t *testing.T) {
+	key := crypto.Auth_Key()
+	clientPublicAddress := common.RandomAddress()
+	relayPublicAddresses := make([]*net.UDPAddr, 32)
+	for i := range relayPublicAddresses {
+		address := common.RandomAddress()
+		relayPublicAddresses[i] = &address
+	}
+	expireTimestamp := rand.Uint64()
+	signatures := core.GeneratePingTokenSignatures(expireTimestamp, &clientPublicAddress, relayPublicAddresses, key)
+	assert.Equal(t, len(signatures), len(relayPublicAddresses))
+	for i := range signatures {
+		data := make([]byte, 256)
+		binary.LittleEndian.PutUint64(data[0:], expireTimestamp)
+		core.WriteAddress(data[8:], &clientPublicAddress)
+		core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], relayPublicAddresses[i])
+		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
+		assert.True(t, crypto.Auth_Verify(data[:length], key, signatures[i]))
 	}
 }

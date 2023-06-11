@@ -1751,3 +1751,17 @@ func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16)
 	addressPort := uint16(address.Port)
 	return address.IP.To4(), addressPort
 }
+
+func GeneratePingTokenSignatures(expireTimestamp uint64, clientPublicAddress *net.UDPAddr, relayPublicAddresses []*net.UDPAddr, key []byte) [][]byte {
+	signatures := make([][]byte, len(relayPublicAddresses))
+	for i := range signatures {
+		data := make([]byte, 256)
+		binary.LittleEndian.PutUint64(data[0:], expireTimestamp)
+		WriteAddress(data[8:], clientPublicAddress)
+		WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], relayPublicAddresses[i])
+		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
+		signatures[i] = make([]byte, crypto.Auth_SignatureSize)
+		crypto.Auth_Sign(data[:length], key, signatures[i])
+	}
+	return signatures
+}
