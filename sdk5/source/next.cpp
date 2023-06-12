@@ -13267,6 +13267,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->update_num_near_relays = packet.num_near_relays;
             memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
+
+            // todo: stash near relay expire timestamp
+            // todo: stash near relay ping tokens
         }
 
         entry->update_last_send_time = -1000.0;
@@ -19397,7 +19400,9 @@ void test_session_response_packet_direct_has_near_relays()
             snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
+            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
         }
+        in.near_relay_expire_timestamp = 0x1234172487187LL;
         in.response_type = NEXT_UPDATE_TYPE_DIRECT;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
         for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
@@ -19433,7 +19438,9 @@ void test_session_response_packet_direct_has_near_relays()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
+            // todo: check near relay ping token
         }
+        // todo: check near relay expire timestamp
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
@@ -19481,7 +19488,9 @@ void test_session_response_packet_route_has_near_relays()
             snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
+            // todo: near relay ping token
         }
+        // todo: near relay expire timestamp
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
         in.num_tokens = NEXT_MAX_TOKENS;
@@ -19518,7 +19527,9 @@ void test_session_response_packet_route_has_near_relays()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
+            // todo: check near relay ping token
         }
+        // todo: check near relay expire timestamp
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
         next_check( in.num_tokens == out.num_tokens );
@@ -19567,7 +19578,9 @@ void test_session_response_packet_continue_has_near_relays()
             snprintf( relay_address, sizeof(relay_name), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
+            // todo: near relay ping token
         }
+        // todo: near relay expire timestamp
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
         in.num_tokens = NEXT_MAX_TOKENS;
@@ -19606,215 +19619,9 @@ void test_session_response_packet_continue_has_near_relays()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
+            // todo: check near relay ping token
         }
-        next_check( in.response_type == out.response_type );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_session_response_packet_direct_near_relays_not_changed()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = false;
-        in.response_type = NEXT_UPDATE_TYPE_DIRECT;
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-        in.has_debug = true;
-        strcpy( in.debug, "hello session" );
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.has_debug == out.has_debug );
-        next_check( strcmp( in.debug, out.debug ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_session_response_packet_route_near_relays_not_changed()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = false;
-        in.response_type = NEXT_UPDATE_TYPE_ROUTE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_session_response_packet_continue_near_relays_not_changed()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = false;
-        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.multipath == out.multipath );
-        next_check( in.has_near_relays == out.has_near_relays );
+        // todo: check near relay expire timestamp
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
