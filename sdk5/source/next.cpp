@@ -83,7 +83,6 @@
 #define NEXT_CONTINUE_TOKEN_BYTES                                      17
 #define NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES                            57
 #define NEXT_PING_TOKEN_BYTES                                          46
-#define NEXT_ENCRYPTED_PING_TOKEN_BYTES                                86
 #define NEXT_UPDATE_TYPE_DIRECT                                         0
 #define NEXT_UPDATE_TYPE_ROUTE                                          1
 #define NEXT_UPDATE_TYPE_CONTINUE                                       2
@@ -3712,14 +3711,15 @@ int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_se
     return packet_length;
 }
 
-int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, uint64_t expire_timestamp, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_RELAY_PING_PACKET );
     uint8_t * a = p; p += 15;
     next_write_uint64( &p, ping_sequence );
     next_write_uint64( &p, session_id );
-    next_write_bytes( &p, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES );
+    next_write_uint64( &p, expire_timestamp );
+    next_write_bytes( &p, ping_token, NEXT_PING_TOKEN_BYTES );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
     next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
@@ -4930,7 +4930,10 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes, &to_address_port );
 
-            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            // todo: we need to get expire timestamp from the session update response packet
+            uint64_t expire_timestamp = 0;
+
+            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, expire_timestamp, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( packet_bytes > 0 );
 
@@ -5270,133 +5273,8 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
     return NEXT_OK;
 }
 
-// ---------------------------------------------------------------
-
-struct next_ping_token_t
-{
-    uint64_t expire_timestamp;
-    next_address_t from_address;
-    next_address_t to_address;
-};
-
-void next_write_ping_token( next_ping_token_t * token, uint8_t * buffer, int buffer_length )
-{
-    (void) buffer_length;
-
-    next_assert( token );
-    next_assert( buffer );
-    next_assert( buffer_length >= NEXT_PING_TOKEN_BYTES );
-
-    uint8_t * start = buffer;
-
-    (void) start;
-
-    next_write_uint64( &buffer, token->expire_timestamp );
-    next_write_address( &buffer, &token->from_address );
-    next_write_address( &buffer, &token->to_address );
-
-    next_assert( buffer - start == NEXT_PING_TOKEN_BYTES );
-}
-
-void next_read_ping_token( next_ping_token_t * token, const uint8_t * buffer )
-{
-    next_assert( token );
-    next_assert( buffer );
-
-    const uint8_t * start = buffer;
-
-    (void) start;
-
-    token->expire_timestamp = next_read_uint64( &buffer );
-    next_read_address( &buffer, &token->from_address );
-    next_read_address( &buffer, &token->to_address );
-
-    next_assert( buffer - start == NEXT_PING_TOKEN_BYTES );
-}
-
-int next_encrypt_ping_token( uint8_t * sender_private_key, uint8_t * receiver_public_key, uint8_t * nonce, uint8_t * buffer, int buffer_length )
-{
-    next_assert( sender_private_key );
-    next_assert( receiver_public_key );
-    next_assert( buffer );
-    next_assert( buffer_length >= (int) ( NEXT_PING_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES ) );
-
-    (void) buffer_length;
-
-    if ( next_crypto_box_easy( buffer, buffer, NEXT_PING_TOKEN_BYTES, nonce, receiver_public_key, sender_private_key ) != 0 )
-    {
-        return NEXT_ERROR;
-    }
-
-    return NEXT_OK;
-}
-
-int next_decrypt_ping_token( const uint8_t * sender_public_key, const uint8_t * receiver_private_key, const uint8_t * nonce, uint8_t * buffer )
-{
-    next_assert( sender_public_key );
-    next_assert( receiver_private_key );
-    next_assert( buffer );
-
-    if ( next_crypto_box_open_easy( buffer, buffer, NEXT_PING_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES, nonce, sender_public_key, receiver_private_key ) != 0 )
-    {
-        return NEXT_ERROR;
-    }
-
-    return NEXT_OK;
-}
-
-int next_write_encrypted_ping_token( uint8_t ** buffer, next_ping_token_t * token, uint8_t * sender_private_key, uint8_t * receiver_public_key )
-{
-    next_assert( buffer );
-    next_assert( token );
-    next_assert( sender_private_key );
-    next_assert( receiver_public_key );
-
-    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
-
-    uint8_t * start = *buffer;
-
-    (void) start;
-
-    next_write_bytes( buffer, nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
-
-    next_write_ping_token( token, *buffer, NEXT_PING_TOKEN_BYTES );
-
-    if ( next_encrypt_ping_token( sender_private_key, receiver_public_key, nonce, *buffer, NEXT_PING_TOKEN_BYTES + NEXT_CRYPTO_BOX_NONCEBYTES ) != NEXT_OK )
-        return NEXT_ERROR;
-
-    *buffer += NEXT_PING_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES;
-
-    next_assert( ( *buffer - start ) == NEXT_ENCRYPTED_PING_TOKEN_BYTES );
-
-    return NEXT_OK;
-}
-
-int next_read_encrypted_ping_token( uint8_t ** buffer, next_ping_token_t * token, const uint8_t * sender_public_key, const uint8_t * receiver_private_key )
-{
-    next_assert( buffer );
-    next_assert( token );
-    next_assert( sender_public_key );
-    next_assert( receiver_private_key );
-
-    const uint8_t * nonce = *buffer;
-
-    *buffer += NEXT_CRYPTO_BOX_NONCEBYTES;
-
-    if ( next_decrypt_ping_token( sender_public_key, receiver_private_key, nonce, *buffer ) != NEXT_OK )
-    {
-        return NEXT_ERROR;
-    }
-
-    next_read_ping_token( token, *buffer );
-
-    *buffer += NEXT_PING_TOKEN_BYTES + NEXT_CRYPTO_BOX_MACBYTES;
-
-    return NEXT_OK;
-}
-
 // ----------------------------------------------------------------------
+
 int next_peek_header( int direction, int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint64_t packet_sequence;
@@ -17756,55 +17634,6 @@ void test_continue_token()
     next_check( input_token.session_id == output_token.session_id );
 }
 
-void test_ping_token()
-{
-    uint8_t buffer[NEXT_ENCRYPTED_PING_TOKEN_BYTES];
-
-    next_ping_token_t input_token;
-    memset( &input_token, 0, sizeof( input_token ) );
-
-    input_token.expire_timestamp = 1234241431241LL;
-    next_address_parse( &input_token.from_address, "127.0.0.1:40000" );
-    next_address_parse( &input_token.to_address, "127.0.0.1:50000" );
-
-    next_write_ping_token( &input_token, buffer, NEXT_PING_TOKEN_BYTES );
-
-    unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( sender_public_key, sender_private_key );
-
-    unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( receiver_public_key, receiver_private_key );
-
-    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
-
-    next_check( next_encrypt_ping_token( sender_private_key, receiver_public_key, nonce, buffer, sizeof( buffer ) ) == NEXT_OK );
-
-    next_check( next_decrypt_ping_token( sender_public_key, receiver_private_key, nonce, buffer ) == NEXT_OK );
-
-    next_ping_token_t output_token;
-
-    next_read_ping_token( &output_token, buffer );
-
-    next_check( input_token.expire_timestamp == output_token.expire_timestamp );
-    next_check( next_address_equal( &input_token.from_address, &output_token.from_address ) == 1 );
-    next_check( next_address_equal( &input_token.to_address, &output_token.to_address ) == 1 );
-
-    uint8_t * p = buffer;
-
-    next_check( next_write_encrypted_ping_token( &p, &input_token, sender_private_key, receiver_public_key ) == NEXT_OK );
-
-    p = buffer;
-
-    next_check( next_read_encrypted_ping_token( &p, &output_token, sender_public_key, receiver_private_key ) == NEXT_OK );
-
-    next_check( input_token.expire_timestamp == output_token.expire_timestamp );
-    next_check( next_address_equal( &input_token.from_address, &output_token.from_address ) == 1 );
-    next_check( next_address_equal( &input_token.to_address, &output_token.to_address ) == 1 );
-}
-
 void test_pittle()
 {
     uint8_t output[256];
@@ -19142,13 +18971,14 @@ void test_relay_ping_packet()
         uint16_t from_port = uint16_t( i + 1000000 );
         uint16_t to_port = uint16_t( i + 5000 );
 
-        uint8_t ping_token[NEXT_ENCRYPTED_PING_TOKEN_BYTES];
-        next_random_bytes( ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES );
+        uint8_t ping_token[NEXT_PING_TOKEN_BYTES];
+        next_random_bytes( ping_token, NEXT_PING_TOKEN_BYTES );
 
         uint64_t ping_sequence = i;
         uint64_t ping_session_id = 0x12345;
+        uint64_t ping_expire_timestamp = 0x123415817414;
 
-        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, ping_expire_timestamp, magic, from_address, 4, from_port, to_address, 4, to_port );
 
         next_check( packet_bytes >= 0 );
         next_check( packet_bytes <= NEXT_MTU + 27 );
@@ -19161,11 +18991,13 @@ void test_relay_ping_packet()
         const uint8_t * p = packet_data + 16;
         uint64_t read_ping_sequence = next_read_uint64( &p );
         uint64_t read_ping_session_id = next_read_uint64( &p );
+        uint64_t read_ping_expire_timestamp = next_read_uint64( &p );
 
         next_check( read_ping_sequence == ping_sequence );
         next_check( read_ping_session_id == ping_session_id );
+        next_check( read_ping_expire_timestamp == ping_expire_timestamp );
 
-        next_check( memcmp( packet_data + 1 + 15 + 8 + 8, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES ) == 0 );
+        next_check( memcmp( packet_data + 1 + 15 + 8 + 8 + 8, ping_token, NEXT_PING_TOKEN_BYTES ) == 0 );
     }
 }
 
@@ -21190,7 +21022,6 @@ void next_test()
         RUN_TEST( test_route_token );
         RUN_TEST( test_continue_token );
         RUN_TEST( test_upgrade_token );
-        RUN_TEST( test_ping_token );
         RUN_TEST( test_pittle );
         RUN_TEST( test_chonkle );
         RUN_TEST( test_abi );

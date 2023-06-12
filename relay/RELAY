@@ -1,68 +1,52 @@
 DONE
 
-	I'm going to use the crypto_auth symmetric signature (32 bytes).
-
-	The reason for this is the current use-case of network next doesn't have relays run by anybody except the system owner, so there is no problem having a symmetric key shared with relays in this case. It doesn't provide an attacker with anything other than the ability to generate ping tokens.
-
-	And managing a brand new set of keygen for public/private keypairs on the relay backend, server backend and SDK side would be a HUGE pain in the ass.
-
-	And it's half the size. 32 bytes per-signature vs. 64.
-
-	Do it.
-
-	Extend crypto with crypto_auth methods from sodium.
-
-	Unit test crypto auth methods.
-
-	Implement generate ping token signature function with crypto auth methods.
-
-	Unit test ping token signature in golang.
-
-	Include ping token signatures in the session update response packet in golang.
-
 RELAY
 
-	Make sure unit tests include the near relay ping tokens in golang.
+	Add near relay expire timestamp to session update response packet in golang
+
+	Add near relay expire timestamp to session update response packet in next.cpp
+
+	Plumb the expire timestamp from the session update response to the place where we construct near relay ping packets
 
 	-------
 
-	Include ping token signatures in the SDK5 session update response packet.
+	Work out how all relays have a "RELAY_PING_KEY"
 
-	Make sure C++ unit tests include ping token signatures in session update response.
+	Is it passed in, in env vars, or does it get passed down in the relay update response?
+
+	I prefer it to be zero config, so just pass down in relay update response, and have it be something that the relay backend and server backend knows via env var.
 
 	-------
 
-	Actually calculate and send down the ping token signatures to the SDK
+	Plumb the relay ping key down from the relay backend to relays in the relay update response
 
-	Implement code in the SDK to pass up the signature (32 bytes) in near relay ping packets.
+	-------
 
-	Implement code in the relay to verify the ping token signature in near relay ping packets.
+	Plumb the relay ping key up from the server backend to the handlers.
 
+	-------
 
+	Actually calculate and send down the ping token signatures and the expire timestamp to the SDK
 
+	-------
 
+	Store the ping tokens (signatures), and pass them up with near relay pings packets.
 
+	-------
 
+	Make relay ignore expired near relay ping packets
 
+	Make relay ignore near relay packets when signature doesn't verify.
 
+	-------
 
+	Extend the relay ping packet to include 32 byte signature and expire timestamp (2 seconds in future?)
 
+	When processing relay ping packet, ignore if it's expired.
 
+	When processing relay ping packet, ignore if signature doesn't verify.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	-------
 
 
 
@@ -81,17 +65,30 @@ RELAY
 
 
 
-	------------------
 
-	Implement the near relay ping token
 
-	Significant work end-to-end from server backend down to SDK, then up to relay in pings.
 
-	Basic idea, have a token, secured by server backend key that specifies IP address and a timestamp when the ping token expires.
 
-	One token per-near relay. Otherwise, too expensive when pinging.
 
-	Might need > 1500 byte response packet down to SDK, need to do the math....
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------------
 
