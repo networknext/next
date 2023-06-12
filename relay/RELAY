@@ -10,11 +10,17 @@ DONE
 
 	Extend next.cpp unit tests to cover the ping tokens and expire timestamp for session update response (w. near relays)
 
-RELAY
-
 	Store the expire timestamp from the session update response
 
 	Store the near relay ping tokens from the session update
+
+RELAY
+
+	Plumb the near relay expire timestamp and near relay ping tokens down from the server to the client.
+
+	-------
+
+	Work out how link the near relay ping token with the address / slot in the relay manager, so it's available constant time when pings are sent.
 
 	Fill relay ping packets with timestamp and (corresponding) near relay ping token (signature)
 
