@@ -10762,6 +10762,8 @@ struct NextBackendSessionUpdateResponsePacket
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_ping_tokens[NEXT_MAX_NEAR_RELAYS*NEXT_PING_TOKEN_BYTES];
+    uint64_t near_relay_expire_timestamp;
     int num_tokens;
     uint8_t tokens[NEXT_MAX_TOKENS*NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
     bool multipath;
@@ -10797,7 +10799,9 @@ struct NextBackendSessionUpdateResponsePacket
             {
                 serialize_uint64( stream, near_relay_ids[i] );
                 serialize_address( stream, near_relay_addresses[i] );
+                serialize_bytes( stream, near_relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
             }
+            serialize_uint64( stream, near_relay_expire_timestamp );
         }
 
         if ( response_type != NEXT_UPDATE_TYPE_DIRECT )

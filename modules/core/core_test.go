@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"crypto/ed25519"
+	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
@@ -10,13 +11,12 @@ import (
 	"sort"
 	"testing"
 	"time"
-	"encoding/binary"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/core"
-	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/crypto"
 )
 

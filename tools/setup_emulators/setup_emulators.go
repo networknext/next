@@ -10,7 +10,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	// "google.golang.org/api/option"
-	
+
 	"github.com/networknext/accelerate/modules/envvar"
 )
 

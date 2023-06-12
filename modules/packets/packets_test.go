@@ -292,6 +292,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 			packet.NearRelayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
 			common.RandomBytes(packet.NearRelayPingTokens[i][:])
 		}
+		packet.NearRelayExpireTimestamp = rand.Uint64()
 	}
 
 	packet.RouteType = int32(common.RandomInt(packets.SDK5_RouteTypeDirect, packets.SDK5_RouteTypeContinue))

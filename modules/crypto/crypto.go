@@ -25,7 +25,7 @@ const (
 	Sign_PrivateKeySize = 64
 
 	Auth_SignatureSize = 32
-	Auth_KeySize = 32
+	Auth_KeySize       = 32
 )
 
 // ----------------------------------------------------

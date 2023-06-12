@@ -10,8 +10,8 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/core"
 	"github.com/networknext/accelerate/modules/crypto"
 	"github.com/networknext/accelerate/modules/encoding"
@@ -393,22 +393,23 @@ func GenerateRandomSessionData() SDK5_SessionData {
 // ------------------------------------------------------------
 
 type SDK5_SessionUpdateResponsePacket struct {
-	SessionId            uint64
-	SliceNumber          uint32
-	SessionDataBytes     int32
-	SessionData          [SDK5_MaxSessionDataSize]byte
-	SessionDataSignature [SDK5_SignatureBytes]byte
-	RouteType            int32
-	HasNearRelays        bool
-	NumNearRelays        int32
-	NearRelayIds         [SDK5_MaxNearRelays]uint64
-	NearRelayAddresses   [SDK5_MaxNearRelays]net.UDPAddr
-	NearRelayPingTokens  [SDK5_MaxNearRelays][constants.NearRelayPingSignatureBytes]byte
-	NumTokens            int32
-	Tokens               []byte
-	Multipath            bool
-	HasDebug             bool
-	Debug                string
+	SessionId                uint64
+	SliceNumber              uint32
+	SessionDataBytes         int32
+	SessionData              [SDK5_MaxSessionDataSize]byte
+	SessionDataSignature     [SDK5_SignatureBytes]byte
+	RouteType                int32
+	HasNearRelays            bool
+	NumNearRelays            int32
+	NearRelayIds             [SDK5_MaxNearRelays]uint64
+	NearRelayAddresses       [SDK5_MaxNearRelays]net.UDPAddr
+	NearRelayPingTokens      [SDK5_MaxNearRelays][constants.NearRelayPingSignatureBytes]byte
+	NearRelayExpireTimestamp uint64
+	NumTokens                int32
+	Tokens                   []byte
+	Multipath                bool
+	HasDebug                 bool
+	Debug                    string
 }
 
 func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -435,6 +436,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 			stream.SerializeAddress(&packet.NearRelayAddresses[i])
 			stream.SerializeBytes(packet.NearRelayPingTokens[i][:])
 		}
+		stream.SerializeUint64(&packet.NearRelayExpireTimestamp)
 	}
 
 	if packet.RouteType != SDK5_RouteTypeDirect {

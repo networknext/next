@@ -1283,8 +1283,8 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateBuyerKeypairResponse struct {
-	BuyerKeypair 	admin.BuyerKeypairData 		`json:"buyer_keypair"`
-	Error    		string             			`json:"error"`
+	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
+	Error        string                 `json:"error"`
 }
 
 func adminCreateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
@@ -1312,8 +1312,8 @@ func adminCreateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadBuyerKeypairsResponse struct {
-	BuyerKeypairs 	[]admin.BuyerKeypairData 	`json:"buyer_keypairs"`
-	Error     		string               		`json:"error"`
+	BuyerKeypairs []admin.BuyerKeypairData `json:"buyer_keypairs"`
+	Error         string                   `json:"error"`
 }
 
 func adminReadBuyerKeypairsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1332,8 +1332,8 @@ func adminReadBuyerKeypairsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadBuyerKeypairResponse struct {
-	BuyerKeypair 	admin.BuyerKeypairData 		`json:"buyer_keypair"`
-	Error    		string            	 		`json:"error"`
+	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
+	Error        string                 `json:"error"`
 }
 
 func adminReadBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
@@ -1359,8 +1359,8 @@ func adminReadBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminUpdateBuyerKeypairResponse struct {
-	BuyerKeypair 	admin.BuyerKeypairData 		`json:"buyer_keypair"`
-	Error    		string             			`json:"error"`
+	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
+	Error        string                 `json:"error"`
 }
 
 func adminUpdateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
@@ -1412,8 +1412,8 @@ func adminDeleteBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCreateRelayKeypairResponse struct {
-	RelayKeypair 	admin.RelayKeypairData 		`json:"relay_keypair"`
-	Error    		string             			`json:"error"`
+	RelayKeypair admin.RelayKeypairData `json:"relay_keypair"`
+	Error        string                 `json:"error"`
 }
 
 func adminCreateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
@@ -1441,8 +1441,8 @@ func adminCreateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadRelayKeypairsResponse struct {
-	RelayKeypairs 	[]admin.RelayKeypairData 	`json:"relay_keypairs"`
-	Error     		string               		`json:"error"`
+	RelayKeypairs []admin.RelayKeypairData `json:"relay_keypairs"`
+	Error         string                   `json:"error"`
 }
 
 func adminReadRelayKeypairsHandler(w http.ResponseWriter, r *http.Request) {
@@ -1461,8 +1461,8 @@ func adminReadRelayKeypairsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminReadRelayKeypairResponse struct {
-	RelayKeypair 	admin.RelayKeypairData 		`json:"relay_keypair"`
-	Error    		string            	 		`json:"error"`
+	RelayKeypair admin.RelayKeypairData `json:"relay_keypair"`
+	Error        string                 `json:"error"`
 }
 
 func adminReadRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
@@ -1488,8 +1488,8 @@ func adminReadRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type AdminUpdateRelayKeypairResponse struct {
-	RelayKeypair 	admin.RelayKeypairData 		`json:"relay_keypair"`
-	Error    		string             			`json:"error"`
+	RelayKeypair admin.RelayKeypairData `json:"relay_keypair"`
+	Error        string                 `json:"error"`
 }
 
 func adminUpdateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {

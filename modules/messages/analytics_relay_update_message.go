@@ -23,9 +23,9 @@ type AnalyticsRelayUpdateMessage struct {
 	MaxSessions               uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
-	PacketsSentPerSecond	  float32
+	PacketsSentPerSecond      float32
 	PacketsReceivedPerSecond  float32
-	BandwidthSentKbps		  float32
+	BandwidthSentKbps         float32
 	BandwidthReceivedKbps     float32
 	NearPingsPerSecond        float32
 	RelayPingsPerSecond       float32
@@ -183,7 +183,7 @@ func (message *AnalyticsRelayUpdateMessage) Save() (map[string]bigquery.Value, s
 	if message.MaxSessions != 0 {
 		bigquery_message["max_sessions"] = int(message.MaxSessions)
 	}
-	
+
 	bigquery_message["envelope_bandwidth_up_kbps"] = int(message.EnvelopeBandwidthUpKbps)
 	bigquery_message["envelope_bandwidth_down_kbps"] = int(message.EnvelopeBandwidthDownKbps)
 	bigquery_message["packets_sent_per_second"] = float64(message.PacketsSentPerSecond)

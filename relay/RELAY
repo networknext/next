@@ -1,10 +1,18 @@
 DONE
 
-RELAY
-
 	Add near relay expire timestamp to session update response packet in golang
 
+	Add near relay ping tokens to session update response packet in next.cpp
+
 	Add near relay expire timestamp to session update response packet in next.cpp
+
+	Implement the serialize in session update response packet in next.cpp to match golang.
+
+RELAY
+
+	Extend next.cpp unit tests to cover the ping tokens and expire timestamp for session update response (w. near relays)
+
+	-------
 
 	Plumb the expire timestamp from the session update response to the place where we construct near relay ping packets
 

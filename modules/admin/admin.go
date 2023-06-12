@@ -1,16 +1,16 @@
 package admin
 
 import (
-	"database/sql"
+	"crypto/ed25519"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"crypto/ed25519"
 
 	"github.com/networknext/accelerate/modules/core"
 
-	"golang.org/x/crypto/nacl/box"
 	_ "github.com/lib/pq"
+	"golang.org/x/crypto/nacl/box"
 )
 
 type Controller struct {
