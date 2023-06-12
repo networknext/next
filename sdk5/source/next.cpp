@@ -19438,9 +19438,9 @@ void test_session_response_packet_direct_has_near_relays()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            // todo: check near relay ping token
+            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
         }
-        // todo: check near relay expire timestamp
+        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
         next_check( in.response_type == out.response_type );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
@@ -19488,9 +19488,9 @@ void test_session_response_packet_route_has_near_relays()
             snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
-            // todo: near relay ping token
+            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
         }
-        // todo: near relay expire timestamp
+        in.near_relay_expire_timestamp = 0x1234172487187LL;
         in.response_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
         in.num_tokens = NEXT_MAX_TOKENS;
@@ -19527,9 +19527,9 @@ void test_session_response_packet_route_has_near_relays()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            // todo: check near relay ping token
+            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
         }
-        // todo: check near relay expire timestamp
+        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
         next_check( in.response_type == out.response_type );
         next_check( in.multipath == out.multipath );
         next_check( in.num_tokens == out.num_tokens );
@@ -19578,9 +19578,9 @@ void test_session_response_packet_continue_has_near_relays()
             snprintf( relay_address, sizeof(relay_name), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
-            // todo: near relay ping token
+            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
         }
-        // todo: near relay expire timestamp
+        in.near_relay_expire_timestamp = 0x1234172487187LL;
         in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
         in.num_tokens = NEXT_MAX_TOKENS;
@@ -19619,9 +19619,9 @@ void test_session_response_packet_continue_has_near_relays()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            // todo: check near relay ping token
+            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
         }
-        // todo: check near relay expire timestamp
+        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
