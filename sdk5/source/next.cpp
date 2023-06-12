@@ -4790,9 +4790,17 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(4)
 
-    next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
 
     NEXT_DECLARE_SENTINEL(5)
+
+    uint64_t relay_ping_expire_timestamp;
+
+    NEXT_DECLARE_SENTINEL(6)
+
+    next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(7)
 };
 
 void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
@@ -4807,6 +4815,8 @@ void next_relay_manager_initialize_sentinels( next_relay_manager_t * manager )
     NEXT_INITIALIZE_SENTINEL( manager, 3 )
     NEXT_INITIALIZE_SENTINEL( manager, 4 )
     NEXT_INITIALIZE_SENTINEL( manager, 5 )
+    NEXT_INITIALIZE_SENTINEL( manager, 6 )
+    NEXT_INITIALIZE_SENTINEL( manager, 7 )
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_initialize_sentinels( &manager->relay_ping_history[i] );
@@ -4823,6 +4833,8 @@ void next_relay_manager_verify_sentinels( next_relay_manager_t * manager )
     NEXT_VERIFY_SENTINEL( manager, 3 )
     NEXT_VERIFY_SENTINEL( manager, 4 )
     NEXT_VERIFY_SENTINEL( manager, 5 )
+    NEXT_VERIFY_SENTINEL( manager, 6 )
+    NEXT_VERIFY_SENTINEL( manager, 7 )
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
 #endif // #if NEXT_ENABLE_MEMORY_CHECKS
@@ -4858,6 +4870,8 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
     memset( manager->relay_last_ping_time, 0, sizeof(manager->relay_last_ping_time) );
     memset( manager->relay_addresses, 0, sizeof(manager->relay_addresses) );
+    memset( manager->relay_ping_tokens, 0, sizeof(manager->relay_ping_tokens) );
+    manager->relay_ping_expire_timestamp = 0;
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
@@ -4865,7 +4879,7 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
     }
 }
 
-void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses )
+void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const next_address_t * relay_addresses, const uint8_t * relay_ping_tokens, uint64_t relay_ping_expire_timestamp )
 {
     next_relay_manager_verify_sentinels( manager );
 
@@ -4887,6 +4901,10 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
         manager->relay_ids[i] = relay_ids[i];
         manager->relay_addresses[i] = relay_addresses[i];
     }
+
+    memcpy( manager->relay_ping_tokens, relay_ping_tokens, num_relays * NEXT_PING_TOKEN_BYTES );
+
+    manager->relay_ping_expire_timestamp = relay_ping_expire_timestamp;
 
     // make sure all ping times are evenly distributed to avoid clusters of ping packets
 
@@ -4920,9 +4938,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
         {
             uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
 
-            // for the moment pass in a dummy ping token
-            uint8_t ping_token[1024];
-            memset( ping_token, 0, sizeof(ping_token) );
+            const uint8_t * ping_token = manager->relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
 
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
@@ -4934,10 +4950,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes, &to_address_port );
 
-            // todo: we need to get expire timestamp from the session update response packet
-            uint64_t expire_timestamp = 0;
-
-            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, expire_timestamp, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, manager->relay_ping_expire_timestamp, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( packet_bytes > 0 );
 
@@ -7288,16 +7301,20 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             if ( packet.has_near_relays )
             {
                 // enable near relay pings
+
                 next_printf( NEXT_LOG_LEVEL_INFO, "client pinging %d near relays", packet.num_near_relays );
-                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses );
+                
+                next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.near_relay_ping_tokens, packet.near_relay_expire_timestamp );
             }
             else
             {
                 // disable near relay pings (and clear any ping data)
+                
                 if ( client->near_relay_manager->num_relays != 0 )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "client near relay pings completed" );
-                    next_relay_manager_update( client->near_relay_manager, 0, packet.near_relay_ids, packet.near_relay_addresses );
+                
+                    next_relay_manager_update( client->near_relay_manager, 0, packet.near_relay_ids, packet.near_relay_addresses, NULL, 0 );
                 }
             }
 
@@ -12658,6 +12675,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
                 packet.num_near_relays = entry->update_num_near_relays;
                 memcpy( packet.near_relay_ids, entry->update_near_relay_ids, size_t(8) * entry->update_num_near_relays );
                 memcpy( packet.near_relay_addresses, entry->update_near_relay_addresses, sizeof(next_address_t) * entry->update_num_near_relays );
+                memcpy( packet.near_relay_ping_tokens, entry->update_near_relay_ping_tokens, NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES );
+                packet.near_relay_expire_timestamp = entry->update_near_relay_expire_timestamp;
             }
             packet.update_type = entry->update_type;
             packet.multipath = entry->multipath;
@@ -18731,7 +18750,9 @@ void test_route_update_packet_direct()
             snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
+            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
         }
+        in.near_relay_expire_timestamp = 0x12341987439187LL;
         in.update_type = NEXT_UPDATE_TYPE_DIRECT;
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
@@ -18767,7 +18788,9 @@ void test_route_update_packet_direct()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
+            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
         }
+        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
         next_check( in.update_type == out.update_type );
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
@@ -18811,7 +18834,9 @@ void test_route_update_packet_new_route()
             snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
+            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
         }
+        in.near_relay_expire_timestamp = 0x12341987439187LL;
         in.update_type = NEXT_UPDATE_TYPE_ROUTE;
         in.multipath = true;
         in.num_tokens = NEXT_MAX_TOKENS;
@@ -18848,7 +18873,9 @@ void test_route_update_packet_new_route()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
+            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
         }
+        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
         next_check( in.update_type == out.update_type );
         next_check( in.multipath == out.multipath );
         next_check( in.num_tokens == out.num_tokens );
@@ -18893,7 +18920,9 @@ void test_route_update_packet_continue_route()
             snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
             in.near_relay_ids[j] = next_relay_id( relay_name );
             next_address_parse( &in.near_relay_addresses[j], relay_address );
+            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
         }
+        in.near_relay_expire_timestamp = 0x12341987439187LL;
         in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
         in.multipath = true;
         in.num_tokens = NEXT_MAX_TOKENS;
@@ -18924,7 +18953,9 @@ void test_route_update_packet_continue_route()
         {
             next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
             next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
+            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
         }
+        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
         next_check( in.update_type == out.update_type );
         next_check( in.multipath == out.multipath );
         next_check( in.num_tokens == out.num_tokens );
@@ -20309,6 +20340,8 @@ void test_relay_manager()
 {
     uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
+    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
+    uint64_t relay_ping_expire_timestamp = 0x129387193871987LL;
 
     for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
     {
@@ -20329,7 +20362,7 @@ void test_relay_manager()
 
     // add max relays
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -20345,7 +20378,7 @@ void test_relay_manager()
 
     // remove all relays
 
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -20356,7 +20389,7 @@ void test_relay_manager()
 
     for ( int j = 0; j < 2; ++j )
     {
-        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses );
+        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
         {
             next_relay_stats_t stats;
             next_relay_manager_get_stats( manager, &stats );
@@ -20370,7 +20403,7 @@ void test_relay_manager()
 
     // now add a few new relays, while some relays remain the same
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4 );
+    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4, relay_ping_tokens, relay_ping_expire_timestamp );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
@@ -20383,7 +20416,7 @@ void test_relay_manager()
 
     // remove all relays
 
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses );
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
