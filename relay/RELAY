@@ -14,11 +14,15 @@ DONE
 
 	Store the near relay ping tokens from the session update
 
+	Add near relay expire timestamp and near relay ping tokens to RouteUpdatePacket
+
 RELAY
 
-	Plumb the near relay expire timestamp and near relay ping tokens down from the server to the client.
+	Make sure RouteUpdatePacket unit tests in next.cpp include expire timestamp and ping tokens.
 
-	-------
+	Send down the cached expire timestamp and ping tokens in the RouteUpdatePacket	
+
+	Process and store the expire timestamp and ping tokens on the client side.
 
 	Work out how link the near relay ping token with the address / slot in the relay manager, so it's available constant time when pings are sent.
 
