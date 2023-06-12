@@ -1,60 +1,38 @@
 DONE
 
-	Add near relay expire timestamp to session update response packet in golang
-
-	Add near relay ping tokens to session update response packet in next.cpp
-
-	Add near relay expire timestamp to session update response packet in next.cpp
-
-	Implement the serialize in session update response packet in next.cpp to match golang.
-
-	Extend next.cpp unit tests to cover the ping tokens and expire timestamp for session update response (w. near relays)
-
-	Store the expire timestamp from the session update response
-
-	Store the near relay ping tokens from the session update
-
-	Add near relay expire timestamp and near relay ping tokens to RouteUpdatePacket
-
-	Send down the cached expire timestamp and ping tokens in the RouteUpdatePacket	
-
-	Note the place where the RouteUpdatePacket is processed on the client when received.
-
-	Make sure RouteUpdatePacket unit tests in next.cpp include expire timestamp and ping tokens.
-
-	Extend relay manager update function to include expire timestamp and ping token array.
-
-	Pass the expire timestamp and ping tokens into the relay manager update.
-
-	Process the ping tokens in the relay manager and store so I can look them up at constant time when sending pings to a near relay.
-
-	Fill relay ping packets with timestamp and (corresponding) near relay ping token (signature) when sending.
-
 RELAY
 
-	-------
+	Extend the relay backend and server backends so they have required env vars "RELAY_PING_KEY" as base64
 
-	Work out how all relays have a "RELAY_PING_KEY"
+	Verify it decodes to 32 bytes of data.
 
-	Is it passed in, in env vars, or does it get passed down in the relay update response?
-
-	I prefer it to be zero config, so just pass down in relay update response, and have it be something that the relay backend and server backend knows via env var.
+	Fail if it's not supplied.
 
 	-------
 
-	Plumb the relay ping key down from the relay backend to relays in the relay update response
+	Add something to generate ping key to next tool.
+
+	Add ping key base64 to the local.env
+
+	-------
+
+	Plumb the relay ping key from the relay backend to relays in the relay update response
+
+	Store the relay ping key on the relay when the relay update response is received (repeatedly), eg. pass it to the ping thread via message, and to the relay threads via control message.
+
+	Do not send any pings from the relay until we have a valid ping key.
 
 	-------
 
 	Plumb the relay ping key up from the server backend (read env var) to the handlers when session update is processed.
 
-	-------
-
-	Actually calculate and send down the ping token signatures and the expire timestamp to the SDK
+	Actually calculate and send down the ping token signatures and the expire timestamp to the SDK in the session update handler.
 
 	-------
 
 	Add enough logs to verify everything gets passed down to the client as expected.
+
+	Verify that when the whole system is brought up, the client 
 
 	-------
 
@@ -62,8 +40,13 @@ RELAY
 
 	Make relay ignore near relay packets when signature doesn't verify.
 
+	-------
 
+	Verify that happy path passes
 
+	Verify that func tests pass
+
+	-------
 
 
 
