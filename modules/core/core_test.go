@@ -10,9 +10,11 @@ import (
 	"sort"
 	"testing"
 	"time"
+	"encoding/binary"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/core"
 	"github.com/networknext/accelerate/modules/crypto"
@@ -4932,25 +4934,23 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 }
 
 func TestPingTokenSignatures(t *testing.T) {
-	// todo: update test
-	/*
+	const NumTokens = 32
 	key := crypto.Auth_Key()
 	clientPublicAddress := common.RandomAddress()
-	relayPublicAddresses := make([]net.UDPAddr, 32)
+	relayPublicAddresses := make([]net.UDPAddr, NumTokens)
 	for i := range relayPublicAddresses {
 		address := common.RandomAddress()
 		relayPublicAddresses[i] = address
 	}
 	expireTimestamp := rand.Uint64()
-	signatures := core.GeneratePingTokens(expireTimestamp, &clientPublicAddress, relayPublicAddresses, key)
-	assert.Equal(t, len(signatures), len(relayPublicAddresses))
-	for i := range signatures {
+	pingTokens := make([]byte, NumTokens*constants.PingTokenBytes)
+	core.GeneratePingTokens(expireTimestamp, &clientPublicAddress, relayPublicAddresses, key, pingTokens)
+	for i := 0; i < 32; i++ {
 		data := make([]byte, 256)
 		binary.LittleEndian.PutUint64(data[0:], expireTimestamp)
 		core.WriteAddress(data[8:], &clientPublicAddress)
 		core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &relayPublicAddresses[i])
 		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
-		assert.True(t, crypto.Auth_Verify(data[:length], key, signatures[i]))
+		assert.True(t, crypto.Auth_Verify(data[:length], key, pingTokens[i*constants.PingTokenBytes:]))
 	}
-	*/
 }

@@ -28,10 +28,12 @@ DONE
 
 	Calculate the ping token signatures and the expire timestamp in the session update get near relays.
 
-RELAY
-
 	Transform calc ping tokens to work in the format as per-the packet struct without allocations
 
+RELAY
+
+	Check the ping tokens validate in the unit test for the session update handler
+	
 	-------
 
 	Add enough logs to verify everything gets passed down to the client as expected.
