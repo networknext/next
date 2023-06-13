@@ -41,9 +41,6 @@
 #define RELAY_CONTINUE_TOKEN_BYTES                                17
 #define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
 
-#define RELAY_PING_TOKEN_BYTES                                    46
-#define RELAY_ENCRYPTED_PING_TOKEN_BYTES                          86
-
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
 
@@ -81,6 +78,8 @@
 
 #define RELAY_PING_KEY_BYTES                                      32
 
+#define RELAY_PING_TOKEN_BYTES                                    32
+
 #define RELAY_COUNTER_PACKETS_SENT                                                               0
 #define RELAY_COUNTER_PACKETS_RECEIVED                                                           1
 #define RELAY_COUNTER_BYTES_SENT                                                                 2
@@ -96,10 +95,14 @@
 #define RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED                                                11
 #define RELAY_COUNTER_RELAY_PONG_PACKET_SENT                                                    12
 #define RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED                                                13
+#define RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY                                          14
+#define RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED                                                 15
 
 #define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 20
 #define RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE                                                 21
 #define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      22
+#define RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY                                           23
+#define RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED                                                  24
 
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED                                             30
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_BAD_SIZE                                             31
@@ -4779,6 +4782,21 @@ uint64_t relay_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
+bool relay_ping_token_verify( relay_address_t * from, relay_address_t * relay_address, uint64_t expire_timestamp, const uint8_t * ping_token, const uint8_t * ping_key )
+{
+    uint8_t data[256];
+
+    uint8_t * p = data;
+
+    relay_write_uint64( &p, expire_timestamp );
+    relay_write_address( &p, from );
+    relay_write_address( &p, relay_address );
+
+    const int length = p - data;
+
+    return crypto_auth_verify( ping_token, data, length, ping_key ) == 0;
+}
+
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
@@ -4948,7 +4966,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         memcpy( &current_magic, relay->control.current_magic, 8 );
         memcpy( &previous_magic, relay->control.previous_magic, 8 );
 
-        // local ping packet from ping thread -> send out ping to relay
+        // special local ping packet from ping thread -> relay thread send out ping packet
 
         const bool local = from.type == RELAY_ADDRESS_IPV4 && from.data.ipv4[0] == 127 && from.data.ipv4[1] == 0 && from.data.ipv4[2] == 0 && from.data.ipv4[3] == 1;
 
@@ -4991,7 +5009,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else
         {
-            // regular, non-local packet
+            // regular packet
 
             relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
             relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
@@ -5075,7 +5093,39 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
             const uint8_t * p = packet_data;
+
             uint64_t ping_sequence = relay_read_uint64( &p );
+
+            // todo: bring this back when relay to relay ping tokens are ready
+            /*
+            uint64_t expire_timestamp = relay_read_uint64( &p );
+
+            uint64_t current_timestamp = relay_timestamp( relay );
+            
+            if ( expire_timestamp < current_timestamp )
+            {
+#if INTENSIVE_RELAY_DEBUGGING
+                printf( "[%s] relay ping expired\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED]++;
+
+                continue;
+            }
+
+            const uint8_t * ping_token = p;
+
+            if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
+            {
+#if INTENSIVE_RELAY_DEBUGGING
+                printf( "[%s] relay ping token did not verify\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY]++;
+
+                continue;
+            }
+            */
 
             uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
             packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port );
@@ -5149,6 +5199,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             }
 
             uint64_t current_timestamp = relay_timestamp( relay );
+
             if ( token.expire_timestamp < current_timestamp )
             {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -6147,12 +6198,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #endif // #if INTENSIVE_RELAY_DEBUGGING
             relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
-            if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES )
+            if ( packet_bytes != 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored relay near ping packet. bad packet size (%d)\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE]++;
+
                 continue;
             }
 
@@ -6160,6 +6213,33 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             uint64_t ping_sequence = relay_read_uint64( &const_p );
             uint64_t session_id = relay_read_uint64( &const_p );
+            uint64_t expire_timestamp = relay_read_uint64( &const_p );
+
+            uint64_t current_timestamp = relay_timestamp( relay );
+            
+            if ( expire_timestamp < current_timestamp )
+            {
+#if INTENSIVE_RELAY_DEBUGGING
+                printf( "[%s] near ping expired\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED]++;
+
+                continue;
+            }
+
+            const uint8_t * ping_token = p;
+
+            if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
+            {
+#if INTENSIVE_RELAY_DEBUGGING
+                printf( "[%s] near ping token did not verify\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY]++;
+
+                continue;
+            }
 
             uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
             packet_bytes = relay_write_near_pong_packet( pong_packet, ping_sequence, session_id, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port );

@@ -32,40 +32,39 @@ DONE
 
 	Check the ping tokens validate in the unit test for the session update handler
 
+	Make relay ignore near ping packets when signature doesn't verify.
+
+	Make relay ignore relay ping packets when signature doesn't verify.
+
+	Add counters for new events
+
+	Ignore relay pings when expired
+
+	Ignore near pings when expired
+
+	Actually implement the ping token verify function
+
+	Dummy out the relay ping version of the token verify (for now).
+
 RELAY
+
+	Theoretically everything is working.
+
+	But I'll need to add logs to check everything is actually working as expected.
 
 	Add enough logs to verify everything gets passed down to the client as expected.
 
 	Verify that when the whole system is brought up, the client has ping token and expire timestamp when it sends near relay pings.
 
-	-------
+	Verify that the relay gets the ping key, verify that the relay checks the ping tokens with auth and they pass.
 
-	Make relay ignore expired near relay ping packets
-
-	Make relay ignore near relay packets when signature doesn't verify.
+	Verify that client gets a next route across near relays.
 
 	-------
 
 	Verify that happy path passes
 
 	Verify that func tests pass
-
-	-------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	-------
 
@@ -79,22 +78,9 @@ RELAY
 
 	-------
 
+	Only tricky thing is that we'll need to be aware for relay <-> relay pings to encode the ping token as per-internal address for from, when we're sending internally to another relay.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	-------
 
 
 
