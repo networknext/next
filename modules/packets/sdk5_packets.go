@@ -403,7 +403,7 @@ type SDK5_SessionUpdateResponsePacket struct {
 	NumNearRelays            int32
 	NearRelayIds             [SDK5_MaxNearRelays]uint64
 	NearRelayAddresses       [SDK5_MaxNearRelays]net.UDPAddr
-	NearRelayPingTokens      [SDK5_MaxNearRelays][constants.NearRelayPingSignatureBytes]byte
+	NearRelayPingTokens      [SDK5_MaxNearRelays*constants.PingTokenBytes]byte
 	NearRelayExpireTimestamp uint64
 	NumTokens                int32
 	Tokens                   []byte
@@ -434,7 +434,7 @@ func (packet *SDK5_SessionUpdateResponsePacket) Serialize(stream encoding.Stream
 		for i := int32(0); i < packet.NumNearRelays; i++ {
 			stream.SerializeUint64(&packet.NearRelayIds[i])
 			stream.SerializeAddress(&packet.NearRelayAddresses[i])
-			stream.SerializeBytes(packet.NearRelayPingTokens[i][:])
+			stream.SerializeBytes(packet.NearRelayPingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes])
 		}
 		stream.SerializeUint64(&packet.NearRelayExpireTimestamp)
 	}

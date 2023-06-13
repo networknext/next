@@ -89,5 +89,5 @@ const (
 	RelayStatus_Online       = 1
 	RelayStatus_ShuttingDown = 2
 
-	NearRelayPingSignatureBytes = 32
+	PingTokenBytes = 32
 )

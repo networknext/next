@@ -56,6 +56,7 @@ type SDK5_Handler struct {
 	RouteMatrix             *common.RouteMatrix
 	MaxPacketSize           int
 	ServerBackendAddress    net.UDPAddr
+	PingKey                 []byte
 	ServerBackendPublicKey  []byte
 	ServerBackendPrivateKey []byte
 	RelayBackendPrivateKey  []byte
@@ -478,6 +479,7 @@ func SDK5_ProcessSessionUpdateRequestPacket(handler *SDK5_Handler, conn *net.UDP
 
 	var state SessionUpdateState
 
+	state.PingKey = handler.PingKey
 	state.RelayBackendPrivateKey = handler.RelayBackendPrivateKey
 	state.ServerBackendPublicKey = handler.ServerBackendPublicKey
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey

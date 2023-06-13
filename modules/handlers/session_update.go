@@ -26,6 +26,7 @@ type SessionUpdateState struct {
 		Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
+	PingKey                 []byte
 	RelayBackendPrivateKey  []byte
 	ServerBackendAddress    *net.UDPAddr
 	ServerBackendPrivateKey []byte
@@ -484,6 +485,18 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		state.Response.NearRelayIds[i] = nearRelayIds[i]
 		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
 	}
+
+	// generate ping tokens
+
+	if len(state.PingKey) == 0 {
+		panic("missing ping key")
+	}
+
+	expireTimestamp := uint64(time.Now().Unix()) + 15
+
+	core.GeneratePingTokens(expireTimestamp, state.From, state.Response.NearRelayAddresses[:], state.PingKey, state.Response.NearRelayPingTokens[:])
+
+	state.Response.NearRelayExpireTimestamp = expireTimestamp
 
 	return true
 }

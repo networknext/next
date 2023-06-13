@@ -15,6 +15,8 @@ import (
 
 var service *common.Service
 
+var pingKey []byte
+
 var channelSize int
 var maxPacketSize int
 var serverBackendAddress net.UDPAddr
@@ -44,6 +46,8 @@ func main() {
 
 	service = common.CreateService("server_backend")
 
+	pingKey = envvar.GetBase64("PING_KEY", []byte{})
+
 	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024)
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
@@ -61,6 +65,11 @@ func main() {
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 	core.Debug("enable redis streams: %v", enableRedisStreams)
 	core.Debug("redis hostname: %s", redisHostname)
+
+	if len(pingKey) == 0 {
+		core.Error("You must supply PING_KEY")
+		os.Exit(1)
+	}
 
 	if len(serverBackendPublicKey) == 0 {
 		panic("SERVER_BACKEND_PUBLIC_KEY must be specified")
@@ -142,6 +151,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	handler := handlers.SDK5_Handler{}
 
+	handler.PingKey = pingKey
 	handler.ServerBackendAddress = serverBackendAddress
 	handler.ServerBackendPublicKey = serverBackendPublicKey
 	handler.ServerBackendPrivateKey = serverBackendPrivateKey

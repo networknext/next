@@ -22,6 +22,7 @@ var redisPubsubChannelName string
 var relayUpdateBatchSize int
 var relayUpdateBatchDuration time.Duration
 var relayUpdateChannelSize int
+var pingKey []byte
 var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
 
@@ -37,6 +38,7 @@ func main() {
 	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 
@@ -45,6 +47,11 @@ func main() {
 	core.Debug("relay update batch size: %d", relayUpdateBatchSize)
 	core.Debug("relay update batch duration: %v", relayUpdateBatchDuration)
 	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
+
+	if len(pingKey) == 0 {
+		core.Error("You must supply PING_KEY")
+		os.Exit(1)
+	}
 
 	if len(relayBackendPublicKey) == 0 {
 		core.Error("You must supply RELAY_BACKEND_PUBLIC_KEY")
@@ -236,6 +243,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		token := core.RouteToken{}
 		core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], relayBackendPrivateKey, relay.PublicKey)
+
+		copy(responsePacket.PingKey[:], pingKey)
 
 		// send the response packet back to the relay
 

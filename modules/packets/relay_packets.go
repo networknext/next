@@ -225,6 +225,7 @@ type RelayUpdateResponsePacket struct {
 	ExpectedRelayPublicKey        [crypto.Box_PublicKeySize]byte
 	ExpectedRelayBackendPublicKey [crypto.Box_PublicKeySize]byte
 	TestToken                     [constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES]byte
+	PingKey                       [crypto.Auth_KeySize]byte
 }
 
 func (packet *RelayUpdateResponsePacket) GetMaxSize() int {
@@ -235,6 +236,7 @@ func (packet *RelayUpdateResponsePacket) GetMaxSize() int {
 	size += 7 * 2
 	size += 1 + 2*crypto.Box_PublicKeySize
 	size += constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES
+	size += crypto.Auth_KeySize
 	return size
 }
 
@@ -271,6 +273,8 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.ExpectedRelayBackendPublicKey[:], crypto.Box_PublicKeySize)
 
 	encoding.WriteBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+
+	encoding.WriteBytes(buffer, &index, packet.PingKey[:], crypto.Auth_KeySize)
 
 	return buffer[:index]
 }
@@ -354,6 +358,10 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 
 	if !encoding.ReadBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES) {
 		return errors.New("could not read test token")
+	}
+
+	if !encoding.ReadBytes(buffer, &index, packet.PingKey[:], crypto.Auth_KeySize) {
+		return errors.New("could not read ping key")
 	}
 
 	return nil

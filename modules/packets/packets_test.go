@@ -290,8 +290,8 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		for i := 0; i < int(packet.NumNearRelays); i++ {
 			packet.NearRelayIds[i] = uint64(i * 32)
 			packet.NearRelayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
-			common.RandomBytes(packet.NearRelayPingTokens[i][:])
 		}
+		common.RandomBytes(packet.NearRelayPingTokens[:packet.NumNearRelays*constants.PingTokenBytes])
 		packet.NearRelayExpireTimestamp = rand.Uint64()
 	}
 
@@ -520,6 +520,7 @@ func GenerateRandomRelayUpdateResponsePacket() packets.RelayUpdateResponsePacket
 	common.RandomBytes(packet.ExpectedRelayPublicKey[:])
 	common.RandomBytes(packet.ExpectedRelayBackendPublicKey[:])
 	common.RandomBytes(packet.TestToken[:])
+	common.RandomBytes(packet.PingKey[:])
 
 	return packet
 }

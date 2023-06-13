@@ -37,6 +37,8 @@ func CreateState() *handlers.SessionUpdateState {
 	state.Input.Longitude = -75.0
 	state.Buyer = &db.Buyer{}
 	state.Datacenter = &db.Datacenter{}
+	state.PingKey = make([]byte, crypto.Auth_KeySize)
+	common.RandomBytes(state.PingKey)
 	return &state
 }
 

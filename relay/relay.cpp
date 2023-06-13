@@ -79,6 +79,8 @@
 
 #define RELAY_MAX_UPDATE_ATTEMPTS                                 30
 
+#define RELAY_PING_KEY_BYTES                                      32
+
 #define RELAY_COUNTER_PACKETS_SENT                                                               0
 #define RELAY_COUNTER_PACKETS_RECEIVED                                                           1
 #define RELAY_COUNTER_BYTES_SENT                                                                 2
@@ -3918,6 +3920,7 @@ struct relay_control_message_t
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
+    uint8_t ping_key[RELAY_PING_KEY_BYTES];
 };
 
 struct relay_stats_message_t
@@ -4019,6 +4022,7 @@ struct ping_t
     relay_platform_mutex_t * control_mutex;
     relay_queue_t * ping_stats_queue;
     relay_platform_mutex_t * ping_stats_mutex;
+    bool has_ping_key;
 };
 
 struct relay_t
@@ -4052,6 +4056,7 @@ struct relay_t
     float fake_packet_loss_start_time;
 #endif // #if RELAY_DEVELOPMENT
     relay_control_message_t control;
+    uint8_t ping_key[RELAY_PING_KEY_BYTES];
 };
 
 struct curl_buffer_t
@@ -4661,6 +4666,9 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
+    uint8_t ping_key[RELAY_PING_KEY_BYTES];
+    relay_read_bytes( &q, ping_key, RELAY_PING_KEY_BYTES );
+
     // send control message to all relay threads
 
     for ( int i = 0; i < main->num_threads; i++ )
@@ -4684,6 +4692,8 @@ int main_update( main_t * main )
 
         message->last_update_response_time = main->last_update_response_time;
         message->last_update_response_timestamp = main->last_update_response_timestamp;
+
+        memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
 #if INTENSIVE_RELAY_DEBUGGING
         printf( "send control message to relay thread %d\n", i );
@@ -4715,6 +4725,8 @@ int main_update( main_t * main )
 
     message->last_update_response_time = main->last_update_response_time;
     message->last_update_response_timestamp = main->last_update_response_timestamp;
+
+    memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
 #if INTENSIVE_RELAY_DEBUGGING
     printf( "send control message to ping thread\n" );
@@ -6228,6 +6240,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
                 ping->control = *message;
                 free( message );
                 relays_dirty = true;
+                ping->has_ping_key = true;
             }
 
             last_pump_control_messages_time = current_time;
@@ -6271,7 +6284,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         // send pings
 
-        if ( last_ping_time + 0.01 <= current_time )
+        if ( ping->has_ping_key && last_ping_time + 0.01 <= current_time )
         {
             struct ping_data_t
             {

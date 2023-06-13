@@ -32,6 +32,7 @@ import (
 
 	"github.com/networknext/accelerate/modules/admin"
 	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/crypto"
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/core"
 	db "github.com/networknext/accelerate/modules/database"
@@ -607,7 +608,7 @@ func main() {
 	var keygenCommand = &ffcli.Command{
 		Name:       "keygen",
 		ShortUsage: "next keygen",
-		ShortHelp:  "Generate a relay keypair",
+		ShortHelp:  "Generate keys",
 		Exec: func(_ context.Context, args []string) error {
 			keygen()
 			return nil
@@ -622,9 +623,7 @@ func main() {
 			if len(args) == 0 {
 				handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
 			}
-
 			keys(env, args)
-
 			return nil
 		},
 	}
@@ -1274,15 +1273,24 @@ func keys(env Environment, regexes []string) {
 // --------------------------------------------------------------------------------------------
 
 func keygen() {
+	
+	pingKey := crypto.Auth_Key()
+
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
 		fmt.Printf("error: could not generate relay keypair\n")
 		os.Exit(1)
 	}
+	
+	pingKeyBase64 := base64.StdEncoding.EncodeToString(pingKey[:])
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
 	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
+
+	fmt.Printf("export PING_KEY=%s\n", pingKeyBase64)
 	fmt.Printf("export RELAY_PUBLIC_KEY=%s\n", publicKeyBase64)
 	fmt.Printf("export RELAY_PRIVATE_KEY=%s\n", privateKeyBase64)
+
+	fmt.Printf("\n")
 }
 
 // --------------------------------------------------------------------------------------------

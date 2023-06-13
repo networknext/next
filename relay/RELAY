@@ -1,32 +1,36 @@
 DONE
 
-RELAY
-
 	Extend the relay backend and server backends so they have required env vars "RELAY_PING_KEY" as base64
 
-	Verify it decodes to 32 bytes of data.
-
 	Fail if it's not supplied.
-
-	-------
 
 	Add something to generate ping key to next tool.
 
 	Add ping key base64 to the local.env
 
-	-------
+	Extend RelayUpdateResponsePacket to include the ping key
 
-	Plumb the relay ping key from the relay backend to relays in the relay update response
+	Add the ping key to golang unit tests
 
-	Store the relay ping key on the relay when the relay update response is received (repeatedly), eg. pass it to the ping thread via message, and to the relay threads via control message.
+	Send the ping key down in the relay update response packet in the relay gateway. 
+
+	Extend the relay to read the ping key in the update response
+
+	Pass to the relay and ping threads via relay control message
+
+	Actually store the ping key in relay_t and ping_t via contral
+
+	Track in ping thread whether we have received a ping key or not yet.
 
 	Do not send any pings from the relay until we have a valid ping key.
 
-	-------
-
 	Plumb the relay ping key up from the server backend (read env var) to the handlers when session update is processed.
 
-	Actually calculate and send down the ping token signatures and the expire timestamp to the SDK in the session update handler.
+	Calculate the ping token signatures and the expire timestamp in the session update get near relays.
+
+RELAY
+
+	Transform calc ping tokens to work in the format as per-the packet struct without allocations
 
 	-------
 
