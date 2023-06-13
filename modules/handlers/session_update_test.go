@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 	"time"
+	"encoding/binary"
 
 	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/constants"
@@ -3290,6 +3291,19 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.True(t, contains_1)
 	assert.True(t, contains_2)
 	assert.True(t, contains_3)
+
+	// make sure we have valid ping tokens and expire timestamp
+
+	assert.True(t, state.Response.NearRelayExpireTimestamp > uint64(time.Now().Unix()))
+
+	for i := 0; i < int(state.Response.NumNearRelays); i++ {
+		data := make([]byte, 256)
+		binary.LittleEndian.PutUint64(data[0:], state.Response.NearRelayExpireTimestamp)
+		core.WriteAddress(data[8:], state.From)
+		core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &state.Response.NearRelayAddresses[i])
+		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
+		assert.True(t, crypto.Auth_Verify(data[:length], state.PingKey, state.Response.NearRelayPingTokens[i*constants.PingTokenBytes:]))
+	}
 }
 
 // --------------------------------------------------------------

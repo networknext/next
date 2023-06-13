@@ -30,15 +30,13 @@ DONE
 
 	Transform calc ping tokens to work in the format as per-the packet struct without allocations
 
-RELAY
-
 	Check the ping tokens validate in the unit test for the session update handler
-	
-	-------
+
+RELAY
 
 	Add enough logs to verify everything gets passed down to the client as expected.
 
-	Verify that when the whole system is brought up, the client 
+	Verify that when the whole system is brought up, the client has ping token and expire timestamp when it sends near relay pings.
 
 	-------
 
