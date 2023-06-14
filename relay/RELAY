@@ -37,13 +37,47 @@ DONE
 
 	Verify that the correct ping tokens are sent with the near ping packet.
 
-RELAY
-
 	Add logs on next.cpp ping packet send, and specify the relay public address, the expire timestamp, and the ping token.
 
-	-------
+	Definitely, the correct expire timestamp and different ping tokens are being sent out
 
-	Add logs on relay receive ping packet, printing out the values for validation, expire timestamp, from address, relay public address, ping token.
+	Add logs on relay receive ping packet, printing out the ping token and expire timestamp.
+
+	Ping token and expire timestamp seem fine.
+
+RELAY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-------
 

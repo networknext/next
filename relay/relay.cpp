@@ -6237,6 +6237,43 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const uint8_t * ping_token = const_p;
 
+            // todo
+            printf( "received ping packet: expire_timestamp = %" PRIx64 ", token = %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+                expire_timestamp,
+                ping_token[0],        
+                ping_token[1],        
+                ping_token[2],        
+                ping_token[3],        
+                ping_token[4],        
+                ping_token[5],        
+                ping_token[6],        
+                ping_token[7],        
+                ping_token[8],        
+                ping_token[9],        
+                ping_token[10],        
+                ping_token[11],        
+                ping_token[12],        
+                ping_token[13],        
+                ping_token[14],        
+                ping_token[15],        
+                ping_token[16],        
+                ping_token[17],        
+                ping_token[18],        
+                ping_token[19],        
+                ping_token[20],        
+                ping_token[21],        
+                ping_token[22],        
+                ping_token[23],        
+                ping_token[24],        
+                ping_token[25],        
+                ping_token[26],        
+                ping_token[27],        
+                ping_token[28],        
+                ping_token[29],        
+                ping_token[30],        
+                ping_token[31]        
+            );
+
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
 // todo
