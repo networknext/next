@@ -494,7 +494,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	expireTimestamp := uint64(time.Now().Unix()) + 15
 
-	core.GeneratePingTokens(expireTimestamp, state.From, state.Response.NearRelayAddresses[:state.Response.NumNearRelays], state.PingKey, state.Response.NearRelayPingTokens[:])
+	core.GeneratePingTokens(expireTimestamp, &state.Request.ClientAddress, state.Response.NearRelayAddresses[:state.Response.NumNearRelays], state.PingKey, state.Response.NearRelayPingTokens[:])
 
 	state.Response.NearRelayExpireTimestamp = expireTimestamp
 

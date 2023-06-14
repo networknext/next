@@ -3717,43 +3717,6 @@ int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_se
 
 int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, uint64_t expire_timestamp, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
-    // todo
-    printf( "send relay ping packet: expire_timestamp = %" PRIx64 ", token = %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-        expire_timestamp,
-        ping_token[0],        
-        ping_token[1],        
-        ping_token[2],        
-        ping_token[3],        
-        ping_token[4],        
-        ping_token[5],        
-        ping_token[6],        
-        ping_token[7],        
-        ping_token[8],        
-        ping_token[9],        
-        ping_token[10],        
-        ping_token[11],        
-        ping_token[12],        
-        ping_token[13],        
-        ping_token[14],        
-        ping_token[15],        
-        ping_token[16],        
-        ping_token[17],        
-        ping_token[18],        
-        ping_token[19],        
-        ping_token[20],        
-        ping_token[21],        
-        ping_token[22],        
-        ping_token[23],        
-        ping_token[24],        
-        ping_token[25],        
-        ping_token[26],        
-        ping_token[27],        
-        ping_token[28],        
-        ping_token[29],        
-        ping_token[30],        
-        ping_token[31]        
-    );
-
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_RELAY_PING_PACKET );
     uint8_t * a = p; p += 15;
@@ -4955,53 +4918,6 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     }
 
     next_relay_manager_verify_sentinels( manager );
-
-    // todo
-    printf( "============================================================\n" );
-    printf( "expire timestamp: %" PRIx64 "\n", relay_ping_expire_timestamp );
-    printf( "ping tokens:\n" );
-    for ( int i = 0; i < num_relays; i++ )
-    {
-        char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        const uint8_t * token = manager->relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
-        printf( "%d: %s -> %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-            i,
-            next_address_to_string( &manager->relay_addresses[i], address_buffer ),
-            token[0],
-            token[1],
-            token[2],
-            token[3],
-            token[4],
-            token[5],
-            token[6],
-            token[7],
-            token[8],
-            token[9],
-            token[10],
-            token[11],
-            token[12],
-            token[13],
-            token[14],
-            token[15],
-            token[16],
-            token[17],
-            token[18],
-            token[19],
-            token[20],
-            token[21],
-            token[22],
-            token[23],
-            token[24],
-            token[25],
-            token[26],
-            token[27],
-            token[28],
-            token[29],
-            token[30],
-            token[31]
-        );
-    }
-    printf( "============================================================\n" );
 }
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id, const uint8_t * magic, const next_address_t * client_external_address )
@@ -10051,16 +9967,7 @@ struct NextBackendSessionUpdateRequestPacket
             serialize_bytes( stream, session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
         }
 
-        // IMPORTANT: Anonymize the client address before sending it up to our backend
-        // This ensures that we are fully compliant with the GDPR and there is zero risk
-        // the address will be accidentally stored or intecepted in transit
-        if ( Stream::IsWriting )
-        {
-            next_address_anonymize( &client_address );
-        }
-
         serialize_address( stream, client_address );
-
         serialize_address( stream, server_address );
 
         serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
@@ -13388,53 +13295,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
             memcpy( entry->update_near_relay_ping_tokens, packet.near_relay_ping_tokens, packet.num_near_relays * NEXT_PING_TOKEN_BYTES );
             entry->update_near_relay_expire_timestamp = packet.near_relay_expire_timestamp;
-
-            // todo
-            printf( "============================================================\n" );
-            printf( "expire timestamp: %" PRIx64 "\n", entry->update_near_relay_expire_timestamp );
-            printf( "ping tokens:\n" );
-            for ( int i = 0; i < packet.num_near_relays; i++ )
-            {
-                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-                const uint8_t * token = entry->update_near_relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
-                printf( "%d: %s -> %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-                    i,
-                    next_address_to_string( &entry->update_near_relay_addresses[i], address_buffer ),
-                    token[0],
-                    token[1],
-                    token[2],
-                    token[3],
-                    token[4],
-                    token[5],
-                    token[6],
-                    token[7],
-                    token[8],
-                    token[9],
-                    token[10],
-                    token[11],
-                    token[12],
-                    token[13],
-                    token[14],
-                    token[15],
-                    token[16],
-                    token[17],
-                    token[18],
-                    token[19],
-                    token[20],
-                    token[21],
-                    token[22],
-                    token[23],
-                    token[24],
-                    token[25],
-                    token[26],
-                    token[27],
-                    token[28],
-                    token[29],
-                    token[30],
-                    token[31]
-                );
-            }
-            printf( "============================================================\n" );
         }
 
         entry->update_last_send_time = -1000.0;

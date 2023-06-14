@@ -1761,49 +1761,4 @@ func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr
 		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
 		crypto.Auth_Sign(data[:length], key, pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes])
 	}
-	// todo
-	fmt.Printf("--------------------------------------------------\n")
-	fmt.Printf("generate ping tokens:\n")
-	fmt.Printf("expireTimestamp = %x\n", expireTimestamp)
-	fmt.Printf("clientPublicAddress = %s\n", clientPublicAddress.String())
-	for i := range relayPublicAddresses {
-		token := pingTokens[i*constants.PingTokenBytes:]
-		fmt.Printf("%d: %s -> %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-			i,
-			relayPublicAddresses[i].String(),
-			token[0],
-			token[1],
-			token[2],
-			token[3],
-			token[4],
-			token[5],
-			token[6],
-			token[7],
-			token[8],
-			token[9],
-			token[10],
-			token[11],
-			token[12],
-			token[13],
-			token[14],
-			token[15],
-			token[16],
-			token[17],
-			token[18],
-			token[19],
-			token[20],
-			token[21],
-			token[22],
-			token[23],
-			token[24],
-			token[25],
-			token[26],
-			token[27],
-			token[28],
-			token[29],
-			token[30],
-			token[31],
-		)
-	}
-	fmt.Printf("--------------------------------------------------\n")
 }

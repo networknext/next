@@ -5042,18 +5042,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes, &relay_public_address_port );
         relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes, &relay_internal_address_port );
 
-// todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
         char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string( &from, from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
-// todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] basic packet filter dropped packet %d\n", from_string, packet_id );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
             relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
 
@@ -5072,10 +5070,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
-            // todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] advanced packet filter dropped packet %d\n", from_string, packet_id );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
 
@@ -6196,19 +6193,17 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_NEAR_PING_PACKET )
         {
-            // todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] received near relay ping packet\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
             relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
-                // todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored relay near ping packet. bad packet size (%d)\n", from_string, packet_bytes );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE]++;
 
@@ -6225,10 +6220,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-                // todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] near ping expired\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED]++;
 
@@ -6237,8 +6231,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const uint8_t * ping_token = const_p;
 
-            // todo
-            printf( "received ping packet: expire_timestamp = %" PRIx64 ", token = %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+            char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            printf( "received ping packet from %s: expire_timestamp = %" PRIx64 ", token = %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+                relay_address_to_string( &from, address_buffer ),
                 expire_timestamp,
                 ping_token[0],        
                 ping_token[1],        
@@ -6276,10 +6271,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
-// todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] near ping token did not verify\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY]++;
 
@@ -6293,10 +6287,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
                 assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
-// todo
-// #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] responded with near relay pong packet\n", from_string );
-// #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG]++;
 
                 relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
@@ -6368,7 +6361,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
                 relays_dirty = true;
                 if ( !ping->has_ping_key )
                 {
-                    // todo
                     printf( "Received ping key: %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
                         ping->control.ping_key[0],
                         ping->control.ping_key[1],

@@ -3299,7 +3299,7 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	for i := 0; i < int(state.Response.NumNearRelays); i++ {
 		data := make([]byte, 256)
 		binary.LittleEndian.PutUint64(data[0:], state.Response.NearRelayExpireTimestamp)
-		core.WriteAddress(data[8:], state.From)
+		core.WriteAddress(data[8:], &state.Request.ClientAddress)
 		core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &state.Response.NearRelayAddresses[i])
 		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
 		assert.True(t, crypto.Auth_Verify(data[:length], state.PingKey, state.Response.NearRelayPingTokens[i*constants.PingTokenBytes:]))

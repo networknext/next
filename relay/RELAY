@@ -45,49 +45,19 @@ DONE
 
 	Ping token and expire timestamp seem fine.
 
-RELAY
+	I'm pretty sure the error is because the server backend doesn't know the client address.
 
+	The client address needs to be passed up, otherwise the ping token cannot be constructed.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-------
+	Done. And it works :)
 
 	Verify that client gets near relay pong responses from the relay.
 
-	-------
+	Remove a bunch of extra logs
 
 	Verify that happy path passes
 
-	-------
+RELAY
 
 	Verify that func tests pass
 
