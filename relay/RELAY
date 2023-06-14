@@ -1,68 +1,30 @@
 DONE
 
-	Extend the relay backend and server backends so they have required env vars "RELAY_PING_KEY" as base64
-
-	Fail if it's not supplied.
-
-	Add something to generate ping key to next tool.
-
-	Add ping key base64 to the local.env
-
-	Extend RelayUpdateResponsePacket to include the ping key
-
-	Add the ping key to golang unit tests
-
-	Send the ping key down in the relay update response packet in the relay gateway. 
-
-	Extend the relay to read the ping key in the update response
-
-	Pass to the relay and ping threads via relay control message
-
-	Actually store the ping key in relay_t and ping_t via contral
-
-	Track in ping thread whether we have received a ping key or not yet.
-
-	Do not send any pings from the relay until we have a valid ping key.
-
-	Plumb the relay ping key up from the server backend (read env var) to the handlers when session update is processed.
-
-	Calculate the ping token signatures and the expire timestamp in the session update get near relays.
-
-	Transform calc ping tokens to work in the format as per-the packet struct without allocations
-
-	Check the ping tokens validate in the unit test for the session update handler
-
-	Make relay ignore near ping packets when signature doesn't verify.
-
-	Make relay ignore relay ping packets when signature doesn't verify.
-
-	Add counters for new events
-
-	Ignore relay pings when expired
-
-	Ignore near pings when expired
-
-	Actually implement the ping token verify function
-
-	Dummy out the relay ping version of the token verify (for now).
-
-RELAY
-
 	Theoretically everything is working.
 
 	But I'll need to add logs to check everything is actually working as expected.
 
-	Add enough logs to verify everything gets passed down to the client as expected.
+	Verified that relay has ping key.
 
-	Verify that when the whole system is brought up, the client has ping token and expire timestamp when it sends near relay pings.
+	Verified that relay ping key matches the relay gateway ping key.
 
-	Verify that the relay gets the ping key, verify that the relay checks the ping tokens with auth and they pass.
+RELAY
 
-	Verify that client gets a next route across near relays.
+	Add logs to print out the expire timestamp and the ping tokens when generated in server backend.
+
+	Add logs on the client to print out the ping tokens and expire timestamp when they are received in the relay manager.
+
+	Verify that the client actually has the correct values.
+
+	-------
+
+	Verify that client gets near relay pong responses from the relay.
 
 	-------
 
 	Verify that happy path passes
+
+	-------
 
 	Verify that func tests pass
 

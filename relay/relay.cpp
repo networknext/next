@@ -5042,16 +5042,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes, &relay_public_address_port );
         relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes, &relay_internal_address_port );
 
-#if INTENSIVE_RELAY_DEBUGGING
+// todo
+// #if INTENSIVE_RELAY_DEBUGGING
         char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
         relay_address_to_string( &from, from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
-#if INTENSIVE_RELAY_DEBUGGING
+// todo
+// #if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] basic packet filter dropped packet %d\n", from_string, packet_id );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
             relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
 
@@ -5070,9 +5072,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
-#if INTENSIVE_RELAY_DEBUGGING
+            // todo
+// #if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] advanced packet filter dropped packet %d\n", from_string, packet_id );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
 
@@ -6193,16 +6196,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_NEAR_PING_PACKET )
         {
-#if INTENSIVE_RELAY_DEBUGGING
+            // todo
+// #if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] received near relay ping packet\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
+
             relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
-#if INTENSIVE_RELAY_DEBUGGING
+                // todo
+// #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored relay near ping packet. bad packet size (%d)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_BAD_SIZE]++;
 
@@ -6219,9 +6225,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-#if INTENSIVE_RELAY_DEBUGGING
+                // todo
+// #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] near ping expired\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED]++;
 
@@ -6232,9 +6239,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
-#if INTENSIVE_RELAY_DEBUGGING
+// todo
+// #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] near ping token did not verify\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY]++;
 
@@ -6248,9 +6256,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
                 assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+// todo
+// #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] responded with near relay pong packet\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+// #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG]++;
 
                 relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
@@ -6320,7 +6329,45 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
                 ping->control = *message;
                 free( message );
                 relays_dirty = true;
-                ping->has_ping_key = true;
+                if ( !ping->has_ping_key )
+                {
+                    // todo
+                    printf( "Received ping key: %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+                        ping->control.ping_key[0],
+                        ping->control.ping_key[1],
+                        ping->control.ping_key[2],
+                        ping->control.ping_key[3],
+                        ping->control.ping_key[4],
+                        ping->control.ping_key[5],
+                        ping->control.ping_key[6],
+                        ping->control.ping_key[7],
+                        ping->control.ping_key[8],
+                        ping->control.ping_key[9],
+                        ping->control.ping_key[10],
+                        ping->control.ping_key[11],
+                        ping->control.ping_key[12],
+                        ping->control.ping_key[13],
+                        ping->control.ping_key[14],
+                        ping->control.ping_key[15],
+                        ping->control.ping_key[16],
+                        ping->control.ping_key[17],
+                        ping->control.ping_key[18],
+                        ping->control.ping_key[19],
+                        ping->control.ping_key[20],
+                        ping->control.ping_key[21],
+                        ping->control.ping_key[22],
+                        ping->control.ping_key[23],
+                        ping->control.ping_key[24],
+                        ping->control.ping_key[25],
+                        ping->control.ping_key[26],
+                        ping->control.ping_key[27],
+                        ping->control.ping_key[28],
+                        ping->control.ping_key[29],
+                        ping->control.ping_key[30],
+                        ping->control.ping_key[31]
+                    );
+                    ping->has_ping_key = true;
+                }
             }
 
             last_pump_control_messages_time = current_time;
