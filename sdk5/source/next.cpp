@@ -451,7 +451,7 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-#define NEXT_ENABLE_MEMORY_CHECKS 1
+// #define NEXT_ENABLE_MEMORY_CHECKS 1
 
 #if NEXT_ENABLE_MEMORY_CHECKS
 
