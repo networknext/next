@@ -6235,7 +6235,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            const uint8_t * ping_token = p;
+            const uint8_t * ping_token = const_p;
 
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {

@@ -4918,6 +4918,53 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     }
 
     next_relay_manager_verify_sentinels( manager );
+
+    // todo
+    printf( "============================================================\n" );
+    printf( "expire timestamp: %" PRIx64 "\n", relay_ping_expire_timestamp );
+    printf( "ping tokens:\n" );
+    for ( int i = 0; i < num_relays; i++ )
+    {
+        char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        const uint8_t * token = manager->relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
+        printf( "%d: %s -> %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+            i,
+            next_address_to_string( &manager->relay_addresses[i], address_buffer ),
+            token[0],
+            token[1],
+            token[2],
+            token[3],
+            token[4],
+            token[5],
+            token[6],
+            token[7],
+            token[8],
+            token[9],
+            token[10],
+            token[11],
+            token[12],
+            token[13],
+            token[14],
+            token[15],
+            token[16],
+            token[17],
+            token[18],
+            token[19],
+            token[20],
+            token[21],
+            token[22],
+            token[23],
+            token[24],
+            token[25],
+            token[26],
+            token[27],
+            token[28],
+            token[29],
+            token[30],
+            token[31]
+        );
+    }
+    printf( "============================================================\n" );
 }
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id, const uint8_t * magic, const next_address_t * client_external_address )
