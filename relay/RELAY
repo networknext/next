@@ -8,13 +8,38 @@ DONE
 
 	Verified that relay ping key matches the relay gateway ping key.
 
-RELAY
-
 	Add logs to print out the expire timestamp and the ping tokens when generated in server backend.
 
-	Add logs on the client to print out the ping tokens and expire timestamp when they are received in the relay manager.
+	Run a server backend, client and server and see what's up.
 
-	Verify that the client actually has the correct values.
+	Server fails with:
+
+		debug: server ignored session update response packet from backend. packet failed to read
+
+	Must be a desync between next.cpp serialize for the session update response, vs. golang.
+
+	Fix desync in session update response packet
+
+	I think it was the bad ping token bytes value. checking now...
+
+	Confirmed fixed.
+
+	Now the client is sending off near relay pings, but not getting any response:
+
+		[127.0.0.1:55237] received near relay ping packet
+		[127.0.0.1:55237] near ping token did not verify
+
+	Looks like I'm going to need to verify that ping tokens get sent down properly.
+
+	Verify that the next.cpp server gets the ping tokens with logs
+
+RELAY
+
+	Verify that the next.cpp client gets the ping tokens with logs
+
+	Verify that the correct ping tokens are sent with the near ping packet.
+
+	Print out the ping token when it's received by the relay, as well as the relay public address, the expire timestamp, and the from address.
 
 	-------
 

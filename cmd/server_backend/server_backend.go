@@ -83,6 +83,41 @@ func main() {
 		panic("RELAY_BACKEND_PRIVATE_KEY must be specified")
 	}
 
+	core.Debug("ping key: %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x",
+		pingKey[0],
+		pingKey[1],
+		pingKey[2],
+		pingKey[3],
+		pingKey[4],
+		pingKey[5],
+		pingKey[6],
+		pingKey[7],
+		pingKey[8],
+		pingKey[9],
+		pingKey[10],
+		pingKey[11],
+		pingKey[12],
+		pingKey[13],
+		pingKey[14],
+		pingKey[15],
+		pingKey[16],
+		pingKey[17],
+		pingKey[18],
+		pingKey[19],
+		pingKey[20],
+		pingKey[21],
+		pingKey[22],
+		pingKey[23],
+		pingKey[24],
+		pingKey[25],
+		pingKey[26],
+		pingKey[27],
+		pingKey[28],
+		pingKey[29],
+		pingKey[30],
+		pingKey[31],
+	)
+
 	// initialize portal message channels
 
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)

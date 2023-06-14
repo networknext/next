@@ -82,7 +82,7 @@
 #define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              116
 #define NEXT_CONTINUE_TOKEN_BYTES                                      17
 #define NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES                            57
-#define NEXT_PING_TOKEN_BYTES                                          46
+#define NEXT_PING_TOKEN_BYTES                                          32
 #define NEXT_UPDATE_TYPE_DIRECT                                         0
 #define NEXT_UPDATE_TYPE_ROUTE                                          1
 #define NEXT_UPDATE_TYPE_CONTINUE                                       2
@@ -13302,8 +13302,55 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->update_num_near_relays = packet.num_near_relays;
             memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
             memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
-            memcpy( entry->update_near_relay_ping_tokens, packet.near_relay_ping_tokens, NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES );
+            memcpy( entry->update_near_relay_ping_tokens, packet.near_relay_ping_tokens, packet.num_near_relays * NEXT_PING_TOKEN_BYTES );
             entry->update_near_relay_expire_timestamp = packet.near_relay_expire_timestamp;
+
+            // todo
+            printf( "============================================================\n" );
+            printf( "expire timestamp: %" PRIx64 "\n", entry->update_near_relay_expire_timestamp );
+            printf( "ping tokens:\n" );
+            for ( int i = 0; i < packet.num_near_relays; i++ )
+            {
+                char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                const uint8_t * token = entry->update_near_relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
+                printf( "%d: %s -> %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+                    i,
+                    next_address_to_string( &entry->update_near_relay_addresses[i], address_buffer ),
+                    token[0],
+                    token[1],
+                    token[2],
+                    token[3],
+                    token[4],
+                    token[5],
+                    token[6],
+                    token[7],
+                    token[8],
+                    token[9],
+                    token[10],
+                    token[11],
+                    token[12],
+                    token[13],
+                    token[14],
+                    token[15],
+                    token[16],
+                    token[17],
+                    token[18],
+                    token[19],
+                    token[20],
+                    token[21],
+                    token[22],
+                    token[23],
+                    token[24],
+                    token[25],
+                    token[26],
+                    token[27],
+                    token[28],
+                    token[29],
+                    token[30],
+                    token[31]
+                );
+            }
+            printf( "============================================================\n" );
         }
 
         entry->update_last_send_time = -1000.0;
