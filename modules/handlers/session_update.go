@@ -1072,8 +1072,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Version = messages.PortalSessionUpdateMessageVersion_Write
 
-	// todo: timestamp here, in case of delay?
-
 	message.ClientAddress = state.Request.ClientAddress
 	message.ServerAddress = state.Request.ServerAddress
 

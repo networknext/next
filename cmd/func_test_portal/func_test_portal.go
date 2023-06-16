@@ -1,5 +1,5 @@
 /*
-   Network Next. You control the network.
+   Network Next Accelerate.
    Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 

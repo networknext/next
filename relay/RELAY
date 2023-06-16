@@ -1,69 +1,16 @@
 DONE
 
-	Theoretically everything is working.
-
-	But I'll need to add logs to check everything is actually working as expected.
-
-	Verified that relay has ping key.
-
-	Verified that relay ping key matches the relay gateway ping key.
-
-	Add logs to print out the expire timestamp and the ping tokens when generated in server backend.
-
-	Run a server backend, client and server and see what's up.
-
-	Server fails with:
-
-		debug: server ignored session update response packet from backend. packet failed to read
-
-	Must be a desync between next.cpp serialize for the session update response, vs. golang.
-
-	Fix desync in session update response packet
-
-	I think it was the bad ping token bytes value. checking now...
-
-	Confirmed fixed.
-
-	Now the client is sending off near relay pings, but not getting any response:
-
-		[127.0.0.1:55237] received near relay ping packet
-		[127.0.0.1:55237] near ping token did not verify
-
-	Looks like I'm going to need to verify that ping tokens get sent down properly.
-
-	Verify that the next.cpp server gets the ping tokens with logs
-
-	Verify that the next.cpp client gets the ping tokens with logs
-
-	Verify that the correct ping tokens are sent with the near ping packet.
-
-	Add logs on next.cpp ping packet send, and specify the relay public address, the expire timestamp, and the ping token.
-
-	Definitely, the correct expire timestamp and different ping tokens are being sent out
-
-	Add logs on relay receive ping packet, printing out the ping token and expire timestamp.
-
-	Ping token and expire timestamp seem fine.
-
-	I'm pretty sure the error is because the server backend doesn't know the client address.
-
-	The client address needs to be passed up, otherwise the ping token cannot be constructed.
-
-	Done. And it works :)
-
-	Verify that client gets near relay pong responses from the relay.
-
-	Remove a bunch of extra logs
-
-	Verify that happy path passes
-
 RELAY
 
-	Verify that func tests pass
+	Func backend needs to be updated to match new relay update response. Not sure why it isn't failing?
 
 	-------
 
-	Now we can do the same with relay <-> relay pings.
+	Load test crypto auth (as used in ping token...)
+
+	-------
+
+	Implement ping token with relay <-> relay pings.
 
 	Extend the relay ping packet to include 32 byte signature and expire timestamp (2 seconds in future?)
 
@@ -77,6 +24,11 @@ RELAY
 
 	-------
 
+	Relay should have functional tests, separate from sdk func tests, and runnable inside semaphore.
+
+	Start with the absolute basics of the relay functionality, and test everything from top to bottom.
+
+	-------
 
 
 
@@ -105,12 +57,6 @@ RELAY
 	------------------
 
 	Debug why the happy path is not working on linux
-
-	------------------
-
-	Relay should have functional tests, separate from sdk func tests, and runnable inside semaphore.
-
-	Start with the absolute basics of the relay functionality, and test everything from top to bottom.
 
 	------------------
 
