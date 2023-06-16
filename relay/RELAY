@@ -1,28 +1,42 @@
 DONE
 
-RELAY
-
 	Load test crypto auth (as used in ping token...)
 
-	-------
+	Has same performance as crypto sign. All good.
 
-	Implement ping token with relay <-> relay pings.
-
-	Extend the relay ping packet to include 32 byte signature and expire timestamp (2 seconds in future?)
+	Extend the relay ping packet to include 32 byte signature and expire timestamp (5 seconds in future)
 
 	When processing relay ping packet, ignore if it's expired.
 
 	When processing relay ping packet, ignore if signature doesn't verify.
 
+	Make sure that all relay packets have appropriate size checks.
+
+RELAY
+
 	-------
 
-	Only tricky thing is that we'll need to be aware for relay <-> relay pings to encode the ping token as per-internal address for from, when we're sending internally to another relay.
+	Write code to generate the ping token before ping packet send.
+
+	Make sure if the other relay is internal, then generate ping token relative to internal relay of this relay, and internal address of other relay.
+
+	-------
+
+	On relay ping receive, verify token ping according to internal address of relay if other relay is internal.
 
 	-------
 
 	Relay should have functional tests, separate from sdk func tests, and runnable inside semaphore.
 
 	Start with the absolute basics of the relay functionality, and test everything from top to bottom.
+
+	-------
+
+	Verify relay times out on startup if it can't init.
+
+	Verify relay can init with backend.
+
+	Verify relay catches bad keypairs.
 
 	-------
 
