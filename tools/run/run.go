@@ -185,6 +185,8 @@ func main() {
 		load_test_crypto_box()
 	} else if command == "load-test-crypto-sign" {
 		load_test_crypto_sign()
+	} else if command == "load-test-crypto-auth" {
+		load_test_crypto_sign()
 	} else if command == "load-test-server-update" {
 		load_test_server_update()
 	} else if command == "load-test-session-update" {
@@ -467,6 +469,10 @@ func load_test_crypto_box() {
 
 func load_test_crypto_sign() {
 	bash("go run tools/load_test_crypto_sign/load_test_crypto_sign.go")
+}
+
+func load_test_crypto_auth() {
+	bash("go run tools/load_test_crypto_auth/load_test_crypto_auth.go")
 }
 
 func load_test_server_update() {

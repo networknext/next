@@ -2,10 +2,6 @@ DONE
 
 RELAY
 
-	Func backend needs to be updated to match new relay update response. Not sure why it isn't failing?
-
-	-------
-
 	Load test crypto auth (as used in ping token...)
 
 	-------
