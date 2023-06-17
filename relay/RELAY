@@ -1,40 +1,6 @@
 DONE
 
-	Load test crypto auth (as used in ping token...)
-
-	Has same performance as crypto sign. All good.
-
-	Extend the relay ping packet to include 32 byte signature and expire timestamp (5 seconds in future)
-
-	When processing relay ping packet, ignore if it's expired.
-
-	When processing relay ping packet, ignore if signature doesn't verify.
-
-	Make sure that all relay packets have appropriate size checks.
-
-	Write code to generate the ping token before ping packet send.
-
-	Verify that relay ping/pongs work, with the new relay to relay ping token...
-
-	Verify that relay pong processing goes all the way down to the ping thread.
-
-	If the other relay is internal, generate the ping token according to sender internal relay address.
-
-	If the other relay is internal, verify the ping token according to receiver internal relay address.
-
-	Make this stateless. Put the internal flag inside the ping packet...
-
-	Make sure relay pings still work (packet size changes...)
-
-	Fixed a weird copy paste bug in local only.
-
-	Fix distribution of pings by time.
-
-	Add counters corresponding to // todo notes in relay.cpp
-
 RELAY
-
-	-------
 
 	Implement relay func test framework.
 
