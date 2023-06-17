@@ -176,6 +176,10 @@
 #define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS               107
 #define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS             108
 
+#define RELAY_COUNTER_PACKETS_RECEIVED_BEFORE_INITIALIZE                                       110
+#define RELAY_COUNTER_UNKNOWN_PACKETS                                                          111
+#define RELAY_COUNTER_PONGS_PROCESSED                                                          112
+
 #define NUM_RELAY_COUNTERS                                                                     128
 
 // -------------------------------------------------------------------------------------
@@ -3953,7 +3957,10 @@ struct relay_stats_message_t
     uint64_t counters[NUM_RELAY_COUNTERS];
 };
 
-struct ping_stats_message_t : public relay_stats_t {};
+struct ping_stats_message_t : public relay_stats_t 
+{
+    uint64_t pongs_processed;
+};
 
 // -----------------------------------------------------------------------------
 
@@ -4024,6 +4031,7 @@ struct main_t
     relay_stats_message_t relay_stats;
     ping_stats_message_t ping_stats;
     upgrade_t upgrade;
+    uint64_t pongs_processed;
 };
 
 struct ping_t
@@ -4038,6 +4046,7 @@ struct ping_t
     relay_queue_t * ping_stats_queue;
     relay_platform_mutex_t * ping_stats_mutex;
     bool has_ping_key;
+    uint64_t pongs_processed;
 };
 
 struct relay_t
@@ -4270,6 +4279,8 @@ int main_update( main_t * main )
             main->relay_stats.counters[j] += relay_thread_stats[i].counters[j];
         }
     }
+
+    main->relay_stats.counters[RELAY_COUNTER_PONGS_PROCESSED] = main->pongs_processed;
 
     // pump ping stats messages
 
@@ -4868,7 +4879,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
             printf( "ignoring packet. haven't received first relay update response yet\n" );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-            // todo: we need a counter here so we can test this
+
+            relay->counters[RELAY_COUNTER_PACKETS_RECEIVED_BEFORE_INITIALIZE]++;
+
             continue;
         }
 
@@ -6237,7 +6250,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             printf( "[%s] received unknown packet id %d (%d bytes)\n", from_string, packet_id, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            // todo: add counter for this
+            relay->counters[RELAY_COUNTER_UNKNOWN_PACKETS]++;
         }
     }
 
@@ -6373,6 +6386,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
             relay_manager_get_stats( ping->relay_manager, message );
 
+            message->pongs_processed = ping->pongs_processed;
+
             relay_platform_mutex_acquire( ping->ping_stats_mutex );
             relay_queue_push( ping->ping_stats_queue, message );
             relay_platform_mutex_release( ping->ping_stats_mutex );
@@ -6450,7 +6465,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
             relay_manager_process_pong( ping->relay_manager, &from_address, sequence );
 
-            // todo: we need a counter here for functional testing
+            ping->pongs_processed++;
         }
     }
 

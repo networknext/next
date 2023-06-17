@@ -30,9 +30,9 @@ DONE
 
 	Fix distribution of pings by time.
 
-RELAY
-
 	Add counters corresponding to // todo notes in relay.cpp
+
+RELAY
 
 	-------
 
