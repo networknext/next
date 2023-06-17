@@ -141,8 +141,8 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 			destEntry.PacketLoss = historyMean(destEntry.HistoryPacketLoss[:])
 		} else {
 			destEntry.RTT = rtt
-			destEntry.RTT = jitter
-			destEntry.RTT = packetLoss
+			destEntry.Jitter = jitter
+			destEntry.PacketLoss = packetLoss
 		}
 
 		destEntry.HistoryIndex = (destEntry.HistoryIndex + 1) % constants.RelayHistorySize
@@ -169,13 +169,13 @@ func Max(a float32, b float32) float32 {
 
 func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
 
-	sourceRTT := float32(10000.0)
-	sourceJitter := float32(10000.0)
-	sourcePacketLoss := float32(10000.0)
+	sourceRTT := float32(200000.0)
+	sourceJitter := float32(200000.0)
+	sourcePacketLoss := float32(200000.0)
 
-	destRTT := float32(10000.0)
-	destJitter := float32(10000.0)
-	destPacketLoss := float32(10000.0)
+	destRTT := float32(200000.0)
+	destJitter := float32(200000.0)
+	destPacketLoss := float32(200000.0)
 
 	// get source ping values
 	{
@@ -235,7 +235,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 					relayManager.mutex.RLock()
 					rtt, jitter, packetLoss := relayManager.getSample(currentTime, sourceRelayId, destRelayId)
 					relayManager.mutex.RUnlock()
-					if rtt < 254 && jitter < maxJitter && packetLoss < maxPacketLoss {
+					if rtt < 255 && jitter < maxJitter && packetLoss < maxPacketLoss {
 						index := TriMatrixIndex(i, j)
 						costs[index] = uint8(math.Ceil(float64(rtt)))
 					}

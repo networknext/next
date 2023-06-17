@@ -3316,6 +3316,8 @@ void relay_ping_history_pong_received( relay_ping_history_t * history, uint64_t 
     if ( entry->sequence == sequence )
     {
         entry->time_pong_received = time;
+
+        printf("ping = %.2f\n", (entry->time_pong_received - entry->time_ping_sent) * 1000.0f );
     }
 }
 
@@ -3579,11 +3581,12 @@ int relay_write_near_pong_packet( uint8_t * packet_data, uint64_t ping_sequence,
     return packet_length;
 }
 
-int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t expire_timestamp, const uint8_t * ping_token, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t expire_timestamp, uint8_t internal, const uint8_t * ping_token, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_PING_PACKET );
     uint8_t * a = p; p += 15;
+    relay_write_uint8( &p, internal );
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, expire_timestamp );
     relay_write_bytes( &p, ping_token, RELAY_PING_TOKEN_BYTES );
@@ -3626,6 +3629,7 @@ struct relay_manager_t
     uint64_t relay_ids[MAX_RELAYS];
     double relay_last_ping_time[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
+    uint8_t relay_internal[MAX_RELAYS];
     relay_ping_history_t * relay_ping_history[MAX_RELAYS];
     relay_ping_history_t ping_history_array[MAX_RELAYS];
 };
@@ -3655,7 +3659,7 @@ void relay_manager_reset( relay_manager_t * manager )
     }
 }
 
-void relay_manager_update( relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const relay_address_t * relay_addresses )
+void relay_manager_update( relay_manager_t * manager, int num_relays, const uint64_t * relay_ids, const relay_address_t * relay_addresses, const uint8_t * relay_internal )
 {
     assert( manager );
     assert( num_relays >= 0 );
@@ -3674,6 +3678,7 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
     uint64_t new_relay_ids[MAX_RELAYS];
     double new_relay_last_ping_time[MAX_RELAYS];
     relay_address_t new_relay_addresses[MAX_RELAYS];
+    uint8_t new_relay_internal[MAX_RELAYS];
     relay_ping_history_t * new_relay_ping_history[MAX_RELAYS];
 
     int index = 0;
@@ -3688,6 +3693,7 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
                 new_relay_ids[index] = manager->relay_ids[i];
                 new_relay_last_ping_time[index] = manager->relay_last_ping_time[i];
                 new_relay_addresses[index] = manager->relay_addresses[i];
+                new_relay_internal[index] = manager->relay_internal[i];
                 new_relay_ping_history[index] = manager->relay_ping_history[i];
                 const int slot = manager->relay_ping_history[i] - manager->ping_history_array;
                 assert( slot >= 0 );
@@ -3708,6 +3714,7 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
             new_relay_ids[index] = relay_ids[i];
             new_relay_last_ping_time[index] = -10000.0;
             new_relay_addresses[index] = relay_addresses[i];
+            new_relay_internal[index] = relay_internal[i];
             new_relay_ping_history[index] = NULL;
             for ( int j = 0; j < MAX_RELAYS; ++j )
             {
@@ -3730,6 +3737,7 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
     memcpy( manager->relay_ids, new_relay_ids, 8 * index );
     memcpy( manager->relay_last_ping_time, new_relay_last_ping_time, 8 * index );
     memcpy( manager->relay_addresses, new_relay_addresses, sizeof(relay_address_t) * index );
+    memcpy( manager->relay_internal, new_relay_internal, index );
     memcpy( manager->relay_ping_history, new_relay_ping_history, sizeof(relay_ping_history_t*) * index );
 
     // make sure all ping times are evenly distributed to avoid clusters of ping packets
@@ -3774,7 +3782,7 @@ void relay_manager_update( relay_manager_t * manager, int num_relays, const uint
         }
     }
 
-#endif // #ifndef DEBUG
+#endif // #ifndef NDEBUG
 }
 
 bool relay_manager_process_pong( relay_manager_t * manager, const relay_address_t * from, uint64_t sequence )
@@ -4302,15 +4310,19 @@ int main_update( main_t * main )
     for ( int i = 0; i < main->ping_stats.num_relays; ++i )
     {
         relay_write_uint64( &p, main->ping_stats.relay_ids[i] );
+
         float rtt = main->ping_stats.relay_rtt[i];
         float jitter = main->ping_stats.relay_jitter[i];
         float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
+
         int integer_rtt = int( rtt + 0.5f );
         int integer_jitter = int( jitter + 0.5f );
         int integer_packet_loss = int( packet_loss + 0.5f );
+
         clamp( integer_rtt, 0, 255 );
         clamp( integer_jitter, 0, 255 );
         clamp( integer_packet_loss, 0, 65535 );
+     
         relay_write_uint8( &p, uint8_t( integer_rtt ) );
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
@@ -4681,7 +4693,7 @@ uint64_t relay_clean_sequence( uint64_t sequence )
     return sequence & mask;
 }
 
-bool relay_ping_token_verify( relay_address_t * from, relay_address_t * relay_address, uint64_t expire_timestamp, const uint8_t * ping_token, const uint8_t * ping_key )
+bool relay_ping_token_verify( relay_address_t * from, relay_address_t * to, uint64_t expire_timestamp, const uint8_t * ping_token, const uint8_t * ping_key )
 {
     uint8_t data[256];
 
@@ -4689,7 +4701,7 @@ bool relay_ping_token_verify( relay_address_t * from, relay_address_t * relay_ad
 
     relay_write_uint64( &p, expire_timestamp );
     relay_write_address( &p, from );
-    relay_write_address( &p, relay_address );
+    relay_write_address( &p, to );
 
     const int length = p - data;
 
@@ -4712,136 +4724,140 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         int packet_bytes = relay_platform_socket_receive_packet( relay->socket, &from, packet_data, sizeof(packet_data) );
 
-        double current_time = relay_platform_time();
-
-        // send stats message to main thread 10 times per-second
-
-        if ( last_stats_message_time + 0.1 <= current_time )
         {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "thread %d sent stats message\n", relay->thread_index );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            double current_time = relay_platform_time();
 
-            double time_since_last_update = current_time - relay->last_stats_time;
+            // send stats message to main thread 10 times per-second
 
-            relay->last_stats_time = current_time;
-
-            uint64_t packets_sent_since_last_update = ( relay->counters[RELAY_COUNTER_PACKETS_SENT] > relay->last_stats_packets_sent ) ? relay->counters[RELAY_COUNTER_PACKETS_SENT] - relay->last_stats_packets_sent : 0;
-            uint64_t packets_received_since_last_update = ( relay->counters[RELAY_COUNTER_PACKETS_RECEIVED] > relay->last_stats_packets_received ) ? relay->counters[RELAY_COUNTER_PACKETS_RECEIVED] - relay->last_stats_packets_received : 0;
-
-            uint64_t bytes_sent_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_SENT] > relay->last_stats_bytes_sent ) ? relay->counters[RELAY_COUNTER_BYTES_SENT] - relay->last_stats_bytes_sent : 0;
-            uint64_t bytes_received_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_RECEIVED] > relay->last_stats_bytes_received ) ? relay->counters[RELAY_COUNTER_BYTES_RECEIVED] - relay->last_stats_bytes_received : 0;
-
-            uint64_t near_pings_since_last_update = ( relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED] > relay->last_stats_near_pings_received ) ? relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED] - relay->last_stats_near_pings_received : 0;
-            uint64_t relay_pings_since_last_update = ( relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] > relay->last_stats_relay_pings_received ) ? relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] - relay->last_stats_relay_pings_received : 0;
-
-            double packets_sent_per_second = 0.0;
-            double packets_received_per_second = 0.0;
-            double bytes_sent_per_second = 0.0;
-            double bytes_received_per_second = 0.0;
-            double near_pings_per_second = 0.0;
-            double relay_pings_per_second = 0.0;
-
-            if ( time_since_last_update > 0.0 )
+            if ( last_stats_message_time + 0.1 <= current_time )
             {
-                packets_sent_per_second = packets_sent_since_last_update / time_since_last_update;
-                packets_received_per_second = packets_received_since_last_update / time_since_last_update;
-                bytes_sent_per_second = bytes_sent_since_last_update / time_since_last_update;
-                bytes_received_per_second = bytes_received_since_last_update / time_since_last_update;
-                near_pings_per_second = near_pings_since_last_update / time_since_last_update;
-                relay_pings_per_second = relay_pings_since_last_update / time_since_last_update;
+    #if INTENSIVE_RELAY_DEBUGGING
+                printf( "thread %d sent stats message\n", relay->thread_index );
+    #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                double time_since_last_update = current_time - relay->last_stats_time;
+
+                relay->last_stats_time = current_time;
+
+                uint64_t packets_sent_since_last_update = ( relay->counters[RELAY_COUNTER_PACKETS_SENT] > relay->last_stats_packets_sent ) ? relay->counters[RELAY_COUNTER_PACKETS_SENT] - relay->last_stats_packets_sent : 0;
+                uint64_t packets_received_since_last_update = ( relay->counters[RELAY_COUNTER_PACKETS_RECEIVED] > relay->last_stats_packets_received ) ? relay->counters[RELAY_COUNTER_PACKETS_RECEIVED] - relay->last_stats_packets_received : 0;
+
+                uint64_t bytes_sent_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_SENT] > relay->last_stats_bytes_sent ) ? relay->counters[RELAY_COUNTER_BYTES_SENT] - relay->last_stats_bytes_sent : 0;
+                uint64_t bytes_received_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_RECEIVED] > relay->last_stats_bytes_received ) ? relay->counters[RELAY_COUNTER_BYTES_RECEIVED] - relay->last_stats_bytes_received : 0;
+
+                uint64_t near_pings_since_last_update = ( relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED] > relay->last_stats_near_pings_received ) ? relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED] - relay->last_stats_near_pings_received : 0;
+                uint64_t relay_pings_since_last_update = ( relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] > relay->last_stats_relay_pings_received ) ? relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] - relay->last_stats_relay_pings_received : 0;
+
+                double packets_sent_per_second = 0.0;
+                double packets_received_per_second = 0.0;
+                double bytes_sent_per_second = 0.0;
+                double bytes_received_per_second = 0.0;
+                double near_pings_per_second = 0.0;
+                double relay_pings_per_second = 0.0;
+
+                if ( time_since_last_update > 0.0 )
+                {
+                    packets_sent_per_second = packets_sent_since_last_update / time_since_last_update;
+                    packets_received_per_second = packets_received_since_last_update / time_since_last_update;
+                    bytes_sent_per_second = bytes_sent_since_last_update / time_since_last_update;
+                    bytes_received_per_second = bytes_received_since_last_update / time_since_last_update;
+                    near_pings_per_second = near_pings_since_last_update / time_since_last_update;
+                    relay_pings_per_second = relay_pings_since_last_update / time_since_last_update;
+                }
+
+                double bandwidth_sent_kbps = bytes_sent_per_second * 8.0 / 1000.0;
+                double bandwidth_received_kbps = bytes_received_per_second * 8.0 / 1000.0;
+
+                relay->last_stats_packets_sent = relay->counters[RELAY_COUNTER_PACKETS_SENT];
+                relay->last_stats_packets_received = relay->counters[RELAY_COUNTER_PACKETS_RECEIVED];
+                relay->last_stats_bytes_sent = relay->counters[RELAY_COUNTER_BYTES_SENT];
+                relay->last_stats_bytes_received = relay->counters[RELAY_COUNTER_BYTES_RECEIVED];
+                relay->last_stats_near_pings_received = relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED];
+                relay->last_stats_relay_pings_received = relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED];
+
+                relay_stats_message_t * message = (relay_stats_message_t*) malloc( sizeof(relay_stats_message_t) );
+                memset( message, 0, sizeof(relay_stats_message_t) );
+                message->thread_index = relay->thread_index;
+                message->session_count = relay->sessions->size();
+                message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
+                message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_up;
+                message->packets_sent_per_second = (float) packets_sent_per_second;
+                message->packets_received_per_second = (float) packets_received_per_second;
+                message->bandwidth_sent_kbps = (float) bandwidth_sent_kbps;
+                message->bandwidth_received_kbps = (float) bandwidth_received_kbps;
+                message->near_pings_per_second = (float) near_pings_per_second;
+                message->relay_pings_per_second = (float) relay_pings_per_second;
+                memcpy( message->counters, relay->counters, sizeof(uint64_t) * NUM_RELAY_COUNTERS );
+
+                relay_platform_mutex_acquire( relay->stats_mutex );
+                relay_queue_push( relay->stats_queue, message );
+                relay_platform_mutex_release( relay->stats_mutex );
+                
+                last_stats_message_time = current_time;
             }
 
-            double bandwidth_sent_kbps = bytes_sent_per_second * 8.0 / 1000.0;
-            double bandwidth_received_kbps = bytes_received_per_second * 8.0 / 1000.0;
+            // check for timeouts once per-second
 
-            relay->last_stats_packets_sent = relay->counters[RELAY_COUNTER_PACKETS_SENT];
-            relay->last_stats_packets_received = relay->counters[RELAY_COUNTER_PACKETS_RECEIVED];
-            relay->last_stats_bytes_sent = relay->counters[RELAY_COUNTER_BYTES_SENT];
-            relay->last_stats_bytes_received = relay->counters[RELAY_COUNTER_BYTES_RECEIVED];
-            relay->last_stats_near_pings_received = relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED];
-            relay->last_stats_relay_pings_received = relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED];
-
-            relay_stats_message_t * message = (relay_stats_message_t*) malloc( sizeof(relay_stats_message_t) );
-            memset( message, 0, sizeof(relay_stats_message_t) );
-            message->thread_index = relay->thread_index;
-            message->session_count = relay->sessions->size();
-            message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
-            message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_up;
-            message->packets_sent_per_second = (float) packets_sent_per_second;
-            message->packets_received_per_second = (float) packets_received_per_second;
-            message->bandwidth_sent_kbps = (float) bandwidth_sent_kbps;
-            message->bandwidth_received_kbps = (float) bandwidth_received_kbps;
-            message->near_pings_per_second = (float) near_pings_per_second;
-            message->relay_pings_per_second = (float) relay_pings_per_second;
-            memcpy( message->counters, relay->counters, sizeof(uint64_t) * NUM_RELAY_COUNTERS );
-
-            relay_platform_mutex_acquire( relay->stats_mutex );
-            relay_queue_push( relay->stats_queue, message );
-            relay_platform_mutex_release( relay->stats_mutex );
-            
-            last_stats_message_time = current_time;
-        }
-
-        // check for timeouts once per-second
-
-        if ( last_check_for_timeouts_time + 1.0 <= current_time )
-        {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "thread %d check for timeouts\n", relay->thread_index );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-
-            std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
-            while ( iter != relay->sessions->end() )
+            if ( last_check_for_timeouts_time + 1.0 <= current_time )
             {
-                if ( iter->second && iter->second->expire_timestamp < relay_timestamp( relay ) )
+    #if INTENSIVE_RELAY_DEBUGGING
+                printf( "thread %d check for timeouts\n", relay->thread_index );
+    #endif // #if INTENSIVE_RELAY_DEBUGGING
+
+                std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
+                while ( iter != relay->sessions->end() )
                 {
-                    printf( "Session %" PRIx64 ".%d destroyed on relay thread %d\n", iter->second->session_id, iter->second->session_version, relay->thread_index );
-                    relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
-                    relay->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
-                    relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
-                    iter = relay->sessions->erase( iter );
+                    if ( iter->second && iter->second->expire_timestamp < relay_timestamp( relay ) )
+                    {
+                        printf( "Session %" PRIx64 ".%d destroyed on relay thread %d\n", iter->second->session_id, iter->second->session_version, relay->thread_index );
+                        relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
+                        relay->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
+                        relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
+                        iter = relay->sessions->erase( iter );
+                    }
+                    else
+                    {
+                        iter++;
+                    }
                 }
-                else
-                {
-                    iter++;
-                }
+
+                last_check_for_timeouts_time = current_time;
             }
 
-            last_check_for_timeouts_time = current_time;
-        }
+            // pump control messages once per-second
 
-        // pump control messages once per-second
-
-        if ( last_pump_control_messages_time + 1.0 <= current_time )
-        {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "thread %d pump control messages\n", relay->thread_index );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-
-            while ( true )
+            if ( last_pump_control_messages_time + 1.0 <= current_time )
             {
-                relay_platform_mutex_acquire( relay->control_mutex );
-                relay_control_message_t * message = (relay_control_message_t*) relay_queue_pop( relay->control_queue );
-                relay_platform_mutex_release( relay->control_mutex );
-                if ( message == NULL )
-                {
-                    break;
-                }
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "processing control message on relay thread %d\n", relay->thread_index );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->control = *message;
-                free( message );
-            }
+    #if INTENSIVE_RELAY_DEBUGGING
+                printf( "thread %d pump control messages\n", relay->thread_index );
+    #endif // #if INTENSIVE_RELAY_DEBUGGING
 
-            last_pump_control_messages_time = current_time;
+                while ( true )
+                {
+                    relay_platform_mutex_acquire( relay->control_mutex );
+                    relay_control_message_t * message = (relay_control_message_t*) relay_queue_pop( relay->control_queue );
+                    relay_platform_mutex_release( relay->control_mutex );
+                    if ( message == NULL )
+                    {
+                        break;
+                    }
+    #if INTENSIVE_RELAY_DEBUGGING
+                    printf( "processing control message on relay thread %d\n", relay->thread_index );
+    #endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay->control = *message;
+                    free( message );
+                }
+
+                last_pump_control_messages_time = current_time;
+            }
         }
 
-        // ignore packets that are too small
+        // if no packet was received, skip processing logic
 
-        if ( packet_bytes < 1 )
+        if ( packet_bytes == 0 )
+        {
             continue;
+        }
 
         const uint8_t packet_id = packet_data[0];
 
@@ -4852,6 +4868,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
             printf( "ignoring packet. haven't received first relay update response yet\n" );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+            // todo: we need a counter here so we can test this
             continue;
         }
 
@@ -4871,11 +4888,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( local && ( packet_id == RELAY_LOCAL_PING_PACKET ) )
         {
-            if ( packet_bytes == RELAY_ADDRESS_BYTES + 8 + 8 + RELAY_PING_TOKEN_BYTES )
+            if ( packet_bytes == 1 + 1 + RELAY_ADDRESS_BYTES + 8 )
             {
                 const uint8_t * p = packet_data + 1;
+
+                uint8_t internal = relay_read_uint8( &p );
+
                 relay_address_t to_address;
                 relay_read_address( &p, &to_address );
+                
                 uint64_t ping_sequence = relay_read_uint64( &p );
 
                 uint8_t to_address_data[32];
@@ -4892,14 +4913,33 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes, &relay_public_address_port );
                 relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes, &relay_internal_address_port );
 
-                uint64_t expire_timestamp = current_time + 5;
+                uint64_t expire_timestamp = relay_timestamp( relay ) + 5;
 
-                // todo: generate ping token
+                uint8_t ping_data[256];
+
+                if ( !internal )
+                {
+                    uint8_t * q = ping_data;
+                    relay_write_uint64( &q, expire_timestamp );
+                    relay_write_address( &q, &relay->relay_public_address );
+                    relay_write_address( &q, &to_address );
+                }
+                else
+                {
+                    uint8_t * q = ping_data;
+                    relay_write_uint64( &q, expire_timestamp );
+                    relay_write_address( &q, &relay->relay_internal_address );
+                    relay_write_address( &q, &to_address );
+                }
+
+                const int ping_data_length = 8 + RELAY_ADDRESS_BYTES + RELAY_ADDRESS_BYTES;
+
                 uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
-                memset( ping_token, 0, sizeof(ping_token) );
+
+                crypto_auth( ping_token, ping_data, ping_data_length, relay->control.ping_key );
 
                 uint8_t ping_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, ping_token, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port );
+                packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( ping_packet, packet_bytes ) );
@@ -4911,12 +4951,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
                 }
-            }
-            else
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "local ping packet has wrong size %d\n", packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
             }
 
             continue;
@@ -5006,10 +5040,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
-            if ( packet_bytes != 8 + 8 + RELAY_PING_TOKEN_BYTES )
+            if ( packet_bytes != 1 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
 #if INTENSIVE_RELAY_DEBUGGING
-            printf("[%s] relay ping packet has wrong size (%d bytes)\n", from_string, packet_bytes );
+                printf("[%s] relay ping packet has wrong size (%d bytes)\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE]++;
@@ -5017,11 +5051,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            const uint8_t * p = packet_data;
+            const uint8_t * q = p;
 
-            uint64_t ping_sequence = relay_read_uint64( &p );
+            uint8_t internal = relay_read_uint8( &q );
 
-            uint64_t expire_timestamp = relay_read_uint64( &p );
+            uint64_t ping_sequence = relay_read_uint64( &q );
+
+            uint64_t expire_timestamp = relay_read_uint64( &q );
 
             uint64_t current_timestamp = relay_timestamp( relay );
             
@@ -5036,9 +5072,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            const uint8_t * ping_token = p;
+            const uint8_t * ping_token = q;
 
-            if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
+            if ( !relay_ping_token_verify( &from, internal ? &relay->relay_internal_address : &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] relay ping token did not verify\n", from_string );
@@ -5078,7 +5114,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( packet_bytes != 8 )
             {
 #if INTENSIVE_RELAY_DEBUGGING
-            printf("[%s] relay pong packet has wrong size (%d bytes)\n", from_string, packet_bytes );
+                printf("[%s] relay pong packet has wrong size (%d bytes)\n", from_string, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE]++;
@@ -5086,16 +5122,17 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            const uint8_t * p = packet_data;
-            uint64_t sequence = relay_read_uint64( &p );
+            const uint8_t * q = p;
+
+            uint64_t sequence = relay_read_uint64( &q );
 
             uint8_t forward_packet_data[256];
             forward_packet_data[0] = RELAY_LOCAL_PONG_PACKET;
-            uint8_t * q = forward_packet_data + 1;
-            relay_write_address( &q, &from );
-            relay_write_uint64( &q, sequence );
+            uint8_t * f = forward_packet_data + 1;
+            relay_write_address( &f, &from );
+            relay_write_uint64( &f, sequence );
 
-            const int forward_packet_bytes = q - forward_packet_data;
+            const int forward_packet_bytes = f - forward_packet_data;
 
 #if INTENSIVE_RELAY_DEBUGGING
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -6164,44 +6201,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const uint8_t * ping_token = const_p;
 
-            char address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
-            printf( "received ping packet from %s: expire_timestamp = %" PRIx64 ", token = %x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-                relay_address_to_string( &from, address_buffer ),
-                expire_timestamp,
-                ping_token[0],        
-                ping_token[1],        
-                ping_token[2],        
-                ping_token[3],        
-                ping_token[4],        
-                ping_token[5],        
-                ping_token[6],        
-                ping_token[7],        
-                ping_token[8],        
-                ping_token[9],        
-                ping_token[10],        
-                ping_token[11],        
-                ping_token[12],        
-                ping_token[13],        
-                ping_token[14],        
-                ping_token[15],        
-                ping_token[16],        
-                ping_token[17],        
-                ping_token[18],        
-                ping_token[19],        
-                ping_token[20],        
-                ping_token[21],        
-                ping_token[22],        
-                ping_token[23],        
-                ping_token[24],        
-                ping_token[25],        
-                ping_token[26],        
-                ping_token[27],        
-                ping_token[28],        
-                ping_token[29],        
-                ping_token[30],        
-                ping_token[31]        
-            );
-
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
 #if INTENSIVE_RELAY_DEBUGGING
@@ -6229,6 +6228,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
                 relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
             }
+        }
+        else
+        {
+            // unknown packet id
+
+#if INTENSIVE_RELAY_DEBUGGING
+            printf( "[%s] received unknown packet id %d (%d bytes)\n", from_string, packet_id, packet_bytes );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+
+            // todo: add counter for this
         }
     }
 
@@ -6339,7 +6348,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         if ( relays_dirty )
         {
-            relay_manager_update( ping->relay_manager, ping->control.num_relays, ping->control.relay_ids, ping->control.relay_addresses );
+            relay_manager_update( ping->relay_manager, ping->control.num_relays, ping->control.relay_ids, ping->control.relay_addresses, ping->control.relay_internal );
 
             /*
             printf( "----------------------------------------------------\n" );
@@ -6379,6 +6388,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             {
                 uint64_t sequence;
                 relay_address_t address;
+                uint8_t internal;
             };
 
             int num_pings = 0;
@@ -6389,6 +6399,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
                 {
                     pings[num_pings].sequence = relay_ping_history_ping_sent( ping->relay_manager->relay_ping_history[i], current_time );
                     pings[num_pings].address = ping->relay_manager->relay_addresses[i];
+                    pings[num_pings].internal = ping->relay_manager->relay_internal[i];
                     ping->relay_manager->relay_last_ping_time[i] = current_time;
                     num_pings++;
                 }
@@ -6399,6 +6410,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
                 uint8_t packet_data[256];
                 packet_data[0] = RELAY_LOCAL_PING_PACKET;
                 uint8_t * p = packet_data + 1;
+                relay_write_uint8( &p, pings[i].internal );
                 relay_write_address( &p, &pings[i].address );
                 relay_write_uint64( &p, pings[i].sequence );
 
@@ -6418,14 +6430,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             last_ping_time = current_time;
         }
 
-        // process packets
-
-        if ( packet_bytes < 1 )
+        if ( packet_bytes == 0 )
             continue;
+
+        // process packets
 
         const uint8_t packet_id = packet_data[0];
 
-        if ( packet_id == RELAY_LOCAL_PONG_PACKET && packet_bytes == RELAY_ADDRESS_BYTES + 8 )
+        if ( packet_id == RELAY_LOCAL_PONG_PACKET && packet_bytes == 1 + RELAY_ADDRESS_BYTES + 8 )
         {
 #if INTENSIVE_RELAY_DEBUGGING
             printf( "local pong packet\n" );
@@ -6437,6 +6449,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             uint64_t sequence = relay_read_uint64( &p );
 
             relay_manager_process_pong( ping->relay_manager, &from_address, sequence );
+
+            // todo: we need a counter here for functional testing
         }
     }
 

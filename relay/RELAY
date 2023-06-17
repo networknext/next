@@ -12,31 +12,77 @@ DONE
 
 	Make sure that all relay packets have appropriate size checks.
 
-RELAY
-
-	-------
-
 	Write code to generate the ping token before ping packet send.
 
-	Make sure if the other relay is internal, then generate ping token relative to internal relay of this relay, and internal address of other relay.
+	Verify that relay ping/pongs work, with the new relay to relay ping token...
+
+	Verify that relay pong processing goes all the way down to the ping thread.
+
+	If the other relay is internal, generate the ping token according to sender internal relay address.
+
+	If the other relay is internal, verify the ping token according to receiver internal relay address.
+
+	Make this stateless. Put the internal flag inside the ping packet...
+
+	Make sure relay pings still work (packet size changes...)
+
+	Fixed a weird copy paste bug in local only.
+
+	Fix distribution of pings by time.
+
+RELAY
+
+	Add counters corresponding to // todo notes in relay.cpp
 
 	-------
 
-	On relay ping receive, verify token ping according to internal address of relay if other relay is internal.
+	Implement relay func test framework.
+
+	Add the relay func tests to semaphore...
 
 	-------
 
-	Relay should have functional tests, separate from sdk func tests, and runnable inside semaphore.
+	Verify relay catches bad keypairs.
 
-	Start with the absolute basics of the relay functionality, and test everything from top to bottom.
-
-	-------
+	Verify relay catches any other bad configuration...
 
 	Verify relay times out on startup if it can't init.
 
-	Verify relay can init with backend.
+	Verify relay can init with backend, and gets ping token.
 
-	Verify relay catches bad keypairs.
+	Verify relays can ping each other, get pongs, and report up relay stats to the func backend.
+
+	Verify that relays ignore invalid ping tokens, expired ping tokens etc.
+
+	Verify that relays respond to near relay pings
+
+	Verify that relays ignore expired near relay pings, or invalid near relay pings.
+
+	Verify that relays handle changes in magic values every 10 secs for 60 seconds.
+
+	-------
+
+	Verify that the relay won't process any packets until it initializes with the backend.
+
+	Go through each relay packet type and verify each counter (eg. received, wrong size etc etc...)
+
+	-------
+
+	Verify that packets with invalid chonkle are dropped (basic packet filter)
+
+	Verify that packets sent with wrong magic are dropped (advanced packet filter)
+
+	-------
+
+	Verify success path for each packet type
+
+	-------
+
+	Work out some way to test relay internal vs. public addresses
+
+	-------
+
+	Verify relay stats calculations
 
 	-------
 
@@ -67,10 +113,6 @@ RELAY
 	------------------
 
 	Debug why the happy path is not working on linux
-
-	------------------
-
-	Relay should have load test harness framework (totally separate from the SDK and backend...)
 
 	------------------
 
