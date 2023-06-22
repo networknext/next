@@ -92,9 +92,9 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 	return cmd, &output
 }
 
-func test_initialize() {
+func test_initialize_success() {
 
-	fmt.Printf("test_initialize\n")
+	fmt.Printf("test_initialize_success\n")
 
 	backend_cmd, _ := backend("DEFAULT")
 
@@ -118,12 +118,32 @@ func test_initialize() {
 	}
 }
 
+func test_initialize_fail() {
+
+	fmt.Printf("test_initialize_fail\n")
+
+	relay_cmd, relay_stdout := relay("relay", 2000)
+
+	relay_cmd.Wait()
+
+	fmt.Printf("===================================\n%s====================================\n", relay_stdout.String())
+
+	if !strings.Contains(relay_stdout.String(), "error: could not post relay update") {
+		panic("relay should not be able to post relay update, relay backend does not exist")
+	}
+
+	if !strings.Contains(relay_stdout.String(), "error: could not update relay 30 times in a row. shutting down") {
+		panic("relay should shut down with error when it can't initialize")
+	}
+}
+
 type test_function func()
 
 func main() {
 
 	allTests := []test_function{
-		test_initialize,
+		test_initialize_success,
+		test_initialize_fail,
 	}
 
 	var tests []test_function

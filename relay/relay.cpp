@@ -7020,12 +7020,12 @@ int main( int argc, const char ** argv )
     {
         printf( "Destroying relay thread data %d\n", i );
 
-        for ( std::map<session_key_t, relay_session_t*>::iterator itor = relay->sessions->begin(); itor != relay->sessions->end(); ++itor )
+        for ( std::map<session_key_t, relay_session_t*>::iterator itor = relay[i].sessions->begin(); itor != relay[i].sessions->end(); ++itor )
         {
             delete itor->second;
         }
 
-        delete relay->sessions;
+        delete relay[i].sessions;
     }
 
     printf( "Destroying message queues\n" );

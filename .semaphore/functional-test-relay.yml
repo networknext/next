@@ -71,6 +71,10 @@ blocks:
 
       jobs:
 
-        - name: "test_initialize"
+        - name: "test_initialize_success"
           commands:
-            - cd ./dist && ./func_test_relay test_initialize
+            - cd ./dist && ./func_test_relay test_initialize_success
+
+        - name: "test_initialize_fail"
+          commands:
+            - cd ./dist && ./func_test_relay test_initialize_fail
