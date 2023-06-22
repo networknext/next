@@ -60,10 +60,8 @@ blocks:
 
             - mv func_backend_relay func_backend
 
-            - chmod +x func_client
-            - chmod +x func_server
             - chmod +x func_backend
-            - chmod +x func_test_sdk5
+            - chmod +x func_test_relay
             - chmod +x relay
 
             - sudo mv libnext5.so /usr/local/lib

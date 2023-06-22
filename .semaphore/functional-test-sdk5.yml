@@ -66,7 +66,7 @@ blocks:
 
             - mv func_client_sdk5 func_client
             - mv func_server_sdk5 func_server
-            - mv func_backend_relay func_backend
+            - mv func_backend_sdk5 func_backend
 
             - chmod +x func_client
             - chmod +x func_server
