@@ -8,9 +8,9 @@ DONE
 
 	Test relay initialize failure (clean shutdown)
 
-RELAY
+	Test relay name not set
 
-	Test missing relay name
+RELAY
 
 	Test relay public address not set
 

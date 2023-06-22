@@ -59,6 +59,7 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 type RelayConfig struct {
 	fake_packet_loss_percent    float32
 	fake_packet_loss_start_time float32
+	omit_relay_name bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -74,8 +75,10 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 		return nil, nil
 	}
 
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NAME=%s", name))
+	if !config.omit_relay_name {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NAME=%s", name))
+	}
+
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_ADDRESS=127.0.0.1:%d", port))
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPublicKey))
@@ -83,6 +86,8 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_PERCENT=%f", config.fake_packet_loss_percent))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_START_TIME=%f", config.fake_packet_loss_start_time))
+
+	// fmt.Printf("%s\n", cmd.Env)
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
@@ -131,7 +136,27 @@ func test_initialize_fail() {
 	}
 
 	if !strings.Contains(relay_stdout.String(), "error: could not update relay 30 times in a row. shutting down") {
-		panic("relay should shut down with error when it can't initialize")
+		panic("relay should shut down when it can't initialize")
+	}
+
+	if !strings.Contains(relay_stdout.String(), "Done.\n") {
+		panic("relay should shut down clean")
+	}
+}
+
+func test_relay_name_not_set() {
+
+	fmt.Printf("test_relay_name_not_set\n")
+
+	config := RelayConfig{}
+	config.omit_relay_name = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: RELAY_NAME not set") {
+		panic("relay should not start without a relay name")
 	}
 }
 
@@ -142,6 +167,7 @@ func main() {
 	allTests := []test_function{
 		test_initialize_success,
 		test_initialize_fail,
+		test_relay_name_not_set,
 	}
 
 	var tests []test_function

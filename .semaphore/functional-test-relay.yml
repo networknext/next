@@ -78,3 +78,7 @@ blocks:
         - name: "test_initialize_fail"
           commands:
             - cd ./dist && ./func_test_relay test_initialize_fail
+
+        - name: "test_relay_name_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_name_not_set
