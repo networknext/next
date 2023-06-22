@@ -131,6 +131,8 @@ func main() {
 		setup_emulators()
 	} else if command == "func-test-sdk5" {
 		func_test_sdk5(args[2:])
+	} else if command == "func-test-relay" {
+		func_test_relay(args[2:])
 	} else if command == "func-test-backend" {
 		func_test_backend(args[2:])
 	} else if command == "func-test-api" {
@@ -326,6 +328,17 @@ func setup_emulators() {
 
 func func_test_sdk5(tests []string) {
 	command := "cd dist && ./func_test_sdk5"
+	if len(tests) > 0 {
+		for _, test := range tests {
+			bash(fmt.Sprintf("%s %s", command, test))
+		}
+	} else {
+		bash(command)
+	}
+}
+
+func func_test_relay(tests []string) {
+	command := "cd dist && ./func_test_relay"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))

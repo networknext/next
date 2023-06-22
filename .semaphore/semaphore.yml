@@ -204,6 +204,9 @@ promotions:
   - name: "Functional Test SDK5"
     pipeline_file: functional-test-sdk5.yml
 
+  - name: "Functional Test Relay"
+    pipeline_file: functional-test-relay.yml
+
   - name: "Functional Test API"
     pipeline_file: functional-test-api.yml
 

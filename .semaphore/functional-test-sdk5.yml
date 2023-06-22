@@ -29,11 +29,15 @@ blocks:
 
             - cd ~/accelerate
             - make clean
-            - make dist/relay dist/func_server dist/func_client dist/func_backend dist/func_test_sdk5
+            - make dist/func_server dist/func_client dist/func_backend dist/func_test_sdk5
 
-            - artifact push workflow dist/func_client
-            - artifact push workflow dist/func_server
-            - artifact push workflow dist/func_backend
+            - mv dist/func_client dist/func_client_sdk5
+            - mv dist/func_server dist/func_server_sdk5
+            - mv dist/func_backend dist/func_backend_sdk5
+
+            - artifact push workflow dist/func_client_sdk5
+            - artifact push workflow dist/func_server_sdk5
+            - artifact push workflow dist/func_backend_sdk5
             - artifact push workflow dist/func_test_sdk5
 
 
@@ -53,12 +57,16 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_client
-            - artifact pull workflow func_server
-            - artifact pull workflow func_backend
+            - artifact pull workflow func_client_sdk5
+            - artifact pull workflow func_server_sdk5
+            - artifact pull workflow func_backend_sdk5
             - artifact pull workflow func_test_sdk5
             - artifact pull workflow relay
             - artifact pull workflow libnext5.so
+
+            - mv func_client_sdk5 func_client
+            - mv func_server_sdk5 func_server
+            - mv func_backend_relay func_backend
 
             - chmod +x func_client
             - chmod +x func_server
