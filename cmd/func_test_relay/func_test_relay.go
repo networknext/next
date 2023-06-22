@@ -126,8 +126,6 @@ func test_initialize_fail() {
 
 	relay_cmd.Wait()
 
-	fmt.Printf("===================================\n%s====================================\n", relay_stdout.String())
-
 	if !strings.Contains(relay_stdout.String(), "error: could not post relay update") {
 		panic("relay should not be able to post relay update, relay backend does not exist")
 	}
