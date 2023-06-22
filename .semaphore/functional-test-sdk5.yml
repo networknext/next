@@ -290,12 +290,16 @@ blocks:
             - mkdir -p dist
             - cd dist
 
-            - artifact pull workflow func_client
-            - artifact pull workflow func_server
-            - artifact pull workflow func_backend
+            - artifact pull workflow func_client_sdk5
+            - artifact pull workflow func_server_sdk5
+            - artifact pull workflow func_backend_sdk5
             - artifact pull workflow func_test_sdk5
             - artifact pull workflow relay
             - artifact pull workflow libnext5.so
+
+            - mv func_client_sdk5 func_client
+            - mv func_server_sdk5 func_server
+            - mv func_backend_sdk5 func_backend
 
             - chmod +x func_client
             - chmod +x func_server
