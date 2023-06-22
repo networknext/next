@@ -1,22 +1,56 @@
 DONE
 
-RELAY
-
 	Implement relay func test framework.
 
-	Add the relay func tests to semaphore...
+	Add the relay func tests to semaphore.
 
-	-------
+	Test relay initialize success
 
-	Verify relay catches bad keypairs.
+	Test relay initialize failure (clean shutdown)
 
-	Verify relay catches any other bad configuration...
+RELAY
 
-	Verify relay times out on startup if it can't init.
+	Test missing relay name
 
-	Verify relay can init with backend, and gets ping token.
+	Test relay public address not set
+
+	Test relay public address invalid
+
+	Test relay internal address invalid
+
+	Test relay public key not set
+
+	Test relay public key invalid
+
+	Test relay private key not set
+
+	Test relay private key invalid
+
+	Test relay keypair invalid (mismatched private and public keys)
+
+	Test relay backend public key not set
+
+	Test relay backend public key invalid
+
+	Test relay backend hostname not set
+
+	Test that we aren't allowed to bind to port 0
+
+	-------------------------
+
+	Test clean shutdown (CTRL-what?). Make sure we get to "Done."
+
+	Test hard shutdown (CTRL-C). Make sure we get to "Done."
+
+	-------------------------
+
+	Test number of threads env var is respected
+
+	-------------------------
 
 	Verify relays can ping each other, get pongs, and report up relay stats to the func backend.
+
+	-------------------------
 
 	Verify that relays ignore invalid ping tokens, expired ping tokens etc.
 

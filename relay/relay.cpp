@@ -6641,11 +6641,11 @@ int main( int argc, const char ** argv )
     uint8_t relay_backend_public_key[crypto_sign_PUBLICKEYBYTES];
     if ( relay_base64_decode_data( relay_backend_public_key_env, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES ) != crypto_sign_PUBLICKEYBYTES )
     {
-        printf( "\nerror: invalid router public key\n\n" );
+        printf( "\nerror: invalid relay backend public key\n\n" );
         return 1;
     }
 
-    printf( "Router public key is %s\n", relay_backend_public_key_env );
+    printf( "Relay backend public key is %s\n", relay_backend_public_key_env );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -6808,7 +6808,7 @@ int main( int argc, const char ** argv )
     relay_platform_thread_t * ping_thread = relay_platform_thread_create( ping_thread_function, &ping );
     if ( !ping_thread )
     {
-        printf( "\nerror: could not create ping thread\n\n" );
+        printf( "\nerror: could not create ping thread :(\n\n" );
         relay_term();
         fflush( stdout );
         return 1;
@@ -6935,7 +6935,7 @@ int main( int argc, const char ** argv )
         {
             if ( update_attempts++ >= RELAY_MAX_UPDATE_ATTEMPTS )
             {
-                printf( "error: could not update relay %d times in a row. shutting down", RELAY_MAX_UPDATE_ATTEMPTS );
+                printf( "error: could not update relay %d times in a row. shutting down :(", RELAY_MAX_UPDATE_ATTEMPTS );
                 aborted = true;
                 quit = 1;
                 break;
