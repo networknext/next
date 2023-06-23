@@ -6952,21 +6952,24 @@ int main( int argc, const char ** argv )
         main.shutting_down = true;
 
         uint seconds = 0;
-        while ( seconds++ < 60 && main_update( &main ) == RELAY_OK )
+        while ( seconds <= 60 && main_update( &main ) == RELAY_OK )
         {
-            printf( "%d\n", 60 - seconds );
+            printf( "Shutting down in %d seconds\n", 60 - seconds );
             relay_platform_sleep( 1.0 );
+            seconds++;
         }
 
         if ( seconds < 60 )
         {
-            printf( "Sleeping for extra 30 seconds for safety\n" );
+            printf( "Sleeping for extra 30 seconds for safety...\n" );
             relay_platform_sleep( 30.0 );
         }
+
+        printf( "Clean shutdown completed\n" );
     }
     else
     {
-        printf( "\nHard shutdown\n" );
+        printf( "\nHard shutdown!\n" );
     }
 
     // =============================================================

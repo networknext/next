@@ -6,11 +6,9 @@ DONE
 
 	Test advanced packet filter
 
-RELAY
-
 	Test clean shutdown. Make sure we get to "Done." after counting down.
 
-	How to trigger the clean shutdown? What signal is it?
+RELAY
 
 	--------------------------
 

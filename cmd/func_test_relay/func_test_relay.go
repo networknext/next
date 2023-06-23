@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"context"
+	"syscall"
 
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/common"
@@ -730,6 +731,52 @@ func test_advanced_packet_filter() {
 	checkCounter("RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET", relay_stdout.String())
 }
 
+func test_clean_shutdown() {
+
+	fmt.Printf("test_clean_shutdown\n")
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(10 * time.Second)
+	
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	relay_cmd.Process.Signal(syscall.SIGHUP)
+
+	relay_cmd.Wait()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Clean shutdown...") {
+		panic("did not detect clean shutdown start")
+	}
+
+	for i := 0; i <= 60; i++ {
+		if !strings.Contains(relay_stdout.String(), fmt.Sprintf("Shutting down in %d seconds", i)) {
+			panic(fmt.Sprintf("missing shutdown in %d seconds", i))
+		}
+	}
+
+	if !strings.Contains(relay_stdout.String(), "Clean shutdown completed") {
+		panic("clean shutdown did not complete")
+	}
+
+	if !strings.Contains(relay_stdout.String(), "Done.") {
+		panic("relay crashed while shutting down\n")
+	}
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -760,6 +807,7 @@ func main() {
 		test_cost_matrix,
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
+		test_clean_shutdown,
 	}
 
 	var tests []test_function
