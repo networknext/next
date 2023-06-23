@@ -138,3 +138,7 @@ blocks:
         - name: "test_num_threads"
           commands:
             - cd ./dist && ./func_test_relay test_num_threads
+
+        - name: "test_relay_pings"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_pings
