@@ -110,3 +110,7 @@ blocks:
         - name: "test_relay_private_key_invalid"
           commands:
             - cd ./dist && ./func_test_relay test_relay_private_key_invalid
+
+        - name: "test_relay_keypair_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_keypair_invalid

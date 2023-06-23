@@ -46,6 +46,7 @@ type RelayConfig struct {
 	invalid_relay_public_key       bool
 	omit_relay_private_key         bool
 	invalid_relay_private_key      bool
+	invalid_relay_keypair          bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -91,6 +92,11 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 
 	if config.invalid_relay_private_key {
 		cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=blahblahblah")
+	}
+
+	if config.invalid_relay_keypair {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPrivateKey))		
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPublicKey))		
 	}
 
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
@@ -306,6 +312,24 @@ func test_relay_private_key_invalid() {
 	}
 }
 
+func test_relay_keypair_invalid() {
+
+	fmt.Printf("test_relay_keypair_invalid\n")
+
+	config := RelayConfig{}
+	config.invalid_relay_keypair = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: relay keypair is invalid") {
+		panic("relay should not start with an invalid relay keypair")
+	}
+}
+
+// fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
+
 type test_function func()
 
 func main() {
@@ -321,6 +345,7 @@ func main() {
 		test_relay_public_key_invalid,
 		test_relay_private_key_not_set,
 		test_relay_private_key_invalid,
+		test_relay_keypair_invalid,
 	}
 
 	var tests []test_function

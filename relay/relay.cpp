@@ -6611,20 +6611,20 @@ int main( int argc, const char ** argv )
         relay_random_bytes( nonce, sizeof nonce );
         if ( crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) != 0 )
         {
-            printf( "\nerror: could not encrypt test data. relay keypair is invalid\n\n" );
+            printf( "\nerror: relay keypair is invalid\n\n" );
             return 1;
         }
 
         unsigned char decrypted[CRYPTO_BOX_MESSAGE_LEN];
         if ( crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) != 0 )
         {
-            printf( "\nerror: could not decrypt test data. relay keypair is invalid\n\n" );
+            printf( "\nerror: relay keypair is invalid\n\n" );
             return 1;
         }
 
         if ( memcmp( decrypted, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN ) != 0 )
         {
-            printf( "\nerror: decrypted data mismatch. relay keypair is invalid\n\n" );
+            printf( "\nerror: relay keypair is invalid\n\n" );
             return 1;
         }
     }
