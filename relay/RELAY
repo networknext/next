@@ -10,13 +10,13 @@ DONE
 
 	Test relay name not set
 
-RELAY
-
 	Test relay public address not set
 
 	Test relay public address invalid
 
 	Test relay internal address invalid
+
+RELAY
 
 	Test relay public key not set
 
@@ -33,6 +33,8 @@ RELAY
 	Test relay backend public key invalid
 
 	Test relay backend hostname not set
+
+	-------------------------
 
 	Test that we aren't allowed to bind to port 0
 

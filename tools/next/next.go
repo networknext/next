@@ -32,9 +32,9 @@ import (
 
 	"github.com/networknext/accelerate/modules/admin"
 	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/crypto"
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/crypto"
 	db "github.com/networknext/accelerate/modules/database"
 	"github.com/networknext/accelerate/modules/portal"
 
@@ -1273,7 +1273,7 @@ func keys(env Environment, regexes []string) {
 // --------------------------------------------------------------------------------------------
 
 func keygen() {
-	
+
 	pingKey := crypto.Auth_Key()
 
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
@@ -1281,7 +1281,7 @@ func keygen() {
 		fmt.Printf("error: could not generate relay keypair\n")
 		os.Exit(1)
 	}
-	
+
 	pingKeyBase64 := base64.StdEncoding.EncodeToString(pingKey[:])
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
 	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])

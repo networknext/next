@@ -13,8 +13,8 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
-	"time"
 	"strings"
+	"time"
 )
 
 func Base64String(value string) []byte {
@@ -36,12 +36,16 @@ const (
 )
 
 type RelayConfig struct {
-	fake_packet_loss_percent    float32
-	fake_packet_loss_start_time float32
-	omit_relay_name bool
-	omit_relay_public_address bool
-	invalid_relay_public_address bool
+	fake_packet_loss_percent       float32
+	fake_packet_loss_start_time    float32
+	omit_relay_name                bool
+	omit_relay_public_address      bool
+	invalid_relay_public_address   bool
 	invalid_relay_internal_address bool
+	omit_relay_public_key          bool
+	invalid_relay_public_key       bool
+	omit_relay_private_key         bool
+	invalid_relay_private_key      bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -73,10 +77,26 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 		cmd.Env = append(cmd.Env, "RELAY_INTERNAL_ADDRESS=blahblahblah")
 	}
 
-	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPublicKey))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPrivateKey))
+	if !config.omit_relay_public_key {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPublicKey))
+	}
+
+	if config.invalid_relay_public_key {
+		cmd.Env = append(cmd.Env, "RELAY_PUBLIC_KEY=blahblahblah")
+	}
+
+	if !config.omit_relay_private_key {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPrivateKey))
+	}
+
+	if config.invalid_relay_private_key {
+		cmd.Env = append(cmd.Env, "RELAY_PRIVATE_KEY=blahblahblah")
+	}
+
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
+
+	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
+
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_PERCENT=%f", config.fake_packet_loss_percent))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_START_TIME=%f", config.fake_packet_loss_start_time))
 
@@ -222,6 +242,70 @@ func test_relay_internal_address_invalid() {
 	}
 }
 
+func test_relay_public_key_not_set() {
+
+	fmt.Printf("test_relay_public_key_not_set\n")
+
+	config := RelayConfig{}
+	config.omit_relay_public_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: RELAY_PUBLIC_KEY not set") {
+		panic("relay should not start without a relay public key")
+	}
+}
+
+func test_relay_public_key_invalid() {
+
+	fmt.Printf("test_relay_public_key_invalid\n")
+
+	config := RelayConfig{}
+	config.invalid_relay_public_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: invalid relay public key") {
+		panic("relay should not start with an invalid relay public key")
+	}
+}
+
+func test_relay_private_key_not_set() {
+
+	fmt.Printf("test_relay_private_key_not_set\n")
+
+	config := RelayConfig{}
+	config.omit_relay_private_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: RELAY_PRIVATE_KEY not set") {
+		panic("relay should not start without a relay private key")
+	}
+}
+
+func test_relay_private_key_invalid() {
+
+	fmt.Printf("test_relay_private_key_invalid\n")
+
+	config := RelayConfig{}
+	config.invalid_relay_private_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: invalid relay private key") {
+		panic("relay should not start with an invalid relay private key")
+	}
+}
+
 type test_function func()
 
 func main() {
@@ -233,6 +317,10 @@ func main() {
 		test_relay_public_address_not_set,
 		test_relay_public_address_invalid,
 		test_relay_internal_address_invalid,
+		test_relay_public_key_not_set,
+		test_relay_public_key_invalid,
+		test_relay_private_key_not_set,
+		test_relay_private_key_invalid,
 	}
 
 	var tests []test_function

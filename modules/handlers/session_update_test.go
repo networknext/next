@@ -1,11 +1,11 @@
 package handlers_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"testing"
 	"time"
-	"encoding/binary"
 
 	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/constants"
