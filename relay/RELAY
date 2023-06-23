@@ -10,6 +10,10 @@ DONE
 
 RELAY
 
+	Verify that the relay responds to correctly formed near relay ping packets
+
+	Verify that the relay handles all error cases for near relay ping packets
+
 	--------------------------
 
 
@@ -27,15 +31,16 @@ RELAY
 
 
 
-	-------------------------
 
-	Verify that relays ignore invalid ping tokens, expired ping tokens etc.
 
-	Verify that relays respond to near relay pings
 
-	Verify that relays ignore expired near relay pings, or invalid near relay pings.
 
-	Verify that relays handle changes in magic values every 10 secs for 60 seconds.
+
+
+
+
+
+
 
 	-------
 
