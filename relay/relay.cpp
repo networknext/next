@@ -4027,7 +4027,6 @@ struct main_t
     relay_stats_message_t relay_stats;
     ping_stats_message_t ping_stats;
     upgrade_t upgrade;
-    uint64_t pongs_processed;
 };
 
 struct ping_t
@@ -4277,7 +4276,7 @@ int main_update( main_t * main )
         }
     }
 
-    main->relay_stats.counters[RELAY_COUNTER_PONGS_PROCESSED] = main->pongs_processed;
+    main->relay_stats.counters[RELAY_COUNTER_PONGS_PROCESSED] = main->ping_stats.pongs_processed;
 
     // pump ping stats messages
 
