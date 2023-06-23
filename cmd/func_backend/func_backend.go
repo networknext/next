@@ -19,6 +19,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"bytes"
 
 	"github.com/gorilla/mux"
 
@@ -71,7 +72,6 @@ type Backend struct {
 	dirty        bool
 	mode         int
 	relayManager *common.RelayManager
-	routeMatrix  *common.RouteMatrix
 }
 
 var backend Backend
@@ -372,9 +372,65 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	writer.Write(responseData)
 }
 
+func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
+
+	backend.mutex.Lock()
+
+	currentTime := time.Now().Unix()
+
+	activeRelays := backend.relayManager.GetActiveRelays(currentTime)
+
+	relayIds := make([]uint64, len(activeRelays))
+	relayAddresses := make([]net.UDPAddr, len(activeRelays))
+	relayNames := make([]string, len(activeRelays))
+	relayLatitudes := make([]float32, len(activeRelays))
+	relayLongitudes := make([]float32, len(activeRelays))
+	relayDatacenterIds := make([]uint64, len(activeRelays))
+	destRelays := make([]bool, len(activeRelays))
+
+	for i := range activeRelays {
+		relayIds[i] = activeRelays[i].Id
+		relayAddresses[i] = activeRelays[i].Address
+		relayNames[i] = activeRelays[i].Name
+		destRelays[i] = true
+	}
+
+	costs := backend.relayManager.GetCosts(currentTime, relayIds, 100.0, 0.1)
+
+	costMatrix := &common.CostMatrix{
+		Version:            common.CostMatrixVersion_Write,
+		RelayIds:           relayIds,
+		RelayAddresses:     relayAddresses,
+		RelayNames:         relayNames,
+		RelayLatitudes:     relayLatitudes,
+		RelayLongitudes:    relayLongitudes,
+		RelayDatacenterIds: relayDatacenterIds,
+		DestRelays:         destRelays,
+		Costs:              costs,
+	}
+
+	costMatrixData, err := costMatrix.Write()
+	if err != nil {
+		core.Error("could not write cost matrix: %v", err)
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	backend.mutex.Unlock()
+
+	writer.Header().Set("Content-Type", "application/octet-stream")
+
+	buffer := bytes.NewBuffer(costMatrixData)
+	_, err = buffer.WriteTo(writer)
+	if err != nil {
+		return
+	}
+}
+
 func StartWebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
+	router.HandleFunc("/cost_matrix", CostMatrixHandler).Methods("GET")
 	http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", NEXT_RELAY_BACKEND_PORT), router)
 }
 
@@ -860,8 +916,6 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	backend.relayManager = common.CreateRelayManager(true)
-
-	backend.routeMatrix = &common.RouteMatrix{}
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
 		backend.mode = BACKEND_MODE_FORCE_DIRECT

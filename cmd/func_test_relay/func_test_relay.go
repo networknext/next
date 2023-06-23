@@ -15,8 +15,11 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"net/http"
+	"io/ioutil"
 
 	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/accelerate/modules/common"
 )
 
 func Base64String(value string) []byte {
@@ -504,8 +507,6 @@ func test_relay_pings() {
 
 	time.Sleep(15 * time.Second)
 
-	// todo: grab cost matrix from relay backend?
-
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_1_cmd.Process.Signal(os.Interrupt)
 	relay_2_cmd.Process.Signal(os.Interrupt)
@@ -540,6 +541,89 @@ func test_relay_pings() {
 	}
 }
 
+func getCostMatrix() *common.CostMatrix {
+
+	httpClient := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	response, err := httpClient.Get("http://127.0.0.1:30000/cost_matrix")
+	if err != nil {
+		panic("failed to http get cost matrix")
+	}
+
+	buffer, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic("failed to read response body")
+	}
+
+	response.Body.Close()
+
+	if len(buffer) == 0 {
+		panic("cost matrix is empty")
+	}
+
+	costMatrix := common.CostMatrix{}
+
+	err = costMatrix.Read(buffer)
+	if err != nil {
+		panic("failed to read cost matrix")
+	}
+
+	return &costMatrix
+}
+
+func test_cost_matrix() {
+
+	fmt.Printf("test_cost_matrix\n")
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_1_cmd, relay_1_stdout := relay("relay", 2000, config)
+	relay_2_cmd, relay_2_stdout := relay("relay", 2001, config)
+	relay_3_cmd, relay_3_stdout := relay("relay", 2002, config)
+
+	time.Sleep(15 * time.Second)
+
+	costMatrix := getCostMatrix()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	if !strings.Contains(relay_1_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay 1")
+	}
+
+	if !strings.Contains(relay_2_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay 2")
+	}
+
+	if !strings.Contains(relay_3_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay 3")
+	}
+
+	if len(costMatrix.Costs) != 3 {
+		panic("cost matrix should have three entries")
+	}
+
+	if costMatrix.Costs[0] != 0 || costMatrix.Costs[1] != 0 || costMatrix.Costs[2] != 0 {
+		panic("cost matrix entries should be zero")
+	}
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -567,6 +651,7 @@ func main() {
 		test_relay_cant_bind_to_port_zero,
 		test_num_threads,
 		test_relay_pings,
+		test_cost_matrix,
 	}
 
 	var tests []test_function

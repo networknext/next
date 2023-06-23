@@ -1,54 +1,8 @@
 DONE
 
-	Implement relay func test framework.
-
-	Add the relay func tests to semaphore.
-
-	Test relay initialize success
-
-	Test relay initialize failure (clean shutdown)
-
-	Test relay name not set
-
-	Test relay public address not set
-
-	Test relay public address invalid
-
-	Test relay internal address invalid
-
-	Test relay public key not set
-
-	Test relay public key invalid
-
-	Test relay private key not set
-
-	Test relay private key invalid
-
-	Test relay keypair invalid
-
-	Test relay backend public key not set
-
-	Test relay backend public key invalid
-
-	Test relay backend public key mismatch
-
-	Test relay backend hostname not set
-
-	Test that we aren't allowed to bind to port 0
-
-	Test number of threads env var is respected, and n threads are created.
-
-	Extend 
-
-	Extract counters from relay stdout
-
-	Verify relay counters for ping/pong
-
-	Fix bug with pong processed counter in ping thread
-
 RELAY
 
-	Verify that relays upload their ping stats to the relay backend (check cost matrix?)
+	Verify that relays upload their ping stats to the relay backend
 
 	-------------------------
 
