@@ -8,13 +8,15 @@ DONE
 
 	Add a test for invalid signature near relay packets
 
-RELAY
-
 	Generate a ping token and insert it into the near relay ping packet
 
 	Insert a sequence number
 
 	Add a test for valid near relay packets (respond with pong)
+
+RELAY
+
+	Receive packets in the respond with pong test, and count the number of pong packets received
 
 	--------------------------
 

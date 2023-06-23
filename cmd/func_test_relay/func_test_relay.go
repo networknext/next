@@ -1072,6 +1072,22 @@ func test_near_ping_packet_responded_with_pong() {
 
 	pingKey := make([]byte, 32)
 
+	receivedPong := false
+
+	go func() {
+		for {
+			receiveBuffer := make([]byte, 1500)
+			receivePacketBytes, from, err := conn.ReadFromUDP(receiveBuffer[:])
+			if err != nil {
+				break
+			}
+			if receivePacketBytes == 18 + 8 + 8 && receiveBuffer[0] == 21 && from.String() == serverAddress.String() {
+				receivedPong = true
+				break
+			}
+		}
+	}()
+
  	for i := 0; i < 10; i++ {
 
  		expireTimestamp := uint64(time.Now().Unix()) + 10
@@ -1116,6 +1132,10 @@ func test_near_ping_packet_responded_with_pong() {
 
 	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG", relay_stdout.String())
+
+	if !receivedPong {
+		panic("did not receive any pong packets")
+	}
 }
 
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
