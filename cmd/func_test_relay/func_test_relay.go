@@ -1138,6 +1138,8 @@ func test_near_ping_packet_responded_with_pong() {
 	}
 }
 
+// todo: RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
