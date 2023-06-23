@@ -90,3 +90,7 @@ blocks:
         - name: "test_relay_public_address_invalid"
           commands:
             - cd ./dist && ./func_test_relay test_relay_public_address_invalid
+
+        - name: "test_relay_internal_address_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_internal_address_invalid

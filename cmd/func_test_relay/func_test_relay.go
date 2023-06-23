@@ -41,6 +41,7 @@ type RelayConfig struct {
 	omit_relay_name bool
 	omit_relay_public_address bool
 	invalid_relay_public_address bool
+	invalid_relay_internal_address bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -66,6 +67,10 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 
 	if config.invalid_relay_public_address {
 		cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=blahblahblah")
+	}
+
+	if config.invalid_relay_internal_address {
+		cmd.Env = append(cmd.Env, "RELAY_INTERNAL_ADDRESS=blahblahblah")
 	}
 
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
@@ -201,6 +206,22 @@ func test_relay_public_address_invalid() {
 	}
 }
 
+func test_relay_internal_address_invalid() {
+
+	fmt.Printf("test_relay_internal_address_invalid\n")
+
+	config := RelayConfig{}
+	config.invalid_relay_internal_address = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: invalid relay internal address 'blahblahblah'") {
+		panic("relay should not start with an invalid internal address")
+	}
+}
+
 type test_function func()
 
 func main() {
@@ -211,6 +232,7 @@ func main() {
 		test_relay_name_not_set,
 		test_relay_public_address_not_set,
 		test_relay_public_address_invalid,
+		test_relay_internal_address_invalid,
 	}
 
 	var tests []test_function
