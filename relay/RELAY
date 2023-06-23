@@ -1,18 +1,18 @@
 DONE
 
-	Verify that relays upload their ping stats to the relay backend and generate a valid cost matrix
+	Add a zero magic mode to func backend
 
-	Test basic packet filter
-
-	Test advanced packet filter
-
-	Test clean shutdown. Make sure we get to "Done." after counting down.
+	Add a test for wrong size near relay packets
 
 RELAY
 
-	Verify that the relay responds to correctly formed near relay ping packets
+	Add a test for expired near relay packets
 
-	Verify that the relay handles all error cases for near relay ping packets
+	Add a test for invalid signature near relay packets
+
+	Add a test for valid near relay packets (respond with pong)
+
+	Verify that the pong packet is actually received
 
 	--------------------------
 
@@ -90,7 +90,11 @@ RELAY
 
 
 
+	------------------
 
+	Relay needs a soak test where random packet data is thrown at it
+
+	Both packets that fail basic packet filter, fail advanced packet filter, and pass advanced packet filter (but have random data...)
 
 	------------------
 

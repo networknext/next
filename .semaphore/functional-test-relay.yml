@@ -158,3 +158,11 @@ blocks:
         - name: "test_clean_shutdown"
           commands:
             - cd ./dist && ./func_test_relay test_clean_shutdown
+
+        - name: "test_unknown_packets"
+          commands:
+            - cd ./dist && ./func_test_relay test_unknown_packets
+
+        - name: "test_near_relay_wrong_packet_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_relay_wrong_packet_size

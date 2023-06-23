@@ -2817,6 +2817,11 @@ int relay_peek_header( int direction, int packet_type, uint64_t * sequence, uint
             return RELAY_ERROR;
     }
 
+    // todo: it is not appropriate to assert here
+
+    (void) packet_type;
+    
+    /*
     if ( packet_type == RELAY_SESSION_PING_PACKET || packet_type == RELAY_SESSION_PONG_PACKET || packet_type == RELAY_ROUTE_RESPONSE_PACKET || packet_type == RELAY_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
@@ -2827,6 +2832,7 @@ int relay_peek_header( int direction, int packet_type, uint64_t * sequence, uint
         // second highest bit must be clear
         assert( ( packet_sequence & ( 1ULL << 62 ) ) == 0 );
     }
+    */
 
     *sequence = packet_sequence;
     *session_id = relay_read_uint64( &buffer );

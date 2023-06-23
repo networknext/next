@@ -66,6 +66,7 @@ const BACKEND_MODE_NEXT_STATS = 14
 const BACKEND_MODE_NEAR_RELAY_STATS = 15
 const BACKEND_MODE_MATCH_ID = 16
 const BACKEND_MODE_MATCH_VALUES = 17
+const BACKEND_MODE_ZERO_MAGIC = 18
 
 type Backend struct {
 	mutex        sync.RWMutex
@@ -165,7 +166,9 @@ func GetMagic() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [consta
 
 func GenerateMagic(magic []byte) {
 	newMagic := make([]byte, constants.MagicBytes)
-	core.RandomBytes(newMagic)
+	if backend.mode != BACKEND_MODE_ZERO_MAGIC {
+		core.RandomBytes(newMagic)
+	}
 	for i := range newMagic {
 		magic[i] = newMagic[i]
 	}
@@ -979,6 +982,10 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
 		backend.mode = BACKEND_MODE_MATCH_VALUES
+	}
+
+	if os.Getenv("BACKEND_MODE") == "ZERO_MAGIC" {
+		backend.mode = BACKEND_MODE_ZERO_MAGIC
 	}
 
 	GenerateMagic(magicUpcoming[:])
