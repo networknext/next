@@ -164,8 +164,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.SliceNumber == 0 {
 
-		var err error
-
 		state.LocatedIP = true
 
 		state.FirstUpdate = true
@@ -173,7 +171,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		state.Output.Latitude, state.Output.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
 		if state.Output.Latitude == 0.0 && state.Output.Longitude == 0.0 {
-			core.Error("location veto: %s", err)
+			core.Error("location veto")
 			state.Output.RouteState.LocationVeto = true
 			state.SessionFlags |= constants.SessionFlags_LocationVeto
 			return true
