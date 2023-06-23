@@ -201,7 +201,7 @@ promotions:
   - name: "Functional Test Backend"
     pipeline_file: functional-test-backend.yml
 
-  - name: "Functional Test SDK5"
+  - name: "Functional Test SDK"
     pipeline_file: functional-test-sdk5.yml
 
   - name: "Functional Test Relay"
