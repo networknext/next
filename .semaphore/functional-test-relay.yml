@@ -82,3 +82,11 @@ blocks:
         - name: "test_relay_name_not_set"
           commands:
             - cd ./dist && ./func_test_relay test_relay_name_not_set
+
+        - name: "test_relay_public_address_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_public_address_not_set
+
+        - name: "test_relay_public_address_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_public_address_invalid
