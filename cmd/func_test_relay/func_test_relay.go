@@ -53,6 +53,7 @@ type RelayConfig struct {
 	omit_relay_backend_hostname       bool
 	bind_to_port_zero                 bool
 	num_threads                       int
+	print_counters                    bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -130,6 +131,10 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 
 	if config.num_threads != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NUM_THREADS=%d", config.num_threads))
+	}
+
+	if config.print_counters {
+		cmd.Env = append(cmd.Env, "RELAY_PRINT_COUNTERS=1")
 	}
 
 	// fmt.Printf("%s\n", cmd.Env)
@@ -479,6 +484,55 @@ func test_num_threads() {
 	}
 }
 
+func test_relay_pings() {
+
+	fmt.Printf("test_relay_pings\n")
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_1_cmd, relay_1_stdout := relay("relay", 2000, config)
+	relay_2_cmd, relay_2_stdout := relay("relay", 2001, config)
+	relay_3_cmd, relay_3_stdout := relay("relay", 2002, config)
+
+	time.Sleep(15 * time.Second)
+
+	// todo: grab cost matrix from relay backend?
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
+
+	if !strings.Contains(relay_1_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay 1")
+	}
+
+	if !strings.Contains(relay_2_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay 2")
+	}
+
+	if !strings.Contains(relay_3_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay 3")
+	}
+
+	// todo: check counters
+
+	fmt.Printf("=======================================\n%s=============================================\n", relay_1_stdout)
+
+	// todo: check cost matrix
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -503,6 +557,7 @@ func main() {
 		test_relay_backend_hostname_not_set,
 		test_relay_cant_bind_to_port_zero,
 		test_num_threads,
+		test_relay_pings,
 	}
 
 	var tests []test_function

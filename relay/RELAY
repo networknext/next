@@ -36,13 +36,9 @@ DONE
 
 	Test that we aren't allowed to bind to port 0
 
+	Test number of threads env var is respected, and n threads are created.
+
 RELAY
-
-	Test number of threads env var is respected, eg. 1, 4, 8
-
-	Test that we aren't allowed to set num threads env var to < 1
-
-	-------------------------
 
 	Verify relays can ping each other, get pongs back, and report up relay stats to the func backend.
 

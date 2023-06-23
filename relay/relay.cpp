@@ -18,8 +18,6 @@
 #include "curl/curl.h"
 #include <time.h>
 
-#define RELAY_DEVELOPMENT                                          1
-
 #define INTENSIVE_RELAY_DEBUGGING                                  0
 
 #define RELAY_VERSION_LENGTH                                      32
@@ -3320,8 +3318,6 @@ void relay_ping_history_pong_received( relay_ping_history_t * history, uint64_t 
     if ( entry->sequence == sequence )
     {
         entry->time_pong_received = time;
-
-        printf("ping = %.2f\n", (entry->time_pong_received - entry->time_ping_sent) * 1000.0f );
     }
 }
 
@@ -4075,10 +4071,10 @@ struct relay_t
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[NUM_RELAY_COUNTERS];
-#if RELAY_DEVELOPMENT
+#if NEXT_DEVELOPMENT
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
-#endif // #if RELAY_DEVELOPMENT
+#endif // #if NEXT_DEVELOPMENT
     relay_control_message_t control;
 };
 
@@ -4969,7 +4965,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
             relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
 
-#if RELAY_DEVELOPMENT
+#if NEXT_DEVELOPMENT
             if ( relay->fake_packet_loss_start_time >= 0.0f )
             {
                 const double current_time = relay_platform_time();
@@ -4978,7 +4974,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     continue;
                 }
             }
-#endif // #if RELAY_DEVELOPMENT
+#endif // #if NEXT_DEVELOPMENT
         }
 
         // check packet filters
@@ -6660,7 +6656,14 @@ int main( int argc, const char ** argv )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
-#if RELAY_DEVELOPMENT
+#if NEXT_DEVELOPMENT
+
+    bool relay_print_counters = false;
+    const char * relay_print_counters_env = relay_platform_getenv( "RELAY_PRINT_COUNTERS" );
+    if ( relay_print_counters_env )
+    {
+        relay_print_counters = true;
+    }
 
     float relay_fake_packet_loss_percent = 0.0f;
     const char * fake_packet_loss_percent_env = relay_platform_getenv( "RELAY_FAKE_PACKET_LOSS_PERCENT" );
@@ -6686,7 +6689,7 @@ int main( int argc, const char ** argv )
         printf( "Fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
     }
 
-#endif // #if RELAY_DEVELOPMENT
+#endif // #if NEXT_DEVELOPMENT
 
     // IMPORTANT: Bind to 127.0.0.1 if specified, otherwise bind to 0.0.0.0
     relay_address_t bind_address;
@@ -6853,10 +6856,10 @@ int main( int argc, const char ** argv )
         memcpy( relay[i].relay_public_key, relay_public_key, RELAY_PUBLIC_KEY_BYTES );
         memcpy( relay[i].relay_private_key, relay_private_key, RELAY_PRIVATE_KEY_BYTES );
         memcpy( relay[i].relay_backend_public_key, relay_backend_public_key, crypto_sign_PUBLICKEYBYTES );
-#if RELAY_DEVELOPMENT
+#if NEXT_DEVELOPMENT
         relay[i].fake_packet_loss_percent = relay_fake_packet_loss_percent;
         relay[i].fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
-#endif // #if RELAY_DEVELOPMENT
+#endif // #if NEXT_DEVELOPMENT
 
         relay_thread[i] = relay_platform_thread_create( relay_thread_function, &relay[i] );
         if ( !relay_thread[i] )
@@ -6962,6 +6965,29 @@ int main( int argc, const char ** argv )
     {
         printf( "\nHard shutdown\n" );
     }
+
+    // =============================================================
+
+#if NEXT_DEVELOPMENT
+
+    // print counters for functional tests
+
+    if ( relay_print_counters )
+    {
+        printf( "\n===========================================================================\n" );
+
+        for ( int i = 0; i < NUM_RELAY_COUNTERS; i++ )
+        {
+            if ( main.relay_stats.counters[i] != 0 )
+            {
+                printf( "counter %d: %" PRId64 "\n", i, main.relay_stats.counters[i] );
+            }
+        }
+
+        printf( "===========================================================================\n\n" );
+    }
+
+#endif // #if NEXT_DEVELOPMENT
 
     // =============================================================
 
