@@ -4270,7 +4270,8 @@ int main_update( main_t * main )
         main->relay_stats.bandwidth_received_kbps += relay_thread_stats[i].bandwidth_received_kbps;
         main->relay_stats.near_pings_per_second += relay_thread_stats[i].near_pings_per_second;
         main->relay_stats.relay_pings_per_second += relay_thread_stats[i].relay_pings_per_second;
-        for ( int j = 0; j < main->num_threads; j++ )
+        
+        for ( int j = 0; j < NUM_RELAY_COUNTERS; j++ )
         {
             main->relay_stats.counters[j] += relay_thread_stats[i].counters[j];
         }
@@ -4953,6 +4954,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
                     relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
+
+                    // todo
+                    printf( "send ping packet: %d\n", (int) relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT] );
                 }
             }
 
