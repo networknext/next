@@ -134,3 +134,7 @@ blocks:
         - name: "test_relay_cant_bind_to_port_zero"
           commands:
             - cd ./dist && ./func_test_relay test_relay_cant_bind_to_port_zero
+
+        - name: "test_relay_num_threads"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_num_threads

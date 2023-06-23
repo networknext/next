@@ -34,15 +34,13 @@ DONE
 
 	Test relay backend hostname not set
 
-RELAY
-
 	Test that we aren't allowed to bind to port 0
 
-	-------------------------
-
-	Test that we aren't allowed to set num threads env var to < 1
+RELAY
 
 	Test number of threads env var is respected, eg. 1, 4, 8
+
+	Test that we aren't allowed to set num threads env var to < 1
 
 	-------------------------
 
