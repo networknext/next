@@ -1,12 +1,33 @@
 DONE
 
+	Verify that relays upload their ping stats to the relay backend and generate a valid cost matrix
+
+	Test basic packet filter
+
+	Test advanced packet filter
+
 RELAY
 
-	Verify that relays upload their ping stats to the relay backend
-
-	-------------------------
-
 	Test clean shutdown. Make sure we get to "Done." after counting down.
+
+	How to trigger the clean shutdown? What signal is it?
+
+	--------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-------------------------
 

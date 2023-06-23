@@ -146,3 +146,11 @@ blocks:
         - name: "test_cost_matrix"
           commands:
             - cd ./dist && ./func_test_relay test_cost_matrix
+
+        - name: "test_basic_packet_filter"
+          commands:
+            - cd ./dist && ./func_test_relay test_basic_packet_filter
+
+        - name: "test_advanced_packet_filter"
+          commands:
+            - cd ./dist && ./func_test_relay test_advanced_packet_filter

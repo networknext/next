@@ -15,11 +15,14 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"net"
 	"net/http"
 	"io/ioutil"
+	"context"
 
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/common"
+	"github.com/networknext/accelerate/modules/core"
 )
 
 func Base64String(value string) []byte {
@@ -624,6 +627,109 @@ func test_cost_matrix() {
 	}
 }
 
+func test_basic_packet_filter() {
+
+	fmt.Printf("test_basic_packet_filter\n")
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	conn, err := net.Dial("udp", "127.0.0.1:2000")
+	if err != nil {
+		panic("could not create udp socket")
+	}
+ 
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, common.RandomInt(1,1500))
+			common.RandomBytes(packet[:])
+			conn.Write(packet)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET", relay_stdout.String())
+}
+
+func test_advanced_packet_filter() {
+
+	fmt.Printf("test_advanced_packet_filter\n")
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, common.RandomInt(18,1500))
+			common.RandomBytes(packet[:])
+			var magic [8]byte
+			var fromAddress [4]byte
+			var toAddress [4]byte
+			common.RandomBytes(magic[:])
+			common.RandomBytes(fromAddress[:])
+			common.RandomBytes(toAddress[:])
+			fromPort := uint16(j + 1000000)
+			toPort := uint16(j + 5000)
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET", relay_stdout.String())
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -652,6 +758,8 @@ func main() {
 		test_num_threads,
 		test_relay_pings,
 		test_cost_matrix,
+		test_basic_packet_filter,
+		test_advanced_packet_filter,
 	}
 
 	var tests []test_function
