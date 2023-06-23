@@ -51,6 +51,7 @@ type RelayConfig struct {
 	invalid_relay_backend_public_key  bool
 	mismatch_relay_backend_public_key bool
 	omit_relay_backend_hostname       bool
+	bind_to_port_zero                 bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -121,6 +122,10 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_PERCENT=%f", config.fake_packet_loss_percent))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_START_TIME=%f", config.fake_packet_loss_start_time))
+
+	if config.bind_to_port_zero {
+		cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1:0")
+	}
 
 	// fmt.Printf("%s\n", cmd.Env)
 
@@ -415,6 +420,22 @@ func test_relay_backend_hostname_not_set() {
 	}
 }
 
+func test_relay_cant_bind_to_port_zero() {
+
+	fmt.Printf("test_relay_cant_bind_to_port_zero\n")
+
+	config := RelayConfig{}
+	config.bind_to_port_zero = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: you must specify a valid port number!") {
+		panic("relay should not be able to bind to port zero")
+	}
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -437,6 +458,7 @@ func main() {
 		test_relay_backend_public_key_invalid,
 		test_relay_backend_public_key_mismatch,
 		test_relay_backend_hostname_not_set,
+		test_relay_cant_bind_to_port_zero,
 	}
 
 	var tests []test_function
