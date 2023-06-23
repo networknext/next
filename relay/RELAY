@@ -24,33 +24,35 @@ DONE
 
 	Test relay private key invalid
 
-RELAY
-
-	Test relay keypair invalid (mismatched private and public keys)
+	Test relay keypair invalid
 
 	Test relay backend public key not set
 
 	Test relay backend public key invalid
 
+	Test relay backend public key mismatch
+
 	Test relay backend hostname not set
+
+RELAY
+
+	Test that we aren't allowed to bind to port 0
 
 	-------------------------
 
-	Test that we aren't allowed to bind to port 0
+	Test that we aren't allowed to set num threads env var to < 1
+
+	Test number of threads env var is respected, eg. 1, 4, 8
+
+	-------------------------
+
+	Verify relays can ping each other, get pongs back, and report up relay stats to the func backend.
 
 	-------------------------
 
 	Test clean shutdown (CTRL-what?). Make sure we get to "Done."
 
 	Test hard shutdown (CTRL-C). Make sure we get to "Done."
-
-	-------------------------
-
-	Test number of threads env var is respected
-
-	-------------------------
-
-	Verify relays can ping each other, get pongs, and report up relay stats to the func backend.
 
 	-------------------------
 

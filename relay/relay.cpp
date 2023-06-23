@@ -4457,7 +4457,7 @@ int main_update( main_t * main )
     curl_easy_getinfo( main->curl, CURLINFO_RESPONSE_CODE, &code );
     if ( code != 200 )
     {
-        printf( "error: relay update response was %d, expected 200\n", int(code) );
+        printf( "error: relay update response is %d. the relay backend is down or the relay is misconfigured. check RELAY_BACKEND_PUBLIC_KEY\n", int(code) );
         return RELAY_ERROR;
     }
 
@@ -4575,12 +4575,6 @@ int main_update( main_t * main )
     if ( memcmp( main->relay_public_key, expected_relay_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
         printf( "error: relay is misconfigured. relay public key does not match expected value\n" );
-        return RELAY_ERROR;
-    }
-
-    if ( memcmp( main->relay_backend_public_key, expected_relay_backend_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
-    {
-        printf( "error: relay is misconfigured. relay backend public key does not match expected value\n" );
         return RELAY_ERROR;
     }
 

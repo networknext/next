@@ -36,17 +36,21 @@ const (
 )
 
 type RelayConfig struct {
-	fake_packet_loss_percent       float32
-	fake_packet_loss_start_time    float32
-	omit_relay_name                bool
-	omit_relay_public_address      bool
-	invalid_relay_public_address   bool
-	invalid_relay_internal_address bool
-	omit_relay_public_key          bool
-	invalid_relay_public_key       bool
-	omit_relay_private_key         bool
-	invalid_relay_private_key      bool
-	invalid_relay_keypair          bool
+	fake_packet_loss_percent          float32
+	fake_packet_loss_start_time       float32
+	omit_relay_name                   bool
+	omit_relay_public_address         bool
+	invalid_relay_public_address      bool
+	invalid_relay_internal_address    bool
+	omit_relay_public_key             bool
+	invalid_relay_public_key          bool
+	omit_relay_private_key            bool
+	invalid_relay_private_key         bool
+	invalid_relay_keypair             bool
+	omit_relay_backend_public_key     bool
+	invalid_relay_backend_public_key  bool
+	mismatch_relay_backend_public_key bool
+	omit_relay_backend_hostname       bool
 }
 
 func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes.Buffer) {
@@ -95,13 +99,25 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 	}
 
 	if config.invalid_relay_keypair {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPrivateKey))		
-		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPublicKey))		
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPrivateKey))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPublicKey))
 	}
 
-	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
+	if !config.omit_relay_backend_public_key {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
+	}
 
-	cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
+	if config.invalid_relay_backend_public_key {
+		cmd.Env = append(cmd.Env, "RELAY_BACKEND_PUBLIC_KEY=blahblahblah")
+	}
+
+	if config.mismatch_relay_backend_public_key {
+		cmd.Env = append(cmd.Env, "RELAY_BACKEND_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+	}
+
+	if !config.omit_relay_backend_hostname {
+		cmd.Env = append(cmd.Env, "RELAY_BACKEND_HOSTNAME=http://127.0.0.1:30000")
+	}
 
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_PERCENT=%f", config.fake_packet_loss_percent))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_FAKE_PACKET_LOSS_START_TIME=%f", config.fake_packet_loss_start_time))
@@ -148,9 +164,6 @@ func test_initialize_success() {
 	relay_cmd, relay_stdout := relay("relay", 2000)
 
 	time.Sleep(10 * time.Second)
-
-	backend_cmd.Process.Signal(os.Interrupt)
-	relay_cmd.Process.Signal(os.Interrupt)
 
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_cmd.Process.Signal(os.Interrupt)
@@ -328,6 +341,80 @@ func test_relay_keypair_invalid() {
 	}
 }
 
+func test_relay_backend_public_key_not_set() {
+
+	fmt.Printf("test_relay_backend_public_key_not_set\n")
+
+	config := RelayConfig{}
+	config.omit_relay_backend_public_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: RELAY_BACKEND_PUBLIC_KEY not set") {
+		panic("relay should not start without a relay backend public key")
+	}
+}
+
+func test_relay_backend_public_key_invalid() {
+
+	fmt.Printf("test_relay_backend_public_key_invalid\n")
+
+	config := RelayConfig{}
+	config.invalid_relay_backend_public_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: invalid relay backend public key") {
+		panic("relay should not start with an invalid relay backend public key")
+	}
+}
+
+func test_relay_backend_public_key_mismatch() {
+
+	fmt.Printf("test_relay_backend_public_key_mismatch\n")
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.mismatch_relay_backend_public_key = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+
+	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
+
+	if !strings.Contains(relay_stdout.String(), "error: relay update response is 400. the relay backend is down or the relay is misconfigured. check RELAY_BACKEND_PUBLIC_KEY") {
+		panic("relay cannot talk to the relay backend unless it has the correct relay backend public key")
+	}
+}
+
+func test_relay_backend_hostname_not_set() {
+
+	fmt.Printf("test_relay_backend_hostname_not_set\n")
+
+	config := RelayConfig{}
+	config.omit_relay_backend_hostname = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "error: RELAY_BACKEND_HOSTNAME not set") {
+		panic("relay should not start without a relay backend hostname")
+	}
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -346,6 +433,10 @@ func main() {
 		test_relay_private_key_not_set,
 		test_relay_private_key_invalid,
 		test_relay_keypair_invalid,
+		test_relay_backend_public_key_not_set,
+		test_relay_backend_public_key_invalid,
+		test_relay_backend_public_key_mismatch,
+		test_relay_backend_hostname_not_set,
 	}
 
 	var tests []test_function
