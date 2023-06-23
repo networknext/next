@@ -4,11 +4,15 @@ DONE
 
 	Add a test for wrong size near relay packets
 
-RELAY
-
 	Add a test for expired near relay packets
 
+RELAY
+
 	Add a test for invalid signature near relay packets
+
+	To do this, just write the current timestamp at the correct packet offset
+
+	--------------------------
 
 	Add a test for valid near relay packets (respond with pong)
 
