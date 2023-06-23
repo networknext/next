@@ -620,7 +620,7 @@ func test_cost_matrix() {
 	}
 
 	if costMatrix.Costs[0] != 0 || costMatrix.Costs[1] != 0 || costMatrix.Costs[2] != 0 {
-		panic("cost matrix entries should be zero")
+		panic(fmt.Sprintf("cost matrix entries should be zero: %+v", costMatrix.Costs))
 	}
 }
 
