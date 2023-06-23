@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"os/exec"
@@ -969,6 +970,154 @@ func test_near_ping_packet_expired() {
 	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED", relay_stdout.String())
 }
 
+func test_near_ping_packet_did_not_verify() {
+
+	fmt.Printf("test_near_ping_packet_did_not_verify\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+ 	for i := 0; i < 10; i++ {
+ 		expireTimestamp := time.Now().Unix() + 10
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18 + 8 + 8 + 8 + 32)
+			packet[0] = 20 // NEAR_PING_PACKET
+			binary.LittleEndian.PutUint64(packet[16+8+8:], uint64(expireTimestamp))
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY", relay_stdout.String())
+}
+
+func test_near_ping_packet_responded_with_pong() {
+
+	fmt.Printf("test_near_ping_packet_responded_with_pong\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	sequence := uint64(0)
+	sessionId := uint64(0x123498173981377)
+
+	pingKey := make([]byte, 32)
+
+ 	for i := 0; i < 10; i++ {
+
+ 		expireTimestamp := uint64(time.Now().Unix()) + 10
+
+		pingToken := make([]byte, 32)
+
+		core.GeneratePingTokens(expireTimestamp, &clientAddress, []net.UDPAddr{serverAddress}, pingKey, pingToken)
+
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18 + 8 + 8 + 8 + 32)
+			packet[0] = 20 // NEAR_PING_PACKET
+			binary.LittleEndian.PutUint64(packet[16:], sequence)
+			binary.LittleEndian.PutUint64(packet[16+1:], sessionId)
+			binary.LittleEndian.PutUint64(packet[16+8+8:], expireTimestamp)
+			copy(packet[16+8+8+8:16+8+8+8+32], pingToken)
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+			sequence++
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG", relay_stdout.String())
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -1003,18 +1152,9 @@ func main() {
 		test_unknown_packets,
 		test_near_ping_packet_wrong_size,
 		test_near_ping_packet_expired,
-		// test_near_ping_packet_responded_with_pong,
-		// test_near_ping_packet_did_not_verify,
+		test_near_ping_packet_did_not_verify,
+		test_near_ping_packet_responded_with_pong,
 	}
-
-	/*
-#define RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED                                                 20
-
-#define RELAY_COUNTER_NEAR_PING_PACKET_WRONG_SIZE                                               21
-#define RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG                                      22
-#define RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY                                           23
-#define RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED                                                  24
-	*/
 
 	var tests []test_function
 

@@ -170,3 +170,11 @@ blocks:
         - name: "test_near_relay_packet_expired"
           commands:
             - cd ./dist && ./func_test_relay test_near_relay_packet_expired
+
+        - name: "test_near_relay_packet_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_relay_packet_did_not_verify
+
+        - name: "test_near_relay_packet_responded_with_pong"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_relay_packet_responded_with_pong

@@ -6,17 +6,21 @@ DONE
 
 	Add a test for expired near relay packets
 
-RELAY
-
 	Add a test for invalid signature near relay packets
 
-	To do this, just write the current timestamp at the correct packet offset
+RELAY
 
-	--------------------------
+	Generate a ping token and insert it into the near relay ping packet
+
+	Insert a sequence number
 
 	Add a test for valid near relay packets (respond with pong)
 
-	Verify that the pong packet is actually received
+	--------------------------
+
+	Verify that the pong packet is actually received by the client socket
+
+	To do this, write a sequence number for ping packets...
 
 	--------------------------
 
