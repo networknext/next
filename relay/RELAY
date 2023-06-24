@@ -19,9 +19,6 @@ DONE
 	RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE
 
 	RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE
-
-RELAY
-
 	RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED
 	RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY
 
@@ -29,6 +26,10 @@ RELAY
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED
+	RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS
+
+RELAY
+
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS
 
@@ -108,6 +109,10 @@ RELAY
 	Relay needs a soak test where random packet data is thrown at it
 
 	Both packets that fail basic packet filter, fail advanced packet filter, and pass advanced packet filter (but have random data...)
+
+	------------------
+
+	Route request packet and continue request packet needs random (valid) tokens sent through, to make sure we hit all safety checks.
 
 	------------------
 

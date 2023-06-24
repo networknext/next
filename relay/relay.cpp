@@ -110,6 +110,7 @@
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED                                        33
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                   34
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                 35
+#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS                                 36
 
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                                            40
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE                                          41
@@ -2820,7 +2821,7 @@ int relay_peek_header( int direction, int packet_type, uint64_t * sequence, uint
     // todo: it is not appropriate to assert here
 
     (void) packet_type;
-    
+
     /*
     if ( packet_type == RELAY_SESSION_PING_PACKET || packet_type == RELAY_SESSION_PONG_PACKET || packet_type == RELAY_ROUTE_RESPONSE_PACKET || packet_type == RELAY_CONTINUE_RESPONSE_PACKET )
     {
@@ -5191,6 +5192,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
+            if ( token.next_address.type != RELAY_ADDRESS_IPV4 ) // IMPORTANT: IPv4 only for now
+            {
+#if INTENSIVE_RELAY_DEBUGGING
+                printf( "[%s] ignoring route request. invalid next address\n", from_string );
+#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS]++;
+                continue;
+            }
+
             session_key_t key = { token.session_id, token.session_version };
 
             if ( relay->sessions->find(key) == relay->sessions->end() )
@@ -5245,6 +5255,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                     relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
+
                     relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
                     relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                 }
