@@ -231,6 +231,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_route_response_packet_already_received
 
-        - name: "test_route_response_packet_did_not_verify"
+        - name: "test_route_response_packet_header_did_not_verify"
           commands:
-            - cd ./dist && ./func_test_relay test_route_response_packet_did_not_verify
+            - cd ./dist && ./func_test_relay test_route_response_packet_header_did_not_verify

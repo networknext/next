@@ -2058,9 +2058,9 @@ func test_route_response_packet_could_not_find_session() {
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION", relay_stdout.String())
 }
 
-func test_route_response_packet_header_already_received() {
+func test_route_response_packet_already_received() {
 
-	fmt.Printf("test_route_request_packet_header_already_received\n")
+	fmt.Printf("test_route_request_packet_already_received\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -2235,9 +2235,6 @@ func test_route_response_packet_header_did_not_verify() {
 		panic("could not initialize relay")
 	}
 
-	// todo
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
-
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
@@ -2294,7 +2291,7 @@ func main() {
 		test_route_response_packet_wrong_size,
 		test_route_response_packet_could_not_peek_header,
 		test_route_response_packet_could_not_find_session,
-		test_route_response_packet_header_already_received,
+		test_route_response_packet_already_received,
 		test_route_response_packet_header_did_not_verify,
 
 /*
