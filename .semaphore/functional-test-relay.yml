@@ -214,3 +214,7 @@ blocks:
         - name: "test_route_request_packet_forward_to_next_hop_public_address"
           commands:
             - cd ./dist && ./func_test_relay test_route_request_packet_forward_to_next_hop_public_address
+
+        - name: "test_route_request_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_forward_to_next_hop_internal_address

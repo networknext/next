@@ -5266,7 +5266,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 packet_bytes = relay_write_route_request_packet( route_request_packet, token_data, token_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port );
                 if ( packet_bytes > 0 )
                 {
-                    assert( relay->has_internal_address );
                     assert( relay_basic_packet_filter( route_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
@@ -6565,6 +6564,10 @@ int main( int argc, const char ** argv )
         char internal_address_buffer[RELAY_MAX_ADDRESS_STRING_LENGTH];
         printf( "Relay internal address is %s\n", relay_address_to_string( &relay_internal_address, internal_address_buffer ) );
         has_internal_address = true;
+    }
+    else
+    {
+        relay_internal_address = relay_public_address;
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------
