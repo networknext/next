@@ -18,6 +18,8 @@
 #include "curl/curl.h"
 #include <time.h>
 
+// todo: NEXT_DEVELOPMENT is perhaps not the correct #ifdef to use?
+
 #define INTENSIVE_RELAY_DEBUGGING                                  0
 
 #define RELAY_VERSION_LENGTH                                      32
@@ -2794,7 +2796,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
     return RELAY_OK;
 }
 
-int relay_peek_header( int direction, int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
+int relay_peek_header( int direction, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint64_t packet_sequence;
 
@@ -2818,20 +2820,17 @@ int relay_peek_header( int direction, int packet_type, uint64_t * sequence, uint
             return RELAY_ERROR;
     }
 
-    // todo: it is not appropriate to assert here
-
-    (void) packet_type;
-
+    // todo: might want to bring this check back, sans assert
     /*
-    if ( packet_type == RELAY_SESSION_PING_PACKET || packet_type == RELAY_SESSION_PONG_PACKET || packet_type == RELAY_ROUTE_RESPONSE_PACKET || packet_type == RELAY_CONTINUE_RESPONSE_PACKET )
+    if ( type == RELAY_SESSION_PING_PACKET || type == RELAY_SESSION_PONG_PACKET || type == RELAY_ROUTE_RESPONSE_PACKET || type == RELAY_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
-        assert( packet_sequence & ( 1ULL << 62 ) );
+        assert( sequence & ( 1ULL << 62 ) );
     }
     else
     {
         // second highest bit must be clear
-        assert( ( packet_sequence & ( 1ULL << 62 ) ) == 0 );
+        assert( ( sequence & ( 1ULL << 62 ) ) == 0 );
     }
     */
 
@@ -3443,8 +3442,10 @@ int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequ
     send_sequence |= uint64_t(1) << 62;
     if ( relay_write_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
+#if NEXT_DEVELOPMENT
     if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
         return 0;
+#endif // #if NEXT_DEVELOPMENT
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
     relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
@@ -5304,7 +5305,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored route response packet. could not peek header\n", from_string );
@@ -5549,7 +5550,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored continue response packet. could not peek header\n", from_string );
@@ -5682,7 +5683,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored client to server packet. could not peek header\n", from_string );
@@ -5819,7 +5820,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored server to client packet. could not peek header\n", from_string );
@@ -5949,7 +5950,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored session ping packet. could not peek header\n", from_string );
@@ -6078,7 +6079,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t session_id;
             uint8_t session_version;
 
-            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+            if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
             {
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored session pong packet. could not peek header\n", from_string );

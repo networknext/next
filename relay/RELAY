@@ -30,13 +30,13 @@ DONE
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS
 	RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS
 
-RELAY
-
-
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION
+
+RELAY
+
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS
@@ -96,9 +96,10 @@ RELAY
 	RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS
 	RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS
 
-	------------------
-
-	Work out some way to test relay internal vs. public addresses
+	RELAY_COUNTER_SESSION_CREATED
+	RELAY_COUNTER_SESSION_CONTINUED
+	RELAY_COUNTER_SESSION_DESTROYED
+	RELAY_COUNTER_SESSION_EXPIRED
 
 	------------------
 
@@ -112,7 +113,7 @@ RELAY
 
 	------------------
 
-	Route request packet and continue request packet needs random (valid) tokens sent through, to make sure we hit all safety checks.
+	Route request packet and continue request packet needs random (valid) tokens sent through, to make sure we hit all safety checks and no asserts fire.
 
 	------------------
 
@@ -120,10 +121,16 @@ RELAY
 
 	------------------
 
-	Relay should be load tested in google cloud (driven by terraform)
+	Relay should be load tested in google cloud.
 
 	------------------
 
 	Relay should be load tested in bare metal with 1G NIC, 10G NIC
+
+	------------------
+
+	For route tokens to be secure, they must explicitly use the previous address in the token vs. inferring it from the sender
+
+	Otherwise an attacker can shuffle token order and repeat tokens to create loops.
 
 	------------------
