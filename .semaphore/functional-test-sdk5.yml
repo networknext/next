@@ -274,8 +274,8 @@ blocks:
             - cd ./dist && ./func_test_sdk5 test_flush_retry
 
 
-  - name: "Run Functional Tests (sdk5) - B"
-    dependencies: ["Build Functional Tests (sdk5)"]
+  - name: "Run Functional Tests (sdk) - B"
+    dependencies: ["Build Functional Tests (sdk)"]
     task:
 
       agent:
