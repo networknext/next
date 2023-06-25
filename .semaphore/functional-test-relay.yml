@@ -230,3 +230,11 @@ blocks:
         - name: "test_route_response_packet_header_did_not_verify"
           commands:
             - cd ./dist && ./func_test_relay test_route_response_packet_header_did_not_verify
+
+        - name: "test_route_response_packet_forward_to_previous_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_forward_to_previous_hop_public_address
+
+        - name: "test_route_response_packet_forward_to_previous_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_forward_to_previous_hop_internal_address

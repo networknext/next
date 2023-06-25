@@ -36,11 +36,10 @@ DONE
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY
-
-RELAY
-
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS
 	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS
+
+RELAY
 
 	RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED
 	RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE
@@ -118,6 +117,12 @@ RELAY
 	------------------
 
 	Debug why the happy path is not working on linux
+
+	^--- I think it's just timing and/or packet loss or latency on Linux.
+
+	I was able to get happy path not working locally, once, and then I ran it again and it was fine.
+
+	I just ran the happy path in semaphore and it worked fine. It may just be flaky.
 
 	------------------
 
