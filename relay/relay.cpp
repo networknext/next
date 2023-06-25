@@ -121,6 +121,7 @@
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE                                        51
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN                              52
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED                                     53
+#define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION                            54
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                55
 #define RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS              56
 
@@ -5345,6 +5346,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored continue request. could not find session\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 

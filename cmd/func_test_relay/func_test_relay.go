@@ -2657,6 +2657,309 @@ func test_continue_request_packet_token_expired() {
 	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED", relay_stdout.String())
 }
 
+func test_continue_request_packet_could_not_find_session() {
+
+	fmt.Printf("test_continue_request_packet_could_not_find_session\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18 + 57*2)
+			common.RandomBytes(packet[:])
+			packet[0] = 15 // CONTINUE_REQUEST_PACKET
+			token := core.ContinueToken{}
+			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+			core.WriteEncryptedContinueToken(&token, packet[16:], privateKey, publicKey)
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION", relay_stdout.String())
+}
+
+func test_continue_request_packet_forward_to_next_hop_public_address() {
+
+	fmt.Printf("test_continue_request_packet_forward_to_next_hop_public_address\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
+	// first send a route request packet to create the session
+	{
+		packet := make([]byte, 18 + 116*2)
+		common.RandomBytes(packet[:])
+		packet[0] = 9 // ROUTE_REQUEST_PACKET
+		token := core.RouteToken{}
+		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+		token.NextAddress = clientAddress
+		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
+		var magic [constants.MagicBytes]byte
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		packetLength := len(packet)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		conn.WriteToUDP(packet, &serverAddress)
+	}
+
+	// now send continue request packets and listen to see that they get forwarded
+
+	receivedContinueRequestPacket := false
+
+	go func() {
+		for {
+			receiveBuffer := make([]byte, 1500)
+			receivePacketBytes, from, err := conn.ReadFromUDP(receiveBuffer[:])
+			if err != nil {
+				break
+			}
+			if receivePacketBytes == 18 + 57 && receiveBuffer[0] == 15 && from.String() == serverAddress.String() {
+				receivedContinueRequestPacket = true
+				break
+			}
+		}
+	}()
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18 + 57*2)
+			common.RandomBytes(packet[:])
+			packet[0] = 15 // CONTINUE_REQUEST_PACKET
+			token := core.ContinueToken{}
+			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+			core.WriteEncryptedContinueToken(&token, packet[16:], privateKey, publicKey)
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_SESSION_CONTINUED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
+
+	if !receivedContinueRequestPacket {
+		panic("did not receive forwarded continue request packet")
+	}
+}
+
+func test_continue_request_packet_forward_to_next_hop_internal_address() {
+
+	fmt.Printf("test_continue_request_packet_forward_to_next_hop_internal_address\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
+	// first send a route request packet to create the session
+	{
+		packet := make([]byte, 18 + 116*2)
+		common.RandomBytes(packet[:])
+		packet[0] = 9 // ROUTE_REQUEST_PACKET
+		token := core.RouteToken{}
+		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+		token.NextAddress = clientAddress
+		token.NextInternal = 1
+		token.PrevInternal = 1
+		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
+		var magic [constants.MagicBytes]byte
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		packetLength := len(packet)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		conn.WriteToUDP(packet, &serverAddress)
+	}
+
+	// now send continue request packets and listen to see that they get forwarded
+
+	receivedContinueRequestPacket := false
+
+	go func() {
+		for {
+			receiveBuffer := make([]byte, 1500)
+			receivePacketBytes, from, err := conn.ReadFromUDP(receiveBuffer[:])
+			if err != nil {
+				break
+			}
+			if receivePacketBytes == 18 + 57 && receiveBuffer[0] == 15 && from.String() == serverAddress.String() {
+				receivedContinueRequestPacket = true
+				break
+			}
+		}
+	}()
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18 + 57*2)
+			common.RandomBytes(packet[:])
+			packet[0] = 15 // CONTINUE_REQUEST_PACKET
+			token := core.ContinueToken{}
+			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+			core.WriteEncryptedContinueToken(&token, packet[16:], privateKey, publicKey)
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_SESSION_CONTINUED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS", relay_stdout.String())
+
+	if !receivedContinueRequestPacket {
+		panic("did not receive forwarded continue request packet")
+	}
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -2709,10 +3012,13 @@ func main() {
 		test_route_response_packet_header_did_not_verify,
 		test_route_response_packet_forward_to_previous_hop_public_address,
 		test_route_response_packet_forward_to_previous_hop_internal_address,
-
 		test_continue_request_packet_wrong_size,
 		test_continue_request_packet_could_not_read_token,
 		test_continue_request_packet_token_expired,
+		
+		test_continue_request_packet_could_not_find_session,
+		test_continue_request_packet_forward_to_next_hop_public_address,
+		test_continue_request_packet_forward_to_next_hop_internal_address,
 	}
 
 	var tests []test_function
@@ -2792,6 +3098,7 @@ func initCounterNames() {
 	counterNames[51] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE"
 	counterNames[52] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN"
 	counterNames[53] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED"
+	counterNames[54] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[55] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
 	counterNames[56] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
 	counterNames[60] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED"
