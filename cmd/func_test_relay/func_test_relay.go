@@ -25,6 +25,7 @@ import (
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/common"
 	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/accelerate/modules/crypto"
 )
 
 func Base64String(value string) []byte {
@@ -2026,7 +2027,6 @@ func test_route_response_packet_could_not_find_session() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18 + 33)
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
-			binary.LittleEndian.PutUint64(packet[16:], uint64(1<<63) | uint64(1<<62))
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
@@ -2060,7 +2060,7 @@ func test_route_response_packet_could_not_find_session() {
 
 func test_route_response_packet_already_received() {
 
-	fmt.Printf("test_route_request_packet_already_received\n")
+	fmt.Printf("test_route_response_packet_already_received\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -2117,7 +2117,6 @@ func test_route_response_packet_already_received() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18 + 33)
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
-			binary.LittleEndian.PutUint64(packet[16:], uint64(1<<63) | uint64(1<<62))
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
@@ -2152,7 +2151,7 @@ func test_route_response_packet_already_received() {
 
 func test_route_response_packet_header_did_not_verify() {
 
-	fmt.Printf("test_route_request_packet_header_did_not_verify\n")
+	fmt.Printf("test_route_response_packet_header_did_not_verify\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -2204,12 +2203,12 @@ func test_route_response_packet_header_did_not_verify() {
 
 	time.Sleep(time.Second)
 
-	// send a route response packets with sequence number > 0, so it passes already received test, but does not verify
+	// send a route response packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
 		packet := make([]byte, 18 + 33)
 		packet[0] = 10 // ROUTE_RESPONSE_PACKET
-		binary.LittleEndian.PutUint64(packet[16:], uint64(1<<63) | uint64(1<<62) | 1)
+		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
@@ -2240,6 +2239,108 @@ func test_route_response_packet_header_did_not_verify() {
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY", relay_stdout.String())
+}
+
+func test_route_response_packet_forward_to_previous_hop_public_address() {
+
+	fmt.Printf("test_route_response_packet_forward_to_previous_hop_public_address\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
+	sessionId := uint64(0x12345)
+	sessionKey := make([]byte, crypto.Box_PrivateKeySize)
+	common.RandomBytes(sessionKey)
+
+	// send a route request packet to create a session on the relay
+
+	packet := make([]byte, 18 + 116*2)
+	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	token := core.RouteToken{}
+	token.SessionId = sessionId
+	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+	token.NextAddress = clientAddress
+	copy(token.PrivateKey[:], sessionKey)
+	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
+	var magic [constants.MagicBytes]byte
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	packetLength := len(packet)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	conn.WriteToUDP(packet, &serverAddress)
+
+	time.Sleep(time.Second)
+
+	// send a valid route response packet so it gets forwarded to previous hop (client address)
+
+	{
+		packet := make([]byte, 18 + 33)
+		packet[0] = 10 // ROUTE_RESPONSE_PACKET
+		binary.LittleEndian.PutUint64(packet[16:], 1)
+		// todo: write session id to header
+		// todo: write valid hmac to header w. session key
+		var magic [constants.MagicBytes]byte
+		var fromAddressBuffer [32]byte
+		var toAddressBuffer [32]byte
+		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		packetLength := len(packet)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		conn.WriteToUDP(packet, &serverAddress)
+	}
+
+	time.Sleep(time.Second)
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
+
+	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS", relay_stdout.String())
 }
 
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
@@ -2294,10 +2395,8 @@ func main() {
 		test_route_response_packet_already_received,
 		test_route_response_packet_header_did_not_verify,
 
-/*
-	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS
-	RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS
-*/
+		test_route_response_packet_forward_to_previous_hop_public_address,
+		// test_route_response_packet_forward_to_previous_hop_internal_address,
 	}
 
 	var tests []test_function

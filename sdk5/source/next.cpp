@@ -3533,10 +3533,7 @@ int next_write_continue_request_packet( uint8_t * packet_data, const uint8_t * t
     return packet_length;
 }
 
-#define NEXT_DIRECTION_CLIENT_TO_SERVER             0
-#define NEXT_DIRECTION_SERVER_TO_CLIENT             1
-
-int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
+int next_write_header( uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
 {
     next_assert( private_key );
     next_assert( buffer );
@@ -3544,28 +3541,6 @@ int next_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t 
     uint8_t * start = buffer;
 
     (void) start;
-
-    if ( direction == NEXT_DIRECTION_SERVER_TO_CLIENT )
-    {
-        // high bit must be set
-        next_assert( sequence & ( 1ULL << 63 ) );
-    }
-    else
-    {
-        // high bit must be clear
-        next_assert( ( sequence & ( 1ULL << 63 ) ) == 0 );
-    }
-
-    if ( type == NEXT_PING_PACKET || type == NEXT_PONG_PACKET || type == NEXT_ROUTE_RESPONSE_PACKET || type == NEXT_CONTINUE_RESPONSE_PACKET )
-    {
-        // second highest bit must be set
-        next_assert( sequence & ( 1ULL << 62 ) );
-    }
-    else
-    {
-        // second highest bit must be clear
-        next_assert( ( sequence & ( 1ULL << 62 ) ) == 0 );
-    }
 
     next_write_uint64( &buffer, sequence );
 
@@ -3605,9 +3580,7 @@ int next_write_route_response_packet( uint8_t * packet_data, uint64_t send_seque
     next_write_uint8( &p, NEXT_ROUTE_RESPONSE_PACKET );
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += NEXT_HEADER_BYTES;
-    send_sequence |= uint64_t(1) << 63;
-    send_sequence |= uint64_t(1) << 62;
-    if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
+    if ( next_write_header( NEXT_ROUTE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
         return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
@@ -3627,7 +3600,7 @@ int next_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_seq
     next_write_uint8( &p, NEXT_CLIENT_TO_SERVER_PACKET );
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += NEXT_HEADER_BYTES;
-    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
+    if ( next_write_header( NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
         return 0;
     next_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
@@ -3648,8 +3621,7 @@ int next_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_seq
     next_write_uint8( &p, NEXT_SERVER_TO_CLIENT_PACKET );
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += NEXT_HEADER_BYTES;
-    send_sequence |= uint64_t(1) << 63;
-    if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
+    if ( next_write_header( NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
         return 0;
     next_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
@@ -3667,8 +3639,7 @@ int next_write_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint6
     next_write_uint8( &p, NEXT_PING_PACKET );
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += NEXT_HEADER_BYTES;
-    send_sequence |= uint64_t(1) << 62;
-    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
+    if ( next_write_header( NEXT_PING_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
         return 0;
     next_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
@@ -3686,9 +3657,7 @@ int next_write_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint6
     next_write_uint8( &p, NEXT_PONG_PACKET );
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += NEXT_HEADER_BYTES;
-    send_sequence |= uint64_t(1) << 63;
-    send_sequence |= uint64_t(1) << 62;
-    if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
+    if ( next_write_header( NEXT_PONG_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
         return 0;
     next_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
@@ -3704,9 +3673,7 @@ int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_se
     next_write_uint8( &p, NEXT_CONTINUE_RESPONSE_PACKET );
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += NEXT_HEADER_BYTES;
-    send_sequence |= uint64_t(1) << 63;
-    send_sequence |= uint64_t(1) << 62;
-    if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
+    if ( next_write_header( NEXT_CONTINUE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != NEXT_OK )
         return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
@@ -3918,12 +3885,6 @@ bool next_is_payload_packet( uint8_t packet_id )
            packet_id == NEXT_SERVER_TO_CLIENT_PACKET;
 }
 
-uint64_t next_clean_sequence( uint64_t sequence )
-{
-    uint64_t mask = ~( (1ULL<<63) | (1ULL<<62) );
-    return sequence & mask;
-}
-
 int next_read_packet( uint8_t packet_id, uint8_t * packet_data, int begin, int end, void * packet_object, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_public_key, const uint8_t * encrypt_private_key, next_replay_protection_t * replay_protection )
 {
     next_assert( packet_data );
@@ -3999,9 +3960,7 @@ int next_read_packet( uint8_t packet_id, uint8_t * packet_data, int begin, int e
 
         serialize_bytes( stream, dummy, 8 );
 
-        uint64_t clean_sequence = next_clean_sequence( *sequence );
-
-        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        if ( next_replay_protection_already_received( replay_protection, *sequence ) )
             return NEXT_ERROR;
     }
 
@@ -5292,50 +5251,14 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
 
 // ----------------------------------------------------------------------
 
-int next_peek_header( int direction, int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
+int next_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint64_t packet_sequence;
 
     next_assert( buffer );
-
-    if ( buffer_length < NEXT_HEADER_BYTES )
-        return NEXT_ERROR;
+    next_assert( buffer_length >= NEXT_HEADER_BYTES );
 
     packet_sequence = next_read_uint64( &buffer );
-
-    if ( direction == NEXT_DIRECTION_SERVER_TO_CLIENT )
-    {
-        if ( !( packet_sequence & ( 1ULL << 63) ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "high bit must be set" );
-            return NEXT_ERROR;
-        }
-    }
-    else
-    {
-        if ( packet_sequence & ( 1ULL << 63 ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "high bit must be clear" );
-            return NEXT_ERROR;
-        }
-    }
-
-    if ( packet_type == NEXT_PING_PACKET || packet_type == NEXT_PONG_PACKET || packet_type == NEXT_ROUTE_RESPONSE_PACKET || packet_type == NEXT_CONTINUE_RESPONSE_PACKET )
-    {
-        if ( !( packet_sequence & ( 1ULL << 62) ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "second highest bit must be set" );
-            return NEXT_ERROR;
-        }
-    }
-    else
-    {
-        if ( packet_sequence & ( 1ULL << 62 ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "second highest bit must be clear" );
-            return NEXT_ERROR;
-        }
-    }
 
     *sequence = packet_sequence;
     *session_id = next_read_uint64( &buffer );
@@ -5344,7 +5267,7 @@ int next_peek_header( int direction, int packet_type, uint64_t * sequence, uint6
     return NEXT_OK;
 }
 
-int next_read_header( int direction, int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int next_read_header( int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     next_assert( private_key );
     next_assert( buffer );
@@ -5357,40 +5280,6 @@ int next_read_header( int direction, int packet_type, uint64_t * sequence, uint6
     const uint8_t * p = buffer;
 
     uint64_t packet_sequence = next_read_uint64( &p );
-
-    if ( direction == NEXT_DIRECTION_SERVER_TO_CLIENT )
-    {
-        if ( !( packet_sequence & ( 1ULL << 63 ) ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "high bit must be set" );
-            return NEXT_ERROR;
-        }
-    }
-    else
-    {
-        if ( packet_sequence & ( 1ULL << 63 ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "high bit must be clear" );
-            return NEXT_ERROR;
-        }
-    }
-
-    if ( packet_type == NEXT_PING_PACKET || packet_type == NEXT_PONG_PACKET || packet_type == NEXT_ROUTE_RESPONSE_PACKET || packet_type == NEXT_CONTINUE_RESPONSE_PACKET )
-    {
-        if ( !( packet_sequence & ( 1ULL << 62 ) ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "second highest bit must be set" );
-            return NEXT_ERROR;
-        }
-    }
-    else
-    {
-        if ( packet_sequence & ( 1ULL << 62 ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "second highest bit must be clear" );
-            return NEXT_ERROR;
-        }
-    }
 
     const uint8_t * additional = p;
 
@@ -5838,10 +5727,10 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     bool from_current_route = true;
 
-    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+    if ( next_read_header( packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
     {
         from_current_route = false;
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
@@ -6818,20 +6707,19 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = next_read_uint64( &p );
 
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-        if ( next_replay_protection_already_received( &client->payload_replay_protection, clean_sequence ) )
+        if ( next_replay_protection_already_received( &client->payload_replay_protection, packet_sequence ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. already received" );
             return;
         }
 
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+        next_replay_protection_advance_sequence( &client->payload_replay_protection, packet_sequence );
 
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, packet_sequence );
 
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
+        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, packet_sequence );
 
-        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, packet_receive_time );
+        next_jitter_tracker_packet_received( &client->jitter_tracker, packet_sequence, packet_receive_time );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
@@ -6886,7 +6774,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_id, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( packet_id, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
             return;
@@ -6908,13 +6796,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_route_manager_t * route_manager = client->route_manager;
 
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
         next_replay_protection_t * replay_protection = &client->special_replay_protection;
 
-        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        if ( next_replay_protection_already_received( replay_protection, packet_sequence ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", packet_sequence, replay_protection->most_recent_sequence );
             return;
         }
 
@@ -6930,7 +6816,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_replay_protection_advance_sequence( replay_protection, clean_sequence );
+        next_replay_protection_advance_sequence( replay_protection, packet_sequence );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response from relay" );
 
@@ -7037,19 +6923,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_id, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( packet_id, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
             return;
         }
 
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
         next_replay_protection_t * replay_protection = &client->special_replay_protection;
 
-        if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+        if ( next_replay_protection_already_received( replay_protection, packet_sequence ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", packet_sequence, replay_protection->most_recent_sequence );
             return;
         }
 
@@ -7065,7 +6949,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_replay_protection_advance_sequence( replay_protection, clean_sequence );
+        next_replay_protection_advance_sequence( replay_protection, packet_sequence );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
 
@@ -7116,15 +7000,13 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        uint64_t clean_sequence = next_clean_sequence( payload_sequence );
+        next_replay_protection_advance_sequence( &client->payload_replay_protection, payload_sequence );
 
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, payload_sequence );
 
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, payload_sequence );
 
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, next_time() );
+        next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_time() );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
@@ -7167,12 +7049,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        uint64_t clean_sequence = next_clean_sequence( payload_sequence );
-
-        if ( next_replay_protection_already_received( &client->special_replay_protection, clean_sequence ) )
+        if ( next_replay_protection_already_received( &client->special_replay_protection, payload_sequence ) )
             return;
 
-        next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
+        next_replay_protection_advance_sequence( &client->special_replay_protection, payload_sequence );
 
         const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
 
@@ -7993,7 +7873,6 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         }
 
         uint64_t sequence = client->special_send_sequence++;
-        sequence |= (1ULL<<62);
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
@@ -12541,7 +12420,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
 
-    if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes ) != NEXT_OK )
+    if ( next_peek_header( &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not peek header" );
         return NULL;
@@ -12564,12 +12443,10 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
 
     next_replay_protection_t * replay_protection = ( packet_type == NEXT_CLIENT_TO_SERVER_PACKET ) ? &entry->payload_replay_protection : &entry->special_replay_protection;
 
-    uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
-    if ( next_replay_protection_already_received( replay_protection, clean_sequence ) )
+    if ( next_replay_protection_already_received( replay_protection, packet_sequence ) )
         return NULL;
 
-    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
+    if ( entry->has_pending_route && next_read_header( packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %" PRIx64, entry->session_id );
 
@@ -12607,10 +12484,10 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
         bool previous_route_ok = false;
 
         if ( entry->has_current_route )
-            current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+            current_route_ok = next_read_header( packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
         if ( entry->has_previous_route )
-            previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+            previous_route_ok = next_read_header( packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
         if ( !current_route_ok && !previous_route_ok )
         {
@@ -12619,13 +12496,13 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
         }
     }
 
-    next_replay_protection_advance_sequence( replay_protection, clean_sequence );
+    next_replay_protection_advance_sequence( replay_protection, packet_sequence );
 
     if ( packet_type == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
-        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
-        next_jitter_tracker_packet_received( &entry->jitter_tracker, clean_sequence, next_time() );
+        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, packet_sequence );
+        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, packet_sequence );
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, packet_sequence, next_time() );
     }
 
     return entry;
@@ -13114,18 +12991,16 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
-        if ( next_replay_protection_already_received( &entry->payload_replay_protection, clean_sequence ) )
+        if ( next_replay_protection_already_received( &entry->payload_replay_protection, packet_sequence ) )
             return;
 
-        next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
+        next_replay_protection_advance_sequence( &entry->payload_replay_protection, packet_sequence );
 
-        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
+        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, packet_sequence );
 
-        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
+        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, packet_sequence );
 
-        next_jitter_tracker_packet_received( &entry->jitter_tracker, clean_sequence, next_time() );
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, packet_sequence, next_time() );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -13823,8 +13698,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->last_client_next_ping = next_time();
 
         uint64_t send_sequence = entry->special_send_sequence++;
-        send_sequence |= uint64_t(1) << 63;
-        send_sequence |= uint64_t(1) << 62;
 
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
@@ -15853,7 +15726,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             send_over_network_next = internal_entry->mutex_send_over_network_next;
             send_upgraded_direct = !send_over_network_next;
             send_sequence = internal_entry->mutex_payload_send_sequence++;
-            send_sequence |= uint64_t(1) << 63;
             open_session_sequence = internal_entry->client_open_session_sequence;
             session_id = internal_entry->mutex_session_id;
             session_version = internal_entry->mutex_session_version;
@@ -18235,13 +18107,13 @@ void test_header()
         uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
         next_random_bytes( private_key, sizeof(private_key) );
 
-        next_check( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, packet_data ) == NEXT_OK );
+        next_check( next_write_header( NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, packet_data ) == NEXT_OK );
 
         uint64_t read_packet_sequence = 0;
         uint64_t read_packet_session_id = 0;
         uint8_t read_packet_session_version = 0;
 
-        next_check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
+        next_check( next_read_header( NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
 
         next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
@@ -18286,9 +18158,9 @@ void test_route_response_packet()
         uint8_t * read_packet_data = packet_data + 16;
         int read_packet_bytes = packet_bytes - 16;
 
-        next_check( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
+        next_check( next_read_header( NEXT_ROUTE_RESPONSE_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
 
-        next_check( read_packet_sequence == ( send_sequence | 0xC000000000000000LL ) );
+        next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
         next_check( read_packet_session_version == session_version );
     }
@@ -18335,7 +18207,7 @@ void test_client_to_server_packet()
         uint8_t * read_packet_data = packet_data + 16;
         int read_packet_bytes = packet_bytes - 16;
 
-        next_check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
+        next_check( next_read_header( NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
 
         next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
@@ -18386,9 +18258,9 @@ void test_server_to_client_packet()
         uint8_t * read_packet_data = packet_data + 16;
         int read_packet_bytes = packet_bytes - 16;
 
-        next_check( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
+        next_check( next_read_header( NEXT_SERVER_TO_CLIENT_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
 
-        next_check( read_packet_sequence == ( send_sequence | (0x1LL<< 63) ) );
+        next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
         next_check( read_packet_session_version == session_version );
     }
@@ -18432,9 +18304,9 @@ void test_ping_packet()
         uint8_t * read_packet_data = packet_data + 16;
         int read_packet_bytes = packet_bytes - 16;
 
-        next_check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
+        next_check( next_read_header( NEXT_PING_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
 
-        next_check( read_packet_sequence == ( send_sequence | (1LL<<62) ) );
+        next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
         next_check( read_packet_session_version == session_version );
     }
@@ -18479,9 +18351,9 @@ void test_pong_packet()
         uint8_t * read_packet_data = packet_data + 16;
         int read_packet_bytes = packet_bytes - 16;
 
-        next_check( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
+        next_check( next_read_header( NEXT_PONG_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
 
-        next_check( read_packet_sequence == ( send_sequence | 0xC000000000000000LL ) );
+        next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
         next_check( read_packet_session_version == session_version );
     }
@@ -18550,9 +18422,9 @@ void test_continue_response_packet()
         uint8_t * read_packet_data = packet_data + 16;
         int read_packet_bytes = packet_bytes - 16;
 
-        next_check( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
+        next_check( next_read_header( NEXT_CONTINUE_RESPONSE_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
 
-        next_check( read_packet_sequence == ( send_sequence | 0xC000000000000000LL ) );
+        next_check( read_packet_sequence == send_sequence );
         next_check( read_packet_session_id == session_id );
         next_check( read_packet_session_version == session_version );
     }
