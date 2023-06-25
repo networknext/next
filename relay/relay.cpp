@@ -111,7 +111,6 @@
 
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                                            40
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE                                          41
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                               42
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                              43
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                                    45
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                               46
@@ -127,7 +126,6 @@
 
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED                                         60
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE                                       61
-#define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER                            62
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED                                 63
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                           64
 #define RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                            66
@@ -137,7 +135,6 @@
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED                                          70
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL                                         71
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG                                           72
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER                             73
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION                            74
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED                                  76
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER                           77
@@ -147,7 +144,6 @@
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED                                          80
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL                                         81
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG                                           82
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER                             83
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                            84
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED                                  86
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER                           87
@@ -156,7 +152,6 @@
 
 #define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              90
 #define RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE                                            91
-#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER                                 92
 #define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                93
 #define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      95
 #define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               96
@@ -165,7 +160,6 @@
 
 #define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                             100
 #define RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE                                           101
-#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER                                102
 #define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                               103
 #define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                     105
 #define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                              106
@@ -2769,35 +2763,23 @@ int relay_write_header( uint8_t type, uint64_t sequence, uint64_t session_id, ui
     return RELAY_OK;
 }
 
-int relay_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
+void relay_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
-    uint64_t packet_sequence;
-
     assert( buffer );
     assert( buffer_length >= RELAY_HEADER_BYTES );
 
-    // todo: don't think we need this anymore
-    if ( buffer_length < RELAY_HEADER_BYTES )
-        return RELAY_ERROR;
-
-    packet_sequence = relay_read_uint64( &buffer );
+    uint64_t packet_sequence = relay_read_uint64( &buffer );
 
     *sequence = packet_sequence;
     *session_id = relay_read_uint64( &buffer );
     *session_version = relay_read_uint8( &buffer );
-
-    return RELAY_OK;
 }
 
 int relay_verify_header( int packet_type, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     assert( private_key );
     assert( buffer );
-
-    if ( buffer_length < RELAY_HEADER_BYTES )
-    {
-        return RELAY_ERROR;
-    }
+    assert( buffer_length >= RELAY_HEADER_BYTES );
 
     const uint8_t * p = buffer;
 
@@ -5222,14 +5204,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored route response packet. could not peek header\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER]++;
-                continue;
-            }
+            
+            relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes );
 
             session_key_t key = { session_id, session_version };
 
@@ -5465,14 +5441,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored continue response packet. could not peek header\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER]++;
-                continue;
-            }
+            
+            relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes );
 
             session_key_t key = { session_id, session_version };
 
@@ -5596,14 +5566,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored client to server packet. could not peek header\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER]++;
-                continue;
-            }
+            
+            relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes );
 
             session_key_t key = { session_id, session_version };
 
@@ -5731,14 +5695,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored server to client packet. could not peek header\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER]++;
-                continue;
-            }
+            
+            relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes );
 
             session_key_t key = { session_id, session_version };
 
@@ -5859,14 +5817,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t sequence;
             uint64_t session_id;
             uint8_t session_version;
-            if ( relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored session ping packet. could not peek header\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER]++;
-                continue;
-            }
+            
+            relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes );
 
             session_key_t key = { session_id, session_version };
 
@@ -5986,14 +5938,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t session_id;
             uint8_t session_version;
 
-            if ( relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
-            {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored session pong packet. could not peek header\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER]++;
-                continue;
-            }
+            relay_peek_header( &sequence, &session_id, &session_version, const_p, packet_bytes );
 
             session_key_t key = { session_id, session_version };
 
