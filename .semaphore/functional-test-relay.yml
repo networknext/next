@@ -262,3 +262,7 @@ blocks:
         - name: "test_continue_request_packet_forward_to_next_hop_internal_address"
           commands:
             - cd ./dist && ./func_test_relay test_continue_request_packet_forward_to_next_hop_internal_address
+
+        - name: "test_continue_response_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_wrong_size
