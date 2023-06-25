@@ -5251,7 +5251,7 @@ int next_read_encrypted_continue_token( uint8_t ** buffer, next_continue_token_t
 
 // ----------------------------------------------------------------------
 
-int next_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
+void next_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint64_t packet_sequence;
 
@@ -5263,8 +5263,6 @@ int next_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * sess
     *sequence = packet_sequence;
     *session_id = next_read_uint64( &buffer );
     *session_version = next_read_uint8( &buffer );
-
-    return NEXT_OK;
 }
 
 int next_read_header( int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
@@ -12420,11 +12418,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
 
-    if ( next_peek_header( &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not peek header" );
-        return NULL;
-    }
+    next_peek_header( &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes );
 
     next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet_session_id );
     if ( !entry )
