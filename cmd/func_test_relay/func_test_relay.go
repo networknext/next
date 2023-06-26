@@ -3530,6 +3530,136 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	checkCounter("RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS", relay_stdout.String())
 }
 
+func test_client_to_server_packet_too_small() {
+
+	fmt.Printf("test_client_to_server_packet_too_small\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, common.RandomInt(18,18+33-1))
+			common.RandomBytes(packet[:])
+			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL", relay_stdout.String())
+}
+
+func test_client_to_server_packet_too_big() {
+
+	fmt.Printf("test_client_to_server_packet_too_big\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, common.RandomInt(1500,4095))
+			common.RandomBytes(packet[:])
+			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG", relay_stdout.String())
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -3594,6 +3724,9 @@ func main() {
 		test_continue_response_packet_header_did_not_verify,
 		test_continue_response_packet_forward_to_previous_hop_public_address,
 		test_continue_response_packet_forward_to_previous_hop_internal_address,
+
+		test_client_to_server_packet_too_small,
+		test_client_to_server_packet_too_big,
 	}
 
 	var tests []test_function
@@ -3663,7 +3796,6 @@ func initCounterNames() {
 	counterNames[36] = "RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS"
 	counterNames[40] = "RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED"
 	counterNames[41] = "RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE"
-	counterNames[42] = "RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
 	counterNames[43] = "RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[45] = "RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED"
 	counterNames[46] = "RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
@@ -3678,7 +3810,6 @@ func initCounterNames() {
 	counterNames[56] = "RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
 	counterNames[60] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED"
 	counterNames[61] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE"
-	counterNames[62] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_PEEK_HEADER"
 	counterNames[63] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED"
 	counterNames[64] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[66] = "RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY"
@@ -3687,7 +3818,6 @@ func initCounterNames() {
 	counterNames[70] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED"
 	counterNames[71] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL"
 	counterNames[72] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG"
-	counterNames[73] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_PEEK_HEADER"
 	counterNames[74] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[76] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED"
 	counterNames[77] = "RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER"
@@ -3696,7 +3826,6 @@ func initCounterNames() {
 	counterNames[80] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED"
 	counterNames[81] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL"
 	counterNames[82] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG"
-	counterNames[83] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_PEEK_HEADER"
 	counterNames[84] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[86] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED"
 	counterNames[87] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER"
@@ -3704,16 +3833,14 @@ func initCounterNames() {
 	counterNames[89] = "RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS"
 	counterNames[90] = "RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED"
 	counterNames[91] = "RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE"
-	counterNames[92] = "RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[93] = "RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[93] = "RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[95] = "RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED"
 	counterNames[96] = "RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER"
 	counterNames[97] = "RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS"
 	counterNames[98] = "RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS"
 	counterNames[100] = "RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED"
 	counterNames[101] = "RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE"
-	counterNames[102] = "RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_PEEK_HEADER"
-	counterNames[103] = "RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST"
+	counterNames[103] = "RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION"
 	counterNames[105] = "RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED"
 	counterNames[106] = "RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER"
 	counterNames[107] = "RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS"

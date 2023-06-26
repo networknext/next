@@ -153,7 +153,7 @@
 
 #define RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED                                              90
 #define RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE                                            91
-#define RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST                                93
+#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION                                93
 #define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      95
 #define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               96
 #define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    97
@@ -161,7 +161,7 @@
 
 #define RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED                                             100
 #define RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE                                           101
-#define RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST                               103
+#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION                               103
 #define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                     105
 #define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                              106
 #define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS               107
@@ -5828,9 +5828,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session )
             {
 #if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored session ping packet. session does not exist\n", from_string );
+                printf( "[%s] ignored session ping packet. could not find session\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_DOES_NOT_EXIST]++;
+                relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
@@ -5948,9 +5948,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session )
             {
 #if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored session pong packet. session does not exist\n", from_string );
+                printf( "[%s] ignored session pong packet. could not find session\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_DOES_NOT_EXIST]++;
+                relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
