@@ -377,3 +377,27 @@ blocks:
         - name: "test_server_to_client_packet_forward_to_next_hop_internal_address"
           commands:
             - cd ./dist && ./func_test_relay test_server_to_client_packet_forward_to_previous_hop_internal_address
+
+        - name: "test_session_ping_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_wrong_size
+
+        - name: "test_session_ping_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_could_not_find_session
+
+        - name: "test_session_ping_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_already_received
+
+        - name: "test_session_ping_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_header_did_not_verify
+
+        - name: "test_session_ping_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_forward_to_previous_hop_public_address
+
+        - name: "test_session_ping_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_forward_to_previous_hop_internal_address
