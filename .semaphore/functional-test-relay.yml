@@ -329,3 +329,7 @@ blocks:
         - name: "test_client_to_server_packet_too_big"
           commands:
             - cd ./dist && ./func_test_relay test_client_to_server_packet_too_big
+
+        - name: "test_client_to_server_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_could_not_find_session
