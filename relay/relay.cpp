@@ -5530,7 +5530,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     relay_address_to_string( &session->prev_address, prev_hop_address );
                     printf( "[%s] forwarding continue response packet to previous hop %s (internal address)\n", from_string, prev_hop_address );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                    relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
+                    relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
              
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
                     relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
