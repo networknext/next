@@ -138,7 +138,7 @@
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG                                           72
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION                            74
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED                                  76
-#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER                           77
+#define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY                             77
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                78
 #define RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS              79
 
@@ -147,7 +147,7 @@
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG                                           82
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION                            84
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED                                  86
-#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER                           87
+#define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY                             87
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS            88
 #define RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS          89
 
@@ -155,7 +155,7 @@
 #define RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE                                            91
 #define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION                                93
 #define RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED                                      95
-#define RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER                               96
+#define RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY                                 96
 #define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                    97
 #define RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                  98
 
@@ -163,7 +163,7 @@
 #define RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE                                           101
 #define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION                               103
 #define RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED                                     105
-#define RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER                              106
+#define RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY                                106
 #define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS               107
 #define RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS             108
 
@@ -854,15 +854,22 @@ int relay_replay_protection_already_received( relay_replay_protection_t * replay
     assert( replay_protection );
 
     if ( sequence + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence )
+    {
         return 1;
+    }
 
     int index = (int) ( sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE );
 
     if ( replay_protection->received_packet[index] == 0xFFFFFFFFFFFFFFFFLL )
+    {
+        replay_protection->received_packet[index] = sequence;
         return 0;
+    }
 
     if ( replay_protection->received_packet[index] >= sequence )
+    {
         return 1;
+    }
 
     return 0;
 }
@@ -5607,7 +5614,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored client to server packet. could not verify header\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_VERIFY_HEADER]++;
+                relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
@@ -5736,7 +5743,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored server to client packet. could not verify header\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_VERIFY_HEADER]++;
+                relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
@@ -5858,7 +5865,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored session ping packet. could not verify header\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_VERIFY_HEADER]++;
+                relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
@@ -5978,7 +5985,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if INTENSIVE_RELAY_DEBUGGING
                 printf( "[%s] ignored session pong packet. could not verify header\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
-                relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_VERIFY_HEADER]++;
+                relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 

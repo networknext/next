@@ -2691,15 +2691,22 @@ int next_replay_protection_already_received( next_replay_protection_t * replay_p
     next_replay_protection_verify_sentinels( replay_protection );
 
     if ( sequence + NEXT_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence )
+    {
         return 1;
+    }
 
     int index = (int) ( sequence % NEXT_REPLAY_PROTECTION_BUFFER_SIZE );
 
     if ( replay_protection->received_packet[index] == 0xFFFFFFFFFFFFFFFFLL )
+    {
+        replay_protection->received_packet[index] = sequence;
         return 0;
+    }
 
     if ( replay_protection->received_packet[index] >= sequence )
+    {
         return 1;
+    }
 
     return 0;
 }

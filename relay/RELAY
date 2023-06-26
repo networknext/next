@@ -133,3 +133,7 @@ RELAY
 	Otherwise an attacker can shuffle token order and repeat tokens to create loops.
 
 	------------------
+
+	Randomize the first byte of packets by deterministically adding bytes from the next 15 bytes to it
+
+	------------------
