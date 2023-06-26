@@ -824,7 +824,7 @@ func test_unknown_packets() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+ 	for i := 0; i < 20; i++ {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18,1500))
 			common.RandomBytes(packet[:])
@@ -5558,8 +5558,6 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 
 // =======================================================================================================================
 
-// fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
-
 type test_function func()
 
 func main() {
@@ -5784,6 +5782,7 @@ func getCounterIndex(name string) int {
 func checkCounter(name string, stdout string) {
 	index := getCounterIndex(name)
 	if !strings.Contains(stdout, fmt.Sprintf("counter %d: ", index)) {
+		fmt.Printf("=======================================\n%s=============================================\n", stdout)
 		panic(fmt.Sprintf("missing counter: %s", name))
 	}
 }
