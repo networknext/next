@@ -428,8 +428,6 @@ func test_relay_backend_public_key_mismatch() {
 
 	backend_cmd.Wait()
 
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
-
 	if !strings.Contains(relay_stdout.String(), "error: relay update response is 400. the relay backend is down or the relay is misconfigured. check RELAY_BACKEND_PUBLIC_KEY") {
 		panic("relay cannot talk to the relay backend unless it has the correct relay backend public key")
 	}
@@ -1529,8 +1527,6 @@ func test_route_request_packet_could_not_read_token() {
 		panic("could not initialize relay")
 	}
 
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
-
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN", relay_stdout.String())
 }
@@ -1600,8 +1596,6 @@ func test_route_request_packet_token_expired() {
 	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
 		panic("could not initialize relay")
 	}
-
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED", relay_stdout.String())
@@ -1856,8 +1850,6 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 		panic("could not initialize relay")
 	}
 
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
-
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS", relay_stdout.String())
@@ -1991,8 +1983,6 @@ func test_route_response_packet_could_not_find_session() {
 	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
 		panic("could not initialize relay")
 	}
-
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION", relay_stdout.String())
@@ -2579,8 +2569,6 @@ func test_continue_request_packet_could_not_read_token() {
 		panic("could not initialize relay")
 	}
 
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
-
 	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN", relay_stdout.String())
 }
@@ -2650,8 +2638,6 @@ func test_continue_request_packet_token_expired() {
 	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
 		panic("could not initialize relay")
 	}
-
-	fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED", relay_stdout.String())
@@ -3025,6 +3011,70 @@ func test_continue_response_packet_wrong_size() {
 	checkCounter("RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE", relay_stdout.String())
 }
 
+func test_continue_response_packet_could_not_find_session() {
+
+	fmt.Printf("test_continue_response_packet_could_not_find_session\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 4
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+ 	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18 + 33)
+			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
+			var magic [constants.MagicBytes]byte
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			packetLength := len(packet)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION", relay_stdout.String())
+}
+
 // fmt.Printf("=======================================\n%s=============================================\n", relay_stdout)
 
 type test_function func()
@@ -3085,6 +3135,7 @@ func main() {
 		test_continue_request_packet_forward_to_next_hop_internal_address,
 
 		test_continue_response_packet_wrong_size,
+		test_continue_response_packet_could_not_find_session,
 	}
 
 	var tests []test_function
