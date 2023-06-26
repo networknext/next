@@ -270,3 +270,7 @@ blocks:
         - name: "test_continue_response_packet_could_not_find_session"
           commands:
             - cd ./dist && ./func_test_relay test_continue_response_packet_could_not_find_session
+
+        - name: "test_continue_response_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_already_received
