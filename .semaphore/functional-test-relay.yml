@@ -337,3 +337,15 @@ blocks:
         - name: "test_client_to_server_packet_already_received"
           commands:
             - cd ./dist && ./func_test_relay test_client_to_server_packet_already_received
+
+        - name: "test_client_to_server_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_header_did_not_verify
+
+        - name: "test_client_to_server_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_forward_to_next_hop_public_address
+
+        - name: "test_client_to_server_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_forward_to_next_hop_internal_address
