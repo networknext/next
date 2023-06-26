@@ -37,7 +37,7 @@ blocks:
             - artifact push workflow dist/func_test_relay
 
 
-  - name: "Run Functional Tests (relay)"
+  - name: "Run Functional Tests (relay) - A"
     dependencies: ["Build Functional Tests (relay)"]
     task:
 
@@ -270,6 +270,41 @@ blocks:
         - name: "test_continue_response_packet_could_not_find_session"
           commands:
             - cd ./dist && ./func_test_relay test_continue_response_packet_could_not_find_session
+
+
+  - name: "Run Functional Tests (relay) - B"
+    dependencies: ["Build Functional Tests (relay)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sudo apt-get install -y libsodium-dev
+            - mkdir -p dist
+            - cd dist
+
+            - artifact pull workflow func_backend_relay
+            - artifact pull workflow func_test_relay
+            - artifact pull workflow relay
+            - artifact pull workflow libnext5.so
+
+            - mv func_backend_relay func_backend
+
+            - chmod +x func_backend
+            - chmod +x func_test_relay
+            - chmod +x relay
+
+            - sudo mv libnext5.so /usr/local/lib
+            - sudo ldconfig
+
+            - cd ~
+
+      jobs:
 
         - name: "test_continue_response_packet_already_received"
           commands:
