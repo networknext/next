@@ -1,6 +1,6 @@
 # Network Next Makefile
 
-CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1
+CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 -DRELAY_DEVELOPMENT=1
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)

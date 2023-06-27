@@ -201,6 +201,8 @@ func main() {
 		akamai_config()
 	} else if command == "vultr-config" {
 		vultr_config()
+	} else if command == "soak-test-relay" {
+		soak_test_relay()
 	}
 
 	cleanup()
@@ -510,4 +512,8 @@ func akamai_config() {
 
 func vultr_config() {
 	bash("go run tools/vultr_config/vultr_config.go")
+}
+
+func soak_test_relay() {
+	bash("go run tools/soak_test_relay/soak_test_relay.go")
 }
