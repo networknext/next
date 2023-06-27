@@ -4873,9 +4873,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
                     relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                     relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
-
-                    // todo
-                    printf( "send ping packet: %d\n", (int) relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT] );
                 }
             }
 
@@ -6109,9 +6106,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         else
         {
             // unknown packet id
-
-            // todo
-            printf( "unknown packet\n" );
 
 #if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] received unknown packet id %d (%d bytes)\n", from_string, packet_id, packet_bytes );

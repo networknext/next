@@ -92,9 +92,21 @@ DONE
 
 	RELAY_COUNTER_SESSION_EXPIRED
 
+	Why are func tests broken? I must have made some accidental change to the relay.cpp -- what is it?
+
+	itor->second is NULL sometimes while deleting in iteration. I have no idea why.
+
 RELAY
 
-	Why are func tests broken? I must have made some accidental change to the relay.cpp -- what is it?
+	------------------
+
+	"run soak-test-relay"
+
+	Relay needs a soak test where random packet data is thrown at it
+
+	Both packets that fail basic packet filter, fail advanced packet filter, and pass advanced packet filter (but have random data...)
+
+	Should also include valid route token, continue tokens, but with garbage data in them -- to make sure we are safe
 
 	------------------
 
@@ -113,14 +125,6 @@ RELAY
 	------------------
 
 	Make sure SDK func tests pass
-
-	------------------
-
-	"run soak-test-relay"
-
-	Relay needs a soak test where random packet data is thrown at it
-
-	Both packets that fail basic packet filter, fail advanced packet filter, and pass advanced packet filter (but have random data...)
 
 	------------------
 
