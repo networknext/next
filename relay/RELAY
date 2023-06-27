@@ -80,8 +80,6 @@ DONE
 	RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS
 	RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS
 
-RELAY
-
 	RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED
 	RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE
 	RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION
@@ -92,14 +90,29 @@ RELAY
 
 	RELAY_COUNTER_SESSION_DESTROYED
 
-	// todo: expand these into per-packet? disable session destroy check?
 	RELAY_COUNTER_SESSION_EXPIRED
 
+RELAY
+
+	test_relay_stats
+
 	------------------
 
-	Verify relay stats calculations
+	For route tokens to be secure, they must explicitly use the previous address in the token vs. inferring it from the sender
+
+	Otherwise an attacker can shuffle token order and repeat tokens to create loops.
 
 	------------------
+
+	Update all relay func tests to include the previous address
+
+	------------------
+
+	Make sure SDK func tests pass
+
+	------------------
+
+	"run soak-test-relay"
 
 	Relay needs a soak test where random packet data is thrown at it
 
@@ -107,31 +120,11 @@ RELAY
 
 	------------------
 
-	Route request packet and continue request packet needs random (valid) tokens sent through, to make sure we hit all safety checks and no asserts fire.
+	Load test relay in google cloud.
 
 	------------------
 
-	Debug why the happy path is not working on linux
-
-	^--- I think it's just timing and/or packet loss or latency on Linux.
-
-	I was able to get happy path not working locally, once, and then I ran it again and it was fine.
-
-	I just ran the happy path in semaphore and it worked fine. It may just be flaky.
-
-	------------------
-
-	Relay should be load tested in google cloud.
-
-	------------------
-
-	Relay should be load tested in bare metal with 1G NIC, 10G NIC
-
-	------------------
-
-	For route tokens to be secure, they must explicitly use the previous address in the token vs. inferring it from the sender
-
-	Otherwise an attacker can shuffle token order and repeat tokens to create loops.
+	Load test relay on bare metal (get some 10G NICs to run locally?)
 
 	------------------
 

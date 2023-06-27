@@ -3994,6 +3994,7 @@ struct relay_t
 #if NEXT_DEVELOPMENT
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
+    bool disable_destroy;
 #endif // #if NEXT_DEVELOPMENT
     relay_control_message_t control;
 };
@@ -4647,9 +4648,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( last_stats_message_time + 0.1 <= current_time )
             {
-    #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "thread %d sent stats message\n", relay->thread_index );
-    #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 double time_since_last_update = current_time - relay->last_stats_time;
 
@@ -4714,16 +4715,20 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             // check for timeouts once per-second
 
+#if NEXT_DEVELOPMENT
+            if ( !relay->disable_destroy && last_check_for_timeouts_time + 1.0 <= current_time )
+#else // #if NEXT_DEVELOPMENT
             if ( last_check_for_timeouts_time + 1.0 <= current_time )
+#endif // #if NEXT_DEVELOPMENT
             {
-    #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "thread %d check for timeouts\n", relay->thread_index );
-    #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
                 while ( iter != relay->sessions->end() )
                 {
-                    if ( iter->second && iter->second->expire_timestamp < relay_timestamp( relay ) )
+                    if ( iter->second->expire_timestamp < relay_timestamp( relay ) )
                     {
                         printf( "Session %" PRIx64 ".%d destroyed on relay thread %d\n", iter->second->session_id, iter->second->session_version, relay->thread_index );
                         relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
@@ -4744,9 +4749,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( last_pump_control_messages_time + 1.0 <= current_time )
             {
-    #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                 printf( "thread %d pump control messages\n", relay->thread_index );
-    #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
 
                 while ( true )
                 {
@@ -4757,9 +4762,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     {
                         break;
                     }
-    #if INTENSIVE_RELAY_DEBUGGING
+#if INTENSIVE_RELAY_DEBUGGING
                     printf( "processing control message on relay thread %d\n", relay->thread_index );
-    #endif // #if INTENSIVE_RELAY_DEBUGGING
+#endif // #if INTENSIVE_RELAY_DEBUGGING
                     relay->control = *message;
                     free( message );
                 }
@@ -5228,7 +5233,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( session->expire_timestamp < relay_timestamp( relay ) )
+            if ( session->expire_timestamp <= relay_timestamp( relay ) )
             {
                 printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
@@ -5354,16 +5359,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 printf( "[%s] ignored continue request. could not find session\n", from_string );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION]++;
-                continue;
-            }
-
-            if ( session->expire_timestamp < relay_timestamp( relay ) )
-            {
-                printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", token.session_id, token.session_version, relay->thread_index );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
-                relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
-                relay->sessions->erase(key);
                 continue;
             }
 
@@ -6572,6 +6567,14 @@ int main( int argc, const char ** argv )
         printf( "Fake packet loss starts at %.1f seconds\n", relay_fake_packet_loss_start_time );
     }
 
+    bool disable_destroy = false;
+    const char * disable_destroy_env = relay_platform_getenv( "RELAY_DISABLE_DESTROY" );
+    if ( disable_destroy_env )
+    {
+        printf( "Session destroy disabled\n" );
+        disable_destroy = true;
+    }
+
 #endif // #if NEXT_DEVELOPMENT
 
     // IMPORTANT: Bind to 127.0.0.1 if specified, otherwise bind to 0.0.0.0
@@ -6742,6 +6745,7 @@ int main( int argc, const char ** argv )
 #if NEXT_DEVELOPMENT
         relay[i].fake_packet_loss_percent = relay_fake_packet_loss_percent;
         relay[i].fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
+        relay[i].disable_destroy = disable_destroy;
 #endif // #if NEXT_DEVELOPMENT
 
         relay_thread[i] = relay_platform_thread_create( relay_thread_function, &relay[i] );
