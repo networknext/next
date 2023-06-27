@@ -4728,7 +4728,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
                 while ( iter != relay->sessions->end() )
                 {
-                    if ( iter->second->expire_timestamp < relay_timestamp( relay ) )
+                    if ( iter->second && iter->second->expire_timestamp < relay_timestamp( relay ) )
                     {
                         printf( "Session %" PRIx64 ".%d destroyed on relay thread %d\n", iter->second->session_id, iter->second->session_version, relay->thread_index );
                         relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
@@ -5233,7 +5233,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( session->expire_timestamp <= relay_timestamp( relay ) )
+            if ( session->expire_timestamp < relay_timestamp( relay ) )
             {
                 printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
@@ -6110,6 +6110,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         {
             // unknown packet id
 
+            // todo
+            printf( "unknown packet\n" );
+
 #if INTENSIVE_RELAY_DEBUGGING
             printf( "[%s] received unknown packet id %d (%d bytes)\n", from_string, packet_id, packet_bytes );
 #endif // #if INTENSIVE_RELAY_DEBUGGING
@@ -6864,6 +6867,8 @@ int main( int argc, const char ** argv )
 
     if ( relay_print_counters )
     {
+        printf("print counters\n");
+
         printf( "\n===========================================================================\n" );
 
         for ( int i = 0; i < NUM_RELAY_COUNTERS; i++ )
@@ -6875,6 +6880,10 @@ int main( int argc, const char ** argv )
         }
 
         printf( "===========================================================================\n\n" );
+    }
+    else
+    {
+        printf("don't print counters\n" );
     }
 
 #endif // #if NEXT_DEVELOPMENT

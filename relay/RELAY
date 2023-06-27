@@ -94,6 +94,10 @@ DONE
 
 RELAY
 
+	Why are func tests broken? I must have made some accidental change to the relay.cpp -- what is it?
+
+	------------------
+
 	test_relay_stats
 
 	------------------
