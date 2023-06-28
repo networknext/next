@@ -26,7 +26,7 @@ blocks:
             - sudo apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
-            - make -j ./dist/relay ./dist/libnext5.so
+            - make -j ./dist/relay-debug ./dist/relay-release ./dist/libnext5.so
             - artifact push workflow ./dist/relay-debug
             - artifact push workflow ./dist/relay-release
             - artifact push workflow ./dist/libnext5.so

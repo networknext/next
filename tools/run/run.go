@@ -220,10 +220,6 @@ func test_sdk5() {
 	bash("cd ./dist && ./test")
 }
 
-func test_relay() {
-	bash("cd dist && ./relay-debug test")
-}
-
 func magic_backend() {
 	bash("HTTP_PORT=41007 ./dist/magic_backend")
 }
