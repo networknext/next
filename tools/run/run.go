@@ -221,7 +221,7 @@ func test_sdk5() {
 }
 
 func test_relay() {
-	bash("cd dist && ./relay test")
+	bash("cd dist && ./relay-debug test")
 }
 
 func magic_backend() {
@@ -269,7 +269,7 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("cd dist && RELAY_PUBLIC_ADDRESS=127.0.0.1:%s ./relay", relayPort))
+	bash(fmt.Sprintf("cd dist && RELAY_PUBLIC_ADDRESS=127.0.0.1:%s ./relay-debug", relayPort))
 }
 
 func server_backend() {

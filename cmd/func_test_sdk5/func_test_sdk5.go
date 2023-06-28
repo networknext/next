@@ -35,7 +35,7 @@ var TestServerBackendPublicKey = "TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A="
 var TestServerBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
 
 const (
-	relayBin   = "./relay"
+	relayBin   = "./relay-debug"
 	backendBin = "./func_backend"
 	clientBin  = "./func_client"
 	serverBin  = "./func_server"

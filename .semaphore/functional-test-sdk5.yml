@@ -61,7 +61,7 @@ blocks:
             - artifact pull workflow func_server_sdk5
             - artifact pull workflow func_backend_sdk5
             - artifact pull workflow func_test_sdk5
-            - artifact pull workflow relay
+            - artifact pull workflow relay-debug
             - artifact pull workflow libnext5.so
 
             - mv func_client_sdk5 func_client
@@ -72,7 +72,7 @@ blocks:
             - chmod +x func_server
             - chmod +x func_backend
             - chmod +x func_test_sdk5
-            - chmod +x relay
+            - chmod +x relay-debug
 
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig
@@ -294,7 +294,7 @@ blocks:
             - artifact pull workflow func_server_sdk5
             - artifact pull workflow func_backend_sdk5
             - artifact pull workflow func_test_sdk5
-            - artifact pull workflow relay
+            - artifact pull workflow relay-debug
             - artifact pull workflow libnext5.so
 
             - mv func_client_sdk5 func_client
@@ -305,7 +305,7 @@ blocks:
             - chmod +x func_server
             - chmod +x func_backend
             - chmod +x func_test_sdk5
-            - chmod +x relay
+            - chmod +x relay-debug
 
             - sudo mv libnext5.so /usr/local/lib
             - sudo ldconfig

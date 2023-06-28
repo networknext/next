@@ -2805,6 +2805,8 @@ int relay_write_header( uint8_t type, uint64_t sequence, uint64_t session_id, ui
 
 void relay_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
+    (void) buffer_length;
+
     assert( buffer );
     assert( buffer_length >= RELAY_HEADER_BYTES );
 
@@ -2817,6 +2819,8 @@ void relay_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * se
 
 int relay_verify_header( int packet_type, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
+    (void) buffer_length;
+
     assert( private_key );
     assert( buffer );
     assert( buffer_length >= RELAY_HEADER_BYTES );
@@ -4796,8 +4800,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             continue;
         }
 
-#if RELAY_DEBUG
         char from_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+#if RELAY_DEBUG
         relay_address_to_string( &from, from_string );
         (void) from_string;
 #endif // #if RELAY_DEBUG
@@ -6251,7 +6255,13 @@ int main( int argc, const char ** argv )
         exit(0);
     }
 
-    printf( "Network Next Relay (%s)\n", RELAY_VERSION );
+#if RELAY_DEBUG
+    const char * relay_type = "debug";
+#else // #if RELAY_DEBUG
+    const char * relay_type = "release";
+#endif // #if RELAY_DEBUG
+
+    printf( "Network Next Relay (relay-%s-%s)\n", relay_type, RELAY_VERSION );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 

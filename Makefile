@@ -1,6 +1,6 @@
 # Network Next Makefile
 
-CXX_FLAGS := -g -Wall -Wextra -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 -DRELAY_DEBUG=1
+CXX_FLAGS := -g -Wall -Wextra
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
@@ -32,7 +32,7 @@ build:
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME5).so dist/relay dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/relay-release dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean ## rebuild everything
@@ -66,26 +66,32 @@ format:
 
 # Build sdk5
 
+SDK_FLAGS := -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 
+
 dist/$(SDKNAME5).so: $(shell find sdk5 -type f)
-	@cd dist && $(CXX) $(CXX_FLAGS) -fPIC -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -fPIC -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
 	@echo $@
 
 dist/client: dist/$(SDKNAME5).so cmd/client/client.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o client ../cmd/client/client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk5/include -o client ../cmd/client/client.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 dist/server: dist/$(SDKNAME5).so cmd/server/server.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o server ../cmd/server/server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk5/include -o server ../cmd/server/server.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 dist/test: dist/$(SDKNAME5).so sdk5/test.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o test ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk5/include -o test ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 # Build relay
 
-dist/relay: relay/*
-	@$(CXX) $(CXX_FLAGS) -o dist/relay relay/*.cpp $(LDFLAGS)
+dist/relay-debug: relay/*
+	@$(CXX) $(CXX_FLAGS) -DRELAY_DEBUG=1 -o dist/relay-debug relay/*.cpp $(LDFLAGS)
+	@echo $@
+
+dist/relay-release: relay/*
+	@$(CXX) $(CXX_FLAGS) -O3 -DNDEBUG -o dist/relay-release relay/*.cpp $(LDFLAGS)
 	@echo $@
 
 # Functional tests (sdk5)

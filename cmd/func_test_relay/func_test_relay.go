@@ -46,7 +46,7 @@ var TestRelayBackendPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 var TestRelayBackendPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
 
 const (
-	relayBin   = "./relay"
+	relayBin   = "./relay-debug"
 	backendBin = "./func_backend"
 )
 

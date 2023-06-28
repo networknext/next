@@ -33,6 +33,78 @@ RELAY
 
 	------------------
 
+	Randomize the first byte of packets by deterministically adding bytes from the next 15 bytes to it
+
+	------------------
+
+	Do this in the SDK
+
+	The backend
+
+	And the relay.
+
+	------------------
+
+	Update the relay func test to use the swizzle/unswizzle first byte.
+
+	------------------
+
+	Verify relay func tests passes
+
+	------------------
+
+	Verify SDK func test passes
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+	------------------
+
+	Add log for relay stdout when happy path doesn't work. 
+
+	Looks like it is randomly failing not being able to send route request packets across the relay.
+
+	The relay may have crashed, or something else -- turning on debugging 
+
+	------------------
+
+
+
+
+
+
+	------------------
+
+	Implement read/write address IPV4 in C++ and golang
+
+	------------------
+
+	Extend route tokens to include previous address (IPv4 only)
+
+	Remove silly hack around next/prev fitting in the IPv6 space for "WriteAddress".
+
+	Apply this to SDK
+
+	server backend
+
+	relay
+
+	------------------
+
+	Update relay func tests to work with new token structure
+
+	------------------
 
 
 
@@ -47,7 +119,24 @@ RELAY
 
 
 
-	Extend soak test to send random session packest
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	------------------
+
+	Extend soak test to send random session packets
 
 	Should also include valid route token, continue tokens, but with garbage data in them -- to make sure we are safe even if the relay backend has bugs, it won't crash out the relay.
 
@@ -57,21 +146,7 @@ RELAY
 
 	------------------
 
-	test_relay_stats
-
-	------------------
-
-	For route tokens to be secure, they must explicitly use the previous address in the token vs. inferring it from the sender
-
-	Otherwise an attacker can shuffle token order and repeat tokens to create loops.
-
-	------------------
-
-	Update all relay func tests to include the previous address
-
-	------------------
-
-	Make sure SDK func tests pass
+	Add test_relay_stats func test
 
 	------------------
 
@@ -82,13 +157,4 @@ RELAY
 	Load test relay on bare metal (get some 10G NICs to run locally?)
 
 	------------------
-
-	Randomize the first byte of packets by deterministically adding bytes from the next 15 bytes to it
-
-	------------------
-
-	We need a build process to upload the debug and release relays
-
-	Would be nice if this was included in version, eg. relay-debug-1.0.20
-
-	------------------
+ 

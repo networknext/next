@@ -24,10 +24,18 @@ blocks:
 
       jobs:
 
-        - name: "Relay"
+        - name: "Relay (debug)"
           commands:
-            - artifact pull workflow relay
-            - chmod +x relay
-            - export VERSION=`./relay version`
-            - mv relay relay-$VERSION
-            - gsutil cp relay-$VERSION $RELAY_BUCKET
+            - artifact pull workflow relay-debug
+            - chmod +x relay-debug
+            - export VERSION=`./relay-debug version`
+            - mv relay-debug relay-debug-$VERSION
+            - gsutil cp relay-debug-$VERSION $RELAY_BUCKET
+
+        - name: "Relay (release)"
+          commands:
+            - artifact pull workflow relay-release
+            - chmod +x relay-release
+            - export VERSION=`./relay-release version`
+            - mv relay-release relay-release-$VERSION
+            - gsutil cp relay-release-$VERSION $RELAY_BUCKET
