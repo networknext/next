@@ -59,22 +59,14 @@ blocks:
             - cd dist
 
             - artifact pull workflow func_test_backend
-            - artifact pull workflow libnext5.so
-            - artifact pull workflow relay
             - artifact pull workflow magic_backend
             - artifact pull workflow relay_gateway
             - artifact pull workflow relay_backend
 
-            - chmod +x relay
-            - chmod +x libnext5.so
             - chmod +x func_test_backend
             - chmod +x magic_backend
             - chmod +x relay_gateway
             - chmod +x relay_backend
-
-            - sudo mv libnext5.so /usr/local/lib
-
-            - sudo ldconfig
 
             - cd ~
 
