@@ -2,8 +2,6 @@ DONE
 
 	"run soak-test-relay"
 
-RELAY
-
 	Formalize RELAY_DEVELOPMENT 1 in relay.cpp
 
 	Add log levels in relay development.
@@ -12,15 +10,19 @@ RELAY
 
 	First log level is just packets received (like I want in soak test...)
 
-	Second log level is packets received, plus unknown packets and packet filter fails (low level debug)
+	Second log level is packets received, plus unknown packets and packet filter fails
 
-	Third log level is spam with all packet processing logs and all logs for message passing etc.
+RELAY
+
+	Third log level is debug with all packet processing logs
 
 	------------------
 
-	Extend soak test to actually randomly create, continue and send random data across sessions.
+	Fourth log level is spam with all other logs enabled, including printing out tables etc.
 
-	Control this via NumSockets, each socket is a session.
+	------------------
+
+	Extend soak test to send random session packest
 
 	Should also include valid route token, continue tokens, but with garbage data in them -- to make sure we are safe even if the relay backend has bugs, it won't crash out the relay.
 
@@ -57,5 +59,11 @@ RELAY
 	------------------
 
 	Randomize the first byte of packets by deterministically adding bytes from the next 15 bytes to it
+
+	------------------
+
+	We need a build process to upload the debug and release relays
+
+	Would be nice if this was included in version, eg. relay-debug-1.0.20
 
 	------------------

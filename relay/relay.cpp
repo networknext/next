@@ -246,8 +246,9 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 #define RELAY_LOG_LEVEL_NONE                                       0
 #define RELAY_LOG_LEVEL_IMPORTANT                                  1
-#define RELAY_LOG_LEVEL_DEBUG                                      2
-#define RELAY_LOG_LEVEL_SPAM                                       3
+#define RELAY_LOG_LEVEL_NORMAL                                     2
+#define RELAY_LOG_LEVEL_DEBUG                                      3
+#define RELAY_LOG_LEVEL_SPAM                                       4
 
 #if RELAY_DEVELOPMENT
 
@@ -4826,9 +4827,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( relay->control.last_update_response_time == 0 )
         {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "ignoring packet. haven't received first relay update response yet\n" );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring packet. haven't received first relay update response yet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_PACKETS_RECEIVED_BEFORE_INITIALIZE]++;
 
@@ -4853,7 +4852,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         {
             if ( packet_bytes == 1 + 1 + RELAY_ADDRESS_BYTES + 8 )
             {
-                relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received local ping packet", from_string );
+                relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received local ping packet (thread %d)", from_string, relay->thread_index );
 
                 const uint8_t * p = packet_data + 1;
 
@@ -4959,9 +4958,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "[%s] basic packet filter dropped packet %d\n", from_string, packet_id );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] basic packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
 
@@ -4980,9 +4977,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "[%s] advanced packet filter dropped packet %d\n", from_string, packet_id );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
 
@@ -4996,15 +4991,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( packet_id == RELAY_PING_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received relay ping packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received relay ping packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 1 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf("[%s] relay ping packet has wrong size (%d bytes)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] relay ping packet has wrong size (%d bytes) (thread %d)", from_string, packet_bytes, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE]++;
 
@@ -5023,9 +5016,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] relay ping expired\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] relay ping expired (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED]++;
 
@@ -5036,9 +5027,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from, internal ? &relay->relay_internal_address : &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] relay ping token did not verify\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] relay ping token did not verify (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY]++;
 
@@ -5052,9 +5041,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
                 assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] responded with relay pong packet\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
 
                 relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
                 relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
@@ -5065,15 +5052,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received relay pong packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received relay pong packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf("[%s] relay pong packet has wrong size (%d bytes)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] relay pong packet has wrong size (%d bytes) (thread %d)", from_string, packet_bytes, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE]++;
 
@@ -5092,26 +5077,23 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const int forward_packet_bytes = f - forward_packet_data;
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
             char address_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
             relay_address_to_string( &from, address_string );
-            printf( "sending pong packet from %s to ping thread on relay thread %d\n", address_string, relay->thread_index );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_printf( RELAY_LOG_LEVEL_SPAM, "sending pong packet from %s to ping thread (thread %d)", address_string, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
 
             relay_platform_socket_send_packet( relay->socket, &relay->ping_address, forward_packet_data, forward_packet_bytes );
         }
         else if ( packet_id == RELAY_ROUTE_REQUEST_PACKET )
         {
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "[%s] received route request packet\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route request packet (thread %d)", from_string, relay->thread_index );
+
             relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED]++;
 
             if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignoring route request. wrong packet size (%d)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring route request. wrong packet size (%d) (thread %d)\n", from_string, packet_bytes, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5119,9 +5101,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_route_token_t token;
             if ( relay_read_encrypted_route_token( &p, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignoring route request. could not read route token\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring route request. could not read route token (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN]++;
                 continue;
             }
@@ -5130,21 +5110,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( token.expire_timestamp < current_timestamp )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignoring route request. route token expired\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring route request. route token expired (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                 continue;
             }
 
             if ( token.next_address.type != RELAY_ADDRESS_IPV4 ) // IMPORTANT: IPv4 only for now
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignoring route request. invalid next address\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring route request. invalid next address\n", from_string );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS]++;
                 continue;
             }
+
+            // todo: invalid previous address
 
             session_key_t key = { token.session_id, token.session_version };
 
@@ -5191,11 +5169,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( route_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &token.next_address, next_hop_address );
-                    printf( "[%s] forwarding route request packet to next hop %s (public address)\n", from_string, next_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding route request packet to next hop %s (public address) (thread %d)", from_string, next_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
                 
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
@@ -5214,11 +5192,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( route_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &token.next_address, next_hop_address );
-                    printf( "[%s] forwarding route request packet to next hop %s (internal address)\n", from_string, next_hop_address );
-#endif // #if #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding route request packet to next hop %s (internal address) (thread %d)\n", from_string, next_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
                 
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
@@ -5230,7 +5208,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route response packet", from_string );
+            // todo: fix up here
+
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route response packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED]++;
 
@@ -5347,7 +5327,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route continue request packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route continue request packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED]++;
 
@@ -5456,7 +5436,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route continue response packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route continue response packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED]++;
 
@@ -5571,7 +5551,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] client to server packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received client to server packet (thread %d)", from_string, relay->thread_index );
             
             relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED]++;
 
@@ -5699,7 +5679,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received server to client packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received server to client packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED]++;
 
@@ -5829,7 +5809,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SESSION_PING_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received session ping packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received session ping packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED]++;
 
@@ -5948,7 +5928,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SESSION_PONG_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received session pong packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received session pong packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED]++;
 
@@ -6065,7 +6045,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_NEAR_PING_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received near relay ping packet", from_string );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received near relay ping packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
@@ -6133,9 +6113,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         {
             // unknown packet id
 
-#if INTENSIVE_RELAY_DEBUGGING
-            printf( "[%s] received unknown packet id %d (%d bytes)\n", from_string, packet_id, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+            relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] received unknown packet id %d (%d bytes) (thread %d)", from_string, packet_id, packet_bytes, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_UNKNOWN_PACKETS]++;
         }

@@ -1695,6 +1695,8 @@ func test_route_request_packet_invalid_next_address() {
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS", relay_stdout.String())
 }
 
+// todo: invalid prev address
+
 func test_route_request_packet_forward_to_next_hop_public_address() {
 
 	fmt.Printf("test_route_request_packet_forward_to_next_hop_public_address\n")
