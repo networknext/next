@@ -2,7 +2,7 @@ DONE
 
 	"run soak-test-relay"
 
-	Formalize RELAY_DEVELOPMENT 1 in relay.cpp
+	Formalize RELAY_DEBUG 1 in relay.cpp
 
 	Add log levels in relay development.
 
@@ -12,17 +12,13 @@ DONE
 
 	Second log level is packets received, plus unknown packets and packet filter fails
 
-RELAY
-
 	Third log level is debug with all packet processing logs
-
-	------------------
 
 	Fourth log level is spam with all other logs enabled, including printing out tables etc.
 
-	------------------
-
 	RELAY_DEVELOPMENT -> RELAY_DEBUG
+
+RELAY
 
 	------------------
 
