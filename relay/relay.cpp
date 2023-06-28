@@ -5208,17 +5208,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
         {
-            // todo: fix up here
-
             relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route response packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED]++;
 
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored route response packet. wrong packet size (%d)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. wrong packet size (%d) (thread %d)", from_string, packet_bytes, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5237,9 +5233,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored route response packet. could not find session\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. could not find session (thread %d)", from_string );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
@@ -5256,18 +5250,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( sequence <= session->server_to_client_sequence )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored route response packet. packet already received (%" PRId64 " <= %" PRId64 ")\n", from_string, sequence, session->server_to_client_sequence );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. packet already received (%" PRId64 " <= %" PRId64 ") (thread %d)", from_string, sequence, session->server_to_client_sequence, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored route response packet. header did not verify\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. header did not verify (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
@@ -5289,11 +5279,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( route_response_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( route_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
-                    printf( "[%s] forwarding route response packet to previous hop %s\n", from_string, prev_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding route response packet to previous hop %s (thread %d)", from_string, prev_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
 
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
 
@@ -5311,11 +5301,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( route_response_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( route_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
-                    printf( "[%s] forwarding route response packet to previous hop %s\n", from_string, prev_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding route response packet to previous hop %s (thread %d)", from_string, prev_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
 
                     relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
 
@@ -5333,9 +5323,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignoring continue request. wrong packet size (%d)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring continue request. wrong packet size (%d) (thread %d)", from_string, packet_bytes, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5343,18 +5331,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_continue_token_t token;
             if ( relay_read_encrypted_continue_token( &p, &token, relay->relay_backend_public_key, relay->relay_private_key ) != RELAY_OK )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignoring continue request. could not read continue token\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring continue request. could not read continue token (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_READ_TOKEN]++;
                 continue;
             }
 
             if ( token.expire_timestamp < relay_timestamp( relay ) )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "ignored continue request. token expired\n" );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored continue request. token expired (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                 continue;
             }
@@ -5365,18 +5349,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored continue request. could not find session\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored continue request. could not find session (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
             if ( session->expire_timestamp != token.expire_timestamp )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                printf( "Session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
                 relay->counters[RELAY_COUNTER_SESSION_CONTINUED]++;
             }
 
@@ -5400,11 +5380,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( continue_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( continue_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->next_address, next_hop_address );
-                    printf( "[%s] forwarding continue request packet to next hop %s (public address)\n", from_string, next_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    printf( "[%s] forwarding continue request packet to next hop %s (public address) (thread %d)", from_string, next_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
@@ -5421,11 +5401,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( continue_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( continue_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->next_address, next_hop_address );
-                    printf( "[%s] forwarding continue request packet to next hop %s (internal address)\n", from_string, next_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding continue request packet to next hop %s (internal address) (thread %d)", from_string, next_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS]++;
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
@@ -5442,9 +5422,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored continue response packet. wrong packet size (%d)\n", from_string, packet_bytes );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored continue response packet. wrong packet size (%d) (thread %d)", from_string, packet_bytes, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5463,9 +5441,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored continue response packet. could not find session\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored continue response packet. could not find session (%d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
@@ -5482,18 +5458,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( sequence <= session->server_to_client_sequence )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored continue response packet. packet already received (%" PRId64 " <= %" PRId64 ")\n", from_string, sequence, session->server_to_client_sequence );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored continue response packet. packet already received (%" PRId64 " <= %" PRId64 ") (%d)", from_string, sequence, session->server_to_client_sequence, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-#if INTENSIVE_RELAY_DEBUGGING
-                printf( "[%s] ignored continue response packet. header did not verify\n", from_string );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored continue response packet. header did not verify (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
@@ -5515,11 +5487,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( continue_response_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( continue_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
-                    printf( "[%s] forwarding continue response packet to previous hop %s (public address)\n", from_string, prev_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding continue response packet to previous hop %s (public address) (thread %d)", from_string, prev_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
                     relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS]++;
              
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
@@ -5536,11 +5508,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( continue_response_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( continue_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
-#if INTENSIVE_RELAY_DEBUGGING
+#if RELAY_DEVELOPMENT
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->prev_address, prev_hop_address );
-                    printf( "[%s] forwarding continue response packet to previous hop %s (internal address)\n", from_string, prev_hop_address );
-#endif // #if INTENSIVE_RELAY_DEBUGGING
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding continue response packet to previous hop %s (internal address) (thread %d)", from_string, prev_hop_address, relay->thread_index );
+#endif // #if RELAY_DEVELOPMENT
                     relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS]++;
              
                     relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
@@ -5551,6 +5523,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET )
         {
+            // todo: conversion from here
+
             relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received client to server packet (thread %d)", from_string, relay->thread_index );
             
             relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED]++;

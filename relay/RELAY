@@ -22,6 +22,35 @@ RELAY
 
 	------------------
 
+	RELAY_DEVELOPMENT -> RELAY_DEBUG
+
+	------------------
+
+	Build two relay binaries
+
+	relay-debug-[version]
+	relay-release-[version]
+
+	Make sure func tests etc. use the debug binary.
+
+	When deploying to environments use the release binary by default (but you can switch with relay version)
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	Extend soak test to send random session packest
 
 	Should also include valid route token, continue tokens, but with garbage data in them -- to make sure we are safe even if the relay backend has bugs, it won't crash out the relay.
