@@ -8,9 +8,9 @@ DONE
 
 	Verify happy path 
 
-RELAY
-
 	Update relay func tests to work with new token structure
+
+RELAY
 
 	Verify relay func tests pass.
 
