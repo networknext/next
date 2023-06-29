@@ -18,6 +18,7 @@ import (
 	"time"
 	"net"
 	"context"
+	"math/rand"
 
 	"github.com/networknext/accelerate/modules/constants"
 	"github.com/networknext/accelerate/modules/common"
@@ -126,6 +127,12 @@ func soak_test_relay() {
 
 	clientAddress := make([]net.UDPAddr, NumSockets)
 
+	sessionId := make([]uint64, NumSockets)
+	sessionVersion := make([]uint8, NumSockets)
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
 	for i := 0; i < NumSockets; i++ {
 		lc := net.ListenConfig{}
 		lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
@@ -137,7 +144,7 @@ func soak_test_relay() {
 		clientAddress[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
 	}
 
-	serverAddress := core.ParseAddress("127.0.0.1:2000")
+	relayAddress := core.ParseAddress("127.0.0.1:2000")
 
  	for {
 
@@ -146,7 +153,7 @@ func soak_test_relay() {
 		for i := 0; i < NumSockets; i++ {
 			packet := make([]byte, common.RandomInt(1,10*1024))
 			common.RandomBytes(packet[:])
-			conn[i].WriteToUDP(packet, &serverAddress)
+			conn[i].WriteToUDP(packet, &relayAddress)
 		}
 
  		// send a bunch of random packets that pass the packet filters
@@ -158,12 +165,78 @@ func soak_test_relay() {
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			conn[i].WriteToUDP(packet, &serverAddress)
+			conn[i].WriteToUDP(packet, &relayAddress)
 		}
+
+		// send valid route request packets
+
+		for i := 0; i < NumSockets; i++ {
+			if rand.Intn(1000) == 0 {
+				packet := make([]byte, 18 + 111*2)
+				common.RandomBytes(packet[:])
+				packet[0] = 9 // ROUTE_REQUEST_PACKET
+				token := core.RouteToken{}
+				sessionId[i] = rand.Uint64()
+				sessionVersion[i] = 0
+				token.SessionId = sessionId[i]
+				token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+				token.NextAddress = clientAddress[i]
+				token.PrevAddress = clientAddress[i]
+				core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				packetLength := len(packet)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				conn[i].WriteToUDP(packet, &relayAddress)
+			}
+		}
+
+		// todo: route response
+
+		// send valid continue request packets
+
+		for i := 0; i < NumSockets; i++ {
+			if rand.Intn(100) == 0 {
+				packet := make([]byte, 18 + 57*2)
+				common.RandomBytes(packet[:])
+				packet[0] = 15 // CONTINUE_REQUEST_PACKET
+				token := core.ContinueToken{}
+				token.SessionId = sessionId[i]
+				token.SessionVersion = sessionVersion[i]
+				sessionVersion[i]++
+				token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+				core.WriteEncryptedContinueToken(&token, packet[16:], privateKey, publicKey)
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				packetLength := len(packet)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				conn[i].WriteToUDP(packet, &relayAddress)
+			}
+		}
+
+		// todo: continue response
+
+		// todo: client to server
+
+		// todo: server to client
+
+		// todo: session ping
+
+		// todo: session pong
+
+		// todo: near relay ping
 
 		// wait
 

@@ -24,24 +24,42 @@ DONE
 
 RELAY
 
-	Debug and fix why the happy path doesn't always work in semaphore
-
-	------------------
-
 	Extend soak test to send random session packets
 
-	Should also include valid route token, continue tokens, but with garbage data in them -- to make sure we are safe even if the relay backend has bugs, it won't crash out the relay.
-
 	------------------
 
-	Move the relay soak test into a more official place and have a mode where it can run in Linux for 10 minutes under semaphore.
+	Move the relay soak test binary into dist
 
-	------------------
+	Extend relay soak test to have a command line parameter that specifies run forever, or 10 minutes only.
+
+	Setup semaphore with a new job to run the relay soak test for 10 minutes
 
 	Verify with semaphore than the update relay receives packets across n threads on linux (SO_REUSEPORT)
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------------
 
 	Add test_relay_stats func test
 
 	------------------
+
+	Debug and fix why the happy path doesn't always work in semaphore
+
+	------------------
+
+	*** FINISHED ***

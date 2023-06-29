@@ -5331,7 +5331,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
                     relay_address_to_string( &session->next_address, next_hop_address );
-                    printf( "[%s] forwarding continue request packet to next hop %s (public address) (thread %d)", from_string, next_hop_address, relay->thread_index );
+                    relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] forwarding continue request packet to next hop %s (public address) (thread %d)", from_string, next_hop_address, relay->thread_index );
 #endif // #if RELAY_DEBUG
                     relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS]++;
 
