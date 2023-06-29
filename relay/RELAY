@@ -1,61 +1,28 @@
 DONE
 
-	"run soak-test-relay"
-
-	Formalize RELAY_DEBUG 1 in relay.cpp
-
-	Add log levels in relay development.
-
-	Zero log level is no logs (printfs only...)
-
-	First log level is just packets received (like I want in soak test...)
-
-	Second log level is packets received, plus unknown packets and packet filter fails
-
-	Third log level is debug with all packet processing logs
-
-	Fourth log level is spam with all other logs enabled, including printing out tables etc.
-
-	RELAY_DEVELOPMENT -> RELAY_DEBUG
-
-	Build two relay binaries
-
-	relay-debug-[version]
-	relay-release-[version]
-
-	Make sure func tests etc. use the debug binary.
-
-	When deploying to environments use the release binary by default (but you can switch with relay version)
-
-	Implement read/write address IPV4 in C++ in next.cpp
-
-	Implement read/write address IPV4 in Golang (core.go)
-
-	Extend route tokens to include previous address (IPv4 only)
-
-	Remove silly hack around next/prev fitting in the IPv6 space for "WriteAddress".
-
-RELAY
-
-	Update route token in SDK
-
-	Update route token in relay
+	Update route token to have previous address.
 
 	Verify that happy path passes.
 
-	------------------
+	Update relay to always use previous address from route token
+
+	Verify happy path 
+
+RELAY
 
 	Update relay func tests to work with new token structure
 
-	------------------
-
 	Verify relay func tests pass.
-
-	------------------
 
 	Verify sdk func tests pass.
 
 	------------------
+
+	Fix whatever is broken in the backend func tests...
+
+	------------------
+
+	Extend happy path to run relays in debug mode and print counters at end. This way we can actually debug when something doesn't work...
 
 	Add log for relay stdout when happy path doesn't work. 
 
@@ -66,6 +33,10 @@ RELAY
 	------------------
 
 	Debug and fix why the happy path doesn't always work in semaphore
+
+	------------------
+
+	==================================================
 
 	------------------
 
@@ -84,9 +55,5 @@ RELAY
 	------------------
 
 	Add test_relay_stats func test
-
-	------------------
-
-	Load test relay in google cloud.
 
 	------------------

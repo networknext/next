@@ -83,7 +83,6 @@ func TestTriMatrixIndex(t *testing.T) {
 func CheckNilAddress(t *testing.T) {
 	var address *net.UDPAddr
 	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
-	// todo: needs to be renamed to something like "WriteAddressFixed" or whatever... encoding has a variable length version
 	core.WriteAddress(buffer, address)
 	readAddress := core.ReadAddress(buffer)
 	assert.Equal(t, readAddress, net.UDPAddr{})

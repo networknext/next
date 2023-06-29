@@ -32,8 +32,8 @@
 
 #define RELAY_BANDWIDTH_LIMITER_INTERVAL                         1.0
 
-#define RELAY_ROUTE_TOKEN_BYTES                                   76
-#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        116
+#define RELAY_ROUTE_TOKEN_BYTES                                   71
+#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        111
 #define RELAY_CONTINUE_TOKEN_BYTES                                17
 #define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
 
@@ -249,7 +249,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 #if RELAY_DEBUG
 
-    static int relay_log_level = 0;
+    static int relay_log_level = RELAY_LOG_LEVEL_DEBUG; // todo
 
     void relay_printf( int level, const char * format, ... )
     {
@@ -619,10 +619,13 @@ void relay_read_address_ipv4( const uint8_t ** buffer, relay_address_t * address
 {
     const uint8_t * start = *buffer;
 
+    address->type = RELAY_ADDRESS_IPV4;
+
     for ( int j = 0; j < 4; ++j )
     {
         address->data.ipv4[j] = relay_read_uint8( buffer );
     }
+
     address->port = relay_read_uint16( buffer );
 
     (void) start;
@@ -5070,15 +5073,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( token.next_address.type != RELAY_ADDRESS_IPV4 ) // IMPORTANT: IPv4 only for now
-            {
-                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring route request. invalid next address (thread %d)", from_string, relay->thread_index );
-                relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS]++;
-                continue;
-            }
-
-            // todo: invalid previous address
-
             session_key_t key = { token.session_id, token.session_version };
 
             if ( relay->sessions->find(key) == relay->sessions->end() )
@@ -5092,8 +5086,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 session->server_to_client_sequence = 0;
                 session->kbps_up = token.kbps_up;
                 session->kbps_down = token.kbps_down;
-                session->prev_address = from;
                 session->next_address = token.next_address;
+                session->prev_address = token.prev_address;
                 session->prev_internal = token.prev_internal;
                 session->next_internal = token.next_internal;
                 memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
@@ -6766,10 +6760,6 @@ int main( int argc, const char ** argv )
         }
 
         printf( "===========================================================================\n\n" );
-    }
-    else
-    {
-        printf("don't print counters\n" );
     }
 
 #endif // #if RELAY_DEBUG

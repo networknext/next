@@ -1594,6 +1594,8 @@ func test_route_request_packet_token_expired() {
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			token := core.RouteToken{}
+			token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
+			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
 			core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1665,6 +1667,8 @@ func test_route_request_packet_invalid_next_address() {
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			token := core.RouteToken{}
 			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+			token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
+			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
 			core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1755,6 +1759,7 @@ func test_route_request_packet_forward_to_next_hop_public_address() {
 			token := core.RouteToken{}
 			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 			token.NextAddress = clientAddress
+			token.PrevAddress = clientAddress
 			core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1848,7 +1853,9 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 			token := core.RouteToken{}
 			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 			token.NextAddress = clientAddress
+			token.PrevAddress = clientAddress
 			token.NextInternal = 1
+			token.PrevInternal = 1
 			core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -2056,6 +2063,7 @@ func test_route_response_packet_already_received() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -2147,6 +2155,7 @@ func test_route_response_packet_header_did_not_verify() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -2244,6 +2253,7 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 	token.SessionId = sessionId
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	copy(token.PrivateKey[:], sessionKey)
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
@@ -2379,6 +2389,7 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	token.SessionId = sessionId
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	token.NextInternal = 1
 	token.PrevInternal = 1
 	copy(token.PrivateKey[:], sessionKey)
@@ -2785,6 +2796,7 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 		token := core.RouteToken{}
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
@@ -2900,6 +2912,7 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 		token := core.RouteToken{}
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
@@ -3147,6 +3160,7 @@ func test_continue_response_packet_already_received() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -3238,6 +3252,7 @@ func test_continue_response_packet_header_did_not_verify() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -3335,6 +3350,7 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 	token.SessionId = sessionId
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	copy(token.PrivateKey[:], sessionKey)
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
@@ -3470,6 +3486,7 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	token.SessionId = sessionId
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	token.PrevInternal = 1
 	token.NextInternal = 1
 	copy(token.PrivateKey[:], sessionKey)
@@ -3798,6 +3815,7 @@ func test_client_to_server_packet_already_received() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -3889,6 +3907,7 @@ func test_client_to_server_packet_header_did_not_verify() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -3987,6 +4006,7 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		copy(token.PrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
@@ -4141,6 +4161,7 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
 		copy(token.PrivateKey[:], sessionKey)
@@ -4487,6 +4508,7 @@ func test_server_to_client_packet_already_received() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -4578,6 +4600,7 @@ func test_server_to_client_packet_header_did_not_verify() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -4676,6 +4699,7 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		copy(token.PrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
@@ -4830,6 +4854,7 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
 		copy(token.PrivateKey[:], sessionKey)
@@ -5111,6 +5136,7 @@ func test_session_ping_packet_already_received() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -5202,6 +5228,7 @@ func test_session_ping_packet_header_did_not_verify() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -5300,6 +5327,7 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		copy(token.PrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
@@ -5454,6 +5482,7 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
 		copy(token.PrivateKey[:], sessionKey)
@@ -5735,6 +5764,7 @@ func test_session_pong_packet_already_received() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -5826,6 +5856,7 @@ func test_session_pong_packet_header_did_not_verify() {
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
@@ -5924,6 +5955,7 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		copy(token.PrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
@@ -6078,6 +6110,7 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
 		copy(token.PrivateKey[:], sessionKey)
@@ -6236,6 +6269,7 @@ func test_session_destroy() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		copy(token.PrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
@@ -6315,6 +6349,7 @@ func test_session_expired_route_response_packet() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
@@ -6457,6 +6492,7 @@ func test_session_expired_continue_response_packet() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
@@ -6599,6 +6635,7 @@ func test_session_expired_client_to_server_packet() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
@@ -6741,6 +6778,7 @@ func test_session_expired_server_to_client_packet() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
@@ -6883,6 +6921,7 @@ func test_session_expired_session_ping_packet() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
@@ -7025,6 +7064,7 @@ func test_session_expired_session_pong_packet() {
 		token.SessionId = sessionId
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
+		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte

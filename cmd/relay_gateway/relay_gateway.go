@@ -277,6 +277,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		copy(responsePacket.ExpectedRelayBackendPublicKey[:], relayBackendPublicKey)
 
 		token := core.RouteToken{}
+		token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 10000}
+		token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 20000}
 		core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], relayBackendPrivateKey, relay.PublicKey)
 
 		copy(responsePacket.PingKey[:], pingKey)
