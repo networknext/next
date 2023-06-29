@@ -105,7 +105,6 @@
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED                                        33
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS                   34
 #define RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS                 35
-#define RELAY_COUNTER_ROUTE_REQUEST_PACKET_INVALID_NEXT_ADDRESS                                 36
 
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED                                            40
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE                                          41

@@ -207,10 +207,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_route_request_packet_token_expired
 
-        - name: "test_route_request_packet_invalid_next_address"
-          commands:
-            - cd ./dist && ./func_test_relay test_route_request_packet_invalid_next_address
-
         - name: "test_route_request_packet_forward_to_next_hop_public_address"
           commands:
             - cd ./dist && ./func_test_relay test_route_request_packet_forward_to_next_hop_public_address
