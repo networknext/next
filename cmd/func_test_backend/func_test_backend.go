@@ -1901,7 +1901,7 @@ func test_relay_backend() {
 
 	fmt.Printf("waiting until we are ready to serve http\n")
 
-	for {
+	for i := 0; i < 10; i++ {
 
 		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
 			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
