@@ -20,25 +20,11 @@ DONE
 
 	Extend happy path to run relays in debug mode and print counters at end. This way we can actually debug when something doesn't work...
 
-RELAY
-
-	------------------
-
 	Add log for relay stdout when happy path doesn't work. 
 
-	------------------
-
-	Looks like it is randomly failing not being able to send route request packets across the relay.
-
-	The relay may have crashed, or something else -- turning on debugging 
-
-	------------------
+RELAY
 
 	Debug and fix why the happy path doesn't always work in semaphore
-
-	------------------
-
-	==================================================
 
 	------------------
 
