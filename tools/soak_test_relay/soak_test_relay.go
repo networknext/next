@@ -118,7 +118,7 @@ func soak_test_relay() {
 
 	config := RelayConfig{}
 	config.num_threads = 4
-	config.log_level = 3 // todo
+	config.log_level = 1
 	
 	relay_cmd := relay("relay", 2000, config)
 
@@ -153,7 +153,6 @@ func soak_test_relay() {
 
  	for {
 
-/*
  		// send a bunch of random packets that don't pass the basic packet filter
 
 		for i := 0; i < NumSockets; i++ {
@@ -177,7 +176,6 @@ func soak_test_relay() {
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 			conn[i].WriteToUDP(packet, &relayAddress)
 		}
-*/
 
 		// send valid route request packets
 
@@ -350,13 +348,237 @@ func soak_test_relay() {
 			}
 		}
 
-		// todo: client to server
+		// send valid client to server packets
 
-		// todo: server to client
+		for i := 0; i < NumSockets; i++ {
 
-		// todo: session ping
+			if rand.Intn(10) == 0 {
 
-		// todo: session pong
+				packet := make([]byte, 18 + 33 + rand.Intn(1024))
+				
+				packet[0] = 11 // CLIENT_TO_SERVER_PACKET
+				binary.LittleEndian.PutUint64(packet[16:], sessionSequence[i])
+				binary.LittleEndian.PutUint64(packet[16+8:], sessionId[i])
+
+				nonce := [12]byte{}
+				binary.LittleEndian.PutUint32(nonce[0:], 11) // CLIENT_TO_SERVER_PACKET
+				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
+
+				additional := packet[16+8:16+8+8+1]
+
+				buffer := packet[16+8+8+1:18+33-2]
+
+				encryptedLength := uint64(0)
+
+				additionalLength := uint64(9)
+
+				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
+					(*C.uchar)(&buffer[0]),
+					(*C.ulonglong)(&encryptedLength),
+					(*C.uchar)(&buffer[0]),
+					(C.ulonglong)(0),
+					(*C.uchar)(&additional[0]),
+					(C.ulonglong)(additionalLength),
+					(*C.uchar)(nil),
+					(*C.uchar)(&nonce[0]),
+					(*C.uchar)(&sessionKey[i][0]),
+				)
+
+				if result != 0 {
+					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
+				}
+
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				
+				packetLength := len(packet)
+				
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				conn[i].WriteToUDP(packet, &relayAddress)
+
+				sessionSequence[i]++
+			}
+		}
+
+		// send valid server to client packets
+
+		for i := 0; i < NumSockets; i++ {
+
+			if rand.Intn(10) == 0 {
+
+				packet := make([]byte, 18 + 33 + rand.Intn(1024))
+				
+				packet[0] = 12 // SERVER_TO_CLIENT_PACKET
+				binary.LittleEndian.PutUint64(packet[16:], sessionSequence[i])
+				binary.LittleEndian.PutUint64(packet[16+8:], sessionId[i])
+
+				nonce := [12]byte{}
+				binary.LittleEndian.PutUint32(nonce[0:], 12) // SERVER_TO_CLIENT_PACKET
+				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
+
+				additional := packet[16+8:16+8+8+1]
+
+				buffer := packet[16+8+8+1:18+33-2]
+
+				encryptedLength := uint64(0)
+
+				additionalLength := uint64(9)
+
+				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
+					(*C.uchar)(&buffer[0]),
+					(*C.ulonglong)(&encryptedLength),
+					(*C.uchar)(&buffer[0]),
+					(C.ulonglong)(0),
+					(*C.uchar)(&additional[0]),
+					(C.ulonglong)(additionalLength),
+					(*C.uchar)(nil),
+					(*C.uchar)(&nonce[0]),
+					(*C.uchar)(&sessionKey[i][0]),
+				)
+
+				if result != 0 {
+					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
+				}
+
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				
+				packetLength := len(packet)
+				
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				conn[i].WriteToUDP(packet, &relayAddress)
+
+				sessionSequence[i]++
+			}
+		}
+
+		// send session ping packets
+
+		for i := 0; i < NumSockets; i++ {
+
+			if rand.Intn(100) == 0 {
+
+				packet := make([]byte, 18 + 33 + 8)
+				
+				packet[0] = 13 // SESSION_PING_PACKET
+				binary.LittleEndian.PutUint64(packet[16:], sessionSequence[i])
+				binary.LittleEndian.PutUint64(packet[16+8:], sessionId[i])
+
+				nonce := [12]byte{}
+				binary.LittleEndian.PutUint32(nonce[0:], 13) // SESSION_PING_PACKET
+				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
+
+				additional := packet[16+8:16+8+8+1]
+
+				buffer := packet[16+8+8+1:18+33-2]
+
+				encryptedLength := uint64(0)
+
+				additionalLength := uint64(9)
+
+				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
+					(*C.uchar)(&buffer[0]),
+					(*C.ulonglong)(&encryptedLength),
+					(*C.uchar)(&buffer[0]),
+					(C.ulonglong)(0),
+					(*C.uchar)(&additional[0]),
+					(C.ulonglong)(additionalLength),
+					(*C.uchar)(nil),
+					(*C.uchar)(&nonce[0]),
+					(*C.uchar)(&sessionKey[i][0]),
+				)
+
+				if result != 0 {
+					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
+				}
+
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				
+				packetLength := len(packet)
+				
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				conn[i].WriteToUDP(packet, &relayAddress)
+
+				sessionSequence[i]++
+			}
+		}
+
+		// send session pong packets
+
+		for i := 0; i < NumSockets; i++ {
+
+			if rand.Intn(100) == 0 {
+
+				packet := make([]byte, 18 + 33 + 8)
+				
+				packet[0] = 14 // SESSION_PONG_PACKET
+				binary.LittleEndian.PutUint64(packet[16:], sessionSequence[i])
+				binary.LittleEndian.PutUint64(packet[16+8:], sessionId[i])
+
+				nonce := [12]byte{}
+				binary.LittleEndian.PutUint32(nonce[0:], 14) // SESSION_PONG_PACKET
+				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
+
+				additional := packet[16+8:16+8+8+1]
+
+				buffer := packet[16+8+8+1:18+33-2]
+
+				encryptedLength := uint64(0)
+
+				additionalLength := uint64(9)
+
+				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
+					(*C.uchar)(&buffer[0]),
+					(*C.ulonglong)(&encryptedLength),
+					(*C.uchar)(&buffer[0]),
+					(C.ulonglong)(0),
+					(*C.uchar)(&additional[0]),
+					(C.ulonglong)(additionalLength),
+					(*C.uchar)(nil),
+					(*C.uchar)(&nonce[0]),
+					(*C.uchar)(&sessionKey[i][0]),
+				)
+
+				if result != 0 {
+					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
+				}
+
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				
+				packetLength := len(packet)
+				
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				conn[i].WriteToUDP(packet, &relayAddress)
+
+				sessionSequence[i]++
+			}
+		}
 
 		time.Sleep(10 * time.Millisecond)
 	}
