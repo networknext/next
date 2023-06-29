@@ -24,9 +24,9 @@ DONE
 
 	Extend soak test to send random session packets
 
-RELAY
-
 	Move the relay soak test binary into dist
+
+RELAY
 
 	Extend relay soak test to have a command line parameter that specifies run forever, or 10 minutes only.
 

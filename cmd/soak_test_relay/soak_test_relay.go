@@ -41,8 +41,8 @@ var TestRelayBackendPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 var TestRelayBackendPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
 
 const (
-	relayBin   = "./dist/relay-debug"
-	backendBin = "./dist/func_backend"
+	relayBin   = "./relay-debug"
+	backendBin = "./func_backend"
 )
 
 type RelayConfig struct {
@@ -108,11 +108,15 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 
 // =======================================================================================================================
 
-func soak_test_relay() {
+func soak_test_relay(run_forever bool) {
 
 	fmt.Printf("\nsoak_test_relay\n\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	if backend_cmd == nil {
+		panic("failed to run backend")
+	}
 
 	time.Sleep(time.Second)
 
@@ -121,6 +125,10 @@ func soak_test_relay() {
 	config.log_level = 1
 	
 	relay_cmd := relay("relay", 2000, config)
+
+	if relay_cmd == nil {
+		panic("failed to run relay")
+	}
 
 	const NumSockets = 1024
 
@@ -151,7 +159,16 @@ func soak_test_relay() {
 
 	// send packets
 
+	startTime := time.Now()
+
  	for {
+
+ 		if !run_forever {
+	 		duration := time.Now().Sub(startTime)
+	 		if duration > 10 * time.Minute {
+	 			break
+	 		}
+ 		}
 
  		// send a bunch of random packets that don't pass the basic packet filter
 
@@ -583,17 +600,23 @@ func soak_test_relay() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	for i := 0; i < NumSockets; i++{
-		conn[i].Close()
-	}
-
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_cmd.Process.Signal(os.Interrupt)
 
 	backend_cmd.Wait()
 	relay_cmd.Wait()
+
+	for i := 0; i < NumSockets; i++{
+		conn[i].Close()
+	}
+
+	fmt.Printf("Success!\n")
 }
 
 func main() {
-	soak_test_relay()
+	run_forever := true
+	if len(os.Args) > 1 {
+		run_forever = false
+	}
+	soak_test_relay(run_forever)
 }

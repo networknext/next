@@ -511,5 +511,5 @@ func vultr_config() {
 }
 
 func soak_test_relay() {
-	bash("cd dist && ./soak_test_relay")
+	bash("cd dist && ./soak_test_relay stop")
 }
