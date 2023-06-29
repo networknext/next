@@ -9,7 +9,7 @@ import (
 
 const (
 
-	// move things out of here that aren't specific to SDK5 packets
+	// todo: everything in here should be moved to constants module
 
 	SDK5_SessionDataVersion_Min   = 1
 	SDK5_SessionDataVersion_Max   = 1
@@ -79,11 +79,11 @@ const (
 	SDK5_RouteTypeNew      = 1
 	SDK5_RouteTypeContinue = 2
 
-	SDK5_NextRouteTokenSize          = 100
-	SDK5_EncryptedNextRouteTokenSize = SDK5_NextRouteTokenSize + crypto.Box_MacSize
+	SDK5_NextRouteTokenSize          = 71
+	SDK5_EncryptedNextRouteTokenSize = 111
 
-	SDK5_ContinueRouteTokenSize          = 41
-	SDK5_EncryptedContinueRouteTokenSize = SDK5_ContinueRouteTokenSize + crypto.Box_MacSize
+	SDK5_ContinueRouteTokenSize          = 17
+	SDK5_EncryptedContinueRouteTokenSize = 57
 
 	SDK5_MaxMatchValues = 64
 

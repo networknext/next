@@ -570,9 +570,10 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
 	var routeInternal [constants.NEXT_MAX_NODES]bool
 
-	// client node (no address specified...)
+	// client node
 
 	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
+	routeAddresses[0] = state.Request.ClientAddress
 
 	// relay nodes
 

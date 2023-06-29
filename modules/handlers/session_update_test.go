@@ -30,6 +30,7 @@ func FailLocateIP(ip net.IP) (float32, float32) {
 func CreateState() *handlers.SessionUpdateState {
 	state := handlers.SessionUpdateState{}
 	state.Request = &packets.SDK5_SessionUpdateRequestPacket{}
+	state.Request.ClientAddress = core.ParseAddress("127.0.0.1:5000")
 	state.LocateIP = DummyLocateIP
 	state.RouteMatrix = &common.RouteMatrix{}
 	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
