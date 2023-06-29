@@ -22,11 +22,9 @@ DONE
 
 	Add log for relay stdout when happy path doesn't work. 
 
-RELAY
-
 	Extend soak test to send random session packets
 
-	------------------
+RELAY
 
 	Move the relay soak test binary into dist
 
