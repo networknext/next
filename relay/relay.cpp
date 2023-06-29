@@ -248,7 +248,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 #if RELAY_DEBUG
 
-    static int relay_log_level = RELAY_LOG_LEVEL_DEBUG; // todo
+    static int relay_log_level = 0;
 
     void relay_printf( int level, const char * format, ... )
     {
@@ -6746,8 +6746,6 @@ int main( int argc, const char ** argv )
 
     if ( relay_print_counters )
     {
-        printf("print counters\n");
-
         printf( "\n===========================================================================\n" );
 
         for ( int i = 0; i < NUM_RELAY_COUNTERS; i++ )

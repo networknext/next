@@ -228,11 +228,11 @@ func happy_path(wait bool) int {
 
 	fmt.Printf("\nstarting relays:\n\n")
 
-	relay_1_stdout := run("relay", "logs/relay_1")
-	relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001")
-	relay_3_stdout := run("relay", "logs/relay_3", "RELAY_PORT=2002")
-	relay_4_stdout := run("relay", "logs/relay_4", "RELAY_PORT=2003")
-	relay_5_stdout := run("relay", "logs/relay_5", "RELAY_PORT=2004")
+	relay_1_stdout := run("relay", "logs/relay_1", "RELAY_PORT=2000 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1")
+	relay_2_stdout := run("relay", "logs/relay_2", "RELAY_PORT=2001 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1", )
+	relay_3_stdout := run("relay", "logs/relay_3", "RELAY_PORT=2002 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1")
+	relay_4_stdout := run("relay", "logs/relay_4", "RELAY_PORT=2003 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1")
+	relay_5_stdout := run("relay", "logs/relay_5", "RELAY_PORT=2004 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1")
 
 	fmt.Printf("\nverifying relays ...")
 
