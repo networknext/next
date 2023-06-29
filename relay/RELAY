@@ -18,10 +18,6 @@ DONE
 
 	RELAY_DEVELOPMENT -> RELAY_DEBUG
 
-RELAY
-
-	------------------
-
 	Build two relay binaries
 
 	relay-debug-[version]
@@ -31,31 +27,53 @@ RELAY
 
 	When deploying to environments use the release binary by default (but you can switch with relay version)
 
-	------------------
+	Implement read/write address IPV4 in C++ in next.cpp
 
-	Randomize the first byte of packets by deterministically adding bytes from the next 15 bytes to it
+RELAY
 
-	------------------
-
-	Do this in the SDK
-
-	The backend
-
-	And the relay.
+	Implement read/write address IPV4 in Golang (core.go)
 
 	------------------
 
-	Update the relay func test to use the swizzle/unswizzle first byte.
+	Extend route tokens to include previous address (IPv4 only)
+
+	Remove silly hack around next/prev fitting in the IPv6 space for "WriteAddress".
+
+	Apply this to SDK
+
+	server backend
+
+	relay
 
 	------------------
 
-	Verify relay func tests passes
+	Update relay func tests to work with new token structure
 
 	------------------
 
-	Verify SDK func test passes
+	Verify relay func tests pass.
 
 	------------------
+
+	Verify sdk func tests pass.
+
+	------------------
+
+	Verify happy path passes.
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -84,27 +102,6 @@ RELAY
 
 
 
-	------------------
-
-	Implement read/write address IPV4 in C++ and golang
-
-	------------------
-
-	Extend route tokens to include previous address (IPv4 only)
-
-	Remove silly hack around next/prev fitting in the IPv6 space for "WriteAddress".
-
-	Apply this to SDK
-
-	server backend
-
-	relay
-
-	------------------
-
-	Update relay func tests to work with new token structure
-
-	------------------
 
 
 

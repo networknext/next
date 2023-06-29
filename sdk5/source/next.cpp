@@ -53,6 +53,7 @@
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
+#define NEXT_ADDRESS_IPV4_BYTES                                         6
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
 #define NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE                      1000000
@@ -764,7 +765,51 @@ void next_read_bytes( const uint8_t ** p, uint8_t * byte_array, int num_bytes )
     }
 }
 
-// ------------------------------------------------------------
+// ------------------------------------------------------------------------------
+
+void next_write_address_ipv4( uint8_t ** buffer, const next_address_t * address )
+{
+    next_assert( buffer );
+    next_assert( *buffer );
+    next_assert( address );
+
+    uint8_t * start = *buffer;
+
+    (void) buffer;
+
+    next_assert( address->type == NEXT_ADDRESS_IPV4 );
+
+    for ( int i = 0; i < 4; ++i )
+    {
+        next_write_uint8( buffer, address->data.ipv4[i] );
+    }
+    next_write_uint16( buffer, address->port );
+
+    (void) start;
+
+    next_assert( *buffer - start == NEXT_ADDRESS_IPV4_BYTES );
+}
+
+void next_read_address_ipv4( const uint8_t ** buffer, next_address_t * address )
+{
+    const uint8_t * start = *buffer;
+
+    memset( address, 0, sizeof(next_address_t) );
+
+    address->type = NEXT_ADDRESS_IPV4;
+
+    for ( int j = 0; j < 4; ++j )
+    {
+        address->data.ipv4[j] = next_read_uint8( buffer );
+    }
+    address->port = next_read_uint16( buffer );
+
+    (void) start;
+
+    next_assert( *buffer - start == NEXT_ADDRESS_IPV4_BYTES );
+}
+
+// ------------------------------------------------------------------------------
 
 void next_write_address( uint8_t ** buffer, const next_address_t * address )
 {
@@ -17161,6 +17206,27 @@ void test_address_read_and_write()
     next_check( next_address_equal( &c, &read_c ) );
 }
 
+void test_address_ipv4_read_and_write()
+{
+    struct next_address_t address;
+
+    next_address_parse( &address, "127.0.0.1:50000" );
+
+    uint8_t buffer[1024];
+
+    uint8_t * p = buffer;
+
+    next_write_address_ipv4( &p, &address );
+
+    struct next_address_t read;
+
+    const uint8_t * q = buffer;
+
+    next_read_address_ipv4( &q, &read );
+
+    next_check( next_address_equal( &address, &read ) );
+}
+
 void test_platform_socket()
 {
     // non-blocking socket (ipv4)
@@ -20728,6 +20794,7 @@ void next_test()
         RUN_TEST( test_crypto_key_exchange );
         RUN_TEST( test_basic_read_and_write );
         RUN_TEST( test_address_read_and_write );
+        RUN_TEST( test_address_ipv4_read_and_write );
         RUN_TEST( test_platform_socket );
         RUN_TEST( test_platform_thread );
         RUN_TEST( test_platform_mutex );

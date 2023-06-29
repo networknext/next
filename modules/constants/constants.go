@@ -38,9 +38,9 @@ const (
 	// todo: convert these to golang style
 	NEXT_MAX_NODES                      = 7
 	NEXT_ADDRESS_BYTES                  = 19
-	NEXT_ADDRESS_BYTES_SHORT            = 7
-	NEXT_ROUTE_TOKEN_BYTES              = 76
-	NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES    = 116
+	NEXT_ADDRESS_IPV4_BYTES             = 6
+	NEXT_ROUTE_TOKEN_BYTES              = 71
+	NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES    = 111
 	NEXT_CONTINUE_TOKEN_BYTES           = 17
 	NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 

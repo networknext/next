@@ -142,24 +142,6 @@ func WriteAddress(buffer []byte, address *net.UDPAddr) {
 	}
 }
 
-func WriteAddressShort(buffer []byte, address *net.UDPAddr) {
-	if address == nil {
-		buffer[0] = ADDRESS_NONE
-		return
-	}
-	ipv4 := address.IP.To4()
-	port := address.Port
-	if ipv4 != nil {
-		buffer[0] = ADDRESS_IPV4
-		buffer[1] = ipv4[0]
-		buffer[2] = ipv4[1]
-		buffer[3] = ipv4[2]
-		buffer[4] = ipv4[3]
-		buffer[5] = (byte)(port & 0xFF)
-		buffer[6] = (byte)(port >> 8)
-	}
-}
-
 func ReadAddress(buffer []byte) net.UDPAddr {
 	addressType := buffer[0]
 	if addressType == ADDRESS_IPV4 {
@@ -170,12 +152,19 @@ func ReadAddress(buffer []byte) net.UDPAddr {
 	return net.UDPAddr{}
 }
 
-func ReadAddressShort(buffer []byte) net.UDPAddr {
-	addressType := buffer[0]
-	if addressType == ADDRESS_IPV4 {
-		return net.UDPAddr{IP: net.IPv4(buffer[1], buffer[2], buffer[3], buffer[4]), Port: ((int)(binary.LittleEndian.Uint16(buffer[5:])))}
-	}
-	return net.UDPAddr{}
+func WriteAddress_IPv4(buffer []byte, address *net.UDPAddr) {
+	ipv4 := address.IP.To4()
+	port := address.Port
+	buffer[0] = ipv4[0]
+	buffer[1] = ipv4[1]
+	buffer[2] = ipv4[2]
+	buffer[3] = ipv4[3]
+	buffer[4] = (byte)(port & 0xFF)
+	buffer[5] = (byte)(port >> 8)
+}
+
+func ReadAddress_IPv4(buffer []byte) net.UDPAddr {
+	return net.UDPAddr{IP: net.IPv4(buffer[0], buffer[1], buffer[2], buffer[3]), Port: ((int)(binary.LittleEndian.Uint16(buffer[4:])))}
 }
 
 // ---------------------------------------------------
@@ -540,6 +529,7 @@ type RouteToken struct {
 	KbpsUp          uint32
 	KbpsDown        uint32
 	NextAddress     net.UDPAddr
+	PrevAddress     net.UDPAddr
 	NextInternal    uint8
 	PrevInternal    uint8
 	PrivateKey      [crypto.Box_PrivateKeySize]byte
@@ -559,10 +549,11 @@ func WriteRouteToken(token *RouteToken, buffer []byte) {
 	buffer[8+8] = token.SessionVersion
 	binary.LittleEndian.PutUint32(buffer[8+8+1:], token.KbpsUp)
 	binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.KbpsDown)
-	WriteAddressShort(buffer[8+8+1+4+4:], &token.NextAddress)
-	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT] = token.NextInternal
-	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT+1] = token.PrevInternal
-	copy(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES:], token.PrivateKey[:])
+	WriteAddress_IPv4(buffer[8+8+1+4+4:], &token.NextAddress)
+	WriteAddress_IPv4(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES:], &token.PrevAddress)
+	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2] = token.NextInternal
+	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+1] = token.PrevInternal
+	copy(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+2:], token.PrivateKey[:])
 }
 
 func ReadRouteToken(token *RouteToken, buffer []byte) error {
@@ -574,10 +565,11 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 	token.SessionVersion = buffer[8+8]
 	token.KbpsUp = binary.LittleEndian.Uint32(buffer[8+8+1:])
 	token.KbpsDown = binary.LittleEndian.Uint32(buffer[8+8+1+4:])
-	token.NextAddress = ReadAddressShort(buffer[8+8+1+4+4:])
-	token.NextInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT]
-	token.PrevInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES_SHORT+1]
-	copy(token.PrivateKey[:], buffer[8+8+1+4+4+constants.NEXT_ADDRESS_BYTES:])
+	token.NextAddress = ReadAddress_IPv4(buffer[8+8+1+4+4:])
+	token.PrevAddress = ReadAddress_IPv4(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES:])
+	token.NextInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2]
+	token.PrevInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+1]
+	copy(token.PrivateKey[:], buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+2:])
 	return nil
 }
 
@@ -609,8 +601,15 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		token.SessionVersion = sessionVersion
 		token.KbpsUp = kbpsUp
 		token.KbpsDown = kbpsDown
+		if i != 0 {
+			token.PrevAddress = addresses[i-1]
+		} else {
+			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
+		}
 		if i != numNodes-1 {
 			token.NextAddress = addresses[i+1]
+		} else {
+			token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
 		}
 		if i > 0 && i < numNodes-1 {
 			if internal[i] {

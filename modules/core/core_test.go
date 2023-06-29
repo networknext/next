@@ -1025,6 +1025,9 @@ func TestRouteToken(t *testing.T) {
 	routeToken.KbpsUp = 256
 	routeToken.KbpsDown = 512
 	routeToken.NextAddress = core.ParseAddress("127.0.0.1:40000")
+	routeToken.PrevAddress = core.ParseAddress("127.0.0.1:50000")
+	routeToken.NextInternal = 1
+	routeToken.PrevInternal = 1
 	core.RandomBytes(routeToken.PrivateKey[:])
 
 	// write the token to a buffer and read it back in
@@ -1113,6 +1116,9 @@ func TestRouteTokens(t *testing.T) {
 		assert.Equal(t, kbpsUp, routeToken.KbpsUp)
 		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
+		if i != 0 {
+			assert.Equal(t, addresses[i-1].String(), routeToken.PrevAddress.String())
+		}
 		if i != constants.NEXT_MAX_NODES-1 {
 			assert.Equal(t, addresses[i+1].String(), routeToken.NextAddress.String())
 		}
@@ -1121,8 +1127,6 @@ func TestRouteTokens(t *testing.T) {
 		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
-
-// todo: test with internal addresses
 
 func TestContinueToken(t *testing.T) {
 
