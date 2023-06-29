@@ -25,7 +25,7 @@
 #define RELAY_HEADER_BYTES                                        33
 
 #define RELAY_ADDRESS_BYTES                                       19
-#define RELAY_ADDRESS_BYTES_SHORT                                  7
+#define RELAY_ADDRESS_IPV4_BYTES                                   6
 #define RELAY_ADDRESS_BUFFER_SAFETY                               32
 
 #define RELAY_REPLAY_PROTECTION_BUFFER_SIZE                      256
@@ -613,31 +613,21 @@ void relay_read_address( const uint8_t ** buffer, relay_address_t * address )
     assert( *buffer - start == RELAY_ADDRESS_BYTES );
 }
 
-void relay_read_address_short( const uint8_t ** buffer, relay_address_t * address )
+// ----------------------------------------------------------------------------------------------
+
+void relay_read_address_ipv4( const uint8_t ** buffer, relay_address_t * address )
 {
     const uint8_t * start = *buffer;
 
-    address->type = relay_read_uint8( buffer );
-
-    if ( address->type == RELAY_ADDRESS_IPV4 )
+    for ( int j = 0; j < 4; ++j )
     {
-        for ( int j = 0; j < 4; ++j )
-        {
-            address->data.ipv4[j] = relay_read_uint8( buffer );
-        }
-        address->port = relay_read_uint16( buffer );
+        address->data.ipv4[j] = relay_read_uint8( buffer );
     }
-    else
-    {
-        for ( int i = 0; i < RELAY_ADDRESS_BYTES_SHORT - 1; ++i )
-        {
-            uint8_t dummy = relay_read_uint8( buffer ); (void) dummy;
-        }
-    }
+    address->port = relay_read_uint16( buffer );
 
     (void) start;
 
-    assert( *buffer - start == RELAY_ADDRESS_BYTES_SHORT );
+    assert( *buffer - start == RELAY_ADDRESS_IPV4_BYTES );
 }
 
 void relay_read_address_variable( const uint8_t ** p, relay_address_t * address )
@@ -707,7 +697,7 @@ void relay_write_address( uint8_t ** buffer, const relay_address_t * address )
     assert( *buffer - start == RELAY_ADDRESS_BYTES );
 }
 
-void relay_write_address_short( uint8_t ** buffer, const relay_address_t * address )
+void relay_write_address_ipv4( uint8_t ** buffer, const relay_address_t * address )
 {
     assert( buffer );
     assert( *buffer );
@@ -717,26 +707,14 @@ void relay_write_address_short( uint8_t ** buffer, const relay_address_t * addre
 
     (void) buffer;
 
-    if ( address->type == RELAY_ADDRESS_IPV4 )
+    for ( int i = 0; i < 4; ++i )
     {
-        relay_write_uint8( buffer, RELAY_ADDRESS_IPV4 );
-        for ( int i = 0; i < 4; ++i )
-        {
-            relay_write_uint8( buffer, address->data.ipv4[i] );
-        }
-        relay_write_uint16( buffer, address->port );
+        relay_write_uint8( buffer, address->data.ipv4[i] );
     }
-    else
-    {
-        for ( int i = 0; i < RELAY_ADDRESS_BYTES_SHORT; ++i )
-        {
-            relay_write_uint8( buffer, 0 );
-        }
-    }
-
+    relay_write_uint16( buffer, address->port );
     (void) start;
 
-    assert( *buffer - start == RELAY_ADDRESS_BYTES_SHORT );
+    assert( *buffer - start == RELAY_ADDRESS_IPV4_BYTES );
 }
 
 void relay_write_address_variable( uint8_t ** p, const relay_address_t * address )
@@ -2489,6 +2467,7 @@ struct relay_route_token_t
     int kbps_up;
     int kbps_down;
     relay_address_t next_address;
+    relay_address_t prev_address;
     uint8_t next_internal;
     uint8_t prev_internal;
     uint8_t private_key[crypto_box_SECRETKEYBYTES];
@@ -2511,15 +2490,10 @@ void relay_write_route_token( relay_route_token_t * token, uint8_t * buffer, int
     relay_write_uint8( &buffer, token->session_version );
     relay_write_uint32( &buffer, token->kbps_up );
     relay_write_uint32( &buffer, token->kbps_down );
-    relay_write_address_short( &buffer, &token->next_address );
+    relay_write_address_ipv4( &buffer, &token->next_address );
+    relay_write_address_ipv4( &buffer, &token->prev_address );
     relay_write_uint8( &buffer, token->next_internal );
     relay_write_uint8( &buffer, token->prev_internal );
-    for ( int i = 0; i < RELAY_ADDRESS_BYTES - (RELAY_ADDRESS_BYTES_SHORT + 2); ++i )
-    {
-        uint8_t dummy = 0;
-        relay_write_uint8( &buffer, dummy );
-    }
-
     relay_write_bytes( &buffer, token->private_key, crypto_box_SECRETKEYBYTES );
 
     assert( buffer - start == RELAY_ROUTE_TOKEN_BYTES );
@@ -2539,16 +2513,12 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
     token->session_version = relay_read_uint8( &buffer );
     token->kbps_up = relay_read_uint32( &buffer );
     token->kbps_down = relay_read_uint32( &buffer );
-    relay_read_address_short( &buffer, &token->next_address );
+    relay_read_address_ipv4( &buffer, &token->next_address );
+    relay_read_address_ipv4( &buffer, &token->prev_address );
     token->next_internal = relay_read_uint8( &buffer );
     token->prev_internal = relay_read_uint8( &buffer );
-    for ( int i = 0; i < RELAY_ADDRESS_BYTES - (RELAY_ADDRESS_BYTES_SHORT + 2); ++i )
-    {
-        uint8_t dummy = relay_read_uint8( &buffer );
-        (void) dummy;
-    }
-
     relay_read_bytes( &buffer, token->private_key, crypto_box_SECRETKEYBYTES );
+
     assert( buffer - start == RELAY_ROUTE_TOKEN_BYTES );
 }
 
