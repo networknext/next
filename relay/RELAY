@@ -10,11 +10,11 @@ DONE
 
 	Update relay func tests to work with new token structure
 
-RELAY
-
 	Verify relay func tests pass.
 
 	Verify sdk func tests pass.
+
+RELAY
 
 	------------------
 

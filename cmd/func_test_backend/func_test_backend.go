@@ -1898,19 +1898,7 @@ func test_relay_backend() {
 
 	// wait until the relay gateway and relay backend are ready to serve http
 
-	fmt.Printf("waiting until we are ready to serve http\n")
-
-	for {
-
-		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
-			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
-			break
-		}
-
-		time.Sleep(time.Second)
-	}
-
-	fmt.Printf("ready to serve http\n")
+	time.Sleep(10 * time.Second)
 
 	// hammer the relay backend with relay updates
 
