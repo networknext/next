@@ -79,8 +79,8 @@
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
 #define NEXT_MAX_NEAR_RELAYS                                           32
-#define NEXT_ROUTE_TOKEN_BYTES                                         76
-#define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              116
+#define NEXT_ROUTE_TOKEN_BYTES                                         71
+#define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              111
 #define NEXT_CONTINUE_TOKEN_BYTES                                      17
 #define NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES                            57
 #define NEXT_PING_TOKEN_BYTES                                          32
@@ -5048,6 +5048,9 @@ struct next_route_token_t
     int kbps_up;
     int kbps_down;
     next_address_t next_address;
+    next_address_t prev_address;
+    uint8_t next_internal;
+    uint8_t prev_internal;
     uint8_t private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 };
 
@@ -5068,7 +5071,10 @@ void next_write_route_token( next_route_token_t * token, uint8_t * buffer, int b
     next_write_uint8( &buffer, token->session_version );
     next_write_uint32( &buffer, token->kbps_up );
     next_write_uint32( &buffer, token->kbps_down );
-    next_write_address( &buffer, &token->next_address );
+    next_write_address_ipv4( &buffer, &token->next_address );
+    next_write_address_ipv4( &buffer, &token->prev_address );
+    next_write_uint8( &buffer, token->next_internal );
+    next_write_uint8( &buffer, token->prev_internal );
     next_write_bytes( &buffer, token->private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
     next_assert( buffer - start == NEXT_ROUTE_TOKEN_BYTES );
@@ -5088,7 +5094,10 @@ void next_read_route_token( next_route_token_t * token, const uint8_t * buffer )
     token->session_version = next_read_uint8( &buffer );
     token->kbps_up = next_read_uint32( &buffer );
     token->kbps_down = next_read_uint32( &buffer );
-    next_read_address( &buffer, &token->next_address );
+    next_read_address_ipv4( &buffer, &token->next_address );
+    next_read_address_ipv4( &buffer, &token->prev_address );
+    token->next_internal = next_read_uint8( &buffer );
+    token->prev_internal = next_read_uint8( &buffer );
     next_read_bytes( &buffer, token->private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
     next_assert( buffer - start == NEXT_ROUTE_TOKEN_BYTES );
 }
@@ -17502,12 +17511,23 @@ void test_route_token()
     input_token.expire_timestamp = 1234241431241LL;
     input_token.session_id = 1234241431241LL;
     input_token.session_version = 5;
+    
     input_token.next_address.type = NEXT_ADDRESS_IPV4;
     input_token.next_address.data.ipv4[0] = 127;
     input_token.next_address.data.ipv4[1] = 0;
     input_token.next_address.data.ipv4[2] = 0;
     input_token.next_address.data.ipv4[3] = 1;
     input_token.next_address.port = 40000;
+    
+    input_token.prev_address.type = NEXT_ADDRESS_IPV4;
+    input_token.prev_address.data.ipv4[0] = 127;
+    input_token.prev_address.data.ipv4[1] = 0;
+    input_token.prev_address.data.ipv4[2] = 0;
+    input_token.prev_address.data.ipv4[3] = 1;
+    input_token.prev_address.port = 50000;
+
+    input_token.next_internal = 1;
+    input_token.prev_internal = 1;
 
     next_write_route_token( &input_token, buffer, NEXT_ROUTE_TOKEN_BYTES );
 
@@ -17553,6 +17573,9 @@ void test_route_token()
     next_check( input_token.kbps_down == output_token.kbps_down );
     next_check( memcmp( input_token.private_key, output_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES ) == 0 );
     next_check( next_address_equal( &input_token.next_address, &output_token.next_address ) == 1 );
+    next_check( next_address_equal( &input_token.prev_address, &output_token.prev_address ) == 1 );
+    next_check( input_token.next_internal == output_token.next_internal );
+    next_check( input_token.prev_internal == output_token.prev_internal );
 }
 
 void test_continue_token()
