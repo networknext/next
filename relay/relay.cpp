@@ -5265,7 +5265,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route continue request packet (thread %d)", from_string, relay->thread_index );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received continue request packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED]++;
 
@@ -5364,7 +5364,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
         {
-            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received route continue response packet (thread %d)", from_string, relay->thread_index );
+            relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received continue response packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED]++;
 

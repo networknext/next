@@ -12,6 +12,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"os/exec"
@@ -117,7 +118,7 @@ func soak_test_relay() {
 
 	config := RelayConfig{}
 	config.num_threads = 4
-	config.log_level = 1
+	config.log_level = 3 // todo
 	
 	relay_cmd := relay("relay", 2000, config)
 
@@ -129,6 +130,8 @@ func soak_test_relay() {
 
 	sessionId := make([]uint64, NumSockets)
 	sessionVersion := make([]uint8, NumSockets)
+	sessionSequence := make([]uint64, NumSockets)
+	sessionKey := make([][32]byte, NumSockets)
 
 	publicKey := Base64String(TestRelayPublicKey)
 	privateKey := Base64String(TestRelayBackendPrivateKey)
@@ -146,8 +149,11 @@ func soak_test_relay() {
 
 	relayAddress := core.ParseAddress("127.0.0.1:2000")
 
+	// send packets
+
  	for {
 
+/*
  		// send a bunch of random packets that don't pass the basic packet filter
 
 		for i := 0; i < NumSockets; i++ {
@@ -171,6 +177,7 @@ func soak_test_relay() {
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 			conn[i].WriteToUDP(packet, &relayAddress)
 		}
+*/
 
 		// send valid route request packets
 
@@ -182,10 +189,13 @@ func soak_test_relay() {
 				token := core.RouteToken{}
 				sessionId[i] = rand.Uint64()
 				sessionVersion[i] = 0
+				sessionSequence[i] = 1
 				token.SessionId = sessionId[i]
 				token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 				token.NextAddress = clientAddress[i]
 				token.PrevAddress = clientAddress[i]
+				core.RandomBytes(sessionKey[i][:])
+				copy(token.PrivateKey[:], sessionKey[i][:])
 				core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
@@ -199,7 +209,63 @@ func soak_test_relay() {
 			}
 		}
 
-		// todo: route response
+		// send valid route response packets
+
+		for i := 0; i < NumSockets; i++ {
+
+			if rand.Intn(100) == 0 {
+
+				packet := make([]byte, 18 + 33)
+				
+				packet[0] = 10 // ROUTE_RESPONSE_PACKET
+				binary.LittleEndian.PutUint64(packet[16:], sessionSequence[i])
+				binary.LittleEndian.PutUint64(packet[16+8:], sessionId[i])
+
+				nonce := [12]byte{}
+				binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET 
+				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
+
+				additional := packet[16+8:16+8+8+1]
+
+				buffer := packet[16+8+8+1:18+33-2]
+
+				encryptedLength := uint64(0)
+
+				additionalLength := uint64(9)
+
+				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
+					(*C.uchar)(&buffer[0]),
+					(*C.ulonglong)(&encryptedLength),
+					(*C.uchar)(&buffer[0]),
+					(C.ulonglong)(0),
+					(*C.uchar)(&additional[0]),
+					(C.ulonglong)(additionalLength),
+					(*C.uchar)(nil),
+					(*C.uchar)(&nonce[0]),
+					(*C.uchar)(&sessionKey[i][0]),
+				)
+
+				if result != 0 {
+					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
+				}
+
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				
+				packetLength := len(packet)
+				
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				conn[i].WriteToUDP(packet, &relayAddress)
+
+				sessionSequence[i]++
+			}
+		}
 
 		// send valid continue request packets
 
@@ -226,7 +292,63 @@ func soak_test_relay() {
 			}
 		}
 
-		// todo: continue response
+		// send valid continue response packets
+
+		for i := 0; i < NumSockets; i++ {
+
+			if rand.Intn(100) == 0 {
+
+				packet := make([]byte, 18 + 33)
+				
+				packet[0] = 16 // CONTINUE_RESPONSE_PACKET
+				binary.LittleEndian.PutUint64(packet[16:], sessionSequence[i])
+				binary.LittleEndian.PutUint64(packet[16+8:], sessionId[i])
+
+				nonce := [12]byte{}
+				binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET 
+				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
+
+				additional := packet[16+8:16+8+8+1]
+
+				buffer := packet[16+8+8+1:18+33-2]
+
+				encryptedLength := uint64(0)
+
+				additionalLength := uint64(9)
+
+				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
+					(*C.uchar)(&buffer[0]),
+					(*C.ulonglong)(&encryptedLength),
+					(*C.uchar)(&buffer[0]),
+					(C.ulonglong)(0),
+					(*C.uchar)(&additional[0]),
+					(C.ulonglong)(additionalLength),
+					(*C.uchar)(nil),
+					(*C.uchar)(&nonce[0]),
+					(*C.uchar)(&sessionKey[i][0]),
+				)
+
+				if result != 0 {
+					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
+				}
+
+				var magic [constants.MagicBytes]byte
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				
+				packetLength := len(packet)
+				
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				
+				conn[i].WriteToUDP(packet, &relayAddress)
+
+				sessionSequence[i]++
+			}
+		}
 
 		// todo: client to server
 
@@ -235,10 +357,6 @@ func soak_test_relay() {
 		// todo: session ping
 
 		// todo: session pong
-
-		// todo: near relay ping
-
-		// wait
 
 		time.Sleep(10 * time.Millisecond)
 	}
