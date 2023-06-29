@@ -29,21 +29,19 @@ DONE
 
 	Implement read/write address IPV4 in C++ in next.cpp
 
-RELAY
-
 	Implement read/write address IPV4 in Golang (core.go)
-
-	------------------
 
 	Extend route tokens to include previous address (IPv4 only)
 
 	Remove silly hack around next/prev fitting in the IPv6 space for "WriteAddress".
 
-	Apply this to SDK
+RELAY
 
-	server backend
+	Update route token in SDK
 
-	relay
+	Update route token in relay
+
+	Verify that happy path passes.
 
 	------------------
 
@@ -59,36 +57,6 @@ RELAY
 
 	------------------
 
-	Verify happy path passes.
-
-	------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	------------------
-
 	Add log for relay stdout when happy path doesn't work. 
 
 	Looks like it is randomly failing not being able to send route request packets across the relay.
@@ -97,39 +65,7 @@ RELAY
 
 	------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Debug and fix why the happy path doesn't always work in semaphore
 
 	------------------
 
@@ -143,6 +79,10 @@ RELAY
 
 	------------------
 
+	Verify with semaphore than the update relay receives packets across n threads on linux (SO_REUSEPORT)
+
+	------------------
+
 	Add test_relay_stats func test
 
 	------------------
@@ -150,8 +90,3 @@ RELAY
 	Load test relay in google cloud.
 
 	------------------
-
-	Load test relay on bare metal (get some 10G NICs to run locally?)
-
-	------------------
- 
