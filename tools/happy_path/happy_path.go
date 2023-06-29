@@ -686,6 +686,18 @@ func happy_path(wait bool) int {
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", client_stdout)
 		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_1_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_2_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_3_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_4_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", relay_5_stdout)
+		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 

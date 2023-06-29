@@ -18,11 +18,11 @@ DONE
 
 	I think it's just breaking trying to read stdout on linux from a running process.
 
+	Extend happy path to run relays in debug mode and print counters at end. This way we can actually debug when something doesn't work...
+
 RELAY
 
 	------------------
-
-	Extend happy path to run relays in debug mode and print counters at end. This way we can actually debug when something doesn't work...
 
 	Add log for relay stdout when happy path doesn't work. 
 
