@@ -1872,6 +1872,7 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=")
 
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output
@@ -1898,7 +1899,19 @@ func test_relay_backend() {
 
 	// wait until the relay gateway and relay backend are ready to serve http
 
-	time.Sleep(10 * time.Second)
+	fmt.Printf("waiting until we are ready to serve http\n")
+
+	for {
+
+		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
+			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	fmt.Printf("ready to serve http\n")
 
 	// hammer the relay backend with relay updates
 

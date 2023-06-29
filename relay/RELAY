@@ -14,11 +14,11 @@ DONE
 
 	Verify sdk func tests pass.
 
-RELAY
-
-	------------------
-
 	Fix whatever is broken in the backend func tests...
+
+	I think it's just breaking trying to read stdout on linux from a running process.
+
+RELAY
 
 	------------------
 
