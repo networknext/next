@@ -217,6 +217,9 @@ promotions:
   - name: "Functional Test Database"
     pipeline_file: functional-test-database.yml
 
+  - name: "Soak Test Relay"
+    pipeline_file: soak-test-relay.yml
+
   - name: "Load Tests"
     pipeline_file: load-tests.yml
 

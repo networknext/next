@@ -121,7 +121,7 @@ func soak_test_relay(run_forever bool) {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 8
 	config.log_level = 1
 	
 	relay_cmd := relay("relay", 2000, config)
