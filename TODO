@@ -1,8 +1,10 @@
 DONE
 
+	Finish the relay
+
 TODO
 
-	Finish the relay
+	Relay ping packet stuff needs to go into spam. It's too much logs to see what's going on in happy path.
 
 	----------------
 

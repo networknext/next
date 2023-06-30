@@ -34,11 +34,9 @@ DONE
 
 	Network Next terraform provider.
 
+	Multithreaded relay with session database per-socket thread (no contention)
+
 TODO
-
-	Multithreaded relay with session database per-socket thread (no contention)				-- 99%
-
-	------------
 
 	Setup dev backend and relays in dev with terraform
 
@@ -67,6 +65,8 @@ TODO
 	------------
 
 	Load testing
+
+	(load test relay, load test system end-to-end etc...)
 
 	------------
 
