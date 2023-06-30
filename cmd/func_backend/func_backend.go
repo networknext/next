@@ -324,6 +324,59 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		requestPacket.RelayCounters[:],
 	)
 
+	if backend.mode == BACKEND_MODE_ZERO_MAGIC {
+		if (requestPacket.RelayFlags & constants.RelayFlags_ShuttingDown) != 0 {
+			fmt.Printf("relay is shutting down\n")
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_ZERO_MAGIC {
+		for i := 0; i < constants.NumRelayCounters; i++ {
+			if requestPacket.RelayCounters[i] != 0 {
+				fmt.Printf("counter %d: %d\n", i, requestPacket.RelayCounters[i])
+			}
+		}
+	}
+
+	if backend.mode == BACKEND_MODE_ZERO_MAGIC {
+
+		if requestPacket.SessionCount > 0 {
+			fmt.Printf("session count = %d\n", requestPacket.SessionCount)
+		}
+
+		if requestPacket.EnvelopeBandwidthUpKbps > 0 {
+			fmt.Printf("envelope bandwidth up kbps = %d\n", requestPacket.EnvelopeBandwidthUpKbps)
+		}
+
+		if requestPacket.EnvelopeBandwidthDownKbps > 0 {
+			fmt.Printf("envelope bandwidth down kbps = %d\n", requestPacket.EnvelopeBandwidthDownKbps)
+		}
+
+		if requestPacket.PacketsSentPerSecond > 0 {
+			fmt.Printf("packets sent per-second = %.2f\n", requestPacket.PacketsSentPerSecond)
+		}
+
+		if requestPacket.PacketsReceivedPerSecond > 0 {
+			fmt.Printf("packets received per-second = %.2f\n", requestPacket.PacketsReceivedPerSecond)
+		}
+
+		if requestPacket.BandwidthSentKbps > 0 {
+			fmt.Printf("bandwidth sent kbps = %.2f\n", requestPacket.BandwidthSentKbps)
+		}
+
+		if requestPacket.BandwidthReceivedKbps > 0 {
+			fmt.Printf("bandwidth received kbps = %.2f\n", requestPacket.BandwidthReceivedKbps)
+		}
+
+		if requestPacket.NearPingsPerSecond > 0 {
+			fmt.Printf("near pings per-second = %.2f\n", requestPacket.NearPingsPerSecond)
+		}
+
+		if requestPacket.RelayPingsPerSecond > 0 {
+			fmt.Printf("relay pings per-second = %.2f\n", requestPacket.RelayPingsPerSecond)
+		}
+	}
+
 	backend.mutex.Unlock()
 
 	// build response packet

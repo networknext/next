@@ -4695,7 +4695,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 message->thread_index = relay->thread_index;
                 message->session_count = relay->sessions->size();
                 message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
-                message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_up;
+                message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_down;
                 message->packets_sent_per_second = (float) packets_sent_per_second;
                 message->packets_received_per_second = (float) packets_received_per_second;
                 message->bandwidth_sent_kbps = (float) bandwidth_sent_kbps;

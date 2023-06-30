@@ -1,58 +1,18 @@
 DONE
 
-	Update route token to have previous address.
+	test_relay_backend_counters
 
-	Verify that happy path passes.
-
-	Update relay to always use previous address from route token
-
-	Verify happy path 
-
-	Update relay func tests to work with new token structure
-
-	Verify relay func tests pass.
-
-	Verify sdk func tests pass.
-
-	Fix whatever is broken in the backend func tests...
-
-	I think it's just breaking trying to read stdout on linux from a running process.
-
-	Extend happy path to run relays in debug mode and print counters at end. This way we can actually debug when something doesn't work...
-
-	Add log for relay stdout when happy path doesn't work. 
-
-	Extend soak test to send random session packets
-
-	Move the relay soak test binary into dist
+	Extend clean shutdown test to make sure the backend sees the shutting down flag
 
 RELAY
 
-	Extend relay soak test to have a command line parameter that specifies run forever, or 10 minutes only.
-
-	Setup semaphore with a new job to run the relay soak test for 10 minutes
-
-	Verify with semaphore than the update relay receives packets across n threads on linux (SO_REUSEPORT)
+	test_relay_backend_stats
 
 	------------------
 
+	Speed up relay func tests by iterating once per-second until condition is met
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	------------------
-
-	Add test_relay_stats func test
+	esp. for waiting until initilaize
 
 	------------------
 
@@ -60,4 +20,8 @@ RELAY
 
 	------------------
 
-	*** FINISHED ***
+	I forgot to implement code that enforces bandwidth envelopes at the relay level.
+
+	... =p
+
+	------------------

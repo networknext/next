@@ -449,3 +449,11 @@ blocks:
         - name: "test_session_expired_session_pong_packet"
           commands:
             - cd ./dist && ./func_test_relay test_session_expired_session_pong_packet
+
+        - name: "test_relay_backend_stats"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_stats
+
+        - name: "test_relay_backend_counters"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_counters

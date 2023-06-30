@@ -754,7 +754,7 @@ func test_clean_shutdown() {
 
 	fmt.Printf("test_clean_shutdown\n")
 
-	backend_cmd, _ := backend("DEFAULT")
+	backend_cmd, backend_stdout := backend("ZERO_MAGIC")
 
 	time.Sleep(time.Second)
 
@@ -792,7 +792,12 @@ func test_clean_shutdown() {
 	}
 
 	if !strings.Contains(relay_stdout.String(), "Done.") {
-		panic("relay crashed while shutting down\n")
+		panic("relay crashed while shutting down")
+	}
+
+	if !strings.Contains(backend_stdout.String(), "relay is shutting down") {
+		fmt.Printf("=============================================\n%s==============================================\n", backend_stdout.String())
+		panic("missing relay is shutting down on backend")
 	}
 }
 
@@ -7086,6 +7091,169 @@ func test_session_expired_session_pong_packet() {
 
 // =======================================================================================================================
 
+func test_relay_backend_stats() {
+
+	fmt.Printf("test_relay_backend_counters\n")
+
+	backend_cmd, backend_stdout := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 16
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	time.Sleep(5 * time.Second)
+
+	// send a route request packet to create a session on the relay
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
+	packet := make([]byte, 18 + 111*2)
+	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	token := core.RouteToken{}
+	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
+	token.KbpsUp = 512
+	token.KbpsDown = 1024
+	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
+	var magic [constants.MagicBytes]byte
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	packetLength := len(packet)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	conn.WriteToUDP(packet, &serverAddress)
+
+	// wait and make sure we see stats in the backend
+
+	time.Sleep(5*time.Second)
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		fmt.Printf("=====================================================\n%s======================================================\n", relay_stdout.String())
+		panic("could not initialize relay")
+	}
+
+	if !strings.Contains(backend_stdout.String(), "session count = 1") {
+		fmt.Printf("=====================================================\n%s======================================================\n", backend_stdout.String())
+		panic("missing session count")
+	}
+
+	if !strings.Contains(backend_stdout.String(), "envelope bandwidth up kbps = 512") {
+		fmt.Printf("=====================================================\n%s======================================================\n", backend_stdout.String())
+		panic("missing envelope bandwidth up kbps")
+	}
+
+	if !strings.Contains(backend_stdout.String(), "envelope bandwidth down kbps = 1024") {
+		fmt.Printf("=====================================================\n%s======================================================\n", backend_stdout.String())
+		panic("missing envelope bandwidth down kbps")
+	}
+}
+
+func test_relay_backend_counters() {
+
+	fmt.Printf("test_relay_backend_counters\n")
+
+	backend_cmd, backend_stdout := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.num_threads = 16
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	// send a route request packet to create a session on the relay
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	publicKey := Base64String(TestRelayPublicKey)
+	privateKey := Base64String(TestRelayBackendPrivateKey)
+
+	packet := make([]byte, 18 + 111*2)
+	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	token := core.RouteToken{}
+	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+	token.NextAddress = clientAddress
+	token.PrevAddress = clientAddress
+	core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
+	var magic [constants.MagicBytes]byte
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	packetLength := len(packet)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	conn.WriteToUDP(packet, &serverAddress)
+
+	// verify that we see the session created counter on the relay backned
+
+	for i := 0; i < 10; i++ {
+		time.Sleep(time.Second)
+	}
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	if !strings.Contains(backend_stdout.String(), "counter 6: 1") {
+		fmt.Printf("=====================================================\n%s======================================================\n", backend_stdout.String())
+		panic("missing session created counter on backend")
+	}
+}
+
+// =======================================================================================================================
+
 type test_function func()
 
 func main() {
@@ -7174,13 +7342,14 @@ func main() {
 		test_session_pong_packet_forward_to_previous_hop_public_address,
 		test_session_pong_packet_forward_to_previous_hop_internal_address,
 		test_session_destroy,
-
 		test_session_expired_route_response_packet,
 		test_session_expired_continue_response_packet,
 		test_session_expired_client_to_server_packet,
 		test_session_expired_server_to_client_packet,
 		test_session_expired_session_ping_packet,
 		test_session_expired_session_pong_packet,
+		test_relay_backend_stats,
+		test_relay_backend_counters,
 	}
 
 	var tests []test_function
