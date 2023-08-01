@@ -29,7 +29,7 @@ func FailLocateIP(ip net.IP) (float32, float32) {
 
 func CreateState() *handlers.SessionUpdateState {
 	state := handlers.SessionUpdateState{}
-	state.Request = &packets.SDK5_SessionUpdateRequestPacket{}
+	state.Request = &packets.SDK_SessionUpdateRequestPacket{}
 	state.Request.ClientAddress = core.ParseAddress("127.0.0.1:5000")
 	state.LocateIP = DummyLocateIP
 	state.RouteMatrix = &common.RouteMatrix{}
@@ -373,7 +373,7 @@ func Test_SessionUpdate_NewSession(t *testing.T) {
 
 	handlers.SessionUpdate_NewSession(state)
 
-	assert.Equal(t, state.Output.Version, uint32(packets.SDK5_SessionDataVersion_Write))
+	assert.Equal(t, state.Output.Version, uint32(packets.SDK_SessionDataVersion_Write))
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, uint32(1))
 	assert.Equal(t, state.Output.RouteState.ABTest, abTest)
@@ -407,9 +407,9 @@ func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 	assert.True(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
 }
 
-func writeSessionData(sessionData packets.SDK5_SessionData) []byte {
+func writeSessionData(sessionData packets.SDK_SessionData) []byte {
 
-	buffer := [packets.SDK5_MaxSessionDataSize]byte{}
+	buffer := [packets.SDK_MaxSessionDataSize]byte{}
 
 	writeStream := encoding.CreateWriteStream(buffer[:])
 
@@ -586,7 +586,7 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
 }
 
 func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
@@ -633,7 +633,7 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
 
 	assert.Equal(t, state.RealPacketLoss, float32(10.0))
 }
@@ -682,7 +682,7 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
 
 	assert.Equal(t, state.RealOutOfOrder, float32(10.0))
 }
@@ -724,7 +724,7 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK5_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
 
 	assert.Equal(t, state.RealJitter, float32(100.0))
 }
@@ -945,9 +945,9 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -965,11 +965,11 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1078,9 +1078,9 @@ func Test_SessionUpdate_BuildNextTokens_OnlyUseInternalAddressWithSameSupplier(t
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -1098,11 +1098,11 @@ func Test_SessionUpdate_BuildNextTokens_OnlyUseInternalAddressWithSameSupplier(t
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1213,9 +1213,9 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -1233,11 +1233,11 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1365,9 +1365,9 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeContinue))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeContinue))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedContinueRouteTokenSize)
 
 	privateKeys := make([][]byte, NumTokens)
 
@@ -1379,11 +1379,11 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedContinueRouteTokenSize * i
+		index := packets.SDK_EncryptedContinueRouteTokenSize * i
 
 		token := core.ContinueToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedContinueRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedContinueRouteTokenSize]
 
 		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1609,9 +1609,9 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -1629,11 +1629,11 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1817,9 +1817,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -1837,11 +1837,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -1889,18 +1889,18 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	// validate continue
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeContinue))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeContinue))
 
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedContinueRouteTokenSize)
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedContinueRouteTokenSize * i
+		index := packets.SDK_EncryptedContinueRouteTokenSize * i
 
 		token := core.ContinueToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedContinueRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedContinueRouteTokenSize]
 
 		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2040,9 +2040,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -2060,11 +2060,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2124,12 +2124,12 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	// validate new route
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 
 	const NewTokens = 4
 
 	assert.Equal(t, state.Response.NumTokens, int32(NewTokens))
-	assert.Equal(t, len(state.Response.Tokens), NewTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NewTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses = make([]net.UDPAddr, NewTokens)
 	addresses[1] = relay_address_b
@@ -2145,11 +2145,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	for i := 0; i < NewTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2314,9 +2314,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -2334,11 +2334,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2532,9 +2532,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -2552,11 +2552,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -2747,9 +2747,9 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	const NumTokens = 5
 
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK5_RouteTypeNew))
+	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	addresses := make([]net.UDPAddr, NumTokens)
 	addresses[1] = relay_address_a
@@ -2767,11 +2767,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	for i := 0; i < NumTokens; i++ {
 
-		index := packets.SDK5_EncryptedNextRouteTokenSize * i
+		index := packets.SDK_EncryptedNextRouteTokenSize * i
 
 		token := core.RouteToken{}
 
-		tokenData := state.Response.Tokens[index : index+packets.SDK5_EncryptedNextRouteTokenSize]
+		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
 		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
 		assert.Nil(t, err)
@@ -3464,9 +3464,9 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3492,9 +3492,9 @@ func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3509,7 +3509,7 @@ func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
 	handlers.SessionUpdate_Post(state)
 
 	assert.False(t, state.GetNearRelays)
-	assert.Equal(t, state.Output.SessionDuration, uint32(packets.SDK5_BillingSliceSeconds))
+	assert.Equal(t, state.Output.SessionDuration, uint32(packets.SDK_BillingSliceSeconds))
 }
 
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
@@ -3520,9 +3520,9 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3539,7 +3539,7 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	assert.False(t, state.GetNearRelays)
 	assert.True(t, (state.SessionFlags&constants.SessionFlags_EverOnNext) != 0)
-	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK5_BillingSliceSeconds))
+	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK_BillingSliceSeconds))
 }
 
 func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
@@ -3550,9 +3550,9 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3585,9 +3585,9 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3618,9 +3618,9 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3648,9 +3648,9 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK5_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK5_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK5_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3729,13 +3729,13 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	// check packet signature
 
-	assert.True(t, packets.SDK5_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
+	assert.True(t, packets.SDK_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
 
 	// verify we can read the response packet
 
 	packetData = packetData[16:]
 
-	packet := packets.SDK5_SessionUpdateResponsePacket{}
+	packet := packets.SDK_SessionUpdateResponsePacket{}
 	err := packets.ReadPacket(packetData, &packet)
 	assert.Nil(t, err)
 
@@ -3749,7 +3749,7 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	// verify that we can serialize read the session data inside the response
 
-	sessionData := packets.SDK5_SessionData{}
+	sessionData := packets.SDK_SessionData{}
 	err = packets.ReadPacket(packet.SessionData[:packet.SessionDataBytes], &sessionData)
 	assert.Nil(t, err)
 

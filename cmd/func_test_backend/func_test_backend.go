@@ -1473,7 +1473,7 @@ func test_session_data_serialize() {
 
 		writePacket := packets.GenerateRandomSessionData()
 
-		readPacket := packets.SDK5_SessionData{}
+		readPacket := packets.SDK_SessionData{}
 
 		const BufferSize = 10 * 1024
 

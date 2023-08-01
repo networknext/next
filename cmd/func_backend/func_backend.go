@@ -517,7 +517,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// ignore packets that are too small
 
-	if len(packetData) < packets.SDK5_MinPacketBytes {
+	if len(packetData) < packets.SDK_MinPacketBytes {
 		fmt.Printf("packet is too small")
 		return
 	}
@@ -526,7 +526,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	packetType := packetData[0]
 
-	if packetType != packets.SDK5_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK5_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK5_SESSION_UPDATE_REQUEST_PACKET && packetType != packets.SDK5_MATCH_DATA_REQUEST_PACKET {
+	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET && packetType != packets.SDK_MATCH_DATA_REQUEST_PACKET {
 		fmt.Printf("unsupported packet type %d", packetType)
 		return
 	}
@@ -559,8 +559,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	switch packetType {
 
-	case packets.SDK5_SERVER_INIT_REQUEST_PACKET:
-		packet := packets.SDK5_ServerInitRequestPacket{}
+	case packets.SDK_SERVER_INIT_REQUEST_PACKET:
+		packet := packets.SDK_ServerInitRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read server init request packet from %s: %v", from.String(), err)
 			return
@@ -568,8 +568,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		ProcessServerInitRequestPacket(conn, from, &packet)
 		break
 
-	case packets.SDK5_SERVER_UPDATE_REQUEST_PACKET:
-		packet := packets.SDK5_ServerUpdateRequestPacket{}
+	case packets.SDK_SERVER_UPDATE_REQUEST_PACKET:
+		packet := packets.SDK_ServerUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read server update request packet from %s: %v", from.String(), err)
 			return
@@ -577,8 +577,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		ProcessServerUpdateRequestPacket(conn, from, &packet)
 		break
 
-	case packets.SDK5_SESSION_UPDATE_REQUEST_PACKET:
-		packet := packets.SDK5_SessionUpdateRequestPacket{}
+	case packets.SDK_SESSION_UPDATE_REQUEST_PACKET:
+		packet := packets.SDK_SessionUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read session update request packet from %s: %v", from.String(), err)
 			return
@@ -586,8 +586,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		ProcessSessionUpdateRequestPacket(conn, from, &packet)
 		break
 
-	case packets.SDK5_MATCH_DATA_REQUEST_PACKET:
-		packet := packets.SDK5_MatchDataRequestPacket{}
+	case packets.SDK_MATCH_DATA_REQUEST_PACKET:
+		packet := packets.SDK_MatchDataRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
 			core.Error("could not read match data request packet from %s: %v", from.String(), err)
 			return
@@ -602,7 +602,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, packetType int, packet P) {
 
-	packetData, err := packets.SDK5_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestServerBackendPrivateKey)
+	packetData, err := packets.SDK_WritePacket(packet, packetType, 4096, &serverBackendAddress, to, TestServerBackendPrivateKey)
 	if err != nil {
 		core.Error("failed to write response packet: %v", err)
 		return
@@ -614,34 +614,34 @@ func SendResponsePacket[P packets.Packet](conn *net.UDPConn, to *net.UDPAddr, pa
 	}
 }
 
-func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerInitRequestPacket) {
+func ProcessServerInitRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ServerInitRequestPacket) {
 
 	fmt.Printf("server init request from %s\n", from.String())
 
-	responsePacket := &packets.SDK5_ServerInitResponsePacket{
+	responsePacket := &packets.SDK_ServerInitResponsePacket{
 		RequestId: requestPacket.RequestId,
-		Response:  packets.SDK5_ServerInitResponseOK,
+		Response:  packets.SDK_ServerInitResponseOK,
 	}
 
 	responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = GetMagic()
 
-	SendResponsePacket(conn, from, packets.SDK5_SERVER_INIT_RESPONSE_PACKET, responsePacket)
+	SendResponsePacket(conn, from, packets.SDK_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_ServerUpdateRequestPacket) {
+func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ServerUpdateRequestPacket) {
 
 	fmt.Printf("server update request from %s\n", from.String())
 
-	responsePacket := &packets.SDK5_ServerUpdateResponsePacket{
+	responsePacket := &packets.SDK_ServerUpdateResponsePacket{
 		RequestId: requestPacket.RequestId,
 	}
 
 	responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = GetMagic()
 
-	SendResponsePacket(conn, from, packets.SDK5_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
+	SendResponsePacket(conn, from, packets.SDK_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_SessionUpdateRequestPacket) {
+func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_SessionUpdateRequestPacket) {
 
 	fmt.Printf("session update request from %s\n", from.String())
 
@@ -649,11 +649,11 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		return
 	}
 
-	if requestPacket.PlatformType == packets.SDK5_PlatformTypeUnknown {
+	if requestPacket.PlatformType == packets.SDK_PlatformTypeUnknown {
 		panic("platform type is unknown")
 	}
 
-	if requestPacket.ConnectionType == packets.SDK5_ConnectionTypeUnknown {
+	if requestPacket.ConnectionType == packets.SDK_ConnectionTypeUnknown {
 		panic("connection type is unknown")
 	}
 
@@ -738,14 +738,14 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	newSession := requestPacket.SliceNumber == 0
 
-	var sessionData packets.SDK5_SessionData
+	var sessionData packets.SDK_SessionData
 
 	if newSession {
 
-		sessionData.Version = packets.SDK5_SessionDataVersion_Write
+		sessionData.Version = packets.SDK_SessionDataVersion_Write
 		sessionData.SessionId = requestPacket.SessionId
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
-		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK5_BillingSliceSeconds
+		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK_BillingSliceSeconds
 
 	} else {
 
@@ -758,7 +758,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		}
 
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
-		sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+		sessionData.ExpireTimestamp += packets.SDK_BillingSliceSeconds
 	}
 
 	// get data about all active relays on the relay backend
@@ -816,17 +816,17 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	// build response packet
 
-	var responsePacket *packets.SDK5_SessionUpdateResponsePacket
+	var responsePacket *packets.SDK_SessionUpdateResponsePacket
 
 	if !takeNetworkNext {
 
 		// direct route
 
-		responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
+		responsePacket = &packets.SDK_SessionUpdateResponsePacket{
 			SessionId:     requestPacket.SessionId,
 			SliceNumber:   requestPacket.SliceNumber,
 			NumNearRelays: int32(numRelays),
-			RouteType:     int32(packets.SDK5_RouteTypeDirect),
+			RouteType:     int32(packets.SDK_RouteTypeDirect),
 			NumTokens:     0,
 			Tokens:        nil,
 		}
@@ -840,7 +840,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		// next
 
-		const MaxRouteRelays = packets.SDK5_MaxRelaysPerRoute
+		const MaxRouteRelays = packets.SDK_MaxRelaysPerRoute
 
 		var routeRelayIds [MaxRouteRelays]uint64
 		var routeRelayAddresses [MaxRouteRelays]net.UDPAddr
@@ -865,7 +865,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		// build token data
 
-		routerPrivateKey := [packets.SDK5_PrivateKeyBytes]byte{}
+		routerPrivateKey := [packets.SDK_PrivateKeyBytes]byte{}
 		copy(routerPrivateKey[:], TestRelayBackendPrivateKey)
 
 		numTokens := numRouteRelays + 2
@@ -889,21 +889,20 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		var tokenData []byte
 
 		if sameRoute {
-			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+			tokenData = make([]byte, numTokens*packets.SDK_EncryptedContinueRouteTokenSize)
 			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey[:])
-			routeType = packets.SDK5_RouteTypeContinue
+			routeType = packets.SDK_RouteTypeContinue
 		} else {
-			sessionData.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+			sessionData.ExpireTimestamp += packets.SDK_BillingSliceSeconds
 			sessionData.SessionVersion++
-
-			tokenData = make([]byte, numTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+			tokenData = make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
 			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, tokenInternal, routerPrivateKey[:])
-			routeType = packets.SDK5_RouteTypeNew
+			routeType = packets.SDK_RouteTypeNew
 		}
 
 		// contruct the session update response packet
 
-		responsePacket = &packets.SDK5_SessionUpdateResponsePacket{
+		responsePacket = &packets.SDK_SessionUpdateResponsePacket{
 			SessionId:   requestPacket.SessionId,
 			SliceNumber: requestPacket.SliceNumber,
 			RouteType:   routeType,
@@ -912,8 +911,8 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			Tokens:      tokenData,
 		}
 
-		if numRelays > packets.SDK5_MaxNearRelays {
-			numRelays = packets.SDK5_MaxNearRelays
+		if numRelays > packets.SDK_MaxNearRelays {
+			numRelays = packets.SDK_MaxNearRelays
 		}
 
 		responsePacket.NumNearRelays = int32(numRelays)
@@ -929,7 +928,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		return
 	}
 
-	packetSessionData, err := packets.WritePacket[*packets.SDK5_SessionData](responsePacket.SessionData[:], &sessionData)
+	packetSessionData, err := packets.WritePacket[*packets.SDK_SessionData](responsePacket.SessionData[:], &sessionData)
 
 	if err != nil {
 		fmt.Printf("error: failed to write session data\n")
@@ -938,10 +937,10 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	responsePacket.SessionDataBytes = int32(len(packetSessionData))
 
-	SendResponsePacket(conn, from, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
+	SendResponsePacket(conn, from, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK5_MatchDataRequestPacket) {
+func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_MatchDataRequestPacket) {
 
 	fmt.Printf("server match data request\n")
 
@@ -960,11 +959,11 @@ func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, request
 		}
 	}
 
-	responsePacket := &packets.SDK5_MatchDataResponsePacket{
+	responsePacket := &packets.SDK_MatchDataResponsePacket{
 		SessionId: requestPacket.SessionId,
 	}
 
-	SendResponsePacket(conn, from, packets.SDK5_MATCH_DATA_RESPONSE_PACKET, responsePacket)
+	SendResponsePacket(conn, from, packets.SDK_MATCH_DATA_RESPONSE_PACKET, responsePacket)
 }
 
 // -----------------------------------------------
@@ -1055,7 +1054,7 @@ func main() {
 
 	go StartUDPServer()
 
-	fmt.Printf("started functional backend on ports %d and %d (sdk5)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
 	// Wait for shutdown signal
 	termChan := make(chan os.Signal, 1)

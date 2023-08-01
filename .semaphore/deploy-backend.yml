@@ -35,8 +35,8 @@ blocks:
 
         - name: "SDK"
           commands:
-            - artifact pull workflow libnext5.so
-            - gsutil cp libnext5.so $ARTIFACT_BUCKET
+            - artifact pull workflow libnext.so
+            - gsutil cp libnext.so $ARTIFACT_BUCKET
 
         - name: "Analytics"
           commands:

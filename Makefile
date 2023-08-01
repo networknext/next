@@ -11,7 +11,7 @@ else
 	CXX = g++
 endif
 
-SDKNAME5 = libnext5
+SDKNAME5 = libnext
 
 MODULE ?= "github.com/networknext/accelerate/modules/common"
 
@@ -64,24 +64,24 @@ format:
 	@gofmt -s -w .
 	@./scripts/tabs2spaces.sh
 
-# Build sdk5
+# Build sdk
 
 SDK_FLAGS := -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 
 
-dist/$(SDKNAME5).so: $(shell find sdk5 -type f)
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -fPIC -I../sdk5/include -shared -o $(SDKNAME5).so ../sdk5/source/*.cpp $(LDFLAGS)
+dist/$(SDKNAME5).so: $(shell find sdk -type f)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -fPIC -I../sdk/include -shared -o $(SDKNAME5).so ../sdk/source/*.cpp $(LDFLAGS)
 	@echo $@
 
 dist/client: dist/$(SDKNAME5).so cmd/client/client.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk5/include -o client ../cmd/client/client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o client ../cmd/client/client.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 dist/server: dist/$(SDKNAME5).so cmd/server/server.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk5/include -o server ../cmd/server/server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o server ../cmd/server/server.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
-dist/test: dist/$(SDKNAME5).so sdk5/test.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk5/include -o test ../sdk5/test.cpp $(SDKNAME5).so $(LDFLAGS)
+dist/test: dist/$(SDKNAME5).so sdk/test.cpp
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o test ../sdk/test.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 # Build relay
@@ -94,22 +94,22 @@ dist/relay-release: relay/*
 	@$(CXX) $(CXX_FLAGS) -O3 -DNDEBUG -o dist/relay-release relay/*.cpp $(LDFLAGS)
 	@echo $@
 
-# Functional tests (sdk5)
+# Functional tests (sdk)
 
 dist/func_server: dist/$(SDKNAME5).so cmd/func_server/*
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_server ../cmd/func_server/func_server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o func_server ../cmd/func_server/func_server.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 dist/func_client: dist/$(SDKNAME5).so cmd/func_client/*
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o func_client ../cmd/func_client/func_client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o func_client ../cmd/func_client/func_client.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 # Raspberry
 
 dist/raspberry_client: dist/$(SDKNAME5).so cmd/raspberry_client/raspberry_client.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o raspberry_client ../cmd/raspberry_client/raspberry_client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o raspberry_client ../cmd/raspberry_client/raspberry_client.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@
 
 dist/raspberry_server: dist/$(SDKNAME5).so cmd/raspberry_server/raspberry_server.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk5/include -o raspberry_server ../cmd/raspberry_server/raspberry_server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o raspberry_server ../cmd/raspberry_server/raspberry_server.cpp $(SDKNAME5).so $(LDFLAGS)
 	@echo $@

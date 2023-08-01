@@ -95,8 +95,8 @@ func main() {
 
 	if command == "test" {
 		test()
-	} else if command == "test-sdk5" || command == "test5" {
-		test_sdk5()
+	} else if command == "test-sdk" {
+		test_sdk()
 	} else if command == "magic-backend" {
 		magic_backend()
 	} else if command == "relay-gateway" {
@@ -129,8 +129,8 @@ func main() {
 		bigquery_emulator()
 	} else if command == "setup-emulators" {
 		setup_emulators()
-	} else if command == "func-test-sdk5" {
-		func_test_sdk5(args[2:])
+	} else if command == "func-test-sdk" {
+		func_test_sdk(args[2:])
 	} else if command == "func-test-relay" {
 		func_test_relay(args[2:])
 	} else if command == "func-test-backend" {
@@ -216,7 +216,7 @@ func test() {
 	bash("go test ./modules/...")
 }
 
-func test_sdk5() {
+func test_sdk() {
 	bash("cd ./dist && ./test")
 }
 
@@ -324,8 +324,8 @@ func setup_emulators() {
 	bash("go run ./tools/setup_emulators/setup_emulators.go")
 }
 
-func func_test_sdk5(tests []string) {
-	command := "cd dist && ./func_test_sdk5"
+func func_test_sdk(tests []string) {
+	command := "cd dist && ./func_test_sdk"
 	if len(tests) > 0 {
 		for _, test := range tests {
 			bash(fmt.Sprintf("%s %s", command, test))

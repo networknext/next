@@ -56,7 +56,7 @@ blocks:
             - artifact pull workflow func_backend_soak_test_relay
             - artifact pull workflow soak_test_relay
             - artifact pull workflow relay-debug
-            - artifact pull workflow libnext5.so
+            - artifact pull workflow libnext.so
 
             - mv func_backend_soak_test_relay func_backend
 

@@ -36,14 +36,14 @@ type SessionUpdateState struct {
 
 	From *net.UDPAddr
 
-	Input packets.SDK5_SessionData // sent up from the SDK. previous slice.
+	Input packets.SDK_SessionData // sent up from the SDK. previous slice.
 
-	Output packets.SDK5_SessionData // sent down to the SDK. current slice.
+	Output packets.SDK_SessionData // sent down to the SDK. current slice.
 
 	ResponsePacket []byte // response packet sent back to the "from" if non-zero length.
 
-	Request       *packets.SDK5_SessionUpdateRequestPacket
-	Response      packets.SDK5_SessionUpdateResponsePacket
+	Request       *packets.SDK_SessionUpdateRequestPacket
+	Response      packets.SDK_SessionUpdateResponsePacket
 	Database      *db.Database
 	RouteMatrix   *common.RouteMatrix
 	Datacenter    *db.Datacenter
@@ -248,11 +248,11 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 
 	core.Debug("new session")
 
-	state.Output.Version = packets.SDK5_SessionDataVersion_Write
+	state.Output.Version = packets.SDK_SessionDataVersion_Write
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
 	state.Output.StartTimestamp = uint64(time.Now().Unix())
-	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK5_BillingSliceSeconds*2 + 1
+	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK_BillingSliceSeconds*2 + 1
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output
@@ -302,15 +302,15 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	state.Output = state.Input
 	state.Output.SliceNumber += 1
-	state.Output.ExpireTimestamp += packets.SDK5_BillingSliceSeconds
+	state.Output.ExpireTimestamp += packets.SDK_BillingSliceSeconds
 
 	/*
 		Track total next envelope bandwidth sent up and down
 	*/
 
 	if state.Input.RouteState.Next {
-		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK5_BillingSliceSeconds / 8
-		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK5_BillingSliceSeconds / 8
+		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK_BillingSliceSeconds / 8
+		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK_BillingSliceSeconds / 8
 	}
 
 	/*
@@ -616,7 +616,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	// write the tokens
 
-	tokenData := make([]byte, numTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	tokenData := make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
 
 	sessionId := state.Output.SessionId
 	sessionVersion := uint8(state.Output.SessionVersion)
@@ -626,7 +626,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], routeInternal[:], state.RelayBackendPrivateKey[:])
 
-	state.Response.RouteType = packets.SDK5_RouteTypeNew
+	state.Response.RouteType = packets.SDK_RouteTypeNew
 	state.Response.NumTokens = numTokens
 	state.Response.Tokens = tokenData
 }
@@ -659,7 +659,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	// build the tokens
 
-	tokenData := make([]byte, numTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+	tokenData := make([]byte, numTokens*packets.SDK_EncryptedContinueRouteTokenSize)
 
 	sessionId := state.Output.SessionId
 	sessionVersion := uint8(state.Output.SessionVersion)
@@ -667,7 +667,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RelayBackendPrivateKey[:])
 
-	state.Response.RouteType = packets.SDK5_RouteTypeContinue
+	state.Response.RouteType = packets.SDK_RouteTypeContinue
 	state.Response.NumTokens = numTokens
 	state.Response.Tokens = tokenData
 }
@@ -922,7 +922,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		here that must run if we are taking network next vs. direct
 	*/
 
-	if state.Response.RouteType != packets.SDK5_RouteTypeDirect {
+	if state.Response.RouteType != packets.SDK_RouteTypeDirect {
 		core.Debug("session takes network next")
 	} else {
 		core.Debug("session goes direct")
@@ -932,7 +932,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		Track session duration
 	*/
 
-	state.Output.SessionDuration += packets.SDK5_BillingSliceSeconds
+	state.Output.SessionDuration += packets.SDK_BillingSliceSeconds
 
 	/*
 		Track duration of time spent on network next, and if the session has ever been on network next.
@@ -940,7 +940,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Input.RouteState.Next {
 		state.SessionFlags |= constants.SessionFlags_EverOnNext
-		state.Output.DurationOnNext += packets.SDK5_BillingSliceSeconds
+		state.Output.DurationOnNext += packets.SDK_BillingSliceSeconds
 		core.Debug("session has been on network next for %d seconds", state.Output.DurationOnNext)
 	}
 
@@ -1003,7 +1003,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	writeStream := encoding.CreateWriteStream(state.Response.SessionData[:])
 
-	state.Output.Version = packets.SDK5_SessionDataVersion_Write
+	state.Output.Version = packets.SDK_SessionDataVersion_Write
 
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
@@ -1028,7 +1028,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		core.Debug("%s-------------------------------------", *state.Debug)
 	}
 
-	state.ResponsePacket, err = packets.SDK5_WritePacket(&state.Response, packets.SDK5_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK5_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
+	state.ResponsePacket, err = packets.SDK_WritePacket(&state.Response, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write session update response packet: %v", err)
 		state.SessionFlags |= constants.SessionFlags_FailedToWriteResponsePacket

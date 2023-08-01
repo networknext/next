@@ -56,7 +56,7 @@ blocks:
             - artifact pull workflow func_backend_relay
             - artifact pull workflow func_test_relay
             - artifact pull workflow relay-debug
-            - artifact pull workflow libnext5.so
+            - artifact pull workflow libnext.so
 
             - mv func_backend_relay func_backend
 
@@ -64,7 +64,7 @@ blocks:
             - chmod +x func_test_relay
             - chmod +x relay-debug
 
-            - sudo mv libnext5.so /usr/local/lib
+            - sudo mv libnext.so /usr/local/lib
             - sudo ldconfig
 
             - cd ~
@@ -287,7 +287,7 @@ blocks:
             - artifact pull workflow func_backend_relay
             - artifact pull workflow func_test_relay
             - artifact pull workflow relay-debug
-            - artifact pull workflow libnext5.so
+            - artifact pull workflow libnext.so
 
             - mv func_backend_relay func_backend
 
@@ -295,7 +295,7 @@ blocks:
             - chmod +x func_test_relay
             - chmod +x relay-debug
 
-            - sudo mv libnext5.so /usr/local/lib
+            - sudo mv libnext.so /usr/local/lib
             - sudo ldconfig
 
             - cd ~

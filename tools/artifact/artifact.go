@@ -38,7 +38,7 @@ func main() {
 	bash(fmt.Sprintf("cp deploy/app.service dist/artifact/%s/app.service", service))
 
 	if artifact == "raspberry_client" || artifact == "raspberry_server" {
-		bash(fmt.Sprintf("cp dist/libnext5.so dist/artifact/%s/libnext5.so", service))
+		bash(fmt.Sprintf("cp dist/libnext.so dist/artifact/%s/libnext.so", service))
 	}
 
 	bash(fmt.Sprintf("cd dist/artifact/%s && tar -zcf ../../%s.tar.gz *", service, service))

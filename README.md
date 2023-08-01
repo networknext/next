@@ -131,10 +131,10 @@ This indicates that the test environment is working correctly.
 
 ```console
 root@linux:~/accelerate# make build
-dist/func_test_sdk5
+dist/func_test_sdk
 dist/relay
 dist/func_backend
-dist/libnext5.so
+dist/libnext.so
 dist/analytics
 dist/magic_backend
 dist/client
@@ -321,10 +321,10 @@ verifying map cruncher received map update messages ... OK
 
 ```console
 gaffer@macbook accelerate % make build
-dist/func_test_sdk5
+dist/func_test_sdk
 dist/relay
 dist/func_backend
-dist/libnext5.so
+dist/libnext.so
 dist/analytics
 dist/magic_backend
 dist/client

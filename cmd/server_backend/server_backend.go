@@ -184,7 +184,7 @@ func ready() bool {
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
-	handler := handlers.SDK5_Handler{}
+	handler := handlers.SDK_Handler{}
 
 	handler.PingKey = pingKey
 	handler.ServerBackendAddress = serverBackendAddress
@@ -218,7 +218,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		}
 	*/
 
-	handlers.SDK5_PacketHandler(&handler, conn, from, packetData)
+	handlers.SDK_PacketHandler(&handler, conn, from, packetData)
 }
 
 func locateIP_Local(ip net.IP) (float32, float32) {

@@ -52,14 +52,14 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 				for j := 0; j < NumServers; j++ {
 
-					packet := packets.SDK5_ServerUpdateRequestPacket{
+					packet := packets.SDK_ServerUpdateRequestPacket{
 						Version:      packets.SDKVersion{5, 0, 0},
 						BuyerId:      BuyerId,
 						RequestId:    rand.Uint64(),
 						DatacenterId: DatacenterId,
 					}
 
-					packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SERVER_UPDATE_REQUEST_PACKET, packets.SDK5_MaxPacketBytes, &serverAddresses[j], &ServerBackendAddress, BuyerPrivateKey[:])
+					packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, packets.SDK_MaxPacketBytes, &serverAddresses[j], &ServerBackendAddress, BuyerPrivateKey[:])
 					if err != nil {
 						panic("failed to write server update packet")
 					}
@@ -99,13 +99,13 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numServer
 	database.BuyerMap[BuyerId] = &buyer
 	database.DatacenterMap[DatacenterId] = &datacenter
 
-	handler := handlers.SDK5_Handler{}
+	handler := handlers.SDK_Handler{}
 	handler.Database = database
 	handler.RouteMatrix = &common.RouteMatrix{}
 	handler.ServerBackendAddress = ServerBackendAddress
 	handler.ServerBackendPublicKey = ServerBackendPublicKey
 	handler.ServerBackendPrivateKey = ServerBackendPrivateKey
-	handler.MaxPacketSize = packets.SDK5_MaxPacketBytes
+	handler.MaxPacketSize = packets.SDK_MaxPacketBytes
 	handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 		return [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}
 	}
@@ -119,8 +119,8 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numServer
 			for {
 				select {
 				case update := <-updateChannel:
-					handlers.SDK5_PacketHandler(&handler, nil, &update.from, update.packetData)
-					if !handler.Events[handlers.SDK5_HandlerEvent_SentServerUpdateResponsePacket] {
+					handlers.SDK_PacketHandler(&handler, nil, &update.from, update.packetData)
+					if !handler.Events[handlers.SDK_HandlerEvent_SentServerUpdateResponsePacket] {
 						panic("failed to process server update")
 					}
 					atomic.AddUint64(numServerUpdatesProcessed, 1)

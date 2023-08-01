@@ -3,6 +3,91 @@ DONE
 	Finish the relay
 
 TODO
+	
+	Move sdk5 -> sdk
+
+	-------
+
+	Restructure SDK into multiple source files so it's more easily maintainable
+
+	-------
+
+	Test docker build
+
+	-------
+
+	Setup terraform dev environment in network next account.
+
+	Document the process as I work.
+
+	-------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Relay ping packet stuff needs to go into spam. It's too much logs to see what's going on in happy path.
 
@@ -254,7 +339,7 @@ Nice to have:
 
 	--------------
 
-	Extend the SDK5 so we have the option of doing near relay pings at multiple times throughout the session.
+	Extend the SDK so we have the option of doing near relay pings at multiple times throughout the session.
 
 	Use a near relay ping sequence # (uint8) so we can tell when we have new near relay pings that we should upload to the backend.
 

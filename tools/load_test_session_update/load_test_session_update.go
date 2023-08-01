@@ -65,13 +65,13 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 			clientAddress := core.ParseAddress("127.0.0.1:40000")
 			serverAddress := core.ParseAddress("127.0.0.1:50000")
 
-			sessionData := packets.SDK5_SessionData{}
-			sessionData.Version = packets.SDK5_SessionDataVersion_Write
+			sessionData := packets.SDK_SessionData{}
+			sessionData.Version = packets.SDK_SessionDataVersion_Write
 			sessionData.SessionId = SessionId
 			sessionData.SliceNumber = 10
 			sessionData.ExpireTimestamp = uint64(time.Now().Unix() + 1000)
 
-			sessionData_Output := make([]byte, packets.SDK5_MaxSessionDataSize)
+			sessionData_Output := make([]byte, packets.SDK_MaxSessionDataSize)
 			sessionData_Signature := make([]byte, crypto.Sign_SignatureSize)
 			{
 				stream := encoding.CreateWriteStream(sessionData_Output)
@@ -89,7 +89,7 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 
 				for j := 0; j < NumSessions; j++ {
 
-					packet := packets.SDK5_SessionUpdateRequestPacket{
+					packet := packets.SDK_SessionUpdateRequestPacket{
 						Version:           packets.SDKVersion{5, 0, 0},
 						BuyerId:           BuyerId,
 						DatacenterId:      uint64(j),
@@ -117,7 +117,7 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 						packet.NearRelayRTT[i] = int32(common.RandomInt(0, 10))
 					}
 
-					packetData, err := packets.SDK5_WritePacket(&packet, packets.SDK5_SESSION_UPDATE_REQUEST_PACKET, packets.SDK5_MaxPacketBytes, &serverAddress, &ServerBackendAddress, BuyerPrivateKey[:])
+					packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, packets.SDK_MaxPacketBytes, &serverAddress, &ServerBackendAddress, BuyerPrivateKey[:])
 					if err != nil {
 						panic("failed to write server update packet")
 					}
@@ -240,14 +240,14 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 		routeMatrix.DestRelays[i] = true
 	}
 
-	handler := handlers.SDK5_Handler{}
+	handler := handlers.SDK_Handler{}
 	handler.Database = database
 	handler.RouteMatrix = &routeMatrix
 	handler.ServerBackendAddress = ServerBackendAddress
 	handler.ServerBackendPublicKey = ServerBackendPublicKey
 	handler.RelayBackendPrivateKey = RelayBackendPrivateKey
 	handler.ServerBackendPrivateKey = ServerBackendPrivateKey
-	handler.MaxPacketSize = packets.SDK5_MaxPacketBytes
+	handler.MaxPacketSize = packets.SDK_MaxPacketBytes
 	handler.GetMagicValues = func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 		return [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}, [constants.MagicBytes]byte{}
 	}
@@ -262,8 +262,8 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 				select {
 				case update := <-updateChannel:
 					routeMatrix.CreatedAt = uint64(time.Now().Unix())
-					handlers.SDK5_PacketHandler(&handler, nil, &update.from, update.packetData)
-					if !handler.Events[handlers.SDK5_HandlerEvent_SentSessionUpdateResponsePacket] {
+					handlers.SDK_PacketHandler(&handler, nil, &update.from, update.packetData)
+					if !handler.Events[handlers.SDK_HandlerEvent_SentSessionUpdateResponsePacket] {
 						panic("failed to process session update")
 					}
 					atomic.AddUint64(numSessionUpdatesProcessed, 1)

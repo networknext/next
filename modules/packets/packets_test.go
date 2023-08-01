@@ -109,20 +109,20 @@ func PacketSerializationTest[P packets.Packet](writePacket P, readPacket P, t *t
 	assert.Equal(t, writePacket, readPacket)
 }
 
-func GenerateRandomServerInitRequestPacket() packets.SDK5_ServerInitRequestPacket {
+func GenerateRandomServerInitRequestPacket() packets.SDK_ServerInitRequestPacket {
 
-	return packets.SDK5_ServerInitRequestPacket{
+	return packets.SDK_ServerInitRequestPacket{
 		Version:        packets.SDKVersion{5, 0, 0},
 		BuyerId:        rand.Uint64(),
 		RequestId:      rand.Uint64(),
 		DatacenterId:   rand.Uint64(),
-		DatacenterName: common.RandomString(packets.SDK5_MaxDatacenterNameLength),
+		DatacenterName: common.RandomString(packets.SDK_MaxDatacenterNameLength),
 	}
 }
 
-func GenerateRandomServerInitResponsePacket() packets.SDK5_ServerInitResponsePacket {
+func GenerateRandomServerInitResponsePacket() packets.SDK_ServerInitResponsePacket {
 
-	packet := packets.SDK5_ServerInitResponsePacket{
+	packet := packets.SDK_ServerInitResponsePacket{
 		RequestId: rand.Uint64(),
 		Response:  uint32(common.RandomInt(0, 255)),
 	}
@@ -134,9 +134,9 @@ func GenerateRandomServerInitResponsePacket() packets.SDK5_ServerInitResponsePac
 	return packet
 }
 
-func GenerateRandomServerUpdateRequestPacket() packets.SDK5_ServerUpdateRequestPacket {
+func GenerateRandomServerUpdateRequestPacket() packets.SDK_ServerUpdateRequestPacket {
 
-	return packets.SDK5_ServerUpdateRequestPacket{
+	return packets.SDK_ServerUpdateRequestPacket{
 		Version:      packets.SDKVersion{5, 0, 0},
 		BuyerId:      rand.Uint64(),
 		RequestId:    rand.Uint64(),
@@ -144,9 +144,9 @@ func GenerateRandomServerUpdateRequestPacket() packets.SDK5_ServerUpdateRequestP
 	}
 }
 
-func GenerateRandomServerUpdateResponsePacket() packets.SDK5_ServerUpdateResponsePacket {
+func GenerateRandomServerUpdateResponsePacket() packets.SDK_ServerUpdateResponsePacket {
 
-	packet := packets.SDK5_ServerUpdateResponsePacket{
+	packet := packets.SDK_ServerUpdateResponsePacket{
 		RequestId: rand.Uint64(),
 	}
 
@@ -157,9 +157,9 @@ func GenerateRandomServerUpdateResponsePacket() packets.SDK5_ServerUpdateRespons
 	return packet
 }
 
-func GenerateRandomMatchDataRequestPacket() packets.SDK5_MatchDataRequestPacket {
+func GenerateRandomMatchDataRequestPacket() packets.SDK_MatchDataRequestPacket {
 
-	packet := packets.SDK5_MatchDataRequestPacket{
+	packet := packets.SDK_MatchDataRequestPacket{
 		Version:        packets.SDKVersion{1, 2, 3},
 		BuyerId:        12341241,
 		ServerAddress:  core.ParseAddress("127.0.0.1:44444"),
@@ -178,23 +178,23 @@ func GenerateRandomMatchDataRequestPacket() packets.SDK5_MatchDataRequestPacket 
 	return packet
 }
 
-func GenerateRandomMatchDataResponsePacket() packets.SDK5_MatchDataResponsePacket {
+func GenerateRandomMatchDataResponsePacket() packets.SDK_MatchDataResponsePacket {
 
-	return packets.SDK5_MatchDataResponsePacket{
+	return packets.SDK_MatchDataResponsePacket{
 		SessionId: rand.Uint64(),
 	}
 }
 
-func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateRequestPacket {
+func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
-	packet := packets.SDK5_SessionUpdateRequestPacket{
+	packet := packets.SDK_SessionUpdateRequestPacket{
 		Version:                         packets.SDKVersion{1, 2, 3},
 		BuyerId:                         rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		SessionId:                       rand.Uint64(),
 		SliceNumber:                     rand.Uint32(),
-		RetryNumber:                     int32(common.RandomInt(0, packets.SDK5_MaxSessionUpdateRetries)),
-		SessionDataBytes:                int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
+		RetryNumber:                     int32(common.RandomInt(0, packets.SDK_MaxSessionUpdateRetries)),
+		SessionDataBytes:                int32(common.RandomInt(0, packets.SDK_MaxSessionDataSize)),
 		ClientAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		ServerAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		UserHash:                        rand.Uint64(),
@@ -205,8 +205,8 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 		ClientNextBandwidthOverLimit:    common.RandomBool(),
 		ServerNextBandwidthOverLimit:    common.RandomBool(),
 		ClientPingTimedOut:              common.RandomBool(),
-		PlatformType:                    int32(common.RandomInt(0, packets.SDK5_PlatformTypeMax)),
-		ConnectionType:                  int32(common.RandomInt(0, packets.SDK5_ConnectionTypeMax)),
+		PlatformType:                    int32(common.RandomInt(0, packets.SDK_PlatformTypeMax)),
+		ConnectionType:                  int32(common.RandomInt(0, packets.SDK_ConnectionTypeMax)),
 		SessionEvents:                   rand.Uint64(),
 		InternalEvents:                  rand.Uint64(),
 		DirectRTT:                       rand.Float32(),
@@ -237,12 +237,12 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 	}
 
 	if packet.HasNearRelayPings {
-		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
+		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK_MaxNearRelays))
 		for i := 0; i < int(packet.NumNearRelays); i++ {
 			packet.NearRelayIds[i] = rand.Uint64()
 			if packet.HasNearRelayPings {
-				packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayRTT))
-				packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK5_MaxNearRelayJitter))
+				packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK_MaxNearRelayRTT))
+				packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK_MaxNearRelayJitter))
 				packet.NearRelayPacketLoss[i] = rand.Float32()
 			}
 		}
@@ -262,18 +262,18 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK5_SessionUpdateReques
 	return packet
 }
 
-func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateResponsePacket {
+func GenerateRandomSessionUpdateResponsePacket() packets.SDK_SessionUpdateResponsePacket {
 
-	packet := packets.SDK5_SessionUpdateResponsePacket{
+	packet := packets.SDK_SessionUpdateResponsePacket{
 		SessionId:        rand.Uint64(),
 		SliceNumber:      rand.Uint32(),
-		SessionDataBytes: int32(common.RandomInt(0, packets.SDK5_MaxSessionDataSize)),
+		SessionDataBytes: int32(common.RandomInt(0, packets.SDK_MaxSessionDataSize)),
 		HasNearRelays:    common.RandomBool(),
 		HasDebug:         common.RandomBool(),
 	}
 
 	if packet.HasDebug {
-		packet.Debug = common.RandomString(packets.SDK5_MaxSessionDebug)
+		packet.Debug = common.RandomString(packets.SDK_MaxSessionDebug)
 	}
 
 	for i := 0; i < int(packet.SessionDataBytes); i++ {
@@ -286,7 +286,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 	}
 
 	if packet.HasNearRelays {
-		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK5_MaxNearRelays))
+		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK_MaxNearRelays))
 		for i := 0; i < int(packet.NumNearRelays); i++ {
 			packet.NearRelayIds[i] = uint64(i * 32)
 			packet.NearRelayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
@@ -295,21 +295,21 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 		packet.NearRelayExpireTimestamp = rand.Uint64()
 	}
 
-	packet.RouteType = int32(common.RandomInt(packets.SDK5_RouteTypeDirect, packets.SDK5_RouteTypeContinue))
+	packet.RouteType = int32(common.RandomInt(packets.SDK_RouteTypeDirect, packets.SDK_RouteTypeContinue))
 
-	if packet.RouteType != packets.SDK5_RouteTypeDirect {
-		packet.NumTokens = int32(common.RandomInt(1, packets.SDK5_MaxTokens))
+	if packet.RouteType != packets.SDK_RouteTypeDirect {
+		packet.NumTokens = int32(common.RandomInt(1, packets.SDK_MaxTokens))
 	}
 
-	if packet.RouteType == packets.SDK5_RouteTypeNew {
-		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK5_EncryptedNextRouteTokenSize)
+	if packet.RouteType == packets.SDK_RouteTypeNew {
+		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
 		for i := range packet.Tokens {
 			packet.Tokens[i] = byte(common.RandomInt(0, 255))
 		}
 	}
 
-	if packet.RouteType == packets.SDK5_RouteTypeContinue {
-		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK5_EncryptedContinueRouteTokenSize)
+	if packet.RouteType == packets.SDK_RouteTypeContinue {
+		packet.Tokens = make([]byte, packet.NumTokens*packets.SDK_EncryptedContinueRouteTokenSize)
 		for i := range packet.Tokens {
 			packet.Tokens[i] = byte(common.RandomInt(0, 255))
 		}
@@ -322,7 +322,7 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK5_SessionUpdateRespo
 
 const NumIterations = 1000
 
-func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
+func Test_SDK_ServerInitRequestPacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -330,13 +330,13 @@ func Test_SDK5_ServerInitRequestPacket(t *testing.T) {
 
 		writePacket := GenerateRandomServerInitRequestPacket()
 
-		readPacket := packets.SDK5_ServerInitRequestPacket{}
+		readPacket := packets.SDK_ServerInitRequestPacket{}
 
-		PacketSerializationTest[*packets.SDK5_ServerInitRequestPacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_ServerInitRequestPacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
+func Test_SDK_ServerInitResponsePacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -344,13 +344,13 @@ func Test_SDK5_ServerInitResponsePacket(t *testing.T) {
 
 		writePacket := GenerateRandomServerInitResponsePacket()
 
-		readPacket := packets.SDK5_ServerInitResponsePacket{}
+		readPacket := packets.SDK_ServerInitResponsePacket{}
 
-		PacketSerializationTest[*packets.SDK5_ServerInitResponsePacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_ServerInitResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_ServerUpdateRequestPacket(t *testing.T) {
+func Test_SDK_ServerUpdateRequestPacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -358,13 +358,13 @@ func Test_SDK5_ServerUpdateRequestPacket(t *testing.T) {
 
 		writePacket := GenerateRandomServerUpdateRequestPacket()
 
-		readPacket := packets.SDK5_ServerUpdateRequestPacket{}
+		readPacket := packets.SDK_ServerUpdateRequestPacket{}
 
-		PacketSerializationTest[*packets.SDK5_ServerUpdateRequestPacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_ServerUpdateRequestPacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_ServerUpdateResponsePacket(t *testing.T) {
+func Test_SDK_ServerUpdateResponsePacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -372,13 +372,13 @@ func Test_SDK5_ServerUpdateResponsePacket(t *testing.T) {
 
 		writePacket := GenerateRandomServerUpdateResponsePacket()
 
-		readPacket := packets.SDK5_ServerUpdateResponsePacket{}
+		readPacket := packets.SDK_ServerUpdateResponsePacket{}
 
-		PacketSerializationTest[*packets.SDK5_ServerUpdateResponsePacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_ServerUpdateResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_MatchDataRequestPacket(t *testing.T) {
+func Test_SDK_MatchDataRequestPacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -386,13 +386,13 @@ func Test_SDK5_MatchDataRequestPacket(t *testing.T) {
 
 		writePacket := GenerateRandomMatchDataRequestPacket()
 
-		readPacket := packets.SDK5_MatchDataRequestPacket{}
+		readPacket := packets.SDK_MatchDataRequestPacket{}
 
-		PacketSerializationTest[*packets.SDK5_MatchDataRequestPacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_MatchDataRequestPacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_MatchDataResponsePacket(t *testing.T) {
+func Test_SDK_MatchDataResponsePacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -400,13 +400,13 @@ func Test_SDK5_MatchDataResponsePacket(t *testing.T) {
 
 		writePacket := GenerateRandomMatchDataResponsePacket()
 
-		readPacket := packets.SDK5_MatchDataResponsePacket{}
+		readPacket := packets.SDK_MatchDataResponsePacket{}
 
-		PacketSerializationTest[*packets.SDK5_MatchDataResponsePacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_MatchDataResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
+func Test_SDK_SessionUpdateRequestPacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -414,13 +414,13 @@ func Test_SDK5_SessionUpdateRequestPacket(t *testing.T) {
 
 		writePacket := GenerateRandomSessionUpdateRequestPacket()
 
-		readPacket := packets.SDK5_SessionUpdateRequestPacket{}
+		readPacket := packets.SDK_SessionUpdateRequestPacket{}
 
-		PacketSerializationTest[*packets.SDK5_SessionUpdateRequestPacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_SessionUpdateRequestPacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK5_SessionUpdateResponsePacket(t *testing.T) {
+func Test_SDK_SessionUpdateResponsePacket(t *testing.T) {
 
 	t.Parallel()
 
@@ -428,9 +428,9 @@ func Test_SDK5_SessionUpdateResponsePacket(t *testing.T) {
 
 		writePacket := GenerateRandomSessionUpdateResponsePacket()
 
-		readPacket := packets.SDK5_SessionUpdateResponsePacket{}
+		readPacket := packets.SDK_SessionUpdateResponsePacket{}
 
-		PacketSerializationTest[*packets.SDK5_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
+		PacketSerializationTest[*packets.SDK_SessionUpdateResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 
@@ -551,8 +551,8 @@ func TestSessionUpdate(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumSessionDataIterations; i++ {
 		writeMessage := packets.GenerateRandomSessionData()
-		readMessage := packets.SDK5_SessionData{}
-		PacketSerializationTest[*packets.SDK5_SessionData](&writeMessage, &readMessage, t)
+		readMessage := packets.SDK_SessionData{}
+		PacketSerializationTest[*packets.SDK_SessionData](&writeMessage, &readMessage, t)
 	}
 }
 
