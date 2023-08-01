@@ -2,9 +2,13 @@ DONE
 
 	Finish the relay
 
+	Move sdk5 -> sdk
+
+	Check that all semaphore jobs are working
+
 TODO
 	
-	Move sdk5 -> sdk
+	Fix warnings in linux GCC.
 
 	-------
 

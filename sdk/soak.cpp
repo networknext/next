@@ -79,15 +79,6 @@ public:
     ~Allocator()
     {
         next_mutex_destroy( &mutex );
-        printf( "checking for memory leaks...\n" );
-        if ( num_allocations > 0 )
-        {
-            printf( "leaked %d allocations\n", (int) num_allocations );
-        }
-        else
-        {
-            printf( "no memory leaks found.\n" );
-        }
         next_assert( num_allocations == 0 );
         next_assert( entries.size() == 0 );
     }
