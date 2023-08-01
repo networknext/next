@@ -166,7 +166,8 @@ int main()
 
     int server_port = next_server_port( server );
     char public_address[256];
-    snprintf( public_address, sizeof(public_address), "%s:%d", server_address, server_port );
+    memset( public_address, 0, sizeof(public_address) );
+    snprintf( public_address, sizeof(public_address) - 1, "%s:%d", server_address, server_port );
     next_printf( NEXT_LOG_LEVEL_INFO, "raspberry server public address is: %s", public_address );
 
     // send server updates to the raspberry backend in the background
