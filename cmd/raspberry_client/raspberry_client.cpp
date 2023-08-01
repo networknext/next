@@ -92,7 +92,7 @@ void client_thread_function( void * data )
 
         num_servers = 0;
 
-        char cmd[1024];
+        char cmd[2048];
         snprintf( cmd, sizeof(cmd), "curl -s %s/servers --max-time 10 2>/dev/null", raspberry_backend_url );
         FILE * file = popen( cmd, "r" );
         if ( !file )
