@@ -2,7 +2,7 @@
 
 <br>
 
-Network Next **accelerate** is a network acceleration and analytics systems for multiplayer games.
+Network Next **accelerate** is a network acceleration system for multiplayer games.
 
 # Run with Docker Compose
 
