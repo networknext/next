@@ -216,6 +216,34 @@ inline void next_read_address( const uint8_t ** buffer, next_address_t * address
     }
 }
 
+inline void next_read_address_variable( const uint8_t ** buffer, next_address_t * address )
+{
+    const uint8_t * start = *buffer;
+
+    memset( address, 0, sizeof(next_address_t) );
+
+    address->type = next_read_uint8( buffer );
+
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        for ( int j = 0; j < 4; ++j )
+        {
+            address->data.ipv4[j] = next_read_uint8( buffer );
+        }
+        address->port = next_read_uint16( buffer );
+    }
+    else if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        for ( int j = 0; j < 8; ++j )
+        {
+            address->data.ipv6[j] = next_read_uint16( buffer );
+        }
+        address->port = next_read_uint16( buffer );
+    }
+
+    (void) start;
+}
+
 // ----------------------------------------------------------------------
 
 #endif // #ifndef NEXT_READ_WRITE_H

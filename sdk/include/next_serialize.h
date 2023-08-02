@@ -24,13 +24,14 @@
 #define NEXT_SERIALIZE_H
 
 #include "next.h"
+#include "next_stream.h"
 
 #if defined( _MSC_VER )
 #pragma warning(disable:4127)
 #pragma warning(disable:4244)      
 #endif
 
-namespace snapshot
+namespace next
 {
     template <typename Stream> bool serialize_float_internal( Stream & stream, float & value )
     {
@@ -59,7 +60,7 @@ namespace snapshot
     #define serialize_float( stream, value )                                        \
         do                                                                          \
         {                                                                           \
-            if ( !snapshot::serialize_float_internal( stream, value ) )             \
+            if ( !next::serialize_float_internal( stream, value ) )                 \
             {                                                                       \
                 return false;                                                       \
             }                                                                       \
@@ -105,7 +106,7 @@ namespace snapshot
     #define serialize_uint64( stream, value )                                       \
         do                                                                          \
         {                                                                           \
-            if ( !snapshot::serialize_uint64_internal( stream, value ) )            \
+            if ( !next::serialize_uint64_internal( stream, value ) )                \
                 return false;                                                       \
         } while (0)
 
@@ -141,7 +142,7 @@ namespace snapshot
     #define serialize_double( stream, value )                                       \
         do                                                                          \
         {                                                                           \
-            if ( !snapshot::serialize_double_internal( stream, value ) )            \
+            if ( !next::serialize_double_internal( stream, value ) )                \
             {                                                                       \
                 return false;                                                       \
             }                                                                       \
@@ -165,7 +166,7 @@ namespace snapshot
     #define serialize_bytes( stream, data, bytes )                                  \
         do                                                                          \
         {                                                                           \
-            if ( !snapshot::serialize_bytes_internal( stream, data, bytes ) )       \
+            if ( !next::serialize_bytes_internal( stream, data, bytes ) )           \
             {                                                                       \
                 return false;                                                       \
             }                                                                       \
@@ -201,7 +202,7 @@ namespace snapshot
     #define serialize_string( stream, string, buffer_size )                                 \
         do                                                                                  \
         {                                                                                   \
-            if ( !snapshot::serialize_string_internal( stream, string, buffer_size ) )      \
+            if ( !next::serialize_string_internal( stream, string, buffer_size ) )          \
             {                                                                               \
                 return false;                                                               \
             }                                                                               \
@@ -370,7 +371,7 @@ namespace snapshot
     #define serialize_int_relative( stream, previous, current )                             \
         do                                                                                  \
         {                                                                                   \
-            if ( !snapshot::serialize_int_relative_internal( stream, previous, current ) )  \
+            if ( !next::serialize_int_relative_internal( stream, previous, current ) )      \
             {                                                                               \
                 return false;                                                               \
             }                                                                               \
@@ -423,7 +424,7 @@ namespace snapshot
     #define serialize_ack_relative( stream, sequence, ack  )                                        \
         do                                                                                          \
         {                                                                                           \
-            if ( !snapshot::serialize_ack_relative_internal( stream, sequence, ack ) )              \
+            if ( !next::serialize_ack_relative_internal( stream, sequence, ack ) )                  \
             {                                                                                       \
                 return false;                                                                       \
             }                                                                                       \
@@ -465,7 +466,7 @@ namespace snapshot
     #define serialize_sequence_relative( stream, sequence1, sequence2 )                             \
         do                                                                                          \
         {                                                                                           \
-            if ( !snapshot::serialize_sequence_relative_internal( stream, sequence1, sequence2 ) )  \
+            if ( !next::serialize_sequence_relative_internal( stream, sequence1, sequence2 ) )      \
             {                                                                                       \
                 return false;                                                                       \
             }                                                                                       \
@@ -500,7 +501,7 @@ namespace snapshot
     #define serialize_address( stream, address )                                                    \
         do                                                                                          \
         {                                                                                           \
-            if ( !snapshot::serialize_address_internal( stream, address ) )                         \
+            if ( !next::serialize_address_internal( stream, address ) )                             \
             {                                                                                       \
                 return false;                                                                       \
             }                                                                                       \

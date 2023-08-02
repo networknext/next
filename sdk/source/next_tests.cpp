@@ -40,9 +40,9 @@
 #include <time.h>
 
 static void next_check_handler( const char * condition,
-                                    const char * function,
-                                    const char * file,
-                                    int line )
+                                const char * function,
+                                const char * file,
+                                int line )
 {
     printf( "check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
     fflush( stdout );
@@ -211,8 +211,6 @@ void test_queue()
 }
 */
 
-// todo
-/*
 using namespace next;
 
 void test_bitpacker()
@@ -417,14 +415,6 @@ void test_stream()
 
     next_check( readObject == writeObject );
 }
-*/
-
-// todo
-/*
-static bool equal_within_tolerance( float a, float b, float tolerance = 0.001f )
-{
-    return fabs(double(a)-double(b)) <= tolerance;
-}
 
 void test_bits_required()
 {
@@ -441,7 +431,6 @@ void test_bits_required()
     next_check( bits_required( 0, 65535 ) == 16 );
     next_check( bits_required( 0, 4294967295U ) == 32 );
 }
-*/
 
 void test_address()
 {
@@ -656,6 +645,12 @@ void test_replay_protection()
 
 // todo
 /*
+
+static bool equal_within_tolerance( float a, float b, float tolerance = 0.001f )
+{
+    return fabs(double(a)-double(b)) <= tolerance;
+}
+
 void test_ping_stats()
 {
     // default ping history is 100% packet loss
@@ -4643,9 +4638,9 @@ void next_run_tests()
         RUN_TEST( test_base64 );
         // RUN_TEST( test_fnv1a );
         // RUN_TEST( test_queue );
-        // RUN_TEST( test_bitpacker );
-        // RUN_TEST( test_bits_required );
-        // RUN_TEST( test_stream );
+        RUN_TEST( test_bitpacker );
+        RUN_TEST( test_bits_required );
+        RUN_TEST( test_stream );
         RUN_TEST( test_address );
         // RUN_TEST( test_replay_protection );
         // RUN_TEST( test_ping_stats );

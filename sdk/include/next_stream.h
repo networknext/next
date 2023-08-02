@@ -25,7 +25,7 @@
 
 #include "next.h"
 
-namespace snapshot
+namespace next
 {
     /**
         Functionality common to all stream classes.

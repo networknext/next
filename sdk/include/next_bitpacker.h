@@ -25,7 +25,7 @@
 
 #include "next.h"
 
-namespace snapshot
+namespace next
 {
     /**
         Calculates the population count of an unsigned 32 bit integer at compile time.

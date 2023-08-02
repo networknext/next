@@ -153,7 +153,7 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     shim_data->real_thread_function = thread_function;
     shim_data->real_thread_data = arg;
 
-    if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "snapshot" ) != 0 )
+    if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "next" ) != 0 )
     {
         next_free( context, thread );
         next_free( context, shim_data );
@@ -190,7 +190,7 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
     ScePthreadMutexattr attr;
     scePthreadMutexattrInit(&attr);
     scePthreadMutexattrSettype( &attr, SCE_PTHREAD_MUTEX_RECURSIVE );
-    bool success = scePthreadMutexInit( &mutex->handle, &attr, "snapshot" ) == SCE_OK;
+    bool success = scePthreadMutexInit( &mutex->handle, &attr, "next" ) == SCE_OK;
     scePthreadMutexattrDestroy( &attr );
     
     if ( !success )
@@ -310,7 +310,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     // create socket
 
-    s->handle = sceNetSocket( "snapshot", SCE_NET_AF_INET, SCE_NET_SOCK_DGRAM, SCE_NET_IPPROTO_UDP );
+    s->handle = sceNetSocket( "next", SCE_NET_AF_INET, SCE_NET_SOCK_DGRAM, SCE_NET_IPPROTO_UDP );
 
     if ( s->handle < 0 )
     {
