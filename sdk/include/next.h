@@ -465,33 +465,6 @@ NEXT_EXPORT_FUNC void next_platform_thread_destroy( next_platform_thread_t * thr
 
 // -----------------------------------------
 
-#define NEXT_MUTEX_BYTES 256
-
-struct next_mutex_t { uint8_t dummy[NEXT_MUTEX_BYTES]; };
-
-NEXT_EXPORT_FUNC int next_mutex_create( struct next_mutex_t * mutex );
-
-NEXT_EXPORT_FUNC void next_mutex_destroy( struct next_mutex_t * mutex );
-
-NEXT_EXPORT_FUNC void next_mutex_acquire( struct next_mutex_t * mutex );
-
-NEXT_EXPORT_FUNC void next_mutex_release( struct next_mutex_t * mutex );
-
-#ifdef __cplusplus
-
-struct next_mutex_helper_t
-{
-    struct next_mutex_t * _mutex;
-    next_mutex_helper_t( struct next_mutex_t * mutex ) : _mutex( mutex ) { next_assert( mutex ); next_mutex_acquire( _mutex ); }
-    ~next_mutex_helper_t() { next_assert( _mutex ); next_mutex_release( _mutex ); _mutex = NULL; }
-};
-
-#define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
-
-#endif // #ifdef __cplusplus
-
-// -----------------------------------------
-
 NEXT_EXPORT_FUNC void next_copy_string( char * dest, const char * source, size_t dest_size );
 
 // -----------------------------------------

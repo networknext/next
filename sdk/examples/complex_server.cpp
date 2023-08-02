@@ -48,14 +48,14 @@ struct AllocatorEntry
 class Allocator
 {
     int64_t num_allocations;
-    next_mutex_t mutex;
+    next_platform_mutex_t mutex;
     std::map<void*, AllocatorEntry*> entries;
 
 public:
 
     Allocator()
     {
-        int result = next_mutex_create( &mutex );
+        int result = next_platform_mutex_create( &mutex );
         (void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
@@ -63,14 +63,14 @@ public:
 
     ~Allocator()
     {
-        next_mutex_destroy( &mutex );
+        next_platform_mutex_destroy( &mutex );
         next_assert( num_allocations == 0 );
         next_assert( entries.size() == 0 );
     }
 
     void * Alloc( size_t size )
     {
-        next_mutex_guard( &mutex );
+        next_platform_mutex_guard( &mutex );
         void * pointer = malloc( size );
         next_assert( pointer );
         next_assert( entries[pointer] == NULL );
@@ -82,7 +82,7 @@ public:
 
     void Free( void * pointer )
     {
-        next_mutex_guard( &mutex );
+        next_platform_mutex_guard( &mutex );
         next_assert( pointer );
         next_assert( num_allocations > 0 );
         std::map<void*, AllocatorEntry*>::iterator itor = entries.find( pointer );

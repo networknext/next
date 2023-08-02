@@ -35,28 +35,28 @@ Next, we dive right in and define a custom allocator class that tracks all alloc
 	class Allocator
 	{
 	    int64_t num_allocations;
-	    next_mutex_t mutex;
+	    next_platform_mutex_t mutex;
 	    std::map<void*, AllocatorEntry*> entries;
 
 	public:
 
 	    Allocator()
 	    {
-	        int result = next_mutex_create( &mutex );
+	        int result = next_platform_mutex_create( &mutex );
 	        next_assert( result == NEXT_OK );
 	        num_allocations = 0;
 	    }
 
 	    ~Allocator()
 	    {
-	        next_mutex_destroy( &mutex );
+	        next_platform_mutex_destroy( &mutex );
 	        next_assert( num_allocations == 0 );
 	        next_assert( entries.size() == 0 );
 	    }
 
 	    void * Alloc( size_t size )
 	    {
-	        next_mutex_guard( &mutex );
+	        next_platform_mutex_guard( &mutex );
 	        void * pointer = malloc( size );
 	        next_assert( pointer );
 	        next_assert( entries[pointer] == NULL );

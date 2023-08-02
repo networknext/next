@@ -13492,41 +13492,6 @@ bool next_server_direct_only( struct next_server_t * server )
     return server->direct_only;
 }
 
-// ---------------------------------------------------------------
-
-// todo: is this wrapper really necessary?
-
-int next_mutex_create( next_mutex_t * mutex )
-{
-    next_assert( mutex );
-    next_assert( sizeof(next_platform_mutex_t) <= sizeof(next_mutex_t) );
-    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
-    return next_platform_mutex_create( platform_mutex );
-}
-
-void next_mutex_acquire( next_mutex_t * mutex )
-{
-    next_assert( mutex );
-    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
-    next_platform_mutex_acquire( platform_mutex );
-}
-
-void next_mutex_release( next_mutex_t * mutex )
-{
-    next_assert( mutex );
-    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
-    next_platform_mutex_release( platform_mutex );
-}
-
-void next_mutex_destroy( next_mutex_t * mutex )
-{
-    next_assert( mutex );
-    next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
-    next_platform_mutex_destroy( platform_mutex );
-}
-
-// ---------------------------------------------------------------
-
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
