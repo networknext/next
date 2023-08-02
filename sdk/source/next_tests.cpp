@@ -36,6 +36,7 @@
 #include "next_hash.h"
 #include "next_replay_protection.h"
 #include "next_ping_history.h"
+#include "next_upgrade_token.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -808,8 +809,6 @@ void test_random_bytes()
     }
 }
 
-// todo
-/*
 void test_random_float()
 {
     for ( int i = 0; i < 1000; ++i )
@@ -819,7 +818,6 @@ void test_random_float()
         next_check( value <= 1.0f );
     }
 }
-*/
 
 void test_crypto_box()
 {
@@ -1031,8 +1029,6 @@ void test_address_read_and_write()
     next_check( next_address_equal( &c, &read_c ) );
 }
 
-// todo
-/*
 void test_address_ipv4_read_and_write()
 {
     struct next_address_t address;
@@ -1053,7 +1049,6 @@ void test_address_ipv4_read_and_write()
 
     next_check( next_address_equal( &address, &read ) );
 }
-*/
 
 void test_platform_socket()
 {
@@ -1232,8 +1227,6 @@ void test_client_ipv4()
     next_client_destroy( client );
 }
 
-// todo
-/*
 static int num_server_packets_received = 0;
 
 static void test_server_packet_received_callback( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
@@ -1242,10 +1235,7 @@ static void test_server_packet_received_callback( next_server_t * server, void *
     next_server_send_packet( server, from, packet_data, packet_bytes );
     num_server_packets_received++;
 }
-*/
 
-// todo
-/*
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 void test_server_ipv4()
@@ -1255,7 +1245,7 @@ void test_server_ipv4()
     next_check( next_server_port( server ) != 0 );
     next_address_t address;
     next_address_parse( &address, "127.0.0.1" );
-    address.port = server->bound_port;
+    address.port = next_server_port( server );;
     uint8_t packet[256];
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
@@ -1291,7 +1281,7 @@ void test_server_ipv6()
     next_check( next_server_port(server) != 0 );
     next_address_t address;
     next_address_parse( &address, "::1" );
-    address.port = server->bound_port;
+    address.port = next_server_port( server );
     uint8_t packet[256];
     memset( packet, 0, sizeof(packet) );
     next_server_send_packet( server, &address, packet, sizeof(packet) );
@@ -1324,7 +1314,6 @@ void test_upgrade_token()
 
     next_check( memcmp( &in, &out, sizeof(NextUpgradeToken) ) == 0 );
 }
-*/
 
 // todo
 /*
@@ -4634,9 +4623,9 @@ void next_run_tests()
         RUN_TEST( test_stream );
         RUN_TEST( test_address );
         RUN_TEST( test_replay_protection );
-        // RUN_TEST( test_ping_stats );
+        RUN_TEST( test_ping_stats );
         RUN_TEST( test_random_bytes );
-        // RUN_TEST( test_random_float );
+        RUN_TEST( test_random_float );
         RUN_TEST( test_crypto_box );
         RUN_TEST( test_crypto_secret_box );
         RUN_TEST( test_crypto_aead );
@@ -4645,12 +4634,11 @@ void next_run_tests()
         RUN_TEST( test_crypto_key_exchange );
         RUN_TEST( test_basic_read_and_write );
         RUN_TEST( test_address_read_and_write );
-        // RUN_TEST( test_address_ipv4_read_and_write );
+        RUN_TEST( test_address_ipv4_read_and_write );
         RUN_TEST( test_platform_socket );
         RUN_TEST( test_platform_thread );
         RUN_TEST( test_platform_mutex );
         RUN_TEST( test_client_ipv4 );
-        /*
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_server_ipv4 );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
@@ -4660,12 +4648,12 @@ void next_run_tests()
         RUN_TEST( test_server_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-*/
+
+        RUN_TEST( test_upgrade_token );
         /*
         RUN_TEST( test_header );
         RUN_TEST( test_route_token );
         RUN_TEST( test_continue_token );
-        RUN_TEST( test_upgrade_token );
         RUN_TEST( test_pittle );
         RUN_TEST( test_chonkle );
         RUN_TEST( test_abi );
