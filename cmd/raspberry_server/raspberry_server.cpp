@@ -165,7 +165,7 @@ int main()
     // now that we know our port number, combine with the address and we have our public address
 
     int server_port = next_server_port( server );
-    char public_address[256];
+    char public_address[1024];
     memset( public_address, 0, sizeof(public_address) );
     snprintf( public_address, sizeof(public_address) - 1, "%s:%d", server_address, server_port );
     next_printf( NEXT_LOG_LEVEL_INFO, "raspberry server public address is: %s", public_address );
