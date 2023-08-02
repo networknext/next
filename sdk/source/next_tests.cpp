@@ -37,6 +37,8 @@
 #include "next_replay_protection.h"
 #include "next_ping_history.h"
 #include "next_upgrade_token.h"
+#include "next_route_token.h"
+#include "next_continue_token.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -1315,8 +1317,6 @@ void test_upgrade_token()
     next_check( memcmp( &in, &out, sizeof(NextUpgradeToken) ) == 0 );
 }
 
-// todo
-/*
 void test_route_token()
 {
     uint8_t buffer[NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
@@ -1442,6 +1442,33 @@ void test_continue_token()
 
     next_check( input_token.expire_timestamp == output_token.expire_timestamp );
     next_check( input_token.session_id == output_token.session_id );
+}
+
+/*
+void test_header()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint64_t send_sequence = i + 1000;
+        uint64_t session_id = 0x12314141LL;
+        uint8_t session_version = uint8_t(i%256);
+        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
+        next_crypto_random_bytes( private_key, sizeof(private_key) );
+
+        next_check( next_write_header( NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, packet_data ) == NEXT_OK );
+
+        uint64_t read_packet_sequence = 0;
+        uint64_t read_packet_session_id = 0;
+        uint8_t read_packet_session_version = 0;
+
+        next_check( next_read_header( NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
+
+        next_check( read_packet_sequence == send_sequence );
+        next_check( read_packet_session_id == session_id );
+        next_check( read_packet_session_version == session_version );
+    }
 }
 
 void test_pittle()
@@ -1998,32 +2025,6 @@ void test_route_request_packet()
 
         next_check( packet_data[0] == NEXT_ROUTE_REQUEST_PACKET );
         next_check( memcmp( packet_data + 16, token_data, token_bytes ) == 0 );
-    }
-}
-
-void test_header()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_crypto_random_bytes( private_key, sizeof(private_key) );
-
-        next_check( next_write_header( NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, packet_data ) == NEXT_OK );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        next_check( next_read_header( NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
     }
 }
 
@@ -4648,12 +4649,12 @@ void next_run_tests()
         RUN_TEST( test_server_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-
         RUN_TEST( test_upgrade_token );
-        /*
-        RUN_TEST( test_header );
+
         RUN_TEST( test_route_token );
         RUN_TEST( test_continue_token );
+        /*
+        RUN_TEST( test_header );
         RUN_TEST( test_pittle );
         RUN_TEST( test_chonkle );
         RUN_TEST( test_abi );

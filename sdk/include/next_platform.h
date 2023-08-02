@@ -98,19 +98,6 @@ void next_platform_mutex_release( struct next_platform_mutex_t * mutex );
 
 #ifdef __cplusplus
 
-struct next_platform_mutex_helper_t
-{
-    struct next_platform_mutex_t * _mutex;
-    next_platform_mutex_helper_t( struct next_platform_mutex_t * mutex ) : _mutex( mutex ) { next_assert( mutex ); next_platform_mutex_acquire( _mutex ); }
-    ~next_platform_mutex_helper_t() { next_assert( _mutex ); next_platform_mutex_release( _mutex ); _mutex = NULL; }
-};
-
-#define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex )
-
-#endif // #ifdef __cplusplus
-
-// todo
-/*
 //#define NEXT_SPIKE_TRACKING 1
 
 struct next_platform_mutex_helper_t
@@ -134,16 +121,16 @@ struct next_platform_mutex_helper_t
 #endif // #if NEXT_SPIKE_TRACKING
 
 #if NEXT_SPIKE_TRACKING
-next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line ) : mutex(mutex), file(file), line(line), start_time(next_platform_time())
+inline next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line ) : mutex(mutex), file(file), line(line), start_time(next_platform_time())
 #else // #if NEXT_SPIKE_TRACKING
-next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex(mutex)
+inline next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex(mutex)
 #endif // #if NEXT_SPIKE_TRACKING
 {
     next_assert( mutex );
     next_platform_mutex_acquire( mutex );
 }
 
-next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
+inline next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 {
     next_assert( mutex );
     next_platform_mutex_release( mutex );
@@ -157,7 +144,8 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 #endif // #if NEXT_SPIKE_TRACKING
     mutex = NULL;
 }
-*/
+
+#endif // __cplusplus
 
 // ----------------------------------------------------------------
 

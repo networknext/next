@@ -510,8 +510,4 @@ NEXT_EXPORT_FUNC void next_copy_string( char * dest, const char * source, size_t
 
 // -----------------------------------------
 
-NEXT_EXPORT_FUNC void next_test();      // IMPORTANT: only if compiled with tests. See #if NEXT_COMPILE_WITH_TESTS
-
-// -----------------------------------------
-
 #endif // #ifndef NEXT_H
