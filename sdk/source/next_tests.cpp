@@ -1635,7 +1635,6 @@ void test_advanced_packet_filter()
     next_check( pass == 0 );
 }
 
-/*
 void test_passthrough()
 {
     uint8_t output[256];
@@ -1716,6 +1715,8 @@ void test_address_data_ipv6()
 
 #endif // #if NEXT_PLATFORM_HAS_IPV6
 
+// todo
+/*
 void test_direct_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -4661,15 +4662,14 @@ void next_run_tests()
         RUN_TEST( test_pittle_and_chonkle );
         RUN_TEST( test_basic_packet_filter );
         RUN_TEST( test_advanced_packet_filter );
-
-        /*
-
         RUN_TEST( test_passthrough );
         RUN_TEST( test_address_data_none );
         RUN_TEST( test_address_data_ipv4 );
 #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_address_data_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+
+        /*
         RUN_TEST( test_direct_packet );
         RUN_TEST( test_direct_ping_packet );
         RUN_TEST( test_direct_pong_packet );
