@@ -34,6 +34,8 @@
 #include "next_base64.h"
 #include "next_queue.h"
 #include "next_hash.h"
+#include "next_replay_protection.h"
+#include "next_ping_history.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -590,8 +592,6 @@ void test_address()
 #endif // #if NEXT_PLATFORM_HAS_IPV6
 }
 
-// todo
-/*
 void test_replay_protection()
 {
     next_replay_protection_t replay_protection;
@@ -637,10 +637,6 @@ void test_replay_protection()
         }
     }
 }
-*/
-
-// todo
-/*
 
 static bool equal_within_tolerance( float a, float b, float tolerance = 0.001f )
 {
@@ -797,7 +793,6 @@ void test_ping_stats()
         next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 2.0f ) );
     }
 }
-*/
 
 void test_random_bytes()
 {
@@ -4638,7 +4633,7 @@ void next_run_tests()
         RUN_TEST( test_bits_required );
         RUN_TEST( test_stream );
         RUN_TEST( test_address );
-        // RUN_TEST( test_replay_protection );
+        RUN_TEST( test_replay_protection );
         // RUN_TEST( test_ping_stats );
         RUN_TEST( test_random_bytes );
         // RUN_TEST( test_random_float );

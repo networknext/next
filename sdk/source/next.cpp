@@ -33,6 +33,7 @@
 #include "next_hash.h"
 #include "next_config.h"
 #include "next_replay_protection.h"
+#include "next_ping_history.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -55,6 +56,8 @@
 #pragma warning(disable:4244)
 #pragma warning(disable:4668)
 #endif
+
+// -------------------------------------------------
 
 void next_printf( const char * format, ... );
 
@@ -79,45 +82,11 @@ static void default_assert_function( const char * condition, const char * functi
     #endif
 }
 
-#if defined( _MSC_VER ) && _MSC_VER < 1900
+void (*next_assert_function_pointer)( const char * condition, const char * function, const char * file, int line ) = default_assert_function;
 
-#define snprintf c99_snprintf
-#define vsnprintf c99_vsnprintf
-
-__inline int c99_vsnprintf(char *outBuf, size_t size, const char *format, va_list ap)
+void next_assert_function( void (*function)( const char * condition, const char * function, const char * file, int line ) )
 {
-    int count = -1;
-
-    if (size != 0)
-        count = _vsnprintf_s(outBuf, size, _TRUNCATE, format, ap);
-    if (count == -1)
-        count = _vscprintf(format, ap);
-
-    return count;
-}
-
-__inline int c99_snprintf(char *outBuf, size_t size, const char *format, ...)
-{
-    int count;
-    va_list ap;
-
-    va_start(ap, format);
-    count = c99_vsnprintf(outBuf, size, format, ap);
-    va_end(ap);
-
-    return count;
-}
-
-#endif
-
-uint16_t next_ntohs( uint16_t in )
-{
-    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
-}
-
-uint16_t next_htons( uint16_t in )
-{
-    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
+    next_assert_function_pointer = function;
 }
 
 // -------------------------------------------------------------
@@ -134,13 +103,6 @@ static int log_level = NEXT_LOG_LEVEL_INFO;
 void next_log_level( int level )
 {
     log_level = level;
-}
-
-void (*next_assert_function_pointer)( const char * condition, const char * function, const char * file, int line ) = default_assert_function;
-
-void next_assert_function( void (*function)( const char * condition, const char * function, const char * file, int line ) )
-{
-    next_assert_function_pointer = function;
 }
 
 const char * next_log_level_string( int level )
@@ -188,6 +150,30 @@ void next_log_function( void (*function)( int level, const char * format, ... ) 
     log_function = function;
 }
 
+void next_printf( const char * format, ... )
+{
+    va_list args;
+    va_start( args, format );
+    char buffer[1024];
+    vsnprintf( buffer, sizeof(buffer), format, args );
+    log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
+    va_end( args );
+}
+
+void next_printf( int level, const char * format, ... )
+{
+    if ( level > log_level )
+        return;
+    va_list args;
+    va_start( args, format );
+    char buffer[1024];
+    vsnprintf( buffer, sizeof( buffer ), format, args );
+    log_function( level, "%s", buffer );
+    va_end( args );
+}
+
+// ------------------------------------------------------------
+
 static void * next_default_malloc_function( void * context, size_t bytes )
 {
     (void) context;
@@ -229,26 +215,16 @@ void next_clear_and_free( void * context, void * p, size_t p_size )
     next_free( context, p );
 }
 
-void next_printf( const char * format, ... )
+// -------------------------------------------------------------
+
+uint16_t next_ntohs( uint16_t in )
 {
-    va_list args;
-    va_start( args, format );
-    char buffer[1024];
-    vsnprintf( buffer, sizeof(buffer), format, args );
-    log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
-    va_end( args );
+    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
 }
 
-void next_printf( int level, const char * format, ... )
+uint16_t next_htons( uint16_t in )
 {
-    if ( level > log_level )
-        return;
-    va_list args;
-    va_start( args, format );
-    char buffer[1024];
-    vsnprintf( buffer, sizeof( buffer ), format, args );
-    log_function( level, "%s", buffer );
-    va_end( args );
+    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
 }
 
 const char * next_user_id_string( uint64_t user_id, char * buffer, size_t buffer_size )
@@ -256,52 +232,6 @@ const char * next_user_id_string( uint64_t user_id, char * buffer, size_t buffer
     snprintf( buffer, buffer_size, "%" PRIx64, user_id );
     return buffer;
 }
-
-// ------------------------------------------------------------------------------
-
-void next_write_address_ipv4( uint8_t ** buffer, const next_address_t * address )
-{
-    next_assert( buffer );
-    next_assert( *buffer );
-    next_assert( address );
-
-    uint8_t * start = *buffer;
-
-    (void) buffer;
-
-    next_assert( address->type == NEXT_ADDRESS_IPV4 );
-
-    for ( int i = 0; i < 4; ++i )
-    {
-        next_write_uint8( buffer, address->data.ipv4[i] );
-    }
-    next_write_uint16( buffer, address->port );
-
-    (void) start;
-
-    next_assert( *buffer - start == NEXT_ADDRESS_IPV4_BYTES );
-}
-
-void next_read_address_ipv4( const uint8_t ** buffer, next_address_t * address )
-{
-    const uint8_t * start = *buffer;
-
-    memset( address, 0, sizeof(next_address_t) );
-
-    address->type = NEXT_ADDRESS_IPV4;
-
-    for ( int j = 0; j < 4; ++j )
-    {
-        address->data.ipv4[j] = next_read_uint8( buffer );
-    }
-    address->port = next_read_uint16( buffer );
-
-    (void) start;
-
-    next_assert( *buffer - start == NEXT_ADDRESS_IPV4_BYTES );
-}
-
-// -------------------------------------------------------------
 
 uint64_t next_protocol_version()
 {
@@ -312,8 +242,6 @@ uint64_t next_protocol_version()
     return 0;
 #endif // #if !NEXT_DEVELOPMENT
 }
-
-// -------------------------------------------------------------
 
 float next_random_float()
 {
@@ -2017,215 +1945,6 @@ void next_term()
     next_platform_term();
 
     next_global_context = NULL;
-}
-
-// ---------------------------------------------------------------
-
-struct next_route_stats_t
-{
-    float rtt;                          // rtt (ms)
-    float jitter;                       // jitter (ms)
-    float packet_loss;                  // packet loss %
-};
-
-struct next_ping_history_entry_t
-{
-    uint64_t sequence;
-    double time_ping_sent;
-    double time_pong_received;
-};
-
-struct next_ping_history_t
-{
-    NEXT_DECLARE_SENTINEL(0)
-
-    uint64_t sequence;
-
-    NEXT_DECLARE_SENTINEL(1)
-
-    next_ping_history_entry_t entries[NEXT_PING_HISTORY_ENTRY_COUNT];
-
-    NEXT_DECLARE_SENTINEL(2)
-};
-
-void next_ping_history_initialize_sentinels( next_ping_history_t * history )
-{
-    (void) history;
-    next_assert( history );
-    NEXT_INITIALIZE_SENTINEL( history, 0 )
-    NEXT_INITIALIZE_SENTINEL( history, 1 )
-    NEXT_INITIALIZE_SENTINEL( history, 2 )
-}
-
-void next_ping_history_verify_sentinels( const next_ping_history_t * history )
-{
-    (void) history;
-    next_assert( history );
-    NEXT_VERIFY_SENTINEL( history, 0 )
-    NEXT_VERIFY_SENTINEL( history, 1 )
-    NEXT_VERIFY_SENTINEL( history, 2 )
-}
-
-void next_ping_history_clear( next_ping_history_t * history )
-{
-    next_assert( history );
-
-    next_ping_history_initialize_sentinels( history );
-
-    history->sequence = 0;
-
-    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-    {
-        history->entries[i].sequence = 0xFFFFFFFFFFFFFFFFULL;
-        history->entries[i].time_ping_sent = -1.0;
-        history->entries[i].time_pong_received = -1.0;
-    }
-
-    next_ping_history_verify_sentinels( history );
-}
-
-uint64_t next_ping_history_ping_sent( next_ping_history_t * history, double time )
-{
-    next_ping_history_verify_sentinels( history );
-
-    const int index = history->sequence % NEXT_PING_HISTORY_ENTRY_COUNT;
-
-    next_ping_history_entry_t * entry = &history->entries[index];
-
-    entry->sequence = history->sequence;
-    entry->time_ping_sent = time;
-    entry->time_pong_received = -1.0;
-
-    history->sequence++;
-
-    return entry->sequence;
-}
-
-void next_ping_history_pong_received( next_ping_history_t * history, uint64_t sequence, double time )
-{
-    next_ping_history_verify_sentinels( history );
-
-    const int index = sequence % NEXT_PING_HISTORY_ENTRY_COUNT;
-
-    next_ping_history_entry_t * entry = &history->entries[index];
-
-    if ( entry->sequence == sequence )
-    {
-        entry->time_pong_received = time;
-    }
-}
-
-void next_route_stats_from_ping_history( const next_ping_history_t * history, double start, double end, next_route_stats_t * stats, double safety = NEXT_PING_SAFETY )
-{
-    next_ping_history_verify_sentinels( history );
-
-    next_assert( stats );
-
-    if ( start < safety )
-    {
-        start = safety;
-    }
-
-    stats->rtt = 0.0f;
-    stats->jitter = 0.0f;
-    stats->packet_loss = 0.0f;
-
-    // IMPORTANT: Instead of searching across the whole range then considering any ping with a pong older than ping safety
-    // (typically one second) to be lost, look for the time of the most recent ping that has received a pong, subtract ping
-    // safety from this, and then look for packet loss only in this range. This avoids turning every ping that receives a
-    // pong more than 1 second later as packet loss, which was behavior we saw with previous versions of this code.
-
-    double most_recent_ping_that_received_pong_time = 0.0;
-
-    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
-    {
-        const next_ping_history_entry_t * entry = &history->entries[i];
-
-        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end && entry->time_pong_received >= entry->time_ping_sent )
-        {
-            if ( entry->time_pong_received > most_recent_ping_that_received_pong_time )
-            {
-                most_recent_ping_that_received_pong_time = entry->time_pong_received;
-            }
-        }
-    }
-
-    if ( most_recent_ping_that_received_pong_time > 0.0 )
-    {
-        end = most_recent_ping_that_received_pong_time - safety;
-    }
-    else
-    {
-        return;
-    }
-
-    // calculate ping stats
-
-    double min_rtt = FLT_MAX;
-
-    int num_pings_sent = 0;
-    int num_pongs_received = 0;
-
-    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
-    {
-        const next_ping_history_entry_t * entry = &history->entries[i];
-
-        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end )
-        {
-            num_pings_sent++;
-
-            if ( entry->time_pong_received >= entry->time_ping_sent )
-            {
-                double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
-
-                if ( rtt < min_rtt )
-                {
-                    min_rtt = rtt;
-                }
-
-                num_pongs_received++;
-            }
-        }
-    }
-
-    if ( num_pings_sent > 0 && num_pongs_received > 0 )
-    {
-        next_assert( min_rtt >= 0.0 );
-
-        stats->rtt = float( min_rtt );
-
-        stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
-    }
-
-    // calculate jitter relative to min rtt
-
-    int num_jitter_samples = 0;
-
-    double stddev_rtt = 0.0;
-
-    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
-    {
-        const next_ping_history_entry_t * entry = &history->entries[i];
-
-        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end )
-        {
-            if ( entry->time_pong_received > entry->time_ping_sent )
-            {
-                // pong received
-                double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
-                double error = rtt - min_rtt;
-                stddev_rtt += error * error;
-                num_jitter_samples++;
-            }
-        }
-    }
-
-    if ( num_jitter_samples > 0 )
-    {
-        stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples );
-    }
-
-    next_ping_history_verify_sentinels( history );
 }
 
 // ---------------------------------------------------------------

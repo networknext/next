@@ -24,6 +24,7 @@
 #define NEXT_REPLAY_PROTECTION_H
 
 #include "next.h"
+#include "next_config.h"
 #include "next_memory_checks.h"
 
 struct next_replay_protection_t
@@ -36,7 +37,7 @@ struct next_replay_protection_t
     NEXT_DECLARE_SENTINEL(1)
 };
 
-void next_replay_protection_initialize_sentinels( next_replay_protection_t * replay_protection )
+inline void next_replay_protection_initialize_sentinels( next_replay_protection_t * replay_protection )
 {
     (void) replay_protection;
     next_assert( replay_protection );
@@ -44,7 +45,7 @@ void next_replay_protection_initialize_sentinels( next_replay_protection_t * rep
     NEXT_INITIALIZE_SENTINEL( replay_protection, 1 )
 }
 
-void next_replay_protection_verify_sentinels( next_replay_protection_t * replay_protection )
+inline void next_replay_protection_verify_sentinels( next_replay_protection_t * replay_protection )
 {
     (void) replay_protection;
     next_assert( replay_protection );
@@ -52,7 +53,7 @@ void next_replay_protection_verify_sentinels( next_replay_protection_t * replay_
     NEXT_VERIFY_SENTINEL( replay_protection, 1 )
 }
 
-void next_replay_protection_reset( next_replay_protection_t * replay_protection )
+inline void next_replay_protection_reset( next_replay_protection_t * replay_protection )
 {
     next_replay_protection_initialize_sentinels( replay_protection );
 
@@ -63,7 +64,7 @@ void next_replay_protection_reset( next_replay_protection_t * replay_protection 
     next_replay_protection_verify_sentinels( replay_protection );
 }
 
-int next_replay_protection_already_received( next_replay_protection_t * replay_protection, uint64_t sequence )
+inline int next_replay_protection_already_received( next_replay_protection_t * replay_protection, uint64_t sequence )
 {
     next_replay_protection_verify_sentinels( replay_protection );
 
@@ -88,7 +89,7 @@ int next_replay_protection_already_received( next_replay_protection_t * replay_p
     return 0;
 }
 
-void next_replay_protection_advance_sequence( next_replay_protection_t * replay_protection, uint64_t sequence )
+inline void next_replay_protection_advance_sequence( next_replay_protection_t * replay_protection, uint64_t sequence )
 {
     next_replay_protection_verify_sentinels( replay_protection );
 

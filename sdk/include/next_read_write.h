@@ -23,6 +23,7 @@
 #ifndef NEXT_READ_WRITE_H
 #define NEXT_READ_WRITE_H
 
+#include "next_config.h"
 #include "next_address.h"
 
 #include <memory.h>
@@ -245,5 +246,49 @@ inline void next_read_address_variable( const uint8_t ** buffer, next_address_t 
 }
 
 // ----------------------------------------------------------------------
+
+inline void next_write_address_ipv4( uint8_t ** buffer, const next_address_t * address )
+{
+    next_assert( buffer );
+    next_assert( *buffer );
+    next_assert( address );
+
+    uint8_t * start = *buffer;
+
+    (void) buffer;
+
+    next_assert( address->type == NEXT_ADDRESS_IPV4 );
+
+    for ( int i = 0; i < 4; ++i )
+    {
+        next_write_uint8( buffer, address->data.ipv4[i] );
+    }
+    next_write_uint16( buffer, address->port );
+
+    (void) start;
+
+    next_assert( *buffer - start == NEXT_ADDRESS_IPV4_BYTES );
+}
+
+inline void next_read_address_ipv4( const uint8_t ** buffer, next_address_t * address )
+{
+    const uint8_t * start = *buffer;
+
+    memset( address, 0, sizeof(next_address_t) );
+
+    address->type = NEXT_ADDRESS_IPV4;
+
+    for ( int j = 0; j < 4; ++j )
+    {
+        address->data.ipv4[j] = next_read_uint8( buffer );
+    }
+    address->port = next_read_uint16( buffer );
+
+    (void) start;
+
+    next_assert( *buffer - start == NEXT_ADDRESS_IPV4_BYTES );
+}
+
+// ---------------------------------------------------------------------
 
 #endif // #ifndef NEXT_READ_WRITE_H
