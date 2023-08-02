@@ -39,6 +39,8 @@
 #include "next_upgrade_token.h"
 #include "next_route_token.h"
 #include "next_continue_token.h"
+#include "next_header.h"
+#include "next_packet_filter.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -63,12 +65,12 @@ static void next_check_handler( const char * condition,
     exit( 1 );
 }
 
-#define next_check( condition )                                                                             \
+#define next_check( condition )                                                                                 \
 do                                                                                                              \
 {                                                                                                               \
     if ( !(condition) )                                                                                         \
     {                                                                                                           \
-        next_check_handler( #condition, (const char*) __FUNCTION__, (const char*) __FILE__, __LINE__ );     \
+        next_check_handler( #condition, (const char*) __FUNCTION__, (const char*) __FILE__, __LINE__ );         \
     }                                                                                                           \
 } while(0)
 
@@ -1444,7 +1446,6 @@ void test_continue_token()
     next_check( input_token.session_id == output_token.session_id );
 }
 
-/*
 void test_header()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -1634,6 +1635,7 @@ void test_advanced_packet_filter()
     next_check( pass == 0 );
 }
 
+/*
 void test_passthrough()
 {
     uint8_t output[256];
@@ -4650,10 +4652,8 @@ void next_run_tests()
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_upgrade_token );
-
         RUN_TEST( test_route_token );
         RUN_TEST( test_continue_token );
-        /*
         RUN_TEST( test_header );
         RUN_TEST( test_pittle );
         RUN_TEST( test_chonkle );
@@ -4661,6 +4661,9 @@ void next_run_tests()
         RUN_TEST( test_pittle_and_chonkle );
         RUN_TEST( test_basic_packet_filter );
         RUN_TEST( test_advanced_packet_filter );
+
+        /*
+
         RUN_TEST( test_passthrough );
         RUN_TEST( test_address_data_none );
         RUN_TEST( test_address_data_ipv4 );
