@@ -32,6 +32,8 @@
 #include "next_stream.h"
 #include "next_serialize.h"
 #include "next_base64.h"
+#include "next_queue.h"
+#include "next_hash.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -107,17 +109,12 @@ void test_base64()
     next_check( next_base64_decode_string( encoded, decoded, 10 ) == 0 );
 }
 
-// todo
-/*
-void test_fnv1a()
+void test_hash()
 {
     uint64_t hash = next_datacenter_id( "local" );
     next_check( hash == 0x249f1fb6f3a680e8ULL );
 }
-*/
 
-// todo
-/*
 void test_queue()
 {
     const int QueueSize = 64;
@@ -209,7 +206,6 @@ void test_queue()
 
     next_queue_destroy( queue );
 }
-*/
 
 using namespace next;
 
@@ -4636,8 +4632,8 @@ void next_run_tests()
         RUN_TEST( test_time );
         RUN_TEST( test_endian );
         RUN_TEST( test_base64 );
-        // RUN_TEST( test_fnv1a );
-        // RUN_TEST( test_queue );
+        RUN_TEST( test_hash );
+        RUN_TEST( test_queue );
         RUN_TEST( test_bitpacker );
         RUN_TEST( test_bits_required );
         RUN_TEST( test_stream );

@@ -29,6 +29,8 @@
 #include "next_bitpacker.h"
 #include "next_serialize.h"
 #include "next_stream.h"
+#include "next_queue.h"
+#include "next_hash.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -287,28 +289,6 @@ uint16_t next_htons( uint16_t in )
 
 // -------------------------------------------------------------
 
-// #define NEXT_ENABLE_MEMORY_CHECKS 1
-
-#if NEXT_ENABLE_MEMORY_CHECKS
-
-    #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
-
-    #define NEXT_INITIALIZE_SENTINEL(pointer,n) for ( int i = 0; i < 64; ++i ) { pointer->next_sentinel_##n[i] = 0xBAADF00D; }
-
-    #define NEXT_VERIFY_SENTINEL(pointer,n) for ( int i = 0; i < 64; ++i ) { next_assert( pointer->next_sentinel_##n[i] == 0xBAADF00D ); }
-
-#else // #if NEXT_ENABLE_MEMORY_CHECKS
-
-    #define NEXT_DECLARE_SENTINEL(n)
-
-    #define NEXT_INITIALIZE_SENTINEL(pointer,n)
-
-    #define NEXT_VERIFY_SENTINEL(pointer,n)
-
-#endif // #if NEXT_ENABLE_MEMORY_CHECKS
-
-// -------------------------------------------------------------
-
 static int log_quiet = 0;
 
 void next_quiet( bool flag )
@@ -410,7 +390,7 @@ void next_free( void * context, void * p )
     return next_free_function( context, p );
 }
 
-void clear_and_free( void * context, void * p, size_t p_size )
+void next_clear_and_free( void * context, void * p, size_t p_size )
 {
     memset( p, 0, p_size );
     next_free( context, p );
@@ -489,45 +469,6 @@ void next_read_address_ipv4( const uint8_t ** buffer, next_address_t * address )
 }
 
 // -------------------------------------------------------------
-
-typedef uint64_t next_fnv_t;
-
-void next_fnv_init( next_fnv_t * fnv )
-{
-    *fnv = 0xCBF29CE484222325;
-}
-
-void next_fnv_write( next_fnv_t * fnv, const uint8_t * data, size_t size )
-{
-    for ( size_t i = 0; i < size; i++ )
-    {
-        (*fnv) ^= data[i];
-        (*fnv) *= 0x00000100000001B3;
-    }
-}
-
-uint64_t next_fnv_finalize( next_fnv_t * fnv )
-{
-    return *fnv;
-}
-
-uint64_t next_hash_string( const char * string )
-{
-    next_fnv_t fnv;
-    next_fnv_init( &fnv );
-    next_fnv_write( &fnv, (uint8_t *)( string ), strlen( string ) );
-    return next_fnv_finalize( &fnv );
-}
-
-uint64_t next_relay_id( const char * name )
-{
-    return next_hash_string( name );
-}
-
-uint64_t next_datacenter_id( const char * name )
-{
-    return next_hash_string( name );
-}
 
 uint64_t next_protocol_version()
 {
@@ -2321,133 +2262,6 @@ void next_term()
     next_platform_term();
 
     next_global_context = NULL;
-}
-
-// ---------------------------------------------------------------
-
-struct next_queue_t
-{
-    NEXT_DECLARE_SENTINEL(0)
-
-    void * context;
-    int size;
-    int num_entries;
-    int start_index;
-    void ** entries;
-
-    NEXT_DECLARE_SENTINEL(1)
-};
-
-void next_queue_initialize_sentinels( next_queue_t * queue )
-{
-    (void) queue;
-    next_assert( queue );
-    NEXT_INITIALIZE_SENTINEL( queue, 0 )
-    NEXT_INITIALIZE_SENTINEL( queue, 1 )
-}
-
-void next_queue_verify_sentinels( next_queue_t * queue )
-{
-    (void) queue;
-    next_assert( queue );
-    NEXT_VERIFY_SENTINEL( queue, 0 )
-    NEXT_VERIFY_SENTINEL( queue, 1 )
-}
-
-void next_queue_destroy( next_queue_t * queue );
-
-next_queue_t * next_queue_create( void * context, int size )
-{
-    next_queue_t * queue = (next_queue_t*) next_malloc( context, sizeof(next_queue_t) );
-    next_assert( queue );
-    if ( !queue )
-        return NULL;
-
-    next_queue_initialize_sentinels( queue );
-
-    queue->context = context;
-    queue->size = size;
-    queue->num_entries = 0;
-    queue->start_index = 0;
-    queue->entries = (void**) next_malloc( context, size * sizeof(void*) );
-
-    next_assert( queue->entries );
-
-    if ( !queue->entries )
-    {
-        next_queue_destroy( queue );
-        return NULL;
-    }
-
-    next_queue_verify_sentinels( queue );
-
-    return queue;
-}
-
-void next_queue_clear( next_queue_t * queue );
-
-void next_queue_destroy( next_queue_t * queue )
-{
-    next_queue_verify_sentinels( queue );
-
-    next_queue_clear( queue );
-
-    next_free( queue->context, queue->entries );
-
-    clear_and_free( queue->context, queue, sizeof( queue ) );
-}
-
-void next_queue_clear( next_queue_t * queue )
-{
-    next_queue_verify_sentinels( queue );
-
-    const int queue_size = queue->size;
-    const int start_index = queue->start_index;
-
-    for ( int i = 0; i < queue->num_entries; ++i )
-    {
-        const int index = (start_index + i ) % queue_size;
-        next_free( queue->context, queue->entries[index] );
-        queue->entries[index] = NULL;
-    }
-
-    queue->num_entries = 0;
-    queue->start_index = 0;
-}
-
-int next_queue_push( next_queue_t * queue, void * entry )
-{
-    next_queue_verify_sentinels( queue );
-
-    next_assert( entry );
-
-    if ( queue->num_entries == queue->size )
-    {
-        next_free( queue->context, entry );
-        return NEXT_ERROR;
-    }
-
-    int index = ( queue->start_index + queue->num_entries ) % queue->size;
-
-    queue->entries[index] = entry;
-    queue->num_entries++;
-
-    return NEXT_OK;
-}
-
-void * next_queue_pop( next_queue_t * queue )
-{
-    next_queue_verify_sentinels( queue );
-
-    if ( queue->num_entries == 0 )
-        return NULL;
-
-    void * entry = queue->entries[queue->start_index];
-
-    queue->start_index = ( queue->start_index + 1 ) % queue->size;
-    queue->num_entries--;
-
-    return entry;
 }
 
 // ---------------------------------------------------------------
@@ -4321,7 +4135,7 @@ void next_client_internal_destroy( next_client_internal_t * client )
     next_platform_mutex_destroy( &client->direct_bandwidth_mutex );
     next_platform_mutex_destroy( &client->next_bandwidth_mutex );
 
-    clear_and_free( client->context, client, sizeof(next_client_internal_t) );
+    next_clear_and_free( client->context, client, sizeof(next_client_internal_t) );
 }
 
 int next_client_internal_send_packet_to_server( next_client_internal_t * client, uint8_t packet_id, void * packet_object )
@@ -6295,7 +6109,7 @@ void next_client_destroy( next_client_t * client )
         next_client_internal_destroy( client->internal );
     }
 
-    clear_and_free( client->context, client, sizeof(next_client_t) );
+    next_clear_and_free( client->context, client, sizeof(next_client_t) );
 }
 
 void next_client_open_session( next_client_t * client, const char * server_address_string )
@@ -6946,7 +6760,7 @@ void next_pending_session_manager_destroy( next_pending_session_manager_t * pend
     next_free( pending_session_manager->context, pending_session_manager->addresses );
     next_free( pending_session_manager->context, pending_session_manager->entries );
 
-    clear_and_free( pending_session_manager->context, pending_session_manager, sizeof(next_pending_session_manager_t) );
+    next_clear_and_free( pending_session_manager->context, pending_session_manager, sizeof(next_pending_session_manager_t) );
 }
 
 bool next_pending_session_manager_expand( next_pending_session_manager_t * pending_session_manager )
@@ -7249,7 +7063,7 @@ void next_proxy_session_manager_destroy( next_proxy_session_manager_t * session_
     next_free( session_manager->context, session_manager->addresses );
     next_free( session_manager->context, session_manager->entries );
 
-    clear_and_free( session_manager->context, session_manager, sizeof(next_proxy_session_manager_t) );
+    next_clear_and_free( session_manager->context, session_manager, sizeof(next_proxy_session_manager_t) );
 }
 
 bool next_proxy_session_manager_expand( next_proxy_session_manager_t * session_manager )
@@ -8215,7 +8029,7 @@ void next_session_manager_destroy( next_session_manager_t * session_manager )
     next_free( session_manager->context, session_manager->addresses );
     next_free( session_manager->context, session_manager->entries );
 
-    clear_and_free( session_manager->context, session_manager, sizeof(next_session_manager_t) );
+    next_clear_and_free( session_manager->context, session_manager, sizeof(next_session_manager_t) );
 }
 
 bool next_session_manager_expand( next_session_manager_t * session_manager )
@@ -10050,7 +9864,7 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    clear_and_free( server->context, server, sizeof(next_server_internal_t) );
+    next_clear_and_free( server->context, server, sizeof(next_server_internal_t) );
 }
 
 void next_server_internal_quit( next_server_internal_t * server )
@@ -13186,7 +13000,7 @@ void next_server_destroy( next_server_t * server )
         next_server_internal_destroy( server->internal );
     }
 
-    clear_and_free( server->context, server, sizeof(next_server_t) );
+    next_clear_and_free( server->context, server, sizeof(next_server_t) );
 }
 
 void next_server_update( next_server_t * server )
