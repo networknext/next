@@ -20,9 +20,12 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "next_ps4.h"
+#include "next_platform_ps4.h"
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_PS4
+
+#include "next_platform.h"
+#include "next_address.h"
 
 #include <kernel.h>
 #include <net.h>
@@ -31,15 +34,9 @@
 #include <string.h>
 #include "sodium.h"
 
-extern void * next_malloc( void * context, size_t bytes );
-
-extern void next_free( void * context, void * p );
-
 #define HEAP_SIZE_NET (16 * 1024)
 
 static int handle_net;
-
-static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
 
 static const char * next_randombytes_implementation_name()
 {
@@ -105,29 +102,6 @@ int next_platform_init()
     if ( ( handle_net = sceNetPoolCreate("net", HEAP_SIZE_NET, 0 ) ) < 0 )
         return NEXT_ERROR;
 
-    connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
-    if ( sceNetCtlInit() != SCE_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init netctl library" );
-    }
-    SceNetCtlInfo info;
-    if ( sceNetCtlGetInfo( SCE_NET_CTL_INFO_DEVICE, &info ) == SCE_OK )
-    {
-        switch ( info.device )
-        {
-            case SCE_NET_CTL_DEVICE_WIRED:
-                connection_type = NEXT_CONNECTION_TYPE_WIRED;
-                break;
-            case SCE_NET_CTL_DEVICE_WIRELESS:
-                connection_type = NEXT_CONNECTION_TYPE_WIFI;
-                break;
-        }
-    }
-    else
-    {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to determine network connection type" );
-    }
-
     return NEXT_OK;
 }
 
@@ -179,7 +153,7 @@ next_platform_thread_t * next_platform_thread_create( void * context, next_platf
     shim_data->real_thread_function = thread_function;
     shim_data->real_thread_data = arg;
 
-    if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "next" ) != 0 )
+    if ( scePthreadCreate( &thread->handle, NULL, thread_function_shim, shim_data, "snapshot" ) != 0 )
     {
         next_free( context, thread );
         next_free( context, shim_data );
@@ -216,7 +190,7 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
     ScePthreadMutexattr attr;
     scePthreadMutexattrInit(&attr);
     scePthreadMutexattrSettype( &attr, SCE_PTHREAD_MUTEX_RECURSIVE );
-    bool success = scePthreadMutexInit( &mutex->handle, &attr, "next" ) == SCE_OK;
+    bool success = scePthreadMutexInit( &mutex->handle, &attr, "snapshot" ) == SCE_OK;
     scePthreadMutexattrDestroy( &attr );
     
     if ( !success )
@@ -313,13 +287,11 @@ int next_platform_inet_pton4( const char * address_string, uint32_t * address_ou
     return success ? NEXT_OK : NEXT_ERROR;
 }
 
-// address_out should be a uint16_t[8]
 int next_platform_inet_pton6( const char * address_string, uint16_t * address_out )
 {
     return NEXT_ERROR;
 }
 
-// address should be a uint16_t[8]
 int next_platform_inet_ntop6( const uint16_t * address, char * address_string, size_t address_string_size )
 {
     return NEXT_ERROR;
@@ -327,7 +299,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * socket );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
 {
     next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
     next_assert( s );
@@ -338,7 +310,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     // create socket
 
-    s->handle = sceNetSocket( "next", SCE_NET_AF_INET, SCE_NET_SOCK_DGRAM, SCE_NET_IPPROTO_UDP );
+    s->handle = sceNetSocket( "snapshot", SCE_NET_AF_INET, SCE_NET_SOCK_DGRAM, SCE_NET_IPPROTO_UDP );
 
     if ( s->handle < 0 )
     {
@@ -518,11 +490,6 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
 
     return result;
 
-}
-
-int next_platform_connection_type()
-{
-    return connection_type;
 }
 
 int next_platform_id()

@@ -20,19 +20,18 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "next_switch.h"
+#include "next_platform_switch.h"
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_SWITCH
+
+#include "next_platform.h"
+#include "next_address.h"
 
 #include <nn/socket.h>
 #include <nn/crypto.h>
 #include <nn/nifm.h>
 #include <random>
 #include <sodium.h>
-
-extern void * next_malloc( void * context, size_t bytes );
-
-extern void next_free( void * context, void * p );
 
 // threads
 
@@ -179,14 +178,23 @@ static randombytes_implementation next_random_implementation =
     &next_randombytes_close,
 };
 
+static nn::socket::ConfigDefaultWithMemory socket_config_with_memory;
+
 int next_platform_init()
 {
+    nn::Result result = nn::socket::Initialize( socket_config_with_memory );
+    if ( result.IsFailure() )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize nintendo sockets" );
+        return NEXT_ERROR;
+    }
+
     if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
         return NEXT_ERROR;
 
     time_start = nn::os::GetSystemTick();
 
-    nn::Result result = nn::nifm::Initialize(); // it's valid to call this multiple times
+    result = nn::nifm::Initialize(); // it's valid to call this multiple times
     if ( result.IsFailure() )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize nintendo network connection manager" );
@@ -203,6 +211,7 @@ double next_platform_time()
 
 void next_platform_term()
 {
+    nn::socket::Finalize();
 }
 
 const char * next_platform_getenv( const char * var )
@@ -272,7 +281,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * socket );
 
-int next_platform_socket_init( next_platform_socket_t * s, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
+int next_platform_socket_init( next_platform_socket_t * s, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
 {
     // create socket
     
@@ -283,7 +292,6 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
     s->timeout_seconds = timeout_seconds;
     s->send_buffer_size = send_buffer_size;
     s->receive_buffer_size = receive_buffer_size;
-    s->enable_packet_tagging = enable_packet_tagging;
 
     if ( s->handle == nn::socket::InvalidSocket )
     {
@@ -369,30 +377,10 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
         // timeout < 0, socket is blocking with no timeout
     }
 
-#if NEXT_PACKET_TAGGING
-
-    // tag as latency sensitive
-
-    if ( enable_packet_tagging )
-    {
-        next_assert( address->type == NEXT_ADDRESS_IPV4 );
-        int tos = 0xA0;
-        if ( nn::socket::SetSockOpt( s->handle, IPPROTO_IP, IP_TOS, (const char*) &tos, sizeof(tos) ) != 0)
-        {
-            next_printf(NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)");
-        }
-    }
-
-#else // If NEXT_PACKET_TAGGING
-
-    (void) enable_packet_tagging;
-
-#endif // #if NEXT_PACKET_TAGGING
-    
     return NEXT_OK;
 }
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
 {
     next_assert( address );
 
@@ -405,7 +393,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     socket->context = context;
 
-    if ( next_platform_socket_init( socket, address, socket_type, timeout_seconds, send_buffer_size, receive_buffer_size, enable_packet_tagging ) != NEXT_OK )
+    if ( next_platform_socket_init( socket, address, socket_type, timeout_seconds, send_buffer_size, receive_buffer_size ) != NEXT_OK )
     {
         next_platform_socket_destroy( socket );
         return NULL;
@@ -485,9 +473,8 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
         float timeout_seconds = socket->timeout_seconds;
         int send_buffer_size = socket->send_buffer_size;
         int receive_buffer_size = socket->receive_buffer_size;
-        bool enable_packet_tagging = socket->enable_packet_tagging;
 
-        if ( next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size, enable_packet_tagging ) == NEXT_ERROR )
+        if ( next_platform_socket_init( socket, &address, type, timeout_seconds, send_buffer_size, receive_buffer_size ) == NEXT_ERROR )
         {
             next_platform_socket_cleanup( socket );
             return 0;
@@ -528,11 +515,6 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     next_assert( result >= 0 );
 
     return result;
-}
-
-int next_platform_connection_type()
-{
-    return NEXT_CONNECTION_TYPE_WIFI; // switch is always on wifi
 }
 
 int next_platform_id()

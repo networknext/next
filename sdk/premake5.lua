@@ -7,7 +7,7 @@ solution "next"
 	warnings "Extra"
 	floatingpoint "Fast"
 	flags { "FatalWarnings" }
-	defines { "NEXT_COMPILE_WITH_TESTS" }
+	defines { "NEXT_DEVELOPMENT" }
 	filter "configurations:Debug"
 		symbols "On"
 		defines { "_DEBUG" }
@@ -35,8 +35,8 @@ project "next"
 	links { "sodium" }
 	files {
 		"include/next.h",
+		"include/next_*.h",
 		"source/next.cpp",
-		"source/next_*.h",
 		"source/next_*.cpp",
 	}
 	includedirs { "include", "sodium" }

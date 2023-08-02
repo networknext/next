@@ -50,10 +50,6 @@
 
 #endif // !defined(NEXT_DEVELOPMENT)
 
-#define NEXT_BOOL                                               int
-#define NEXT_TRUE                                                 1
-#define NEXT_FALSE                                                0
-
 #define NEXT_OK                                                   0
 #define NEXT_ERROR                                               -1
 
@@ -166,6 +162,65 @@
 #error Building unreal engine on PS5, but PLATFORM_PS5 is not defined! Please follow steps in README.md for PS5 platform setup!
 #endif // #if NEXT_UNREAL_ENGINE && NEXT_PLATFORM == NEXT_PLATFORM_PS5 && !defined(PLATFORM_PS5)
 
+#if !defined (NEXT_LITTLE_ENDIAN ) && !defined( NEXT_BIG_ENDIAN )
+
+  #ifdef __BYTE_ORDER__
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      #define NEXT_LITTLE_ENDIAN 1
+    #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+      #define NEXT_BIG_ENDIAN 1
+    #else
+      #error Unknown machine endianess detected. Please define NEXT_LITTLE_ENDIAN or NEXT_BIG_ENDIAN.
+    #endif // __BYTE_ORDER__
+
+  // Detect with GLIBC's endian.h
+  #elif defined(__GLIBC__)
+    #include <endian.h>
+    #if (__BYTE_ORDER == __LITTLE_ENDIAN)
+      #define NEXT_LITTLE_ENDIAN 1
+    #elif (__BYTE_ORDER == __BIG_ENDIAN)
+      #define NEXT_BIG_ENDIAN 1
+    #else
+      #error Unknown machine endianess detected. Please define NEXT_LITTLE_ENDIAN or NEXT_BIG_ENDIAN.
+    #endif // __BYTE_ORDER
+
+  // Detect with _LITTLE_ENDIAN and _BIG_ENDIAN macro
+  #elif defined(_LITTLE_ENDIAN) && !defined(_BIG_ENDIAN)
+    #define NEXT_LITTLE_ENDIAN 1
+  #elif defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
+    #define NEXT_BIG_ENDIAN 1
+
+  // Detect with architecture macros
+  #elif    defined(__sparc)     || defined(__sparc__)                           \
+        || defined(_POWER)      || defined(__powerpc__)                         \
+        || defined(__ppc__)     || defined(__hpux)      || defined(__hppa)      \
+        || defined(_MIPSEB)     || defined(_POWER)      || defined(__s390__)
+    #define NEXT_BIG_ENDIAN 1
+  #elif    defined(__i386__)    || defined(__alpha__)   || defined(__ia64)      \
+        || defined(__ia64__)    || defined(_M_IX86)     || defined(_M_IA64)     \
+        || defined(_M_ALPHA)    || defined(__amd64)     || defined(__amd64__)   \
+        || defined(_M_AMD64)    || defined(__x86_64)    || defined(__x86_64__)  \
+        || defined(_M_X64)      || defined(__bfin__)
+    #define NEXT_LITTLE_ENDIAN 1
+  #elif defined(_MSC_VER) && defined(_M_ARM)
+    #define NEXT_LITTLE_ENDIAN 1
+  #else
+    #error Unknown machine endianess detected. Please define NEXT_LITTLE_ENDIAN or NEXT_BIG_ENDIAN.
+  #endif
+
+#endif
+
+#if defined( _MSC_VER ) && _MSC_VER < 1700
+typedef __int32 int32_t;
+typedef __int64 int64_t;
+#define PRId64 "I64d"
+#define SCNd64 "I64d"
+#define PRIx64 "I64x"
+#define SCNx64 "I64x"
+#else
+#include <inttypes.h>
+#endif
+
 // -----------------------------------------
 
 struct next_config_t
@@ -175,8 +230,8 @@ struct next_config_t
     char customer_private_key[256];
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
-    NEXT_BOOL disable_network_next;
-    NEXT_BOOL disable_autodetect;
+    bool disable_network_next;
+    bool disable_autodetect;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( struct next_config_t * config );
@@ -186,10 +241,6 @@ NEXT_EXPORT_FUNC int next_init( void * context, struct next_config_t * config );
 NEXT_EXPORT_FUNC void next_term();
 
 // -----------------------------------------
-
-NEXT_EXPORT_FUNC double next_time();
-
-NEXT_EXPORT_FUNC void next_sleep( double time_seconds );
 
 NEXT_EXPORT_FUNC void next_printf( int level, const char * format, ... );
 
@@ -216,7 +267,7 @@ do                                                                              
 #define next_assert( ignore ) ((void)0)
 #endif
 
-NEXT_EXPORT_FUNC void next_quiet( NEXT_BOOL flag );
+NEXT_EXPORT_FUNC void next_quiet( bool flag );
 
 NEXT_EXPORT_FUNC void next_log_level( int level );
 
@@ -230,36 +281,16 @@ NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buff
 
 // -----------------------------------------
 
-#if !NEXT_ADDRESS_ALREADY_DEFINED
-struct next_address_t
-{
-    union { uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
-    uint16_t port;
-    uint8_t type;
-};
-#define NEXT_ADDRESS_ALREADY_DEFINED
-#endif // #if !NEXT_ADDRESS_ALREADY_DEFINED
-
-NEXT_EXPORT_FUNC int next_address_parse( struct next_address_t * address, const char * address_string );
-
-NEXT_EXPORT_FUNC const char * next_address_to_string( const struct next_address_t * address, char * buffer );
-
-NEXT_EXPORT_FUNC NEXT_BOOL next_address_equal( const struct next_address_t * a, const struct next_address_t * b );
-
-NEXT_EXPORT_FUNC void next_address_anonymize( struct next_address_t * address );
-
-// -----------------------------------------
-
 struct next_client_stats_t
 {
     int platform_id;
     int connection_type;
-    NEXT_BOOL next;
-    NEXT_BOOL upgraded;
-    NEXT_BOOL committed;
-    NEXT_BOOL multipath;
-    NEXT_BOOL reported;
-    NEXT_BOOL fallback_to_direct;
+    bool next;
+    bool upgraded;
+    bool committed;
+    bool multipath;
+    bool reported;
+    bool fallback_to_direct;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -289,8 +320,9 @@ struct next_client_stats_t
 #define NEXT_CLIENT_STATE_ERROR         2
 
 struct next_client_t;
+struct next_address_t;
 
-NEXT_EXPORT_FUNC struct next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( struct next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
+NEXT_EXPORT_FUNC struct next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( struct next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 NEXT_EXPORT_FUNC void next_client_destroy( struct next_client_t * client );
 
@@ -301,7 +333,7 @@ NEXT_EXPORT_FUNC void next_client_open_session( struct next_client_t * client, c
 NEXT_EXPORT_FUNC void next_client_close_session( struct next_client_t * client );
 
 // todo: sucks
-NEXT_EXPORT_FUNC NEXT_BOOL next_client_is_session_open( struct next_client_t * client );
+NEXT_EXPORT_FUNC bool next_client_is_session_open( struct next_client_t * client );
 
 // todo: sucks
 NEXT_EXPORT_FUNC int next_client_state( struct next_client_t * client );
@@ -322,24 +354,23 @@ NEXT_EXPORT_FUNC const struct next_client_stats_t * next_client_stats( struct ne
 
 NEXT_EXPORT_FUNC const struct next_address_t * next_client_server_address( struct next_client_t * client );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_client_ready( struct next_client_t * client );
+NEXT_EXPORT_FUNC bool next_client_ready( struct next_client_t * client );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_client_fallback_to_direct( struct next_client_t * client );
+NEXT_EXPORT_FUNC bool next_client_fallback_to_direct( struct next_client_t * client );
 
 // -----------------------------------------
 
 struct next_server_stats_t
 {
-    struct next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
     int platform_id;
     int connection_type;
-    NEXT_BOOL next;
-    NEXT_BOOL committed;
-    NEXT_BOOL multipath;
-    NEXT_BOOL reported;
-    NEXT_BOOL fallback_to_direct;
+    bool next;
+    bool committed;
+    bool multipath;
+    bool reported;
+    bool fallback_to_direct;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -366,14 +397,15 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_INITIALIZED               2
 
 struct next_server_t;
+struct next_address_t;
 
-NEXT_EXPORT_FUNC struct next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
+NEXT_EXPORT_FUNC next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 NEXT_EXPORT_FUNC void next_server_destroy( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC uint16_t next_server_port( struct next_server_t * server );
 
-NEXT_EXPORT_FUNC struct next_address_t next_server_address( struct next_server_t * server );
+NEXT_EXPORT_FUNC const next_address_t * next_server_address( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC int next_server_state( struct next_server_t * server );
 
@@ -381,7 +413,7 @@ NEXT_EXPORT_FUNC void next_server_update( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC uint64_t next_server_upgrade_session( struct next_server_t * server, const struct next_address_t * address, const char * user_id );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_server_session_upgraded( struct next_server_t * server, const struct next_address_t * address );
+NEXT_EXPORT_FUNC bool next_server_session_upgraded( struct next_server_t * server, const struct next_address_t * address );
 
 NEXT_EXPORT_FUNC void next_server_send_packet( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
@@ -389,9 +421,9 @@ NEXT_EXPORT_FUNC void next_server_send_packet_direct( struct next_server_t * ser
 
 NEXT_EXPORT_FUNC void next_server_send_packet_raw( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
+NEXT_EXPORT_FUNC bool next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_server_ready( struct next_server_t * server );
+NEXT_EXPORT_FUNC bool next_server_ready( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC const char * next_server_datacenter( struct next_server_t * server );
 
@@ -411,7 +443,7 @@ NEXT_EXPORT_FUNC void next_server_set_send_packet_to_address_callback( struct ne
 
 NEXT_EXPORT_FUNC void next_server_set_payload_receive_callback( struct next_server_t * server, int (*callback) ( void * data, const next_address_t * address, const uint8_t * payload_data, int payload_bytes ), void * callback_data );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_server_direct_only( struct next_server_t * server );
+NEXT_EXPORT_FUNC bool next_server_direct_only( struct next_server_t * server );
 
 // -----------------------------------------
 

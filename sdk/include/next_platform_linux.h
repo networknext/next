@@ -21,67 +21,45 @@
 */
 
 #include "next.h"
-#include "next_platform.h"
 
-#include <stdio.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
-#include <inttypes.h>
+#ifndef NEXT_PLATFORM_LINUX_H
+#define NEXT_PLATFORM_LINUX_H
 
-const char * bind_address = "0.0.0.0:0";
-const char * server_address = "127.0.0.1:50000";
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
-static volatile int quit = 0;
+#include <pthread.h>
+#include <unistd.h>
+#include <sched.h>
 
-void interrupt_handler( int signal )
+// -------------------------------------
+
+typedef int next_platform_socket_handle_t;
+
+struct next_platform_socket_t
 {
-    (void) signal; quit = 1;
-}
+    void * context;
+    int type;
+    next_platform_socket_handle_t handle;
+};
 
-void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+// -------------------------------------
+
+struct next_platform_thread_t
 {
-    (void) client; (void) context; (void) packet_data; (void) packet_bytes; (void) from;
-    next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
-}
+    void * context;
+    pthread_t handle;
+};
 
-int main()
+// -------------------------------------
+
+struct next_platform_mutex_t
 {
-    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
-    
-    if ( next_init( NULL, NULL ) != NEXT_OK )
-    {
-        printf( "error: could not initialize network next\n" );
-        return 1;
-    }
+    bool ok;
+    pthread_mutex_t handle;
+};
 
-    next_client_t * client = next_client_create( NULL, bind_address, client_packet_received );
-    if ( client == NULL )
-    {
-        printf( "error: failed to create client\n" );
-        return 1;
-    }
+// -------------------------------------
 
-    next_client_open_session( client, server_address );
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
 
-    uint8_t packet_data[32];
-    memset( packet_data, 0, sizeof( packet_data ) );
-
-    while ( !quit )
-    {
-        next_client_update( client );
-
-        if ( next_client_ready( client ) )
-        {
-            next_client_send_packet( client, packet_data, sizeof(packet_data) );
-        }
-        
-        next_platform_sleep( 0.25 );
-    }
-
-    next_client_destroy( client );
-    
-    next_term();
-    
-    return 0;
-}
+#endif // #ifndef NEXT_LINUX_H

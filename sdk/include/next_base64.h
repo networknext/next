@@ -20,49 +20,17 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef NEXT_BASE64_H
+#define NEXT_BASE64_H
+
 #include "next.h"
 
-#ifndef NEXT_PS4_H
-#define NEXT_PS4_H
+int next_base64_encode_data( const uint8_t * input, size_t input_length, char * output, size_t output_size );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_PS4
+int next_base64_decode_data( const char * input, uint8_t * output, size_t output_size );
 
-#include <kernel.h>
-#include <net.h>
+int next_base64_encode_string( const char * input, char * output, size_t output_size );
 
-#define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
-#define NEXT_PLATFORM_SOCKET_BLOCKING           1
+int next_base64_decode_string( const char * input, char * output, size_t output_size );
 
-// -------------------------------------
-
-typedef SceNetId next_platform_socket_handle_t;
-
-struct next_platform_socket_t
-{
-    next_platform_socket_handle_t handle;
-    int type;
-    float timeout_seconds;
-    void * context;
-};
-
-// -------------------------------------
-
-struct next_platform_thread_t
-{
-    ScePthread handle;
-    void * context;
-};
-
-// -------------------------------------
-
-struct next_platform_mutex_t
-{
-    bool ok;
-    ScePthreadMutex handle;
-};
-
-// -------------------------------------
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_PS4
-
-#endif // #ifndef NEXT_PS4_H
+#endif // #if NEXT_BASE64_H

@@ -22,16 +22,13 @@
 
 #include "next.h"
 
-#ifndef NEXT_MAC_H
-#define NEXT_MAC_H
+#ifndef NEXT_PLATFORM_IOS_H
+#define NEXT_PLATFORM_IOS_H
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#if NEXT_PLATFORM == NEXT_PLATFORM_IOS
 
 #include <pthread.h>
 #include <unistd.h>
-
-#define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
-#define NEXT_PLATFORM_SOCKET_BLOCKING           1
 
 // -------------------------------------
 
@@ -61,6 +58,6 @@ struct next_platform_mutex_t
 
 // -------------------------------------
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_IOS
 
-#endif // #ifndef NEXT_MAC_H
+#endif // #ifndef NEXT_PLATFORM_IOS_H

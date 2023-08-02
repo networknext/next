@@ -163,7 +163,7 @@ Check if the client has a session open.
 
 .. code-block:: c++
 
-	NEXT_BOOL next_client_is_session_open( next_client_t * client );
+	bool next_client_is_session_open( next_client_t * client );
 
 **Parameters:**
 
@@ -257,7 +257,7 @@ Please call this every frame as it drives the packet received callback.
 
         // ... do stuff ...
         
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
     }
 
 next_client_send_packet
@@ -290,7 +290,7 @@ Depending on whether this player is accelerated or not, this packet will be sent
 
         next_client_send_packet( client, packet_data, sizeof(packet_data) );
         
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
     }
 
 next_client_send_packet_direct
@@ -325,7 +325,7 @@ Example:
 
         next_client_send_packet_direct( client, packet_data, sizeof(packet_data) );
         
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
     }
 
 next_client_report_session
@@ -409,13 +409,13 @@ The client stats struct is defined as follows:
 	{
 	    int platform_id;
 	    int connection_type;
-	    NEXT_BOOL next;
-	    NEXT_BOOL upgraded;
-	    NEXT_BOOL committed;
-	    NEXT_BOOL multipath;
-	    NEXT_BOOL reported;
-	    NEXT_BOOL fallback_to_direct;
-	    NEXT_BOOL high_frequency_pings;
+	    bool next;
+	    bool upgraded;
+	    bool committed;
+	    bool multipath;
+	    bool reported;
+	    bool fallback_to_direct;
+	    bool high_frequency_pings;
 	    float direct_min_rtt;
 	    float direct_max_rtt;
 	    float direct_prime_rtt;

@@ -20,9 +20,12 @@
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "next_linux.h"
+#include "next_platform_mac.h"
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#if NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+#include "next_platform.h"
+#include "next_address.h"
 
 #include <netdb.h>
 #include <sys/types.h>
@@ -35,16 +38,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <unistd.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <sys/ioctl.h>
-#include <linux/wireless.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
-#include <alloca.h>
-
-extern void * next_global_context;
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 extern void * next_malloc( void * context, size_t bytes );
 
@@ -52,20 +49,14 @@ extern void next_free( void * context, void * p );
 
 // ---------------------------------------------------
 
-static double time_start;
+static mach_timebase_info_data_t timebase_info;
 
-static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
-
-static int get_connection_type();
+static uint64_t time_start;
 
 int next_platform_init()
 {
-    timespec ts;
-    clock_gettime( CLOCK_MONOTONIC_RAW, &ts );
-    time_start = ts.tv_sec + ( (double) ( ts.tv_nsec ) ) / 1000000000.0;
-
-    connection_type = get_connection_type();
-
+    mach_timebase_info( &timebase_info );
+    time_start = mach_absolute_time();
     return NEXT_OK;
 }
 
@@ -108,6 +99,8 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 {
     return inet_ntop( AF_INET6, (void*)address, address_string, socklen_t( address_string_size ) ) == NULL ? NEXT_ERROR : NEXT_OK;
 }
+
+// ---------------------------------------------------
 
 int next_platform_hostname_resolve( const char * hostname, const char * port, next_address_t * address )
 {
@@ -154,24 +147,17 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_ERROR;
 }
 
-int next_platform_connection_type()
-{
-    return connection_type;
-}
+// ---------------------------------------------------
 
 int next_platform_id()
 {
-    return NEXT_PLATFORM_LINUX;
+    return NEXT_PLATFORM_MAC;
 }
-
-// ---------------------------------------------------
 
 double next_platform_time()
 {
-    timespec ts;
-    clock_gettime( CLOCK_MONOTONIC_RAW, &ts );
-    double current = ts.tv_sec + ( (double) ( ts.tv_nsec ) ) / 1000000000.0;
-    return current - time_start;
+    uint64_t current = mach_absolute_time();
+    return ( (double) ( current - time_start ) ) * ( (double) timebase_info.numer ) / ( (double) timebase_info.denom ) / 1000000000.0;
 }
 
 void next_platform_sleep( double time )
@@ -185,6 +171,9 @@ void next_platform_socket_destroy( next_platform_socket_t * socket );
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
+    // todo
+    (void) enable_packet_tagging;
+
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
 
@@ -195,8 +184,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     socket->context = context;
 
     // create socket
-
-    socket->type = socket_type;
 
     socket->handle = ::socket( ( address->type == NEXT_ADDRESS_IPV6 ) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 
@@ -321,7 +308,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with receive timeout
         struct timeval tv;
         tv.tv_sec = 0;
-        tv.tv_usec = (int) ( timeout_seconds * 1000000.0f );
+        tv.tv_usec = (int) ( timeout_seconds * 1000000.0 );
         if ( setsockopt( socket->handle, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof( tv ) ) < 0 )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket receive timeout" );
@@ -334,50 +321,18 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with no timeout
     }
 
-#if NEXT_PACKET_TAGGING
-
-    // tag as latency sensitive
-
-    if ( enable_packet_tagging )
-    {
-        if ( address->type == NEXT_ADDRESS_IPV6 )
-        {
-            #if defined(IPV6_TCLASS)
-            int tos = 0xA0;
-            if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv6)" );
-            }
-            #endif
-        }
-        else
-        {
-            #if defined(IP_TOS)
-            int tos = 0xA0;
-            if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)" );
-            }
-            #endif
-        }
-    }
-
-#else // #if NEXT_PACKET_TAGGING
-
-    (void) enable_packet_tagging;
-
-#endif // #if NEXT_PACKET_TAGGING
-
     return socket;
 }
 
 void next_platform_socket_destroy( next_platform_socket_t * socket )
 {
     next_assert( socket );
+
     if ( socket->handle != 0 )
     {
         close( socket->handle );
     }
+    
     next_free( socket->context, socket );
 }
 
@@ -431,57 +386,6 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
     }
 }
 
-void next_platform_socket_send_packets( next_platform_socket_t * socket, const next_address_t * to, void ** packet_data, int * packet_bytes, int num_packets )
-{
-    next_assert( socket );
-    next_assert( to );
-    next_assert( packet_data );
-    next_assert( packet_bytes );
-    next_assert( num_packets >= 0 );
-
-    if ( num_packets == 0 )
-        return;
-
-    iovec * msg = (iovec*) alloca( sizeof(iovec) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        msg[i].iov_base = packet_data[i];
-        msg[i].iov_len = packet_bytes[i];
-    }
-
-    sockaddr_in * socket_address = (sockaddr_in*) alloca( sizeof(sockaddr_in) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        next_assert( to[i].type == NEXT_ADDRESS_IPV4 );                 // note: ipv6 not supported
-        memset( &socket_address[i], 0, sizeof(sockaddr_in) );
-        socket_address[i].sin_family = AF_INET;
-        socket_address[i].sin_addr.s_addr = ( ( (uint32_t) to[i].data.ipv4[0] ) )        | 
-                                            ( ( (uint32_t) to[i].data.ipv4[1] ) << 8 )   | 
-                                            ( ( (uint32_t) to[i].data.ipv4[2] ) << 16 )  | 
-                                            ( ( (uint32_t) to[i].data.ipv4[3] ) << 24 );
-        socket_address[i].sin_port = next_platform_htons( to->port );
-    }
-
-    mmsghdr * packet_array = (mmsghdr*) alloca( sizeof(mmsghdr) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        packet_array[i].msg_hdr.msg_name = &socket_address[i];
-        packet_array[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
-        packet_array[i].msg_hdr.msg_iov = &msg[i];
-        packet_array[i].msg_hdr.msg_iovlen = 1;
-    }
-
-    int result = sendmmsg( socket->handle, packet_array, num_packets, 0 );
-    
-    if ( result == -1 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "sendmmsg failed to send packets" );
-    }
-}
-
 int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_address_t * from, void * packet_data, int max_packet_size )
 {
     next_assert( socket );
@@ -492,7 +396,7 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     sockaddr_storage sockaddr_from;
     socklen_t from_length = sizeof( sockaddr_from );
 
-    int result = int( recvfrom( socket->handle, (char*) packet_data, max_packet_size, socket->type == NEXT_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0, (sockaddr*) &sockaddr_from, &from_length ) );
+    int result = int( recvfrom( socket->handle, (char*) packet_data, max_packet_size, 0, (sockaddr*) &sockaddr_from, &from_length ) );
 
     if ( result <= 0 )
     {
@@ -546,7 +450,7 @@ struct thread_shim_data_t
     next_platform_thread_func_t real_thread_function;
 };
 
-static void* thread_function_shim( void * data )
+static void * thread_function_shim( void * data )
 {
     next_assert( data );
     thread_shim_data_t * shim_data = (thread_shim_data_t*) data;
@@ -613,15 +517,17 @@ int next_platform_mutex_create( next_platform_mutex_t * mutex )
     next_assert( mutex );
 
     memset( mutex, 0, sizeof(next_platform_mutex_t) );
-    
+
     pthread_mutexattr_t attr;
-    pthread_mutexattr_init( &attr );
+    pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype( &attr, 0 );
     int result = pthread_mutex_init( &mutex->handle, &attr );
     pthread_mutexattr_destroy( &attr );
 
     if ( result != 0 )
+    {
         return NEXT_ERROR;
+    }
 
     mutex->ok = true;
 
@@ -654,458 +560,8 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 
 // ---------------------------------------------------
 
-template <typename T> struct next_vector_t
-{
-    T * data;
-    int length;
-    int reserved;
+#else // #if NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    inline next_vector_t( int reserve_count = 0 )
-    {
-        next_assert( reserve_count >= 0 );
-        data = 0;
-        length = 0;
-        reserved = 0;
-        if ( reserve_count > 0 )
-        {
-            reserve( reserve_count );
-        }
-    }
+int next_platform_mac_dummy_symbol = 0;
 
-    inline ~next_vector_t()
-    {
-        clear();
-    }
-
-    inline void clear() 
-    {
-        if ( data )
-        {
-            next_free( next_global_context, data );
-        }
-        data = NULL;
-        length = 0;
-        reserved = 0;
-    }
-
-    inline const T & operator [] ( int i ) const
-    {
-        next_assert( data );
-        next_assert( i >= 0 && i < length );
-        return *( data + i );
-    }
-
-    inline T & operator [] ( int i )
-    {
-        next_assert( data );
-        next_assert( i >= 0 && i < length );
-        return *( data + i );
-    }
-
-    void reserve( int size )
-    {
-        next_assert( size >= 0 );
-        if ( size > reserved )
-        {
-            const double VECTOR_GROWTH_FACTOR = 1.5;
-            const int VECTOR_INITIAL_RESERVATION = 1;
-            unsigned int next_size = (unsigned int)( pow( VECTOR_GROWTH_FACTOR, int( log( double( size ) ) / log( double( VECTOR_GROWTH_FACTOR ) ) ) + 1 ) );
-            if ( !reserved )
-            {
-                next_size = next_size > VECTOR_INITIAL_RESERVATION ? next_size : VECTOR_INITIAL_RESERVATION;
-                data = (T*)( next_malloc( next_global_context, next_size * sizeof(T) ) );
-                next_assert( data );
-            }
-            else
-            {
-                T * new_data = (T*)( next_malloc( next_global_context, next_size * sizeof(T) ) );
-                next_assert( data );
-                memcpy( new_data, data, reserved * sizeof(T) );
-                next_free( next_global_context, data );
-                data = new_data;
-            }
-            memset( (void*)( &data[reserved] ), 0, ( next_size - reserved ) * sizeof(T) );
-            reserved = next_size;
-        }
-    }
-
-    void resize( int i )
-    {
-        reserve( i );
-        length = i;
-    }
-
-    void remove( int i )
-    {
-        next_assert( data );
-        next_assert( i >= 0 && i < length );
-        if ( i != length - 1 )
-        {
-            data[i] = data[length - 1];
-        }
-        length--;
-    }
-
-    void remove_ordered( int i )
-    {
-        next_assert( data );
-        next_assert( i >= 0 && i < length );
-        memmove( &data[i], &data[i + 1], sizeof( T ) * ( length - ( i + 1 ) ) );
-        length--;
-    }
-
-    T * insert( int i )
-    {
-        next_assert( i >= 0 && i <= length );
-        resize( length + 1 );
-        memmove( &data[i + 1], &data[i], sizeof( T ) * ( length - 1 - i ) );
-        return &data[i];
-    }
-
-    T * insert( int i, const T & t )
-    {
-        T * p = insert( i );
-        *p = t;
-        return p;
-    }
-
-    T * add()
-    {
-        reserve( ++length );
-        return &data[length - 1];
-    }
-
-    T * add( const T & t )
-    {
-        T * p = add();
-        *p = t;
-        return p;
-    }
-};
-
-// ---------------------------------------------------
-
-struct next_iftable_t
-{
-    uint32_t if_index;
-    int connection_type;
-};
-
-struct next_ifforward4_t
-{
-    uint32_t if_index;
-    uint32_t forward_dest;
-    uint32_t forward_mask;
-    uint32_t forward_metric;
-};
-
-static int parse_kernel_route( struct nlmsghdr * msg_ptr, next_ifforward4_t * out )
-{
-    struct rtmsg * route_entry = (struct rtmsg *)( NLMSG_DATA( msg_ptr ) );
-
-    if ( route_entry->rtm_table != RT_TABLE_MAIN )
-        return NEXT_ERROR;
-
-    out->forward_mask = ( 1 << route_entry->rtm_dst_len ) - 1;
-
-    // read all attributes
-    int route_attribute_len = RTM_PAYLOAD( msg_ptr );
-    for ( struct rtattr * route_attribute = (struct rtattr *)( RTM_RTA( route_entry ) );
-        RTA_OK( route_attribute, route_attribute_len );
-        route_attribute = RTA_NEXT( route_attribute, route_attribute_len ) )
-    {
-        switch ( route_attribute->rta_type )
-        {
-            case RTA_DST:
-            {
-                memcpy( &out->forward_dest, RTA_DATA( route_attribute ), sizeof( out->forward_dest ) );
-                break;
-            }
-            case RTA_OIF:
-            {
-                memcpy( &out->if_index, RTA_DATA( route_attribute ), sizeof( out->if_index ) );
-                break;
-            }
-            case RTA_METRICS:
-            {
-                memcpy( &out->forward_metric, RTA_DATA( route_attribute ), sizeof( out->forward_metric ) );
-                break;
-            }
-        }
-    }
-
-    return NEXT_OK;
-}
-
-#define CHECK_BIT( _num, _bit ) ( ( _num ) & ( uint32_t(1) << ( _bit ) ) )
-
-static bool better_match( next_ifforward4_t * a, next_ifforward4_t * b, uint32_t ip )
-{
-    int matching_bits_a = 0;
-    int matching_bits_b = 0;
-
-    if ( a )
-    {
-        for ( int i = 0; i < 32; i++ )
-        {
-            if ( CHECK_BIT( a->forward_mask, i )
-                && CHECK_BIT( a->forward_dest, i ) == CHECK_BIT( ip, i ) )
-            {
-                matching_bits_a++;
-            }
-        }
-    }
-
-    if ( b )
-    {
-        for ( int i = 0; i < 32; i++ )
-        {
-            if ( CHECK_BIT( b->forward_mask, i )
-                && CHECK_BIT( b->forward_dest, i ) == CHECK_BIT( ip, i ) )
-            {
-                matching_bits_b++;
-            }
-        }
-    }
-    
-    return matching_bits_a > matching_bits_b;
-}
-
-static int classify_connection_type( next_vector_t<next_ifforward4_t> * route_table, next_vector_t<next_iftable_t> * interface_list, const next_address_t * addr )
-{
-    uint32_t ip = ( ( (uint32_t) addr->data.ipv4[0] ) )        | 
-                  ( ( (uint32_t) addr->data.ipv4[1] ) << 8 )   | 
-                  ( ( (uint32_t) addr->data.ipv4[2] ) << 16 )  | 
-                  ( ( (uint32_t) addr->data.ipv4[3] ) << 24 );
-    next_ifforward4_t * best_match = NULL;
-    for ( int i = 0; i < route_table->length; i++ )
-    {
-        next_ifforward4_t * route = &( ( *route_table )[i] );
-        if ( better_match( route, best_match, ip ) )
-        {
-            best_match = route;
-        }
-    }
-
-    next_iftable_t * outgoing_interface = NULL;
-
-    if ( best_match )
-    {
-        for ( int i = 0; i < interface_list->length; i++ )
-        {
-            next_iftable_t * iface = &( (* interface_list )[i] );
-            if ( iface->if_index == best_match->if_index )
-            {
-                outgoing_interface = iface;
-                break;
-            }
-        }
-    }
-
-    if ( outgoing_interface )
-    {
-        return outgoing_interface->connection_type;
-    }
-    else
-    {
-        return NEXT_CONNECTION_TYPE_UNKNOWN;
-    }
-}
-
-static int get_connection_type()
-{
-    next_vector_t<next_iftable_t> interface_list;
-    next_vector_t<next_ifforward4_t> route_table;
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "getting network info" );
-
-    // get interfaces
-    {
-        struct ifaddrs * ifaddr;
-
-        if ( getifaddrs( &ifaddr ) == -1 )
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "failed to get network interface addresses" );
-            return NEXT_CONNECTION_TYPE_UNKNOWN;
-        }
-
-        int sock = -1;
-
-        if ( ( sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == -1 )
-        {
-            freeifaddrs( ifaddr );
-            next_printf( NEXT_LOG_LEVEL_WARN, "failed to get network interface addresses" );
-            return NEXT_CONNECTION_TYPE_UNKNOWN;
-        }
-
-        for ( struct ifaddrs * i = ifaddr; i != NULL; i = i->ifa_next )
-        {
-            struct ifreq req;
-            memset( &req, 0, sizeof( req ) );
-            strncpy( req.ifr_name, i->ifa_name, IFNAMSIZ - 1 );
-
-            if ( ioctl( sock, SIOCGIFINDEX, &req ) == -1 )
-            {
-                continue;
-            }
-
-            uint32_t if_index = req.ifr_ifindex;
-
-            // check for duplicates
-            bool duplicate = false;
-            for ( int j = 0; j < interface_list.length; j++ )
-            {
-                if ( interface_list[j].if_index == if_index )
-                {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if ( duplicate )
-            {
-                continue;
-            }
-
-            next_iftable_t * interface_entry = interface_list.add();
-            interface_entry->if_index = if_index;
-
-            struct iwreq pwrq;
-            memset( &pwrq, 0, sizeof( pwrq ) );
-            strncpy( pwrq.ifr_name, i->ifa_name, IFNAMSIZ - 1 );
-
-            if ( ioctl( sock, SIOCGIWNAME, &pwrq ) == -1 )
-            {
-                interface_entry->connection_type = NEXT_CONNECTION_TYPE_WIRED;
-            }
-            else
-            {
-                interface_entry->connection_type = NEXT_CONNECTION_TYPE_WIFI;
-            }
-        }
-
-        close( sock );
-
-        freeifaddrs( ifaddr );
-    }
-
-    // get kernel route table
-    {
-        // open netlink socket
-        
-        pid_t pid = getpid();
-
-        int sock = socket( AF_NETLINK, SOCK_RAW, NETLINK_ROUTE );
-        if ( sock == -1 )
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "failed to open netlink socket" );
-            return NEXT_CONNECTION_TYPE_UNKNOWN;
-        }
-
-        struct sockaddr_nl local;
-        memset( &local, 0, sizeof( local ) );
-        local.nl_family = AF_NETLINK;
-        local.nl_pid = pid;
-        local.nl_groups = 0;
-
-        if ( bind( sock, (struct sockaddr *)( &local ), sizeof( local ) ) < 0 )
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "failed to bind netlink socket" );
-            return NEXT_CONNECTION_TYPE_UNKNOWN;
-        }
-
-        // prepare route table request
-        typedef struct nl_req_s nl_req_t;  
-        struct nl_req_s
-        {
-            struct nlmsghdr hdr;
-            struct rtgenmsg gen;
-        };
-
-        nl_req_t req;
-        memset( &req, 0, sizeof( req ) );
-        req.hdr.nlmsg_len = NLMSG_LENGTH( sizeof( struct rtgenmsg ) );
-        req.hdr.nlmsg_type = RTM_GETROUTE;
-        req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP; 
-        req.hdr.nlmsg_seq = 1;
-        req.hdr.nlmsg_pid = pid;
-        req.gen.rtgen_family = AF_INET; 
-
-        struct iovec io;
-        io.iov_base = &req;
-        io.iov_len = req.hdr.nlmsg_len;
-
-        struct sockaddr_nl kernel;
-        memset( &kernel, 0, sizeof( kernel ) );
-        kernel.nl_family = AF_NETLINK;
-        kernel.nl_groups = 0;
-
-        struct msghdr rtnl_msg;
-        memset( &rtnl_msg, 0, sizeof( rtnl_msg ) );
-        rtnl_msg.msg_iov = &io;
-        rtnl_msg.msg_iovlen = 1;
-        rtnl_msg.msg_name = &kernel;
-        rtnl_msg.msg_namelen = sizeof( kernel );
-
-        // send request
-        sendmsg( sock, (struct msghdr *)( &rtnl_msg ), 0 );
-
-        // read reply
-
-        bool done = false;
-        while ( !done )
-        {
-            struct msghdr rtnl_reply;
-            struct iovec io_reply;
-
-            memset( &io_reply, 0, sizeof( io_reply ) );
-            memset( &rtnl_reply, 0, sizeof( rtnl_reply ) );
-
-            const size_t IFLIST_REPLY_BUFFER = 8192;
-            char reply[IFLIST_REPLY_BUFFER];
-            io_reply.iov_base = reply;
-            io_reply.iov_len = IFLIST_REPLY_BUFFER;
-            rtnl_reply.msg_iov = &io_reply;
-            rtnl_reply.msg_iovlen = 1;
-            rtnl_reply.msg_name = &kernel;
-            rtnl_reply.msg_namelen = sizeof( kernel );
-
-            int len = recvmsg( sock, &rtnl_reply, 0 );
-            if ( len )
-            {
-                for ( struct nlmsghdr * msg_ptr = (struct nlmsghdr *)( reply ); NLMSG_OK( msg_ptr, len ); msg_ptr = NLMSG_NEXT( msg_ptr, len ) )
-                {
-                    if ( msg_ptr->nlmsg_type == 24 )
-                    {
-                        next_ifforward4_t route;
-                        if ( parse_kernel_route( msg_ptr, &route ) == NEXT_OK )
-                        {
-                            route_table.add( route );
-                        }
-                    }
-                    else if ( msg_ptr->nlmsg_type == 3 )
-                    {
-                        done = true;
-                    }
-                }
-            }
-        }
-
-        close( sock );
-    }
-
-    next_address_t address;
-    address.port = 80;
-    address.data.ipv4[0] = 8;
-    address.data.ipv4[1] = 8;
-    address.data.ipv4[2] = 8;
-    address.data.ipv4[3] = 8;
-    return classify_connection_type( &route_table, &interface_list, &address );
-}
-
-// ---------------------------------------------------
-
-#else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
-
-int next_linux_dummy_symbol = 0;
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_MAC

@@ -21,6 +21,9 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+#include "next_address.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -156,7 +159,7 @@ void log_function( int level, const char * format, ... )
     if ( level != NEXT_LOG_LEVEL_NONE )
     {
         const char * level_string = log_level_string( level );
-        printf( "%.2f: %s: %s\n", next_time(), level_string, buffer );
+        printf( "%.2f: %s: %s\n", next_platform_time(), level_string, buffer );
     }
     else
     {
@@ -246,13 +249,13 @@ void server_packet_received( next_server_t * server, void * _context, const next
 
         client_data.address = *from;
         client_data.session_id = session_id;
-        client_data.last_packet_receive_time = next_time();
+        client_data.last_packet_receive_time = next_platform_time();
 
         context->client_map[*from] = client_data;
     }
     else
     {
-        itor->second.last_packet_receive_time = next_time();
+        itor->second.last_packet_receive_time = next_platform_time();
     }
 }
 
@@ -264,7 +267,7 @@ void update_client_timeouts( ServerContext * context )
 {
     next_assert( context );
     ClientMap::iterator itor = context->client_map.begin();
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
     while ( itor != context->client_map.end() ) 
     {
         if ( itor->second.last_packet_receive_time + 5.0 < current_time )
@@ -472,7 +475,7 @@ int main()
             accumulator = 0.0;
         }
 
-        next_sleep( delta_time );
+        next_platform_sleep( delta_time );
     }
 
     next_server_flush( server );

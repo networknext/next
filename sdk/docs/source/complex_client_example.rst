@@ -178,7 +178,7 @@ Moving past allocations for the moment, we set up a callback for our own custom 
 	    if ( level != NEXT_LOG_LEVEL_NONE )
 	    {
 	        const char * level_string = log_level_string( level );
-	        printf( "%.2f: %s: %s\n", next_time(), level_string, buffer );
+	        printf( "%.2f: %s: %s\n", next_platform_time(), level_string, buffer );
 	    }
 	    else
 	    {

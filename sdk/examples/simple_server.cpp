@@ -21,6 +21,8 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -66,7 +68,7 @@ int main()
     {
         next_server_update( server );
 
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
     }
 
     next_server_flush( server );

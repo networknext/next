@@ -294,7 +294,7 @@ Checks if a session has been upgraded.
 
 .. code-block:: c++
 
-	NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+	bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 **Parameters:**
 
@@ -383,7 +383,7 @@ Gets statistics for a specific client address.
 
 .. code-block:: c++
 
-	NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
+	bool next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
 
 **Parameters:**
 
@@ -410,11 +410,11 @@ The server stats struct is defined as follows:
 	    uint64_t user_hash;
 	    int platform_id;
 	    int connection_type;
-	    NEXT_BOOL next;
-	    NEXT_BOOL committed;
-	    NEXT_BOOL multipath;
-	    NEXT_BOOL reported;
-	    NEXT_BOOL fallback_to_direct;
+	    bool next;
+	    bool committed;
+	    bool multipath;
+	    bool reported;
+	    bool fallback_to_direct;
 	    float direct_min_rtt;
 	    float direct_max_rtt;
 	    float direct_prime_rtt;
@@ -587,7 +587,7 @@ This function return true once server has finished DNS resolve of the Network Ne
 
 .. code-block:: c++
 
-	NEXT_BOOL next_server_ready( struct next_server_t * server );
+	bool next_server_ready( struct next_server_t * server );
 
 **Parameters:**
 

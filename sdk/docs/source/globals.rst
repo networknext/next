@@ -104,14 +104,14 @@ Call this before you shut down your application.
 
 	next_term();
 
-next_time
----------
+next_platform_time
+------------------
 
 Gets the current time in seconds.
 
 .. code-block:: c++
 
-	double next_time();
+	double next_platform_time();
 
 IMPORTANT: Only defined when called after *next_init*.
 
@@ -127,16 +127,16 @@ IMPORTANT: Only defined when called after *next_init*.
 
 	// .. do stuff ...
 
-	printf( "%.2f seconds since next_init\n", next_time() );
+	printf( "%.2f seconds since next_init\n", next_platform_time() );
 
-next_sleep
-----------
+next_platform_sleep
+-------------------
 
 Sleep for some amount of time.
 
 .. code-block:: c++
 
-	void next_sleep( double time_seconds );
+	void next_platform_sleep( double time_seconds );
 
 **Parameters:**
 
@@ -148,11 +148,11 @@ Sleep for some amount of time.
 
 	next_init( NULL, NULL );
 
-	const double start_time = next_time();
+	const double start_time = next_platform_time();
 
-	next_sleep( 10.0 );
+	next_platform_sleep( 10.0 );
 
-	const double finish_time = next_time();
+	const double finish_time = next_platform_time();
 
 	printf( "slept for %.2f seconds\n", finish_time - start_time );
 
@@ -270,7 +270,7 @@ Sets a custom log function.
 	    if ( level != NEXT_LOG_LEVEL_NONE )
 	    {
 	        const char * level_string = log_level_string( level );
-	        printf( "%.2f: %s: %s\n", next_time(), level_string, buffer );
+	        printf( "%.2f: %s: %s\n", next_platform_time(), level_string, buffer );
 	    }
 	    else
 	    {

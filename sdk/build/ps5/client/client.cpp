@@ -68,7 +68,7 @@ int32_t main( int argc, const char * const argv[] )
         memset( packet_data, 0, sizeof(packet_data) );
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
-        next_sleep( 1.0f / 60.0f );
+        next_platform_sleep( 1.0f / 60.0f );
     }
 
     printf( "\nShutting down...\n\n" );

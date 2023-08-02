@@ -6,12 +6,12 @@ DONE
 
 	Check that all semaphore jobs are working
 
-TODO
-	
 	Fix warnings in linux GCC.
 
-	-------
+	Fix log spam that was breaking happy path.
 
+TODO
+	
 	Restructure SDK into multiple source files so it's more easily maintainable
 
 	-------

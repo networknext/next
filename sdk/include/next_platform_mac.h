@@ -22,35 +22,30 @@
 
 #include "next.h"
 
-#ifndef NEXT_PS5_H
-#define NEXT_PS5_H
+#ifndef NEXT_PLATFORM_MAC_H
+#define NEXT_PLATFORM_MAC_H
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_PS5
+#if NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-#include <kernel.h>
-#include <net.h>
-
-#define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
-#define NEXT_PLATFORM_SOCKET_BLOCKING           1
+#include <pthread.h>
+#include <unistd.h>
 
 // -------------------------------------
 
-typedef SceNetId next_platform_socket_handle_t;
+typedef int next_platform_socket_handle_t;
 
 struct next_platform_socket_t
 {
-    next_platform_socket_handle_t handle;
-    int type;
-    float timeout_seconds;
     void * context;
+    next_platform_socket_handle_t handle;
 };
 
 // -------------------------------------
 
 struct next_platform_thread_t
 {
-    ScePthread handle;
     void * context;
+    pthread_t handle;
 };
 
 // -------------------------------------
@@ -58,11 +53,11 @@ struct next_platform_thread_t
 struct next_platform_mutex_t
 {
     bool ok;
-    ScePthreadMutex handle;
+    pthread_mutex_t handle;
 };
 
 // -------------------------------------
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_PS5
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-#endif // #ifndef NEXT_PS5_H
+#endif // #ifndef NEXT_PLATFORM_MAC_H

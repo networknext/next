@@ -21,6 +21,8 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -83,7 +85,7 @@ int main()
             next_client_send_packet( client, packet_data, sizeof(packet_data) );
         }
         
-        next_sleep( 0.25 );
+        next_platform_sleep( 0.25 );
     }
 
     next_client_destroy( client );

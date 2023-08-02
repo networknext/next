@@ -25,6 +25,9 @@
 #endif
 
 #include "next.h"
+#include "next_platform.h"
+#include "next_address.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -384,8 +387,8 @@ int main( int argc, char ** argv )
                     int packet_bytes = 1 + ( rand() % max_packet_bytes );
                     for ( int k = 0; k < packet_bytes; ++k )
                         packet_data[k] = rand() % 256;
-                    next_address_t server_address = next_server_address( servers[i] );
-                    next_platform_socket_send_packet( fuzz_socket, &server_address, packet_data, packet_bytes );
+                    const next_address_t * server_address = next_server_address( servers[i] );
+                    next_platform_socket_send_packet( fuzz_socket, server_address, packet_data, packet_bytes );
                 }
             }
         }
@@ -408,9 +411,9 @@ int main( int argc, char ** argv )
                 for ( int k = 0; k < packet_bytes; ++k )
                     packet_data[k] = rand() % 256;
 
-                next_address_t server_address = next_server_address( servers[j] );
+                const next_address_t * server_address = next_server_address( servers[j] );
 
-                next_client_send_packet_raw( clients[i], &server_address, packet_data, packet_bytes );
+                next_client_send_packet_raw( clients[i], server_address, packet_data, packet_bytes );
             }
 
         }
@@ -476,11 +479,11 @@ int main( int argc, char ** argv )
 
         if ( duration_seconds > 0 )
         {
-            if ( (int) next_time() > duration_seconds )
+            if ( (int) next_platform_time() > duration_seconds )
                 quit = true;
         }
 
-        next_sleep( 0.01 );
+        next_platform_sleep( 0.01 );
     }
 
     // destroy clients

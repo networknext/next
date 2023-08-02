@@ -21,6 +21,8 @@
 */
 
 #include "next.h"
+#include "next_tests.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -35,9 +37,11 @@ int main()
 
     printf( "\nRunning SDK tests:\n\n" );
 
-    next_test();
+    next_run_tests();
 
     next_term();
+
+    printf( "\n" );
 
     fflush( stdout );
 

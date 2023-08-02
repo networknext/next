@@ -21,6 +21,8 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -143,7 +145,7 @@ void log_function( int level, const char * format, ... )
     if ( level != NEXT_LOG_LEVEL_NONE )
     {
         const char * level_string = log_level_string( level );
-        printf( "%.2f: %s: %s\n", next_time(), level_string, buffer );
+        printf( "%.2f: %s: %s\n", next_platform_time(), level_string, buffer );
     }
     else
     {
@@ -215,7 +217,7 @@ void client_packet_received( next_client_t * client, void * _context, const next
 
     if ( verify_packet( packet_data, packet_bytes ) )
     {
-        context->last_packet_receive_time = next_time();
+        context->last_packet_receive_time = next_platform_time();
     }
 }
 
@@ -369,7 +371,7 @@ void print_client_stats( next_client_t * client )
 void update_client_timeout( ClientContext * context )
 {
     next_assert( context );
-    if ( context->last_packet_receive_time + 5.0 < next_time() )
+    if ( context->last_packet_receive_time + 5.0 < next_platform_time() )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "client connection timed out" );
         quit = true;
@@ -406,7 +408,7 @@ int main()
     ClientContext client_context;
     client_context.allocator = &client_allocator;
     client_context.client_data = 0x12345;
-    client_context.last_packet_receive_time = next_time();
+    client_context.last_packet_receive_time = next_platform_time();
 
     next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received );
     if ( client == NULL )
@@ -447,7 +449,7 @@ int main()
             next_client_send_packet( client, packet_data, packet_bytes );
         }
         
-        if ( next_time() > 60.0 && !reported )
+        if ( next_platform_time() > 60.0 && !reported )
         {
             next_client_report_session( client );
             reported = true;
@@ -463,7 +465,7 @@ int main()
 
         update_client_timeout( &client_context );
 
-        next_sleep( delta_time );
+        next_platform_sleep( delta_time );
     }
 
     next_client_destroy( client );

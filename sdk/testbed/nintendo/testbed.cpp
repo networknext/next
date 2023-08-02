@@ -46,7 +46,7 @@ static void print_function( int level, const char * format, ...)
     va_end( args );
     if ( level != NEXT_LOG_LEVEL_NONE )
     {
-        NN_LOG( "%0.6f %s: %s\n", next_time(), level_str, buffer );
+        NN_LOG( "%0.6f %s: %s\n", next_platform_time(), level_str, buffer );
     }
     else
     {
@@ -104,7 +104,7 @@ extern "C" void nnMain()
         memset( packet_data, 0, sizeof(packet_data) );
         next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
-        next_sleep( 1.0f / 60.0f );
+        next_platform_sleep( 1.0f / 60.0f );
     }
 
     printf( "Shutting down...\n\n" );

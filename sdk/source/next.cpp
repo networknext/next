@@ -21,6 +21,10 @@
 */
 
 #include "next.h"
+#include "next_crypto.h"
+#include "next_platform.h"
+#include "next_address.h"
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -212,65 +216,6 @@ static uint8_t next_router_public_key[] =
     0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46
 };
 
-#if !defined (NEXT_LITTLE_ENDIAN ) && !defined( NEXT_BIG_ENDIAN )
-
-  #ifdef __BYTE_ORDER__
-    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-      #define NEXT_LITTLE_ENDIAN 1
-    #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-      #define NEXT_BIG_ENDIAN 1
-    #else
-      #error Unknown machine endianess detected. Please define NEXT_LITTLE_ENDIAN or NEXT_BIG_ENDIAN.
-    #endif // __BYTE_ORDER__
-
-  // Detect with GLIBC's endian.h
-  #elif defined(__GLIBC__)
-    #include <endian.h>
-    #if (__BYTE_ORDER == __LITTLE_ENDIAN)
-      #define NEXT_LITTLE_ENDIAN 1
-    #elif (__BYTE_ORDER == __BIG_ENDIAN)
-      #define NEXT_BIG_ENDIAN 1
-    #else
-      #error Unknown machine endianess detected. Please define NEXT_LITTLE_ENDIAN or NEXT_BIG_ENDIAN.
-    #endif // __BYTE_ORDER
-
-  // Detect with _LITTLE_ENDIAN and _BIG_ENDIAN macro
-  #elif defined(_LITTLE_ENDIAN) && !defined(_BIG_ENDIAN)
-    #define NEXT_LITTLE_ENDIAN 1
-  #elif defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
-    #define NEXT_BIG_ENDIAN 1
-
-  // Detect with architecture macros
-  #elif    defined(__sparc)     || defined(__sparc__)                           \
-        || defined(_POWER)      || defined(__powerpc__)                         \
-        || defined(__ppc__)     || defined(__hpux)      || defined(__hppa)      \
-        || defined(_MIPSEB)     || defined(_POWER)      || defined(__s390__)
-    #define NEXT_BIG_ENDIAN 1
-  #elif    defined(__i386__)    || defined(__alpha__)   || defined(__ia64)      \
-        || defined(__ia64__)    || defined(_M_IX86)     || defined(_M_IA64)     \
-        || defined(_M_ALPHA)    || defined(__amd64)     || defined(__amd64__)   \
-        || defined(_M_AMD64)    || defined(__x86_64)    || defined(__x86_64__)  \
-        || defined(_M_X64)      || defined(__bfin__)
-    #define NEXT_LITTLE_ENDIAN 1
-  #elif defined(_MSC_VER) && defined(_M_ARM)
-    #define NEXT_LITTLE_ENDIAN 1
-  #else
-    #error Unknown machine endianess detected. Please define NEXT_LITTLE_ENDIAN or NEXT_BIG_ENDIAN.
-  #endif
-
-#endif
-
-#if defined( _MSC_VER ) && _MSC_VER < 1700
-typedef __int32 int32_t;
-typedef __int64 int64_t;
-#define PRId64 "I64d"
-#define SCNd64 "I64d"
-#define PRIx64 "I64x"
-#define SCNx64 "I64x"
-#else
-#include <inttypes.h>
-#endif
-
 void next_printf( const char * format, ... );
 
 static void default_assert_function( const char * condition, const char * function, const char * file, int line )
@@ -335,121 +280,6 @@ uint16_t next_htons( uint16_t in )
     return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
 }
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-#include "next_windows.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_MAC
-#include "next_mac.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_LINUX
-#include "next_linux.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_SWITCH
-#include "next_switch.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_PS4
-#include "next_ps4.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_PS5
-#include "next_ps5.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_IOS
-#include "next_ios.h"
-#elif NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
-#include "next_xboxone.h"
-#endif
-
-#ifdef _GAMING_XBOX
-#include "next_gdk.h"
-#endif // #ifdef _GAMING_XBOX
-
-extern int next_platform_init();
-
-extern void next_platform_term();
-
-extern const char * next_platform_getenv( const char * );
-
-extern double next_platform_time();
-
-extern void next_platform_sleep( double seconds );
-
-extern int next_platform_inet_pton4( const char * address_string, uint32_t * address_out );
-
-extern int next_platform_inet_pton6( const char * address_string, uint16_t * address_out );
-
-extern int next_platform_inet_ntop6( const uint16_t * address, char * address_string, size_t address_string_size );
-
-extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging );
-
-extern void next_platform_socket_destroy( next_platform_socket_t * socket );
-
-extern void next_platform_socket_send_packet( next_platform_socket_t * socket, const next_address_t * to, const void * packet_data, int packet_bytes );
-
-extern int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_address_t * from, void * packet_data, int max_packet_size );
-
-extern int next_platform_id();
-
-extern int next_platform_connection_type();
-
-extern int next_platform_hostname_resolve( const char * hostname, const char * port, next_address_t * address );
-
-extern next_platform_thread_t * next_platform_thread_create( void * context, next_platform_thread_func_t func, void * arg );
-
-extern void next_platform_thread_join( next_platform_thread_t * thread );
-
-extern void next_platform_thread_destroy( next_platform_thread_t * thread );
-
-extern bool next_platform_thread_high_priority( next_platform_thread_t * thread );
-
-extern int next_platform_mutex_create( next_platform_mutex_t * mutex );
-
-extern void next_platform_mutex_acquire( next_platform_mutex_t * mutex );
-
-extern void next_platform_mutex_release( next_platform_mutex_t * mutex );
-
-extern void next_platform_mutex_destroy( next_platform_mutex_t * mutex );
-
-//#define NEXT_SPIKE_TRACKING 1
-
-struct next_platform_mutex_helper_t
-{
-    next_platform_mutex_t * mutex;
-#if NEXT_SPIKE_TRACKING
-    const char * file;
-    int line;
-    double start_time;
-    next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line );
-#else // #if NEXT_SPIKE_TRACKING
-    next_platform_mutex_helper_t( next_platform_mutex_t * mutex );
-#endif // #if NEXT_SPIKE_TRACKING
-    ~next_platform_mutex_helper_t();
-};
-
-#if NEXT_SPIKE_TRACKING
-#define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex, __FILE__, __LINE__ )
-#else // #if NEXT_SPIKE_TRACKING
-#define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex )
-#endif // #if NEXT_SPIKE_TRACKING
-
-#if NEXT_SPIKE_TRACKING
-next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line ) : mutex(mutex), file(file), line(line), start_time(next_time())
-#else // #if NEXT_SPIKE_TRACKING
-next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex ) : mutex(mutex)
-#endif // #if NEXT_SPIKE_TRACKING
-{
-    next_assert( mutex );
-    next_platform_mutex_acquire( mutex );
-}
-
-next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
-{
-    next_assert( mutex );
-    next_platform_mutex_release( mutex );
-#if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
-    double mutex_duration = finish_time - start_time;
-    if ( mutex_duration > 0.001 )
-    {
-        next_printf( NEXT_LOG_LEVEL_WARN, "mutex spike %.2f milliseconds at %s:%d", mutex_duration, file, line );
-    }
-#endif // #if NEXT_SPIKE_TRACKING
-    mutex = NULL;
-}
-
 // -------------------------------------------------------------
 
 // #define NEXT_ENABLE_MEMORY_CHECKS 1
@@ -474,32 +304,9 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-bool next_platform_getenv_bool(const char *name)
-{
-    const char *v = next_platform_getenv(name);
-    if (v != NULL && v[0]) {
-        return v[0] == '1' || v[0] == 't' || v[0] == 'T';
-    }
-    return false;
-}
-
-double next_time()
-{
-#if NEXT_DEVELOPMENT
-    return next_platform_time() + 100000.0;
-#else // #if NEXT_DEVELOPMENT
-    return next_platform_time();
-#endif // #if NEXT_DEVELOPMENT
-}
-
-void next_sleep( double time_seconds )
-{
-    next_platform_sleep( time_seconds );
-}
-
 static int log_quiet = 0;
 
-void next_quiet( NEXT_BOOL flag )
+void next_quiet( bool flag )
 {
     log_quiet = flag;
 }
@@ -545,7 +352,7 @@ static void default_log_function( int level, const char * format, ... )
         if ( !log_quiet )
         {
             const char * level_string = next_log_level_string( level );
-            printf( "%.6f: %s: %s\n", next_time(), level_string, buffer );
+            printf( "%.6f: %s: %s\n", next_platform_time(), level_string, buffer );
         }
     }
     else
@@ -2601,17 +2408,10 @@ namespace next
 
 // -------------------------------------------------------------
 
-#include "next_crypto.h"
-
-void next_random_bytes( uint8_t * buffer, int bytes )
-{
-    next_randombytes_buf( buffer, bytes );
-}
-
 float next_random_float()
 {
     uint32_t uint32_value;
-    next_random_bytes( (uint8_t*)&uint32_value, sizeof(uint32_value) );
+    next_crypto_random_bytes( (uint8_t*)&uint32_value, sizeof(uint32_value) );
     uint64_t uint64_value = uint64_t(uint32_value);
     double double_value = double(uint64_value) / 0xFFFFFFFF;
     return float(double_value);
@@ -2620,7 +2420,7 @@ float next_random_float()
 uint64_t next_random_uint64()
 {
     uint64_t value;
-    next_random_bytes( (uint8_t*)&value, sizeof(value) );
+    next_crypto_random_bytes( (uint8_t*)&value, sizeof(value) );
     return value;
 }
 
@@ -2649,7 +2449,7 @@ struct NextUpgradeToken
         memset( buffer, 0, NEXT_UPGRADE_TOKEN_BYTES );
 
         uint8_t * nonce = buffer;
-        next_random_bytes( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
+        next_crypto_random_bytes( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
         buffer += NEXT_CRYPTO_SECRETBOX_NONCEBYTES;
 
         uint8_t * p = buffer;
@@ -4919,7 +4719,7 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
 
     // make sure all ping times are evenly distributed to avoid clusters of ping packets
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     const double ping_time = 1.0 / NEXT_PING_RATE;
 
@@ -4939,7 +4739,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -4947,7 +4747,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {
-            uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
+            uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_platform_time() );
 
             const uint8_t * ping_token = manager->relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
 
@@ -4969,13 +4769,13 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
 #if NEXT_SPIKE_TRACKING
-            double start_time = next_time();
+            double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-            double finish_time = next_time();
+            double finish_time = next_platform_time();
             if ( finish_time - start_time > 0.001 )
             {
                 next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -4997,7 +4797,7 @@ void next_relay_manager_process_pong( next_relay_manager_t * manager, const next
     {
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
-            next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_time() );
+            next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_platform_time() );
             return;
         }
     }
@@ -5009,7 +4809,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
 
     next_assert( stats );
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     next_relay_stats_initialize_sentinels( stats );
 
@@ -5141,7 +4941,7 @@ int next_write_encrypted_route_token( uint8_t ** buffer, next_route_token_t * to
     next_assert( receiver_public_key );
 
     unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
+    next_crypto_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     uint8_t * start = *buffer;
 
@@ -5267,7 +5067,7 @@ int next_write_encrypted_continue_token( uint8_t ** buffer, next_continue_token_
     next_assert( receiver_public_key );
 
     unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
+    next_crypto_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
 
     uint8_t * start = *buffer;
 
@@ -5591,7 +5391,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     next_printf( NEXT_LOG_LEVEL_INFO, "client next route" );
 
     route_manager->route_data.pending_route = true;
-    route_manager->route_data.pending_route_start_time = next_time();
+    route_manager->route_data.pending_route_start_time = next_platform_time();
     route_manager->route_data.pending_route_last_send_time = -1000.0;
     route_manager->route_data.pending_route_next_address = route_token.next_address;
     route_manager->route_data.pending_route_session_id = route_token.session_id;
@@ -5665,7 +5465,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     }
 
     route_manager->route_data.pending_continue = true;
-    route_manager->route_data.pending_continue_start_time = next_time();
+    route_manager->route_data.pending_continue_start_time = next_platform_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
 
     uint8_t from_address_data[32];
@@ -5853,7 +5653,7 @@ void next_route_manager_check_for_timeouts( next_route_manager_t * route_manager
     if ( route_manager->fallback_to_direct )
         return;
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     if ( route_manager->last_route_update_time > 0.0 && route_manager->last_route_update_time + NEXT_CLIENT_ROUTE_TIMEOUT < current_time )
     {
@@ -5904,7 +5704,7 @@ bool next_route_manager_send_route_request( next_route_manager_t * route_manager
         return false;
     }
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     if ( route_manager->route_data.pending_route_last_send_time + NEXT_ROUTE_REQUEST_SEND_TIME > current_time )
     {
@@ -5934,7 +5734,7 @@ bool next_route_manager_send_continue_request( next_route_manager_t * route_mana
     if ( !route_manager->route_data.current_route || !route_manager->route_data.pending_continue )
         return false;
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     if ( route_manager->route_data.pending_continue_last_send_time + NEXT_CONTINUE_REQUEST_SEND_TIME > current_time )
         return false;
@@ -6428,13 +6228,13 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -6593,7 +6393,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         memcpy( response.client_route_public_key, client->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         memcpy( response.upgrade_token, packet.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         response.platform_id = next_platform_id();
-        response.connection_type = next_platform_connection_type();
+
+        // todo
+        // response.connection_type = next_platform_connection_type();
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
         {
@@ -6640,8 +6442,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 #endif // #if NEXT_DEBUG
 
         client->sending_upgrade_response = true;
-        client->upgrade_response_start_time = next_time();
-        client->last_upgrade_response_send_time = next_time();
+        client->upgrade_response_start_time = next_platform_time();
+        client->last_upgrade_response_send_time = next_platform_time();
 
         return;
     }
@@ -6706,8 +6508,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->upgraded = true;
         client->upgrade_sequence = packet.upgrade_sequence;
         client->session_id = packet.session_id;
-        client->last_direct_pong_time = next_time();
-        client->last_next_pong_time = next_time();
+        client->last_direct_pong_time = next_platform_time();
+        client->last_next_pong_time = next_platform_time();
         memcpy( client->client_send_key, client_send_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
         memcpy( client->client_receive_key, client_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
 
@@ -6729,7 +6531,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         client->sending_upgrade_response = false;
 
-        client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
+        client->route_update_timeout_time = next_platform_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
 
         return;
     }
@@ -6909,7 +6711,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
 
-        client->last_route_switch_time = next_time();
+        client->last_route_switch_time = next_platform_time();
 
         const bool route_established = route_manager->route_data.current_route;
 
@@ -7066,7 +6868,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, payload_sequence );
 
-        next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_time() );
+        next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_platform_time() );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
@@ -7118,9 +6920,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t ping_sequence = next_read_uint64( &p );
 
-        next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_time() );
+        next_ping_history_pong_received( &client->next_ping_history, ping_sequence, next_platform_time() );
 
-        client->last_next_pong_time = next_time();
+        client->last_next_pong_time = next_platform_time();
 
         return;
     }
@@ -7185,11 +6987,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_time() );
+        next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_platform_time() );
 
         next_post_validate_packet( NEXT_DIRECT_PONG_PACKET, next_encrypted_packets, &packet_sequence, &client->internal_replay_protection );
 
-        client->last_direct_pong_time = next_time();
+        client->last_direct_pong_time = next_platform_time();
 
         return;
     }
@@ -7287,7 +7089,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 client->client_stats.jitter_client_to_server = packet.jitter_client_to_server;
                 client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
                 client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
-                client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
+                client->route_update_timeout_time = next_platform_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
 
                 if ( memcmp( client->upcoming_magic, packet.upcoming_magic, 8 ) != 0 )
                 {
@@ -7419,7 +7221,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
     next_printf( NEXT_LOG_LEVEL_SPAM, "client next_platform_socket_receive_packet returns with a %d byte packet from %s", packet_bytes, next_address_to_string( &from, address_buffer ) );
 #endif // #if NEXT_SPIKE_TRACKING
 
-    double packet_receive_time = next_time();
+    double packet_receive_time = next_platform_time();
 
     next_assert( packet_bytes >= 0 );
 
@@ -7476,9 +7278,9 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->server_address = open_session_command->server_address;
                 client->session_open = true;
                 client->open_session_sequence++;
-                client->last_direct_ping_time = next_time();
-                client->last_stats_update_time = next_time();
-                client->last_stats_report_time = next_time() + next_random_float();
+                client->last_direct_ping_time = next_platform_time();
+                client->last_stats_update_time = next_platform_time();
+                client->last_stats_report_time = next_platform_time() + next_random_float();
                 next_crypto_kx_keypair( client->client_kx_public_key, client->client_kx_private_key );
                 next_crypto_box_keypair( client->client_route_public_key, client->client_route_private_key );
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -7640,7 +7442,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     next_assert( !next_global_config.disable_network_next );
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     if ( client->last_stats_update_time + ( 1.0 / NEXT_CLIENT_STATS_UPDATES_PER_SECOND ) < current_time )
     {
@@ -7658,7 +7460,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.fallback_to_direct = client->fallback_to_direct;
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
-        client->client_stats.connection_type = next_platform_connection_type();
+
+        // todo
+        // client->client_stats.connection_type = next_platform_connection_type();
 
         double start_time = current_time - NEXT_CLIENT_STATS_WINDOW;
         if ( start_time < client->last_route_switch_time + NEXT_PING_SAFETY )
@@ -7847,7 +7651,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
     if ( client->fallback_to_direct )
         return;
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     if ( client->last_direct_pong_time + NEXT_CLIENT_SESSION_TIMEOUT < current_time )
     {
@@ -7886,7 +7690,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     if ( client->fallback_to_direct )
         return;
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     bool has_next_route = false;
     {
@@ -7956,13 +7760,13 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
 #if NEXT_SPIKE_TRACKING
-        double start_time = next_time();
+        double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
         next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-        double finish_time = next_time();
+        double finish_time = next_platform_time();
         if ( finish_time - start_time > 0.001 )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8014,7 +7818,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 
     if ( !client->fallback_to_direct && client->upgraded && client->route_update_timeout_time > 0.0 )
     {
-        if ( next_time() > client->route_update_timeout_time )
+        if ( next_platform_time() > client->route_update_timeout_time )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client route update timeout. falling back to direct" );
             {
@@ -8062,13 +7866,13 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route request to relay: %s", next_address_to_string( &route_request_to, buffer ) );
 
 #if NEXT_SPIKE_TRACKING
-        double start_time = next_time();
+        double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
         next_platform_socket_send_packet( client->socket, &route_request_to, route_request_packet_data, route_request_packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-        double finish_time = next_time();
+        double finish_time = next_platform_time();
         if ( finish_time - start_time > 0.001 )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8082,13 +7886,13 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent continue request to relay: %s", next_address_to_string( &continue_request_to, buffer ) );
 
 #if NEXT_SPIKE_TRACKING
-        double start_time = next_time();
+        double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
         next_platform_socket_send_packet( client->socket, &continue_request_to, continue_request_packet_data, continue_request_packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-        double finish_time = next_time();
+        double finish_time = next_platform_time();
         if ( finish_time - start_time > 0.001 )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8109,7 +7913,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     if ( !client->sending_upgrade_response )
         return;
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     if ( client->last_upgrade_response_send_time + 1.0 > current_time )
         return;
@@ -8117,13 +7921,13 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     next_assert( client->upgrade_response_packet_bytes > 0 );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( client->socket, &client->server_address, client->upgrade_response_packet_data, client->upgrade_response_packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8151,7 +7955,7 @@ static void next_client_internal_update( next_client_internal_t * client )
         return;
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_client_internal_update_direct_pings( client );
@@ -8170,7 +7974,7 @@ static void next_client_internal_update( next_client_internal_t * client )
 
 #if NEXT_SPIKE_TRACKING
 
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
 
     if ( finish_time - start_time > 0.001 )
     {
@@ -8188,19 +7992,19 @@ static void next_client_internal_thread_function( void * context )
 
     bool quit = false;
 
-    double last_update_time = next_time();
+    double last_update_time = next_platform_time();
 
     while ( !quit )
     {
         next_client_internal_block_and_receive_packet( client );
 
-        if ( next_time() > last_update_time + 0.01 )
+        if ( next_platform_time() > last_update_time + 0.01 )
         {
             next_client_internal_update( client );
 
             quit = next_client_internal_pump_commands( client );
 
-            last_update_time = next_time();
+            last_update_time = next_platform_time();
         }
     }
 }
@@ -8303,10 +8107,13 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
     }
 
+    // todo
+    /*
     if ( next_platform_thread_high_priority( client->thread ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "client increased thread priority" );
     }
+    */
 
     next_bandwidth_limiter_reset( &client->direct_send_bandwidth );
     next_bandwidth_limiter_reset( &client->direct_receive_bandwidth );
@@ -8398,7 +8205,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     client->open_session_sequence++;
 }
 
-NEXT_BOOL next_client_is_session_open( next_client_t * client )
+bool next_client_is_session_open( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
@@ -8490,9 +8297,9 @@ void next_client_update( next_client_t * client )
 
                 const int wire_packet_bits = next_wire_packet_bits( packet_received->payload_bytes );
 
-                next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_time(), 0, wire_packet_bits );
+                next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-                double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_time() );
+                double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_platform_time() );
 
                 {
                     next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
@@ -8507,9 +8314,9 @@ void next_client_update( next_client_t * client )
                         envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
                     }
 
-                    next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
+                    next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_platform_time(), envelope_kbps_down, wire_packet_bits );
 
-                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth, next_time() );
+                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth, next_platform_time() );
 
                     {
                         next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
@@ -8570,13 +8377,13 @@ void next_client_update( next_client_t * client )
     }
 }
 
-NEXT_BOOL next_client_ready( next_client_t * client )
+bool next_client_ready( next_client_t * client )
 {
     next_assert( client );
-    return ( next_global_config.disable_network_next || client->ready ) ? NEXT_TRUE : NEXT_FALSE;
+    return ( next_global_config.disable_network_next || client->ready ) ? true : false;
 }
 
-NEXT_BOOL next_client_fallback_to_direct( struct next_client_t * client )
+bool next_client_fallback_to_direct( struct next_client_t * client )
 {
     next_assert( client );
     return client->client_stats.fallback_to_direct;
@@ -8634,9 +8441,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
 
-        next_bandwidth_limiter_add_packet( &client->direct_send_bandwidth, next_time(), 0, wire_packet_bits );
+        next_bandwidth_limiter_add_packet( &client->direct_send_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth, next_time() );
+        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth, next_platform_time() );
 
         {
             next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
@@ -8653,9 +8460,9 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
                 next_envelope_kbps_up = client->internal->next_bandwidth_envelope_kbps_up;
             }
 
-            bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_time(), next_envelope_kbps_up, wire_packet_bits );
+            bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_platform_time(), next_envelope_kbps_up, wire_packet_bits );
 
-            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_time() );
+            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_platform_time() );
 
             {
                 next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
@@ -8689,13 +8496,13 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             if ( result )
             {
 #if NEXT_SPIKE_TRACKING
-                double start_time = next_time();
+                double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
                 next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-                double finish_time = next_time();
+                double finish_time = next_platform_time();
                 if ( finish_time - start_time > 0.001 )
                 {
                     next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8738,13 +8545,13 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             (void) direct_packet_bytes;
 
 #if NEXT_SPIKE_TRACKING 
-            double start_time = next_time();
+            double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
             next_platform_socket_send_packet( client->internal->socket, &client->server_address, direct_packet_data, direct_packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-            double finish_time = next_time();
+            double finish_time = next_platform_time();
             if ( finish_time - start_time > 0.001 )
             {
                 next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8795,13 +8602,13 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     memcpy( buffer + 1, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8823,13 +8630,13 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
     next_assert( packet_bytes > 0 );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( client->internal->socket, to_address, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -8885,218 +8692,6 @@ void next_client_counters( next_client_t * client, uint64_t * counters )
     memcpy( counters, client->counters, sizeof(uint64_t) * NEXT_CLIENT_COUNTER_MAX );
     for ( int i = 0; i < NEXT_CLIENT_COUNTER_MAX; ++i )
         counters[i] += client->internal->counters[i];
-}
-
-// ---------------------------------------------------------------
-
-int next_address_parse( next_address_t * address, const char * address_string_in )
-{
-    next_assert( address );
-    next_assert( address_string_in );
-
-    if ( !address )
-        return NEXT_ERROR;
-
-    if ( !address_string_in )
-        return NEXT_ERROR;
-
-    memset( address, 0, sizeof( next_address_t ) );
-
-    // first try to parse the string as an IPv6 address:
-    // 1. if the first character is '[' then it's probably an ipv6 in form "[addr6]:portnum"
-    // 2. otherwise try to parse as an IPv6 address using inet_pton
-
-    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH + NEXT_ADDRESS_BUFFER_SAFETY*2];
-
-    char * address_string = buffer + NEXT_ADDRESS_BUFFER_SAFETY;
-    next_copy_string( address_string, address_string_in, NEXT_MAX_ADDRESS_STRING_LENGTH );
-
-    int address_string_length = (int) strlen( address_string );
-
-    if ( address_string[0] == '[' )
-    {
-        const int base_index = address_string_length - 1;
-
-        // note: no need to search past 6 characters as ":65535" is longest possible port value
-        for ( int i = 0; i < 6; ++i )
-        {
-            const int index = base_index - i;
-            if ( index < 0 )
-            {
-                return NEXT_ERROR;
-            }
-            if ( address_string[index] == ':' )
-            {
-                address->port = (uint16_t) ( atoi( &address_string[index + 1] ) );
-                address_string[index-1] = '\0';
-                break;
-            }
-            else if ( address_string[index] == ']' )
-            {
-                // no port number
-                address->port = 0;
-                address_string[index] = '\0';
-                break;
-            }
-        }
-        address_string += 1;
-    }
-
-    uint16_t addr6[8];
-    if ( next_platform_inet_pton6( address_string, addr6 ) == NEXT_OK )
-    {
-        address->type = NEXT_ADDRESS_IPV6;
-        for ( int i = 0; i < 8; ++i )
-        {
-            address->data.ipv6[i] = next_ntohs( addr6[i] );
-        }
-        return NEXT_OK;
-    }
-
-    // otherwise it's probably an IPv4 address:
-    // 1. look for ":portnum", if found save the portnum and strip it out
-    // 2. parse remaining ipv4 address via inet_pton
-
-    address_string_length = (int) strlen( address_string );
-    const int base_index = address_string_length - 1;
-    for ( int i = 0; i < 6; ++i )
-    {
-        const int index = base_index - i;
-        if ( index < 0 )
-            break;
-        if ( address_string[index] == ':' )
-        {
-            address->port = (uint16_t)( atoi( &address_string[index + 1] ) );
-            address_string[index] = '\0';
-        }
-    }
-
-    uint32_t addr4;
-    if ( next_platform_inet_pton4( address_string, &addr4 ) == NEXT_OK )
-    {
-        address->type = NEXT_ADDRESS_IPV4;
-        address->data.ipv4[3] = (uint8_t) ( ( addr4 & 0xFF000000 ) >> 24 );
-        address->data.ipv4[2] = (uint8_t) ( ( addr4 & 0x00FF0000 ) >> 16 );
-        address->data.ipv4[1] = (uint8_t) ( ( addr4 & 0x0000FF00 ) >> 8  );
-        address->data.ipv4[0] = (uint8_t) ( ( addr4 & 0x000000FF )     );
-        return NEXT_OK;
-    }
-
-    return NEXT_ERROR;
-}
-
-const char * next_address_to_string( const next_address_t * address, char * buffer )
-{
-    next_assert( buffer );
-
-    if ( address->type == NEXT_ADDRESS_IPV6 )
-    {
-#if defined(WINVER) && WINVER <= 0x0502
-        // ipv6 not supported
-        buffer[0] = '\0';
-        return buffer;
-#else
-        uint16_t ipv6_network_order[8];
-        for ( int i = 0; i < 8; ++i )
-            ipv6_network_order[i] = next_htons( address->data.ipv6[i] );
-        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_platform_inet_ntop6( ipv6_network_order, address_string, sizeof( address_string ) );
-        if ( address->port == 0 )
-        {
-            next_copy_string( buffer, address_string, NEXT_MAX_ADDRESS_STRING_LENGTH );
-            return buffer;
-        }
-        else
-        {
-            if ( snprintf( buffer, NEXT_MAX_ADDRESS_STRING_LENGTH, "[%s]:%hu", address_string, address->port ) < 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "address string truncated: [%s]:%hu", address_string, address->port );
-            }
-            return buffer;
-        }
-#endif
-    }
-    else if ( address->type == NEXT_ADDRESS_IPV4 )
-    {
-        if ( address->port != 0 )
-        {
-            snprintf( buffer,
-                      NEXT_MAX_ADDRESS_STRING_LENGTH,
-                      "%d.%d.%d.%d:%d",
-                      address->data.ipv4[0],
-                      address->data.ipv4[1],
-                      address->data.ipv4[2],
-                      address->data.ipv4[3],
-                      address->port );
-        }
-        else
-        {
-            snprintf( buffer,
-                      NEXT_MAX_ADDRESS_STRING_LENGTH,
-                      "%d.%d.%d.%d",
-                      address->data.ipv4[0],
-                      address->data.ipv4[1],
-                      address->data.ipv4[2],
-                      address->data.ipv4[3] );
-        }
-        return buffer;
-    }
-    else
-    {
-        snprintf( buffer, NEXT_MAX_ADDRESS_STRING_LENGTH, "%s", "NONE" );
-        return buffer;
-    }
-}
-
-NEXT_BOOL next_address_equal( const next_address_t * a, const next_address_t * b )
-{
-    next_assert( a );
-    next_assert( b );
-
-    if ( a->type != b->type )
-        return NEXT_FALSE;
-
-    if ( a->type == NEXT_ADDRESS_IPV4 )
-    {
-        if ( a->port != b->port )
-            return NEXT_FALSE;
-
-        for ( int i = 0; i < 4; ++i )
-        {
-            if ( a->data.ipv4[i] != b->data.ipv4[i] )
-                return NEXT_FALSE;
-        }
-    }
-    else if ( a->type == NEXT_ADDRESS_IPV6 )
-    {
-        if ( a->port != b->port )
-            return NEXT_FALSE;
-
-        for ( int i = 0; i < 8; ++i )
-        {
-            if ( a->data.ipv6[i] != b->data.ipv6[i] )
-                return NEXT_FALSE;
-        }
-    }
-
-    return NEXT_TRUE;
-}
-
-void next_address_anonymize( next_address_t * address )
-{
-    next_assert( address );
-    if ( address->type == NEXT_ADDRESS_IPV4 )
-    {
-        address->data.ipv4[3] = 0;
-    }
-    else
-    {
-        address->data.ipv6[4] = 0;
-        address->data.ipv6[5] = 0;
-        address->data.ipv6[6] = 0;
-        address->data.ipv6[7] = 0;
-    }
-    address->port = 0;
 }
 
 // ---------------------------------------------------------------
@@ -10566,7 +10161,7 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     entry->special_send_sequence = 1;
     entry->internal_send_sequence = 1;
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     entry->last_client_direct_ping = current_time;
     entry->last_client_next_ping = current_time;
@@ -12032,7 +11627,7 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         return;
     }
 
-    server->resolve_hostname_start_time = next_time();
+    server->resolve_hostname_start_time = next_platform_time();
     server->resolving_hostname = true;
     server->resolve_hostname_finished = false;
 }
@@ -12052,7 +11647,7 @@ void next_server_internal_autodetect( next_server_internal_t * server )
         return;
     }
 
-    server->autodetect_start_time = next_time();
+    server->autodetect_start_time = next_platform_time();
     server->autodetecting = true;
 }
 
@@ -12063,7 +11658,7 @@ void next_server_internal_initialize( next_server_internal_t * server )
         next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
 
         server->state = NEXT_SERVER_STATE_INITIALIZING;
-        server->server_init_timeout_time = next_time() + NEXT_SERVER_INIT_TIMEOUT;
+        server->server_init_timeout_time = next_platform_time() + NEXT_SERVER_INIT_TIMEOUT;
     }
     
     next_server_internal_resolve_hostname( server );
@@ -12274,7 +11869,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     next_crypto_box_keypair( server->server_route_public_key, server->server_route_private_key );
 
-    server->server_update_last_time = next_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
+    server->server_update_last_time = next_platform_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
 
     server->server_update_first = true;
 
@@ -12348,13 +11943,13 @@ void next_server_internal_send_packet_to_address( next_server_internal_t * serve
     }
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( server->socket, address, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -12374,13 +11969,13 @@ void next_server_internal_send_packet_to_backend( next_server_internal_t * serve
     next_assert( packet_bytes > 0 );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -12559,7 +12154,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     {
         next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, packet_sequence );
         next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, packet_sequence );
-        next_jitter_tracker_packet_received( &entry->jitter_tracker, packet_sequence, next_time() );
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, packet_sequence, next_platform_time() );
     }
 
     return entry;
@@ -12576,7 +12171,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
     if ( server->flushing )
         return;
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     const int max_index = server->session_manager->max_entry_index;
 
@@ -12649,7 +12244,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     const double packet_resend_time = 0.25;
 
@@ -12715,7 +12310,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     int index = 0;
 
@@ -13057,7 +12652,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, packet_sequence );
 
-        next_jitter_tracker_packet_received( &entry->jitter_tracker, packet_sequence, next_time() );
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, packet_sequence, next_platform_time() );
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -13437,12 +13032,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->send_key, server_send_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
             memcpy( entry->receive_key, server_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES );
             memcpy( entry->client_route_public_key, packet.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
-            entry->last_client_stats_update = next_time();
+            entry->last_client_stats_update = next_platform_time();
             entry->user_hash = pending_entry->user_hash;
             entry->client_open_session_sequence = packet.client_open_session_sequence;
             entry->stats_platform_id = packet.platform_id;
             entry->stats_connection_type = packet.connection_type;
-            entry->last_upgraded_packet_receive_time = next_time();
+            entry->last_upgraded_packet_receive_time = next_platform_time();
 
             // notify session upgraded
 
@@ -13470,7 +13065,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        if ( upgrade_token.expire_timestamp < uint64_t(next_time()) )
+        if ( upgrade_token.expire_timestamp < uint64_t(next_platform_time()) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response. upgrade token expired" );
             return;
@@ -13568,7 +13163,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->has_pending_route = true;
             entry->pending_route_session_version = route_token.session_version;
             entry->pending_route_expire_timestamp = route_token.expire_timestamp;
-            entry->pending_route_expire_time = entry->has_current_route ? ( entry->current_route_expire_time + NEXT_SLICE_SECONDS * 2 ) : ( next_time() + NEXT_SLICE_SECONDS * 2 );
+            entry->pending_route_expire_time = entry->has_current_route ? ( entry->current_route_expire_time + NEXT_SLICE_SECONDS * 2 ) : ( next_platform_time() + NEXT_SLICE_SECONDS * 2 );
             entry->pending_route_kbps_up = route_token.kbps_up;
             entry->pending_route_kbps_down = route_token.kbps_down;
             entry->pending_route_send_address = *from;
@@ -13752,7 +13347,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t ping_sequence = next_read_uint64( &p );
 
-        entry->last_client_next_ping = next_time();
+        entry->last_client_next_ping = next_platform_time();
 
         uint64_t send_sequence = entry->special_send_sequence++;
 
@@ -13795,7 +13390,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        session->last_upgraded_packet_receive_time = next_time();
+        session->last_upgraded_packet_receive_time = next_platform_time();
     }
 
     // direct ping packet
@@ -13818,7 +13413,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        session->last_client_direct_ping = next_time();
+        session->last_client_direct_ping = next_platform_time();
 
         next_post_validate_packet( NEXT_DIRECT_PING_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
 
@@ -13903,7 +13498,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_jitter_server_to_client = packet.jitter_server_to_client;
-            session->last_client_stats_update = next_time();
+            session->last_client_stats_update = next_platform_time();
         }
 
         return;
@@ -14069,7 +13664,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     NextUpgradeToken upgrade_token;
 
     upgrade_token.session_id = session_id;
-    upgrade_token.expire_timestamp = uint64_t( next_time() ) + 10;
+    upgrade_token.expire_timestamp = uint64_t( next_platform_time() ) + 10;
     upgrade_token.client_address = *address;
     upgrade_token.server_address = server->server_address;
 
@@ -14084,7 +13679,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     next_session_manager_remove_by_address( server->session_manager, address );
 
-    next_pending_session_entry_t * entry = next_pending_session_manager_add( server->pending_session_manager, address, upgrade_token.session_id, session_private_key, upgrade_token_data, next_time() );
+    next_pending_session_entry_t * entry = next_pending_session_manager_add( server->pending_session_manager, address, upgrade_token.session_id, session_private_key, upgrade_token_data, next_platform_time() );
 
     if ( entry == NULL )
     {
@@ -14350,7 +13945,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 {
     next_assert( context );
 
-    double start_time = next_time();
+    double start_time = next_platform_time();
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
@@ -14397,7 +13992,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
             else
             {
                 next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname: '%s' (%d)", hostname, i );
-                next_sleep( 1.0 );
+                next_platform_sleep( 1.0 );
             }
         }
     }
@@ -14414,11 +14009,11 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_RESOLVE_HOSTNAME_TIMEOUT" ) )
     {
-        next_sleep( NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT * 2 );
+        next_platform_sleep( NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT * 2 );
     }
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( next_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
+    if ( next_platform_time() - start_time > NEXT_SERVER_AUTODETECT_TIMEOUT )
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
@@ -14456,7 +14051,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     }
     else
     {
-        if ( next_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+        if ( next_platform_time() < server->resolve_hostname_start_time + NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
         {
             // keep waiting
             return false;
@@ -14493,7 +14088,7 @@ static void next_server_internal_autodetect_thread_function( void * context )
 {
     next_assert( context );
 
-    double start_time = next_time();
+    double start_time = next_platform_time();
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
@@ -14545,11 +14140,11 @@ static void next_server_internal_autodetect_thread_function( void * context )
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
     {
-        next_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 1.25 );
+        next_platform_sleep( NEXT_SERVER_AUTODETECT_TIMEOUT * 1.25 );
     }
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( next_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
+    if ( next_platform_time() - start_time > NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT )
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance is as well.
@@ -14589,7 +14184,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     }
     else
     {
-        if ( next_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
+        if ( next_platform_time() < server->autodetect_start_time + NEXT_SERVER_AUTODETECT_TIMEOUT )
         {
             // keep waiting
             return false;
@@ -14637,7 +14232,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     // check for init timeout
 
-    const double current_time = next_time();
+    const double current_time = next_platform_time();
 
     if ( server->server_init_timeout_time <= current_time )
     {
@@ -14775,7 +14370,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( next_global_config.disable_network_next )
         return;
 
-    double current_time = next_time();
+    double current_time = next_platform_time();
 
     // don't do anything until we resolve the backend hostname
 
@@ -15239,7 +14834,7 @@ static void next_server_update_internal( next_server_internal_t * server )
     next_assert( !next_global_config.disable_network_next );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_server_internal_update_flush( server );
@@ -15262,7 +14857,7 @@ static void next_server_update_internal( next_server_internal_t * server )
 
 #if NEXT_SPIKE_TRACKING
 
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
 
     if ( finish_time - start_time > 0.001 )
     {
@@ -15278,17 +14873,17 @@ static void next_server_internal_thread_function( void * context )
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-    double last_update_time = next_time();
+    double last_update_time = next_platform_time();
 
     while ( !server->quit )
     {
         next_server_internal_block_and_receive_packet( server );
 
-        if ( !next_global_config.disable_network_next && next_time() >= last_update_time + 0.1 )
+        if ( !next_global_config.disable_network_next && next_platform_time() >= last_update_time + 0.1 )
         {
             next_server_update_internal( server );
 
-            last_update_time = next_time();
+            last_update_time = next_platform_time();
         }
     }
 }
@@ -15386,10 +14981,13 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
+    // todo
+    /*
     if ( next_platform_thread_high_priority( server->thread ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server increased thread priority" );
     }
+    */
 
     server->pending_session_manager = next_proxy_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )
@@ -15422,11 +15020,11 @@ uint16_t next_server_port( next_server_t * server )
     return server->bound_port;
 }
 
-next_address_t next_server_address( next_server_t * server )
+const next_address_t * next_server_address( next_server_t * server )
 {
     next_server_verify_sentinels( server );
 
-    return server->address;
+    return &server->address;
 }
 
 void next_server_destroy( next_server_t * server )
@@ -15614,7 +15212,7 @@ uint64_t next_generate_session_id()
     uint64_t session_id = 0;
     while ( session_id == 0 )
     {
-        next_random_bytes( (uint8_t*) &session_id, 8 );
+        next_crypto_random_bytes( (uint8_t*) &session_id, 8 );
     }
     return session_id;
 }
@@ -15669,7 +15267,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     return session_id;
 }
 
-NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address )
+bool next_server_session_upgraded( next_server_t * server, const next_address_t * address )
 {
     next_server_verify_sentinels( server );
 
@@ -15677,13 +15275,13 @@ NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_addre
 
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
-        return NEXT_TRUE;
+        return true;
 
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, address );
     if ( entry != NULL )
-        return NEXT_TRUE;
+        return true;
 
-    return NEXT_FALSE;
+    return false;
 }
 
 void next_server_send_packet_to_address( next_server_t * server, const next_address_t * address, const uint8_t * packet_data, int packet_bytes )
@@ -15703,13 +15301,13 @@ void next_server_send_packet_to_address( next_server_t * server, const next_addr
     }
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( server->internal->socket, address, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -15766,7 +15364,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
         // IMPORTANT: If we haven't received any upgraded packets in the last second send passthrough packets.
         // This makes reconnect robust when a client reconnects using the same port number.
-        if ( !internal_entry || last_upgraded_packet_receive_time + 1.0 < next_time() )
+        if ( !internal_entry || last_upgraded_packet_receive_time + 1.0 < next_platform_time() )
         {
             next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
             return;
@@ -15796,7 +15394,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
 
-            bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_time(), envelope_kbps_down, wire_packet_bits );
+            bool over_budget = next_bandwidth_limiter_add_packet( &entry->send_bandwidth, next_platform_time(), envelope_kbps_down, wire_packet_bits );
 
             if ( over_budget )
             {
@@ -15905,13 +15503,13 @@ void next_server_send_packet_raw( struct next_server_t * server, const struct ne
     next_assert( packet_bytes > 0 );
 
 #if NEXT_SPIKE_TRACKING
-    double start_time = next_time();
+    double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
     next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
-    double finish_time = next_time();
+    double finish_time = next_platform_time();
     if ( finish_time - start_time > 0.001 )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "next_platform_socket_send_packet spiked %.2f milliseconds at %s:%d", ( finish_time - start_time ) * 1000.0, __FILE__, __LINE__ );
@@ -15919,7 +15517,7 @@ void next_server_send_packet_raw( struct next_server_t * server, const struct ne
 #endif // #if NEXT_SPIKE_TRACKING
 }
 
-NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
+bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
 {
     next_assert( server );
     next_assert( address );
@@ -15929,9 +15527,8 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
     if ( !entry )
-        return NEXT_FALSE;
+        return false;
 
-    stats->address = *address;
     stats->session_id = entry->session_id;
     stats->user_hash = entry->user_hash;
     stats->platform_id = entry->stats_platform_id;
@@ -15960,13 +15557,13 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
     stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
 
-    return NEXT_TRUE;
+    return true;
 }
 
-NEXT_BOOL next_server_ready( next_server_t * server ) 
+bool next_server_ready( next_server_t * server ) 
 {
     next_server_verify_sentinels( server );
-    return ( next_global_config.disable_network_next || server->ready ) ? NEXT_TRUE : NEXT_FALSE;
+    return ( next_global_config.disable_network_next || server->ready ) ? true : false;
 }
 
 const char * next_server_datacenter( next_server_t * server )
@@ -16093,16 +15690,16 @@ void next_server_flush( struct next_server_t * server )
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server flush started" );
 
-    double flush_timeout = next_time() + NEXT_SERVER_FLUSH_TIMEOUT;
+    double flush_timeout = next_platform_time() + NEXT_SERVER_FLUSH_TIMEOUT;
 
-    while ( !server->flushed && next_time() < flush_timeout )
+    while ( !server->flushed && next_platform_time() < flush_timeout )
     {
         next_server_update( server );
         
-        next_sleep( 0.1 );
+        next_platform_sleep( 0.1 );
     }
 
-    if ( next_time() > flush_timeout )
+    if ( next_platform_time() > flush_timeout )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server flush timed out :(" );
     }
@@ -16187,13 +15784,15 @@ void next_server_set_payload_receive_callback( struct next_server_t * server, in
     }
 }
 
-NEXT_BOOL next_server_direct_only( struct next_server_t * server )
+bool next_server_direct_only( struct next_server_t * server )
 {
     next_assert( server );
     return server->direct_only;
 }
 
 // ---------------------------------------------------------------
+
+// todo: is this wrapper really necessary?
 
 int next_mutex_create( next_mutex_t * mutex )
 {
@@ -16225,4681 +15824,6 @@ void next_mutex_destroy( next_mutex_t * mutex )
 }
 
 // ---------------------------------------------------------------
-
-#if NEXT_COMPILE_WITH_TESTS
-
-static void next_check_handler( const char * condition,
-                                const char * function,
-                                const char * file,
-                                int line )
-{
-    printf( "check failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
-    fflush( stdout );
-#ifndef NDEBUG
-    #if defined( __GNUC__ )
-        __builtin_trap();
-    #elif defined( _MSC_VER )
-        __debugbreak();
-    #endif
-#endif
-    exit( 1 );
-}
-
-#define next_check( condition )                                                                             \
-do                                                                                                          \
-{                                                                                                           \
-    if ( !(condition) )                                                                                     \
-    {                                                                                                       \
-        next_check_handler( #condition, (const char*) __FUNCTION__, (const char*) __FILE__, __LINE__ );     \
-    }                                                                                                       \
-} while(0)
-
-void test_time()
-{
-    double start = next_time();
-    next_sleep( 0.1 );
-    double finish = next_time();
-    next_check( finish > start );
-}
-
-void test_endian()
-{
-    uint32_t value = 0x11223344;
-    char bytes[4];
-    memcpy( bytes, &value, 4 );
-
-#if NEXT_LITTLE_ENDIAN
-
-    next_check( bytes[0] == 0x44 );
-    next_check( bytes[1] == 0x33 );
-    next_check( bytes[2] == 0x22 );
-    next_check( bytes[3] == 0x11 );
-
-#else // #if NEXT_LITTLE_ENDIAN
-
-    next_check( bytes[3] == 0x44 );
-    next_check( bytes[2] == 0x33 );
-    next_check( bytes[1] == 0x22 );
-    next_check( bytes[0] == 0x11 );
-
-#endif // #if NEXT_LITTLE_ENDIAN
-}
-
-void test_base64()
-{
-    const char * input = "a test string. let's see if it works properly";
-    char encoded[1024];
-    char decoded[1024];
-    next_check( next_base64_encode_string( input, encoded, sizeof(encoded) ) > 0 );
-    next_check( next_base64_decode_string( encoded, decoded, sizeof(decoded) ) > 0 );
-    next_check( strcmp( decoded, input ) == 0 );
-    next_check( next_base64_decode_string( encoded, decoded, 10 ) == 0 );
-}
-
-void test_fnv1a()
-{
-    uint64_t hash = next_datacenter_id( "local" );
-    next_check( hash == 0x249f1fb6f3a680e8ULL );
-}
-
-void test_queue()
-{
-    const int QueueSize = 64;
-    const int EntrySize = 1024;
-
-    next_queue_t * queue = next_queue_create( NULL, QueueSize );
-
-    next_check( queue->num_entries == 0 );
-    next_check( queue->start_index == 0 );
-
-    // attempting to pop a packet off an empty queue should return NULL
-
-    next_check( next_queue_pop( queue ) == NULL );
-
-    // add some entries to the queue and make sure they pop off in the correct order
-    {
-        const int NumEntries = 50;
-
-        void * entries[NumEntries];
-
-        int i;
-        for ( i = 0; i < NumEntries; ++i )
-        {
-            entries[i] = next_malloc( NULL, EntrySize );
-            memset( entries[i], 0, EntrySize );
-            next_check( next_queue_push( queue, entries[i] ) == NEXT_OK );
-        }
-
-        next_check( queue->num_entries == NumEntries );
-
-        for ( i = 0; i < NumEntries; ++i )
-        {
-            void * entry = next_queue_pop( queue );
-            next_check( entry == entries[i] );
-            next_free( NULL, entry );
-        }
-    }
-
-    // after all entries are popped off, the queue is empty, so calls to pop should return NULL
-
-    next_check( queue->num_entries == 0 );
-
-    next_check( next_queue_pop( queue ) == NULL );
-
-    // test that the queue can be filled to max capacity
-
-    void * entries[QueueSize];
-
-    int i;
-    for ( i = 0; i < QueueSize; ++i )
-    {
-        entries[i] = next_malloc( NULL, EntrySize );
-        next_check( next_queue_push( queue, entries[i] ) == NEXT_OK );
-    }
-
-    next_check( queue->num_entries == QueueSize );
-
-    // when the queue is full, attempting to push an entry should fail
-
-    next_check( next_queue_push( queue, next_malloc( NULL, 100 ) ) == NEXT_ERROR );
-
-    // make sure all packets pop off in the correct order
-
-    for ( i = 0; i < QueueSize; ++i )
-    {
-        void * entry = next_queue_pop( queue );
-        next_check( entry == entries[i] );
-        next_free( NULL, entry );
-    }
-
-    // add some entries again
-
-    for ( i = 0; i < QueueSize; ++i )
-    {
-        entries[i] = next_malloc( NULL, EntrySize );
-        next_check( next_queue_push( queue, entries[i] ) == NEXT_OK );
-    }
-
-    // clear the queue and make sure that all entries are freed
-
-    next_queue_clear( queue );
-
-    next_check( queue->start_index == 0 );
-    next_check( queue->num_entries == 0 );
-    for ( i = 0; i < QueueSize; ++i )
-        next_check( queue->entries[i] == NULL );
-
-    // destroy the queue
-
-    next_queue_destroy( queue );
-}
-
-using namespace next;
-
-void test_bitpacker()
-{
-    const int BufferSize = 256;
-
-    uint8_t buffer[BufferSize];
-
-    BitWriter writer( buffer, BufferSize );
-
-    next_check( writer.GetData() == buffer );
-    next_check( writer.GetBitsWritten() == 0 );
-    next_check( writer.GetBytesWritten() == 0 );
-    next_check( writer.GetBitsAvailable() == BufferSize * 8 );
-
-    writer.WriteBits( 0, 1 );
-    writer.WriteBits( 1, 1 );
-    writer.WriteBits( 10, 8 );
-    writer.WriteBits( 255, 8 );
-    writer.WriteBits( 1000, 10 );
-    writer.WriteBits( 50000, 16 );
-    writer.WriteBits( 9999999, 32 );
-    writer.FlushBits();
-
-    const int bitsWritten = 1 + 1 + 8 + 8 + 10 + 16 + 32;
-
-    next_check( writer.GetBytesWritten() == 10 );
-    next_check( writer.GetBitsWritten() == bitsWritten );
-    next_check( writer.GetBitsAvailable() == BufferSize * 8 - bitsWritten );
-
-    const int bytesWritten = writer.GetBytesWritten();
-
-    next_check( bytesWritten == 10 );
-
-    memset( buffer + bytesWritten, 0, size_t(BufferSize) - bytesWritten );
-
-    BitReader reader( buffer, bytesWritten );
-
-    next_check( reader.GetBitsRead() == 0 );
-    next_check( reader.GetBitsRemaining() == bytesWritten * 8 );
-
-    uint32_t a = reader.ReadBits( 1 );
-    uint32_t b = reader.ReadBits( 1 );
-    uint32_t c = reader.ReadBits( 8 );
-    uint32_t d = reader.ReadBits( 8 );
-    uint32_t e = reader.ReadBits( 10 );
-    uint32_t f = reader.ReadBits( 16 );
-    uint32_t g = reader.ReadBits( 32 );
-
-    next_check( a == 0 );
-    next_check( b == 1 );
-    next_check( c == 10 );
-    next_check( d == 255 );
-    next_check( e == 1000 );
-    next_check( f == 50000 );
-    next_check( g == 9999999 );
-
-    next_check( reader.GetBitsRead() == bitsWritten );
-    next_check( reader.GetBitsRemaining() == bytesWritten * 8 - bitsWritten );
-}
-
-const int MaxItems = 11;
-
-struct TestData
-{
-    TestData()
-    {
-        memset( this, 0, sizeof( TestData ) );
-    }
-
-    int a,b,c;
-    uint32_t d : 8;
-    uint32_t e : 8;
-    uint32_t f : 8;
-    bool g;
-    int numItems;
-    int items[MaxItems];
-    float float_value;
-    double double_value;
-    uint64_t uint64_value;
-    uint8_t bytes[17];
-    char string[256];
-    next_address_t address_a, address_b, address_c;
-};
-
-struct TestContext
-{
-    int min;
-    int max;
-};
-
-struct TestObject
-{
-    TestData data;
-
-    void Init()
-    {
-        data.a = 1;
-        data.b = -2;
-        data.c = 150;
-        data.d = 55;
-        data.e = 255;
-        data.f = 127;
-        data.g = true;
-
-        data.numItems = MaxItems / 2;
-        for ( int i = 0; i < data.numItems; ++i )
-            data.items[i] = i + 10;
-
-        data.float_value = 3.1415926f;
-        data.double_value = 1 / 3.0;
-        data.uint64_value = 0x1234567898765432L;
-
-        for ( int i = 0; i < (int) sizeof( data.bytes ); ++i )
-            data.bytes[i] = ( i * 37 ) % 255;
-
-        strcpy( data.string, "hello world!" );
-
-        memset( &data.address_a, 0, sizeof(next_address_t) );
-
-        next_address_parse( &data.address_b, "127.0.0.1:50000" );
-
-        next_address_parse( &data.address_c, "[::1]:50000" );
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        const TestContext & context = *(const TestContext*) stream.GetContext();
-
-        serialize_int( stream, data.a, context.min, context.max );
-        serialize_int( stream, data.b, context.min, context.max );
-
-        serialize_int( stream, data.c, -100, 10000 );
-
-        serialize_bits( stream, data.d, 6 );
-        serialize_bits( stream, data.e, 8 );
-        serialize_bits( stream, data.f, 7 );
-
-        serialize_align( stream );
-
-        serialize_bool( stream, data.g );
-
-        serialize_int( stream, data.numItems, 0, MaxItems - 1 );
-        for ( int i = 0; i < data.numItems; ++i )
-            serialize_bits( stream, data.items[i], 8 );
-
-        serialize_float( stream, data.float_value );
-
-        serialize_double( stream, data.double_value );
-
-        serialize_uint64( stream, data.uint64_value );
-
-        serialize_bytes( stream, data.bytes, sizeof( data.bytes ) );
-
-        serialize_string( stream, data.string, sizeof( data.string ) );
-
-        serialize_address( stream, data.address_a );
-        serialize_address( stream, data.address_b );
-        serialize_address( stream, data.address_c );
-
-        return true;
-    }
-
-    bool operator == ( const TestObject & other ) const
-    {
-        return memcmp( &data, &other.data, sizeof( TestData ) ) == 0;
-    }
-
-    bool operator != ( const TestObject & other ) const
-    {
-        return ! ( *this == other );
-    }
-};
-
-void test_stream()
-{
-    const int BufferSize = 1024;
-
-    uint8_t buffer[BufferSize];
-
-    TestContext context;
-    context.min = -10;
-    context.max = +10;
-
-    WriteStream writeStream( buffer, BufferSize );
-
-    TestObject writeObject;
-    writeObject.Init();
-    writeStream.SetContext( &context );
-    writeObject.Serialize( writeStream );
-    writeStream.Flush();
-
-    const int bytesWritten = writeStream.GetBytesProcessed();
-
-    memset( buffer + bytesWritten, 0, size_t(BufferSize) - bytesWritten );
-
-    TestObject readObject;
-
-    ReadStream readStream( buffer, bytesWritten );
-    readStream.SetContext( &context );
-    readObject.Serialize( readStream );
-
-    next_check( readObject == writeObject );
-}
-
-static bool equal_within_tolerance( float a, float b, float tolerance = 0.001f )
-{
-    return fabs(double(a)-double(b)) <= tolerance;
-}
-
-void test_bits_required()
-{
-    next_check( bits_required( 0, 0 ) == 0 );
-    next_check( bits_required( 0, 1 ) == 1 );
-    next_check( bits_required( 0, 2 ) == 2 );
-    next_check( bits_required( 0, 3 ) == 2 );
-    next_check( bits_required( 0, 4 ) == 3 );
-    next_check( bits_required( 0, 5 ) == 3 );
-    next_check( bits_required( 0, 6 ) == 3 );
-    next_check( bits_required( 0, 7 ) == 3 );
-    next_check( bits_required( 0, 8 ) == 4 );
-    next_check( bits_required( 0, 255 ) == 8 );
-    next_check( bits_required( 0, 65535 ) == 16 );
-    next_check( bits_required( 0, 4294967295U ) == 32 );
-}
-
-void test_address()
-{
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "[" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "[]" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "[]:" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, ":" ) == NEXT_ERROR );
-#if !defined(WINVER) || WINVER > 0x502 // windows xp sucks
-        next_check( next_address_parse( &address, "1" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "12" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "123" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "1234" ) == NEXT_ERROR );
-#endif
-        next_check( next_address_parse( &address, "1234.0.12313.0000" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "1234.0.12313.0000.0.0.0.0.0" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "1312313:123131:1312313:123131:1312313:123131:1312313:123131:1312313:123131:1312313:123131" ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "." ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, ".." ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "..." ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "...." ) == NEXT_ERROR );
-        next_check( next_address_parse( &address, "....." ) == NEXT_ERROR );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "107.77.207.77" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV4 );
-        next_check( address.port == 0 );
-        next_check( address.data.ipv4[0] == 107 );
-        next_check( address.data.ipv4[1] == 77 );
-        next_check( address.data.ipv4[2] == 207 );
-        next_check( address.data.ipv4[3] == 77 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "127.0.0.1" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV4 );
-        next_check( address.port == 0 );
-        next_check( address.data.ipv4[0] == 127 );
-        next_check( address.data.ipv4[1] == 0 );
-        next_check( address.data.ipv4[2] == 0 );
-        next_check( address.data.ipv4[3] == 1 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "107.77.207.77:40000" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV4 );
-        next_check( address.port == 40000 );
-        next_check( address.data.ipv4[0] == 107 );
-        next_check( address.data.ipv4[1] == 77 );
-        next_check( address.data.ipv4[2] == 207 );
-        next_check( address.data.ipv4[3] == 77 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "127.0.0.1:40000" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV4 );
-        next_check( address.port == 40000 );
-        next_check( address.data.ipv4[0] == 127 );
-        next_check( address.data.ipv4[1] == 0 );
-        next_check( address.data.ipv4[2] == 0 );
-        next_check( address.data.ipv4[3] == 1 );
-    }
-
-#if NEXT_PLATFORM_HAS_IPV6
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "fe80::202:b3ff:fe1e:8329" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV6 );
-        next_check( address.port == 0 );
-        next_check( address.data.ipv6[0] == 0xfe80 );
-        next_check( address.data.ipv6[1] == 0x0000 );
-        next_check( address.data.ipv6[2] == 0x0000 );
-        next_check( address.data.ipv6[3] == 0x0000 );
-        next_check( address.data.ipv6[4] == 0x0202 );
-        next_check( address.data.ipv6[5] == 0xb3ff );
-        next_check( address.data.ipv6[6] == 0xfe1e );
-        next_check( address.data.ipv6[7] == 0x8329 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "::" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV6 );
-        next_check( address.port == 0 );
-        next_check( address.data.ipv6[0] == 0x0000 );
-        next_check( address.data.ipv6[1] == 0x0000 );
-        next_check( address.data.ipv6[2] == 0x0000 );
-        next_check( address.data.ipv6[3] == 0x0000 );
-        next_check( address.data.ipv6[4] == 0x0000 );
-        next_check( address.data.ipv6[5] == 0x0000 );
-        next_check( address.data.ipv6[6] == 0x0000 );
-        next_check( address.data.ipv6[7] == 0x0000 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "::1" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV6 );
-        next_check( address.port == 0 );
-        next_check( address.data.ipv6[0] == 0x0000 );
-        next_check( address.data.ipv6[1] == 0x0000 );
-        next_check( address.data.ipv6[2] == 0x0000 );
-        next_check( address.data.ipv6[3] == 0x0000 );
-        next_check( address.data.ipv6[4] == 0x0000 );
-        next_check( address.data.ipv6[5] == 0x0000 );
-        next_check( address.data.ipv6[6] == 0x0000 );
-        next_check( address.data.ipv6[7] == 0x0001 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "[fe80::202:b3ff:fe1e:8329]:40000" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV6 );
-        next_check( address.port == 40000 );
-        next_check( address.data.ipv6[0] == 0xfe80 );
-        next_check( address.data.ipv6[1] == 0x0000 );
-        next_check( address.data.ipv6[2] == 0x0000 );
-        next_check( address.data.ipv6[3] == 0x0000 );
-        next_check( address.data.ipv6[4] == 0x0202 );
-        next_check( address.data.ipv6[5] == 0xb3ff );
-        next_check( address.data.ipv6[6] == 0xfe1e );
-        next_check( address.data.ipv6[7] == 0x8329 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "[::]:40000" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV6 );
-        next_check( address.port == 40000 );
-        next_check( address.data.ipv6[0] == 0x0000 );
-        next_check( address.data.ipv6[1] == 0x0000 );
-        next_check( address.data.ipv6[2] == 0x0000 );
-        next_check( address.data.ipv6[3] == 0x0000 );
-        next_check( address.data.ipv6[4] == 0x0000 );
-        next_check( address.data.ipv6[5] == 0x0000 );
-        next_check( address.data.ipv6[6] == 0x0000 );
-        next_check( address.data.ipv6[7] == 0x0000 );
-    }
-
-    {
-        struct next_address_t address;
-        next_check( next_address_parse( &address, "[::1]:40000" ) == NEXT_OK );
-        next_check( address.type == NEXT_ADDRESS_IPV6 );
-        next_check( address.port == 40000 );
-        next_check( address.data.ipv6[0] == 0x0000 );
-        next_check( address.data.ipv6[1] == 0x0000 );
-        next_check( address.data.ipv6[2] == 0x0000 );
-        next_check( address.data.ipv6[3] == 0x0000 );
-        next_check( address.data.ipv6[4] == 0x0000 );
-        next_check( address.data.ipv6[5] == 0x0000 );
-        next_check( address.data.ipv6[6] == 0x0000 );
-        next_check( address.data.ipv6[7] == 0x0001 );
-    }
-#endif // #if NEXT_PLATFORM_HAS_IPV6
-}
-
-void test_replay_protection()
-{
-    next_replay_protection_t replay_protection;
-
-    int i;
-    for ( i = 0; i < 2; ++i )
-    {
-        next_replay_protection_reset( &replay_protection );
-
-        next_check( replay_protection.most_recent_sequence == 0 );
-
-        // the first time we receive packets, they should not be already received
-
-        #define MAX_SEQUENCE ( NEXT_REPLAY_PROTECTION_BUFFER_SIZE * 4 )
-
-        uint64_t sequence;
-        for ( sequence = 0; sequence < MAX_SEQUENCE; ++sequence )
-        {
-            next_check( next_replay_protection_already_received( &replay_protection, sequence ) == 0 );
-            next_replay_protection_advance_sequence( &replay_protection, sequence );
-        }
-
-        // old packets outside buffer should be considered already received
-
-        next_check( next_replay_protection_already_received( &replay_protection, 0 ) == 1 );
-
-        // packets received a second time should be detected as already received
-
-        for ( sequence = MAX_SEQUENCE - 10; sequence < MAX_SEQUENCE; ++sequence )
-        {
-            next_check( next_replay_protection_already_received( &replay_protection, sequence ) == 1 );
-        }
-
-        // jumping ahead to a much higher sequence should be considered not already received
-
-        next_check( next_replay_protection_already_received( &replay_protection, MAX_SEQUENCE + NEXT_REPLAY_PROTECTION_BUFFER_SIZE ) == 0 );
-
-        // old packets should be considered already received
-
-        for ( sequence = 0; sequence < MAX_SEQUENCE; ++sequence )
-        {
-            next_check( next_replay_protection_already_received( &replay_protection, sequence ) == 1 );
-        }
-    }
-}
-
-void test_ping_stats()
-{
-    // default ping history is 100% packet loss
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 10.0, 100.0, &route_stats );
-
-        next_check( route_stats.rtt == 0.0f );
-        next_check( route_stats.jitter == 0.0f );
-        next_check( route_stats.packet_loss == 0.0f );
-    }
-
-    // add some pings without pong response, packet loss should be 0%, but latency is 0ms indicating no responses yet (not routable)
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-        {
-            next_ping_history_ping_sent( &history, 10 + i * 0.01 );
-        }
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 10.0, 100.0, &route_stats );
-
-        next_check( route_stats.rtt == 0.0f );
-        next_check( route_stats.jitter == 0.0f );
-        next_check( route_stats.packet_loss == 0.0f );
-    }
-
-    // add some pings and set them to have a pong response, packet loss should be 0%
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        const double expected_rtt = 0.1;
-
-        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-        {
-            uint64_t sequence = next_ping_history_ping_sent( &history, 10 + i * 0.1 );
-            next_ping_history_pong_received( &history, sequence, 10 + i * 0.1 + expected_rtt );
-        }
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 1.0, 100.0, &route_stats );
-
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
-        next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
-        next_check( route_stats.packet_loss == 0.0 );
-    }
-
-    // add some pings and set them to have a pong response, but leave the last second of pings without response. 
-    // packet loss should be zero because ping safety stops us considering packets 1 second young from having PL
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        const double expected_rtt = 0.1;
-
-        const double delta_time = 10.0 / NEXT_PING_HISTORY_ENTRY_COUNT;
-
-        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-        {
-            const double ping_send_time = 10 + i * delta_time;
-            const double pong_recv_time = ping_send_time + expected_rtt;
-
-            if ( ping_send_time > 9.0 )
-            {
-                uint64_t sequence = next_ping_history_ping_sent( &history, ping_send_time );
-                next_ping_history_pong_received( &history, sequence, pong_recv_time );
-            }
-        }
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 1.0, 100.0, &route_stats );
-
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
-        next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
-        next_check( route_stats.packet_loss == 0.0 );
-    }
-
-    // drop 1 in every 2 packets. packet loss should be 50%
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        const double expected_rtt = 0.1;
-
-        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-        {
-            uint64_t sequence = next_ping_history_ping_sent( &history, 10 + i * 0.1 );
-            if ( i & 1 )
-                next_ping_history_pong_received( &history, sequence, 10 + i * 0.1 + expected_rtt );
-        }
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 1.0, 100.0, &route_stats );
-
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
-        next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
-        next_check( equal_within_tolerance( route_stats.packet_loss, 50.0, 2.0 ) );
-    }
-
-    // drop 1 in every 10 packets. packet loss should be ~10%
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        const double expected_rtt = 0.1;
-
-        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-        {
-            uint64_t sequence = next_ping_history_ping_sent( &history, 10 + i * 0.1 );
-            if ( ( i % 10 ) )
-                next_ping_history_pong_received( &history, sequence, 10 + i * 0.1 + expected_rtt );
-        }
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 1.0, 100.0, &route_stats );
-
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
-        next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
-        next_check( equal_within_tolerance( route_stats.packet_loss, 10.0f, 2.0f ) );
-    }
-
-    // drop 9 in every 10 packets. packet loss should be ~90%
-    {
-        static next_ping_history_t history;
-        next_ping_history_clear( &history );
-
-        const double expected_rtt = 0.1;
-
-        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
-        {
-            uint64_t sequence = next_ping_history_ping_sent( &history, 10 + i * 0.1 );
-            if ( ( i % 10 ) == 0 )
-                next_ping_history_pong_received( &history, sequence, 10 + i * 0.1 + expected_rtt );
-        }
-
-        next_route_stats_t route_stats;
-        next_route_stats_from_ping_history( &history, 1.0, 100.0, &route_stats );
-
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
-        next_check( equal_within_tolerance( route_stats.jitter, 0.0f ) );
-        next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 2.0f ) );
-    }
-}
-
-void test_random_bytes()
-{
-    const int BufferSize = 64;
-    uint8_t buffer[BufferSize];
-    next_random_bytes( buffer, BufferSize );
-    for ( int i = 0; i < 100; ++i )
-    {
-        uint8_t next_buffer[BufferSize];
-        next_random_bytes( next_buffer, BufferSize );
-        next_check( memcmp( buffer, next_buffer, BufferSize ) != 0 );
-        memcpy( buffer, next_buffer, BufferSize );
-    }
-}
-
-void test_random_float()
-{
-    for ( int i = 0; i < 1000; ++i )
-    {
-        float value = next_random_float();
-        next_check( value >= 0.0f );
-        next_check( value <= 1.0f );
-    }
-}
-
-void test_crypto_box()
-{
-    #define CRYPTO_BOX_MESSAGE (const unsigned char *) "test"
-    #define CRYPTO_BOX_MESSAGE_LEN 4
-    #define CRYPTO_BOX_CIPHERTEXT_LEN ( NEXT_CRYPTO_BOX_MACBYTES + CRYPTO_BOX_MESSAGE_LEN )
-
-    unsigned char sender_publickey[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char sender_secretkey[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( sender_publickey, sender_secretkey );
-
-    unsigned char receiver_publickey[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char receiver_secretkey[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( receiver_publickey, receiver_secretkey );
-
-    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    unsigned char ciphertext[CRYPTO_BOX_CIPHERTEXT_LEN];
-    next_random_bytes( nonce, sizeof nonce );
-    next_check( next_crypto_box_easy( ciphertext, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN, nonce, receiver_publickey, sender_secretkey ) == 0 );
-
-    unsigned char decrypted[CRYPTO_BOX_MESSAGE_LEN];
-    next_check( next_crypto_box_open_easy( decrypted, ciphertext, CRYPTO_BOX_CIPHERTEXT_LEN, nonce, sender_publickey, receiver_secretkey ) == 0 );
-
-    next_check( memcmp( decrypted, CRYPTO_BOX_MESSAGE, CRYPTO_BOX_MESSAGE_LEN ) == 0 );
-}
-
-void test_crypto_secret_box()
-{
-    #define CRYPTO_SECRET_BOX_MESSAGE ((const unsigned char *) "test")
-    #define CRYPTO_SECRET_BOX_MESSAGE_LEN 4
-    #define CRYPTO_SECRET_BOX_CIPHERTEXT_LEN (NEXT_CRYPTO_SECRETBOX_MACBYTES + CRYPTO_SECRET_BOX_MESSAGE_LEN)
-
-    unsigned char key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    unsigned char nonce[NEXT_CRYPTO_SECRETBOX_NONCEBYTES];
-    unsigned char ciphertext[CRYPTO_SECRET_BOX_CIPHERTEXT_LEN];
-
-    next_crypto_secretbox_keygen( key );
-    next_random_bytes( nonce, NEXT_CRYPTO_SECRETBOX_NONCEBYTES );
-    next_crypto_secretbox_easy( ciphertext, CRYPTO_SECRET_BOX_MESSAGE, CRYPTO_SECRET_BOX_MESSAGE_LEN, nonce, key );
-
-    unsigned char decrypted[CRYPTO_SECRET_BOX_MESSAGE_LEN];
-    next_check( next_crypto_secretbox_open_easy( decrypted, ciphertext, CRYPTO_SECRET_BOX_CIPHERTEXT_LEN, nonce, key ) == 0 );
-}
-
-void test_crypto_aead()
-{
-    #define CRYPTO_AEAD_MESSAGE (const unsigned char *) "test"
-    #define CRYPTO_AEAD_MESSAGE_LEN 4
-    #define CRYPTO_AEAD_ADDITIONAL_DATA (const unsigned char *) "123456"
-    #define CRYPTO_AEAD_ADDITIONAL_DATA_LEN 6
-
-    unsigned char nonce[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES];
-    unsigned char key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-    unsigned char ciphertext[CRYPTO_AEAD_MESSAGE_LEN + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES];
-    unsigned long long ciphertext_len;
-
-    next_crypto_aead_chacha20poly1305_keygen( key );
-    next_random_bytes( nonce, sizeof(nonce) );
-
-    next_crypto_aead_chacha20poly1305_encrypt( ciphertext, &ciphertext_len,
-                                               CRYPTO_AEAD_MESSAGE, CRYPTO_AEAD_MESSAGE_LEN,
-                                               CRYPTO_AEAD_ADDITIONAL_DATA, CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
-                                               NULL, nonce, key );
-
-    unsigned char decrypted[CRYPTO_AEAD_MESSAGE_LEN];
-    unsigned long long decrypted_len;
-    next_check( next_crypto_aead_chacha20poly1305_decrypt( decrypted, &decrypted_len,
-                                                      NULL,
-                                                      ciphertext, ciphertext_len,
-                                                      CRYPTO_AEAD_ADDITIONAL_DATA,
-                                                      CRYPTO_AEAD_ADDITIONAL_DATA_LEN,
-                                                      nonce, key) == 0 );
-}
-
-void test_crypto_aead_ietf()
-{
-    #define CRYPTO_AEAD_IETF_MESSAGE (const unsigned char *) "test"
-    #define CRYPTO_AEAD_IETF_MESSAGE_LEN 4
-    #define CRYPTO_AEAD_IETF_ADDITIONAL_DATA (const unsigned char *) "123456"
-    #define CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN 6
-
-    unsigned char nonce[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_NPUBBYTES];
-    unsigned char key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_KEYBYTES];
-    unsigned char ciphertext[CRYPTO_AEAD_IETF_MESSAGE_LEN + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_IETF_ABYTES];
-    unsigned long long ciphertext_len;
-
-    next_crypto_aead_chacha20poly1305_ietf_keygen( key );
-    next_random_bytes( nonce, sizeof(nonce) );
-
-    next_crypto_aead_chacha20poly1305_ietf_encrypt( ciphertext, &ciphertext_len, CRYPTO_AEAD_IETF_MESSAGE, CRYPTO_AEAD_IETF_MESSAGE_LEN, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, NULL, nonce, key);
-
-    unsigned char decrypted[CRYPTO_AEAD_IETF_MESSAGE_LEN];
-    unsigned long long decrypted_len;
-    next_check( next_crypto_aead_chacha20poly1305_ietf_decrypt( decrypted, &decrypted_len, NULL, ciphertext, ciphertext_len, CRYPTO_AEAD_IETF_ADDITIONAL_DATA, CRYPTO_AEAD_IETF_ADDITIONAL_DATA_LEN, nonce, key ) == 0 );
-}
-
-void test_crypto_sign_detached()
-{
-    #define MESSAGE_PART1 ((const unsigned char *) "Arbitrary data to hash")
-    #define MESSAGE_PART1_LEN 22
-
-    #define MESSAGE_PART2 ((const unsigned char *) "is longer than expected")
-    #define MESSAGE_PART2_LEN 23
-
-    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    next_crypto_sign_keypair( public_key, private_key );
-
-    next_crypto_sign_state_t state;
-
-    unsigned char signature[NEXT_CRYPTO_SIGN_BYTES];
-
-    next_crypto_sign_init( &state );
-    next_crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
-    next_crypto_sign_update( &state, MESSAGE_PART2, MESSAGE_PART2_LEN );
-    next_crypto_sign_final_create( &state, signature, NULL, private_key );
-
-    next_crypto_sign_init( &state );
-    next_crypto_sign_update( &state, MESSAGE_PART1, MESSAGE_PART1_LEN );
-    next_crypto_sign_update( &state, MESSAGE_PART2, MESSAGE_PART2_LEN );
-    next_check( next_crypto_sign_final_verify( &state, signature, public_key ) == 0 );
-}
-
-void test_crypto_key_exchange()
-{
-    uint8_t client_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
-    uint8_t client_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
-    next_crypto_kx_keypair( client_public_key, client_private_key );
-
-    uint8_t server_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
-    uint8_t server_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
-    next_crypto_kx_keypair( server_public_key, server_private_key );
-
-    uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-    uint8_t client_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-    next_check( next_crypto_kx_client_session_keys( client_receive_key, client_send_key, client_public_key, client_private_key, server_public_key ) == 0 );
-
-    uint8_t server_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-    uint8_t server_receive_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
-    next_check( next_crypto_kx_server_session_keys( server_receive_key, server_send_key, server_public_key, server_private_key, client_public_key ) == 0 );
-
-    next_check( memcmp( client_send_key, server_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES ) == 0 );
-    next_check( memcmp( server_send_key, client_receive_key, NEXT_CRYPTO_KX_SESSIONKEYBYTES ) == 0 );
-}
-
-void test_basic_read_and_write()
-{
-    uint8_t buffer[1024];
-
-    uint8_t * p = buffer;
-    next_write_uint8( &p, 105 );
-    next_write_uint16( &p, 10512 );
-    next_write_uint32( &p, 105120000 );
-    next_write_uint64( &p, 105120000000000000LL );
-    next_write_float32( &p, 100.0f );
-    next_write_float64( &p, 100000000000000.0 );
-    next_write_bytes( &p, (uint8_t*)"hello", 6 );
-
-    const uint8_t * q = buffer;
-
-    uint8_t a = next_read_uint8( &q );
-    uint16_t b = next_read_uint16( &q );
-    uint32_t c = next_read_uint32( &q );
-    uint64_t d = next_read_uint64( &q );
-    float e = next_read_float32( &q );
-    double f = next_read_float64( &q );
-    uint8_t g[6];
-    next_read_bytes( &q, g, 6 );
-
-    next_check( a == 105 );
-    next_check( b == 10512 );
-    next_check( c == 105120000 );
-    next_check( d == 105120000000000000LL );
-    next_check( e == 100.0f );
-    next_check( f == 100000000000000.0 );
-    next_check( memcmp( g, "hello", 6 ) == 0 );
-}
-
-void test_address_read_and_write()
-{
-    struct next_address_t a, b, c;
-
-    memset( &a, 0, sizeof(a) );
-    memset( &b, 0, sizeof(b) );
-    memset( &c, 0, sizeof(c) );
-
-    next_address_parse( &b, "127.0.0.1:50000" );
-
-    next_address_parse( &c, "[::1]:50000" );
-
-    uint8_t buffer[1024];
-
-    uint8_t * p = buffer;
-
-    next_write_address( &p, &a );
-    next_write_address( &p, &b );
-    next_write_address( &p, &c );
-
-    struct next_address_t read_a, read_b, read_c;
-
-    const uint8_t * q = buffer;
-
-    next_read_address( &q, &read_a );
-    next_read_address( &q, &read_b );
-    next_read_address( &q, &read_c );
-
-    next_check( next_address_equal( &a, &read_a ) );
-    next_check( next_address_equal( &b, &read_b ) );
-    next_check( next_address_equal( &c, &read_c ) );
-}
-
-void test_address_ipv4_read_and_write()
-{
-    struct next_address_t address;
-
-    next_address_parse( &address, "127.0.0.1:50000" );
-
-    uint8_t buffer[1024];
-
-    uint8_t * p = buffer;
-
-    next_write_address_ipv4( &p, &address );
-
-    struct next_address_t read;
-
-    const uint8_t * q = buffer;
-
-    next_read_address_ipv4( &q, &read );
-
-    next_check( next_address_equal( &address, &read ) );
-}
-
-void test_platform_socket()
-{
-    // non-blocking socket (ipv4)
-    {
-        next_address_t bind_address;
-        next_address_t local_address;
-        next_address_parse( &bind_address, "0.0.0.0" );
-        next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024, true );
-        local_address.port = bind_address.port;
-        next_check( socket );
-        uint8_t packet[256];
-        memset( packet, 0, sizeof(packet) );
-        next_platform_socket_send_packet( socket, &local_address, packet, sizeof(packet) );
-        next_address_t from;
-        while ( next_platform_socket_receive_packet( socket, &from, packet, sizeof(packet) ) )
-        {
-            next_check( next_address_equal( &from, &local_address ) );
-        }
-        next_platform_socket_destroy( socket );
-    }
-
-    // blocking socket with timeout (ipv4)
-    {
-        next_address_t bind_address;
-        next_address_t local_address;
-        next_address_parse( &bind_address, "0.0.0.0" );
-        next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024, true );
-        local_address.port = bind_address.port;
-        next_check( socket );
-        uint8_t packet[256];
-        memset( packet, 0, sizeof(packet) );
-        next_platform_socket_send_packet( socket, &local_address, packet, sizeof(packet) );
-        next_address_t from;
-        while ( next_platform_socket_receive_packet( socket, &from, packet, sizeof(packet) ) )
-        {
-            next_check( next_address_equal( &from, &local_address ) );
-        }
-        next_platform_socket_destroy( socket );
-    }
-
-    // blocking socket with no timeout (ipv4)
-    {
-        next_address_t bind_address;
-        next_address_t local_address;
-        next_address_parse( &bind_address, "0.0.0.0" );
-        next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024, true );
-        local_address.port = bind_address.port;
-        next_check( socket );
-        uint8_t packet[256];
-        memset( packet, 0, sizeof(packet) );
-        next_platform_socket_send_packet( socket, &local_address, packet, sizeof(packet) );
-        next_address_t from;
-        next_platform_socket_receive_packet( socket, &from, packet, sizeof(packet) );
-        next_check( next_address_equal( &from, &local_address ) );
-        next_platform_socket_destroy( socket );
-    }
-
-    // non-blocking socket (ipv6)
-#if NEXT_PLATFORM_HAS_IPV6
-    {
-        next_address_t bind_address;
-        next_address_t local_address;
-        next_address_parse( &bind_address, "[::]" );
-        next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024, true );
-        local_address.port = bind_address.port;
-        next_check( socket );
-        uint8_t packet[256];
-        memset( packet, 0, sizeof(packet) );
-        next_platform_socket_send_packet( socket, &local_address, packet, sizeof(packet) );
-        next_address_t from;
-        while ( next_platform_socket_receive_packet( socket, &from, packet, sizeof(packet) ) )
-        {
-            next_check( next_address_equal( &from, &local_address ) );
-        }
-        next_platform_socket_destroy( socket );
-    }
-
-    // blocking socket with timeout (ipv6)
-    {
-        next_address_t bind_address;
-        next_address_t local_address;
-        next_address_parse( &bind_address, "[::]" );
-        next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024, true );
-        local_address.port = bind_address.port;
-        next_check( socket );
-        uint8_t packet[256];
-        memset( packet, 0, sizeof(packet) );
-        next_platform_socket_send_packet( socket, &local_address, packet, sizeof(packet) );
-        next_address_t from;
-        while ( next_platform_socket_receive_packet( socket, &from, packet, sizeof(packet) ) )
-        {
-            next_check( next_address_equal( &from, &local_address ) );
-        }
-        next_platform_socket_destroy( socket );
-    }
-
-    // blocking socket with no timeout (ipv6)
-    {
-        next_address_t bind_address;
-        next_address_t local_address;
-        next_address_parse( &bind_address, "[::]" );
-        next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024, true );
-        local_address.port = bind_address.port;
-        next_check( socket );
-        uint8_t packet[256];
-        memset( packet, 0, sizeof(packet) );
-        next_platform_socket_send_packet( socket, &local_address, packet, sizeof(packet) );
-        next_address_t from;
-        next_platform_socket_receive_packet( socket, &from, packet, sizeof(packet) );
-        next_check( next_address_equal( &from, &local_address ) );
-        next_platform_socket_destroy( socket );
-    }
-#endif
-}
-
-static bool threads_work = false;
-
-static void test_thread_function(void*)
-{
-    threads_work = true;
-}
-
-void test_platform_thread()
-{
-    next_platform_thread_t * thread = next_platform_thread_create( NULL, test_thread_function, NULL );
-    next_check( thread );
-    next_platform_thread_join( thread );
-    next_platform_thread_destroy( thread );
-    next_check( threads_work );
-}
-
-void test_platform_mutex()
-{
-    next_platform_mutex_t mutex;
-    int result = next_platform_mutex_create( &mutex );
-    next_check( result == NEXT_OK );
-    next_platform_mutex_acquire( &mutex );
-    next_platform_mutex_release( &mutex );
-    {
-        next_platform_mutex_guard( &mutex );
-        // ...
-    }
-    next_platform_mutex_destroy( &mutex );
-}
-
-static int num_client_packets_received = 0;
-
-static void test_client_packet_received_callback( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) client;
-    (void) context;
-    (void) from;
-    (void) packet_data;
-    (void) packet_bytes;
-    num_client_packets_received++;
-}
-
-void test_client_ipv4()
-{
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_client_packet_received_callback );
-    next_check( client );
-    next_check( next_client_port( client ) != 0 );
-    next_client_open_session( client, "127.0.0.1:12345" );
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    next_client_send_packet( client, packet, sizeof(packet) );
-    next_client_update( client );
-    next_client_close_session( client );
-    next_client_destroy( client );
-}
-
-static int num_server_packets_received = 0;
-
-static void test_server_packet_received_callback( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) server; (void) context;
-    next_server_send_packet( server, from, packet_data, packet_bytes );
-    num_server_packets_received++;
-}
-
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-
-void test_server_ipv4()
-{
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:0", "0.0.0.0:0", "local", test_server_packet_received_callback );
-    next_check( server );
-    next_check( next_server_port( server ) != 0 );
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1" );
-    address.port = server->bound_port;
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    next_server_send_packet( server, &address, packet, sizeof(packet) );
-    next_server_update( server );
-    next_server_flush( server );
-    next_server_destroy( server );
-}
-
-#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-
-void test_client_ipv6()
-{
-    next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback );
-    next_check( client );
-    next_check( next_client_port( client ) != 0 );
-    next_client_open_session( client, "[::1]:12345" );
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    next_client_send_packet( client, packet, sizeof(packet) );
-    next_client_update( client );
-    next_client_close_session( client );
-    next_client_destroy( client );
-}
-
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-
-void test_server_ipv6()
-{
-    next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
-    next_check( server );
-    next_check( next_server_port(server) != 0 );
-    next_address_t address;
-    next_address_parse( &address, "::1" );
-    address.port = server->bound_port;
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    next_server_send_packet( server, &address, packet, sizeof(packet) );
-    next_server_update( server );
-    next_server_flush( server );
-    next_server_destroy( server );
-}
-
-#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-
-void test_upgrade_token()
-{
-    NextUpgradeToken in, out;
-
-    next_random_bytes( (uint8_t*) &in.session_id, 8 );
-    next_random_bytes( (uint8_t*) &in.expire_timestamp, 8 );
-    next_address_parse( &in.client_address, "127.0.0.1:40000" );
-    next_address_parse( &in.server_address, "127.0.0.1:50000" );
-
-    unsigned char private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_crypto_secretbox_keygen( private_key );
-
-    uint8_t buffer[NEXT_UPGRADE_TOKEN_BYTES];
-
-    in.Write( buffer, private_key );
-
-    next_check( out.Read( buffer, private_key ) == true );
-
-    next_check( memcmp( &in, &out, sizeof(NextUpgradeToken) ) == 0 );
-}
-
-void test_route_token()
-{
-    uint8_t buffer[NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES];
-
-    next_route_token_t input_token;
-    memset( &input_token, 0, sizeof( input_token ) );
-
-    input_token.expire_timestamp = 1234241431241LL;
-    input_token.session_id = 1234241431241LL;
-    input_token.session_version = 5;
-    
-    input_token.next_address.type = NEXT_ADDRESS_IPV4;
-    input_token.next_address.data.ipv4[0] = 127;
-    input_token.next_address.data.ipv4[1] = 0;
-    input_token.next_address.data.ipv4[2] = 0;
-    input_token.next_address.data.ipv4[3] = 1;
-    input_token.next_address.port = 40000;
-    
-    input_token.prev_address.type = NEXT_ADDRESS_IPV4;
-    input_token.prev_address.data.ipv4[0] = 127;
-    input_token.prev_address.data.ipv4[1] = 0;
-    input_token.prev_address.data.ipv4[2] = 0;
-    input_token.prev_address.data.ipv4[3] = 1;
-    input_token.prev_address.port = 50000;
-
-    input_token.next_internal = 1;
-    input_token.prev_internal = 1;
-
-    next_write_route_token( &input_token, buffer, NEXT_ROUTE_TOKEN_BYTES );
-
-    unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( sender_public_key, sender_private_key );
-
-    unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( receiver_public_key, receiver_private_key );
-
-    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
-
-    next_check( next_encrypt_route_token( sender_private_key, receiver_public_key, nonce, buffer, sizeof( buffer ) ) == NEXT_OK );
-
-    next_check( next_decrypt_route_token( sender_public_key, receiver_private_key, nonce, buffer ) == NEXT_OK );
-
-    next_route_token_t output_token;
-
-    next_read_route_token( &output_token, buffer );
-
-    next_check( input_token.expire_timestamp == output_token.expire_timestamp );
-    next_check( input_token.session_id == output_token.session_id );
-    next_check( input_token.session_version == output_token.session_version );
-    next_check( input_token.kbps_up == output_token.kbps_up );
-    next_check( input_token.kbps_down == output_token.kbps_down );
-    next_check( memcmp( input_token.private_key, output_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES ) == 0 );
-    next_check( next_address_equal( &input_token.next_address, &output_token.next_address ) == 1 );
-
-    uint8_t * p = buffer;
-
-    next_check( next_write_encrypted_route_token( &p, &input_token, sender_private_key, receiver_public_key ) == NEXT_OK );
-
-    p = buffer;
-
-    next_check( next_read_encrypted_route_token( &p, &output_token, sender_public_key, receiver_private_key ) == NEXT_OK );
-
-    next_check( input_token.expire_timestamp == output_token.expire_timestamp );
-    next_check( input_token.session_id == output_token.session_id );
-    next_check( input_token.session_version == output_token.session_version );
-    next_check( input_token.kbps_up == output_token.kbps_up );
-    next_check( input_token.kbps_down == output_token.kbps_down );
-    next_check( memcmp( input_token.private_key, output_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES ) == 0 );
-    next_check( next_address_equal( &input_token.next_address, &output_token.next_address ) == 1 );
-    next_check( next_address_equal( &input_token.prev_address, &output_token.prev_address ) == 1 );
-    next_check( input_token.next_internal == output_token.next_internal );
-    next_check( input_token.prev_internal == output_token.prev_internal );
-}
-
-void test_continue_token()
-{
-    uint8_t buffer[NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES];
-
-    next_continue_token_t input_token;
-    memset( &input_token, 0, sizeof( input_token ) );
-
-    input_token.expire_timestamp = 1234241431241LL;
-    input_token.session_id = 1234241431241LL;
-    input_token.session_version = 5;
-
-    next_write_continue_token( &input_token, buffer, NEXT_CONTINUE_TOKEN_BYTES );
-
-    unsigned char sender_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char sender_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( sender_public_key, sender_private_key );
-
-    unsigned char receiver_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
-    unsigned char receiver_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-    next_crypto_box_keypair( receiver_public_key, receiver_private_key );
-
-    unsigned char nonce[NEXT_CRYPTO_BOX_NONCEBYTES];
-    next_random_bytes( nonce, NEXT_CRYPTO_BOX_NONCEBYTES );
-
-    next_check( next_encrypt_continue_token( sender_private_key, receiver_public_key, nonce, buffer, sizeof( buffer ) ) == NEXT_OK );
-
-    next_check( next_decrypt_continue_token( sender_public_key, receiver_private_key, nonce, buffer ) == NEXT_OK );
-
-    next_continue_token_t output_token;
-
-    next_read_continue_token( &output_token, buffer );
-
-    next_check( input_token.expire_timestamp == output_token.expire_timestamp );
-    next_check( input_token.session_id == output_token.session_id );
-    next_check( input_token.session_version == output_token.session_version );
-
-    uint8_t * p = buffer;
-
-    next_check( next_write_encrypted_continue_token( &p, &input_token, sender_private_key, receiver_public_key ) == NEXT_OK );
-
-    p = buffer;
-
-    memset( &output_token, 0, sizeof(output_token) );
-
-    next_check( next_read_encrypted_continue_token( &p, &output_token, sender_public_key, receiver_private_key ) == NEXT_OK );
-
-    next_check( input_token.expire_timestamp == output_token.expire_timestamp );
-    next_check( input_token.session_id == output_token.session_id );
-}
-
-void test_pittle()
-{
-    uint8_t output[256];
-    memset( output, 0, sizeof(output) );
-    for ( int i = 0; i < 10000; ++i )
-    {
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-        int packet_length = 1 + ( i % 1500 );
-        next_generate_pittle( output, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-        next_check( output[0] != 0 );
-        next_check( output[1] != 0 );
-    }
-}
-
-void test_chonkle()
-{
-    uint8_t output[1500];
-    memset( output, 0, sizeof(output) );
-    output[0] = 1;
-    for ( int i = 0; i < 10000; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
-        next_generate_chonkle( output + 1, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-        next_check( next_basic_packet_filter( output, sizeof(output) ) );
-    }
-}
-
-void test_abi()
-{
-    uint8_t output[256];
-    memset( output, 0, sizeof(output) );
-
-    uint8_t magic[8];
-    magic[0] = 1;
-    magic[1] = 2;
-    magic[2] = 3;
-    magic[3] = 4;
-    magic[4] = 5;
-    magic[5] = 6;
-    magic[6] = 7;
-    magic[7] = 8;
-
-    uint8_t from_address[4];
-    from_address[0] = 1;
-    from_address[1] = 2;
-    from_address[2] = 3;
-    from_address[3] = 4;
-
-    uint8_t to_address[4];
-    to_address[0] = 4;
-    to_address[1] = 3;
-    to_address[2] = 2;
-    to_address[3] = 1;
-
-    uint16_t from_port = 1000;
-    uint16_t to_port = 5000;
-
-    int packet_length = 1000;
-
-    next_generate_pittle( output, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-
-    next_check( output[0] == 71 );
-    next_check( output[1] == 201 );
-
-    next_generate_chonkle( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-
-    next_check( output[0] == 45 );
-    next_check( output[1] == 203 );
-    next_check( output[2] == 67 );
-    next_check( output[3] == 96 );
-    next_check( output[4] == 78 );
-    next_check( output[5] == 180 );
-    next_check( output[6] == 127 );
-    next_check( output[7] == 7 );
-}
-
-void test_pittle_and_chonkle()
-{
-    uint8_t output[1500];
-    memset( output, 0, sizeof(output) );
-    output[0] = 1;
-    for ( int i = 0; i < 10000; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
-        next_generate_chonkle( output + 1, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-        next_generate_pittle( output + packet_length - 2, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-        next_check( next_basic_packet_filter( output, sizeof(output) ) );
-        next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
-    }
-}
-
-void test_basic_packet_filter()
-{
-    uint8_t output[256];
-    memset( output, 0, sizeof(output) );
-    uint64_t pass = 0;
-    uint64_t iterations = 100;
-    srand( 100 );
-    for ( int i = 0; i < int(iterations); ++i )
-    {
-        for ( int j = 0; j < int(sizeof(output)); ++j )
-        {
-            output[j] = uint8_t( rand() % 256 );
-        }
-        if ( next_basic_packet_filter( output, rand() % sizeof(output) ) )
-        {
-            pass++;
-        }
-    }
-    next_check( pass == 0 );
-}
-
-void test_advanced_packet_filter()
-{
-    uint8_t output[256];
-    memset( output, 0, sizeof(output) );
-    uint64_t pass = 0;
-    uint64_t iterations = 100;
-    srand( 100 );
-    for ( int i = 0; i < int(iterations); ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
-        for ( int j = 0; j < int(sizeof(output)); ++j )
-        {
-            output[j] = uint8_t( rand() % 256 );
-        }
-        if ( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) )
-        {
-            pass++;
-        }
-    }
-    next_check( pass == 0 );
-}
-
-void test_passthrough()
-{
-    uint8_t output[256];
-    memset( output, 0, sizeof(output) );
-    uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
-    int packet_length = sizeof(output);
-    next_check( next_basic_packet_filter( output, packet_length ) );
-    next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
-}
-
-void test_address_data_none()
-{
-    next_address_t address;
-    memset( &address, 0, sizeof(address) );
-    next_check( address.type == NEXT_ADDRESS_NONE );
-    uint8_t address_data[32];
-    int address_bytes = 0;
-    uint16_t address_port = 0;
-    next_address_data( &address, address_data, &address_bytes, &address_port );
-    next_check( address_bytes == 0 );
-    next_check( address_port == 0 );
-}
-
-void test_address_data_ipv4()
-{
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:50000" );
-    next_check( address.type == NEXT_ADDRESS_IPV4 );
-    uint8_t address_data[32];
-    int address_bytes = 0;
-    uint16_t address_port = 0;
-    next_address_data( &address, address_data, &address_bytes, &address_port );
-    next_check( address_data[0] == 127 );
-    next_check( address_data[1] == 0 );
-    next_check( address_data[2] == 0 );
-    next_check( address_data[3] == 1 );
-    next_check( address_bytes == 4 );
-    next_check( address_port == 50000 );
-}
-
-#if NEXT_PLATFORM_HAS_IPV6
-
-void test_address_data_ipv6()
-{
-    next_address_t address;
-    next_address_parse( &address, "[2001:db8:3333:4444:5555:6666:7777:8888]:50000" );
-    next_check( address.type == NEXT_ADDRESS_IPV6 );
-    uint8_t address_data[32];
-    int address_bytes = 0;
-    uint16_t address_port = 0;
-    next_address_data( &address, address_data, &address_bytes, &address_port );
-    next_check( address_data[0] == 32 );
-    next_check( address_data[1] == 1 );
-    next_check( address_data[2] == 13 );
-    next_check( address_data[3] == 184 );
-    next_check( address_data[4] == 51 );
-    next_check( address_data[5] == 51 );
-    next_check( address_data[6] == 68 );
-    next_check( address_data[7] == 68 );
-    next_check( address_data[8] == 85 );
-    next_check( address_data[9] == 85 );
-    next_check( address_data[10] == 102 );
-    next_check( address_data[11] == 102 );
-    next_check( address_data[12] == 119 );
-    next_check( address_data[13] == 119 );
-    next_check( address_data[14] == 136 );
-    next_check( address_data[15] == 136 );
-    next_check( address_bytes == 16 );
-    next_check( address_port == 50000 );
-}
-
-#endif // #if NEXT_PLATFORM_HAS_IPV6
-
-void test_direct_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint8_t open_session_sequence = uint8_t( i + 10 );
-        uint64_t send_sequence = i;
-
-        uint8_t game_packet_data[NEXT_MTU];
-        int game_packet_bytes = rand() % NEXT_MTU;
-        for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
-
-        int packet_bytes = next_write_direct_packet( packet_data, open_session_sequence, send_sequence, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes >= 0 );
-        next_check( packet_bytes <= NEXT_MTU + 27 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_DIRECT_PACKET );
-        next_check( memcmp( packet_data + 25, game_packet_data, game_packet_bytes ) == 0 );
-    }
-}
-
-void test_direct_ping_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint64_t in_sequence = i;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-
-        NextDirectPingPacket in;
-        in.ping_sequence = i + 1000;
-        int packet_bytes = 0;
-        int result = next_write_packet( NEXT_DIRECT_PING_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( result == NEXT_OK );
-        next_check( packet_bytes == 1 + 15 + 8 + 8 + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES + 2 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        NextDirectPingPacket out;
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        int packet_type = next_read_packet( NEXT_DIRECT_PING_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection );
-
-        next_check( packet_type == NEXT_DIRECT_PING_PACKET );
-
-        next_check( in.ping_sequence == out.ping_sequence );
-
-        next_check( in_sequence == out_sequence + 1 );
-    }
-}
-
-void test_direct_pong_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint64_t in_sequence = i;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-
-        NextDirectPongPacket in;
-        in.ping_sequence = i + 1000;
-        int packet_bytes = 0;
-        int result = next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( result == NEXT_OK );
-        next_check( packet_bytes == 1 + 15 + 8 + 8 + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES + 2 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        NextDirectPongPacket out;
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        int packet_type = next_read_packet( NEXT_DIRECT_PONG_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection );
-
-        next_check( packet_type == NEXT_DIRECT_PONG_PACKET );
-
-        next_check( in.ping_sequence == out.ping_sequence );
-
-        next_check( in_sequence == out_sequence + 1 );
-    }
-}
-
-void test_upgrade_request_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-    uint64_t iterations = 100;
-    
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        static NextUpgradeRequestPacket in, out;
-        in.protocol_version = next_protocol_version();
-        in.session_id = 1231234127431LL;
-        next_address_parse( &in.client_address, "127.0.0.1:50000" );
-        next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
-        next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        next_random_bytes( in.upcoming_magic, 8 );
-        next_random_bytes( in.current_magic, 8 );
-        next_random_bytes( in.previous_magic, 8 );
-
-        int packet_bytes = 0;
-        int result = next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( result == NEXT_OK );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        int packet_type = next_read_packet( NEXT_UPGRADE_REQUEST_PACKET, packet_data, begin, end, &out, next_signed_packets, NULL, NULL, public_key, NULL, NULL );
-
-        next_check( packet_type == NEXT_UPGRADE_REQUEST_PACKET );
-
-        next_check( in.protocol_version == out.protocol_version );
-        next_check( in.session_id == out.session_id );
-        next_check( next_address_equal( &in.client_address, &out.client_address ) );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
-        next_check( memcmp( in.server_kx_public_key, out.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
-        next_check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
-        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
-        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-    }
-}
-
-void test_upgrade_response_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextUpgradeResponsePacket in, out;
-        next_random_bytes( in.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
-        next_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
-        next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        in.platform_id = NEXT_PLATFORM_WINDOWS;
-        in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-
-        int packet_bytes = 0;
-        int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( result == NEXT_OK );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        int packet_type = next_read_packet( NEXT_UPGRADE_RESPONSE_PACKET, packet_data, begin, end, &out, NULL, NULL, NULL, NULL, NULL, NULL );
-
-        next_check( packet_type == NEXT_UPGRADE_RESPONSE_PACKET );
-
-        next_check( memcmp( in.client_kx_public_key, out.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
-        next_check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
-        next_check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        next_check( in.platform_id == out.platform_id );
-        next_check( in.connection_type == out.connection_type );
-    }
-}
-
-void test_upgrade_confirm_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        static NextUpgradeConfirmPacket in, out;
-        in.upgrade_sequence = 1000;
-        in.session_id = 1231234127431LL;
-        next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
-        next_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
-
-        int packet_bytes = 0;
-        int result = next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( result == NEXT_OK );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        int packet_type = next_read_packet( NEXT_UPGRADE_CONFIRM_PACKET, packet_data, begin, end, &out, next_signed_packets, NULL, NULL, public_key, NULL, NULL );
-
-        next_check( packet_type == NEXT_UPGRADE_CONFIRM_PACKET );
-
-        next_check( in.upgrade_sequence == out.upgrade_sequence );
-        next_check( in.session_id == out.session_id );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
-        next_check( memcmp( in.client_kx_public_key, out.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
-        next_check( memcmp( in.server_kx_public_key, out.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
-    }
-}
-
-void test_route_request_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint8_t token_data[1024];
-        int token_bytes = rand() % sizeof(token_data);
-        for ( int j = 0; j < token_bytes; j++ ) { token_data[j] = uint8_t( rand() % 256 ); }
-
-        int packet_bytes = next_write_route_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes > 0 );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_ROUTE_REQUEST_PACKET );
-        next_check( memcmp( packet_data + 16, token_data, token_bytes ) == 0 );
-    }
-}
-
-void test_header()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        next_check( next_write_header( NEXT_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, packet_data ) == NEXT_OK );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        next_check( next_read_header( NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_route_response_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        int packet_bytes = next_write_route_response_packet( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes > 0 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_ROUTE_RESPONSE_PACKET );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        uint8_t * read_packet_data = packet_data + 16;
-        int read_packet_bytes = packet_bytes - 16;
-
-        next_check( next_read_header( NEXT_ROUTE_RESPONSE_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_client_to_server_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t game_packet_data[NEXT_MTU];
-        int game_packet_bytes = rand() % NEXT_MTU;
-        for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
-
-        int packet_bytes = next_write_client_to_server_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
-        next_check( packet_bytes > 0 );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_CLIENT_TO_SERVER_PACKET );
-
-        next_check( memcmp( packet_data + 1 + 15 + NEXT_HEADER_BYTES, game_packet_data, game_packet_bytes ) == 0 );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        uint8_t * read_packet_data = packet_data + 16;
-        int read_packet_bytes = packet_bytes - 16;
-
-        next_check( next_read_header( NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_server_to_client_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t game_packet_data[NEXT_MTU];
-        int game_packet_bytes = rand() % NEXT_MTU;
-        for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
-
-        int packet_bytes = next_write_server_to_client_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes > 0 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_SERVER_TO_CLIENT_PACKET );
-
-        next_check( memcmp( packet_data + 1 + 15 + NEXT_HEADER_BYTES, game_packet_data, game_packet_bytes ) == 0 );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        uint8_t * read_packet_data = packet_data + 16;
-        int read_packet_bytes = packet_bytes - 16;
-
-        next_check( next_read_header( NEXT_SERVER_TO_CLIENT_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_ping_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint64_t ping_sequence = i;
-        int packet_bytes = next_write_ping_packet( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes > 0 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_PING_PACKET );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        uint8_t * read_packet_data = packet_data + 16;
-        int read_packet_bytes = packet_bytes - 16;
-
-        next_check( next_read_header( NEXT_PING_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_pong_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint64_t ping_sequence = i;
-        int packet_bytes = next_write_pong_packet( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes > 0 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_PONG_PACKET );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        uint8_t * read_packet_data = packet_data + 16;
-        int read_packet_bytes = packet_bytes - 16;
-
-        next_check( next_read_header( NEXT_PONG_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_continue_request_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-        uint8_t token_data[256];
-        int token_bytes = rand() % sizeof(token_data);
-        for ( int j = 0; j < token_bytes; j++ ) { token_data[j] = uint8_t( rand() % 256 ); }
-        int packet_bytes = next_write_continue_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
-        next_check( packet_bytes >= 0 );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-        next_check( packet_data[0] == NEXT_CONTINUE_REQUEST_PACKET );
-        next_check( memcmp( packet_data + 16, token_data, token_bytes ) == 0 );
-    }
-}
-
-void test_continue_response_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t send_sequence = i + 1000;
-        uint64_t session_id = 0x12314141LL;
-        uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        int packet_bytes = next_write_continue_response_packet( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes > 0 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_CONTINUE_RESPONSE_PACKET );
-
-        uint64_t read_packet_sequence = 0;
-        uint64_t read_packet_session_id = 0;
-        uint8_t read_packet_session_version = 0;
-
-        uint8_t * read_packet_data = packet_data + 16;
-        int read_packet_bytes = packet_bytes - 16;
-
-        next_check( next_read_header( NEXT_CONTINUE_RESPONSE_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, read_packet_data, read_packet_bytes ) == NEXT_OK );
-
-        next_check( read_packet_sequence == send_sequence );
-        next_check( read_packet_session_id == session_id );
-        next_check( read_packet_session_version == session_version );
-    }
-}
-
-void test_client_stats_packet_with_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextClientStatsPacket in, out;
-        in.reported = true;
-        in.fallback_to_direct = true;
-        in.platform_id = NEXT_PLATFORM_WINDOWS;
-        in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-        in.direct_rtt = 50.0f;
-        in.direct_jitter = 10.0f;
-        in.direct_packet_loss = 0.1f;
-        in.direct_max_packet_loss_seen = 0.25f;
-        in.next = true;
-        in.next_rtt = 50.0f;
-        in.next_jitter = 5.0f;
-        in.next_packet_loss = 0.01f;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_ids[j] = uint64_t(10000000) + j;
-            in.near_relay_rtt[j] = 5 * j;
-            in.near_relay_jitter[j] = 0.01f * j;
-            in.near_relay_packet_loss[j] = j;
-        }
-        in.packets_lost_server_to_client = 1000;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        uint64_t in_sequence = 1000;
-
-        int packet_bytes = 0;
-        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        next_check( packet_data[0] == NEXT_CLIENT_STATS_PACKET );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        next_check( next_read_packet( NEXT_CLIENT_STATS_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.reported == out.reported );
-        next_check( in.fallback_to_direct == out.fallback_to_direct );
-        next_check( in.platform_id == out.platform_id );
-        next_check( in.connection_type == out.connection_type );
-        next_check( in.direct_rtt == out.direct_rtt );
-        next_check( in.direct_jitter == out.direct_jitter );
-        next_check( in.direct_packet_loss == out.direct_packet_loss );
-        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
-        next_check( in.next == out.next );
-        next_check( in.next_rtt == out.next_rtt );
-        next_check( in.next_jitter == out.next_jitter );
-        next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( in.near_relay_rtt[j] == out.near_relay_rtt[j] );
-            next_check( in.near_relay_jitter[j] == out.near_relay_jitter[j] );
-            next_check( in.near_relay_packet_loss[j] == out.near_relay_packet_loss[j] );
-        }
-        next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
-        next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
-    }
-}
-
-void test_client_stats_packet_without_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextClientStatsPacket in, out;
-        in.reported = true;
-        in.fallback_to_direct = true;
-        in.platform_id = NEXT_PLATFORM_WINDOWS;
-        in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-        in.direct_rtt = 50.0f;
-        in.direct_jitter = 10.0f;
-        in.direct_packet_loss = 0.1f;
-        in.direct_max_packet_loss_seen = 0.25f;
-        in.next = true;
-        in.next_rtt = 50.0f;
-        in.next_jitter = 5.0f;
-        in.next_packet_loss = 0.01f;
-        in.num_near_relays = 0;
-        in.packets_lost_server_to_client = 1000;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        uint64_t in_sequence = 1000;
-
-        int packet_bytes = 0;
-        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        next_check( packet_data[0] == NEXT_CLIENT_STATS_PACKET );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        next_check( next_read_packet( NEXT_CLIENT_STATS_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.reported == out.reported );
-        next_check( in.fallback_to_direct == out.fallback_to_direct );
-        next_check( in.platform_id == out.platform_id );
-        next_check( in.connection_type == out.connection_type );
-        next_check( in.direct_rtt == out.direct_rtt );
-        next_check( in.direct_jitter == out.direct_jitter );
-        next_check( in.direct_packet_loss == out.direct_packet_loss );
-        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
-        next_check( in.next == out.next );
-        next_check( in.next_rtt == out.next_rtt );
-        next_check( in.next_jitter == out.next_jitter );
-        next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
-        next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
-        next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
-    }
-}
-
-void test_route_update_packet_direct()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextRouteUpdatePacket in, out;
-
-        in.sequence = 100000;
-        in.has_near_relays = true;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            char relay_name[32];
-            char relay_address[256];
-            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
-            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
-            in.near_relay_ids[j] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[j], relay_address );
-            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
-        }
-        in.near_relay_expire_timestamp = 0x12341987439187LL;
-        in.update_type = NEXT_UPDATE_TYPE_DIRECT;
-        in.packets_sent_server_to_client = 11000;
-        in.packets_lost_client_to_server = 10000;
-        in.packets_out_of_order_client_to_server = 9000;
-        next_random_bytes( in.upcoming_magic, 8 );
-        next_random_bytes( in.current_magic, 8 );
-        next_random_bytes( in.previous_magic, 8 );
-        in.jitter_client_to_server = 0.1f;
-        in.has_debug = true;
-        strcpy( in.debug, "debug time" );
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        uint64_t in_sequence = 1000;
-
-        int packet_bytes = 0;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        next_check( next_read_packet( NEXT_ROUTE_UPDATE_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
-        }
-        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
-        next_check( in.update_type == out.update_type );
-        next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
-        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
-        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-        next_check( in.jitter_client_to_server == out.jitter_client_to_server );
-        next_check( in.has_debug == out.has_debug );
-        next_check( strcmp( in.debug, out.debug ) == 0 );
-    }
-}
-
-void test_route_update_packet_new_route()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextRouteUpdatePacket in, out;
-        in.sequence = 100000;
-        in.has_near_relays = true;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            char relay_name[32];
-            char relay_address[256];
-            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
-            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
-            in.near_relay_ids[j] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[j], relay_address );
-            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
-        }
-        in.near_relay_expire_timestamp = 0x12341987439187LL;
-        in.update_type = NEXT_UPDATE_TYPE_ROUTE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
-        in.packets_sent_server_to_client = 11000;
-        in.packets_lost_client_to_server = 10000;
-        in.packets_out_of_order_client_to_server = 9000;
-        next_random_bytes( in.upcoming_magic, 8 );
-        next_random_bytes( in.current_magic, 8 );
-        next_random_bytes( in.previous_magic, 8 );
-        in.jitter_client_to_server = 0.25f;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-
-        int packet_bytes = 0;
-        uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        next_check( next_read_packet( NEXT_ROUTE_UPDATE_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
-        }
-        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
-        next_check( in.update_type == out.update_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
-        next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
-        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
-        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-        next_check( in.jitter_client_to_server == out.jitter_client_to_server );
-    }
-}
-
-void test_route_update_packet_continue_route()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextRouteUpdatePacket in, out;
-        in.sequence = 100000;
-        in.has_near_relays = true;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            char relay_name[32];
-            char relay_address[256];
-            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
-            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
-            in.near_relay_ids[j] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[j], relay_address );
-            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
-        }
-        in.near_relay_expire_timestamp = 0x12341987439187LL;
-        in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
-        in.packets_lost_client_to_server = 10000;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-
-        int packet_bytes = 0;
-        uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        next_check( next_read_packet( NEXT_ROUTE_UPDATE_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
-        }
-        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
-        next_check( in.update_type == out.update_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
-        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
-        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-    }
-}
-
-void test_route_update_ack_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
-        next_random_bytes( private_key, sizeof(private_key) );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextRouteUpdateAckPacket in, out;
-        in.sequence = 100000;
-
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-
-        int packet_bytes = 0;
-        uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        next_check( packet_data[0] == NEXT_ROUTE_UPDATE_ACK_PACKET );
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        uint64_t out_sequence = 0;
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-        next_check( next_read_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-    }
-}
-
-void test_relay_ping_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint8_t ping_token[NEXT_PING_TOKEN_BYTES];
-        next_random_bytes( ping_token, NEXT_PING_TOKEN_BYTES );
-
-        uint64_t ping_sequence = i;
-        uint64_t ping_session_id = 0x12345;
-        uint64_t ping_expire_timestamp = 0x123415817414;
-
-        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, ping_expire_timestamp, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes >= 0 );
-        next_check( packet_bytes <= NEXT_MTU + 27 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_RELAY_PING_PACKET );
-
-        const uint8_t * p = packet_data + 16;
-        uint64_t read_ping_sequence = next_read_uint64( &p );
-        uint64_t read_ping_session_id = next_read_uint64( &p );
-        uint64_t read_ping_expire_timestamp = next_read_uint64( &p );
-
-        next_check( read_ping_sequence == ping_sequence );
-        next_check( read_ping_session_id == ping_session_id );
-        next_check( read_ping_expire_timestamp == ping_expire_timestamp );
-
-        next_check( memcmp( packet_data + 1 + 15 + 8 + 8 + 8, ping_token, NEXT_PING_TOKEN_BYTES ) == 0 );
-    }
-}
-
-void test_relay_pong_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        uint64_t pong_sequence = i;
-        uint64_t pong_session_id = 0x123456;
-
-        int packet_bytes = next_write_relay_pong_packet( packet_data, pong_sequence, pong_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
-
-        next_check( packet_bytes >= 0 );
-        next_check( packet_bytes <= NEXT_MTU + 27 );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        next_check( packet_data[0] == NEXT_RELAY_PONG_PACKET );
-
-        const uint8_t * p = packet_data + 16;
-        uint64_t read_pong_sequence = next_read_uint64( &p );
-        uint64_t read_pong_session_id = next_read_uint64( &p );
-
-        next_check( read_pong_sequence == pong_sequence );
-        next_check( read_pong_session_id == pong_session_id );
-    }
-}
-
-void test_server_init_request_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendServerInitRequestPacket in, out;
-        in.request_id = next_random_uint64();
-        in.customer_id = 1231234127431LL;
-        in.datacenter_id = next_datacenter_id( "local" );
-        strcpy( in.datacenter_name, "local" );
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET );
-
-        next_check( in.request_id == out.request_id );
-        next_check( in.version_major == out.version_major );
-        next_check( in.version_minor == out.version_minor );
-        next_check( in.version_patch == out.version_patch );
-        next_check( in.customer_id == out.customer_id );
-        next_check( in.datacenter_id == out.datacenter_id );
-        next_check( strcmp( in.datacenter_name, out.datacenter_name ) == 0 );
-    }
-}
-
-void test_server_init_response_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendServerInitResponsePacket in, out;
-        in.request_id = next_random_uint64();
-        in.response = NEXT_SERVER_INIT_RESPONSE_OK;
-        next_random_bytes( in.upcoming_magic, 8 );
-        next_random_bytes( in.current_magic, 8 );
-        next_random_bytes( in.previous_magic, 8 );
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET );
-
-        next_check( in.request_id == out.request_id );
-        next_check( in.response == out.response );
-        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
-        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
-        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-    }
-}
-
-void test_server_update_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendServerUpdateRequestPacket in, out;
-        in.request_id = next_random_uint64();
-        in.customer_id = next_random_uint64();
-        in.datacenter_id = next_random_uint64();
-        in.num_sessions = 1000;
-        next_address_parse( &in.server_address, "127.0.0.1:40000" );
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET );
-
-        next_check( in.version_major == out.version_major );
-        next_check( in.version_minor == out.version_minor );
-        next_check( in.version_patch == out.version_patch );
-        next_check( in.request_id == out.request_id );
-        next_check( in.customer_id == out.customer_id );
-        next_check( in.datacenter_id == out.datacenter_id );
-        next_check( in.num_sessions == out.num_sessions );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
-    }
-}
-
-void test_server_response_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendServerUpdateResponsePacket in, out;
-        in.request_id = next_random_uint64();
-        next_random_bytes( in.upcoming_magic, 8 );
-        next_random_bytes( in.current_magic, 8 );
-        next_random_bytes( in.previous_magic, 8 );
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.request_id == out.request_id );
-        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
-        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
-        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
-    }
-}
-
-void test_session_update_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateRequestPacket in, out;
-        in.slice_number = 0;
-        in.customer_id = 1231234127431LL;
-        in.datacenter_id = 111222454443LL;
-        in.session_id = 1234342431431LL;
-        in.user_hash = 11111111;
-        in.platform_id = 3;
-        in.session_events = next_random_uint64();
-        in.internal_events = next_random_uint64();
-        in.reported = true;
-        in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
-        in.direct_rtt = 10.1f;
-        in.direct_jitter = 5.2f;
-        in.direct_packet_loss = 0.1f;
-        in.direct_max_packet_loss_seen = 0.25f;
-        in.next = true;
-        in.has_near_relay_pings = true;
-        in.next_rtt = 5.0f;
-        in.next_jitter = 1.5f;
-        in.next_packet_loss = 0.0f;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            in.near_relay_ids[j] = j;
-            in.near_relay_rtt[j] = j + 10.0f;
-            in.near_relay_jitter[j] = j + 11.0f;
-            in.near_relay_packet_loss[j] = j + 12.0f;
-        }
-        next_address_parse( &in.client_address, "127.0.0.1:40000" );
-        next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        next_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
-        next_random_bytes( in.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
-        in.direct_kbps_up = 50.0f;
-        in.direct_kbps_down = 75.0f;
-        in.next_kbps_up = 100.0f;
-        in.next_kbps_down = 200.0f;
-        in.packets_lost_client_to_server = 100;
-        in.packets_lost_server_to_client = 200;
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.customer_id == out.customer_id );
-        next_check( in.datacenter_id == out.datacenter_id );
-        next_check( in.session_id == out.session_id );
-        next_check( in.user_hash == out.user_hash );
-        next_check( in.platform_id == out.platform_id );
-        next_check( in.session_events == out.session_events );
-        next_check( in.internal_events == out.internal_events );
-        next_check( in.reported == out.reported );
-        next_check( in.connection_type == out.connection_type );
-        next_check( in.direct_rtt == out.direct_rtt );
-        next_check( in.direct_jitter == out.direct_jitter );
-        next_check( in.direct_packet_loss == out.direct_packet_loss );
-        next_check( in.direct_max_packet_loss_seen == out.direct_max_packet_loss_seen );
-        next_check( in.next == out.next );
-        next_check( in.next_rtt == out.next_rtt );
-        next_check( in.next_jitter == out.next_jitter );
-        next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( in.near_relay_rtt[j] == out.near_relay_rtt[j] );
-            next_check( in.near_relay_jitter[j] == out.near_relay_jitter[j] );
-            next_check( in.near_relay_packet_loss[j] == out.near_relay_packet_loss[j] );
-        }
-        next_check( next_address_equal( &in.client_address, &out.client_address ) );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
-        next_check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
-        next_check( memcmp( in.server_route_public_key, out.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
-        next_check( in.direct_kbps_up == out.direct_kbps_up );
-        next_check( in.direct_kbps_down == out.direct_kbps_down );
-        next_check( in.next_kbps_up == out.next_kbps_up );
-        next_check( in.next_kbps_down == out.next_kbps_down );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( in.session_data[j] == out.session_data[j] );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( in.session_data_signature[j] == out.session_data_signature[j] );
-        }
-    }
-}
-
-void test_session_response_packet_direct_has_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = true;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            char relay_name[32];
-            char relay_address[256];
-            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
-            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
-            in.near_relay_ids[j] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[j], relay_address );
-            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
-        }
-        in.near_relay_expire_timestamp = 0x1234172487187LL;
-        in.response_type = NEXT_UPDATE_TYPE_DIRECT;
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-        in.has_debug = true;
-        strcpy( in.debug, "hello session" );
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
-        }
-        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
-        next_check( in.response_type == out.response_type );
-        next_check( in.has_debug == out.has_debug );
-        next_check( strcmp( in.debug, out.debug ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_session_response_packet_route_has_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = true;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            char relay_name[32];
-            char relay_address[256];
-            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
-            snprintf( relay_address, sizeof(relay_address), "127.0.0.1:%d", 40000 + j );
-            in.near_relay_ids[j] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[j], relay_address );
-            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
-        }
-        in.near_relay_expire_timestamp = 0x1234172487187LL;
-        in.response_type = NEXT_UPDATE_TYPE_ROUTE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
-        }
-        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
-        next_check( in.response_type == out.response_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_session_response_packet_continue_has_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = true;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            char relay_name[32];
-            char relay_address[256];
-            snprintf( relay_name, sizeof(relay_name), "relay%d", j );
-            snprintf( relay_address, sizeof(relay_name), "127.0.0.1:%d", 40000 + j );
-            in.near_relay_ids[j] = next_relay_id( relay_name );
-            next_address_parse( &in.near_relay_addresses[j], relay_address );
-            next_random_bytes( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES );
-        }
-        in.near_relay_expire_timestamp = 0x1234172487187LL;
-        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.multipath == out.multipath );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
-        {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( next_address_equal( &in.near_relay_addresses[j], &out.near_relay_addresses[j] ) );
-            next_check( memcmp( in.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, out.near_relay_ping_tokens + j * NEXT_PING_TOKEN_BYTES, NEXT_PING_TOKEN_BYTES ) == 0 );
-        }
-        next_check( in.near_relay_expire_timestamp == out.near_relay_expire_timestamp );
-        next_check( in.response_type == out.response_type );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_session_response_packet_direct_no_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = false;
-        in.response_type = NEXT_UPDATE_TYPE_DIRECT;
-        in.multipath = false;
-        in.has_near_relays = false;
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.multipath == out.multipath );
-    }
-}
-
-void test_session_response_packet_route_no_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = false;
-        in.response_type = NEXT_UPDATE_TYPE_ROUTE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.multipath == out.multipath );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-    }
-}
-
-void test_session_response_packet_continue_no_near_relays()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendSessionUpdateResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.has_near_relays = false;
-        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
-        in.multipath = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            in.session_data[j] = uint8_t(j);
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            in.session_data_signature[j] = uint8_t(j);
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.multipath == out.multipath );
-        next_check( in.has_near_relays == out.has_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.session_data_bytes == out.session_data_bytes );
-        for ( int j = 0; j < NEXT_MAX_SESSION_DATA_BYTES; ++j )
-        {
-            next_check( out.session_data[j] == uint8_t(j) );
-        }
-        for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
-        {
-            next_check( out.session_data_signature[j] == uint8_t(j) );
-        }
-    }
-}
-
-void test_match_data_request_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendMatchDataRequestPacket in, out;
-        in.Reset();
-        out.Reset();
-        in.version_major = NEXT_VERSION_MAJOR_INT;
-        in.version_minor = NEXT_VERSION_MINOR_INT;
-        in.version_patch = NEXT_VERSION_PATCH_INT;
-        in.customer_id = 1231234127431LL;
-        next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        in.datacenter_id = next_datacenter_id( "local" );
-        in.user_hash = 11111111;
-        in.session_id = 1234342431431LL;
-        in.match_id = 1234342431431LL;
-        in.num_match_values = NEXT_MAX_MATCH_VALUES;
-        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-        {
-            in.match_values[j] = j + 10.0f;
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
-
-        next_check( in.version_major == out.version_major );
-        next_check( in.version_minor == out.version_minor );
-        next_check( in.version_patch == out.version_patch );
-        next_check( in.customer_id == out.customer_id );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
-        next_check( in.datacenter_id == out.datacenter_id );
-        next_check( in.user_hash == out.user_hash );
-        next_check( in.session_id == out.session_id );
-        next_check( in.match_id == out.match_id );
-        next_check( in.num_match_values == out.num_match_values );
-        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-        {
-            next_check( in.match_values[j] = out.match_values[j] );
-        }
-    }
-}
-
-void test_match_data_response_packet()
-{
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    uint64_t iterations = 100;
-    for ( uint64_t i = 0; i < iterations; ++i )
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
-        static NextBackendMatchDataRequestPacket in, out;
-        in.Reset();
-        out.Reset();
-        in.version_major = NEXT_VERSION_MAJOR_INT;
-        in.version_minor = NEXT_VERSION_MINOR_INT;
-        in.version_patch = NEXT_VERSION_PATCH_INT;
-        in.customer_id = 1231234127431LL;
-        next_address_parse( &in.server_address, "127.0.0.1:12345" );
-        in.datacenter_id = next_datacenter_id( "local" );
-        in.user_hash = 11111111;
-        in.session_id = 1234342431431LL;
-        in.match_id = 1234342431431LL;
-        in.num_match_values = NEXT_MAX_MATCH_VALUES;
-        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-        {
-            in.match_values[j] = j + 10.0f;
-        }
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
-
-        const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
-
-        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
-
-        const int begin = 16;
-        const int end = packet_bytes - 2;
-
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
-
-        next_check( in.version_major == out.version_major );
-        next_check( in.version_minor == out.version_minor );
-        next_check( in.version_patch == out.version_patch );
-        next_check( in.customer_id == out.customer_id );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
-        next_check( in.datacenter_id == out.datacenter_id );
-        next_check( in.user_hash == out.user_hash );
-        next_check( in.session_id == out.session_id );
-        next_check( in.match_id == out.match_id );
-        next_check( in.num_match_values == out.num_match_values );
-        for ( int j = 0; j < NEXT_MAX_MATCH_VALUES; ++j )
-        {
-            next_check( in.match_values[j] = out.match_values[j] );
-        }
-    }
-}
-
-void test_pending_session_manager()
-{
-    const int InitialSize = 32;
-
-    next_pending_session_manager_t * pending_session_manager = next_pending_session_manager_create( NULL, InitialSize );
-
-    next_check( pending_session_manager );
-
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:12345" );
-
-    double time = 10.0;
-
-    // test private keys
-
-    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_random_bytes( private_keys, sizeof(private_keys) );
-
-    // test upgrade tokens
-
-    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
-    next_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
-
-    // add enough entries to make sure we have to expand
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( entry->upgrade_time == time );
-        next_check( entry->last_packet_send_time < 0.0 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        next_check( memcmp( entry->private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
-        next_check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        address.port++;
-    }
-
-    // verify that all entries are there
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_pending_session_entry_t * entry = next_pending_session_manager_find( pending_session_manager, &address );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( entry->upgrade_time == time );
-        next_check( entry->last_packet_send_time < 0.0 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    next_check( next_pending_session_manager_num_entries( pending_session_manager ) == InitialSize*3 );
-
-    // remove every second entry
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        if ( (i%2) == 0 )
-        {
-            next_pending_session_manager_remove_by_address( pending_session_manager, &pending_session_manager->addresses[i] );
-        }
-    }
-
-    // verify only the entries that remain can be found
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_pending_session_entry_t * entry = next_pending_session_manager_find( pending_session_manager, &address );
-        if ( (i%2) != 0 )
-        {
-            next_check( entry );
-            next_check( entry->session_id == uint64_t(i) + 1000 );
-            next_check( entry->upgrade_time == time );
-            next_check( entry->last_packet_send_time < 0.0 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        else
-        {
-            next_check( entry == NULL );
-        }
-        address.port++;
-    }
-
-    // expand, and verify that all entries get collapsed
-
-    next_pending_session_manager_expand( pending_session_manager );
-
-    address.port = 12346;
-    for ( int i = 0; i < pending_session_manager->size; ++i )
-    {
-        if ( pending_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_check( next_address_equal( &address, &pending_session_manager->addresses[i] ) == 1 );
-            next_pending_session_entry_t * entry = &pending_session_manager->entries[i];
-            next_check( entry->session_id == uint64_t(i)*2+1001 );
-            next_check( entry->upgrade_time == time );
-            next_check( entry->last_packet_send_time < 0.0 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        address.port += 2;
-    }
-
-    // remove all remaining entries manually
-
-    for ( int i = 0; i < pending_session_manager->size; ++i )
-    {
-        if ( pending_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_pending_session_manager_remove_by_address( pending_session_manager, &pending_session_manager->addresses[i] );
-        }
-    }
-
-    next_check( pending_session_manager->max_entry_index == 0 );
-
-    next_check( next_pending_session_manager_num_entries( pending_session_manager ) == 0 );
-
-    next_pending_session_manager_destroy( pending_session_manager );
-}
-
-void test_proxy_session_manager()
-{
-    const int InitialSize = 32;
-
-    next_proxy_session_manager_t * proxy_session_manager = next_proxy_session_manager_create( NULL, InitialSize );
-
-    next_check( proxy_session_manager );
-
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:12345" );
-
-    // test private keys
-
-    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_random_bytes( private_keys, sizeof(private_keys) );
-
-    // test upgrade tokens
-
-    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
-    next_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
-
-    // add enough entries to make sure we have to expand
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_add( proxy_session_manager, &address, uint64_t(i)+1000 );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    // verify that all entries are there
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( proxy_session_manager, &address );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    next_check( next_proxy_session_manager_num_entries( proxy_session_manager ) == InitialSize*3 );
-
-    // remove every second entry
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        if ( (i%2) == 0 )
-        {
-            next_proxy_session_manager_remove_by_address( proxy_session_manager, &proxy_session_manager->addresses[i] );
-        }
-    }
-
-    // verify only the entries that remain can be found
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( proxy_session_manager, &address );
-        if ( (i%2) != 0 )
-        {
-            next_check( entry );
-            next_check( entry->session_id == uint64_t(i) + 1000 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        else
-        {
-            next_check( entry == NULL );
-        }
-        address.port++;
-    }
-
-    // expand, and verify that all entries get collapsed
-
-    next_proxy_session_manager_expand( proxy_session_manager );
-
-    address.port = 12346;
-    for ( int i = 0; i < proxy_session_manager->size; ++i )
-    {
-        if ( proxy_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_check( next_address_equal( &address, &proxy_session_manager->addresses[i] ) == 1 );
-            next_proxy_session_entry_t * entry = &proxy_session_manager->entries[i];
-            next_check( entry->session_id == uint64_t(i)*2+1001 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        address.port += 2;
-    }
-
-    // remove all remaining entries manually
-
-    for ( int i = 0; i < proxy_session_manager->size; ++i )
-    {
-        if ( proxy_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_proxy_session_manager_remove_by_address( proxy_session_manager, &proxy_session_manager->addresses[i] );
-        }
-    }
-
-    next_check( proxy_session_manager->max_entry_index == 0 );
-
-    next_check( next_proxy_session_manager_num_entries( proxy_session_manager ) == 0 );
-
-    next_proxy_session_manager_destroy( proxy_session_manager );
-}
-
-void test_session_manager()
-{
-    const int InitialSize = 1;
-
-    next_session_manager_t * session_manager = next_session_manager_create( NULL, InitialSize );
-
-    next_check( session_manager );
-
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:12345" );
-
-    // test private keys
-
-    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_random_bytes( private_keys, sizeof(private_keys) );
-
-    // test upgrade tokens
-
-    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
-    next_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
-
-    // add enough entries to make sure we have to expand
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        next_check( memcmp( entry->ephemeral_private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
-        next_check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        address.port++;
-    }
-
-    // verify that all entries are there
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_session_entry_t * entry = next_session_manager_find_by_address( session_manager, &address );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i)+1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    next_check( next_session_manager_num_entries( session_manager ) == InitialSize*3 );
-
-    // remove every second entry
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        if ( (i%2) == 0 )
-        {
-            next_session_manager_remove_by_address( session_manager, &session_manager->addresses[i] );
-        }
-    }
-
-    // verify only the entries that remain can be found
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_session_entry_t * entry = next_session_manager_find_by_address( session_manager, &address );
-        if ( (i%2) != 0 )
-        {
-            next_check( entry );
-            next_check( entry->session_id == uint64_t(i)+1000 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        else
-        {
-            next_check( entry == NULL );
-        }
-        address.port++;
-    }
-
-    // expand, and verify that all entries get collapsed
-
-    next_session_manager_expand( session_manager );
-
-    address.port = 12346;
-    for ( int i = 0; i < session_manager->size; ++i )
-    {
-        if ( session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_check( next_address_equal( &address, &session_manager->addresses[i] ) == 1 );
-            next_session_entry_t * entry = &session_manager->entries[i];
-            next_check( entry->session_id == uint64_t(i)*2+1001 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        address.port += 2;
-    }
-
-    // remove all remaining entries manually
-
-    for ( int i = 0; i < session_manager->size; ++i )
-    {
-        if ( session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_session_manager_remove_by_address( session_manager, &session_manager->addresses[i] );
-        }
-    }
-
-    next_check( session_manager->max_entry_index == 0 );
-
-    next_check( next_session_manager_num_entries( session_manager ) == 0 );
-
-    next_session_manager_destroy( session_manager );
-}
-
-void test_relay_manager()
-{
-    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
-    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
-    uint64_t relay_ping_expire_timestamp = 0x129387193871987LL;
-
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-    {
-        relay_ids[i] = i;
-        char address_string[256];
-        snprintf( address_string, sizeof(address_string), "127.0.0.1:%d", 40000 + i );
-        next_address_parse( &relay_addresses[i], address_string );
-    }
-
-    next_relay_manager_t * manager = next_relay_manager_create( NULL );
-
-    // should be no relays when manager is first created
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == 0 );
-    }
-
-    // add max relays
-
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        {
-            next_check( relay_ids[i] == stats.relay_ids[i] );
-            next_check( stats.relay_rtt[i] == 0 );
-            next_check( stats.relay_jitter[i] == 0 );
-            next_check( stats.relay_packet_loss[i] == 0 );
-        }
-    }
-
-    // remove all relays
-
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == 0 );
-    }
-
-    // add same relay set repeatedly
-
-    for ( int j = 0; j < 2; ++j )
-    {
-        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
-        {
-            next_relay_stats_t stats;
-            next_relay_manager_get_stats( manager, &stats );
-            next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-            {
-                next_check( relay_ids[i] == stats.relay_ids[i] );
-            }
-        }
-    }
-
-    // now add a few new relays, while some relays remain the same
-
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4, relay_ping_tokens, relay_ping_expire_timestamp );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS - 4; ++i )
-        {
-            next_check( relay_ids[i+4] == stats.relay_ids[i] );
-        }
-    }
-
-    // remove all relays
-
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == 0 );
-    }
-
-    next_relay_manager_destroy( manager );
-}
-
-void test_bandwidth_limiter()
-{
-    next_bandwidth_limiter_t bandwidth_limiter;
-
-    next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-    next_check( next_bandwidth_limiter_usage_kbps( &bandwidth_limiter, 0.0 ) == 0.0 );
-
-    // come in way under
-    {
-        const int kbps_allowed = 1000;
-        const int packet_bits = 50;
-
-        for ( int i = 0; i < 10; ++i )
-        {
-            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
-        }
-    }
-
-    // get really close
-    {
-        next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-        const int kbps_allowed = 1000;
-        const int packet_bits = kbps_allowed / 10 * 1000;
-
-        for ( int i = 0; i < 10; ++i )
-        {
-            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
-        }
-    }
-
-    // really close for several intervals
-    {
-        next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-        const int kbps_allowed = 1000;
-        const int packet_bits = kbps_allowed / 10 * 1000;
-
-        for ( int i = 0; i < 30; ++i )
-        {
-            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
-        }
-    }
-
-    // go over budget
-    {
-        next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-        const int kbps_allowed = 1000;
-        const int packet_bits = kbps_allowed / 10 * 1000 * 1.01f;
-
-        bool over_budget = false;
-
-        for ( int i = 0; i < 30; ++i )
-        {
-            over_budget |= next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits );
-        }
-
-        next_check( over_budget );
-    }
-}
-
-static void context_check_free( void * context, void * p )
-{
-    (void) p;
-
-    // the context should not be cleared
-    next_check( context );
-    next_check( *((int *)context) == 23 );
-}
-
-void test_free_retains_context()
-{
-    void * (*current_malloc)( void * context, size_t bytes ) = next_malloc_function;
-    void (*current_free)( void * context, void * p ) = next_free_function;
-
-    next_allocator( next_default_malloc_function, context_check_free );
-
-    int canary = 23;
-    void * context = (void *)&canary;
-    next_queue_t *q = next_queue_create( context, 1 );
-    next_queue_destroy( q );
-
-    next_check( context );
-    next_check( *((int *)context) == 23 );
-    next_check( canary == 23 );
-
-    next_allocator( current_malloc, current_free );
-}
-
-void test_packet_loss_tracker()
-{
-    next_packet_loss_tracker_t tracker;
-    next_packet_loss_tracker_reset( &tracker );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    uint64_t sequence = 0;
-
-    for ( int i = 0; i < NEXT_PACKET_LOSS_TRACKER_SAFETY; ++i )
-    {
-        next_packet_loss_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    for ( int i = 0; i < 200; ++i )
-    {
-        next_packet_loss_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    for ( int i = 0; i < 200; ++i )
-    {
-        if ( sequence & 1 )
-        {
-            next_packet_loss_tracker_packet_received( &tracker, sequence );
-        }
-        sequence++;
-    }
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == ( 200 - NEXT_PACKET_LOSS_TRACKER_SAFETY ) / 2 );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    next_packet_loss_tracker_reset( &tracker );
-
-    sequence = 0;
-
-    next_packet_loss_tracker_packet_received( &tracker, 200 + NEXT_PACKET_LOSS_TRACKER_SAFETY - 1 );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 200 );
-
-    next_packet_loss_tracker_packet_received( &tracker, 1000 );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) > 500 );
-
-    next_packet_loss_tracker_packet_received( &tracker, 0xFFFFFFFFFFFFFFFULL );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-}
-
-void test_out_of_order_tracker()
-{
-    next_out_of_order_tracker_t tracker;
-    next_out_of_order_tracker_reset( &tracker );
-
-    next_check( tracker.num_out_of_order_packets == 0 );
-
-    uint64_t sequence = 0;
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        next_out_of_order_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( tracker.num_out_of_order_packets == 0 );
-
-    sequence = 500;
-
-    for ( int i = 0; i < 500; ++i )
-    {
-        next_out_of_order_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( tracker.num_out_of_order_packets == 499 );
-
-    next_out_of_order_tracker_reset( &tracker );
-
-    next_check( tracker.last_packet_processed == 0 );
-    next_check( tracker.num_out_of_order_packets == 0 );
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        uint64_t mod_sequence = ( sequence / 2 ) * 2;
-        if ( sequence % 2 )
-            mod_sequence -= 1;
-        next_out_of_order_tracker_packet_received( &tracker, mod_sequence );
-        sequence++;
-    }
-
-    next_check( tracker.num_out_of_order_packets == 500 );
-}
-
-void test_jitter_tracker()
-{
-    next_jitter_tracker_t tracker;
-    next_jitter_tracker_reset( &tracker );
-
-    next_check( tracker.jitter == 0.0 );
-
-    uint64_t sequence = 0;
-
-    double t = 0.0;
-    double dt = 1.0 / 60.0;
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-        t += dt;
-    }
-
-    next_check( tracker.jitter < 0.000001 );
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        t = i * dt;
-        if ( (i%3) == 0 )
-        {
-            t += 2;
-        }
-        if ( (i%5) == 0 )
-        {
-            t += 5;
-        }
-        if ( (i%6) == 0 )
-        {
-            t -= 10;
-        }
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-    }
-
-    next_check( tracker.jitter > 1.0 );
-
-    next_jitter_tracker_reset( &tracker );
-
-    next_check( tracker.jitter == 0.0 );
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        t = i * dt;
-        if ( (i%3) == 0 )
-        {
-            t += 0.01f;
-        }
-        if ( (i%5) == 0 )
-        {
-            t += 0.05;
-        }
-        if ( (i%6) == 0 )
-        {
-            t -= 0.1f;
-        }
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-    }
-
-    next_check( tracker.jitter > 0.05 );
-    next_check( tracker.jitter < 0.1 );
-
-    for ( int i = 0; i < 10000; ++i )
-    {
-        t = i * dt;
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-    }
-
-    next_check( tracker.jitter >= 0.0 );
-    next_check( tracker.jitter <= 0.000001 );
-}
-
-void test_anonymize_address_ipv4()
-{
-    next_address_t address;
-    next_address_parse( &address, "1.2.3.4:5" );
-
-    next_check( address.type == NEXT_ADDRESS_IPV4 );
-    next_check( address.data.ipv4[0] == 1 );
-    next_check( address.data.ipv4[1] == 2 );
-    next_check( address.data.ipv4[2] == 3 );
-    next_check( address.data.ipv4[3] == 4 );
-    next_check( address.port == 5 );
-
-    next_address_anonymize( &address );
-
-    next_check( address.type == NEXT_ADDRESS_IPV4 );
-    next_check( address.data.ipv4[0] == 1 );
-    next_check( address.data.ipv4[1] == 2 );
-    next_check( address.data.ipv4[2] == 3 );
-    next_check( address.data.ipv4[3] == 0 );
-    next_check( address.port == 0 );
-}
-
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-
-void test_anonymize_address_ipv6()
-{
-    next_address_t address;
-    next_address_parse( &address, "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:40000" );
-
-    next_check( address.type == NEXT_ADDRESS_IPV6 );
-    next_check( address.data.ipv6[0] == 0x2001 );
-    next_check( address.data.ipv6[1] == 0x0db8 );
-    next_check( address.data.ipv6[2] == 0x85a3 );
-    next_check( address.data.ipv6[3] == 0x0000 );
-    next_check( address.data.ipv6[4] == 0x0000 );
-    next_check( address.data.ipv6[5] == 0x8a2e );
-    next_check( address.data.ipv6[6] == 0x0370 );
-    next_check( address.data.ipv6[7] == 0x7334 );
-    next_check( address.port == 40000 );
-
-    next_address_anonymize( &address );
-
-    next_check( address.type == NEXT_ADDRESS_IPV6 );
-    next_check( address.data.ipv6[0] == 0x2001 );
-    next_check( address.data.ipv6[1] == 0x0db8 );
-    next_check( address.data.ipv6[2] == 0x85a3 );
-    next_check( address.data.ipv6[3] == 0x0000 );
-    next_check( address.data.ipv6[4] == 0x0000 );
-    next_check( address.data.ipv6[5] == 0x0000 );
-    next_check( address.data.ipv6[6] == 0x0000 );
-    next_check( address.data.ipv6[7] == 0x0000 );
-    next_check( address.port == 0 );
-}
-
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-
-static uint64_t test_passthrough_packets_client_packets_received;
-static uint64_t test_passthrough_packets_server_packets_received;
-
-void test_passthrough_packets_server_packet_received_callback( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) context;
-    next_server_send_packet( server, from, packet_data, packet_bytes );
-    for ( int i = 0; i < packet_bytes; i++ )
-    {
-        if ( packet_data[i] != uint8_t( packet_bytes + i ) )
-            return;
-    }
-    test_passthrough_packets_server_packets_received++;
-}
-
-void test_passthrough_packets_client_packet_received_callback( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) client;
-    (void) context;
-    (void) from;
-    for ( int i = 0; i < packet_bytes; i++ )
-    {
-        if ( packet_data[i] != uint8_t( packet_bytes + i ) )
-            return;
-    }
-    test_passthrough_packets_client_packets_received++;
-}
-
-void test_passthrough_packets()
-{
-    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:12345", "local", test_passthrough_packets_server_packet_received_callback );
-
-    next_check( server );
-
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_passthrough_packets_client_packet_received_callback );
-
-    next_check( client );
-
-    next_check( next_client_port( client ) != 0 );
-
-    next_client_open_session( client, "127.0.0.1:12345" );
-
-    uint8_t packet_data[NEXT_MTU];
-    memset( packet_data, 0, sizeof(packet_data) );
-
-    for ( int i = 0; i < 10000; ++i )
-    {
-        int packet_bytes = 1 + rand() % NEXT_MTU;
-        for ( int j = 0; j < packet_bytes; j++ )
-        {
-            packet_data[j] = uint8_t( packet_bytes + j );
-        }
-
-        next_client_send_packet( client, packet_data, packet_bytes );
-
-        next_client_update( client );
-
-        next_server_update( server );
-
-        if ( test_passthrough_packets_client_packets_received > 10 && test_passthrough_packets_server_packets_received > 10 )
-            break;
-    }
-
-    next_assert( test_passthrough_packets_client_packets_received > 10 );
-    next_assert( test_passthrough_packets_server_packets_received > 10 );
-
-    next_client_close_session( client );
-
-    next_client_destroy( client );
-
-    next_server_flush( server );
-
-    next_server_destroy( server );
-}
-
-#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-
-#define RUN_TEST( test_function )                                           \
-    do                                                                      \
-    {                                                                       \
-        next_printf( "    " #test_function );                               \
-        fflush( stdout );                                                   \
-        test_function();                                                    \
-    }                                                                       \
-    while (0)
-
-void next_test()
-{
-    //while ( true )
-    {
-        RUN_TEST( test_time );
-        RUN_TEST( test_endian );
-        RUN_TEST( test_base64 );
-        RUN_TEST( test_fnv1a );
-        RUN_TEST( test_queue );
-        RUN_TEST( test_bitpacker );
-        RUN_TEST( test_bits_required );
-        RUN_TEST( test_stream );
-        RUN_TEST( test_address );
-        RUN_TEST( test_replay_protection );
-        RUN_TEST( test_ping_stats );
-        RUN_TEST( test_random_bytes );
-        RUN_TEST( test_random_float );
-        RUN_TEST( test_crypto_box );
-        RUN_TEST( test_crypto_secret_box );
-        RUN_TEST( test_crypto_aead );
-        RUN_TEST( test_crypto_aead_ietf );
-        RUN_TEST( test_crypto_sign_detached );
-        RUN_TEST( test_crypto_key_exchange );
-        RUN_TEST( test_basic_read_and_write );
-        RUN_TEST( test_address_read_and_write );
-        RUN_TEST( test_address_ipv4_read_and_write );
-        RUN_TEST( test_platform_socket );
-        RUN_TEST( test_platform_thread );
-        RUN_TEST( test_platform_mutex );
-        RUN_TEST( test_client_ipv4 );
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-        RUN_TEST( test_server_ipv4 );
-#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-        RUN_TEST( test_client_ipv6 );
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-        RUN_TEST( test_server_ipv6 );
-#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-        RUN_TEST( test_header );
-        RUN_TEST( test_route_token );
-        RUN_TEST( test_continue_token );
-        RUN_TEST( test_upgrade_token );
-        RUN_TEST( test_pittle );
-        RUN_TEST( test_chonkle );
-        RUN_TEST( test_abi );
-        RUN_TEST( test_pittle_and_chonkle );
-        RUN_TEST( test_basic_packet_filter );
-        RUN_TEST( test_advanced_packet_filter );
-        RUN_TEST( test_passthrough );
-        RUN_TEST( test_address_data_none );
-        RUN_TEST( test_address_data_ipv4 );
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-        RUN_TEST( test_address_data_ipv6 );
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-        RUN_TEST( test_direct_packet );
-        RUN_TEST( test_direct_ping_packet );
-        RUN_TEST( test_direct_pong_packet );
-        RUN_TEST( test_upgrade_request_packet );
-        RUN_TEST( test_upgrade_response_packet );
-        RUN_TEST( test_upgrade_confirm_packet );
-        RUN_TEST( test_route_request_packet );
-        RUN_TEST( test_route_response_packet );
-        RUN_TEST( test_client_to_server_packet );
-        RUN_TEST( test_server_to_client_packet );
-        RUN_TEST( test_ping_packet );
-        RUN_TEST( test_pong_packet );
-        RUN_TEST( test_continue_request_packet );
-        RUN_TEST( test_continue_response_packet );
-        RUN_TEST( test_client_stats_packet_with_near_relays );
-        RUN_TEST( test_client_stats_packet_without_near_relays );
-        RUN_TEST( test_route_update_packet_direct );
-        RUN_TEST( test_route_update_packet_new_route );
-        RUN_TEST( test_route_update_packet_continue_route );
-        RUN_TEST( test_route_update_ack_packet );
-        RUN_TEST( test_relay_ping_packet );
-        RUN_TEST( test_relay_pong_packet );
-        RUN_TEST( test_server_init_request_packet );
-        RUN_TEST( test_server_init_response_packet );
-        RUN_TEST( test_server_update_packet );
-        RUN_TEST( test_server_response_packet );
-        RUN_TEST( test_session_update_packet );
-        RUN_TEST( test_session_response_packet_direct_has_near_relays );
-        RUN_TEST( test_session_response_packet_route_has_near_relays );
-        RUN_TEST( test_session_response_packet_continue_has_near_relays );
-        RUN_TEST( test_session_response_packet_direct_no_near_relays );
-        RUN_TEST( test_session_response_packet_route_no_near_relays );
-        RUN_TEST( test_session_response_packet_continue_no_near_relays );
-        RUN_TEST( test_match_data_request_packet );
-        RUN_TEST( test_match_data_response_packet );
-        RUN_TEST( test_pending_session_manager );
-        RUN_TEST( test_proxy_session_manager );
-        RUN_TEST( test_session_manager );
-        RUN_TEST( test_relay_manager );
-        RUN_TEST( test_bandwidth_limiter );
-        RUN_TEST( test_free_retains_context );
-        RUN_TEST( test_packet_loss_tracker );
-        RUN_TEST( test_out_of_order_tracker );
-        RUN_TEST( test_jitter_tracker );
-        RUN_TEST( test_anonymize_address_ipv4 );
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-        RUN_TEST( test_anonymize_address_ipv6 );
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-        RUN_TEST( test_passthrough_packets );
-#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-    }
-}
-
-#endif // #if NEXT_COMPILE_WITH_TESTS
 
 #ifdef _MSC_VER
 #pragma warning(pop)

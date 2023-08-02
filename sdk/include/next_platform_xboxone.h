@@ -22,17 +22,14 @@
 
 #include "next.h"
 
-#ifndef NEXT_XBOXONE_H
-#define NEXT_XBOXONE_H
+#ifndef NEXT_PLATFORM_XBOX_ONE_H
+#define NEXT_PLATFORM_XBOX_ONE_H
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
 
 #define _WINSOCKAPI_
 #include <windows.h>
 #include <winsock2.h>
-
-#define NEXT_PLATFORM_SOCKET_NON_BLOCKING       0
-#define NEXT_PLATFORM_SOCKET_BLOCKING           1
 
 // -------------------------------------
 
@@ -70,4 +67,4 @@ struct next_platform_mutex_t
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_XBOX_ONE
 
-#endif // #ifndef NEXT_XBOXONE_H
+#endif // #ifndef NEXT_PLATFORM_XBOX_ONE_H
