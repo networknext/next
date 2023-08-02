@@ -68,7 +68,7 @@ Next, we dive right in and define a custom allocator class that tracks all alloc
 
 	    void Free( void * pointer )
 	    {
-	        next_mutex_guard( &mutex );
+	        next_platform_mutex_guard( &mutex );
 	        next_assert( pointer );
 	        next_assert( num_allocations > 0 );
 	        std::map<void*, AllocatorEntry*>::iterator itor = entries.find( pointer );
@@ -110,7 +110,7 @@ And a per-client context that is binary compatible with the base context, to be 
 	    uint32_t client_data;
 	};
 
-As you can see, the client context can contain additional information aside from the allocator. The context is not *just* passed into allocator callbacks, but to all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game. 
+The client context can contain additional information aside from the allocator. The context is not *just* passed into allocator callbacks, but to all callbacks from the client and server, so you can use it to integrate with your own client and server objects in your game. 
 
 Here we just put a dummy uint32_t in the client context and check its value to verify it's being passed through correctly. For example, in the received packet callback, we have access to the client context and check the dummy value is what we expect:
 
