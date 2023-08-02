@@ -6238,7 +6238,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     }
 
     char * just_clear_it_and_dont_complain = (char*) client;
-    memset( just_clear_it_and_dont_complain, 0, sizeof( next_client_internal_t) );
+    memset( just_clear_it_and_dont_complain, 0, sizeof(next_client_internal_t) );
 
     next_client_internal_initialize_sentinels( client );
 
@@ -12123,7 +12123,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     }
 
     char * just_clear_it_and_dont_complain = (char*) server;
-    memset( just_clear_it_and_dont_complain, 0, sizeof( next_server_internal_t) );
+    memset( just_clear_it_and_dont_complain, 0, sizeof(next_server_internal_t) );
 
     next_server_internal_initialize_sentinels( server );
 
