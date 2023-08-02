@@ -4814,7 +4814,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         {
             if ( packet_bytes == 1 + 1 + RELAY_ADDRESS_BYTES + 8 )
             {
-                relay_printf( RELAY_LOG_LEVEL_IMPORTANT, "[%s] received local ping packet (thread %d)", from_string, relay->thread_index );
+                relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] received local ping packet (thread %d)", from_string, relay->thread_index );
 
                 const uint8_t * p = packet_data + 1;
 
