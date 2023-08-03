@@ -25,6 +25,7 @@
 
 #include "next.h"
 #include "next_crypto.h"
+#include "next_read_write.h"
 
 inline int next_write_header( uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
 {

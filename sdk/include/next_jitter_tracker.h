@@ -23,6 +23,10 @@
 #ifndef NEXT_JITTER_TRACKER_H
 #define NEXT_JITTER_TRACKER_H
 
+#include "next.h"
+
+#include <math.h>
+
 struct next_jitter_tracker_t
 {
     NEXT_DECLARE_SENTINEL(0)

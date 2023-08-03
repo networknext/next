@@ -326,6 +326,8 @@ NEXT_EXPORT_FUNC float next_random_float();
 
 NEXT_EXPORT_FUNC uint64_t next_random_uint64();
 
+NEXT_EXPORT_FUNC uint64_t next_protocol_version();
+
 // -----------------------------------------
 
 struct next_client_stats_t

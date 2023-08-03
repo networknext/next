@@ -25,6 +25,7 @@
 
 #include "next.h"
 #include "next_crypto.h"
+#include "next_read_write.h"
 
 struct next_route_token_t
 {

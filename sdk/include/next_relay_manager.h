@@ -23,6 +23,16 @@
 #ifndef NEXT_RELAY_MANAGER_H
 #define NEXT_RELAY_MANAGER_H
 
+#include "next_config.h"
+#include "next_address.h"
+#include "next_ping_history.h"
+#include "next_packet_filter.h"
+#include "next_packets.h"
+
+#include <memory.h>
+
+// todo: should probably move into .h/.cpp split
+
 // ---------------------------------------------------------------
 
 struct next_relay_stats_t

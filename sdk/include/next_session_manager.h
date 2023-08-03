@@ -26,6 +26,11 @@
 #include "next.h"
 #include "next_packets.h"
 #include "next_memory_checks.h"
+#include "next_replay_protection.h"
+#include "next_packet_loss_tracker.h"
+#include "next_out_of_order_tracker.h"
+#include "next_jitter_tracker.h"
+#include "next_platform.h"
 
 struct next_session_entry_t
 {

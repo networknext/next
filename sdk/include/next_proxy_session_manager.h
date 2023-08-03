@@ -25,6 +25,7 @@
 
 #include "next.h"
 #include "next_memory_checks.h"
+#include "next_bandwidth_limiter.h"
 
 struct next_proxy_session_entry_t
 {

@@ -2478,17 +2478,6 @@ void test_relay_manager()
     next_relay_manager_destroy( manager );
 }
 
-
-
-
-
-
-
-
-
-
-// todo
-/*
 void test_direct_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -2524,6 +2513,7 @@ void test_direct_packet()
     }
 }
 
+/*
 void test_direct_ping_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -4539,7 +4529,9 @@ void test_match_data_response_packet()
         }
     }
 }
+*/
 
+/*
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 static uint64_t test_passthrough_packets_client_packets_received;
@@ -4696,8 +4688,8 @@ void next_run_tests()
         RUN_TEST( test_session_manager );
         RUN_TEST( test_relay_manager );
 
-        /*
         RUN_TEST( test_direct_packet );
+        /*
         RUN_TEST( test_direct_ping_packet );
         RUN_TEST( test_direct_pong_packet );
         RUN_TEST( test_upgrade_request_packet );
