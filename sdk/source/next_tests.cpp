@@ -45,6 +45,7 @@
 #include "next_packet_loss_tracker.h"
 #include "next_out_of_order_tracker.h"
 #include "next_jitter_tracker.h"
+#include "next_pending_session_manager.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -2011,6 +2012,170 @@ void test_jitter_tracker()
     next_check( tracker.jitter >= 0.0 );
     next_check( tracker.jitter <= 0.000001 );
 }
+
+extern void * next_default_malloc_function( void * context, size_t bytes );
+
+extern void next_default_free_function( void * context, void * p );
+
+static void context_check_free( void * context, void * p )
+{
+    (void) p;
+    next_check( context );
+    next_check( *((int *)context) == 23 );
+    next_default_free_function( context, p );;
+}
+
+void test_free_retains_context()
+{
+    void * (*current_malloc)( void * context, size_t bytes ) = next_default_malloc_function;
+    void (*current_free)( void * context, void * p ) = next_default_free_function;
+
+    next_allocator( next_default_malloc_function, context_check_free );
+
+    int canary = 23;
+    void * context = (void *)&canary;
+    next_queue_t *q = next_queue_create( context, 1 );
+    next_queue_destroy( q );
+
+    next_check( context );
+    next_check( *((int *)context) == 23 );
+    next_check( canary == 23 );
+
+    next_allocator( current_malloc, current_free );
+}
+
+void test_pending_session_manager()
+{
+    const int InitialSize = 32;
+
+    next_pending_session_manager_t * pending_session_manager = next_pending_session_manager_create( NULL, InitialSize );
+
+    next_check( pending_session_manager );
+
+    next_address_t address;
+    next_address_parse( &address, "127.0.0.1:12345" );
+
+    double time = 10.0;
+
+    // test private keys
+
+    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
+    next_crypto_random_bytes( private_keys, sizeof(private_keys) );
+
+    // test upgrade tokens
+
+    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
+    next_crypto_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
+
+    // add enough entries to make sure we have to expand
+
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
+        next_check( entry );
+        next_check( entry->session_id == uint64_t(i) + 1000 );
+        next_check( entry->upgrade_time == time );
+        next_check( entry->last_packet_send_time < 0.0 );
+        next_check( next_address_equal( &address, &entry->address ) == 1 );
+        next_check( memcmp( entry->private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
+        next_check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
+        address.port++;
+    }
+
+    // verify that all entries are there
+
+    address.port = 12345;
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_pending_session_entry_t * entry = next_pending_session_manager_find( pending_session_manager, &address );
+        next_check( entry );
+        next_check( entry->session_id == uint64_t(i) + 1000 );
+        next_check( entry->upgrade_time == time );
+        next_check( entry->last_packet_send_time < 0.0 );
+        next_check( next_address_equal( &address, &entry->address ) == 1 );
+        address.port++;
+    }
+
+    next_check( next_pending_session_manager_num_entries( pending_session_manager ) == InitialSize*3 );
+
+    // remove every second entry
+
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        if ( (i%2) == 0 )
+        {
+            next_pending_session_manager_remove_by_address( pending_session_manager, &pending_session_manager->addresses[i] );
+        }
+    }
+
+    // verify only the entries that remain can be found
+
+    address.port = 12345;
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_pending_session_entry_t * entry = next_pending_session_manager_find( pending_session_manager, &address );
+        if ( (i%2) != 0 )
+        {
+            next_check( entry );
+            next_check( entry->session_id == uint64_t(i) + 1000 );
+            next_check( entry->upgrade_time == time );
+            next_check( entry->last_packet_send_time < 0.0 );
+            next_check( next_address_equal( &address, &entry->address ) == 1 );
+        }
+        else
+        {
+            next_check( entry == NULL );
+        }
+        address.port++;
+    }
+
+    // expand, and verify that all entries get collapsed
+
+    next_pending_session_manager_expand( pending_session_manager );
+
+    address.port = 12346;
+    for ( int i = 0; i < pending_session_manager->size; ++i )
+    {
+        if ( pending_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
+        {
+            next_check( next_address_equal( &address, &pending_session_manager->addresses[i] ) == 1 );
+            next_pending_session_entry_t * entry = &pending_session_manager->entries[i];
+            next_check( entry->session_id == uint64_t(i)*2+1001 );
+            next_check( entry->upgrade_time == time );
+            next_check( entry->last_packet_send_time < 0.0 );
+            next_check( next_address_equal( &address, &entry->address ) == 1 );
+        }
+        address.port += 2;
+    }
+
+    // remove all remaining entries manually
+
+    for ( int i = 0; i < pending_session_manager->size; ++i )
+    {
+        if ( pending_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
+        {
+            next_pending_session_manager_remove_by_address( pending_session_manager, &pending_session_manager->addresses[i] );
+        }
+    }
+
+    next_check( pending_session_manager->max_entry_index == 0 );
+
+    next_check( next_pending_session_manager_num_entries( pending_session_manager ) == 0 );
+
+    next_pending_session_manager_destroy( pending_session_manager );
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // todo
 /*
@@ -4065,127 +4230,6 @@ void test_match_data_response_packet()
     }
 }
 
-void test_pending_session_manager()
-{
-    const int InitialSize = 32;
-
-    next_pending_session_manager_t * pending_session_manager = next_pending_session_manager_create( NULL, InitialSize );
-
-    next_check( pending_session_manager );
-
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:12345" );
-
-    double time = 10.0;
-
-    // test private keys
-
-    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_crypto_random_bytes( private_keys, sizeof(private_keys) );
-
-    // test upgrade tokens
-
-    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
-    next_crypto_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
-
-    // add enough entries to make sure we have to expand
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_pending_session_entry_t * entry = next_pending_session_manager_add( pending_session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], time );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( entry->upgrade_time == time );
-        next_check( entry->last_packet_send_time < 0.0 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        next_check( memcmp( entry->private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
-        next_check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        address.port++;
-    }
-
-    // verify that all entries are there
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_pending_session_entry_t * entry = next_pending_session_manager_find( pending_session_manager, &address );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( entry->upgrade_time == time );
-        next_check( entry->last_packet_send_time < 0.0 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    next_check( next_pending_session_manager_num_entries( pending_session_manager ) == InitialSize*3 );
-
-    // remove every second entry
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        if ( (i%2) == 0 )
-        {
-            next_pending_session_manager_remove_by_address( pending_session_manager, &pending_session_manager->addresses[i] );
-        }
-    }
-
-    // verify only the entries that remain can be found
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_pending_session_entry_t * entry = next_pending_session_manager_find( pending_session_manager, &address );
-        if ( (i%2) != 0 )
-        {
-            next_check( entry );
-            next_check( entry->session_id == uint64_t(i) + 1000 );
-            next_check( entry->upgrade_time == time );
-            next_check( entry->last_packet_send_time < 0.0 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        else
-        {
-            next_check( entry == NULL );
-        }
-        address.port++;
-    }
-
-    // expand, and verify that all entries get collapsed
-
-    next_pending_session_manager_expand( pending_session_manager );
-
-    address.port = 12346;
-    for ( int i = 0; i < pending_session_manager->size; ++i )
-    {
-        if ( pending_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_check( next_address_equal( &address, &pending_session_manager->addresses[i] ) == 1 );
-            next_pending_session_entry_t * entry = &pending_session_manager->entries[i];
-            next_check( entry->session_id == uint64_t(i)*2+1001 );
-            next_check( entry->upgrade_time == time );
-            next_check( entry->last_packet_send_time < 0.0 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        address.port += 2;
-    }
-
-    // remove all remaining entries manually
-
-    for ( int i = 0; i < pending_session_manager->size; ++i )
-    {
-        if ( pending_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_pending_session_manager_remove_by_address( pending_session_manager, &pending_session_manager->addresses[i] );
-        }
-    }
-
-    next_check( pending_session_manager->max_entry_index == 0 );
-
-    next_check( next_pending_session_manager_num_entries( pending_session_manager ) == 0 );
-
-    next_pending_session_manager_destroy( pending_session_manager );
-}
-
 void test_proxy_session_manager()
 {
     const int InitialSize = 32;
@@ -4496,34 +4540,6 @@ void test_relay_manager()
     next_relay_manager_destroy( manager );
 }
 
-static void context_check_free( void * context, void * p )
-{
-    (void) p;
-
-    // the context should not be cleared
-    next_check( context );
-    next_check( *((int *)context) == 23 );
-}
-
-void test_free_retains_context()
-{
-    void * (*current_malloc)( void * context, size_t bytes ) = next_malloc_function;
-    void (*current_free)( void * context, void * p ) = next_free_function;
-
-    next_allocator( next_default_malloc_function, context_check_free );
-
-    int canary = 23;
-    void * context = (void *)&canary;
-    next_queue_t *q = next_queue_create( context, 1 );
-    next_queue_destroy( q );
-
-    next_check( context );
-    next_check( *((int *)context) == 23 );
-    next_check( canary == 23 );
-
-    next_allocator( current_malloc, current_free );
-}
-
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 static uint64_t test_passthrough_packets_client_packets_received;
@@ -4670,11 +4686,18 @@ void next_run_tests()
         RUN_TEST( test_address_data_ipv6 );
         RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-
         RUN_TEST( test_bandwidth_limiter );
         RUN_TEST( test_packet_loss_tracker );
         RUN_TEST( test_out_of_order_tracker );
         RUN_TEST( test_jitter_tracker );
+        RUN_TEST( test_free_retains_context );
+
+        RUN_TEST( test_pending_session_manager );
+        /*
+        RUN_TEST( test_proxy_session_manager );
+        RUN_TEST( test_session_manager );
+        RUN_TEST( test_relay_manager );
+        */
 
         /*
         RUN_TEST( test_direct_packet );
@@ -4715,11 +4738,6 @@ void next_run_tests()
         */
 
         /*
-        RUN_TEST( test_pending_session_manager );
-        RUN_TEST( test_proxy_session_manager );
-        RUN_TEST( test_session_manager );
-        RUN_TEST( test_relay_manager );
-        RUN_TEST( test_free_retains_context );
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_passthrough_packets );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
