@@ -612,3 +612,64 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 
     next_free( route_manager->context, route_manager );
 }
+
+void next_route_manager_get_pending_route_data( next_route_manager_t * route_manager, bool * fallback_to_direct, bool * pending_route, uint64_t * pending_route_session_id, uint8_t * pending_route_session_version, uint8_t * pending_route_private_key )
+{
+    next_assert( route_manager );
+    *fallback_to_direct = route_manager->fallback_to_direct;
+    *pending_route = route_manager->route_data.pending_route;
+    *pending_route_session_id = route_manager->route_data.pending_route_session_id;
+    *pending_route_session_version = route_manager->route_data.pending_route_session_version;
+    memcpy( pending_route_private_key, route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+}
+
+void next_route_manager_confirm_pending_route( next_route_manager_t * route_manager, int * route_kbps_up, int * route_kbps_down )
+{
+    if ( route_manager->route_data.current_route )
+    {
+        route_manager->route_data.previous_route = route_manager->route_data.current_route;
+        route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
+        route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
+        memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+    }
+
+    route_manager->route_data.current_route_session_id = route_manager->route_data.pending_route_session_id;
+    route_manager->route_data.current_route_session_version = route_manager->route_data.pending_route_session_version;
+    route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
+    route_manager->route_data.current_route_kbps_down = route_manager->route_data.pending_route_kbps_down;
+    route_manager->route_data.current_route_next_address = route_manager->route_data.pending_route_next_address;
+    memcpy( route_manager->route_data.current_route_private_key, route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+
+    if ( !route_manager->route_data.current_route )
+    {
+        route_manager->route_data.current_route_expire_time = route_manager->route_data.pending_route_start_time + 2.0 * NEXT_SLICE_SECONDS;
+    }
+    else
+    {
+        route_manager->route_data.current_route_expire_time += 2.0 * NEXT_SLICE_SECONDS;
+    }
+
+    route_manager->route_data.current_route = true;
+    route_manager->route_data.pending_route = false;
+
+    *route_kbps_up = route_manager->route_data.current_route_kbps_up;
+    *route_kbps_down = route_manager->route_data.current_route_kbps_down;
+}
+
+void next_route_manager_get_current_route_data( next_route_manager_t * route_manager, bool * fallback_to_direct, bool * current_route, bool * pending_continue, uint64_t * current_route_session_id, uint8_t * current_route_session_version, uint8_t * current_route_private_key )
+{
+    next_assert( route_manager );
+    *fallback_to_direct = route_manager->fallback_to_direct;
+    *current_route = route_manager->route_data.current_route;
+    *pending_continue = route_manager->route_data.pending_continue;
+    *current_route_session_id = route_manager->route_data.current_route_session_id;
+    *current_route_session_version = route_manager->route_data.current_route_session_version;
+    memcpy( current_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+}
+
+void next_route_manager_confirm_continue_route( next_route_manager_t * route_manager )
+{
+    next_assert( route_manager );
+    route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
+    route_manager->route_data.pending_continue = false;
+}

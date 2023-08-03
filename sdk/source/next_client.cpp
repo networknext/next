@@ -834,36 +834,26 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        // todo
-        // bool fallback_to_direct;
-        // bool pending_route;
-        // uint64_t pending_route_session_id;
-        // uint8_t pending_route_session_version;
-        uint8_t route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
+        bool fallback_to_direct;
+        bool pending_route;
+        uint64_t pending_route_session_id;
+        uint8_t pending_route_session_version;
+        uint8_t pending_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
-            // todo: we need more methods to the route manager
-            /*
-            memcpy( route_private_key, client->route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-            fallback_to_direct = client->route_manager->fallback_to_direct;
-            pending_route = client->route_manager->route_data.pending_route;
-            pending_route_session_id = client->route_manager->route_data.pending_route_session_id;
-            pending_route_session_version = client->route_manager->route_data.pending_route_session_version;
-            */
+            next_route_manager_get_pending_route_data( client->route_manager, &fallback_to_direct, &pending_route, &pending_route_session_id, &pending_route_session_version, &pending_route_private_key[0] );
         }
 
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( packet_id, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( packet_id, &packet_sequence, &packet_session_id, &packet_session_version, pending_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
             return;
         }
 
-        // todo
-        /*
         if ( fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. in fallback to direct state" );
@@ -875,12 +865,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. no pending route" );
             return;
         }
-        */
 
         next_platform_mutex_guard( &client->route_manager_mutex );
-
-// todo
-        // next_route_manager_t * route_manager = client->route_manager;
 
         next_replay_protection_t * replay_protection = &client->special_replay_protection;
 
@@ -890,8 +876,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        // todo
-        /*
         if ( packet_session_id != pending_route_session_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session id mismatch" );
@@ -903,64 +887,24 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session version mismatch" );
             return;
         }
-        */
 
         next_replay_protection_advance_sequence( replay_protection, packet_sequence );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response from relay" );
 
-        // todo: we need more methods for route manager
-        /*
-        if ( route_manager->route_data.current_route )
-        {
-            route_manager->route_data.previous_route = route_manager->route_data.current_route;
-            route_manager->route_data.previous_route_session_id = route_manager->route_data.current_route_session_id;
-            route_manager->route_data.previous_route_session_version = route_manager->route_data.current_route_session_version;
-            memcpy( route_manager->route_data.previous_route_private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-        }
+        int route_kbps_up = 0; 
+        int route_kbps_down = 0;
 
-        route_manager->route_data.current_route_session_id = route_manager->route_data.pending_route_session_id;
-        route_manager->route_data.current_route_session_version = route_manager->route_data.pending_route_session_version;
-        route_manager->route_data.current_route_kbps_up = route_manager->route_data.pending_route_kbps_up;
-        route_manager->route_data.current_route_kbps_down = route_manager->route_data.pending_route_kbps_down;
-        route_manager->route_data.current_route_next_address = route_manager->route_data.pending_route_next_address;
-        memcpy( route_manager->route_data.current_route_private_key, route_manager->route_data.pending_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-
-        if ( !route_manager->route_data.current_route )
-        {
-            route_manager->route_data.current_route_expire_time = route_manager->route_data.pending_route_start_time + 2.0 * NEXT_SLICE_SECONDS;
-        }
-        else
-        {
-            route_manager->route_data.current_route_expire_time += 2.0 * NEXT_SLICE_SECONDS;
-        }
-
-        route_manager->route_data.current_route = true;
-        route_manager->route_data.pending_route = false;
+        next_route_manager_confirm_pending_route( client->route_manager, &route_kbps_up, &route_kbps_down );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
 
         client->last_route_switch_time = next_platform_time();
-
-        const bool route_established = route_manager->route_data.current_route;
-
-        const int route_kbps_up = route_manager->route_data.current_route_kbps_up;
-        const int route_kbps_down = route_manager->route_data.current_route_kbps_down;
-        */
-
-        // todo
-        /*
-        if ( route_established )
         {
+            next_platform_mutex_guard( &client->next_bandwidth_mutex );
             client->next_bandwidth_envelope_kbps_up = route_kbps_up;
             client->next_bandwidth_envelope_kbps_down = route_kbps_down;
         }
-        else
-        {
-            client->next_bandwidth_envelope_kbps_up = 0;
-            client->next_bandwidth_envelope_kbps_down = 0;
-        }
-        */
 
         return;
     }
@@ -980,27 +924,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        // todo
-        /*
+        bool fallback_to_direct;
+        bool current_route;
+        bool pending_continue;
+        uint64_t current_route_session_id;
+        uint8_t current_route_session_version;
         uint8_t current_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
-        bool fallback_to_direct = client->route_manager->fallback_to_direct;
-        bool current_route = client->route_manager->route_data.current_route;
-        bool pending_continue = client->route_manager->route_data.pending_continue;
-        uint64_t current_route_session_id = client->route_manager->route_data.current_route_session_id;
-        uint8_t current_route_session_version = client->route_manager->route_data.current_route_session_version;
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
-            memcpy( current_route_private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-            fallback_to_direct = client->route_manager->fallback_to_direct;
-            current_route = client->route_manager->route_data.current_route;
-            pending_continue = client->route_manager->route_data.pending_continue;
-            current_route_session_id = client->route_manager->route_data.current_route_session_id;
-            current_route_session_version = client->route_manager->route_data.current_route_session_version;
+            next_route_manager_get_current_route_data( client->route_manager, &fallback_to_direct, &current_route, &pending_continue, &current_route_session_id, &current_route_session_version, &current_route_private_key[0] );
         }
-        */
 
-        // todo
-        /*
         if ( fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. in fallback to direct state" );
@@ -1018,10 +952,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. no pending continue" );
             return;
         }
-        */
 
-        // todo
-        /*
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
@@ -1053,17 +984,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         next_replay_protection_advance_sequence( replay_protection, packet_sequence );
-        */
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received continue response from relay" );
-
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
-            // todo
-            /*
-            client->route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
-            client->route_manager->route_data.pending_continue = false;
-            */
+            next_route_manager_confirm_continue_route( client->route_manager );
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
@@ -1966,6 +1891,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     {
         bool send_over_network_next = false;
         {
+            // todo: don't need to grab mutex here again
             next_platform_mutex_guard( &client->route_manager_mutex );
             // todo
             // send_over_network_next = client->route_manager->route_data.current_route;
