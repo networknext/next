@@ -31,8 +31,17 @@
 #include "next_route_token.h"
 #include "next_continue_token.h"
 #include "next_autodetect.h"
+#include "next_internal_config.h"
 
 #include <atomic>
+
+// ---------------------------------------------------------------
+
+extern next_internal_config_t next_global_config;
+
+extern int next_signed_packets[256];
+
+extern int next_encrypted_packets[256];
 
 // ---------------------------------------------------------------
 
@@ -259,8 +268,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_assert( bind_address_string );
     next_assert( datacenter_string );
 
-    // todo
-    // next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_customer_id );
 
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
@@ -305,12 +313,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_server_internal_verify_sentinels( server );
 
     server->context = context;
-    // todo
-    /*
     server->customer_id = next_global_config.server_customer_id;
     memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
     server->valid_customer_private_key = next_global_config.valid_customer_private_key;
-    */
 
     const char * datacenter = datacenter_string;
 
@@ -362,8 +367,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-// todo
-/*
     server->socket = next_platform_socket_create( server->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( server->socket == NULL )
     {
@@ -371,7 +374,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         next_server_internal_destroy( server );
         return NULL;
     }
-*/
 
     if ( server_address.port == 0 )
     {
@@ -444,13 +446,10 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-// todo
-/*
     if ( !next_global_config.disable_network_next && server->valid_customer_private_key )
     {
         next_server_internal_initialize( server );
     }
-*/
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server started on %s", next_address_to_string( &server_address, address_string ) );
 
@@ -584,9 +583,8 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
-    // todo
-    // uint64_t * sequence = NULL;
-    // uint8_t * send_key = NULL;
+    uint64_t * sequence = NULL;
+    uint8_t * send_key = NULL;
 
     uint8_t magic[8];
     if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
@@ -598,8 +596,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
         memset( magic, 0, sizeof(magic) );
     }
 
-// todo
-    // if ( next_encrypted_packets[packet_id] )
+    if ( next_encrypted_packets[packet_id] )
     {
         next_session_entry_t * session = next_session_manager_find_by_address( server->session_manager, to_address );
 
@@ -609,11 +606,8 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
             return NEXT_ERROR;
         }
 
-        // todo
-        /*
         sequence = &session->internal_send_sequence;
         send_key = session->send_key;
-        */
     }
 
     uint8_t from_address_data[32];
@@ -632,14 +626,11 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
         next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
     }
 
-// todo
-/*
     if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write internal packet with id %d", packet_id );
         return NEXT_ERROR;
     }
-*/
 
     next_assert( packet_bytes > 0 );
     next_assert( next_basic_packet_filter( buffer, packet_bytes ) );
@@ -763,8 +754,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-// todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->flushing )
         return;
@@ -834,8 +824,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 
     next_server_internal_verify_sentinels( server );
 
-// todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->flushing )
         return;
@@ -904,8 +893,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-// todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
@@ -982,8 +970,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
 
 void next_server_internal_update_flush( next_server_internal_t * server )
 {
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !server->flushing )
         return;
@@ -991,8 +978,6 @@ void next_server_internal_update_flush( next_server_internal_t * server )
     if ( server->flushed )
         return;
 
-// todo
-/*
     if ( next_global_config.disable_network_next || server->state != NEXT_SERVER_STATE_INITIALIZED || 
          ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush ) )
     {
@@ -1010,7 +995,6 @@ void next_server_internal_update_flush( next_server_internal_t * server )
             next_queue_push( server->notify_queue, notify );
         }
     }
-*/
 }
 
 void next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int begin, int end )
@@ -1023,11 +1007,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     next_server_internal_verify_sentinels( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     const int packet_id = packet_data[begin];
 
@@ -1102,14 +1083,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             NextBackendServerInitResponsePacket packet;
 
-            // todo
-            /*
             if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. packet failed to read" );
                 return;
             }
-            */
 
             if ( packet.request_id != server->server_init_request_id )
             {
@@ -1291,14 +1269,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         NextBackendServerUpdateResponsePacket packet;
 
-        // todo
-        /*
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server update response packet from backend. packet failed to read" );
             return;
         }
-        */
 
         if ( packet.request_id != server->server_update_request_id )
         {
@@ -1364,14 +1339,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         NextBackendSessionUpdateResponsePacket packet;
 
-        // todo
-        /*
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. packet failed to read" );
             return;
         }
-        */
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
         if ( !entry )
@@ -1504,14 +1476,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         NextBackendMatchDataResponsePacket packet;
         memset( &packet, 0, sizeof(packet) );
 
-        // todo
-        /*
         if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. packet failed to read" );
             return;
         }
-        */
 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
         if ( !entry )
@@ -1551,14 +1520,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         NextUpgradeResponsePacket packet;
 
-        // todo
-        /*
         if ( next_read_packet( NEXT_UPGRADE_RESPONSE_PACKET, packet_data, begin, end, &packet, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response packet. did not read" );
             return;
         }
-        */
 
         NextUpgradeToken upgrade_token;
 
@@ -2003,8 +1969,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     next_session_entry_t * session = NULL;
 
-// todo
-//    if ( next_encrypted_packets[packet_id] )
+    if ( next_encrypted_packets[packet_id] )
     {
         session = next_session_manager_find_by_address( server->session_manager, from );
         if ( !session )
@@ -2027,23 +1992,18 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( session == NULL )
             return;
 
-// todo
-        // uint64_t packet_sequence = 0;
+        uint64_t packet_sequence = 0;
 
         NextDirectPingPacket packet;
-        // todo
-        /*
         if ( next_read_packet( NEXT_DIRECT_PING_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct ping packet. could not read" );
             return;
         }
-        */
 
         session->last_client_direct_ping = next_platform_time();
 
-// todo
-//        next_post_validate_packet( NEXT_DIRECT_PING_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
+        next_post_validate_packet( NEXT_DIRECT_PING_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
 
         NextDirectPongPacket response;
         response.ping_sequence = packet.ping_sequence;
@@ -2072,8 +2032,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t packet_sequence = 0;
 
-        // todo
-        /*
         if ( next_read_packet( NEXT_CLIENT_STATS_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client stats packet. could not read" );
@@ -2081,7 +2039,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
 
         next_post_validate_packet( NEXT_CLIENT_STATS_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
-        */
 
         if ( packet_sequence > session->stats_sequence )
         {
@@ -2143,17 +2100,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         NextRouteUpdateAckPacket packet;
 
-        // todo
-        // uint64_t packet_sequence = 0;
+        uint64_t packet_sequence = 0;
 
-        // todo
-        /*
         if ( next_read_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client stats packet. could not read" );
             return;
         }
-        */
 
         if ( packet.sequence != session->update_sequence )
         {
@@ -2161,8 +2114,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        // todo
-        // next_post_validate_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
+        next_post_validate_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
@@ -2212,6 +2164,10 @@ void next_server_internal_process_passthrough_packet( next_server_internal_t * s
     }
 }
 
+#if NEXT_DEVELOPMENT
+extern bool next_packet_loss;
+#endif // #if NEXT_DEVELOPMENT
+
 void next_server_internal_block_and_receive_packet( next_server_internal_t * server )
 {
     next_server_internal_verify_sentinels( server );
@@ -2254,13 +2210,10 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
             return;        
     }
 
-    // todo
-    /*
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
          return;
 #endif // #if NEXT_DEVELOPMENT
-    */
 
     const uint8_t packet_type = packet_data[begin];
 
@@ -2282,11 +2235,8 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     next_server_internal_verify_sentinels( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
@@ -2339,11 +2289,8 @@ void next_server_internal_session_events( next_server_internal_t * server, const
 
     next_server_internal_verify_sentinels( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
@@ -2368,11 +2315,8 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
 
     next_server_internal_verify_sentinels( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
@@ -2409,11 +2353,8 @@ void next_server_internal_flush_session_update( next_server_internal_t * server 
     next_assert( server );
     next_assert( server->session_manager );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     const int max_entry_index = server->session_manager->max_entry_index;
 
@@ -2441,11 +2382,8 @@ void next_server_internal_flush_match_data( next_server_internal_t * server )
     next_assert( server );
     next_assert( server->session_manager );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     const int max_entry_index = server->session_manager->max_entry_index;
 
@@ -2471,15 +2409,12 @@ void next_server_internal_flush( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
     {
         server->flushing = true;
         server->flushed = true;
         return;
     }
-    */
 
     if ( server->flushing )
     {
@@ -2606,7 +2541,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-    const char * hostname = "nuts"; // todo - next_global_config.server_backend_hostname;
+    const char * hostname = next_global_config.server_backend_hostname;
     const char * port = NEXT_SERVER_BACKEND_PORT;
     const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
     if ( !override_port )
@@ -2688,8 +2623,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     next_server_internal_verify_sentinels( server );
 
-// todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !server->resolving_hostname )
         return true;
@@ -2765,8 +2699,6 @@ static void next_server_internal_autodetect_thread_function( void * context )
     server_address_no_port.port = 0;
     next_address_to_string( &server_address_no_port, autodetect_address );
 
-    // todo
-    /*
     if ( !next_global_config.disable_autodetect &&
          ( autodetect_input[0] == '\0' 
             ||
@@ -2787,7 +2719,6 @@ static void next_server_internal_autodetect_thread_function( void * context )
            autodetect_input[7] == 'a' && 
            autodetect_input[8] == 'y' && 
            autodetect_input[9] == '.' ) ) )
-           */
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
@@ -2825,8 +2756,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     next_server_internal_verify_sentinels( server );
 
-// todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->resolving_hostname )    // IMPORTANT: wait until resolving hostname is finished, before autodetect complete!
         return true;
@@ -2887,8 +2817,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     next_assert( server );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
         return;
@@ -3009,8 +2938,6 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-    // todo
-    /*
     int packet_bytes = 0;
     if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
@@ -3022,7 +2949,6 @@ void next_server_internal_update_init( next_server_internal_t * server )
     next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
     next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
-    */
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
 }
@@ -3033,11 +2959,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     next_assert( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     double current_time = next_platform_time();
 
@@ -3130,8 +3053,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-        // todo
-        /*
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
         {
@@ -3149,7 +3070,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent server update packet to backend (%d sessions)", packet.num_sessions );
 
         server->server_update_first = false;
-        */
     }
 
     if ( first_server_update )
@@ -3184,8 +3104,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-        // todo
-        /*
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
         {
@@ -3201,7 +3119,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent server update packet to backend", packet.num_sessions );
 
         server->server_update_resend_time = current_time + 1.0;
-        */
     }
 
     // session updates
@@ -3311,8 +3228,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-            // todo
-            /*
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
@@ -3342,7 +3257,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
 
             session->waiting_for_update_response = true;
-            */
         }
 
         if ( session->waiting_for_update_response && session->next_session_resend_time <= current_time )
@@ -3368,8 +3282,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-            // todo
-            /*
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &session->session_update_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
@@ -3383,7 +3295,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
 
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
-            */
         }
 
         if ( !session->session_update_timed_out && session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
@@ -3451,8 +3362,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-            // todo
-            /*
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
@@ -3470,7 +3379,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->next_match_data_resend_time = ( session->match_data_flush ) ? current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME : current_time + NEXT_MATCH_DATA_RESEND_TIME;
 
             session->waiting_for_match_data_response = true;
-            */
         }
 
         if ( session->waiting_for_match_data_response && session->next_match_data_resend_time <= current_time )
@@ -3496,8 +3404,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-            // todo
-            /*
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
@@ -3511,15 +3417,13 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
 
             session->next_match_data_resend_time += ( session->match_data_flush && !session->match_data_flush_finished ) ? NEXT_MATCH_DATA_FLUSH_RESEND_TIME : NEXT_MATCH_DATA_RESEND_TIME;
-            */
         }
     }
 }
 
 static void next_server_update_internal( next_server_internal_t * server )
 {
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
 #if NEXT_SPIKE_TRACKING
     double start_time = next_platform_time();
@@ -3561,20 +3465,17 @@ static void next_server_internal_thread_function( void * context )
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-// todo
-    // double last_update_time = next_platform_time();
+    double last_update_time = next_platform_time();
 
     while ( !server->quit )
     {
         next_server_internal_block_and_receive_packet( server );
 
-        // todo
-        // if ( !next_global_config.disable_network_next && next_platform_time() >= last_update_time + 0.1 )
+        if ( !next_global_config.disable_network_next && next_platform_time() >= last_update_time + 0.1 )
         {
             next_server_update_internal( server );
 
-            // todo
-            // last_update_time = next_platform_time();
+            last_update_time = next_platform_time();
         }
     }
 }
@@ -4014,8 +3915,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
 
-    // todo
-    // if ( next_global_config.disable_network_next )
+    if ( next_global_config.disable_network_next )
     {
         next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
         return;
@@ -4255,7 +4155,7 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
 bool next_server_ready( next_server_t * server ) 
 {
     next_server_verify_sentinels( server );
-    return false; // todo - ( next_global_config.disable_network_next || server->ready ) ? true : false;
+    return ( next_global_config.disable_network_next || server->ready ) ? true : false;
 }
 
 const char * next_server_datacenter( next_server_t * server )
@@ -4347,14 +4247,11 @@ void next_server_flush( struct next_server_t * server )
 {
     next_assert( server );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next == true )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "ignoring server flush. network next is disabled" );
         return;
     }
-    */
 
     if ( server->flushing )
     {

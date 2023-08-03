@@ -49,6 +49,7 @@
 #include "next_relay_manager.h"
 #include "next_route_manager.h"
 #include "next_autodetect.h"
+#include "next_internal_config.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -282,28 +283,13 @@ void next_copy_string( char * dest, const char * source, size_t dest_size )
 
 // -------------------------------------------------------------
 
-static int next_signed_packets[256];
+int next_signed_packets[256];
 
-static int next_encrypted_packets[256];
+int next_encrypted_packets[256];
 
 void * next_global_context = NULL;
 
-struct next_config_internal_t
-{
-    char server_backend_hostname[256];
-    uint64_t client_customer_id;
-    uint64_t server_customer_id;
-    uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-    uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    bool valid_customer_private_key;
-    bool valid_customer_public_key;
-    int socket_send_buffer_size;
-    int socket_receive_buffer_size;
-    bool disable_network_next;
-    bool disable_autodetect;
-};
-
-static next_config_internal_t next_global_config;
+next_internal_config_t next_global_config;
 
 void next_default_config( next_config_t * config )
 {
@@ -340,9 +326,9 @@ int next_init( void * context, next_config_t * config_in )
         next_printf( NEXT_LOG_LEVEL_INFO, "log level overridden to %d", log_level );
     }
 
-    next_config_internal_t config;
+    next_internal_config_t config;
 
-    memset( &config, 0, sizeof(next_config_internal_t) );
+    memset( &config, 0, sizeof(next_internal_config_t) );
 
     config.socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config.socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
@@ -552,6 +538,10 @@ void next_term()
 
     next_global_context = NULL;
 }
+
+#if NEXT_DEVELOPMENT
+bool next_packet_loss;
+#endif // #if NEXT_DEVELOPMENT
 
 // ---------------------------------------------------------------
 

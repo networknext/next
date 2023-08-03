@@ -34,8 +34,17 @@
 #include "next_replay_protection.h"
 #include "next_read_write.h"
 #include "next_header.h"
+#include "next_internal_config.h"
 
 #include <atomic>
+
+// ---------------------------------------------------------------
+
+extern next_internal_config_t next_global_config;
+
+extern int next_signed_packets[256];
+
+extern int next_encrypted_packets[256];
 
 // ---------------------------------------------------------------
 
@@ -222,16 +231,13 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
         next_route_manager_verify_sentinels( client->route_manager );
 }
 
-void next_client_internal_destroy( next_client_internal_t * client );
-
 next_client_internal_t * next_client_internal_create( void * context, const char * bind_address_string )
 {
 #if !NEXT_DEVELOPMENT
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
-    // todo
-    // next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.client_customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.client_customer_id );
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
@@ -256,8 +262,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     client->context = context;
 
-    // todo
-//    memcpy( client->customer_public_key, next_global_config.customer_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
+    memcpy( client->customer_public_key, next_global_config.customer_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
 
     next_client_internal_verify_sentinels( client );
 
@@ -281,8 +286,6 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    /*
     client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( client->socket == NULL )
     {
@@ -290,7 +293,6 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         next_client_internal_destroy( client );
         return NULL;
     }
-    */
 
     char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_INFO, "client bound to %s", next_address_to_string( &bind_address, address_string ) );
@@ -435,14 +437,11 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
 
-    // todo
-    /*
     if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
-    */
 
     next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
     next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
@@ -546,14 +545,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        // todo
-        /*
         if ( next_global_config.disable_network_next )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. network next is disabled" );
             return;
         }
-        */
 
         NextUpgradeRequestPacket packet;
         int begin = 16;
@@ -1228,27 +1224,20 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextDirectPongPacket packet;
 
-        // todo
-        /*
         uint64_t packet_sequence = 0;
 
         int begin = 16;
         int end = packet_bytes - 2;
-        */
 
-        // todo
-        /*
         if ( next_read_packet( NEXT_DIRECT_PONG_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct pong packet. could not read" );
             return;
         }
-        */
 
         next_ping_history_pong_received( &client->direct_ping_history, packet.ping_sequence, next_platform_time() );
 
-        // todo
-        // next_post_validate_packet( NEXT_DIRECT_PONG_PACKET, next_encrypted_packets, &packet_sequence, &client->internal_replay_protection );
+        next_post_validate_packet( NEXT_DIRECT_PONG_PACKET, next_encrypted_packets, &packet_sequence, &client->internal_replay_protection );
 
         client->last_direct_pong_time = next_platform_time();
 
@@ -1269,8 +1258,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextRouteUpdatePacket packet;
 
-        // todo
-        /*
         uint64_t packet_sequence = 0;
 
         int begin = 16;
@@ -1289,7 +1276,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         next_post_validate_packet( NEXT_ROUTE_UPDATE_PACKET, next_encrypted_packets, &packet_sequence, &client->internal_replay_protection );
-        */
 
         bool fallback_to_direct = false;
 
@@ -1460,7 +1446,7 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
 }
 
 #if NEXT_DEVELOPMENT
-bool next_packet_loss = false;
+extern bool next_packet_loss;
 #endif // #if NEXT_DEVELOPMENT
 
 void next_client_internal_block_and_receive_packet( next_client_internal_t * client )
@@ -1703,8 +1689,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     double current_time = next_platform_time();
 
@@ -1910,8 +1895,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !client->upgraded )
         return;
@@ -1950,8 +1934,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !client->upgraded )
         return;
@@ -1964,8 +1947,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     bool has_next_route = false;
     {
         next_platform_mutex_guard( &client->route_manager_mutex );
-        // todo
-        // has_next_route = client->route_manager->route_data.current_route;
+        has_next_route = false; // todo - client->route_manager->route_data.current_route;
     }
 
     if ( !has_next_route )
@@ -2059,11 +2041,8 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
 
     if ( !client->upgraded )
         return;
@@ -2078,8 +2057,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     bool fallback_to_direct = false;
     {
@@ -2118,8 +2096,7 @@ void next_client_internal_update_route_manager( next_client_internal_t * client 
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( !client->upgraded )
         return;
@@ -2189,8 +2166,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    // next_assert( !next_global_config.disable_network_next );
+    next_assert( !next_global_config.disable_network_next );
 
     if ( client->fallback_to_direct )
         return;
@@ -2236,12 +2212,9 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 
 void next_client_internal_update( next_client_internal_t * client )
 {
-    // todo
-    /*
     if ( next_global_config.disable_network_next )
         return;
-        */
-
+  
 #if NEXT_SPIKE_TRACKING
     double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
@@ -2668,9 +2641,7 @@ void next_client_update( next_client_t * client )
 bool next_client_ready( next_client_t * client )
 {
     next_assert( client );
-    // todo
-    return false;
-    // return ( next_global_config.disable_network_next || client->ready ) ? true : false;
+    return ( next_global_config.disable_network_next || client->ready ) ? true : false;
 }
 
 bool next_client_fallback_to_direct( struct next_client_t * client )
@@ -2699,14 +2670,11 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         return;
     }
 
-    // todo
-    /*
     if ( next_global_config.disable_network_next || client->fallback_to_direct )
     {
         next_client_send_packet_direct( client, packet_data, packet_bytes );
         return;
     }
-    */
 
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
