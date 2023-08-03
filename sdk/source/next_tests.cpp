@@ -46,6 +46,7 @@
 #include "next_out_of_order_tracker.h"
 #include "next_jitter_tracker.h"
 #include "next_pending_session_manager.h"
+#include "next_proxy_session_manager.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -2165,6 +2166,114 @@ void test_pending_session_manager()
     next_pending_session_manager_destroy( pending_session_manager );
 }
 
+void test_proxy_session_manager()
+{
+    const int InitialSize = 32;
+
+    next_proxy_session_manager_t * proxy_session_manager = next_proxy_session_manager_create( NULL, InitialSize );
+
+    next_check( proxy_session_manager );
+
+    next_address_t address;
+    next_address_parse( &address, "127.0.0.1:12345" );
+
+    // test private keys
+
+    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
+    next_crypto_random_bytes( private_keys, sizeof(private_keys) );
+
+    // test upgrade tokens
+
+    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
+    next_crypto_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
+
+    // add enough entries to make sure we have to expand
+
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_proxy_session_entry_t * entry = next_proxy_session_manager_add( proxy_session_manager, &address, uint64_t(i)+1000 );
+        next_check( entry );
+        next_check( entry->session_id == uint64_t(i) + 1000 );
+        next_check( next_address_equal( &address, &entry->address ) == 1 );
+        address.port++;
+    }
+
+    // verify that all entries are there
+
+    address.port = 12345;
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( proxy_session_manager, &address );
+        next_check( entry );
+        next_check( entry->session_id == uint64_t(i) + 1000 );
+        next_check( next_address_equal( &address, &entry->address ) == 1 );
+        address.port++;
+    }
+
+    next_check( next_proxy_session_manager_num_entries( proxy_session_manager ) == InitialSize*3 );
+
+    // remove every second entry
+
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        if ( (i%2) == 0 )
+        {
+            next_proxy_session_manager_remove_by_address( proxy_session_manager, &proxy_session_manager->addresses[i] );
+        }
+    }
+
+    // verify only the entries that remain can be found
+
+    address.port = 12345;
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( proxy_session_manager, &address );
+        if ( (i%2) != 0 )
+        {
+            next_check( entry );
+            next_check( entry->session_id == uint64_t(i) + 1000 );
+            next_check( next_address_equal( &address, &entry->address ) == 1 );
+        }
+        else
+        {
+            next_check( entry == NULL );
+        }
+        address.port++;
+    }
+
+    // expand, and verify that all entries get collapsed
+
+    next_proxy_session_manager_expand( proxy_session_manager );
+
+    address.port = 12346;
+    for ( int i = 0; i < proxy_session_manager->size; ++i )
+    {
+        if ( proxy_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
+        {
+            next_check( next_address_equal( &address, &proxy_session_manager->addresses[i] ) == 1 );
+            next_proxy_session_entry_t * entry = &proxy_session_manager->entries[i];
+            next_check( entry->session_id == uint64_t(i)*2+1001 );
+            next_check( next_address_equal( &address, &entry->address ) == 1 );
+        }
+        address.port += 2;
+    }
+
+    // remove all remaining entries manually
+
+    for ( int i = 0; i < proxy_session_manager->size; ++i )
+    {
+        if ( proxy_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
+        {
+            next_proxy_session_manager_remove_by_address( proxy_session_manager, &proxy_session_manager->addresses[i] );
+        }
+    }
+
+    next_check( proxy_session_manager->max_entry_index == 0 );
+
+    next_check( next_proxy_session_manager_num_entries( proxy_session_manager ) == 0 );
+
+    next_proxy_session_manager_destroy( proxy_session_manager );
+}
 
 
 
@@ -4228,115 +4337,6 @@ void test_match_data_response_packet()
             next_check( in.match_values[j] = out.match_values[j] );
         }
     }
-}
-
-void test_proxy_session_manager()
-{
-    const int InitialSize = 32;
-
-    next_proxy_session_manager_t * proxy_session_manager = next_proxy_session_manager_create( NULL, InitialSize );
-
-    next_check( proxy_session_manager );
-
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:12345" );
-
-    // test private keys
-
-    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_crypto_random_bytes( private_keys, sizeof(private_keys) );
-
-    // test upgrade tokens
-
-    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
-    next_crypto_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
-
-    // add enough entries to make sure we have to expand
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_add( proxy_session_manager, &address, uint64_t(i)+1000 );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    // verify that all entries are there
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( proxy_session_manager, &address );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    next_check( next_proxy_session_manager_num_entries( proxy_session_manager ) == InitialSize*3 );
-
-    // remove every second entry
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        if ( (i%2) == 0 )
-        {
-            next_proxy_session_manager_remove_by_address( proxy_session_manager, &proxy_session_manager->addresses[i] );
-        }
-    }
-
-    // verify only the entries that remain can be found
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( proxy_session_manager, &address );
-        if ( (i%2) != 0 )
-        {
-            next_check( entry );
-            next_check( entry->session_id == uint64_t(i) + 1000 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        else
-        {
-            next_check( entry == NULL );
-        }
-        address.port++;
-    }
-
-    // expand, and verify that all entries get collapsed
-
-    next_proxy_session_manager_expand( proxy_session_manager );
-
-    address.port = 12346;
-    for ( int i = 0; i < proxy_session_manager->size; ++i )
-    {
-        if ( proxy_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_check( next_address_equal( &address, &proxy_session_manager->addresses[i] ) == 1 );
-            next_proxy_session_entry_t * entry = &proxy_session_manager->entries[i];
-            next_check( entry->session_id == uint64_t(i)*2+1001 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        address.port += 2;
-    }
-
-    // remove all remaining entries manually
-
-    for ( int i = 0; i < proxy_session_manager->size; ++i )
-    {
-        if ( proxy_session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_proxy_session_manager_remove_by_address( proxy_session_manager, &proxy_session_manager->addresses[i] );
-        }
-    }
-
-    next_check( proxy_session_manager->max_entry_index == 0 );
-
-    next_check( next_proxy_session_manager_num_entries( proxy_session_manager ) == 0 );
-
-    next_proxy_session_manager_destroy( proxy_session_manager );
 }
 
 void test_session_manager()
