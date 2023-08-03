@@ -363,7 +363,6 @@ struct next_client_stats_t
 
 // -----------------------------------------
 
-// todo: these states aren't really helpful
 #define NEXT_CLIENT_STATE_CLOSED        0
 #define NEXT_CLIENT_STATE_OPEN          1
 #define NEXT_CLIENT_STATE_ERROR         2
@@ -381,10 +380,8 @@ NEXT_EXPORT_FUNC void next_client_open_session( struct next_client_t * client, c
 
 NEXT_EXPORT_FUNC void next_client_close_session( struct next_client_t * client );
 
-// todo: sucks
 NEXT_EXPORT_FUNC bool next_client_is_session_open( struct next_client_t * client );
 
-// todo: sucks
 NEXT_EXPORT_FUNC int next_client_state( struct next_client_t * client );
 
 NEXT_EXPORT_FUNC void next_client_update( struct next_client_t * client );

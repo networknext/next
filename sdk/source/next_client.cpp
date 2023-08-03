@@ -409,9 +409,6 @@ void next_client_internal_destroy( next_client_internal_t * client )
 
 int next_client_internal_send_packet_to_server( next_client_internal_t * client, uint8_t packet_id, void * packet_object )
 {
-    // todo
-    (void) packet_id;
-
     next_client_internal_verify_sentinels( client );
 
     next_assert( packet_object );

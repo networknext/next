@@ -32,6 +32,7 @@
 #include "next_continue_token.h"
 #include "next_autodetect.h"
 #include "next_internal_config.h"
+#include "next_platform.h"
 
 #include <atomic>
 
@@ -3573,13 +3574,10 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
-    // todo
-    /*
     if ( next_platform_thread_high_priority( server->thread ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server increased thread priority" );
     }
-    */
 
     server->pending_session_manager = next_proxy_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )
