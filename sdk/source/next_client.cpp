@@ -1621,11 +1621,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         bool fallback_to_direct = false;
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
-            // todo
-            /*
-            network_next = client->route_manager->route_data.current_route;
-            fallback_to_direct = client->route_manager->fallback_to_direct;
-            */
+            network_next = next_route_manager_has_network_next_route( client->route_manager );
+            fallback_to_direct = next_route_manager_get_fallback_to_direct( client->route_manager );
         }
         
         client->client_stats.next = network_next;
@@ -1869,7 +1866,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     bool has_next_route = false;
     {
         next_platform_mutex_guard( &client->route_manager_mutex );
-        has_next_route = false; // todo - client->route_manager->route_data.current_route;
+        has_next_route = next_route_manager_has_network_next_route( client->route_manager );
     }
 
     if ( !has_next_route )
@@ -1889,15 +1886,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
     if ( client->last_next_ping_time + ( 1.0 / NEXT_PINGS_PER_SECOND ) <= current_time )
     {
-        bool send_over_network_next = false;
-        {
-            // todo: don't need to grab mutex here again
-            next_platform_mutex_guard( &client->route_manager_mutex );
-            // todo
-            // send_over_network_next = client->route_manager->route_data.current_route;
-        }
-
-        if ( !send_over_network_next )
+        if ( !has_next_route )
             return;
 
         uint64_t session_id;
@@ -1989,8 +1978,7 @@ void next_client_internal_update_fallback_to_direct( next_client_internal_t * cl
         {
             next_route_manager_check_for_timeouts( client->route_manager );
         }
-        // todo
-        // fallback_to_direct = client->route_manager->fallback_to_direct;
+        fallback_to_direct = next_route_manager_get_fallback_to_direct( client->route_manager );
     }
 
     if ( !client->fallback_to_direct && fallback_to_direct )

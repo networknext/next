@@ -673,3 +673,9 @@ void next_route_manager_confirm_continue_route( next_route_manager_t * route_man
     route_manager->route_data.current_route_expire_time += NEXT_SLICE_SECONDS;
     route_manager->route_data.pending_continue = false;
 }
+
+bool next_route_manager_get_fallback_to_direct( next_route_manager_t * route_manager )
+{
+    next_assert( route_manager );
+    return route_manager->fallback_to_direct;
+}

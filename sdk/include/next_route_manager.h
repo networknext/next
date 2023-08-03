@@ -69,4 +69,6 @@ void next_route_manager_get_current_route_data( next_route_manager_t * route_man
 
 void next_route_manager_confirm_continue_route( next_route_manager_t * route_manager );
 
+bool next_route_manager_get_fallback_to_direct( next_route_manager_t * route_manager );
+
 #endif // #ifndef NEXT_ROUTE_MANAGER_H
