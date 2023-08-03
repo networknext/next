@@ -41,6 +41,10 @@
 #include "next_continue_token.h"
 #include "next_header.h"
 #include "next_packet_filter.h"
+#include "next_bandwidth_limiter.h"
+#include "next_packet_loss_tracker.h"
+#include "next_out_of_order_tracker.h"
+#include "next_jitter_tracker.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -1682,6 +1686,28 @@ void test_address_data_ipv4()
     next_check( address_port == 50000 );
 }
 
+void test_anonymize_address_ipv4()
+{
+    next_address_t address;
+    next_address_parse( &address, "1.2.3.4:5" );
+
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    next_check( address.data.ipv4[0] == 1 );
+    next_check( address.data.ipv4[1] == 2 );
+    next_check( address.data.ipv4[2] == 3 );
+    next_check( address.data.ipv4[3] == 4 );
+    next_check( address.port == 5 );
+
+    next_address_anonymize( &address );
+
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    next_check( address.data.ipv4[0] == 1 );
+    next_check( address.data.ipv4[1] == 2 );
+    next_check( address.data.ipv4[2] == 3 );
+    next_check( address.data.ipv4[3] == 0 );
+    next_check( address.port == 0 );
+}
+
 #if NEXT_PLATFORM_HAS_IPV6
 
 void test_address_data_ipv6()
@@ -1714,6 +1740,277 @@ void test_address_data_ipv6()
 }
 
 #endif // #if NEXT_PLATFORM_HAS_IPV6
+
+void test_anonymize_address_ipv6()
+{
+    next_address_t address;
+    next_address_parse( &address, "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:40000" );
+
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    next_check( address.data.ipv6[0] == 0x2001 );
+    next_check( address.data.ipv6[1] == 0x0db8 );
+    next_check( address.data.ipv6[2] == 0x85a3 );
+    next_check( address.data.ipv6[3] == 0x0000 );
+    next_check( address.data.ipv6[4] == 0x0000 );
+    next_check( address.data.ipv6[5] == 0x8a2e );
+    next_check( address.data.ipv6[6] == 0x0370 );
+    next_check( address.data.ipv6[7] == 0x7334 );
+    next_check( address.port == 40000 );
+
+    next_address_anonymize( &address );
+
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    next_check( address.data.ipv6[0] == 0x2001 );
+    next_check( address.data.ipv6[1] == 0x0db8 );
+    next_check( address.data.ipv6[2] == 0x85a3 );
+    next_check( address.data.ipv6[3] == 0x0000 );
+    next_check( address.data.ipv6[4] == 0x0000 );
+    next_check( address.data.ipv6[5] == 0x0000 );
+    next_check( address.data.ipv6[6] == 0x0000 );
+    next_check( address.data.ipv6[7] == 0x0000 );
+    next_check( address.port == 0 );
+}
+
+void test_bandwidth_limiter()
+{
+    next_bandwidth_limiter_t bandwidth_limiter;
+
+    next_bandwidth_limiter_reset( &bandwidth_limiter );
+
+    next_check( next_bandwidth_limiter_usage_kbps( &bandwidth_limiter, 0.0 ) == 0.0 );
+
+    // come in way under
+    {
+        const int kbps_allowed = 1000;
+        const int packet_bits = 50;
+
+        for ( int i = 0; i < 10; ++i )
+        {
+            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
+        }
+    }
+
+    // get really close
+    {
+        next_bandwidth_limiter_reset( &bandwidth_limiter );
+
+        const int kbps_allowed = 1000;
+        const int packet_bits = kbps_allowed / 10 * 1000;
+
+        for ( int i = 0; i < 10; ++i )
+        {
+            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
+        }
+    }
+
+    // really close for several intervals
+    {
+        next_bandwidth_limiter_reset( &bandwidth_limiter );
+
+        const int kbps_allowed = 1000;
+        const int packet_bits = kbps_allowed / 10 * 1000;
+
+        for ( int i = 0; i < 30; ++i )
+        {
+            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
+        }
+    }
+
+    // go over budget
+    {
+        next_bandwidth_limiter_reset( &bandwidth_limiter );
+
+        const int kbps_allowed = 1000;
+        const int packet_bits = kbps_allowed / 10 * 1000 * 1.01f;
+
+        bool over_budget = false;
+
+        for ( int i = 0; i < 30; ++i )
+        {
+            over_budget |= next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits );
+        }
+
+        next_check( over_budget );
+    }
+}
+
+void test_packet_loss_tracker()
+{
+    next_packet_loss_tracker_t tracker;
+    next_packet_loss_tracker_reset( &tracker );
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
+
+    uint64_t sequence = 0;
+
+    for ( int i = 0; i < NEXT_PACKET_LOSS_TRACKER_SAFETY; ++i )
+    {
+        next_packet_loss_tracker_packet_received( &tracker, sequence );
+        sequence++;
+    }
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
+
+    for ( int i = 0; i < 200; ++i )
+    {
+        next_packet_loss_tracker_packet_received( &tracker, sequence );
+        sequence++;
+    }
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
+
+    for ( int i = 0; i < 200; ++i )
+    {
+        if ( sequence & 1 )
+        {
+            next_packet_loss_tracker_packet_received( &tracker, sequence );
+        }
+        sequence++;
+    }
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == ( 200 - NEXT_PACKET_LOSS_TRACKER_SAFETY ) / 2 );
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
+
+    next_packet_loss_tracker_reset( &tracker );
+
+    sequence = 0;
+
+    next_packet_loss_tracker_packet_received( &tracker, 200 + NEXT_PACKET_LOSS_TRACKER_SAFETY - 1 );
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == 200 );
+
+    next_packet_loss_tracker_packet_received( &tracker, 1000 );
+
+    next_check( next_packet_loss_tracker_update( &tracker ) > 500 );
+
+    next_packet_loss_tracker_packet_received( &tracker, 0xFFFFFFFFFFFFFFFULL );
+
+    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
+}
+
+void test_out_of_order_tracker()
+{
+    next_out_of_order_tracker_t tracker;
+    next_out_of_order_tracker_reset( &tracker );
+
+    next_check( tracker.num_out_of_order_packets == 0 );
+
+    uint64_t sequence = 0;
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        next_out_of_order_tracker_packet_received( &tracker, sequence );
+        sequence++;
+    }
+
+    next_check( tracker.num_out_of_order_packets == 0 );
+
+    sequence = 500;
+
+    for ( int i = 0; i < 500; ++i )
+    {
+        next_out_of_order_tracker_packet_received( &tracker, sequence );
+        sequence++;
+    }
+
+    next_check( tracker.num_out_of_order_packets == 499 );
+
+    next_out_of_order_tracker_reset( &tracker );
+
+    next_check( tracker.last_packet_processed == 0 );
+    next_check( tracker.num_out_of_order_packets == 0 );
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        uint64_t mod_sequence = ( sequence / 2 ) * 2;
+        if ( sequence % 2 )
+            mod_sequence -= 1;
+        next_out_of_order_tracker_packet_received( &tracker, mod_sequence );
+        sequence++;
+    }
+
+    next_check( tracker.num_out_of_order_packets == 500 );
+}
+
+void test_jitter_tracker()
+{
+    next_jitter_tracker_t tracker;
+    next_jitter_tracker_reset( &tracker );
+
+    next_check( tracker.jitter == 0.0 );
+
+    uint64_t sequence = 0;
+
+    double t = 0.0;
+    double dt = 1.0 / 60.0;
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+        t += dt;
+    }
+
+    next_check( tracker.jitter < 0.000001 );
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        t = i * dt;
+        if ( (i%3) == 0 )
+        {
+            t += 2;
+        }
+        if ( (i%5) == 0 )
+        {
+            t += 5;
+        }
+        if ( (i%6) == 0 )
+        {
+            t -= 10;
+        }
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+    }
+
+    next_check( tracker.jitter > 1.0 );
+
+    next_jitter_tracker_reset( &tracker );
+
+    next_check( tracker.jitter == 0.0 );
+
+    for ( int i = 0; i < 1000; ++i )
+    {
+        t = i * dt;
+        if ( (i%3) == 0 )
+        {
+            t += 0.01f;
+        }
+        if ( (i%5) == 0 )
+        {
+            t += 0.05;
+        }
+        if ( (i%6) == 0 )
+        {
+            t -= 0.1f;
+        }
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+    }
+
+    next_check( tracker.jitter > 0.05 );
+    next_check( tracker.jitter < 0.1 );
+
+    for ( int i = 0; i < 10000; ++i )
+    {
+        t = i * dt;
+        next_jitter_tracker_packet_received( &tracker, sequence, t );
+        sequence++;
+    }
+
+    next_check( tracker.jitter >= 0.0 );
+    next_check( tracker.jitter <= 0.000001 );
+}
 
 // todo
 /*
@@ -4199,69 +4496,6 @@ void test_relay_manager()
     next_relay_manager_destroy( manager );
 }
 
-void test_bandwidth_limiter()
-{
-    next_bandwidth_limiter_t bandwidth_limiter;
-
-    next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-    next_check( next_bandwidth_limiter_usage_kbps( &bandwidth_limiter, 0.0 ) == 0.0 );
-
-    // come in way under
-    {
-        const int kbps_allowed = 1000;
-        const int packet_bits = 50;
-
-        for ( int i = 0; i < 10; ++i )
-        {
-            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
-        }
-    }
-
-    // get really close
-    {
-        next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-        const int kbps_allowed = 1000;
-        const int packet_bits = kbps_allowed / 10 * 1000;
-
-        for ( int i = 0; i < 10; ++i )
-        {
-            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
-        }
-    }
-
-    // really close for several intervals
-    {
-        next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-        const int kbps_allowed = 1000;
-        const int packet_bits = kbps_allowed / 10 * 1000;
-
-        for ( int i = 0; i < 30; ++i )
-        {
-            next_check( !next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits ) );
-        }
-    }
-
-    // go over budget
-    {
-        next_bandwidth_limiter_reset( &bandwidth_limiter );
-
-        const int kbps_allowed = 1000;
-        const int packet_bits = kbps_allowed / 10 * 1000 * 1.01f;
-
-        bool over_budget = false;
-
-        for ( int i = 0; i < 30; ++i )
-        {
-            over_budget |= next_bandwidth_limiter_add_packet( &bandwidth_limiter, i * ( NEXT_BANDWIDTH_LIMITER_INTERVAL / 10.0 ), kbps_allowed, packet_bits );
-        }
-
-        next_check( over_budget );
-    }
-}
-
 static void context_check_free( void * context, void * p )
 {
     (void) p;
@@ -4289,240 +4523,6 @@ void test_free_retains_context()
 
     next_allocator( current_malloc, current_free );
 }
-
-void test_packet_loss_tracker()
-{
-    next_packet_loss_tracker_t tracker;
-    next_packet_loss_tracker_reset( &tracker );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    uint64_t sequence = 0;
-
-    for ( int i = 0; i < NEXT_PACKET_LOSS_TRACKER_SAFETY; ++i )
-    {
-        next_packet_loss_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    for ( int i = 0; i < 200; ++i )
-    {
-        next_packet_loss_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    for ( int i = 0; i < 200; ++i )
-    {
-        if ( sequence & 1 )
-        {
-            next_packet_loss_tracker_packet_received( &tracker, sequence );
-        }
-        sequence++;
-    }
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == ( 200 - NEXT_PACKET_LOSS_TRACKER_SAFETY ) / 2 );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-
-    next_packet_loss_tracker_reset( &tracker );
-
-    sequence = 0;
-
-    next_packet_loss_tracker_packet_received( &tracker, 200 + NEXT_PACKET_LOSS_TRACKER_SAFETY - 1 );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 200 );
-
-    next_packet_loss_tracker_packet_received( &tracker, 1000 );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) > 500 );
-
-    next_packet_loss_tracker_packet_received( &tracker, 0xFFFFFFFFFFFFFFFULL );
-
-    next_check( next_packet_loss_tracker_update( &tracker ) == 0 );
-}
-
-void test_out_of_order_tracker()
-{
-    next_out_of_order_tracker_t tracker;
-    next_out_of_order_tracker_reset( &tracker );
-
-    next_check( tracker.num_out_of_order_packets == 0 );
-
-    uint64_t sequence = 0;
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        next_out_of_order_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( tracker.num_out_of_order_packets == 0 );
-
-    sequence = 500;
-
-    for ( int i = 0; i < 500; ++i )
-    {
-        next_out_of_order_tracker_packet_received( &tracker, sequence );
-        sequence++;
-    }
-
-    next_check( tracker.num_out_of_order_packets == 499 );
-
-    next_out_of_order_tracker_reset( &tracker );
-
-    next_check( tracker.last_packet_processed == 0 );
-    next_check( tracker.num_out_of_order_packets == 0 );
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        uint64_t mod_sequence = ( sequence / 2 ) * 2;
-        if ( sequence % 2 )
-            mod_sequence -= 1;
-        next_out_of_order_tracker_packet_received( &tracker, mod_sequence );
-        sequence++;
-    }
-
-    next_check( tracker.num_out_of_order_packets == 500 );
-}
-
-void test_jitter_tracker()
-{
-    next_jitter_tracker_t tracker;
-    next_jitter_tracker_reset( &tracker );
-
-    next_check( tracker.jitter == 0.0 );
-
-    uint64_t sequence = 0;
-
-    double t = 0.0;
-    double dt = 1.0 / 60.0;
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-        t += dt;
-    }
-
-    next_check( tracker.jitter < 0.000001 );
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        t = i * dt;
-        if ( (i%3) == 0 )
-        {
-            t += 2;
-        }
-        if ( (i%5) == 0 )
-        {
-            t += 5;
-        }
-        if ( (i%6) == 0 )
-        {
-            t -= 10;
-        }
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-    }
-
-    next_check( tracker.jitter > 1.0 );
-
-    next_jitter_tracker_reset( &tracker );
-
-    next_check( tracker.jitter == 0.0 );
-
-    for ( int i = 0; i < 1000; ++i )
-    {
-        t = i * dt;
-        if ( (i%3) == 0 )
-        {
-            t += 0.01f;
-        }
-        if ( (i%5) == 0 )
-        {
-            t += 0.05;
-        }
-        if ( (i%6) == 0 )
-        {
-            t -= 0.1f;
-        }
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-    }
-
-    next_check( tracker.jitter > 0.05 );
-    next_check( tracker.jitter < 0.1 );
-
-    for ( int i = 0; i < 10000; ++i )
-    {
-        t = i * dt;
-        next_jitter_tracker_packet_received( &tracker, sequence, t );
-        sequence++;
-    }
-
-    next_check( tracker.jitter >= 0.0 );
-    next_check( tracker.jitter <= 0.000001 );
-}
-
-void test_anonymize_address_ipv4()
-{
-    next_address_t address;
-    next_address_parse( &address, "1.2.3.4:5" );
-
-    next_check( address.type == NEXT_ADDRESS_IPV4 );
-    next_check( address.data.ipv4[0] == 1 );
-    next_check( address.data.ipv4[1] == 2 );
-    next_check( address.data.ipv4[2] == 3 );
-    next_check( address.data.ipv4[3] == 4 );
-    next_check( address.port == 5 );
-
-    next_address_anonymize( &address );
-
-    next_check( address.type == NEXT_ADDRESS_IPV4 );
-    next_check( address.data.ipv4[0] == 1 );
-    next_check( address.data.ipv4[1] == 2 );
-    next_check( address.data.ipv4[2] == 3 );
-    next_check( address.data.ipv4[3] == 0 );
-    next_check( address.port == 0 );
-}
-
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-
-void test_anonymize_address_ipv6()
-{
-    next_address_t address;
-    next_address_parse( &address, "[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:40000" );
-
-    next_check( address.type == NEXT_ADDRESS_IPV6 );
-    next_check( address.data.ipv6[0] == 0x2001 );
-    next_check( address.data.ipv6[1] == 0x0db8 );
-    next_check( address.data.ipv6[2] == 0x85a3 );
-    next_check( address.data.ipv6[3] == 0x0000 );
-    next_check( address.data.ipv6[4] == 0x0000 );
-    next_check( address.data.ipv6[5] == 0x8a2e );
-    next_check( address.data.ipv6[6] == 0x0370 );
-    next_check( address.data.ipv6[7] == 0x7334 );
-    next_check( address.port == 40000 );
-
-    next_address_anonymize( &address );
-
-    next_check( address.type == NEXT_ADDRESS_IPV6 );
-    next_check( address.data.ipv6[0] == 0x2001 );
-    next_check( address.data.ipv6[1] == 0x0db8 );
-    next_check( address.data.ipv6[2] == 0x85a3 );
-    next_check( address.data.ipv6[3] == 0x0000 );
-    next_check( address.data.ipv6[4] == 0x0000 );
-    next_check( address.data.ipv6[5] == 0x0000 );
-    next_check( address.data.ipv6[6] == 0x0000 );
-    next_check( address.data.ipv6[7] == 0x0000 );
-    next_check( address.port == 0 );
-}
-
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
@@ -4665,9 +4665,16 @@ void next_run_tests()
         RUN_TEST( test_passthrough );
         RUN_TEST( test_address_data_none );
         RUN_TEST( test_address_data_ipv4 );
+        RUN_TEST( test_anonymize_address_ipv4 );
 #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_address_data_ipv6 );
+        RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+
+        RUN_TEST( test_bandwidth_limiter );
+        RUN_TEST( test_packet_loss_tracker );
+        RUN_TEST( test_out_of_order_tracker );
+        RUN_TEST( test_jitter_tracker );
 
         /*
         RUN_TEST( test_direct_packet );
@@ -4705,19 +4712,14 @@ void next_run_tests()
         RUN_TEST( test_session_response_packet_continue_no_near_relays );
         RUN_TEST( test_match_data_request_packet );
         RUN_TEST( test_match_data_response_packet );
+        */
+
+        /*
         RUN_TEST( test_pending_session_manager );
         RUN_TEST( test_proxy_session_manager );
         RUN_TEST( test_session_manager );
         RUN_TEST( test_relay_manager );
-        RUN_TEST( test_bandwidth_limiter );
         RUN_TEST( test_free_retains_context );
-        RUN_TEST( test_packet_loss_tracker );
-        RUN_TEST( test_out_of_order_tracker );
-        RUN_TEST( test_jitter_tracker );
-        RUN_TEST( test_anonymize_address_ipv4 );
-#if defined(NEXT_PLATFORM_HAS_IPV6)
-        RUN_TEST( test_anonymize_address_ipv6 );
-#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_passthrough_packets );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
