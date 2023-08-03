@@ -49,6 +49,7 @@
 #include "next_proxy_session_manager.h"
 #include "next_session_manager.h"
 #include "next_relay_manager.h"
+#include "next_internal_config.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -2513,7 +2514,16 @@ void test_direct_packet()
     }
 }
 
-/*
+// ---------------------------------------------------------------
+
+extern next_internal_config_t next_global_config;
+
+extern int next_signed_packets[256];
+
+extern int next_encrypted_packets[256];
+
+// ---------------------------------------------------------------
+
 void test_direct_ping_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -4529,9 +4539,7 @@ void test_match_data_response_packet()
         }
     }
 }
-*/
 
-/*
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 static uint64_t test_passthrough_packets_client_packets_received;
@@ -4610,7 +4618,6 @@ void test_passthrough_packets()
 }
 
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-*/
 
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
@@ -4687,9 +4694,7 @@ void next_run_tests()
         RUN_TEST( test_proxy_session_manager );
         RUN_TEST( test_session_manager );
         RUN_TEST( test_relay_manager );
-
         RUN_TEST( test_direct_packet );
-        /*
         RUN_TEST( test_direct_ping_packet );
         RUN_TEST( test_direct_pong_packet );
         RUN_TEST( test_upgrade_request_packet );
@@ -4724,13 +4729,9 @@ void next_run_tests()
         RUN_TEST( test_session_response_packet_continue_no_near_relays );
         RUN_TEST( test_match_data_request_packet );
         RUN_TEST( test_match_data_response_packet );
-        */
-
-        /*
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_passthrough_packets );
 #endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
-        */
     }
 }
 
