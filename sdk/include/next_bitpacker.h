@@ -25,6 +25,8 @@
 
 #include "next.h"
 
+#include <memory.h>
+
 namespace next
 {
     /**

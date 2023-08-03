@@ -47,6 +47,8 @@
 #include "next_jitter_tracker.h"
 #include "next_pending_session_manager.h"
 #include "next_proxy_session_manager.h"
+#include "next_session_manager.h"
+#include "next_relay_manager.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -2275,7 +2277,206 @@ void test_proxy_session_manager()
     next_proxy_session_manager_destroy( proxy_session_manager );
 }
 
+void test_session_manager()
+{
+    const int InitialSize = 1;
 
+    next_session_manager_t * session_manager = next_session_manager_create( NULL, InitialSize );
+
+    next_check( session_manager );
+
+    next_address_t address;
+    next_address_parse( &address, "127.0.0.1:12345" );
+
+    // test private keys
+
+    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
+    next_crypto_random_bytes( private_keys, sizeof(private_keys) );
+
+    // test upgrade tokens
+
+    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
+    next_crypto_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
+
+    // add enough entries to make sure we have to expand
+
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
+        next_check( entry );
+        next_check( entry->session_id == uint64_t(i) + 1000 );
+        next_check( next_address_equal( &address, &entry->address ) == 1 );
+        next_check( memcmp( entry->ephemeral_private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
+        next_check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
+        address.port++;
+    }
+
+    // verify that all entries are there
+
+    address.port = 12345;
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_session_entry_t * entry = next_session_manager_find_by_address( session_manager, &address );
+        next_check( entry );
+        next_check( entry->session_id == uint64_t(i)+1000 );
+        next_check( next_address_equal( &address, &entry->address ) == 1 );
+        address.port++;
+    }
+
+    next_check( next_session_manager_num_entries( session_manager ) == InitialSize*3 );
+
+    // remove every second entry
+
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        if ( (i%2) == 0 )
+        {
+            next_session_manager_remove_by_address( session_manager, &session_manager->addresses[i] );
+        }
+    }
+
+    // verify only the entries that remain can be found
+
+    address.port = 12345;
+    for ( int i = 0; i < InitialSize*3; ++i )
+    {
+        next_session_entry_t * entry = next_session_manager_find_by_address( session_manager, &address );
+        if ( (i%2) != 0 )
+        {
+            next_check( entry );
+            next_check( entry->session_id == uint64_t(i)+1000 );
+            next_check( next_address_equal( &address, &entry->address ) == 1 );
+        }
+        else
+        {
+            next_check( entry == NULL );
+        }
+        address.port++;
+    }
+
+    // expand, and verify that all entries get collapsed
+
+    next_session_manager_expand( session_manager );
+
+    address.port = 12346;
+    for ( int i = 0; i < session_manager->size; ++i )
+    {
+        if ( session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
+        {
+            next_check( next_address_equal( &address, &session_manager->addresses[i] ) == 1 );
+            next_session_entry_t * entry = &session_manager->entries[i];
+            next_check( entry->session_id == uint64_t(i)*2+1001 );
+            next_check( next_address_equal( &address, &entry->address ) == 1 );
+        }
+        address.port += 2;
+    }
+
+    // remove all remaining entries manually
+
+    for ( int i = 0; i < session_manager->size; ++i )
+    {
+        if ( session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
+        {
+            next_session_manager_remove_by_address( session_manager, &session_manager->addresses[i] );
+        }
+    }
+
+    next_check( session_manager->max_entry_index == 0 );
+
+    next_check( next_session_manager_num_entries( session_manager ) == 0 );
+
+    next_session_manager_destroy( session_manager );
+}
+
+void test_relay_manager()
+{
+    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
+    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
+    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
+    uint64_t relay_ping_expire_timestamp = 0x129387193871987LL;
+
+    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    {
+        relay_ids[i] = i;
+        char address_string[256];
+        snprintf( address_string, sizeof(address_string), "127.0.0.1:%d", 40000 + i );
+        next_address_parse( &relay_addresses[i], address_string );
+    }
+
+    next_relay_manager_t * manager = next_relay_manager_create( NULL );
+
+    // should be no relays when manager is first created
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == 0 );
+    }
+
+    // add max relays
+
+    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_check( relay_ids[i] == stats.relay_ids[i] );
+            next_check( stats.relay_rtt[i] == 0 );
+            next_check( stats.relay_jitter[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 0 );
+        }
+    }
+
+    // remove all relays
+
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == 0 );
+    }
+
+    // add same relay set repeatedly
+
+    for ( int j = 0; j < 2; ++j )
+    {
+        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
+        {
+            next_relay_stats_t stats;
+            next_relay_manager_get_stats( manager, &stats );
+            next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
+            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+            {
+                next_check( relay_ids[i] == stats.relay_ids[i] );
+            }
+        }
+    }
+
+    // now add a few new relays, while some relays remain the same
+
+    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4, relay_ping_tokens, relay_ping_expire_timestamp );
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS - 4; ++i )
+        {
+            next_check( relay_ids[i+4] == stats.relay_ids[i] );
+        }
+    }
+
+    // remove all relays
+
+    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
+    {
+        next_relay_stats_t stats;
+        next_relay_manager_get_stats( manager, &stats );
+        next_check( stats.num_relays == 0 );
+    }
+
+    next_relay_manager_destroy( manager );
+}
 
 
 
@@ -4339,207 +4540,6 @@ void test_match_data_response_packet()
     }
 }
 
-void test_session_manager()
-{
-    const int InitialSize = 1;
-
-    next_session_manager_t * session_manager = next_session_manager_create( NULL, InitialSize );
-
-    next_check( session_manager );
-
-    next_address_t address;
-    next_address_parse( &address, "127.0.0.1:12345" );
-
-    // test private keys
-
-    uint8_t private_keys[InitialSize*3*NEXT_CRYPTO_SECRETBOX_KEYBYTES];
-    next_crypto_random_bytes( private_keys, sizeof(private_keys) );
-
-    // test upgrade tokens
-
-    uint8_t upgrade_tokens[InitialSize*3*NEXT_UPGRADE_TOKEN_BYTES];
-    next_crypto_random_bytes( upgrade_tokens, sizeof(upgrade_tokens) );
-
-    // add enough entries to make sure we have to expand
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_session_entry_t * entry = next_session_manager_add( session_manager, &address, uint64_t(i)+1000, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES] );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i) + 1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        next_check( memcmp( entry->ephemeral_private_key, &private_keys[i*NEXT_CRYPTO_SECRETBOX_KEYBYTES], NEXT_CRYPTO_SECRETBOX_KEYBYTES ) == 0 );
-        next_check( memcmp( entry->upgrade_token, &upgrade_tokens[i*NEXT_UPGRADE_TOKEN_BYTES], NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        address.port++;
-    }
-
-    // verify that all entries are there
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_session_entry_t * entry = next_session_manager_find_by_address( session_manager, &address );
-        next_check( entry );
-        next_check( entry->session_id == uint64_t(i)+1000 );
-        next_check( next_address_equal( &address, &entry->address ) == 1 );
-        address.port++;
-    }
-
-    next_check( next_session_manager_num_entries( session_manager ) == InitialSize*3 );
-
-    // remove every second entry
-
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        if ( (i%2) == 0 )
-        {
-            next_session_manager_remove_by_address( session_manager, &session_manager->addresses[i] );
-        }
-    }
-
-    // verify only the entries that remain can be found
-
-    address.port = 12345;
-    for ( int i = 0; i < InitialSize*3; ++i )
-    {
-        next_session_entry_t * entry = next_session_manager_find_by_address( session_manager, &address );
-        if ( (i%2) != 0 )
-        {
-            next_check( entry );
-            next_check( entry->session_id == uint64_t(i)+1000 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        else
-        {
-            next_check( entry == NULL );
-        }
-        address.port++;
-    }
-
-    // expand, and verify that all entries get collapsed
-
-    next_session_manager_expand( session_manager );
-
-    address.port = 12346;
-    for ( int i = 0; i < session_manager->size; ++i )
-    {
-        if ( session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_check( next_address_equal( &address, &session_manager->addresses[i] ) == 1 );
-            next_session_entry_t * entry = &session_manager->entries[i];
-            next_check( entry->session_id == uint64_t(i)*2+1001 );
-            next_check( next_address_equal( &address, &entry->address ) == 1 );
-        }
-        address.port += 2;
-    }
-
-    // remove all remaining entries manually
-
-    for ( int i = 0; i < session_manager->size; ++i )
-    {
-        if ( session_manager->addresses[i].type != NEXT_ADDRESS_NONE )
-        {
-            next_session_manager_remove_by_address( session_manager, &session_manager->addresses[i] );
-        }
-    }
-
-    next_check( session_manager->max_entry_index == 0 );
-
-    next_check( next_session_manager_num_entries( session_manager ) == 0 );
-
-    next_session_manager_destroy( session_manager );
-}
-
-void test_relay_manager()
-{
-    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
-    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
-    uint64_t relay_ping_expire_timestamp = 0x129387193871987LL;
-
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-    {
-        relay_ids[i] = i;
-        char address_string[256];
-        snprintf( address_string, sizeof(address_string), "127.0.0.1:%d", 40000 + i );
-        next_address_parse( &relay_addresses[i], address_string );
-    }
-
-    next_relay_manager_t * manager = next_relay_manager_create( NULL );
-
-    // should be no relays when manager is first created
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == 0 );
-    }
-
-    // add max relays
-
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        {
-            next_check( relay_ids[i] == stats.relay_ids[i] );
-            next_check( stats.relay_rtt[i] == 0 );
-            next_check( stats.relay_jitter[i] == 0 );
-            next_check( stats.relay_packet_loss[i] == 0 );
-        }
-    }
-
-    // remove all relays
-
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == 0 );
-    }
-
-    // add same relay set repeatedly
-
-    for ( int j = 0; j < 2; ++j )
-    {
-        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
-        {
-            next_relay_stats_t stats;
-            next_relay_manager_get_stats( manager, &stats );
-            next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-            {
-                next_check( relay_ids[i] == stats.relay_ids[i] );
-            }
-        }
-    }
-
-    // now add a few new relays, while some relays remain the same
-
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4, relay_ping_tokens, relay_ping_expire_timestamp );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS - 4; ++i )
-        {
-            next_check( relay_ids[i+4] == stats.relay_ids[i] );
-        }
-    }
-
-    // remove all relays
-
-    next_relay_manager_update( manager, 0, relay_ids, relay_addresses, NULL, 0 );
-    {
-        next_relay_stats_t stats;
-        next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == 0 );
-    }
-
-    next_relay_manager_destroy( manager );
-}
-
 #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 static uint64_t test_passthrough_packets_client_packets_received;
@@ -4691,13 +4691,10 @@ void next_run_tests()
         RUN_TEST( test_out_of_order_tracker );
         RUN_TEST( test_jitter_tracker );
         RUN_TEST( test_free_retains_context );
-
         RUN_TEST( test_pending_session_manager );
-        /*
         RUN_TEST( test_proxy_session_manager );
         RUN_TEST( test_session_manager );
         RUN_TEST( test_relay_manager );
-        */
 
         /*
         RUN_TEST( test_direct_packet );

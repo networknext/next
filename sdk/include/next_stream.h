@@ -24,6 +24,7 @@
 #define NEXT_STREAM_H
 
 #include "next.h"
+#include "next_bitpacker.h"
 
 namespace next
 {
