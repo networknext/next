@@ -190,11 +190,11 @@ promotions:
     auto_promote:
       when: "result = 'passed' and (branch = 'dev' or branch = 'staging')"
 
+  - name: "Upload Config"
+    pipeline_file: upload-config.yml
+
   - name: "Deploy Relay"
     pipeline_file: deploy-relay.yml
-
-  - name: "Deploy Config"
-    pipeline_file: deploy-config.yml
 
   - name: "Deploy Database"
     pipeline_file: deploy-database.yml
