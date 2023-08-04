@@ -1,0 +1,75 @@
+SETUP
+
+	Setup semaphore to build source code from github.
+
+	http://semaphoreci.com -- create a startup plan.
+
+	Create new project, point it at your github repo...
+
+	Set it up to drive from .semaphore/semaphore.yml file and everything should work
+
+	-----------
+
+	Go to your semaphoreci account and select "Settings"
+
+	Under "Settings" go to "Secrets"
+
+	Create a new secret called "google-cloud-platform"
+
+	Set it to an env var secret:
+
+		"COMPANY_NAME" = "(lowercase company name)"
+
+	eg. COMPANY_NAME=mycompany
+
+	-----------
+
+	Create a google cloud project called "Storage"
+
+	Create a bucket in this project called "[companyname]_network_next_dev_artifacts"
+
+	Accept all defaults for the bucket create.
+
+	-----------
+
+	Now we have to give semaphoreci permission to upload artifacts to the google cloud storage bucket.
+
+	Create a service account.
+
+	Go to "Create a service account" in the "Storage" google cloud project under "IAM / Service Accounts".
+
+	Create a service account called "semaphore".
+
+	Copy the name of the service account and write it down somewhere, eg. semaphore@storage-394918.iam.gserviceaccount.com
+
+	Create a new key for this service account of type JSON.
+
+	This file will download to a location on your computer as a .json file
+
+	-----------
+
+	Go to your semaphoreci account and select "Settings"
+
+	Under "Settings" go to "Secrets"
+
+	Create a new secret called "google-cloud-platform"
+
+	Set the secret to type configuration file: "/home/semaphore/gcp-service-account.json"
+
+	Upload the JSON key file downloaded from google cloud previously for the service account you just created.
+
+	-----------
+
+	Go to the cloud storage bucket in google cloud
+
+	Grant access to read and write to the google cloud bucket.
+
+	Set "New principals" to the name of your service account.
+
+	Set permissions to "Storage Object Admin".
+
+	-----------
+
+	Go to semaphore and trigger a build.
+
+	Under the build select "Deploy "
