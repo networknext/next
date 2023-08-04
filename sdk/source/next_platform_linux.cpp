@@ -1,4 +1,4 @@
-/*
+ext;/*
     Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
@@ -83,7 +83,7 @@ int next_platform_id()
 
 int next_platform_connection_type()
 {
-    return conenction_type;
+    return connection_type;
 }
 
 uint16_t next_platform_ntohs( uint16_t in )
@@ -617,6 +617,8 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 }
 
 // ---------------------------------------------------
+
+extern void * next_global_context;
 
 template <typename T> struct next_vector_t
 {
