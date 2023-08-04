@@ -70,6 +70,10 @@ SETUP
 
 	-----------
 
-	Go to semaphore and trigger a build.
+	Go to semaphore and trigger a build in the "dev" branch. Create the "dev" branch if necessary.
 
-	Under the build select "Deploy "
+	Once the build succeeds, it should automatically run "Upload Artifacts" from the build.
+
+	Verify that the artifacts upload correctly, and you can now see them in the google cloud bucket.
+	
+	-----------
