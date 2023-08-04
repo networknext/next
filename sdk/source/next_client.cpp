@@ -1233,8 +1233,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             {
                 next_platform_mutex_guard( &client->route_manager_mutex );
                 next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
-                // todo
-                // fallback_to_direct = client->route_manager->fallback_to_direct;
+                fallback_to_direct = next_route_manager_get_fallback_to_direct( client->route_manager );
             }
 
             if ( !client->fallback_to_direct && fallback_to_direct )
@@ -1895,13 +1894,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         uint8_t private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
-            // todo
-            /*
-            session_id = client->route_manager->route_data.current_route_session_id;
-            session_version = client->route_manager->route_data.current_route_session_version;
-            to = client->route_manager->route_data.current_route_next_address;
-            memcpy( private_key, client->route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-            */
+            next_route_manager_get_next_route_data( client->route_manager, &session_id, &session_version, &to, private_key );
         }
 
         uint64_t sequence = client->special_send_sequence++;
@@ -1919,10 +1912,6 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         next_address_data( &to, to_address_data, &to_address_bytes, &to_address_port );
 
         const uint64_t ping_sequence = next_ping_history_ping_sent( &client->next_ping_history, current_time );
-
-        // todo: temporary
-        session_id = 0;
-        session_version = 0;
 
         int packet_bytes = next_write_ping_packet( packet_data, sequence, session_id, session_version, private_key, ping_sequence, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
@@ -2279,13 +2268,10 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
     }
 
-    // todo
-    /*
     if ( next_platform_thread_high_priority( client->thread ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "client increased thread priority" );
     }
-    */
 
     next_bandwidth_limiter_reset( &client->direct_send_bandwidth );
     next_bandwidth_limiter_reset( &client->direct_receive_bandwidth );

@@ -679,3 +679,11 @@ bool next_route_manager_get_fallback_to_direct( next_route_manager_t * route_man
     next_assert( route_manager );
     return route_manager->fallback_to_direct;
 }
+
+void next_route_manager_get_next_route_data( next_route_manager_t * route_manager, uint64_t * session_id, uint8_t * session_version, next_address_t * to, uint8_t * private_key )
+{
+    *session_id = route_manager->route_data.current_route_session_id;
+    *session_version = route_manager->route_data.current_route_session_version;
+    *to = route_manager->route_data.current_route_next_address;
+    memcpy( private_key, route_manager->route_data.current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
+}

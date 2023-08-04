@@ -71,4 +71,6 @@ void next_route_manager_confirm_continue_route( next_route_manager_t * route_man
 
 bool next_route_manager_get_fallback_to_direct( next_route_manager_t * route_manager );
 
+void next_route_manager_get_next_route_data( next_route_manager_t * route_manager, uint64_t * session_id, uint8_t * session_version, next_address_t * to, uint8_t * private_key );
+
 #endif // #ifndef NEXT_ROUTE_MANAGER_H
