@@ -10,13 +10,15 @@ DONE
 
 	Fix log spam that was breaking happy path.
 
+	Restructure SDK into multiple source files so it's more easily maintainable
+
 TODO
 	
-	Restructure SDK into multiple source files so it's more easily maintainable
+	Get SDK func tests passing
 
 	-------
 
-	Test docker build
+	Fix docker build
 
 	-------
 

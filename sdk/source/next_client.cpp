@@ -610,8 +610,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         memcpy( response.upgrade_token, packet.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
         response.platform_id = next_platform_id();
 
-        // todo
-        // response.connection_type = next_platform_connection_type();
+        response.connection_type = next_platform_connection_type();
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_UPGRADE_RESPONSE_PACKET, &response ) != NEXT_OK )
         {
@@ -1631,8 +1630,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
 
-        // todo
-        // client->client_stats.connection_type = next_platform_connection_type();
+        client->client_stats.connection_type = next_platform_connection_type();
 
         double start_time = current_time - NEXT_CLIENT_STATS_WINDOW;
         if ( start_time < client->last_route_switch_time + NEXT_PING_SAFETY )
