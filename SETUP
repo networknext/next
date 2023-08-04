@@ -78,6 +78,12 @@ SETUP
 
 	-----------
 
+	Run the "Upload Database" job in semaphore 
+
+	Verify that you now see a "database.bin" file in the artifacts bucket.
+
+	-----------
+
 	Create a cloud storage bucket called "[companyname]_network_next_sdk_config"
 
 	Give the same permissions to the service account on this bucket, except uncheck "Enforce public access protection" on create.
@@ -102,8 +108,15 @@ SETUP
 
 	Create a cloud storage bucket called "[companyname]_network_next_relay_artifacts"
 
-	Give the same permissions to the service account on this bucket. Do NOT give it public access.
+	Give the same permissions to the service account on this bucket, except uncheck "Enforce public access protection" on create.
 
-	Run the "Upload Relay" job in semaphore and verify that it succeeds and the relay binary appears in the bucket.
+	Then, modify this bucket so it has public read access.
+
+		Grant to "allUsers" "Cloud Storage Viewer".
+
+	Ignore the warnings, the files need to be publicly accessible.
+
+	Run the "Upload Relay" job in semaphore and verify that it succeeds and relay binaries appears in this bucket.
 
 	-----------
+	
