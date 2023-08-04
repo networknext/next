@@ -13,8 +13,8 @@ services:
       context: .
       dockerfile: docker/postgres.Dockerfile
     environment:
-      POSTGRES_USER: developer
-      POSTGRES_PASSWORD: developer
+      POSTGRES_USER: Postgres
+      POSTGRES_PASSWORD: Postgres
       PGDATA: /data/postgres
     volumes:
        - postgres:/data/postgres
@@ -51,6 +51,7 @@ services:
       - MAGIC_INTERVAL=10s
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+      - PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     networks:
       - default
       - relays
@@ -90,6 +91,7 @@ services:
       - SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
       - RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
       - SERVER_BACKEND_ADDRESS=10.5.0.100:40000
+      - PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     networks:
       default:
       relays:
@@ -146,7 +148,7 @@ services:
       - postgres
     environment:
       - REDIS_HOSTNAME=redis:6379
-      - PGSQL_CONFIG=host=postgres port=5432 user=developer password=developer dbname=developer sslmode=disable
+      - PGSQL_CONFIG=host=postgres port=5432 user=Postgres password=Postgres dbname=postgres sslmode=disable
       - API_PRIVATE_KEY=this is the private key that generates API keys. make sure you change this value in production
     restart: always
 

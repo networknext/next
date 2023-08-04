@@ -12,19 +12,17 @@ DONE
 
 	Restructure SDK into multiple source files so it's more easily maintainable
 
-TODO
-	
 	Get SDK func tests passing
 
-	-------
-
+TODO
+	
 	Fix docker build
 
 	-------
 
 	Setup terraform dev environment in network next account.
 
-	Document the process as I work.
+	Document the process as I work...
 
 	-------
 

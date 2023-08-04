@@ -12,42 +12,13 @@ You can run a Network Next test environment locally with docker compose on any O
 
 2. Download the latest release from https://github.com/networknext/accelerate/releases
 
-3. Bring the system up
+3. Build the system
+
+   `docker compose build`
+
+4. Bring the system up
 
    `docker compose up`
-
-You will initially see a lot of output like:
-
-```console
-accelerate-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
-accelerate-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Redis version=6.2.11, bits=64, commit=00000000, modified=0, pid=1, just started
-accelerate-redis-1            | 1:C 23 Mar 2023 14:58:22.283 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
-accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * monotonic clock: POSIX clock_gettime
-accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.284 * Running mode=standalone, port=6379.
-accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.284 # Server initialized
-accelerate-redis-1            | 1:M 23 Mar 2023 14:58:22.286 * Ready to accept connections
-accelerate-magic_backend-1    | magic_backend
-accelerate-magic_backend-1    | env: docker
-accelerate-magic_backend-1    | starting http server on port 80
-accelerate-postgres-1         |
-accelerate-postgres-1         | PostgreSQL Database directory appears to contain a database; Skipping initialization
-accelerate-postgres-1         |
-accelerate-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  starting PostgreSQL 14.7 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 12.2.1_git20220924-r4) 12.2.1 20220924, 64-bit
-accelerate-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
-accelerate-postgres-1         | 2023-03-23 14:58:22.487 UTC [1] LOG:  listening on IPv6 address "::", port 5432
-accelerate-postgres-1         | 2023-03-23 14:58:22.488 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
-accelerate-postgres-1         | 2023-03-23 14:58:22.491 UTC [22] LOG:  database system was shut down at 2023-03-23 14:55:04 UTC
-accelerate-postgres-1         | 2023-03-23 14:58:22.494 UTC [1] LOG:  database system is ready to accept connections
-accelerate-map_cruncher-1     | map_cruncher
-accelerate-map_cruncher-1     | env: docker
-accelerate-map_cruncher-1     | started leader election
-accelerate-map_cruncher-1     | starting http server on port 80
-accelerate-portal_cruncher-1  | portal_cruncher
-```
-
-Do not be concerned if you see errors relating to the "api" service or "postgres" on the first run. *It is normal the first time it runs for postgres to initialize and then restart. This causes the "api" service to need to restart a few times before it can properly connect to postgres.*
-
-On subsequent runs, "postgres" and "api" will start clean.
 
 After about one minute, you should see output like:
 
