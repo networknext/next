@@ -49,6 +49,10 @@
 
 // ---------------------------------------------------
 
+static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
+static int get_connection_type();
+
 static double time_start;
 
 int next_platform_init()
@@ -56,6 +60,7 @@ int next_platform_init()
     timespec ts;
     clock_gettime( CLOCK_MONOTONIC_RAW, &ts );
     time_start = ts.tv_sec + ( (double) ( ts.tv_nsec ) ) / 1000000000.0;
+    connection_type = get_connection_type();
     return NEXT_OK;
 }
 
@@ -70,6 +75,16 @@ const char * next_platform_getenv( const char * var )
 }
 
 // ---------------------------------------------------
+
+int next_platform_id()
+{
+    return NEXT_PLATFORM_LINUX;
+}
+
+int next_platform_connection_type()
+{
+    return conenction_type;
+}
 
 uint16_t next_platform_ntohs( uint16_t in )
 {
@@ -142,11 +157,6 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     }
 
     return NEXT_ERROR;
-}
-
-int next_platform_id()
-{
-    return NEXT_PLATFORM_LINUX;
 }
 
 // ---------------------------------------------------
@@ -605,6 +615,327 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
         memset( mutex, 0, sizeof(next_platform_mutex_t) );
     }
 }
+
+// ---------------------------------------------------
+
+struct next_iftable_t
+{
+    uint32_t if_index;
+    int connection_type;
+};
+
+struct next_ifforward4_t
+{
+    uint32_t if_index;
+    uint32_t forward_dest;
+    uint32_t forward_mask;
+    uint32_t forward_metric;
+};
+
+static int parse_kernel_route( struct nlmsghdr * msg_ptr, next_ifforward4_t * out )
+{
+    struct rtmsg * route_entry = (struct rtmsg *)( NLMSG_DATA( msg_ptr ) );
+
+    if ( route_entry->rtm_table != RT_TABLE_MAIN )
+        return NEXT_ERROR;
+
+    out->forward_mask = ( 1 << route_entry->rtm_dst_len ) - 1;
+
+    // read all attributes
+    int route_attribute_len = RTM_PAYLOAD( msg_ptr );
+    for ( struct rtattr * route_attribute = (struct rtattr *)( RTM_RTA( route_entry ) );
+        RTA_OK( route_attribute, route_attribute_len );
+        route_attribute = RTA_NEXT( route_attribute, route_attribute_len ) )
+    {
+        switch ( route_attribute->rta_type )
+        {
+            case RTA_DST:
+            {
+                memcpy( &out->forward_dest, RTA_DATA( route_attribute ), sizeof( out->forward_dest ) );
+                break;
+            }
+            case RTA_OIF:
+            {
+                memcpy( &out->if_index, RTA_DATA( route_attribute ), sizeof( out->if_index ) );
+                break;
+            }
+            case RTA_METRICS:
+            {
+                memcpy( &out->forward_metric, RTA_DATA( route_attribute ), sizeof( out->forward_metric ) );
+                break;
+            }
+        }
+    }
+
+    return NEXT_OK;
+}
+
+#define CHECK_BIT( _num, _bit ) ( ( _num ) & ( uint32_t(1) << ( _bit ) ) )
+
+static bool better_match( next_ifforward4_t * a, next_ifforward4_t * b, uint32_t ip )
+{
+    int matching_bits_a = 0;
+    int matching_bits_b = 0;
+
+    if ( a )
+    {
+        for ( int i = 0; i < 32; i++ )
+        {
+            if ( CHECK_BIT( a->forward_mask, i )
+                && CHECK_BIT( a->forward_dest, i ) == CHECK_BIT( ip, i ) )
+            {
+                matching_bits_a++;
+            }
+        }
+    }
+
+    if ( b )
+    {
+        for ( int i = 0; i < 32; i++ )
+        {
+            if ( CHECK_BIT( b->forward_mask, i )
+                && CHECK_BIT( b->forward_dest, i ) == CHECK_BIT( ip, i ) )
+            {
+                matching_bits_b++;
+            }
+        }
+    }
+    
+    return matching_bits_a > matching_bits_b;
+}
+
+static int classify_connection_type( next_vector_t<next_ifforward4_t> * route_table, next_vector_t<next_iftable_t> * interface_list, const next_address_t * addr )
+{
+    uint32_t ip = ( ( (uint32_t) addr->data.ipv4[0] ) )        | 
+                  ( ( (uint32_t) addr->data.ipv4[1] ) << 8 )   | 
+                  ( ( (uint32_t) addr->data.ipv4[2] ) << 16 )  | 
+                  ( ( (uint32_t) addr->data.ipv4[3] ) << 24 );
+    next_ifforward4_t * best_match = NULL;
+    for ( int i = 0; i < route_table->length; i++ )
+    {
+        next_ifforward4_t * route = &( ( *route_table )[i] );
+        if ( better_match( route, best_match, ip ) )
+        {
+            best_match = route;
+        }
+    }
+
+    next_iftable_t * outgoing_interface = NULL;
+
+    if ( best_match )
+    {
+        for ( int i = 0; i < interface_list->length; i++ )
+        {
+            next_iftable_t * iface = &( (* interface_list )[i] );
+            if ( iface->if_index == best_match->if_index )
+            {
+                outgoing_interface = iface;
+                break;
+            }
+        }
+    }
+
+    if ( outgoing_interface )
+    {
+        return outgoing_interface->connection_type;
+    }
+    else
+    {
+        return NEXT_CONNECTION_TYPE_UNKNOWN;
+    }
+}
+
+static int get_connection_type()
+{
+    next_vector_t<next_iftable_t> interface_list;
+    next_vector_t<next_ifforward4_t> route_table;
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "getting network info" );
+
+    // get interfaces
+    {
+        struct ifaddrs * ifaddr;
+
+        if ( getifaddrs( &ifaddr ) == -1 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "failed to get network interface addresses" );
+            return NEXT_CONNECTION_TYPE_UNKNOWN;
+        }
+
+        int sock = -1;
+
+        if ( ( sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == -1 )
+        {
+            freeifaddrs( ifaddr );
+            next_printf( NEXT_LOG_LEVEL_WARN, "failed to get network interface addresses" );
+            return NEXT_CONNECTION_TYPE_UNKNOWN;
+        }
+
+        for ( struct ifaddrs * i = ifaddr; i != NULL; i = i->ifa_next )
+        {
+            struct ifreq req;
+            memset( &req, 0, sizeof( req ) );
+            strncpy( req.ifr_name, i->ifa_name, IFNAMSIZ - 1 );
+
+            if ( ioctl( sock, SIOCGIFINDEX, &req ) == -1 )
+            {
+                continue;
+            }
+
+            uint32_t if_index = req.ifr_ifindex;
+
+            // check for duplicates
+            bool duplicate = false;
+            for ( int j = 0; j < interface_list.length; j++ )
+            {
+                if ( interface_list[j].if_index == if_index )
+                {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if ( duplicate )
+            {
+                continue;
+            }
+
+            next_iftable_t * interface_entry = interface_list.add();
+            interface_entry->if_index = if_index;
+
+            struct iwreq pwrq;
+            memset( &pwrq, 0, sizeof( pwrq ) );
+            strncpy( pwrq.ifr_name, i->ifa_name, IFNAMSIZ - 1 );
+
+            if ( ioctl( sock, SIOCGIWNAME, &pwrq ) == -1 )
+            {
+                interface_entry->connection_type = NEXT_CONNECTION_TYPE_WIRED;
+            }
+            else
+            {
+                interface_entry->connection_type = NEXT_CONNECTION_TYPE_WIFI;
+            }
+        }
+
+        close( sock );
+
+        freeifaddrs( ifaddr );
+    }
+
+    // get kernel route table
+    {
+        // open netlink socket
+        
+        pid_t pid = getpid();
+
+        int sock = socket( AF_NETLINK, SOCK_RAW, NETLINK_ROUTE );
+        if ( sock == -1 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "failed to open netlink socket" );
+            return NEXT_CONNECTION_TYPE_UNKNOWN;
+        }
+
+        struct sockaddr_nl local;
+        memset( &local, 0, sizeof( local ) );
+        local.nl_family = AF_NETLINK;
+        local.nl_pid = pid;
+        local.nl_groups = 0;
+
+        if ( bind( sock, (struct sockaddr *)( &local ), sizeof( local ) ) < 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "failed to bind netlink socket" );
+            return NEXT_CONNECTION_TYPE_UNKNOWN;
+        }
+
+        // prepare route table request
+        typedef struct nl_req_s nl_req_t;  
+        struct nl_req_s
+        {
+            struct nlmsghdr hdr;
+            struct rtgenmsg gen;
+        };
+
+        nl_req_t req;
+        memset( &req, 0, sizeof( req ) );
+        req.hdr.nlmsg_len = NLMSG_LENGTH( sizeof( struct rtgenmsg ) );
+        req.hdr.nlmsg_type = RTM_GETROUTE;
+        req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP; 
+        req.hdr.nlmsg_seq = 1;
+        req.hdr.nlmsg_pid = pid;
+        req.gen.rtgen_family = AF_INET; 
+
+        struct iovec io;
+        io.iov_base = &req;
+        io.iov_len = req.hdr.nlmsg_len;
+
+        struct sockaddr_nl kernel;
+        memset( &kernel, 0, sizeof( kernel ) );
+        kernel.nl_family = AF_NETLINK;
+        kernel.nl_groups = 0;
+
+        struct msghdr rtnl_msg;
+        memset( &rtnl_msg, 0, sizeof( rtnl_msg ) );
+        rtnl_msg.msg_iov = &io;
+        rtnl_msg.msg_iovlen = 1;
+        rtnl_msg.msg_name = &kernel;
+        rtnl_msg.msg_namelen = sizeof( kernel );
+
+        // send request
+        sendmsg( sock, (struct msghdr *)( &rtnl_msg ), 0 );
+
+        // read reply
+
+        bool done = false;
+        while ( !done )
+        {
+            struct msghdr rtnl_reply;
+            struct iovec io_reply;
+
+            memset( &io_reply, 0, sizeof( io_reply ) );
+            memset( &rtnl_reply, 0, sizeof( rtnl_reply ) );
+
+            const size_t IFLIST_REPLY_BUFFER = 8192;
+            char reply[IFLIST_REPLY_BUFFER];
+            io_reply.iov_base = reply;
+            io_reply.iov_len = IFLIST_REPLY_BUFFER;
+            rtnl_reply.msg_iov = &io_reply;
+            rtnl_reply.msg_iovlen = 1;
+            rtnl_reply.msg_name = &kernel;
+            rtnl_reply.msg_namelen = sizeof( kernel );
+
+            int len = recvmsg( sock, &rtnl_reply, 0 );
+            if ( len )
+            {
+                for ( struct nlmsghdr * msg_ptr = (struct nlmsghdr *)( reply ); NLMSG_OK( msg_ptr, len ); msg_ptr = NLMSG_NEXT( msg_ptr, len ) )
+                {
+                    if ( msg_ptr->nlmsg_type == 24 )
+                    {
+                        next_ifforward4_t route;
+                        if ( parse_kernel_route( msg_ptr, &route ) == NEXT_OK )
+                        {
+                            route_table.add( route );
+                        }
+                    }
+                    else if ( msg_ptr->nlmsg_type == 3 )
+                    {
+                        done = true;
+                    }
+                }
+            }
+        }
+
+        close( sock );
+    }
+
+    next_address_t address;
+    address.port = 80;
+    address.data.ipv4[0] = 8;
+    address.data.ipv4[1] = 8;
+    address.data.ipv4[2] = 8;
+    address.data.ipv4[3] = 8;
+
+    return classify_connection_type( &route_table, &interface_list, &address );
+}
+
 // ---------------------------------------------------
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX

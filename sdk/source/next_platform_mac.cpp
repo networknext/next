@@ -49,6 +49,8 @@ extern void next_free( void * context, void * p );
 
 // ---------------------------------------------------
 
+static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
 static mach_timebase_info_data_t timebase_info;
 
 static uint64_t time_start;
@@ -56,7 +58,45 @@ static uint64_t time_start;
 int next_platform_init()
 {
     mach_timebase_info( &timebase_info );
+
     time_start = mach_absolute_time();
+
+    connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
+    SCDynamicStoreRef dynamic_store = SCDynamicStoreCreate( kCFAllocatorDefault, CFSTR( "FindCurrentInterfaceIpMac" ), NULL, NULL );
+    CFPropertyListRef global = SCDynamicStoreCopyValue( dynamic_store, CFSTR( "State:/Network/Global/IPv4" ) );
+    if ( global )
+    {
+        CFStringRef primary_interface_name = (CFStringRef)( CFDictionaryGetValue( (CFDictionaryRef)( global ), CFSTR( "PrimaryInterface" ) ) );
+        CFArrayRef interfaces = SCNetworkInterfaceCopyAll();
+        CFIndex count = CFArrayGetCount( interfaces );
+        for ( CFIndex i = 0; i < count; i++ )
+        {   
+            SCNetworkInterfaceRef interface = (SCNetworkInterfaceRef)( CFArrayGetValueAtIndex( interfaces, i ) );
+            CFStringRef bsd_name = SCNetworkInterfaceGetBSDName( interface );
+            if ( CFStringCompare( primary_interface_name, bsd_name, 0 ) == kCFCompareEqualTo )
+            {   
+                CFStringRef interface_type = SCNetworkInterfaceGetInterfaceType( interface );
+                if ( CFStringCompare( interface_type, kSCNetworkInterfaceTypeEthernet, 0 ) == kCFCompareEqualTo )
+                {
+                    connection_type = NEXT_CONNECTION_TYPE_WIRED;
+                }
+                else if ( CFStringCompare( interface_type, kSCNetworkInterfaceTypeIEEE80211, 0 ) == kCFCompareEqualTo )
+                {
+                    connection_type = NEXT_CONNECTION_TYPE_WIFI;
+                }
+                else if ( CFStringCompare( interface_type, kSCNetworkInterfaceTypeWWAN, 0 ) == kCFCompareEqualTo )
+                {
+                    connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
+                }
+                break;
+            }
+        }
+        CFRelease( interfaces );
+        CFRelease( global );
+    }
+    CFRelease( dynamic_store );
+
     return NEXT_OK;
 }
 
@@ -152,6 +192,11 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
 int next_platform_id()
 {
     return NEXT_PLATFORM_MAC;
+}
+
+int next_platform_connection_type()
+{
+    return connection_type;
 }
 
 double next_platform_time()

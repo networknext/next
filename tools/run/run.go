@@ -202,13 +202,15 @@ func main() {
 		vultr_config()
 	} else if command == "soak-test-relay" {
 		soak_test_relay()
+	} else {
+		fmt.Printf("\nunknown command\n\n")
 	}
 
 	cleanup()
 }
 
 func help() {
-	fmt.Printf("\ntodo: help\n\n")
+	fmt.Printf("\nsyntax:\n\n    run <action> [args]\n\n")
 }
 
 func test() {

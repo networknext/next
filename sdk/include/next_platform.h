@@ -50,6 +50,8 @@ void next_platform_term();
 
 int next_platform_id();
 
+int next_platform_connection_type();
+
 double next_platform_time();
 
 void next_platform_sleep( double time );
