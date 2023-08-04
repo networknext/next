@@ -21,7 +21,7 @@ blocks:
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_${SEMAPHORE_GIT_BRANCH}_artifacts/
+            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_${SEMAPHORE_GIT_BRANCH}_artifacts/
 
       jobs:
         - name: "Bootstrap"
