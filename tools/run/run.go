@@ -16,7 +16,6 @@ func cleanup() {
 	if cmd != nil {
 		cmd.Process.Kill()
 	}
-	fmt.Print("\n")
 }
 
 func bash(command string) {
@@ -209,11 +208,13 @@ func main() {
 }
 
 func help() {
-	fmt.Printf("todo: help\n")
+	fmt.Printf("\ntodo: help\n\n")
 }
 
 func test() {
+	fmt.Printf("\n")
 	bash("go test ./modules/...")
+	fmt.Printf("\n")
 }
 
 func test_sdk() {

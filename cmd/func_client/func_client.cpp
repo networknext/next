@@ -21,6 +21,9 @@
 */
 
 #include "next.h"
+#include "next_crypto.h"
+#include "next_platform.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -30,8 +33,6 @@
 static volatile int quit = 0;
 
 static uint8_t client_id[32];
-
-extern void next_random_bytes( uint8_t * buffer, int bytes );
 
 void interrupt_handler( int signal )
 {
@@ -184,7 +185,7 @@ int main()
 
     next_client_open_session( client, "127.0.0.1:32202" );
 
-    next_random_bytes( client_id, 32 );
+    next_crypto_random_bytes( client_id, 32 );
 
     const char * client_packet_loss_env = getenv( "CLIENT_PACKET_LOSS" );
     if ( client_packet_loss_env )
@@ -229,7 +230,7 @@ int main()
         {
             next_client_open_session( client, connect_address );
             second_connect_completed = true;
-            next_random_bytes( client_id, 32 );
+            next_crypto_random_bytes( client_id, 32 );
         }
 
         next_client_update( client );
@@ -256,14 +257,14 @@ int main()
             reported = true;
         }
 
-        next_sleep( delta_time );
+        next_platform_sleep( delta_time );
 
         time += delta_time;
     }
 
     next_client_close_session( client );
 
-    next_sleep( 1.0f );
+    next_platform_sleep( 1.0f );
 
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
     next_client_counters( client, counters );

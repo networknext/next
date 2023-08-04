@@ -21,6 +21,9 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+#include "next_address.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -203,13 +206,13 @@ int main()
 
     bool restarted = false;
 
-    double base_time = next_time();
+    double base_time = next_platform_time();
 
     while ( !quit )
     {
         next_server_update( server );
 
-        if ( restart_time > 0.0 && ( next_time() - base_time ) > restart_time && !restarted )
+        if ( restart_time > 0.0 && ( next_platform_time() - base_time ) > restart_time && !restarted )
         {
             printf( "restarting server\n" );
             next_server_destroy( server );
@@ -220,7 +223,7 @@ int main()
             restarted = true;
         }
 
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
     }
     
     if ( flush )

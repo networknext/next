@@ -21,6 +21,9 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+#include "next_address.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -97,7 +100,7 @@ void server_update_thread( void * data )
         if ( file )
             pclose( file );
 
-        next_sleep( 10.0 );
+        next_platform_sleep( 10.0 );
     }
 }
 
@@ -191,7 +194,7 @@ int main()
             break;
         }
 
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
     }
 
     next_server_flush( server );

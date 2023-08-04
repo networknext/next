@@ -21,6 +21,9 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+#include "next_address.h"
+
 #include <time.h>
 #include <stdio.h>
 #include <signal.h>
@@ -137,7 +140,7 @@ void client_thread_function( void * data )
         if ( num_servers == 0 )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "no servers found" );
-            next_sleep( 10.0 );
+            next_platform_sleep( 10.0 );
             continue;
         }
 
@@ -161,7 +164,7 @@ void client_thread_function( void * data )
         uint8_t packet_data[8];
         memcpy( packet_data, &user_id, 8 );
 
-        double connect_time = next_time();
+        double connect_time = next_platform_time();
 
         double game_length = 240 + rand() % 120;
 
@@ -171,13 +174,13 @@ void client_thread_function( void * data )
 
             next_client_update( client );
 
-            if ( next_time() > connect_time + game_length )
+            if ( next_platform_time() > connect_time + game_length )
             {
                 printf( "game has finished. reconnecting...\n");
                 break;
             }
 
-            next_sleep( 1.0f );
+            next_platform_sleep( 1.0f );
         }
 
         next_client_destroy( client );
@@ -234,7 +237,7 @@ int main()
 
     while ( !quit )
     {
-        next_sleep( 1.0 );
+        next_platform_sleep( 1.0 );
     }
 
     next_term();

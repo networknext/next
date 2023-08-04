@@ -21,6 +21,8 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
+
 #include <stdio.h>
 #include <signal.h>
 #include <stdint.h>
@@ -65,7 +67,7 @@ int main()
 {
     if ( getenv( "NEXT_DELAY" ) )
     {
-        next_sleep( 10.0 );
+        next_platform_sleep( 10.0 );
     }
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
@@ -102,7 +104,7 @@ int main()
             next_client_send_packet( client, packet_data, packet_bytes );
         }
 
-        next_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 / 60.0 );
 
         fflush( stdout );
     }
