@@ -618,6 +618,138 @@ void next_platform_mutex_destroy( next_platform_mutex_t * mutex )
 
 // ---------------------------------------------------
 
+template <typename T> struct next_vector_t
+{
+    T * data;
+    int length;
+    int reserved;
+
+    inline next_vector_t( int reserve_count = 0 )
+    {
+        next_assert( reserve_count >= 0 );
+        data = 0;
+        length = 0;
+        reserved = 0;
+        if ( reserve_count > 0 )
+        {
+            reserve( reserve_count );
+        }
+    }
+
+    inline ~next_vector_t()
+    {
+        clear();
+    }
+
+    inline void clear() 
+    {
+        if ( data )
+        {
+            next_free( next_global_context, data );
+        }
+        data = NULL;
+        length = 0;
+        reserved = 0;
+    }
+
+    inline const T & operator [] ( int i ) const
+    {
+        next_assert( data );
+        next_assert( i >= 0 && i < length );
+        return *( data + i );
+    }
+
+    inline T & operator [] ( int i )
+    {
+        next_assert( data );
+        next_assert( i >= 0 && i < length );
+        return *( data + i );
+    }
+
+    void reserve( int size )
+    {
+        next_assert( size >= 0 );
+        if ( size > reserved )
+        {
+            const double VECTOR_GROWTH_FACTOR = 1.5;
+            const int VECTOR_INITIAL_RESERVATION = 1;
+            unsigned int next_size = (unsigned int)( pow( VECTOR_GROWTH_FACTOR, int( log( double( size ) ) / log( double( VECTOR_GROWTH_FACTOR ) ) ) + 1 ) );
+            if ( !reserved )
+            {
+                next_size = next_size > VECTOR_INITIAL_RESERVATION ? next_size : VECTOR_INITIAL_RESERVATION;
+                data = (T*)( next_malloc( next_global_context, next_size * sizeof(T) ) );
+                next_assert( data );
+            }
+            else
+            {
+                T * new_data = (T*)( next_malloc( next_global_context, next_size * sizeof(T) ) );
+                next_assert( data );
+                memcpy( new_data, data, reserved * sizeof(T) );
+                next_free( next_global_context, data );
+                data = new_data;
+            }
+            memset( (void*)( &data[reserved] ), 0, ( next_size - reserved ) * sizeof(T) );
+            reserved = next_size;
+        }
+    }
+
+    void resize( int i )
+    {
+        reserve( i );
+        length = i;
+    }
+
+    void remove( int i )
+    {
+        next_assert( data );
+        next_assert( i >= 0 && i < length );
+        if ( i != length - 1 )
+        {
+            data[i] = data[length - 1];
+        }
+        length--;
+    }
+
+    void remove_ordered( int i )
+    {
+        next_assert( data );
+        next_assert( i >= 0 && i < length );
+        memmove( &data[i], &data[i + 1], sizeof( T ) * ( length - ( i + 1 ) ) );
+        length--;
+    }
+
+    T * insert( int i )
+    {
+        next_assert( i >= 0 && i <= length );
+        resize( length + 1 );
+        memmove( &data[i + 1], &data[i], sizeof( T ) * ( length - 1 - i ) );
+        return &data[i];
+    }
+
+    T * insert( int i, const T & t )
+    {
+        T * p = insert( i );
+        *p = t;
+        return p;
+    }
+
+    T * add()
+    {
+        reserve( ++length );
+        return &data[length - 1];
+    }
+
+    T * add( const T & t )
+    {
+        T * p = add();
+        *p = t;
+        return p;
+    }
+};
+
+
+// ---------------------------------------------------
+
 struct next_iftable_t
 {
     uint32_t if_index;
