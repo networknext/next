@@ -1232,7 +1232,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
             {
                 next_platform_mutex_guard( &client->route_manager_mutex );
-                next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
+                next_route_manager_update( client->route_manager, packet.update_type, packet.num_tokens, packet.tokens, next_relay_backend_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
                 fallback_to_direct = next_route_manager_get_fallback_to_direct( client->route_manager );
             }
 

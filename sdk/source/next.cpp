@@ -491,20 +491,20 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
-    if ( router_public_key_env )
+    const char * relay_backend_public_key_env = next_platform_getenv( "NEXT_RELAY_BACKEND_PUBLIC_KEY" );
+    if ( relay_backend_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "router public key override: %s", router_public_key_env );
+        next_printf( NEXT_LOG_LEVEL_INFO, "relay backend public key override: %s", relay_backend_public_key_env );
 
-        if ( next_base64_decode_data( router_public_key_env, next_router_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
+        if ( next_base64_decode_data( relay_backend_public_key_env, next_relay_backend_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == NEXT_CRYPTO_BOX_PUBLICKEYBYTES )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "valid router public key" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid relay backend public key" );
         }
         else
         {
-            if ( router_public_key_env[0] != '\0' )
+            if ( relay_backend_public_key_env[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "router public key is invalid: \"%s\"", router_public_key_env );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "relay backend public key is invalid: \"%s\"", relay_backend_public_key_env );
             }
         }
     }

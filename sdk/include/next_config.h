@@ -23,6 +23,8 @@
 #ifndef NEXT_CONFIG_H
 #define NEXT_CONFIG_H
 
+#include "next.h"
+
 #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME                 "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
@@ -174,22 +176,8 @@
 #define NEXT_UDP_HEADER_BYTES                                           8
 #define NEXT_HEADER_BYTES                                              33
 
-// todo: this must be replaced with a new keypair in production
-static uint8_t next_server_backend_public_key[] =
-{
-     76,  97, 202, 140,  71, 135,  62, 212,
-    160, 181, 151, 195, 202, 224, 207, 113,
-      8,  45,  37,  60, 145,  14, 212, 111,
-     25,  34, 175, 186,  37, 150, 163,  64
-};
+extern uint8_t next_server_backend_public_key[];
 
-// todo: this must be replaced with a new keypair in production
-static uint8_t next_router_public_key[] =
-{
-    0x49, 0x2e, 0x79, 0x74, 0x49, 0x7d, 0x9d, 0x34,
-    0xa7, 0x55, 0x50, 0xeb, 0xab, 0x03, 0xde, 0xa9,
-    0x1b, 0xff, 0x61, 0xc6, 0x0e, 0x65, 0x92, 0xd7,
-    0x09, 0x64, 0xe9, 0x34, 0x12, 0x32, 0x5f, 0x46
-};
+extern uint8_t next_relay_backend_public_key[];
 
 #endif // #ifndef NEXT_CONFIG_H
