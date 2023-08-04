@@ -16,9 +16,9 @@ DONE
 
 	Fix docker build
 
-TODO
+	Create storage project and setup buckets and semaphore, tracking steps to do so in SETUP
 
-	Create storage project
+TODO
 
 	-------
 
@@ -26,7 +26,9 @@ TODO
 
 	Create credentials for terraform and store in ~/secrets/terraform-development.json
 
+	-------
 
+	Setup terraform to 
 
 	-------
 
