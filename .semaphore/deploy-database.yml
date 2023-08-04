@@ -22,7 +22,7 @@ blocks:
         - name: "database.bin"
           commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export ARTIFACT_BUCKET=gs://network_next_${SEMAPHORE_GIT_BRANCH}_artifacts/
+            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_${SEMAPHORE_GIT_BRANCH}_artifacts/
             - sem-service start postgres 14
             - sem-service status postgres
             - psql -U postgres -h localhost -c "CREATE USER developer;"

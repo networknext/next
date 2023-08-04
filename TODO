@@ -14,9 +14,19 @@ DONE
 
 	Get SDK func tests passing
 
-TODO
-	
 	Fix docker build
+
+TODO
+
+	Create storage project
+
+	-------
+
+	Create service account in google for terraform
+
+	Create credentials for terraform and store in ~/secrets/terraform-development.json
+
+
 
 	-------
 
