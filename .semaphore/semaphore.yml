@@ -193,11 +193,11 @@ promotions:
   - name: "Upload Config"
     pipeline_file: upload-config.yml
 
-  - name: "Deploy Relay"
-    pipeline_file: deploy-relay.yml
+  - name: "Upload Relay"
+    pipeline_file: upload-relay.yml
 
-  - name: "Deploy Database"
-    pipeline_file: deploy-database.yml
+  - name: "Upload Database"
+    pipeline_file: upload-database.yml
 
   - name: "Functional Test Backend"
     pipeline_file: functional-test-backend.yml

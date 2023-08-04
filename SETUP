@@ -75,5 +75,35 @@ SETUP
 	Once the build succeeds, it should automatically run "Upload Artifacts" from the build.
 
 	Verify that the artifacts upload correctly, and you can now see them in the google cloud bucket.
-	
+
+	-----------
+
+	Create a cloud storage bucket called "[companyname]_network_next_sdk_config"
+
+	Give the same permissions to the service account on this bucket, except uncheck "Enforce public access protection" on create.
+
+	Then, modify this bucket so it has public read access.
+
+		Grant to "allUsers" "Cloud Storage Viewer".
+
+	Ignore the warnings, the files need to be publicly accessible.
+
+	-----------
+
+	Run the "Upload Config" job under the last successful semaphore run.
+
+	Verify that it succeeds, and you can now see the config files in the bucket.
+
+	Verify that you can download the config files via the public URL
+
+	eg. open https://storage.googleapis.com/[companyname]_network_next_sdk_config/multiplay.txt in a browser and see that you can view the text file.
+
+	-----------
+
+	Create a cloud storage bucket called "[companyname]_network_next_relay_artifacts"
+
+	Give the same permissions to the service account on this bucket. Do NOT give it public access.
+
+	Run the "Upload Relay" job in semaphore and verify that it succeeds and the relay binary appears in the bucket.
+
 	-----------
