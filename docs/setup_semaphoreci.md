@@ -48,8 +48,6 @@ All build items should complete successfully and turn green in around one minute
 
 <img width="679" alt="Screenshot 2023-08-05 at 9 20 08 AM" src="https://github.com/networknext/next/assets/696656/7eddd25f-405f-4524-961b-838bec534d8a">
 
-These tests run automatically every time a commit is made to your forked next repository.
-
 6. Run extended tests
 
 There are also extended tests that are too long and expensive to run with every commit, but we recommend running these manually when you make any significant changes. 
@@ -67,7 +65,9 @@ Run the following tests manually by clicking on them and confirming "Start promo
 
 7. Verify that the extended tests all pass.
 
-...
+The tests should complete in around 5-10 minutes.
+
+<img width="679" alt="Screenshot 2023-08-05 at 9 20 08 AM" src="https://github.com/mas-bandwidth/next/assets/696656/6095dee2-b274-42fb-80f0-817406e6ed17">
 
 8. Update the golang cache
 
@@ -75,10 +75,6 @@ Semaphore builds run significantly faster with a cache of golang modules used. T
 
 This is worth doing anytime you include a new golang module to the project.
 
-Click on "Update Golang Cache" and confirm "Start promotion".
-
-(image)
-
-Verify that it succeeds.
+Click on "Update Golang Cache" and confirm "Start promotion". Verify that the build succeeds (it will take several minutes).
 
 _todo: you are now ready to go to the next step_
