@@ -4,7 +4,7 @@
 
 # Setup SemaphoreCI
 
-We use semaphore ci to build artifacts and run tests.
+We use semaphore ci to build artifacts and run tests. Semaphore jobs run in Linux VMs on AWS, making it easy for us to build and run many tests in parallel, so they complete quickly.
 
 1. Navigate to http://semaphoreci.com and create a new account and organization
 
@@ -48,15 +48,11 @@ All build items should complete successfully and turn green in around one minute
 
 <img width="679" alt="Screenshot 2023-08-05 at 9 20 08 AM" src="https://github.com/networknext/next/assets/696656/7eddd25f-405f-4524-961b-838bec534d8a">
 
-These tests run automatically every time a commit is made to your forked next repository.
-
 6. Run extended tests
 
 There are also extended tests that are too long and expensive to run with every commit, but we recommend running these manually when you make any significant changes. 
 
-These tests ensure that the entire system works together and meets specifications. If any of these tests fail, the system is not suitable for production release.
-
-Run the following tests manually:
+Run the following tests manually by clicking on them and confirming "Start promotion" for each item.
 
 * Functional Test API
 * Functional Test Backend
@@ -67,13 +63,18 @@ Run the following tests manually:
 * Happy Path
 * Soak Test Relay
 
-(image)
+7. Verify that the extended tests all pass.
 
-And verify that they succeed.
+The tests should complete in around 5-10 minutes.
 
-7. Update the golang cache
+<img width="679" alt="Screenshot 2023-08-05 at 9 20 08 AM" src="https://github.com/mas-bandwidth/next/assets/696656/6095dee2-b274-42fb-80f0-817406e6ed17">
 
-Builds will run significantly faster with a cache of golang modules used. To update this cache, run the optional step "Update Golang Cache".
+8. Update the golang cache
 
+Semaphore builds run significantly faster with a cache of golang modules used. To update this cache, run the optional step "Update Golang Cache". 
+
+This is worth doing anytime you include a new golang module to the project.
+
+Click on "Update Golang Cache" and confirm "Start promotion". Verify that the build succeeds (it will take several minutes).
 
 _todo: you are now ready to go to the next step_
