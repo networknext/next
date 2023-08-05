@@ -26,7 +26,7 @@ The next repository already contains semaphoreci configuration in `.semaphore/se
 
 <img width="865" alt="Screenshot 2023-08-05 at 9 13 43 AM" src="https://github.com/networknext/next/assets/696656/e97c95b0-9b37-4d47-bf7c-ce4d8700ca5f">
 
-Just accept the existing configuration.
+Select "I will use the existing configuration".
 
 4. Trigger a build and verify that it succeeds
 
