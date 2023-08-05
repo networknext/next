@@ -2,7 +2,7 @@
 
 <br>
 
-# Clone next repository
+# Fork next repository
 
 To get started you need to fork the 'next' repository to create your own version of the Network Next codebase.
 
