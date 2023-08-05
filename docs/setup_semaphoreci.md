@@ -16,15 +16,17 @@ You want to create a new account with the "startup" plan and it should be linked
 
 <img width="1046" alt="Screenshot 2023-08-05 at 9 08 00 AM" src="https://github.com/networknext/next/assets/696656/5de1210b-3dec-48d3-80bc-d9115c1b087b">
 
-This project should point to your forked 'next' repository.
+3. Link the project to your forked 'next' repository.
 
 <img width="1040" alt="Screenshot 2023-08-05 at 9 12 06 AM" src="https://github.com/networknext/next/assets/696656/1bae25f5-162e-41cd-9b9b-a46c465b5fa4">
 
-3. Configure the project
+4. Configure the project
 
-The next repository already contains semaphoreci configuration in .semaphore/semaphore.yml
+The next repository already contains semaphoreci configuration in `.semaphore/semaphore.yml`
 
-Setup the project so that it runs 
+<img width="865" alt="Screenshot 2023-08-05 at 9 13 43 AM" src="https://github.com/networknext/next/assets/696656/e97c95b0-9b37-4d47-bf7c-ce4d8700ca5f">
+
+Just accept the existing configuration.
 
 4. Trigger a build and verify that it succeeds
 
