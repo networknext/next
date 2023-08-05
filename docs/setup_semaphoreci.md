@@ -36,7 +36,9 @@ Semaphore will automatically trigger a build:
 
 <img width="941" alt="Screenshot 2023-08-05 at 9 18 43 AM" src="https://github.com/networknext/next/assets/696656/1df2b187-cfe3-42f3-a91a-c3b06032af02">
 
-Click on this build and you should see the build in progress:
+5. Drill down into the build in progress
+   
+Click on the build and you should see the build in progress:
 
 <img width="899" alt="Screenshot 2023-08-05 at 9 18 54 AM" src="https://github.com/networknext/next/assets/696656/8a71dafb-3d34-4196-b3e9-97fb8fc7797f">
 
