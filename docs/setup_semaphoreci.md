@@ -4,7 +4,7 @@
 
 # Setup SemaphoreCI
 
-We use semaphore ci to build artifacts and run tests.
+We use semaphore ci to build artifacts and run tests. Semaphore jobs run in Linux VMs on AWS, making it easy for us to build and run many tests in parallel, so they complete quickly.
 
 1. Navigate to http://semaphoreci.com and create a new account and organization
 
@@ -54,9 +54,7 @@ These tests run automatically every time a commit is made to your forked next re
 
 There are also extended tests that are too long and expensive to run with every commit, but we recommend running these manually when you make any significant changes. 
 
-These tests ensure that the entire system works together and meets specifications. If any of these tests fail, the system is not suitable for production release.
-
-Run the following tests manually:
+Run the following tests manually by clicking on them and confirming "Start promotion" for each item.
 
 * Functional Test API
 * Functional Test Backend
@@ -67,13 +65,20 @@ Run the following tests manually:
 * Happy Path
 * Soak Test Relay
 
+7. Verify that the extended tests all pass.
+
+...
+
+8. Update the golang cache
+
+Semaphore builds run significantly faster with a cache of golang modules used. To update this cache, run the optional step "Update Golang Cache". 
+
+This is worth doing anytime you include a new golang module to the project.
+
+Click on "Update Golang Cache" and confirm "Start promotion".
+
 (image)
 
-And verify that they succeed.
-
-7. Update the golang cache
-
-Builds will run significantly faster with a cache of golang modules used. To update this cache, run the optional step "Update Golang Cache".
-
+Verify that it succeeds.
 
 _todo: you are now ready to go to the next step_
