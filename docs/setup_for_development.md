@@ -208,6 +208,8 @@ verifying map cruncher received map update messages ... OK
 
 ```
 
+_You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
+
 # Setup on MacOS
 
 1. Install brew from https://brew.sh
@@ -398,4 +400,5 @@ verifying map cruncher received map update messages ... OK
 
 ```
 
-_todo: link to next step_
+_You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
+
