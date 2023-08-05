@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/networknext/accelerate/modules/core"
-	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/envvar"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"

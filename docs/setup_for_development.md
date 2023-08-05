@@ -50,9 +50,9 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
 7. Clone repo and cd into it
 
-	`git clone git@github.com:networknext/accelerate.git`
+	`git clone git@github.com:networknext/next.git`
 
-	`cd accelerate`
+	`cd next`
 
 8. Select local environment
 
@@ -69,7 +69,7 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 	You should see output like:
 
 ```console
-root@linux:~/accelerate# make build
+root@linux:~/next# make build
 dist/func_test_sdk
 dist/relay
 dist/func_backend
@@ -92,18 +92,18 @@ dist/server_backend
 dist/relay_gateway
 dist/relay_backend
 ./run test
-?   	github.com/networknext/accelerate/modules/admin	[no test files]
-?   	github.com/networknext/accelerate/modules/constants	[no test files]
-?   	github.com/networknext/accelerate/modules/database	[no test files]
-?   	github.com/networknext/accelerate/modules/envvar	[no test files]
-ok  	github.com/networknext/accelerate/modules/common	0.210s
-ok  	github.com/networknext/accelerate/modules/core		0.382s
-ok  	github.com/networknext/accelerate/modules/crypto	0.379s
-ok  	github.com/networknext/accelerate/modules/encoding	0.255s
-ok  	github.com/networknext/accelerate/modules/handlers	0.306s
-ok  	github.com/networknext/accelerate/modules/messages	0.223s
-ok  	github.com/networknext/accelerate/modules/packets	0.885s
-ok  	github.com/networknext/accelerate/modules/portal	0.281s
+?   	github.com/networknext/next/modules/admin	[no test files]
+?   	github.com/networknext/next/modules/constants	[no test files]
+?   	github.com/networknext/next/modules/database	[no test files]
+?   	github.com/networknext/next/modules/envvar	[no test files]
+ok  	github.com/networknext/next/modules/common	0.210s
+ok  	github.com/networknext/next/modules/core		0.382s
+ok  	github.com/networknext/next/modules/crypto	0.379s
+ok  	github.com/networknext/next/modules/encoding	0.255s
+ok  	github.com/networknext/next/modules/handlers	0.306s
+ok  	github.com/networknext/next/modules/messages	0.223s
+ok  	github.com/networknext/next/modules/packets	0.885s
+ok  	github.com/networknext/next/modules/portal	0.281s
 ```
 
 11. Run happy path
@@ -113,7 +113,7 @@ ok  	github.com/networknext/accelerate/modules/portal	0.281s
     You should see something like:
 
 ```console
-root@linux:~/accelerate# run happy-path
+root@linux:~/next# run happy-path
 
 don't worry. be happy.
 
@@ -246,9 +246,9 @@ _You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
 
 8. Clone repo and cd into it
 
-   `git clone git@github.com:networknext/accelerate.git`
+   `git clone git@github.com:networknext/next.git`
 
-   `cd accelerate`
+   `cd next`
 
 9. Select local environment
 
@@ -261,7 +261,7 @@ _You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
    You should see output like:
 
 ```console
-gaffer@macbook accelerate % make build
+gaffer@macbook next % make build
 dist/func_test_sdk
 dist/relay
 dist/func_backend
@@ -284,18 +284,18 @@ dist/server_backend
 dist/relay_gateway
 dist/relay_backend
 ./run test
-?     github.com/networknext/accelerate/modules/admin [no test files]
-?     github.com/networknext/accelerate/modules/constants   [no test files]
-?     github.com/networknext/accelerate/modules/database [no test files]
-?     github.com/networknext/accelerate/modules/envvar   [no test files]
-ok    github.com/networknext/accelerate/modules/common   0.210s
-ok    github.com/networknext/accelerate/modules/core  0.382s
-ok    github.com/networknext/accelerate/modules/crypto   0.379s
-ok    github.com/networknext/accelerate/modules/encoding 0.255s
-ok    github.com/networknext/accelerate/modules/handlers 0.306s
-ok    github.com/networknext/accelerate/modules/messages 0.223s
-ok    github.com/networknext/accelerate/modules/packets  0.885s
-ok    github.com/networknext/accelerate/modules/portal   0.281s
+?     github.com/networknext/next/modules/admin [no test files]
+?     github.com/networknext/next/modules/constants   [no test files]
+?     github.com/networknext/next/modules/database [no test files]
+?     github.com/networknext/next/modules/envvar   [no test files]
+ok    github.com/networknext/next/modules/common   0.210s
+ok    github.com/networknext/next/modules/core  0.382s
+ok    github.com/networknext/next/modules/crypto   0.379s
+ok    github.com/networknext/next/modules/encoding 0.255s
+ok    github.com/networknext/next/modules/handlers 0.306s
+ok    github.com/networknext/next/modules/messages 0.223s
+ok    github.com/networknext/next/modules/packets  0.885s
+ok    github.com/networknext/next/modules/portal   0.281s
 ```
 
 11. Run happy path
@@ -305,7 +305,7 @@ ok    github.com/networknext/accelerate/modules/portal   0.281s
    You should see output like:
 
 ```console
-gaffer@macbook accelerate % run happy-path
+gaffer@macbook next % run happy-path
 
 don't worry. be happy.
 

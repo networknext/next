@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/constants"
-	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/core"
 )
 
 func RunOptimizeThread(ctx context.Context) {

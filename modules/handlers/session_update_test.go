@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/constants"
-	"github.com/networknext/accelerate/modules/core"
-	"github.com/networknext/accelerate/modules/crypto"
-	db "github.com/networknext/accelerate/modules/database"
-	"github.com/networknext/accelerate/modules/encoding"
-	"github.com/networknext/accelerate/modules/handlers"
-	"github.com/networknext/accelerate/modules/packets"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
+	db "github.com/networknext/next/modules/database"
+	"github.com/networknext/next/modules/encoding"
+	"github.com/networknext/next/modules/handlers"
+	"github.com/networknext/next/modules/packets"
 
 	"github.com/stretchr/testify/assert"
 )

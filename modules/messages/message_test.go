@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/constants"
-	"github.com/networknext/accelerate/modules/messages"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/messages"
 
 	"github.com/stretchr/testify/assert"
 )

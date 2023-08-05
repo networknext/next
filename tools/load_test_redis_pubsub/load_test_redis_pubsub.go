@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/core"
-	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/envvar"
 )
 
 func RunProducerThreads(ctx context.Context, hostname string, threadCount int, numMessagesSent *uint64) {

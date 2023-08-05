@@ -17,7 +17,7 @@ import (
 	"runtime"
 	"time"
 
-	db "github.com/networknext/accelerate/modules/database"
+	db "github.com/networknext/next/modules/database"
 )
 
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"

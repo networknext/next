@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/core"
-	"github.com/networknext/accelerate/modules/envvar"
-	"github.com/networknext/accelerate/modules/messages"
-	"github.com/networknext/accelerate/modules/portal"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/messages"
+	"github.com/networknext/next/modules/portal"
 )
 
 var redisHostname string

@@ -3,7 +3,7 @@ package portal_test
 import (
 	"testing"
 
-	"github.com/networknext/accelerate/modules/portal"
+	"github.com/networknext/next/modules/portal"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/networknext/accelerate/modules/core"
-	"github.com/networknext/accelerate/modules/encoding"
+	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/encoding"
 )
 
 // IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers.

@@ -11,7 +11,7 @@ import (
 	"cloud.google.com/go/pubsub"
 	// "google.golang.org/api/option"
 
-	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/next/modules/envvar"
 )
 
 const (

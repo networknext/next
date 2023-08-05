@@ -3,8 +3,8 @@ package crypto_test
 import (
 	"testing"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/crypto"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/crypto"
 
 	"github.com/stretchr/testify/assert"
 )

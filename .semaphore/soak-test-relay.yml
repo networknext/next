@@ -27,7 +27,7 @@ blocks:
             - checkout
             - cp envs/local.env .env
 
-            - cd ~/accelerate
+            - cd ~/next
             - make clean
             - make dist/func_backend dist/soak_test_relay
 

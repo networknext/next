@@ -19,10 +19,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/networknext/accelerate/modules/constants"
-	"github.com/networknext/accelerate/modules/core"
-	db "github.com/networknext/accelerate/modules/database"
-	"github.com/networknext/accelerate/modules/envvar"
+	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/core"
+	db "github.com/networknext/next/modules/database"
+	"github.com/networknext/next/modules/envvar"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"

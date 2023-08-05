@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	db "github.com/networknext/accelerate/modules/database"
+	db "github.com/networknext/next/modules/database"
 )
 
 func main() {

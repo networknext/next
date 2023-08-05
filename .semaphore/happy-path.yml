@@ -23,7 +23,7 @@ blocks:
             - cache restore golang
             - checkout
             - sudo apt-get install -y libsodium-dev
-            - cd ~/accelerate
+            - cd ~/next
             - make rebuild
             - ./next select local
             - ./run happy-path-no-wait

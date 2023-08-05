@@ -3,7 +3,7 @@ package messages
 import (
 	"fmt"
 
-	"github.com/networknext/accelerate/modules/encoding"
+	"github.com/networknext/next/modules/encoding"
 )
 
 const (

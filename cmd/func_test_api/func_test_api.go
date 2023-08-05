@@ -17,7 +17,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/networknext/accelerate/modules/admin"
+	"github.com/networknext/next/modules/admin"
 )
 
 var hostname = "http://127.0.0.1:50000"

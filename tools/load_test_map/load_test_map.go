@@ -8,7 +8,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/networknext/accelerate/modules/portal"
+	"github.com/networknext/next/modules/portal"
 )
 
 func getSessionLatLong(sessionId uint64) (float32, float32) {

@@ -31,7 +31,7 @@ blocks:
             - cache restore golang
             - checkout
             - sudo apt-get install -y libsodium-dev
-            - cd ~/accelerate
+            - cd ~/next
             - ./next select ${SEMAPHORE_GIT_BRANCH}
             - ./run sql-create
             - ./run sql-${SEMAPHORE_GIT_BRANCH}

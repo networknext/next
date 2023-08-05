@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v9"
 	"github.com/google/uuid"
-	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/next/modules/core"
 )
 
 type RedisStreamsConfig struct {

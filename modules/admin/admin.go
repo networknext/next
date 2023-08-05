@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/next/modules/core"
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/nacl/box"

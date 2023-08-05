@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/networknext/accelerate/modules/common"
-	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/core"
 
 	"github.com/stretchr/testify/assert"
 )

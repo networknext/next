@@ -9,7 +9,7 @@ import (
 
 	"github.com/huandu/go-clone"
 
-	"github.com/networknext/accelerate/modules/constants"
+	"github.com/networknext/next/modules/constants"
 )
 
 func TriMatrixLength(size int) int {

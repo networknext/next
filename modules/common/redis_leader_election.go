@@ -11,7 +11,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
-	"github.com/networknext/accelerate/modules/core"
+	"github.com/networknext/next/modules/core"
 )
 
 const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change the redis data structures!

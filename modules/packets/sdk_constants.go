@@ -1,8 +1,8 @@
 package packets
 
 import (
-	"github.com/networknext/accelerate/modules/constants"
-	"github.com/networknext/accelerate/modules/crypto"
+	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/crypto"
 )
 
 // -------------------------------------------------
