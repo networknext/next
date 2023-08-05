@@ -1,0 +1,35 @@
+DONE
+
+	Split up next.cpp into multiple header and source files
+
+	Add next_internal_config.h and expose next_internal_config_t
+
+	Update client so it uses internal config and encrypted/signed packets
+
+	Update server so it uses internal config and encrypted/signed packets
+
+	Update tests in next_tests.cpp to use internal config and encrypted/signed packets via externs
+
+	Verify all tests pass
+
+	Work out what sort of extra functions need to be added to next_route_manager.h so the client can work with it
+
+	Run soak tests and fuzz tests
+
+TODO
+
+	Go back out to main accelerate and verify we pass func tests.
+
+	----------
+
+	Fix up platforms to bring back packet tagging.
+
+	----------
+
+	Fix up platform to bring back connection type detection.
+
+	----------
+
+	SDK work is done.
+
+	----------

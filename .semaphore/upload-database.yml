@@ -9,6 +9,7 @@ agent:
 
 global_job_config:
   secrets:
+    - name: company-name
     - name: google-cloud-platform
 
 blocks:

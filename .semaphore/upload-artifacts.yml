@@ -1,6 +1,6 @@
 version: v1.0
 
-name: "Backend Deploy"
+name: "Upload Artifacts"
 
 agent:
   machine:
@@ -9,18 +9,19 @@ agent:
 
 global_job_config:
   secrets:
+    - name: company-name
     - name: google-cloud-platform
 
 blocks:
 
-  - name: "Publish Artifacts"
+  - name: "Upload Artifacts"
 
     task:
 
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_${SEMAPHORE_GIT_BRANCH}_artifacts/
+            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_${SEMAPHORE_GIT_BRANCH}_artifacts/
 
       jobs:
         - name: "Bootstrap"

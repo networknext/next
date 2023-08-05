@@ -185,19 +185,19 @@ blocks:
 
 promotions:
 
-  - name: "Deploy Backend"
-    pipeline_file: deploy-backend.yml
+  - name: "Upload Artifacts"
+    pipeline_file: upload-artifacts.yml
     auto_promote:
       when: "result = 'passed' and (branch = 'dev' or branch = 'staging')"
 
-  - name: "Deploy Relay"
-    pipeline_file: deploy-relay.yml
+  - name: "Upload Config"
+    pipeline_file: upload-config.yml
 
-  - name: "Deploy Config"
-    pipeline_file: deploy-config.yml
+  - name: "Upload Relay"
+    pipeline_file: upload-relay.yml
 
-  - name: "Deploy Database"
-    pipeline_file: deploy-database.yml
+  - name: "Upload Database"
+    pipeline_file: upload-database.yml
 
   - name: "Functional Test Backend"
     pipeline_file: functional-test-backend.yml
