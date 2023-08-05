@@ -2,43 +2,9 @@
 
 <br>
 
-Network Next is a network acceleration system for multiplayer games.
+In this section you will setup your local development environment so you can build the system, run unit tests locally, and run the "happy path" which tests the system is working end-to-end on your local machine.
 
-# Run with Docker Compose
-
-You can run a Network Next test environment locally with docker compose on any OS.
-
-1. Install Docker from http://docker.com
-
-2. Download the latest release from https://github.com/networknext/accelerate/releases
-
-3. Build the system
-
-   `docker compose build`
-
-4. Bring the system up
-
-   `docker compose up`
-
-After about one minute, you should see output like:
-
-```console
-accelerate-client-1           | 0.557106: info: client upgraded to session 3fd88eb577d0826
-accelerate-client-1           | 3.449071: info: client pinging 5 near relays
-accelerate-client-1           | 3.449525: info: client direct route
-accelerate-client-1           | 13.464149: info: client near relay pings completed
-accelerate-client-1           | 13.464641: info: client direct route
-accelerate-client-1           | 23.483219: info: client direct route
-accelerate-client-1           | 33.480910: info: client direct route
-accelerate-client-1           | 43.494686: info: client direct route
-accelerate-client-1           | 53.525247: info: client direct route
-accelerate-client-1           | 63.549006: info: client next route
-accelerate-client-1           | 63.549072: info: client multipath enabled
-accelerate-client-1           | 73.517053: info: client continues route
-accelerate-client-1           | 83.499405: info: client continues route
-```
-   
-This indicates that the test environment is working correctly.
+Setup depends on whether you are developing on Linux or MacOS. Development on Windows is not supported, although if you are brave you could try WSL or just run development inside a Linux VM (in docker, or otherwise) under windows.
 
 # Setup for Development on Linux (Ubuntu 22.04 LTS)
 
@@ -430,8 +396,4 @@ verifying map cruncher received map update messages ... OK
 
 ```
 
-# Setup for Development on Windows
-
-Native Windows is not supported for development.
-
-Setup an Ubuntu 22.04 LTS VM under WSL or a Docker Container and follow the Linux instructions. 
+_todo: link to next step_
