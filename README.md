@@ -4,7 +4,8 @@
 
 Network Next is a network acceleration system for multiplayer games.
 
-# Installation
+# Installation and Setup
 
-* [Run a test environment locally with docker compose](docs/run_locally_with_docker_compose.md)
-* [Get setup for development](docs/setup_for_development.md)
+# [Clone the next repository on github](docs/clone_next_repository.md)
+# [Run a local instance with docker compose](docs/run_local_instance_with_docker_compose.md)
+# [Get your local machine setup for development](docs/setup_for_development.md)
