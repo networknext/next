@@ -21,9 +21,9 @@ We will add your github id to the list of accounts authorized to access the netw
 <img width="1306" alt="Screenshot 2023-08-05 at 8 43 04 AM" src="https://github.com/networknext/next/assets/696656/0dc96ba9-24ef-4adf-b467-0a69e2b464d7">
 
 3. Fork the repository to your own github account.
+ 
+<img width="1369" alt="Screenshot 2023-08-05 at 8 46 16 AM" src="https://github.com/networknext/next/assets/696656/1930eae3-2167-4136-a5cd-865b4dcce3b4">
 
-<img width="1307" alt="Screenshot 2023-08-05 at 8 44 40 AM" src="https://github.com/networknext/next/assets/696656/43c9a1c7-fe36-4da0-9026-2851f2fb9068">
-
-4. Clone the forked repository to your local disk under a directory called 'next'
+5. Clone the forked repository to your local disk under a directory called 'next'
 
 ...
