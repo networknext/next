@@ -30,7 +30,7 @@ Select "I will use the existing configuration".
 
 5. Trigger a build and verify that it succeeds
 
-Make asy change in your forked repository and push it to origin.
+Make any change in your forked repository and push it to origin.
 
 Semaphore will automatically trigger a build:
 
@@ -48,8 +48,32 @@ All build items should complete successfully and turn green in around one minute
 
 <img width="679" alt="Screenshot 2023-08-05 at 9 20 08 AM" src="https://github.com/networknext/next/assets/696656/7eddd25f-405f-4524-961b-838bec534d8a">
 
-6. Build and run extended tests
+These tests run automatically every time a commit is made to your forked next repository.
 
-...
+6. Run extended tests
+
+There are also extended tests that are too long and expensive to run with every commit, but we recommend running these manually when you make any significant changes. 
+
+These tests ensure that the entire system works together and meets specifications. If any of these tests fail, the system is not suitable for production release.
+
+Run the following tests manually:
+
+* Functional Test API
+* Functional Test Backend
+* Functional Test Database
+* Functional Test Portal
+* Functional Test Relay
+* Functional Test SDK
+* Happy Path
+* Soak Test Relay
+
+(image)
+
+And verify that they succeed.
+
+7. Update the golang cache
+
+Builds will run significantly faster with a cache of golang modules used. To update this cache, run the optional step "Update Golang Cache".
+
 
 _todo: you are now ready to go to the next step_
