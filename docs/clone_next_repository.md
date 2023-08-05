@@ -10,7 +10,13 @@ To get started you need to fork the 'next' repository to create your own version
 
 <img width="1236" alt="sign up" src="https://github.com/networknext/next/assets/696656/c297545a-7073-43a0-9729-35cbb03cd906">
 
-2. Navigate to the http://github.com/networknext/next repository
+2. Get access to the network next repository.
+
+Send us an email at support@networknext.com and let us know your github id. 
+
+We will add your github id to the list of accounts authorized to access the network next github repository.
+
+2. Navigate to http://github.com/networknext/next
 
 (image of repo)
 
