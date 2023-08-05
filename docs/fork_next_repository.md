@@ -2,7 +2,7 @@
 
 <br>
 
-# Fork next repository
+# Fork the Network Next repository on github
 
 To get started you need to fork the 'next' repository to create your own version of the Network Next codebase.
 
@@ -16,14 +16,12 @@ Send us an email at support@networknext.com and let us know your github id.
 
 We will add your github id to the list of accounts authorized to access the network next github repository.
 
-2. Navigate to http://github.com/networknext/next
+3. Navigate to http://github.com/networknext/next
 
-(image of repo)
+<img width="1306" alt="Screenshot 2023-08-05 at 8 43 04 AM" src="https://github.com/networknext/next/assets/696656/0dc96ba9-24ef-4adf-b467-0a69e2b464d7">
 
-3. Fork the repository to your own github account.
+4. Fork the repository to your own github account
 
-(image of fork)
+5. Clone the forked repository to your local disk under a directory called 'next'
 
-4. Clone the forked repository to your local disk under a directory called 'next'
-
-...
+_You are now ready to [run a local instance with docker compose](run_local_instance_with_docker_compose.md)._
