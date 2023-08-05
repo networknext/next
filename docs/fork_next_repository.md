@@ -20,10 +20,8 @@ We will add your github id to the list of accounts authorized to access the netw
 
 <img width="1306" alt="Screenshot 2023-08-05 at 8 43 04 AM" src="https://github.com/networknext/next/assets/696656/0dc96ba9-24ef-4adf-b467-0a69e2b464d7">
 
-3. Fork the repository to your own github account.
- 
-<img width="1369" alt="Screenshot 2023-08-05 at 8 46 16 AM" src="https://github.com/networknext/next/assets/696656/1930eae3-2167-4136-a5cd-865b4dcce3b4">
+4. Fork the repository to your own github account
 
 5. Clone the forked repository to your local disk under a directory called 'next'
 
-...
+_You are now ready to run a local test environment and setup for development._
