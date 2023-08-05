@@ -24,4 +24,4 @@ We will add your github id to the list of accounts authorized to access the netw
 
 5. Clone the forked repository to your local disk under a directory called 'next'
 
-_You are now ready to (run a local test environment)[docs/run_local_instance_with_docker_compose.md] and setup for development._
+_You are now ready to [run a local instance with docker compose](docs/run_local_instance_with_docker_compose.md)._
