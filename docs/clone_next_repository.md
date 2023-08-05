@@ -6,7 +6,7 @@
 
 To get started you need to fork the 'next' repository to create your own version of the Network Next codebase.
 
-1. Create your own github account and organization if necessary.
+1. Create your own github account and organization if necessary at github.com
 
 2. Navigate to the http://github.com/networknext/next repository
 
