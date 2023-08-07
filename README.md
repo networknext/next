@@ -12,3 +12,4 @@ Network Next is a network acceleration system for multiplayer games.
 4. [Setup semaphoreci](docs/setup_semaphoreci.md)
 5. [Setup storage project](docs/setup_storage_project.md)
 6. [Setup prerequisites for your dev environment](docs/setup_prerequisites_for_dev.md)
+7. [Setup your dev environment](docs/setup_dev_environment.md)
