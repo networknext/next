@@ -64,13 +64,21 @@ Accept the default key type of JSON and just hit "CONFIRM":
 
 A json key file will download to your computer at this point. Create a new directory under your home directory called `~/secrets` and move the json file into this directory so that it has the path `~/secrets/terraform-storage.json`. The filename must be exact or the terraform setup process will not work.
 
-7. Create a service account to be used by semaphoreci to upload files to cloud storage
+7. Edit the terraform storage project configuration
+
+8. Setup the storage project with terraform
+
+
+
+
+
+9. Create a service account to be used by semaphoreci to upload files to cloud storage
 
 Create a new service account and called "semaphore" and give it "Cloud Storage" -> "Storage admin" role, so it can upload files.
 
 <img width="1008" alt="Screenshot 2023-08-06 at 9 29 28 PM" src="https://github.com/networknext/next/assets/696656/a8e32e06-5ae6-433f-b95d-c4a6d9ba3132">
 
-8. Create and download a JSON key for the semaphore service account
+10. Create and download a JSON key for the semaphore service account
 
 Select "Manage Keys" for your new service account:
 
@@ -86,7 +94,7 @@ Select key type "JSON":
 
 The file will download to your computer automatically.
 
-9. Setup the key and your company name in your semaphoreci account
+11. Setup the key and your company name in your semaphoreci account
 
 Select "Settings" in the top right menu in semaphoreci:
 
@@ -110,7 +118,7 @@ Create a second secret, and call it "company-name" of type Env var, and set it t
 
 The company name must match exactly the company name you used above when creating the google cloud storage bucket.
 
-10. Create a "dev" branch in your "next" project in github
+12. Create a "dev" branch in your "next" project in github
 
 This is necessary because we are building artifacts from the "dev" branch, which will upload to your dev artifacts bucket. Later on, we'll create staging and production branches and buckets too.
 
@@ -118,7 +126,7 @@ Commit any change in this dev branch, and make sure it triggers a semaphoreci bu
 
 <img width="810" alt="Screenshot 2023-08-06 at 9 58 24 PM" src="https://github.com/networknext/next/assets/696656/e0a1eec6-0d0f-4634-ba81-2318a7bc4485">
 
-11. Verify that semaphoreci can upload artifacts to google cloud storage
+13. Verify that semaphoreci can upload artifacts to google cloud storage
 
 Once the build job completes, the "Upload Artifacts" should automatically trigger in dev branch:
 
@@ -130,7 +138,7 @@ If you click on the job, it expands to show you all the artifact upload jobs tha
 
 <img width="1159" alt="image" src="https://github.com/networknext/next/assets/696656/618b1eab-23a1-4d14-a0e1-73f91ddf5903">
 
-12. Verify the files are uploaded to the google cloud bucket
+14. Verify the files are uploaded to the google cloud bucket
 
 Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets", then select your bucket called "[companyname]_network_next_dev_artifacts".
 
@@ -138,7 +146,7 @@ Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets"
 
 Inside this artifact you should now see some files. These files are the binaries built from the "dev" branch by semaphoreci and uploaded in the "Upload Artifacts" job. The development environment always runs binaries built from the development branch.
 
-13. Upload SDK config
+15. Upload SDK config
 
 The SDK reads config files from a public URL to configure certain aspects like the automatic datacenter detection in public clouds and the support for multiplay.com. Next we will setup another bug for these configuration files, but this time the files will be publicly readable, so the SDK can access them.
 
@@ -150,7 +158,7 @@ It should complete and turn green in less than a minute:
 
 <img width="818" alt="Screenshot 2023-08-07 at 10 54 53 AM" src="https://github.com/networknext/next/assets/696656/dbac8fad-d336-4ad9-a995-7bad62648e51">
 
-14. Verify that the SDK config files are in the google cloud bucket
+16. Verify that the SDK config files are in the google cloud bucket
 
 Go back to the google cloud bucket and verify that you see text files in it:
 
