@@ -126,4 +126,16 @@ Accept the default settings for this bucket, but when it asks to enable public a
 
 <img width="506" alt="Screenshot 2023-08-07 at 10 46 03 AM" src="https://github.com/networknext/next/assets/696656/9ac8fded-7a15-422d-a691-c9fe7b467958">
 
+Click on "Permissions" for the bucket:
+
+<img width="993" alt="Screenshot 2023-08-07 at 10 47 17 AM" src="https://github.com/networknext/next/assets/696656/34491e5e-8c77-4992-b7fa-30a59915edae">
+
+Click on "Grant Access":
+
+<img width="1015" alt="Screenshot 2023-08-07 at 10 48 49 AM" src="https://github.com/networknext/next/assets/696656/5f4021ac-bad6-43eb-b509-dda7eb77613f">
+
+Give "allUsers" access to the bucket with permission "Cloud storage -> Storage object viewer":
+
+<img width="595" alt="Screenshot 2023-08-07 at 10 50 10 AM" src="https://github.com/networknext/next/assets/696656/058d9602-234c-4c44-b275-77398dca76df">
+
 (Up next... setup prerequisites for dev environment)
