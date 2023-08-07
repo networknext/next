@@ -28,13 +28,7 @@ For example: storage-395201
 
 Save this project id somewhere, as you'll need it shortly.
 
-4. Download and install terraform
-
-You can download terraform from https://www.terraform.io if you don't have it already.
-
-If you are using MacOS, the easiest way to get it is via https://brew.sh - eg. "brew install terraform"
-
-5. Create a service account to be used by terraform to configure the "Storage" project
+4. Create a service account to be used by terraform to configure the "Storage" project
 
 Navigate to "IAM & Admin" -> "Service Accounts" in the google cloud nav menu:
 
@@ -48,7 +42,7 @@ Give it "Basic" -> "Editor" permissions so it can modify the "Storage" project i
 
 <img width="1150" alt="Screenshot 2023-08-07 at 4 10 57 PM" src="https://github.com/networknext/next/assets/696656/196e6d60-25db-4e14-bdc8-2521db4b16ea">
 
-6. Create and download a JSON key for the terraform service account
+5. Create and download a JSON key for the terraform service account
 
 Select "Manage Keys" under the "Actions" drop down for the service account:
 
@@ -64,21 +58,58 @@ Accept the default key type of JSON and just hit "CONFIRM":
 
 A json key file will download to your computer at this point. Create a new directory under your home directory called `~/secrets` and move the json file into this directory so that it has the path `~/secrets/terraform-storage.json`. The filename must be exact or the terraform setup process will not work.
 
-7. Edit the terraform storage project configuration
+6. Edit the terraform storage project configuration
+
+Open the file next/terraform/storage/terraform.tfvars in an editor. This is the configuration file for the terraform script that will configure your "Storage" project for you in google cloud.
+
+`
+credentials       = "~/secrets/terraform-storage.json"
+project           = "storage-379422"
+location          = "US"
+region            = "us-central1"
+zone              = "us-central1-c"
+dev_artifacts     = "masbandwidth_network_next_dev_artifacts"
+staging_artifacts = "masbandwidth_network_next_staging_artifacts"
+prod_artifacts    = "masbandwidth_network_next_prod_artifacts"
+relay_artifacts   = "masbandwidth_network_next_relay_artifacts"
+sdk_config        = "masbandwidth_network_next_sdk_config"
+`
+
+Please edit the text file such that the bucket names match your company name, for example: dev_artifacts, staging_artifacts, prod_artifacts, relay_artifacts and sdk_config need to be adjusted so that "masbandwidth" is replaced with your company name.
+
+Modify the "project" variable to the project id of your "Storage" project in google cloud.
+
+7. Download and install terraform
+
+You can download terraform from https://www.terraform.io if you don't have it already.
+
+If you are using MacOS, the easiest way to get it is via https://brew.sh - eg. "brew install terraform"
 
 8. Setup the storage project with terraform
 
+This step will provision the storage project in google cloud with the correctly setup cloud storage buckets to store development, staging and production branch artifacts used by the backend, as well as database initialization files, relay binaries and configuration files which will be read by the SDK when deployed.
 
+Change to the directory `next/terraform/storage`
 
+Run `terraform init`
 
+Then run `terraform apply` and enter "yes".
 
-9. Create a service account to be used by semaphoreci to upload files to cloud storage
+9. Verify that the cloud storage buckets have been created in your "Storage" project
+
+Go to "Cloud Storage" -> "Buckets" via the google cloud nav menu. You should see buckets created with your company name at the start:
+
+<img width="1531" alt="Screenshot 2023-08-07 at 4 36 34 PM" src="https://github.com/networknext/next/assets/696656/688456e7-cb56-49ee-8ae7-c23be9f9c10f">
+
+10. Create a service account to be used by semaphoreci to upload files to cloud storage
+
+Now we need to create a second service account which will be used by semaphoreci to upload files into the cloud storage buckets you just created with terraform.
 
 Create a new service account and called "semaphore" and give it "Cloud Storage" -> "Storage admin" role, so it can upload files.
 
 <img width="1008" alt="Screenshot 2023-08-06 at 9 29 28 PM" src="https://github.com/networknext/next/assets/696656/a8e32e06-5ae6-433f-b95d-c4a6d9ba3132">
 
-10. Create and download a JSON key for the semaphore service account
+11. Create and download a JSON key for the semaphore service account
 
 Select "Manage Keys" for your new service account:
 
@@ -94,7 +125,7 @@ Select key type "JSON":
 
 The file will download to your computer automatically.
 
-11. Setup the key and your company name in your semaphoreci account
+12. Setup the key and your company name in your semaphoreci account
 
 Select "Settings" in the top right menu in semaphoreci:
 
@@ -118,7 +149,7 @@ Create a second secret, and call it "company-name" of type Env var, and set it t
 
 The company name must match exactly the company name you used above when creating the google cloud storage bucket.
 
-12. Create a "dev" branch in your "next" project in github
+13. Create a "dev" branch in your "next" project in github
 
 This is necessary because we are building artifacts from the "dev" branch, which will upload to your dev artifacts bucket. Later on, we'll create staging and production branches and buckets too.
 
@@ -126,7 +157,7 @@ Commit any change in this dev branch, and make sure it triggers a semaphoreci bu
 
 <img width="810" alt="Screenshot 2023-08-06 at 9 58 24 PM" src="https://github.com/networknext/next/assets/696656/e0a1eec6-0d0f-4634-ba81-2318a7bc4485">
 
-13. Verify that semaphoreci can upload artifacts to google cloud storage
+14. Verify that semaphoreci can upload artifacts to google cloud storage
 
 Once the build job completes, the "Upload Artifacts" should automatically trigger in dev branch:
 
@@ -138,7 +169,7 @@ If you click on the job, it expands to show you all the artifact upload jobs tha
 
 <img width="1159" alt="image" src="https://github.com/networknext/next/assets/696656/618b1eab-23a1-4d14-a0e1-73f91ddf5903">
 
-14. Verify the files are uploaded to the google cloud bucket
+15. Verify the files are uploaded to the google cloud bucket
 
 Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets", then select your bucket called "[companyname]_network_next_dev_artifacts".
 
@@ -146,7 +177,7 @@ Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets"
 
 Inside this artifact you should now see some files. These files are the binaries built from the "dev" branch by semaphoreci and uploaded in the "Upload Artifacts" job. The development environment always runs binaries built from the development branch.
 
-15. Upload SDK config
+16. Upload SDK config
 
 The SDK reads config files from a public URL to configure certain aspects like the automatic datacenter detection in public clouds and the support for multiplay.com. Next we will setup another bug for these configuration files, but this time the files will be publicly readable, so the SDK can access them.
 
@@ -158,13 +189,11 @@ It should complete and turn green in less than a minute:
 
 <img width="818" alt="Screenshot 2023-08-07 at 10 54 53 AM" src="https://github.com/networknext/next/assets/696656/dbac8fad-d336-4ad9-a995-7bad62648e51">
 
-16. Verify that the SDK config files are in the google cloud bucket
+17. Verify that the SDK config files are in the google cloud bucket
 
 Go back to the google cloud bucket and verify that you see text files in it:
 
 <img width="1525" alt="Screenshot 2023-08-07 at 10 56 33 AM" src="https://github.com/networknext/next/assets/696656/2b32609b-c318-4c43-b99b-d0c71860517b">
-
-Make sure the files have permissions "Public to Internet" in the column as highlighted, otherwise the SDK won't be able to download the files when it runs.
 
 _You are now ready to [setup prerequites for the dev environment](setup_prerequisites_for_dev.md)_
 
