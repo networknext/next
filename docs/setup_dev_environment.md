@@ -94,7 +94,7 @@ Run `terraform apply`.
 
 Say "yes" to approve the terraform changes.
 
-6. Enable various google cloud APIs in the development project as needed
+6. Enable google cloud APIs as needed
    
 Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
 
@@ -106,7 +106,7 @@ For example:
 
 Follow the instructions in the terrform console output and open the links and enable the google cloud features as required.
 
-Run `terraform apply`, and iterate, enabling google cloud APIs until it succeeds.
+You will need to iterate a few times, running `terraform apply`, then enabling google cloud APIs until it succeeds.
 
 Terraform apply will take a long time to succeed the first time it is run. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
 
