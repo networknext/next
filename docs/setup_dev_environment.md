@@ -104,7 +104,7 @@ For example:
 │ Error: Error creating HealthCheck: googleapi: Error 403: Compute Engine API has not been used in project 54620502253 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=54620502253 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.
 ```
 
-Follow the instructions in the terrform console output and open the links as required to enable the google cloud features as required.
+Follow the instructions in the terrform console output and open the links and enable the google cloud features as required.
 
 Run `terraform apply`, and iterate, enabling google cloud APIs until it succeeds.
 
