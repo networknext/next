@@ -14,16 +14,6 @@ SETUP
 
 	-----------
 
-	Setup semaphore to build source code from github.
-
-	http://semaphoreci.com -- create a startup plan.
-
-	Create new project, point it at your github repo...
-
-	Set it up to drive from .semaphore/semaphore.yml file and everything should work
-
-	-----------
-
 	Go to your semaphoreci account and select "Settings"
 
 	Under "Settings" go to "Secrets"
