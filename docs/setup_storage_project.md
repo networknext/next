@@ -62,7 +62,7 @@ Accept the default key type of JSON and just hit "CONFIRM":
 
 <img width="556" alt="Screenshot 2023-08-07 at 4 14 06 PM" src="https://github.com/networknext/next/assets/696656/fd19caf1-c064-4583-a79b-c8f30b6ad599">
 
-A json key file will download to your computer at this point. Create a new directory under your home directory called ~/secrets and move the json file into this directory so that it has the path "~/secrets/terraform-storage.json". The filename must be exact or the terraform setup process will not work.
+A json key file will download to your computer at this point. Create a new directory under your home directory called `~/secrets` and move the json file into this directory so that it has the path `~/secrets/terraform-storage.json`. The filename must be exact or the terraform setup process will not work.
 
 7. Create a service account to be used by semaphoreci to upload files to cloud storage
 
