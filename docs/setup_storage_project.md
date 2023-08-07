@@ -34,3 +34,6 @@ Save this project id somewhere for later.
    
 <img width="526" alt="Screenshot 2023-08-06 at 9 19 34 PM" src="https://github.com/networknext/next/assets/696656/18b7a2fb-ed49-48b9-b781-cd9dc8ea6d18">
 
+<img width="811" alt="Screenshot 2023-08-06 at 9 23 14 PM" src="https://github.com/networknext/next/assets/696656/11082275-bc03-4f32-a083-065d2a881ba4">
+
+Accept all defaults settings for the bucket and create it.
