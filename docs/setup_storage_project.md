@@ -16,8 +16,25 @@ We will upload these files using semaphoreci jobs.
    
 <img width="751" alt="Screenshot 2023-08-06 at 9 09 37 PM" src="https://github.com/networknext/next/assets/696656/2443b842-73ad-4dd1-b6d6-cd01dd757619">
 
-4. Create a new project called "Storage"
+3. Create a new project called "Storage"
 
 <img width="553" alt="image" src="https://github.com/networknext/next/assets/696656/1f57d358-919b-4f80-87c5-1d3d99ac548c">
 
-5.
+4. Take note of the project id for later
+
+Once the project is created it is assigned a project id:
+
+<img width="493" alt="Screenshot 2023-08-06 at 9 12 31 PM" src="https://github.com/networknext/next/assets/696656/5872da7d-df9e-443f-afac-af61e4bc1c84">
+
+For example: storage-395201
+
+Write down and save this project id somewhere for later.
+
+5. Click on "Cloud Storage" -> "Buckets" in the google cloud nav menu
+   
+<img width="530" alt="Screenshot 2023-08-06 at 9 17 30 PM" src="https://github.com/networknext/next/assets/696656/11eb1b6c-7f59-4e32-8e55-d06d7e21f736">
+
+6. Create a cloud storage bucket for development artifacts
+   
+<img width="526" alt="Screenshot 2023-08-06 at 9 19 34 PM" src="https://github.com/networknext/next/assets/696656/18b7a2fb-ed49-48b9-b781-cd9dc8ea6d18">
+
