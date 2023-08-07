@@ -36,4 +36,16 @@ Save this project id somewhere for later.
 
 <img width="811" alt="Screenshot 2023-08-06 at 9 23 14 PM" src="https://github.com/networknext/next/assets/696656/11082275-bc03-4f32-a083-065d2a881ba4">
 
-Accept all defaults settings for the bucket and create it.
+Accept all defaults settings for the bucket and create it, when it asks you if you want to enable public access prevention, just click "CONFIRM".
+
+6. Create a service account to be used by semaphoreci to upload files to cloud storage
+
+Navigate to "IAM & Admin" -> "Service Accounts" in the google cloud nav menu:
+
+<img width="522" alt="Screenshot 2023-08-06 at 9 26 49 PM" src="https://github.com/networknext/next/assets/696656/63a1b35d-23c4-4604-b0aa-a480b0854641">
+
+Create a new service account and called "semaphore" and give it "Cloud Storage" -> "Storage admin" role, so it can upload files.
+
+<img width="1008" alt="Screenshot 2023-08-06 at 9 29 28 PM" src="https://github.com/networknext/next/assets/696656/a8e32e06-5ae6-433f-b95d-c4a6d9ba3132">
+
+
