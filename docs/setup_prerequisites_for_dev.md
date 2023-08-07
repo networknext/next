@@ -10,8 +10,8 @@ These include:
 
 * A OpenVPN instance running on linode to secure access to your network next backend
 * Three domain names for different parts of your network next instance
-* A cloudflare account so you can point "dev.[domain]" to your three development load balancer instances
-* Configuration of your network next environment, so that it is secure with its own set of keypairs that are unique to your company.
+* A cloudflare account so you can point "dev.[domain]" to three different components in your dev backend.
+* Configuration of your network next environment, so that it is secured with its own set of keypairs that are unique to your company.
 
 Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed with terraform scripts.
 
