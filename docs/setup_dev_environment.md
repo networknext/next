@@ -4,7 +4,7 @@
 
 # Setup dev environment
 
-In this section you will create a new "Development" project in google cloud, then use terraform to setup a development environment instance in this project. This environment will use the development artifacts published by previous steps built in semaphoreci from your "dev" branch in github. When this section is complete you will have a fully functional network next dev backend running in google cloud.
+In this section you will create a new "Development" project in google cloud, then use terraform to setup a development environment instance in this project. This environment will use the development artifacts built and uploaded by semaphoreci from your "dev" branch in github. When this section is complete you will have a fully functional network next dev backend running in google cloud as well as a process for developing code changes to this instance.
 
 1. Create "Development" project in google cloud
 
