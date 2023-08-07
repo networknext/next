@@ -78,6 +78,12 @@ Say "yes" to approve the terraform changes.
    
 Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
 
+For example:
+
+```
+│ Error: Error creating HealthCheck: googleapi: Error 403: Compute Engine API has not been used in project 54620502253 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=54620502253 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.
+```
+
 Follow the instructions in the terrform console output and click the links to enable the google cloud features as required.
 
 Run `terraform apply`, and iterate, enabling google cloud APIs until it succeeds.
