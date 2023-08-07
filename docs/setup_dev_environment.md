@@ -54,13 +54,7 @@ Leave the selection of key type as JSON and click "CREATE":
 
 The key will download to your computer as a small .json file. Create a new directory under your home directoly called "secrets" and move this json file into this directory, so it has a path of ~/secrets/terraform-development.json". This file and path must match exactly for future steps to work correctly.
 
-4. Download and install terraform
-
-You can download terraform from https://www.terraform.io if you don't have it already.
-
-If you are using MacOS, the easiest way to get it is via https://brew.sh - eg. "brew install terraform"
-
-5. Configure terraform variables
+4. Configure terraform variables
 
 Edit the file: terraform/dev/backend/terraform.tfvars under your forked "next" repository.
 
@@ -72,7 +66,7 @@ Change "artifacts_bucket" to the name of the artifacts bucket you created, eg: a
 
 Change "vpn_address" to your VPN IP address. Admin functionality and portal access will only be allowed from this IP address.
 
-6. Build the dev environment with terraform
+5. Build the dev environment with terraform
    
 Change to the directory: terraform/dev/backend
 
@@ -82,7 +76,7 @@ Run "terraform apply".
 
 Say "yes" to approve the terraform changes.
 
-7. Enable various google cloud APIs in the development project as needed
+6. Enable various google cloud APIs in the development project as needed
    
 Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
 
@@ -92,7 +86,7 @@ Run "terraform apply", and iterate, fixing disabled APIs until it succeeds.
 
 Terraform apply will take a long time to succeed on the first pass. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
 
-8. Verify managed instance groups are healthy in google cloud
+7. Verify managed instance groups are healthy in google cloud
 
 Once the terraform apply succeeds, verify the managed instance groups are all healthy in google cloud.
 
@@ -106,7 +100,7 @@ You should see instance groups setup for all services. Within 5-10 minutes, all 
 
 At this point terraform has taken care of setting up all VM instances, IP addresses, subnetworks and managed instance groups and health checks for your dev environment and it's all working correctly.
 
-9. Point dev.* domains at your development environment
+8. Point dev.* domains at your development environment
 
 Go into your cloudflare console and point dev.* for your silly domain names to the IP addresses output by terraform.
 
