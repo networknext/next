@@ -30,9 +30,9 @@ First go to "IAM & Admin" -> "Service Accounts" in the google cloud nav bar:
 
 <img width="1415" alt="Screenshot 2023-08-07 at 2 15 18 PM" src="https://github.com/networknext/next/assets/696656/e4c14caf-ef82-43e7-a5bf-77bd27b5bed2">
 
-Click on "CREATE SERVICE ACCOUNT":
+Click on "CREATE SERVICE ACCOUNT" and create a new service account with the name "terraform":
 
-<img width="1415" alt="Screenshot 2023-08-07 at 2 22 51 PM" src="https://github.com/networknext/next/assets/696656/df04e49e-76c1-453c-94b7-be9b4dbf92e3">
+<img width="882" alt="Screenshot 2023-08-07 at 2 25 01 PM" src="https://github.com/networknext/next/assets/696656/b6103afe-78c7-4ad5-b559-d45120f2e6eb">
 
 Give this account simplified permissions "Editor":
 
