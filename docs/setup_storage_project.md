@@ -48,4 +48,42 @@ Create a new service account and called "semaphore" and give it "Cloud Storage" 
 
 <img width="1008" alt="Screenshot 2023-08-06 at 9 29 28 PM" src="https://github.com/networknext/next/assets/696656/a8e32e06-5ae6-433f-b95d-c4a6d9ba3132">
 
+7. Create and download a JSON key for the service account
+
+Select "Manage Keys" for your new service account:
+
+<img width="1696" alt="Screenshot 2023-08-06 at 9 33 51 PM" src="https://github.com/networknext/next/assets/696656/ed527ec3-b959-41b8-9cc0-650850c9da2e">
+
+Create a new key:
+
+<img width="842" alt="Screenshot 2023-08-06 at 9 35 47 PM" src="https://github.com/networknext/next/assets/696656/5c7258ba-8bbf-4d22-b594-86740d121166">
+
+Select key type "JSON":
+
+<img width="556" alt="Screenshot 2023-08-06 at 9 36 36 PM" src="https://github.com/networknext/next/assets/696656/fe964bec-9e07-460d-a2f0-f0d8b2d57e87">
+
+The file will download to your computer automatically.
+
+8. Setup the key in your semaphoreci account
+
+Select "Settings" in the top right menu in semaphoreci:
+
+<img width="556" alt="Screenshot 2023-08-06 at 9 38 38 PM" src="https://github.com/networknext/next/assets/696656/05d566ce-ea64-4749-9477-01563fc69d82">
+
+Go to "Secrets" and select "New Secret":
+
+<img width="1249" alt="Screenshot 2023-08-06 at 9 39 31 PM" src="https://github.com/networknext/next/assets/696656/2bfdf982-50d1-46fa-a5e3-d530904495bf">
+
+Create a secret with name "google-cloud-platform", of type "Configuration file", with filename of "/home/semaphore/gcp-service-account.json", then click to upload the JSON key file you just downloaded from google cloud in the previous step:
+
+<img width="629" alt="Screenshot 2023-08-06 at 9 42 28 PM" src="https://github.com/networknext/next/assets/696656/2440670f-947e-45ab-8762-baaf3bc348d8">
+
+The secret is now created, and should look like this:
+
+<img width="578" alt="Screenshot 2023-08-06 at 9 44 40 PM" src="https://github.com/networknext/next/assets/696656/f21f4132-b0a6-4c26-8f4a-af4abcae289b">
+
+
+
+
+
 
