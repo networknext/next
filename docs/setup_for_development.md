@@ -4,9 +4,9 @@
 
 # Setup for Development
 
-In this section you will setup your local development environment so you can build the Network Next system, run unit tests, and run the "happy path" which tests the system is working end-to-end on your local machine.
+In this section you will setup your local development environment so you can build the Network Next system, run unit tests, and run the "happy path" which verifies that the system is working end-to-end on your local machine.
 
-Setup depends on whether you are developing on Linux or MacOS. Development on Windows is not supported, although if you are brave you could try WSL or just run development inside a Linux VM.
+Setup depends on whether you are developing on Linux or MacOS. Development on Windows is not supported. If you are brave you could try WSL.
 
 # Setup on Linux (Ubuntu 22.04 LTS)
 
