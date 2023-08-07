@@ -30,6 +30,82 @@ First go to "IAM & Admin" -> "Service Accounts" in the google cloud nav bar:
 
 <img width="1415" alt="Screenshot 2023-08-07 at 2 15 18 PM" src="https://github.com/networknext/next/assets/696656/e4c14caf-ef82-43e7-a5bf-77bd27b5bed2">
 
-Make sure that you do this in the context of the new "Development" project that you created in the previous step.
+Click on "CREATE SERVICE ACCOUNT":
+
+<img width="1415" alt="Screenshot 2023-08-07 at 2 22 51 PM" src="https://github.com/networknext/next/assets/696656/df04e49e-76c1-453c-94b7-be9b4dbf92e3">
+
+Give this account simplified permissions "Editor":
+
+
 
 3. 
+
+
+
+
+
+
+
+
+
+	Now switch to the "Development" project in google cloud.
+
+	In this project, add a new service account called "terraform".
+
+
+	Save the full name of the service account somewhere, eg: terraform@development-394617.iam.gserviceaccount.com
+
+	Create a JSON key for the service account and download it.
+
+	-----------
+
+	Create a new directory under your home directory: ~/secrets
+
+	Move the downloaded JSON key to: ~/secrets/terraform-development.json
+
+	-----------
+
+	Edit the file: terraform/dev/backend/terraform.tfvars under the "next" repository.
+
+	Change "service_account" to the name of the service account you just created under the "Development" google cloud project.
+
+	Change "project" to the name of the google cloud project, eg. development-394617 (whatever it is called in your google cloud console)
+
+	Change "artifacts_bucket" to the name of the artifacts bucket you created, eg: artifacts_bucket = "gs://[companyname]_network_next_dev_artifacts"
+
+	Change "vpn_address" to your VPN IP address. Admin functionality will only be allowed from this IP address.
+
+	-----------
+
+	Change to the directory: terraform/dev/backend
+
+	Run "terraform init".
+
+	Run "terraform apply".
+
+	Say "yes" to approve the terraform changes.
+
+	-----------
+
+	Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
+
+	Follow the instructions in the output and enable the google cloud features as required.
+
+	Run "terraform apply", and iterate, fixing disabled APIs until it succeeds.
+
+	Terraform apply will take a long time to succeed on the first pass. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
+
+	-----------
+
+	Once the terraform apply succeeds, verify the managed instance groups are all healthy in google cloud.
+
+	-----------
+
+	Cloudflare step. Point dev.* 3 domains at load balancer IPs
+
+	-----------
+
+	next ping
+
+	-----------
+
