@@ -64,7 +64,7 @@ Select key type "JSON":
 
 The file will download to your computer automatically.
 
-8. Setup the key in your semaphoreci account
+8. Setup the key and your company name in your semaphoreci account
 
 Select "Settings" in the top right menu in semaphoreci:
 
@@ -82,8 +82,38 @@ The secret is now created, and should look like this:
 
 <img width="578" alt="Screenshot 2023-08-06 at 9 44 40 PM" src="https://github.com/networknext/next/assets/696656/f21f4132-b0a6-4c26-8f4a-af4abcae289b">
 
+Create a second secret, and call it "company-name" of type Env var, and set it to COMPANY_NAME="yourcompanyname":
 
+<img width="632" alt="image" src="https://github.com/networknext/next/assets/696656/7377e722-8e2e-4284-9f83-7efc4e82f532">
 
+The company name must match exactly the company name you used above when creating the google cloud storage bucket.
 
+9. Create a "dev" branch in your "next" project in github
 
+This is necessary because we are building artifacts from the "dev" branch, which will upload to your dev artifacts bucket. Later on, we'll create staging and production branches and buckets too.
 
+Commit any change in this dev branch, and make sure it triggers a semaphoreci build under "dev" branch.
+
+<img width="810" alt="Screenshot 2023-08-06 at 9 58 24 PM" src="https://github.com/networknext/next/assets/696656/e0a1eec6-0d0f-4634-ba81-2318a7bc4485">
+
+10. Verify that semaphoreci can upload artifacts to google cloud storage
+
+Once the build job completes, the "Upload Artifacts" should automatically trigger in dev branch:
+
+<img width="850" alt="Screenshot 2023-08-06 at 9 59 55 PM" src="https://github.com/networknext/next/assets/696656/0fd601b5-7e69-47af-b396-a1685f9ef879">
+
+It should succeed and turn green in just a few seconds.
+
+If you click on the job, it expands to show you all the artifact upload jobs that succeeded:
+
+<img width="1159" alt="image" src="https://github.com/networknext/next/assets/696656/618b1eab-23a1-4d14-a0e1-73f91ddf5903">
+
+11. Verify the files are uploaded to the google cloud bucket
+
+Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets", then select your bucket called "[companyname]_network_next_dev_artifacts".
+
+<img width="1444" alt="Screenshot 2023-08-06 at 10 03 23 PM" src="https://github.com/networknext/next/assets/696656/f80b0ad1-4431-47c7-8fdc-04bce960f5b1">
+
+Inside this artifact you should now see some files. These files are the binaries built from the "dev" branch by semaphoreci and uploaded in the "Upload Artifacts" job. The development environment always runs binaries built from the development branch.
+
+(Up next... setup prerequisites for dev environment)
