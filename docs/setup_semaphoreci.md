@@ -77,4 +77,4 @@ This is worth doing anytime you include a new golang module to the project.
 
 Click on "Update Golang Cache" and confirm "Start promotion". Verify that the build succeeds (it will take several minutes).
 
-_todo: you are now ready to go to the next step_
+_You are now ready to [setup the storage project in google cloud](setup_storage_project.md)_
