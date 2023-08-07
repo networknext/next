@@ -4,7 +4,9 @@
 
 # Setup storage project
 
-In this section we will setup a google cloud project called "Storage" where we will store build artifacts used by the network next backend and configuration files used by the SDK. We will upload these files to cloud storage using semaphoreci jobs.
+In this section we will setup a google cloud project called "Storage" and configure it with terraform. 
+
+This projectw is where we store build artifacts used by the network next backend and configuration files used by the SDK. We will upload these files to cloud storage using semaphoreci jobs.
 
 1. Click on the project selector at the top left of the screen at http://console.cloud.google.com:
 
@@ -24,31 +26,41 @@ Once the project is created it is assigned a project id:
 
 For example: storage-395201
 
-Save this project id somewhere for later.
+Save this project id somewhere, as you'll need it shortly.
 
-4. Click on "Cloud Storage" -> "Buckets" in the google cloud nav menu
-   
-<img width="530" alt="Screenshot 2023-08-06 at 9 17 30 PM" src="https://github.com/networknext/next/assets/696656/11eb1b6c-7f59-4e32-8e55-d06d7e21f736">
+4. Download and install terraform
 
-5. Create a cloud storage bucket for development artifacts
-   
-<img width="526" alt="Screenshot 2023-08-06 at 9 19 34 PM" src="https://github.com/networknext/next/assets/696656/18b7a2fb-ed49-48b9-b781-cd9dc8ea6d18">
+You can download terraform from https://www.terraform.io if you don't have it already.
 
-<img width="811" alt="Screenshot 2023-08-06 at 9 23 14 PM" src="https://github.com/networknext/next/assets/696656/11082275-bc03-4f32-a083-065d2a881ba4">
+If you are using MacOS, the easiest way to get it is via https://brew.sh - eg. "brew install terraform"
 
-Accept all defaults settings for the bucket and create it, when it asks you if you want to enable public access prevention, just click "CONFIRM".
-
-6. Create a service account to be used by semaphoreci to upload files to cloud storage
+5. Create a service account to be used by terraform to configure the "Storage" project
 
 Navigate to "IAM & Admin" -> "Service Accounts" in the google cloud nav menu:
 
 <img width="522" alt="Screenshot 2023-08-06 at 9 26 49 PM" src="https://github.com/networknext/next/assets/696656/63a1b35d-23c4-4604-b0aa-a480b0854641">
 
+Create a new service account called "terraform" and give it "Basic" -> "Editor" permissions so it can modify the "Storage" project in google cloud:
+
+6. Create and download a JSON key for the semaphore service account
+
+...
+
+
+
+
+
+
+
+
+
+9. Create a service account to be used by semaphoreci to upload files to cloud storage
+
 Create a new service account and called "semaphore" and give it "Cloud Storage" -> "Storage admin" role, so it can upload files.
 
 <img width="1008" alt="Screenshot 2023-08-06 at 9 29 28 PM" src="https://github.com/networknext/next/assets/696656/a8e32e06-5ae6-433f-b95d-c4a6d9ba3132">
 
-7. Create and download a JSON key for the service account
+10. Create and download a JSON key for the semaphore service account
 
 Select "Manage Keys" for your new service account:
 
