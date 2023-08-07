@@ -18,4 +18,18 @@ Give the project the name "Development" then hit "CREATE"
 
 Click the project selector then choose "Development" project in the pop up:
 
-<img width="1407" alt="Screenshot 2023-08-07 at 2 09 35 PM" src="https://github.com/networknext/next/assets/696656/63d6dd08-cf53-4161-aeb1-fd87d0ea2035">
+<img width="1407" alt="Screenshot 2023-08-07 at 2 09 35 PM" src="https://github.com/networknext/next/assets/696656/3d8a3045-221b-479c-bf85-ae210d642a52">
+
+Take note of the project id for your development project. You'll need it shortly. For example: development-395218
+
+2. Create a new service account called "terraform" and give it "Admin" access to your project
+
+We are going to use terraform to provision the development environment. In order for Terraform to have the access it needs a service account that it operates under. We will export a JSON key file to your computer that gives terraform running locally authentication using actions under the identify of this service account.
+
+First go to "IAM & Admin" -> "Service Accounts" in the google cloud nav bar:
+
+<img width="1415" alt="Screenshot 2023-08-07 at 2 15 18 PM" src="https://github.com/networknext/next/assets/696656/e4c14caf-ef82-43e7-a5bf-77bd27b5bed2">
+
+Make sure that you do this in the context of the new "Development" project that you created in the previous step.
+
+3. 
