@@ -48,67 +48,71 @@ Click on "ADD KEY" then "Create new key":
 
 <img width="844" alt="Screenshot 2023-08-07 at 2 30 19 PM" src="https://github.com/networknext/next/assets/696656/6704d055-9c41-46e9-b971-2b2bd4003bcc">
 
+Leave the selection of key type as JSON and click "CREATE":
+
+<img width="553" alt="Screenshot 2023-08-07 at 2 33 01 PM" src="https://github.com/networknext/next/assets/696656/95b2cf26-45b4-40d2-af31-a2eaf0882515">
+
+The key will download to your computer as a small .json file. Create a new directory under your home directoly called "secrets" and move this json file into this directory, so it has a path of ~/secrets/terraform-development.json". This file and path must match exactly for future steps to work correctly.
+
+4. Download and install terraform
+
+You can download terraform from https://www.terraform.io if you don't have it already.
+
+If you are using MacOS, the easiest way to get it is via https://brew.sh - eg. "brew install terraform"
+
+5. Configure terraform variables
+
+Edit the file: terraform/dev/backend/terraform.tfvars under your forked "next" repository.
+
+Change "service_account" to the full name of the service account you just created under the "Development" google cloud project (you can get this name by clicking on "IAM & Admin -> Service Accounts" in google cloud to get a list of service accounts under "Development".
+
+Change "project" to the id of the google cloud "Development" project, eg. development-394617 (whatever it is called in your google cloud console)
+
+Change "artifacts_bucket" to the name of the artifacts bucket you created, eg: artifacts_bucket = "gs://[companyname]_network_next_dev_artifacts"
+
+Change "vpn_address" to your VPN IP address. Admin functionality and portal access will only be allowed from this IP address.
+
+6. Build the dev environment with terraform
+   
+Change to the directory: terraform/dev/backend
+
+Run "terraform init".
+
+Run "terraform apply".
+
+Say "yes" to approve the terraform changes.
+
+7. Enable various google cloud APIs in the development project as needed
+   
+Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
+
+Follow the instructions in the terrform console output and click the links to enable the google cloud features as required.
+
+Run "terraform apply", and iterate, fixing disabled APIs until it succeeds.
+
+Terraform apply will take a long time to succeed on the first pass. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
+
+8. Verify managed instance groups are healthy in google cloud
+
+Once the terraform apply succeeds, verify the managed instance groups are all healthy in google cloud.
+
+Go to "Compute Engine -> Instance Groups" in the google cloud nav menu:
+
+<img width="672" alt="Screenshot 2023-08-07 at 2 41 57 PM" src="https://github.com/networknext/next/assets/696656/92b17c47-d96e-4dfa-869f-5ce1fd1a7eb3">
+
+You should see instance groups setup for all services. Within 5-10 minutes, all instance groups should turn green which means they are healthy.
+
+<img width="1718" alt="Screenshot 2023-08-07 at 2 43 47 PM" src="https://github.com/networknext/next/assets/696656/28c775d4-6e9e-42d3-b4e3-ee6164e30ee0">
+
+At this point terraform has taken care of setting up all VM instances, IP addresses, subnetworks and managed instance groups and health checks for your dev environment and it's all working correctly.
+
+9. Point dev.* domains at your development environment
+
+Go into your cloudflare console and point dev.* for your silly domain names to the IP addresses output by terraform.
+
+For example:
 
 
-
-
-
-
-
-
-
-	Now switch to the "Development" project in google cloud.
-
-	In this project, add a new service account called "terraform".
-
-
-	Save the full name of the service account somewhere, eg: terraform@development-394617.iam.gserviceaccount.com
-
-	Create a JSON key for the service account and download it.
-
-	-----------
-
-	Create a new directory under your home directory: ~/secrets
-
-	Move the downloaded JSON key to: ~/secrets/terraform-development.json
-
-	-----------
-
-	Edit the file: terraform/dev/backend/terraform.tfvars under the "next" repository.
-
-	Change "service_account" to the name of the service account you just created under the "Development" google cloud project.
-
-	Change "project" to the name of the google cloud project, eg. development-394617 (whatever it is called in your google cloud console)
-
-	Change "artifacts_bucket" to the name of the artifacts bucket you created, eg: artifacts_bucket = "gs://[companyname]_network_next_dev_artifacts"
-
-	Change "vpn_address" to your VPN IP address. Admin functionality will only be allowed from this IP address.
-
-	-----------
-
-	Change to the directory: terraform/dev/backend
-
-	Run "terraform init".
-
-	Run "terraform apply".
-
-	Say "yes" to approve the terraform changes.
-
-	-----------
-
-	Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
-
-	Follow the instructions in the output and enable the google cloud features as required.
-
-	Run "terraform apply", and iterate, fixing disabled APIs until it succeeds.
-
-	Terraform apply will take a long time to succeed on the first pass. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
-
-	-----------
-
-	Once the terraform apply succeeds, verify the managed instance groups are all healthy in google cloud.
-
-	-----------
 
 	Cloudflare step. Point dev.* 3 domains at load balancer IPs
 
