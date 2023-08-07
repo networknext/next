@@ -33,13 +33,15 @@ The "Dedicated 4GB" instance should be sufficient to run your VPN. It's around $
 
 Create the instance with label "openvpn".
 
-Once the linode is created, take note of the IP address of your linode. You'll need it later.
+Once the linode is created, take note of the IP address of your linode. You'll need it later:
 
-You can finish configuration by following these instructions: https://www.linode.com/docs/products/tools/marketplace/guides/openvpn/
+<img width="1445" alt="Screenshot 2023-08-07 at 12 25 53 PM" src="https://github.com/networknext/next/assets/696656/9029c207-1b39-4ac4-8e7a-fc4566936d7b">
 
-_Basically, you just need to connect to the instance via the linode browser based SSH, trigger some setup, and then from this point forward you can configure the rest of the OpenVPN server using the OpenVPN admin interface running on your linode..._
+You can finish the rest of the OpenVPN configuration by following this guide: https://www.linode.com/docs/products/tools/marketplace/guides/openvpn/
 
-Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. While you are on the VPN your IP address will appear as the VPN address. Later on, we're going to secure the dev environment such that the REST APIs and portal are only accessible from your VPN IP address.
+Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. While you are on the VPN your IP address will appear as the VPN address. 
+
+Later on, we're going to secure the dev environment such that the REST APIs and portal are only accessible from your VPN IP address.
 
 2. Create three domains
 
