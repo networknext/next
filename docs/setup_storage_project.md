@@ -116,4 +116,15 @@ Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets"
 
 Inside this artifact you should now see some files. These files are the binaries built from the "dev" branch by semaphoreci and uploaded in the "Upload Artifacts" job. The development environment always runs binaries built from the development branch.
 
+12. Create SDK config bucket
+
+The SDK reads config files from a public URL to configure certain aspects like the automatic datacenter detection in public clouds and the support for multiplay.com. Next we will setup another bug for these configuration files, but this time the files will be publicly readable, so the SDK can access them.
+
+Go back to the "Storage" google cloud project and create a new cloud storage bucket called: "[companyname]_network_next_sdk_config"
+
+Accept the default settings for this bucket, but when it asks to enable public access protection, UNCHECK that and hit CONFIRM.
+
+
+
+
 (Up next... setup prerequisites for dev environment)
