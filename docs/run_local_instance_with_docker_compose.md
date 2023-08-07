@@ -4,7 +4,7 @@
 
 # Run a local instance with Docker Compose
 
-You can run a Network Next test environment locally with docker compose on any OS.
+You can run a Network Next test environment locally with docker compose on any OS. This lets you quickly get a test instance of the whole system up and running locally, which you can interact with via a web browser.
 
 1. Install Docker from http://docker.com
 
