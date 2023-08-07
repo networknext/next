@@ -136,6 +136,20 @@ Click on "Grant Access":
 
 Give "allUsers" access to the bucket with permission "Cloud storage -> Storage object viewer":
 
-<img width="595" alt="Screenshot 2023-08-07 at 10 50 10 AM" src="https://github.com/networknext/next/assets/696656/058d9602-234c-4c44-b275-77398dca76df">
+13. Verify that semaphore can upload SDK config
 
-(Up next... setup prerequisites for dev environment)
+Go back to the last successful semaphore job for your "next" project, and start the job "Upload Config":
+
+<img width="844" alt="Screenshot 2023-08-07 at 10 54 09 AM" src="https://github.com/networknext/next/assets/696656/d575384c-dd7f-4bb4-ae4e-3b9f23507067">
+
+It should complete and turn green in less than a minute:
+
+<img width="818" alt="Screenshot 2023-08-07 at 10 54 53 AM" src="https://github.com/networknext/next/assets/696656/dbac8fad-d336-4ad9-a995-7bad62648e51">
+
+14. Verify that the SDK config files are in the google cloud bucket
+
+Go back to the google cloud bucket and verify that you see text files in it, and that they are "Public to Internet":
+
+<img width="1525" alt="Screenshot 2023-08-07 at 10 56 33 AM" src="https://github.com/networknext/next/assets/696656/2b32609b-c318-4c43-b99b-d0c71860517b">
+
+_You are now ready to (setup prerequites for the dev environment)[setup_prerequisites_for_dev.md]_
