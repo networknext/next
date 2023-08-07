@@ -13,7 +13,7 @@ These include:
 * A cloudflare account so you can point "dev.[domain]" to your three development load balancer instances
 * Configuration of your network next environment, so that it is secure with its own set of keypairs that are unique to your company.
 
-Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed automatically with terraform scripts.
+Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed with terraform scripts.
 
 1. Setup a VPN on Linode
 
