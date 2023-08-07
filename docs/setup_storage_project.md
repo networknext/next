@@ -16,4 +16,8 @@ We will upload these files using semaphoreci jobs.
    
 <img width="751" alt="Screenshot 2023-08-06 at 9 09 37 PM" src="https://github.com/networknext/next/assets/696656/2443b842-73ad-4dd1-b6d6-cd01dd757619">
 
-4. 
+4. Create a new project called "Storage"
+
+<img width="553" alt="image" src="https://github.com/networknext/next/assets/696656/1f57d358-919b-4f80-87c5-1d3d99ac548c">
+
+5.
