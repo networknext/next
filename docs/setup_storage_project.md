@@ -152,4 +152,4 @@ Go back to the google cloud bucket and verify that you see text files in it, and
 
 <img width="1525" alt="Screenshot 2023-08-07 at 10 56 33 AM" src="https://github.com/networknext/next/assets/696656/2b32609b-c318-4c43-b99b-d0c71860517b">
 
-_You are now ready to (setup prerequites for the dev environment)[setup_prerequisites_for_dev.md]_
+_You are now ready to [setup prerequites for the dev environment](setup_prerequisites_for_dev.md)_
