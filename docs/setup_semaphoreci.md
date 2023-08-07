@@ -67,7 +67,7 @@ Run the following tests manually by clicking on them and confirming "Start promo
 
 The tests should complete in around 5-10 minutes.
 
-<img width="679" alt="Screenshot 2023-08-05 at 9 20 08 AM" src="https://github.com/mas-bandwidth/next/assets/696656/6095dee2-b274-42fb-80f0-817406e6ed17">
+<img width="880" alt="Screenshot 2023-08-06 at 8 49 04 PM" src="https://github.com/networknext/next/assets/696656/95c7858b-84fd-4fa3-9d63-36d02e6fbad9">
 
 8. Update the golang cache
 
