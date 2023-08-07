@@ -66,7 +66,9 @@ Click "ADD PRINCIPAL":
 
 <img width="573" alt="image" src="https://github.com/networknext/next/assets/696656/e903dcbe-590e-4895-a8a4-1f3f6495febd">
 
-Add your terraform service account full name as a principle, and grant it "Cloud storage" -> "Storage object viewer" permissions.
+Add your terraform service account full name as a principle, and grant it "Cloud storage" -> "Storage object viewer" permissions:
+
+<img width="587" alt="Screenshot 2023-08-07 at 6 44 35 PM" src="https://github.com/networknext/next/assets/696656/2e9a533b-3e69-4968-903e-a0b5c91e10fe">
 
 VMs started with your terraform service account in dev can now access your storage buckets in the "Storage" proje9ct.
    
