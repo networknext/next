@@ -4,7 +4,7 @@
 
 # Setup dev environment
 
-In this section you will create a new "Development" project in google cloud, then use terraform to setup a development environment instance in this project. This environment will use the development artifacts built and uploaded by semaphoreci from your "dev" branch in github. When this section is complete you will have a fully functional network next dev backend running in google cloud as well as a process for developing code changes to this instance.
+In this section you will create a new "Development" project in google cloud, then use terraform to setup a development environment instance in this project. This environment will use the development artifacts built and uploaded by semaphoreci from your "dev" branch in github. When this section is complete you will have a fully functional network next dev backend running in google cloud.
 
 1. Create "Development" project in google cloud
 
@@ -104,19 +104,25 @@ You should see instance groups setup for all services. Within 5-10 minutes, all 
 
 At this point terraform has taken care of setting up all VM instances, IP addresses, subnetworks and managed instance groups and health checks for your dev environment and it's all working correctly.
 
-8. Point dev.* domains at your development environment
+8. Verify REST API is operating correctly
 
-Go into your cloudflare console and point dev.* for your silly domain names to the IP addresses output by terraform.
+Go to the command line under the forked 'next' directory from github.
 
-For example:
+Run `next select dev` to select the dev environment.
+
+Connect to your OpenVPN client setup earlier.
+
+Run `next ping` to ping the REST API for the dev environment.
+
+You should see a response `pong`
+
+Disconnect from the OpenVPN client.
+
+Run `next ping` again. The command should time out and not receive a pong. The network next REST API is only accessible from your VPN.
+
+9. Verify portal is up and operating correctly.
+
+_todo: once the portal is ready_
 
 
-
-	Cloudflare step. Point dev.* 3 domains at load balancer IPs
-
-	-----------
-
-	next ping
-
-	-----------
-
+This command will ping the network 
