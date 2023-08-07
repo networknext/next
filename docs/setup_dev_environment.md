@@ -22,7 +22,7 @@ Click the project selector then choose "Development" project in the pop up:
 
 Take note of the project id for your development project. You'll need it shortly. For example: development-395218
 
-2. Create a new service account called "terraform" and give it "Admin" access to your project
+2. Create a new service account called "terraform" and give it access to your project
 
 We are going to use terraform to provision the development environment. In order for Terraform to have the access it needs a service account that it operates under. We will export a JSON key file to your computer that gives terraform running locally authentication using actions under the identify of this service account.
 
@@ -34,11 +34,20 @@ Click on "CREATE SERVICE ACCOUNT" and create a new service account with the name
 
 <img width="882" alt="Screenshot 2023-08-07 at 2 25 01 PM" src="https://github.com/networknext/next/assets/696656/b6103afe-78c7-4ad5-b559-d45120f2e6eb">
 
-Give this account simplified permissions "Editor":
+Click "CREATE AND CONTINUE" then give the service account "Basic -> Editor" over the "Development" project, then click "DONE":
 
+<img width="1137" alt="Screenshot 2023-08-07 at 2 27 30 PM" src="https://github.com/networknext/next/assets/696656/0cced877-38ef-40d4-9f4e-f171f0948b20">
 
+3. Generate a JSON key for your service account
 
-3. 
+Click on the "Actions" drop down for your service account and select "Manage Keys":
+
+<img width="1745" alt="Screenshot 2023-08-07 at 2 29 20 PM" src="https://github.com/networknext/next/assets/696656/354bfc13-30b3-4cc6-8525-1b7dba25b95f">
+
+Click on "ADD KEY" then "Create new key":
+
+<img width="844" alt="Screenshot 2023-08-07 at 2 30 19 PM" src="https://github.com/networknext/next/assets/696656/6704d055-9c41-46e9-b971-2b2bd4003bcc">
+
 
 
 
