@@ -138,8 +138,13 @@ You should see a response `pong`
 
 Disconnect from the OpenVPN client.
 
-Run `next ping` again. The command should time out and not display a pong. _The network next REST API is only accessible from your VPN._
+Run `next ping` again. The command should now time out and not display a pong. 
+
+_The network next REST API is only accessible from your VPN._
 
 9. Verify portal is up and operating correctly.
 
+Connect to your OpenVPN client once again.
+
+Navigate to: ...
 _todo: once the portal is ready_
