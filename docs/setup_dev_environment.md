@@ -70,7 +70,7 @@ Add your terraform service account full name as a principle, and grant it "Cloud
 
 <img width="587" alt="Screenshot 2023-08-07 at 6 44 35 PM" src="https://github.com/networknext/next/assets/696656/2e9a533b-3e69-4968-903e-a0b5c91e10fe">
 
-VMs started with your terraform service account in dev can now access your storage buckets in the "Storage" proje9ct.
+VMs started with your terraform service account in dev can now access your storage buckets in the "Storage" project.
    
 4. Configure terraform variables
 
