@@ -19,13 +19,27 @@ Once these prerequisites are created, the actual setup of your development backe
 
 Create a new linode account at https://linode.com (they have been acquired by Akamai)
 
-Select "Marketplace" in the navigation menu on the left:
+Select "Marketplace" in the navigation menu on the left and search for "OpenVPN":
 
-<img width="190" alt="image" src="https://github.com/networknext/next/assets/696656/3a2000b9-1847-48bc-9ed1-95673379069a">
+<img width="1548" alt="Screenshot 2023-08-07 at 12 15 48 PM" src="https://github.com/networknext/next/assets/696656/d89d006c-91f7-478f-923b-a0dc8ee6c0a8">
 
-Search for "OpenVPN", and you'll find an image you can install with the OpenVPN server:
+Select the OpenVPN item and fill out the configuration
 
+<img width="1337" alt="Screenshot 2023-08-07 at 12 17 07 PM" src="https://github.com/networknext/next/assets/696656/34730500-68bc-4849-a270-12ef5122c1d5">
 
+I recommend setting Ubuntu 20.04 as the base image and selecting a location nearest to you for lowest latency.
+
+The "Dedicated 4GB" instance should be sufficient to run your VPN. It's around $40 USD per-month as of 2023.
+
+Create the instance with label "openvpn".
+
+Once the linode is created, take note of the IP address of your linode. You'll need it later.
+
+You can finish configuration by following these instructions: https://www.linode.com/docs/products/tools/marketplace/guides/openvpn/
+
+_Basically, you just need to connect to the instance via the linode browser based SSH, trigger some setup, and then from this point forward you can configure the rest of the OpenVPN server using the OpenVPN admin interface running on your linode..._
+
+Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. While you are on the VPN your IP address will appear as the VPN address. Later on, we're going to secure the dev environment such that the REST APIs and portal are only accessible from your VPN IP address.
 
 2. Create three domains
 
