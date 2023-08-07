@@ -62,6 +62,7 @@ A json key file will download to your computer at this point. Create a new direc
 
 Open the file next/terraform/storage/terraform.tfvars in an editor. This is the configuration file for the terraform script that will configure your "Storage" project for you in google cloud.
 
+`
    credentials       = "~/secrets/terraform-storage.json"
    project           = "storage-379422"
    location          = "US"
@@ -72,6 +73,7 @@ Open the file next/terraform/storage/terraform.tfvars in an editor. This is the 
    prod_artifacts    = "masbandwidth_network_next_prod_artifacts"
    relay_artifacts   = "masbandwidth_network_next_relay_artifacts"
    sdk_config        = "masbandwidth_network_next_sdk_config"
+`
 
 Please edit the text file such that the bucket names match your company name, for example: dev_artifacts, staging_artifacts, prod_artifacts, relay_artifacts and sdk_config need to be adjusted so that "masbandwidth" is replaced with your company name.
 
