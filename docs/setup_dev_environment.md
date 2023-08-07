@@ -32,6 +32,8 @@ Click on "CREATE SERVICE ACCOUNT" and create a new service account with the name
 
 <img width="882" alt="Screenshot 2023-08-07 at 2 25 01 PM" src="https://github.com/networknext/next/assets/696656/b6103afe-78c7-4ad5-b559-d45120f2e6eb">
 
+Take note of the terraform service account name, as you will need it shortly. For example: 
+
 Click "CREATE AND CONTINUE" then give the service account "Basic -> Editor" over the "Development" project, then click "DONE":
 
 <img width="1137" alt="Screenshot 2023-08-07 at 2 27 30 PM" src="https://github.com/networknext/next/assets/696656/0cced877-38ef-40d4-9f4e-f171f0948b20">
@@ -52,6 +54,22 @@ Leave the selection of key type as JSON and click "CREATE":
 
 The key will download to your computer as a small .json file. Create a new directory under your home directoly called "secrets" and move this json file into this directory, so it has a path of ~/secrets/terraform-development.json". This file and path must match exactly for future steps to work correctly.
 
+4. Grant your terraform service account access to the storage buckets
+
+Go back to the "Storage" project in Google cloud and select "Cloud Storage" -> "Buckets" in the nav menu.
+
+Select all buckets then click "PERMISSIONS":
+
+<img width="1271" alt="Screenshot 2023-08-07 at 6 36 45 PM" src="https://github.com/networknext/next/assets/696656/4c1f7584-bdda-4705-88b8-b7b8368225ca">
+
+Click "ADD PRINCIPAL":
+
+<img width="573" alt="image" src="https://github.com/networknext/next/assets/696656/e903dcbe-590e-4895-a8a4-1f3f6495febd">
+
+Add your terraform service account full name as a principle, and grant it "Cloud storage" -> "Storage object viewer" permissions.
+
+VMs started with your terraform service account in dev can now access your storage buckets in the "Storage" proje9ct.
+   
 4. Configure terraform variables
 
 Edit the file: `terraform/dev/backend/terraform.tfvars` under your forked "next" repository.
@@ -118,11 +136,8 @@ You should see a response `pong`
 
 Disconnect from the OpenVPN client.
 
-Run `next ping` again. The command should time out and not receive a pong. The network next REST API is only accessible from your VPN.
+Run `next ping` again. The command should time out and not display a pong. _The network next REST API is only accessible from your VPN._
 
 9. Verify portal is up and operating correctly.
 
 _todo: once the portal is ready_
-
-
-This command will ping the network 
