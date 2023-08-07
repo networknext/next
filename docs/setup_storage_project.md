@@ -6,7 +6,7 @@
 
 In this section we will setup a google cloud project called "Storage" and configure it with terraform. 
 
-This projectw is where we store build artifacts used by the network next backend and configuration files used by the SDK. We will upload these files to cloud storage using semaphoreci jobs.
+This project is where we store build artifacts used by the network next backend and configuration files used by the SDK. We will upload these files to cloud storage using semaphoreci jobs.
 
 1. Click on the project selector at the top left of the screen at http://console.cloud.google.com:
 
