@@ -13,9 +13,19 @@ These include:
 * A cloudflare account so you can point "dev.[domain]" to your three development load balancer instances
 * Configuration of your network next environment, so that it is secure with its own set of keypairs that are unique to you.
 
-Once these prerequisites are created, the actual setup of your development backend is easy, being done with terraform scripts.
+Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed automatically with terraform scripts.
 
 1. Setup a VPN on Linode
+
+Create a new linode account at https://linode.com (they have been acquired by Akamai)
+
+Select "Marketplace" in the navigation menu on the left:
+
+<img width="190" alt="image" src="https://github.com/networknext/next/assets/696656/3a2000b9-1847-48bc-9ed1-95673379069a">
+
+Search for "OpenVPN", and you'll find an image you can install with the OpenVPN server:
+
+
 
 2. Create three domains
 
