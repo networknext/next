@@ -6,4 +6,13 @@
 
 In this section you will create a new "Development" project in google cloud, then use terraform to setup a development environment instance in this project. This environment will use the development artifacts published by previous steps built in semaphoreci from your "dev" branch in github. When this section is complete you will have a fully functional network next dev backend running in google cloud.
 
-1. 
+1. Create "Development" project in google cloud
+
+Go to https://console.cloud.google.com and click on the project selector drop down at the top left, then select create a new project:
+
+<img width="1518" alt="Screenshot 2023-08-07 at 2 07 05 PM" src="https://github.com/networknext/next/assets/696656/3077567d-c926-42cd-99d8-634de1341ebc">
+
+Give the project the name "Development" then hit "CREATE"
+
+<img width="909" alt="Screenshot 2023-08-07 at 2 07 54 PM" src="https://github.com/networknext/next/assets/696656/0e3ee5ce-5d82-4f45-88ec-ea54cb975071">
+
