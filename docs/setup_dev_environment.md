@@ -54,7 +54,7 @@ The key will download to your computer as a small .json file. Create a new direc
 
 4. Configure terraform variables
 
-Edit the file: terraform/dev/backend/terraform.tfvars under your forked "next" repository.
+Edit the file: `terraform/dev/backend/terraform.tfvars` under your forked "next" repository.
 
 Change "service_account" to the full name of the service account you just created under the "Development" google cloud project (you can get this name by clicking on "IAM & Admin -> Service Accounts" in google cloud to get a list of service accounts under "Development".
 
