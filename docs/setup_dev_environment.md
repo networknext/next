@@ -22,9 +22,7 @@ Click the project selector then choose "Development" project in the pop up:
 
 Take note of the project id for your development project. You'll need it shortly. For example: development-395218
 
-2. Create a new service account called "terraform" and give it access to your project
-
-We are going to use terraform to provision the development environment. In order for Terraform to have the access it needs a service account that it operates under. We will export a JSON key file to your computer that gives terraform running locally authentication using actions under the identify of this service account.
+2. Create a new service account called "terraform"
 
 First go to "IAM & Admin" -> "Service Accounts" in the google cloud nav bar:
 
@@ -70,9 +68,9 @@ Change "vpn_address" to your VPN IP address. Admin functionality and portal acce
    
 Change to the directory: terraform/dev/backend
 
-Run "terraform init".
+Run `terraform init`.
 
-Run "terraform apply".
+Run `terraform apply`.
 
 Say "yes" to approve the terraform changes.
 
@@ -82,9 +80,9 @@ Terraform will initially fail complaining about certain APIs not being enabled i
 
 Follow the instructions in the terrform console output and click the links to enable the google cloud features as required.
 
-Run "terraform apply", and iterate, fixing disabled APIs until it succeeds.
+Run `terraform apply`, and iterate, enabling google cloud APIs until it succeeds.
 
-Terraform apply will take a long time to succeed on the first pass. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
+Terraform apply will take a long time to succeed the first time it is run. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
 
 7. Verify managed instance groups are healthy in google cloud
 
