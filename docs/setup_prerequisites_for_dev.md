@@ -45,6 +45,24 @@ Later on, we're going to secure the dev environment such that the REST APIs and 
 
 2. Create three domains
 
-3. Setup a cloudflare account
+Create three silly domain names of your choice using a domain name registrar, for example https://namecheap.com
 
-4. Configure your network next environment
+Each of these domains will be used for different components of your network next backend instance.
+
+For example:
+
+* losangelesfreewaysatnight.com -> relay backend load balancer
+* spacecats.net -> server backend load balancer
+* virtualgo.net -> REST API and portal
+
+Try to make sure that registration for each of these domains is anonymized and protected. Ideally, an attacker wouldn't be able to discover the full set of domains or link them together in any way.
+
+None of these domains will be accessible or known to your customers, but it's always best to be safe. Keep the domains extremely clean and avoid exposing them to DDoS attack. Do not have them linked to your company in any way. The sillier the domain names the better.
+
+3. Setup a cloudflare account and import your new domains
+
+We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain names.
+
+5. Configure your network next environment
+
+...
