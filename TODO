@@ -20,24 +20,11 @@ DONE
 
 TODO
 
-	-------
+	Rework storage project setup to use terraform
 
-	Create service account in google for terraform
+	Re-run through development project using terraform instructions
 
-	Create credentials for terraform and store in ~/secrets/terraform-development.json
-
-	-------
-
-	Setup terraform to 
-
-	-------
-
-	Setup terraform dev environment in network next account.
-
-	Document the process as I work...
-
-	-------
-
+	Complete work up to "next ping" -> "pong".
 
 
 

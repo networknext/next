@@ -2,10 +2,10 @@
 # dev relay variables
 
 env                      = "dev"
-vpn_address              = "45.33.53.242"
+vpn_address              = "45.79.157.168"
 ssh_public_key_file      = "~/.ssh/id_rsa.pub"
 ssh_private_key_file     = "~/.ssh/id_rsa"
-relay_version            = "1.0.19"
+relay_version            = "relay-debug-1.0.20"
 relay_artifacts_bucket   = "network_next_relay_artifacts"
 relay_public_key         = "S0Nr+Hh05vpCpggvUjTwqqC5FX+nuKN02q1K9aOiGQY="
 relay_private_key        = "ei8wBWrWnnJOoI3dyQgajOcwfk1axAoKg0L5Xp9UCZw="
