@@ -63,6 +63,6 @@ None of these domains will be accessible or known to your customers, but it's al
 
 We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain names.
 
-5. Configure your network next environment
+This will take a few hours to a few days. Once the domains are managed by cloudflare you can proceed to the next step.
 
-...
+Next step: [setup your dev environment](setup_dev_environment.md)

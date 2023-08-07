@@ -2,67 +2,123 @@
 
 <br>
 
-# Setup prerequisites for development environment
+# Setup dev environment
 
-Before we can setup your dev environment, we need to setup some prerequites.
+In this section you will create a new "Development" project in google cloud, then use terraform to setup a development environment instance in this project. This environment will use the development artifacts built and uploaded by semaphoreci from your "dev" branch in github. When this section is complete you will have a fully functional network next dev backend running in google cloud as well as a process for developing code changes to this instance.
 
-These include:
+1. Create "Development" project in google cloud
 
-* A OpenVPN instance running on linode to secure access to your network next backend
-* Three domain names for different parts of your network next instance
-* A cloudflare account so you can point "dev.[domain]" to three different components in your dev backend.
-* Configuration of your network next environment, so that it is secured with its own set of keypairs that are unique to your company.
+Go to https://console.cloud.google.com and click on the project selector drop down at the top left, then select "NEW PROJECT" in the pop up:
 
-Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed with terraform scripts.
+<img width="1518" alt="Screenshot 2023-08-07 at 2 07 05 PM" src="https://github.com/networknext/next/assets/696656/3077567d-c926-42cd-99d8-634de1341ebc">
 
-1. Setup a VPN on Linode
+Give the project the name "Development" then hit "CREATE"
 
-Create a new linode account at https://linode.com (they have been acquired by Akamai)
+<img width="909" alt="Screenshot 2023-08-07 at 2 07 54 PM" src="https://github.com/networknext/next/assets/696656/0e3ee5ce-5d82-4f45-88ec-ea54cb975071">
 
-Select "Marketplace" in the navigation menu on the left and search for "OpenVPN":
+Click the project selector then choose "Development" project in the pop up:
 
-<img width="1548" alt="Screenshot 2023-08-07 at 12 15 48 PM" src="https://github.com/networknext/next/assets/696656/d89d006c-91f7-478f-923b-a0dc8ee6c0a8">
+<img width="1407" alt="Screenshot 2023-08-07 at 2 09 35 PM" src="https://github.com/networknext/next/assets/696656/3d8a3045-221b-479c-bf85-ae210d642a52">
 
-Select the OpenVPN item and fill out the configuration
+Take note of the project id for your development project. You'll need it shortly. For example: development-395218
 
-<img width="1337" alt="Screenshot 2023-08-07 at 12 17 07 PM" src="https://github.com/networknext/next/assets/696656/34730500-68bc-4849-a270-12ef5122c1d5">
+2. Create a new service account called "terraform" and give it access to your project
 
-I recommend setting Ubuntu 20.04 as the base image and selecting a location nearest to you for lowest latency.
+We are going to use terraform to provision the development environment. In order for Terraform to have the access it needs a service account that it operates under. We will export a JSON key file to your computer that gives terraform running locally authentication using actions under the identify of this service account.
 
-The "Dedicated 4GB" instance should be sufficient to run your VPN. It's around $40 USD per-month as of 2023.
+First go to "IAM & Admin" -> "Service Accounts" in the google cloud nav bar:
 
-Create the instance with label "openvpn".
+<img width="1415" alt="Screenshot 2023-08-07 at 2 15 18 PM" src="https://github.com/networknext/next/assets/696656/e4c14caf-ef82-43e7-a5bf-77bd27b5bed2">
 
-Once the linode is created, take note of the IP address of your linode. You'll need it later:
+Click on "CREATE SERVICE ACCOUNT" and create a new service account with the name "terraform":
 
-<img width="1445" alt="Screenshot 2023-08-07 at 12 25 53 PM" src="https://github.com/networknext/next/assets/696656/9029c207-1b39-4ac4-8e7a-fc4566936d7b">
+<img width="882" alt="Screenshot 2023-08-07 at 2 25 01 PM" src="https://github.com/networknext/next/assets/696656/b6103afe-78c7-4ad5-b559-d45120f2e6eb">
 
-You can finish the rest of the OpenVPN configuration by following this guide: https://www.linode.com/docs/products/tools/marketplace/guides/openvpn/
+Click "CREATE AND CONTINUE" then give the service account "Basic -> Editor" over the "Development" project, then click "DONE":
 
-Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. While you are on the VPN your IP address will appear as the VPN address. 
+<img width="1137" alt="Screenshot 2023-08-07 at 2 27 30 PM" src="https://github.com/networknext/next/assets/696656/0cced877-38ef-40d4-9f4e-f171f0948b20">
 
-Later on, we're going to secure the dev environment such that the REST APIs and portal are only accessible from your VPN IP address.
+3. Generate a JSON key for your service account
 
-2. Create three domains
+Click on the "Actions" drop down for your service account and select "Manage Keys":
 
-Create three silly domain names of your choice using a domain name registrar, for example https://namecheap.com
+<img width="1745" alt="Screenshot 2023-08-07 at 2 29 20 PM" src="https://github.com/networknext/next/assets/696656/354bfc13-30b3-4cc6-8525-1b7dba25b95f">
 
-Each of these domains will be used for different components of your network next backend instance.
+Click on "ADD KEY" then "Create new key":
+
+<img width="844" alt="Screenshot 2023-08-07 at 2 30 19 PM" src="https://github.com/networknext/next/assets/696656/6704d055-9c41-46e9-b971-2b2bd4003bcc">
+
+Leave the selection of key type as JSON and click "CREATE":
+
+<img width="553" alt="Screenshot 2023-08-07 at 2 33 01 PM" src="https://github.com/networknext/next/assets/696656/95b2cf26-45b4-40d2-af31-a2eaf0882515">
+
+The key will download to your computer as a small .json file. Create a new directory under your home directoly called "secrets" and move this json file into this directory, so it has a path of ~/secrets/terraform-development.json". This file and path must match exactly for future steps to work correctly.
+
+4. Download and install terraform
+
+You can download terraform from https://www.terraform.io if you don't have it already.
+
+If you are using MacOS, the easiest way to get it is via https://brew.sh - eg. "brew install terraform"
+
+5. Configure terraform variables
+
+Edit the file: terraform/dev/backend/terraform.tfvars under your forked "next" repository.
+
+Change "service_account" to the full name of the service account you just created under the "Development" google cloud project (you can get this name by clicking on "IAM & Admin -> Service Accounts" in google cloud to get a list of service accounts under "Development".
+
+Change "project" to the id of the google cloud "Development" project, eg. development-394617 (whatever it is called in your google cloud console)
+
+Change "artifacts_bucket" to the name of the artifacts bucket you created, eg: artifacts_bucket = "gs://[companyname]_network_next_dev_artifacts"
+
+Change "vpn_address" to your VPN IP address. Admin functionality and portal access will only be allowed from this IP address.
+
+6. Build the dev environment with terraform
+   
+Change to the directory: terraform/dev/backend
+
+Run "terraform init".
+
+Run "terraform apply".
+
+Say "yes" to approve the terraform changes.
+
+7. Enable various google cloud APIs in the development project as needed
+   
+Terraform will initially fail complaining about certain APIs not being enabled in google cloud.
+
+Follow the instructions in the terrform console output and click the links to enable the google cloud features as required.
+
+Run "terraform apply", and iterate, fixing disabled APIs until it succeeds.
+
+Terraform apply will take a long time to succeed on the first pass. It is not uncommon for it to take 10-15 minutes to finish provisioning the postgres database instance.
+
+8. Verify managed instance groups are healthy in google cloud
+
+Once the terraform apply succeeds, verify the managed instance groups are all healthy in google cloud.
+
+Go to "Compute Engine -> Instance Groups" in the google cloud nav menu:
+
+<img width="672" alt="Screenshot 2023-08-07 at 2 41 57 PM" src="https://github.com/networknext/next/assets/696656/92b17c47-d96e-4dfa-869f-5ce1fd1a7eb3">
+
+You should see instance groups setup for all services. Within 5-10 minutes, all instance groups should turn green which means they are healthy.
+
+<img width="1718" alt="Screenshot 2023-08-07 at 2 43 47 PM" src="https://github.com/networknext/next/assets/696656/28c775d4-6e9e-42d3-b4e3-ee6164e30ee0">
+
+At this point terraform has taken care of setting up all VM instances, IP addresses, subnetworks and managed instance groups and health checks for your dev environment and it's all working correctly.
+
+9. Point dev.* domains at your development environment
+
+Go into your cloudflare console and point dev.* for your silly domain names to the IP addresses output by terraform.
 
 For example:
 
-* losangelesfreewaysatnight.com -> relay backend load balancer
-* spacecats.net -> server backend load balancer
-* virtualgo.net -> REST API and portal
 
-Try to make sure that registration for each of these domains is anonymized and protected. Ideally, an attacker wouldn't be able to discover the full set of domains or link them together in any way.
 
-None of these domains will be accessible or known to your customers, but it's always best to be safe. Keep the domains extremely clean and avoid exposing them to DDoS attack. Do not have them linked to your company in any way. The sillier the domain names the better.
+	Cloudflare step. Point dev.* 3 domains at load balancer IPs
 
-3. Setup a cloudflare account and import your new domains
+	-----------
 
-We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain names.
+	next ping
 
-5. Configure your network next environment
+	-----------
 
-...
