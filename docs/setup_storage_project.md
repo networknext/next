@@ -1,4 +1,4 @@
-<img src="https://static.wixstatic.com/media/799fd4_0512b6edaeea4017a35613b4c0e9fc0b~mv2.jpg/v1/fill/w_1200,h_140,al_c,q_80,usm_0.66_1.00_0.01/networknext_logo_colour_black_RGB_tightc.jpg" alt="Network Next" width="600"/>
+7<img src="https://static.wixstatic.com/media/799fd4_0512b6edaeea4017a35613b4c0e9fc0b~mv2.jpg/v1/fill/w_1200,h_140,al_c,q_80,usm_0.66_1.00_0.01/networknext_logo_colour_black_RGB_tightc.jpg" alt="Network Next" width="600"/>
 
 <br>
 
@@ -122,9 +122,8 @@ The SDK reads config files from a public URL to configure certain aspects like t
 
 Go back to the "Storage" google cloud project and create a new cloud storage bucket called: "[companyname]_network_next_sdk_config"
 
-Accept the default settings for this bucket, but when it asks to enable public access protection, UNCHECK that and hit CONFIRM.
+Accept the default settings for this bucket, but when it asks to enable public access protection, UNCHECK that and hit CONFIRM:
 
-
-
+<img width="506" alt="Screenshot 2023-08-07 at 10 46 03 AM" src="https://github.com/networknext/next/assets/696656/9ac8fded-7a15-422d-a691-c9fe7b467958">
 
 (Up next... setup prerequisites for dev environment)
