@@ -40,27 +40,37 @@ Navigate to "IAM & Admin" -> "Service Accounts" in the google cloud nav menu:
 
 <img width="522" alt="Screenshot 2023-08-06 at 9 26 49 PM" src="https://github.com/networknext/next/assets/696656/63a1b35d-23c4-4604-b0aa-a480b0854641">
 
-Create a new service account called "terraform" and give it "Basic" -> "Editor" permissions so it can modify the "Storage" project in google cloud:
+Create a new service account called "terraform":
 
-6. Create and download a JSON key for the semaphore service account
+<img width="857" alt="Screenshot 2023-08-07 at 4 10 14 PM" src="https://github.com/networknext/next/assets/696656/36fdafc8-0e94-4a01-a987-24ea7b0f6f93">
 
-...
+Give it "Basic" -> "Editor" permissions so it can modify the "Storage" project in google cloud:
 
+<img width="1150" alt="Screenshot 2023-08-07 at 4 10 57 PM" src="https://github.com/networknext/next/assets/696656/196e6d60-25db-4e14-bdc8-2521db4b16ea">
 
+6. Create and download a JSON key for the terraform service account
 
+Select "Manage Keys" under the "Actions" drop down for the service account:
 
+<img width="2038" alt="Screenshot 2023-08-07 at 4 11 57 PM" src="https://github.com/networknext/next/assets/696656/e2642738-1932-4c6d-87ec-e4a9181d16a1">
 
+Click "ADD KEY" -> "Create new key":
 
+<img width="955" alt="Screenshot 2023-08-07 at 4 13 13 PM" src="https://github.com/networknext/next/assets/696656/4c349b4f-38a9-4614-ae06-94b21776b61c">
 
+Accept the default key type of JSON and just hit "CONFIRM":
 
+<img width="556" alt="Screenshot 2023-08-07 at 4 14 06 PM" src="https://github.com/networknext/next/assets/696656/fd19caf1-c064-4583-a79b-c8f30b6ad599">
 
-9. Create a service account to be used by semaphoreci to upload files to cloud storage
+A json key file will download to your computer at this point. Create a new directory under your home directory called ~/secrets and move the json file into this directory so that it has the path "~/secrets/terraform-storage.json". The filename must be exact or the terraform setup process will not work.
+
+7. Create a service account to be used by semaphoreci to upload files to cloud storage
 
 Create a new service account and called "semaphore" and give it "Cloud Storage" -> "Storage admin" role, so it can upload files.
 
 <img width="1008" alt="Screenshot 2023-08-06 at 9 29 28 PM" src="https://github.com/networknext/next/assets/696656/a8e32e06-5ae6-433f-b95d-c4a6d9ba3132">
 
-10. Create and download a JSON key for the semaphore service account
+8. Create and download a JSON key for the semaphore service account
 
 Select "Manage Keys" for your new service account:
 
@@ -76,7 +86,7 @@ Select key type "JSON":
 
 The file will download to your computer automatically.
 
-8. Setup the key and your company name in your semaphoreci account
+9. Setup the key and your company name in your semaphoreci account
 
 Select "Settings" in the top right menu in semaphoreci:
 
@@ -100,7 +110,7 @@ Create a second secret, and call it "company-name" of type Env var, and set it t
 
 The company name must match exactly the company name you used above when creating the google cloud storage bucket.
 
-9. Create a "dev" branch in your "next" project in github
+10. Create a "dev" branch in your "next" project in github
 
 This is necessary because we are building artifacts from the "dev" branch, which will upload to your dev artifacts bucket. Later on, we'll create staging and production branches and buckets too.
 
@@ -108,7 +118,7 @@ Commit any change in this dev branch, and make sure it triggers a semaphoreci bu
 
 <img width="810" alt="Screenshot 2023-08-06 at 9 58 24 PM" src="https://github.com/networknext/next/assets/696656/e0a1eec6-0d0f-4634-ba81-2318a7bc4485">
 
-10. Verify that semaphoreci can upload artifacts to google cloud storage
+11. Verify that semaphoreci can upload artifacts to google cloud storage
 
 Once the build job completes, the "Upload Artifacts" should automatically trigger in dev branch:
 
@@ -120,7 +130,7 @@ If you click on the job, it expands to show you all the artifact upload jobs tha
 
 <img width="1159" alt="image" src="https://github.com/networknext/next/assets/696656/618b1eab-23a1-4d14-a0e1-73f91ddf5903">
 
-11. Verify the files are uploaded to the google cloud bucket
+12. Verify the files are uploaded to the google cloud bucket
 
 Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets", then select your bucket called "[companyname]_network_next_dev_artifacts".
 
@@ -128,27 +138,9 @@ Go back to the google cloud console and navigate to "Cloud Storage" -> "Buckets"
 
 Inside this artifact you should now see some files. These files are the binaries built from the "dev" branch by semaphoreci and uploaded in the "Upload Artifacts" job. The development environment always runs binaries built from the development branch.
 
-12. Create SDK config bucket
+13. Upload SDK config
 
 The SDK reads config files from a public URL to configure certain aspects like the automatic datacenter detection in public clouds and the support for multiplay.com. Next we will setup another bug for these configuration files, but this time the files will be publicly readable, so the SDK can access them.
-
-Go back to the "Storage" google cloud project and create a new cloud storage bucket called: "[companyname]_network_next_sdk_config"
-
-Accept the default settings for this bucket, but when it asks to enable public access protection, UNCHECK that and hit CONFIRM:
-
-<img width="506" alt="Screenshot 2023-08-07 at 10 46 03 AM" src="https://github.com/networknext/next/assets/696656/9ac8fded-7a15-422d-a691-c9fe7b467958">
-
-Click on "Permissions" for the bucket:
-
-<img width="993" alt="Screenshot 2023-08-07 at 10 47 17 AM" src="https://github.com/networknext/next/assets/696656/34491e5e-8c77-4992-b7fa-30a59915edae">
-
-Click on "Grant Access":
-
-<img width="1015" alt="Screenshot 2023-08-07 at 10 48 49 AM" src="https://github.com/networknext/next/assets/696656/5f4021ac-bad6-43eb-b509-dda7eb77613f">
-
-Give "allUsers" access to the bucket with permission "Cloud storage -> Storage object viewer":
-
-13. Verify that semaphore can upload SDK config
 
 Go back to the last successful semaphore job for your "next" project, and start the job "Upload Config":
 
@@ -167,3 +159,4 @@ Go back to the google cloud bucket and verify that you see text files in it:
 Make sure the files have permissions "Public to Internet" in the column as highlighted, otherwise the SDK won't be able to download the files when it runs.
 
 _You are now ready to [setup prerequites for the dev environment](setup_prerequisites_for_dev.md)_
+
