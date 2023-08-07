@@ -18,21 +18,19 @@ In this section we will setup a google cloud project called "Storage" where we w
 
 <img width="553" alt="image" src="https://github.com/networknext/next/assets/696656/1f57d358-919b-4f80-87c5-1d3d99ac548c">
 
-4. Take note of the project id for later
-
 Once the project is created it is assigned a project id:
 
 <img width="493" alt="Screenshot 2023-08-06 at 9 12 31 PM" src="https://github.com/networknext/next/assets/696656/5872da7d-df9e-443f-afac-af61e4bc1c84">
 
 For example: storage-395201
 
-Write down and save this project id somewhere for later.
+Save this project id somewhere for later.
 
-5. Click on "Cloud Storage" -> "Buckets" in the google cloud nav menu
+4. Click on "Cloud Storage" -> "Buckets" in the google cloud nav menu
    
 <img width="530" alt="Screenshot 2023-08-06 at 9 17 30 PM" src="https://github.com/networknext/next/assets/696656/11eb1b6c-7f59-4e32-8e55-d06d7e21f736">
 
-6. Create a cloud storage bucket for development artifacts
+5. Create a cloud storage bucket for development artifacts
    
 <img width="526" alt="Screenshot 2023-08-06 at 9 19 34 PM" src="https://github.com/networknext/next/assets/696656/18b7a2fb-ed49-48b9-b781-cd9dc8ea6d18">
 
