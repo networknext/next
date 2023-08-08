@@ -18,14 +18,74 @@ DONE
 
 	Create storage project and setup buckets and semaphore, tracking steps to do so in SETUP
 
-TODO
-
 	Rework storage project setup to use terraform
 
-	Re-run through development project using terraform instructions
+	Fix quotas
+
+TODO
+
+	Implement cloudflare terraform to automatically point domains to LBs at the end of backend script.
+
+		provider "cloudflare" {
+		  email = "you@example.com"
+		  token = "your-api-key"
+		}
+
+		variable "domain" {
+		  default = "example.com"
+		}
+
+		resource "cloudflare_record" "www" {
+		  domain  = "${var.domain}"
+		  name    = "www"
+		  value   = "203.0.113.10"
+		  type    = "A"
+		  proxied = true
+		}
+
+	--------
+
+	Wait for quotas to get approved.
 
 	Complete work up to "next ping" -> "pong".
 
+	--------
+
+	Pain point. Manually enabling APIs is annoying.
+
+	The APIs can be enabled via terraform...
+
+	https://github.com/CloudNativeTech/gdg-terraform-gcp-workshop/blob/master/03-project/project.tf#L23
+
+	--------
+
+	Pain point. Manually specifying the service account name is annoying. 
+
+	Ideally, grab the terraform service account from the credentials somehow? Or find the service account by name in terraform?
+
+	--------
+
+	Pain point. Have to manually give the service account permissions to download artifacts from bucket.
+
+	No solution yet.
+
+	--------
+
+	Creating projects and setting up service account permissions is a pain.
+
+	Potentially solvable by creating the projects with terraform?
+
+	--------
+
+	Pain point. Managing secrets is a pain.
+
+	Potentially solvable with hashicorp vault?
+
+	--------
+
+	Next. Create dev relays.
+
+	--------
 
 
 
