@@ -11,7 +11,7 @@ These include:
 * A OpenVPN instance running on linode to secure access to your network next backend
 * Three domain names for different parts of your network next instance
 * A cloudflare account so you can point "dev.[domain]" to three different components in your dev backend.
-* Configuration of your network next environment, so that it is secured with its own set of keypairs that are unique to your company.
+* Increased quotes so your google cloud account can create enough resources to run the environment.
 
 Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed with terraform scripts.
 
@@ -66,3 +66,29 @@ We will use cloudflare to manage your domains. Create a new account at https://c
 This will take a few hours to a few days. Once the domains are managed by cloudflare you can proceed to the next step.
 
 Next step: [setup your dev environment](setup_dev_environment.md)
+
+4. Increase google cloud quotas
+
+When you create the dev environment, you'll likely be very close to the number of resources required to run it. This may stall out terraform, because it cannot allocate a VM because you are over quota.
+
+To fix this, go to the "IAM & Admin" -> "Quotas" page in google cloud.
+
+<img width="1988" alt="image" src="https://github.com/networknext/next/assets/696656/cb20b82b-3768-47e5-af0a-dab609ed1657">
+
+Request increases to the following quotas:
+
+* In use IP addresses -> 256
+* CPUs (US-Central) -> 1024
+* VM Instances (US-Central) -> 1024
+* CPUs (All Regions) -> 2048
+* Target HTTP proxies -> 256
+* Target URL maps -> 256
+* Networks -> 64
+* In use IP addresses global -> 256
+* Static IP addreses global -> 256
+* Health checks -> 256
+* Regional managed instance groups (US-Central) -> 256
+  
+The requests above are aggressive and they will likely respond with lower numbers, accept these, then deploy the dev environment. Then, before you deploy the staging or production environments, request another aggressive quota increase. If they complain again, tell them you are doing a load test and these are the absolute numbers you need and this will likely get approved.
+
+  
