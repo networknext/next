@@ -10,6 +10,10 @@ variable "artifacts_bucket" { type = string }
 variable "machine_type" { type = string }
 variable "git_hash" { type = string }
 variable "vpn_address" { type = string }
+variable "cloudflare_api_token" { type = string }
+variable "cloudflare_zone_id_api" { type = string }
+variable "cloudflare_zone_id_relay_backend" { type = string }
+variable "cloudflare_zone_id_server_backend" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
@@ -19,6 +23,10 @@ terraform {
       source  = "hashicorp/google"
       version = "4.51.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -27,6 +35,34 @@ provider "google" {
   project     = var.project
   region      = var.region
   zone        = var.zone
+}
+
+provider "cloudflare" {
+  api_token = file(var.cloudflare_api_token)
+}
+
+resource "cloudflare_record" "api_domain" {
+  zone_id = var.cloudflare_zone_id_api
+  name    = "dev"
+  value   = module.api.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "server_backend_domain" {
+  zone_id = var.cloudflare_zone_id_server_backend
+  name    = "dev"
+  value   = module.server_backend.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "relay_backend_domain" {
+  zone_id = var.cloudflare_zone_id_relay_backend
+  name    = "dev"
+  value   = module.relay_gateway.address
+  type    = "A"
+  proxied = false
 }
 
 # ----------------------------------------------------------------------------------------
@@ -150,26 +186,6 @@ resource "google_compute_firewall" "allow_udp_all" {
     protocol = "udp"
   }
   target_tags = ["allow-udp-all"]
-}
-
-# ----------------------------------------------------------------------------------------
-
-resource "google_compute_instance" "test" {
-  name         = "test"
-  project      = var.project
-  zone         = var.zone
-  machine_type = var.machine_type
-  network_interface {
-    network    = google_compute_network.development.id
-    subnetwork = google_compute_subnetwork.development.id
-    access_config {}
-  }
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    }
-  }
-  tags = ["allow-ssh"]
 }
 
 # ----------------------------------------------------------------------------------------

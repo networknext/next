@@ -1,0 +1,45 @@
+SETUP
+
+	--------
+
+	Update instructions in dev to setup cloudflare.
+
+	--------
+
+	Pain point. Manually enabling APIs is annoying.
+
+	The APIs can be enabled via terraform...
+
+	https://github.com/CloudNativeTech/gdg-terraform-gcp-workshop/blob/master/03-project/project.tf#L23
+
+	--------
+
+	Pain point, creating all the projects and service accounts and permissions takes up a lot of time and is fiddly and error prone.
+
+	Solution. Create a terraform job to setup all the projects and link together permissions as necessary. This job can also provision the buckets in storage.
+
+	--------
+
+	Pain point. Manually specifying the service account name is annoying. 
+
+	Ideally, grab the terraform service account from the credentials somehow? Or find the service account by name in terraform?
+
+	--------
+
+	Pain point. Have to manually give the service account permissions to download artifacts from bucket.
+
+	No solution yet.
+
+	--------
+
+	Pain point. Managing secrets is a pain.
+
+	Potentially solvable with hashicorp vault?
+
+	There is also google cloud secrets manager.
+
+	--------
+
+	Next. Create dev relays.
+
+	--------

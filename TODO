@@ -1,92 +1,14 @@
 DONE
 
-	Finish the relay
-
-	Move sdk5 -> sdk
-
-	Check that all semaphore jobs are working
-
-	Fix warnings in linux GCC.
-
-	Fix log spam that was breaking happy path.
-
-	Restructure SDK into multiple source files so it's more easily maintainable
-
-	Get SDK func tests passing
-
-	Fix docker build
-
-	Create storage project and setup buckets and semaphore, tracking steps to do so in SETUP
-
-	Rework storage project setup to use terraform
-
-	Fix quotas
+	Fix up cloudflare to also setup relay backend and server backend domains. Will need to work out zone id cruft.
 
 TODO
 
-	Implement cloudflare terraform to automatically point domains to LBs at the end of backend script.
+	Get mas-bandwidth GCP up to the point of working "next ping" -> pong.
 
-		provider "cloudflare" {
-		  email = "you@example.com"
-		  token = "your-api-key"
-		}
+	Currently blocked on google cloud not creating instances for me.
 
-		variable "domain" {
-		  default = "example.com"
-		}
-
-		resource "cloudflare_record" "www" {
-		  domain  = "${var.domain}"
-		  name    = "www"
-		  value   = "203.0.113.10"
-		  type    = "A"
-		  proxied = true
-		}
-
-	--------
-
-	Wait for quotas to get approved.
-
-	Complete work up to "next ping" -> "pong".
-
-	--------
-
-	Pain point. Manually enabling APIs is annoying.
-
-	The APIs can be enabled via terraform...
-
-	https://github.com/CloudNativeTech/gdg-terraform-gcp-workshop/blob/master/03-project/project.tf#L23
-
-	--------
-
-	Pain point. Manually specifying the service account name is annoying. 
-
-	Ideally, grab the terraform service account from the credentials somehow? Or find the service account by name in terraform?
-
-	--------
-
-	Pain point. Have to manually give the service account permissions to download artifacts from bucket.
-
-	No solution yet.
-
-	--------
-
-	Creating projects and setting up service account permissions is a pain.
-
-	Potentially solvable by creating the projects with terraform?
-
-	--------
-
-	Pain point. Managing secrets is a pain.
-
-	Potentially solvable with hashicorp vault?
-
-	--------
-
-	Next. Create dev relays.
-
-	--------
-
+	----------------
 
 
 
