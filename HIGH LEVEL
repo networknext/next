@@ -36,9 +36,21 @@ DONE
 
 	Multithreaded relay with session database per-socket thread (no contention)
 
+	Document setup process with terraform and run through it several times to check it out
+
+	Setup dev backend with terraform
+
 TODO
 
-	Setup dev backend and relays in dev with terraform
+	Finish the terraform plugin and publish it
+
+	------------
+
+	Setup relays in dev
+
+	------------
+
+	Optimize the setup process by automating creation of projects, service accounts and permissions
 
 	------------
 

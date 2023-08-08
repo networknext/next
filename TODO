@@ -4,81 +4,11 @@ DONE
 
 TODO
 
-	Get mas-bandwidth GCP up to the point of working "next ping" -> pong.
-
-	Currently blocked on google cloud not creating instances for me.
+	Switch back to network next GCP and get dev environment up to "next ping" -> pong
 
 	----------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Relay ping packet stuff needs to go into spam. It's too much logs to see what's going on in happy path.
-
-	----------------
-
-	Update terraform plugin to new accelerate name
+	Dive back into networknext terraform plugin and work out what's going on
 
 	----------------
 
@@ -91,10 +21,6 @@ TODO
 	----------------
 
 	Implement terraform func test in semaphore based on public provider
-
-	----------------
-
-	Generate terraform files from config and create entire dev database with terraform
 
 	----------------
 
@@ -134,11 +60,6 @@ TODO
 
 
 
-
-
-
-
-	
 	----------------------
 
 	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
@@ -178,47 +99,6 @@ TODO
 	Relay gateway service must run over https in dev.
 
 	-----------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

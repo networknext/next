@@ -1516,7 +1516,8 @@ func terraformDestroy(env Environment, component string) {
 // -------------------------------------------------------------------------------------------
 
 func ping() {
-	text := GetText(fmt.Sprintf("%s/ping", env.AdminURL))
+	url := fmt.Sprintf("%s/ping", env.AdminURL)
+	text := GetText(url)
 	fmt.Printf("%s\n\n", text)
 }
 
