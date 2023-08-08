@@ -34,9 +34,9 @@ Click on "CREATE SERVICE ACCOUNT" and create a new service account with the name
 
 Take note of the terraform service account name, as you will need it shortly. For example: 
 
-Click "CREATE AND CONTINUE" then give the service account "Basic -> Editor" over the "Development" project, then click "DONE":
+Click "CREATE AND CONTINUE" then give the service account "Compute network admin" and "Basic -> Editor" over the "Development" project, then click "DONE":
 
-<img width="1137" alt="Screenshot 2023-08-07 at 2 27 30 PM" src="https://github.com/networknext/next/assets/696656/0cced877-38ef-40d4-9f4e-f171f0948b20">
+<img width="872" alt="Screenshot 2023-08-08 at 10 28 17 AM" src="https://github.com/networknext/next/assets/696656/2e7d83f3-96a1-4125-83d2-ae8701a2b515">
 
 3. Generate a JSON key for your service account
 
