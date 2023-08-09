@@ -2,13 +2,81 @@ DONE
 
 	Fix up cloudflare to also setup relay backend and server backend domains. Will need to work out zone id cruft.
 
-TODO
-
 	Switch back to network next GCP and get dev environment up to "next ping" -> pong
 
-	----------------
-
 	Dive back into networknext terraform plugin and work out what's going on
+
+	Worked out how I can run the plugin locally again
+
+TODO
+
+	Get all the resource types working
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	----------------
 

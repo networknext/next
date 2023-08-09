@@ -124,13 +124,13 @@ func main() {
 		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", isAuthorized(adminDeleteBuyerDatacenterSettingsHandler)).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_buyer_keypair", isAuthorized(adminCreateBuyerKeypairHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/buyer_keypairs", isAuthorized(adminReadBuyerKeypairHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/buyer_keypairs", isAuthorized(adminReadBuyerKeypairsHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/buyer_keypair/{buyerKeypairId}", isAuthorized(adminReadBuyerKeypairHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_buyer_keypair", isAuthorized(adminUpdateBuyerKeypairHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer_keypair/{buyerKeypairId}", isAuthorized(adminDeleteBuyerKeypairHandler)).Methods("DELETE")
 
 		service.Router.HandleFunc("/admin/create_relay_keypair", isAuthorized(adminCreateRelayKeypairHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/relay_keypairs", isAuthorized(adminReadRelayKeypairHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/relay_keypairs", isAuthorized(adminReadRelayKeypairsHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/relay_keypair/{relayKeypairId}", isAuthorized(adminReadRelayKeypairHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_relay_keypair", isAuthorized(adminUpdateRelayKeypairHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_relay_keypair/{relayKeypairId}", isAuthorized(adminDeleteRelayKeypairHandler)).Methods("DELETE")
@@ -1418,20 +1418,12 @@ type AdminCreateRelayKeypairResponse struct {
 
 func adminCreateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 	var response AdminCreateRelayKeypairResponse
-	var relayKeypairData admin.RelayKeypairData
-	err := json.NewDecoder(r.Body).Decode(&relayKeypairData)
-	if err != nil {
-		core.Error("failed to read relay keypair data in create relay keypair request: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	relayKeypairId, err := controller.CreateRelayKeypair(&relayKeypairData)
+	relayKeypairData, err := controller.CreateRelayKeypair()
 	if err != nil {
 		core.Error("failed to create relay keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		relayKeypairData.RelayKeypairId = relayKeypairId
-		core.Log("create relay keypair %x", relayKeypairId)
+		core.Log("create relay keypair")
 		core.Debug("%+v", relayKeypairData)
 		response.RelayKeypair = relayKeypairData
 	}

@@ -1038,20 +1038,20 @@ type RelayKeypairData struct {
 	PrivateKeyBase64 string `json:"private_key_base64"`
 }
 
-func (controller *Controller) CreateRelayKeypair(relayKeypairData *RelayKeypairData) (uint64, error) {
+func (controller *Controller) CreateRelayKeypair() (RelayKeypairData, error) {
 	relayKeypairId := uint64(0)
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
-		return relayKeypairId, fmt.Errorf("could not generate relay keypair")
+		return RelayKeypairData{}, fmt.Errorf("could not generate relay keypair")
 	}
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
 	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
 	sql := "INSERT INTO relay_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING relay_keypair_id;"
 	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
 	if err := result.Scan(&relayKeypairId); err != nil {
-		return 0, fmt.Errorf("could not insert relay keypair: %v\n", err)
+		return RelayKeypairData{}, fmt.Errorf("could not insert relay keypair: %v\n", err)
 	}
-	return relayKeypairId, nil
+	return RelayKeypairData{RelayKeypairId: relayKeypairId, PublicKeyBase64: publicKeyBase64, PrivateKeyBase64: privateKeyBase64}, nil
 }
 
 func (controller *Controller) ReadRelayKeypairs() ([]RelayKeypairData, error) {
@@ -1073,7 +1073,7 @@ func (controller *Controller) ReadRelayKeypairs() ([]RelayKeypairData, error) {
 
 func (controller *Controller) ReadRelayKeypair(relayKeypairId uint64) (RelayKeypairData, error) {
 	relayKeypair := RelayKeypairData{}
-	rows, err := controller.pgsql.Query("SELECT relay_keypair_id, public_key_base64, private_key_base64 WHERE relay_keypair_id = $1;", relayKeypairId)
+	rows, err := controller.pgsql.Query("SELECT relay_keypair_id, public_key_base64, private_key_base64 FROM relay_keypairs WHERE relay_keypair_id = $1;", relayKeypairId)
 	if err != nil {
 		return relayKeypair, fmt.Errorf("could not read relay keypair: %v\n", err)
 	}
