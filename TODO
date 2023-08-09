@@ -18,8 +18,6 @@ DONE
 
 	Implement a func test that uses the published terraform provider against a postgres instance and the api service to make sure it works.
 	
-TODO
-
 	Point the terraform at dev API and then run a terraform apply. Does it work?
 
 	It does not work, because... the database doesn't have all the rows it needs.
@@ -29,6 +27,14 @@ TODO
 	The answer is that currently I do not.
 	
 	How can I do this?
+
+	This can be automated, but by far the simplest option is to just manually import in the google cloud console for now, then I can work on other more interesting things in the short term.
+
+	For the one off, the data needs to be uploaded to a google cloud storage bucket, then from this, it seems straightforward to load into cloud storage. Most likely, I'll end up doing this via terraform or some init step.
+
+TODO
+
+	Now try terraform apply again
 
 	----------------
 
