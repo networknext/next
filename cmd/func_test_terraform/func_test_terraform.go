@@ -90,7 +90,7 @@ var terraform_create = `
 terraform {
   required_providers {
     networknext = {
-      source = "networknext.com/networknext/networknext"
+      source = "networknext/networknext"
       version = "~> 5.0"
     }
   }
@@ -265,7 +265,7 @@ var terraform_update = `
 terraform {
   required_providers {
     networknext = {
-      source = "networknext.com/networknext/networknext"
+      source = "networknext/networknext"
       version = "~> 5.0"
     }
   }
