@@ -16,13 +16,19 @@ DONE
 
 	Update api test to make sure it covers all resource types. At minumum, the relay keypair and buyer keypair resources were untested.
 
-TODO
-
 	Implement a func test that uses the published terraform provider against a postgres instance and the api service to make sure it works.
 	
-	----------------
+TODO
 
-	Setup some relays in dev with terraform!!!
+	Point the terraform at dev API and then run a terraform apply. Does it work?
+
+	It does not work, because... the database doesn't have all the rows it needs.
+
+	Where do I initialize the database with create.sql?
+
+	The answer is that currently I do not.
+	
+	How can I do this?
 
 	----------------
 
