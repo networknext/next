@@ -5186,7 +5186,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. could not find session (thread %d)", from_string );
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. could not find session (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
