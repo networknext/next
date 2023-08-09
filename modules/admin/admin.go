@@ -963,13 +963,13 @@ type BuyerKeypairData struct {
 	PrivateKeyBase64 string `json:"private_key_base64"`
 }
 
-func (controller *Controller) CreateBuyerKeypair(buyerKeypairData *BuyerKeypairData) (uint64, error) {
+func (controller *Controller) CreateBuyerKeypair() (BuyerKeypairData, error) {
 	buyerKeypairId := uint64(0)
 	buyerId := make([]byte, 8)
 	rand.Read(buyerId)
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
-		return buyerKeypairId, fmt.Errorf("could not generate buyer keypair: %v", err)
+		return BuyerKeypairData{}, fmt.Errorf("could not generate buyer keypair: %v", err)
 	}
 	buyerPublicKey := make([]byte, 0)
 	buyerPublicKey = append(buyerPublicKey, buyerId...)
@@ -982,9 +982,9 @@ func (controller *Controller) CreateBuyerKeypair(buyerKeypairData *BuyerKeypairD
 	sql := "INSERT INTO buyer_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING buyer_keypair_id;"
 	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
 	if err := result.Scan(&buyerKeypairId); err != nil {
-		return 0, fmt.Errorf("could not insert buyer keypair: %v\n", err)
+		return BuyerKeypairData{}, fmt.Errorf("could not insert buyer keypair: %v\n", err)
 	}
-	return buyerKeypairId, nil
+	return BuyerKeypairData{BuyerKeypairId: buyerKeypairId, PublicKeyBase64: publicKeyBase64, PrivateKeyBase64: privateKeyBase64}, nil
 }
 
 func (controller *Controller) ReadBuyerKeypairs() ([]BuyerKeypairData, error) {
@@ -1006,7 +1006,7 @@ func (controller *Controller) ReadBuyerKeypairs() ([]BuyerKeypairData, error) {
 
 func (controller *Controller) ReadBuyerKeypair(buyerKeypairId uint64) (BuyerKeypairData, error) {
 	buyerKeypair := BuyerKeypairData{}
-	rows, err := controller.pgsql.Query("SELECT buyer_keypair_id, public_key_base64, private_key_base64 WHERE buyer_keypair_id = $1;", buyerKeypairId)
+	rows, err := controller.pgsql.Query("SELECT buyer_keypair_id, public_key_base64, private_key_base64 FROM buyer_keypairs WHERE buyer_keypair_id = $1;", buyerKeypairId)
 	if err != nil {
 		return buyerKeypair, fmt.Errorf("could not read buyer keypair: %v\n", err)
 	}
@@ -1038,20 +1038,20 @@ type RelayKeypairData struct {
 	PrivateKeyBase64 string `json:"private_key_base64"`
 }
 
-func (controller *Controller) CreateRelayKeypair(relayKeypairData *RelayKeypairData) (uint64, error) {
+func (controller *Controller) CreateRelayKeypair() (RelayKeypairData, error) {
 	relayKeypairId := uint64(0)
 	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
 	if err != nil {
-		return relayKeypairId, fmt.Errorf("could not generate relay keypair")
+		return RelayKeypairData{}, fmt.Errorf("could not generate relay keypair")
 	}
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
 	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
 	sql := "INSERT INTO relay_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING relay_keypair_id;"
 	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
 	if err := result.Scan(&relayKeypairId); err != nil {
-		return 0, fmt.Errorf("could not insert relay keypair: %v\n", err)
+		return RelayKeypairData{}, fmt.Errorf("could not insert relay keypair: %v\n", err)
 	}
-	return relayKeypairId, nil
+	return RelayKeypairData{RelayKeypairId: relayKeypairId, PublicKeyBase64: publicKeyBase64, PrivateKeyBase64: privateKeyBase64}, nil
 }
 
 func (controller *Controller) ReadRelayKeypairs() ([]RelayKeypairData, error) {
@@ -1073,7 +1073,7 @@ func (controller *Controller) ReadRelayKeypairs() ([]RelayKeypairData, error) {
 
 func (controller *Controller) ReadRelayKeypair(relayKeypairId uint64) (RelayKeypairData, error) {
 	relayKeypair := RelayKeypairData{}
-	rows, err := controller.pgsql.Query("SELECT relay_keypair_id, public_key_base64, private_key_base64 WHERE relay_keypair_id = $1;", relayKeypairId)
+	rows, err := controller.pgsql.Query("SELECT relay_keypair_id, public_key_base64, private_key_base64 FROM relay_keypairs WHERE relay_keypair_id = $1;", relayKeypairId)
 	if err != nil {
 		return relayKeypair, fmt.Errorf("could not read relay keypair: %v\n", err)
 	}

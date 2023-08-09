@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -468,6 +469,58 @@ type UpdateBuyerDatacenterSettingsResponse struct {
 }
 
 type DeleteBuyerDatacenterSettingsResponse struct {
+	Error string `json:"error"`
+}
+
+// ----------------------------------------------------------------------------------------
+
+type CreateRelayKeypairResponse struct {
+	RelayKeypair admin.RelayKeypairData `json:"relay_keypair"`
+	Error        string                 `json:"error"`
+}
+
+type ReadRelayKeypairsResponse struct {
+	RelayKeypairs []admin.RelayKeypairData `json:"relay_keypairs"`
+	Error         string                   `json:"error"`
+}
+
+type ReadRelayKeypairResponse struct {
+	RelayKeypair admin.RelayKeypairData `json:"relay_keypair"`
+	Error        string                 `json:"error"`
+}
+
+type UpdateRelayKeypairResponse struct {
+	RelayKeypair admin.RelayKeypairData `json:"relay_keypair"`
+	Error        string                 `json:"error"`
+}
+
+type DeleteRelayKeypairResponse struct {
+	Error string `json:"error"`
+}
+
+// ----------------------------------------------------------------------------------------
+
+type CreateBuyerKeypairResponse struct {
+	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
+	Error        string                 `json:"error"`
+}
+
+type ReadBuyerKeypairsResponse struct {
+	BuyerKeypairs []admin.BuyerKeypairData `json:"buyer_keypairs"`
+	Error         string                   `json:"error"`
+}
+
+type ReadBuyerKeypairResponse struct {
+	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
+	Error        string                 `json:"error"`
+}
+
+type UpdateBuyerKeypairResponse struct {
+	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
+	Error        string                 `json:"error"`
+}
+
+type DeleteBuyerKeypairResponse struct {
 	Error string `json:"error"`
 }
 
@@ -1518,7 +1571,7 @@ func test_buyer() {
 
 func test_buyer_datacenter_settings() {
 
-	fmt.Printf("test_buyer_datacenter_settings\n")
+	fmt.Printf("\ntest_buyer_datacenter_settings\n\n")
 
 	clearDatabase()
 
@@ -1742,6 +1795,250 @@ func test_buyer_datacenter_settings() {
 
 // ----------------------------------------------------------------------------------------
 
+func test_relay_keypair() {
+
+	fmt.Printf("\ntest_relay_keypair\n\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create relay keypair
+
+	relayKeypair := admin.RelayKeypairData{}
+
+	var response CreateRelayKeypairResponse
+
+	err := Create("admin/create_relay_keypair", relayKeypair, &response)
+
+	if err != nil {
+		panic(err)
+	}
+
+	relayKeypairId := response.RelayKeypair.RelayKeypairId
+
+	// read all relay keypairs
+	{
+		response := ReadRelayKeypairsResponse{}
+
+		err := GetJSON("admin/relay_keypairs", &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(response.RelayKeypairs) != 1 {
+			panic(fmt.Sprintf("expect one relay keypair in response, got %d", len(response.RelayKeypairs)))
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		data, err := base64.StdEncoding.DecodeString(response.RelayKeypairs[0].PublicKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		data, err = base64.StdEncoding.DecodeString(response.RelayKeypairs[0].PrivateKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		_ = data
+	}
+
+	// read a specific relay keypair
+	{
+		response := ReadRelayKeypairResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/relay_keypair/%x", relayKeypairId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		data, err := base64.StdEncoding.DecodeString(response.RelayKeypair.PublicKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		data, err = base64.StdEncoding.DecodeString(response.RelayKeypair.PrivateKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		_ = data
+	}
+
+	// update relay keypair
+	{
+		relayKeypair.RelayKeypairId = relayKeypairId
+		relayKeypair.PublicKeyBase64 = "aaaaaaaaaaaaaaaaaa"
+		relayKeypair.PrivateKeyBase64 = "bbbbbbbbbbbbbbbbbb"
+
+		response := UpdateRelayKeypairResponse{}
+
+		err := Update("admin/update_relay_keypair", relayKeypair, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error == "" {
+			panic("expect error string to be valid. we do not support updating relay keypairs")
+		}
+	}
+
+	// delete relay keypair
+	{
+		response := DeleteRelayKeypairResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_relay_keypair/%x", relayKeypairId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+
+func test_buyer_keypair() {
+
+	fmt.Printf("\ntest_buyer_keypair\n\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create buyer keypair
+
+	buyerKeypair := admin.BuyerKeypairData{}
+
+	var response CreateBuyerKeypairResponse
+
+	err := Create("admin/create_buyer_keypair", buyerKeypair, &response)
+
+	if err != nil {
+		panic(err)
+	}
+
+	buyerKeypairId := response.BuyerKeypair.BuyerKeypairId
+
+	// read all buyer keypairs
+	{
+		response := ReadBuyerKeypairsResponse{}
+
+		err := GetJSON("admin/buyer_keypairs", &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(response.BuyerKeypairs) != 1 {
+			panic(fmt.Sprintf("expect one buyer keypair in response, got %d", len(response.BuyerKeypairs)))
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		data, err := base64.StdEncoding.DecodeString(response.BuyerKeypairs[0].PublicKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		data, err = base64.StdEncoding.DecodeString(response.BuyerKeypairs[0].PrivateKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		_ = data
+	}
+
+	// read a specific buyer keypair
+	{
+		response := ReadBuyerKeypairResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/buyer_keypair/%x", buyerKeypairId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		data, err := base64.StdEncoding.DecodeString(response.BuyerKeypair.PublicKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		data, err = base64.StdEncoding.DecodeString(response.BuyerKeypair.PrivateKeyBase64)
+		if err != nil {
+			panic(err)
+		}
+
+		_ = data
+	}
+
+	// update buyer keypair
+	{
+		buyerKeypair.BuyerKeypairId = buyerKeypairId
+		buyerKeypair.PublicKeyBase64 = "aaaaaaaaaaaaaaaaaa"
+		buyerKeypair.PrivateKeyBase64 = "bbbbbbbbbbbbbbbbbb"
+
+		response := UpdateBuyerKeypairResponse{}
+
+		err := Update("admin/update_buyer_keypair", buyerKeypair, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error == "" {
+			panic("expect error string to be valid. we do not support updating buyer keypairs")
+		}
+	}
+
+	// delete buyer keypair
+	{
+		response := DeleteBuyerKeypairResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_buyer_keypair/%x", buyerKeypairId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------------------
+
 type test_function func()
 
 func main() {
@@ -1754,6 +2051,8 @@ func main() {
 		test_route_shader,
 		test_buyer,
 		test_buyer_datacenter_settings,
+		test_relay_keypair,
+		test_buyer_keypair,
 	}
 
 	var tests []test_function
@@ -1780,9 +2079,9 @@ func main() {
 		panic("tests took too long!")
 	}()
 
-	fmt.Printf("\n")
-
 	for i := range tests {
 		tests[i]()
 	}
+
+	fmt.Printf("\n")
 }

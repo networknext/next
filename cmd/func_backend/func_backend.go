@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -19,7 +20,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"bytes"
 
 	"github.com/gorilla/mux"
 
@@ -415,8 +415,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	copy(responsePacket.ExpectedRelayBackendPublicKey[:], TestRelayBackendPublicKey)
 
 	token := core.RouteToken{}
-	token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 10000}
-	token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 20000}
+	token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 10000}
+	token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 20000}
 	core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], TestRelayBackendPrivateKey, TestRelayPublicKey)
 
 	// send the response packet

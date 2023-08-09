@@ -10,3 +10,6 @@ Network Next is a network acceleration system for multiplayer games.
 2. [Run a local instance with docker compose](docs/run_local_instance_with_docker_compose.md)
 3. [Get your local machine setup for development](docs/setup_for_development.md)
 4. [Setup semaphoreci](docs/setup_semaphoreci.md)
+5. [Setup storage project](docs/setup_storage_project.md)
+6. [Setup prerequisites for your dev environment](docs/setup_prerequisites_for_dev.md)
+7. [Setup your dev environment](docs/setup_dev_environment.md)

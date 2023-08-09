@@ -211,6 +211,9 @@ promotions:
   - name: "Functional Test API"
     pipeline_file: functional-test-api.yml
 
+  - name: "Functional Test Terraform"
+    pipeline_file: functional-test-terraform.yml
+
   - name: "Functional Test Portal"
     pipeline_file: functional-test-portal.yml
 

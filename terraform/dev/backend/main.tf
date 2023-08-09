@@ -10,6 +10,10 @@ variable "artifacts_bucket" { type = string }
 variable "machine_type" { type = string }
 variable "git_hash" { type = string }
 variable "vpn_address" { type = string }
+variable "cloudflare_api_token" { type = string }
+variable "cloudflare_zone_id_api" { type = string }
+variable "cloudflare_zone_id_relay_backend" { type = string }
+variable "cloudflare_zone_id_server_backend" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
@@ -19,6 +23,10 @@ terraform {
       source  = "hashicorp/google"
       version = "4.51.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -27,6 +35,34 @@ provider "google" {
   project     = var.project
   region      = var.region
   zone        = var.zone
+}
+
+provider "cloudflare" {
+  api_token = file(var.cloudflare_api_token)
+}
+
+resource "cloudflare_record" "api_domain" {
+  zone_id = var.cloudflare_zone_id_api
+  name    = "dev"
+  value   = module.api.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "server_backend_domain" {
+  zone_id = var.cloudflare_zone_id_server_backend
+  name    = "dev"
+  value   = module.server_backend.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "relay_backend_domain" {
+  zone_id = var.cloudflare_zone_id_relay_backend
+  name    = "dev"
+  value   = module.relay_gateway.address
+  type    = "A"
+  proxied = false
 }
 
 # ----------------------------------------------------------------------------------------
@@ -150,26 +186,6 @@ resource "google_compute_firewall" "allow_udp_all" {
     protocol = "udp"
   }
   target_tags = ["allow-udp-all"]
-}
-
-# ----------------------------------------------------------------------------------------
-
-resource "google_compute_instance" "test" {
-  name         = "test"
-  project      = var.project
-  zone         = var.zone
-  machine_type = var.machine_type
-  network_interface {
-    network    = google_compute_network.development.id
-    subnetwork = google_compute_subnetwork.development.id
-    access_config {}
-  }
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    }
-  }
-  tags = ["allow-ssh"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -302,6 +318,7 @@ module "relay_gateway" {
     DATABASE_PATH="/app/database.bin"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+    PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
@@ -431,7 +448,7 @@ module "api" {
     GOOGLE_PROJECT_ID=${var.project}
     DATABASE_URL="${var.artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
-    PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=postgres sslmode=disable"
+    PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
@@ -542,6 +559,7 @@ module "server_backend" {
     SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
     SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
+    PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
     sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service

@@ -1,135 +1,40 @@
 DONE
 
-	Finish the relay
+	Fix up cloudflare to also setup relay backend and server backend domains. Will need to work out zone id cruft.
 
-	Move sdk5 -> sdk
+	Switch back to network next GCP and get dev environment up to "next ping" -> pong
 
-	Check that all semaphore jobs are working
+	Dive back into networknext terraform plugin and work out what's going on
 
-	Fix warnings in linux GCC.
+	Worked out how I can run the plugin locally again
 
-	Fix log spam that was breaking happy path.
+	Fix up the plugin so it works
 
-	Restructure SDK into multiple source files so it's more easily maintainable
+	Publish the terraform plugin
 
-	Get SDK func tests passing
+	Update api logs so they are all one liners. They will work better with concurrency this way.
 
-	Fix docker build
+	Update api test to make sure it covers all resource types. At minumum, the relay keypair and buyer keypair resources were untested.
 
-	Create storage project and setup buckets and semaphore, tracking steps to do so in SETUP
+	Implement a func test that uses the published terraform provider against a postgres instance and the api service to make sure it works.
+	
+	Point the terraform at dev API and then run a terraform apply. Does it work?
+
+	It does not work, because... the database doesn't have all the rows it needs.
+
+	Where do I initialize the database with create.sql?
+
+	The answer is that currently I do not.
+	
+	How can I do this?
+
+	This can be automated, but by far the simplest option is to just manually import in the google cloud console for now, then I can work on other more interesting things in the short term.
+
+	For the one off, the data needs to be uploaded to a google cloud storage bucket, then from this, it seems straightforward to load into cloud storage. Most likely, I'll end up doing this via terraform or some init step.
 
 TODO
 
-	-------
-
-	Create service account in google for terraform
-
-	Create credentials for terraform and store in ~/secrets/terraform-development.json
-
-	-------
-
-	Setup terraform to 
-
-	-------
-
-	Setup terraform dev environment in network next account.
-
-	Document the process as I work...
-
-	-------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Relay ping packet stuff needs to go into spam. It's too much logs to see what's going on in happy path.
-
-	----------------
-
-	Update terraform plugin to new accelerate name
-
-	----------------
-
-	Publish terraform plugin
-
-	Test buyer and relay keypairs in terraform
-
-	Review provider docs and adjust as needed
-
-	----------------
-
-	Implement terraform func test in semaphore based on public provider
-
-	----------------
-
-	Generate terraform files from config and create entire dev database with terraform
-
-	----------------
-
-	Setup some relays in dev with terraform!!!
+	Now try terraform apply again
 
 	----------------
 
@@ -165,11 +70,6 @@ TODO
 
 
 
-
-
-
-
-	
 	----------------------
 
 	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
@@ -209,47 +109,6 @@ TODO
 	Relay gateway service must run over https in dev.
 
 	-----------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

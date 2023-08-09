@@ -1,5 +1,5 @@
 /*
-   Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
+   Network Next. Accelerate and Protect. Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -1516,7 +1516,8 @@ func terraformDestroy(env Environment, component string) {
 // -------------------------------------------------------------------------------------------
 
 func ping() {
-	text := GetText(fmt.Sprintf("%s/ping", env.AdminURL))
+	url := fmt.Sprintf("%s/ping", env.AdminURL)
+	text := GetText(url)
 	fmt.Printf("%s\n\n", text)
 }
 
