@@ -12,11 +12,11 @@ DONE
 
 	Publish the terraform plugin
 
-TODO
-
 	Update api logs so they are all one liners. They will work better with concurrency this way.
 
 	Update api test to make sure it covers all resource types. At minumum, the relay keypair and buyer keypair resources were untested.
+
+TODO
 
 	Implement a func test that uses the published terraform provider against a postgres instance and the api service to make sure it works.
 	

@@ -604,12 +604,12 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		if i != 0 {
 			token.PrevAddress = addresses[i-1]
 		} else {
-			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
+			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
 		if i != numNodes-1 {
 			token.NextAddress = addresses[i+1]
 		} else {
-			token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
+			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
 		if i > 0 && i < numNodes-1 {
 			if internal[i] {

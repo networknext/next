@@ -11,23 +11,23 @@ import "C"
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
-	"net"
-	"net/http"
-	"io/ioutil"
-	"context"
 	"syscall"
+	"time"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 )
@@ -663,10 +663,10 @@ func test_basic_packet_filter() {
 	if err != nil {
 		panic("could not create udp socket")
 	}
- 
- 	for i := 0; i < 10; i++ {
+
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(1,1500))
+			packet := make([]byte, common.RandomInt(1, 1500))
 			common.RandomBytes(packet[:])
 			conn.Write(packet)
 		}
@@ -713,9 +713,9 @@ func test_advanced_packet_filter() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			var magic [8]byte
 			var fromAddress [4]byte
@@ -765,7 +765,7 @@ func test_clean_shutdown() {
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
 	time.Sleep(10 * time.Second)
-	
+
 	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
 		panic("could not initialize relay")
 	}
@@ -834,9 +834,9 @@ func test_unknown_packets() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 20; i++ {
+	for i := 0; i < 20; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -899,9 +899,9 @@ func test_near_ping_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 20 // NEAR_PING_PACKET
 			var magic [constants.MagicBytes]byte
@@ -964,9 +964,9 @@ func test_near_ping_packet_expired() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 8 + 8 + 8 + 32)
+			packet := make([]byte, 18+8+8+8+32)
 			packet[0] = 20 // NEAR_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1028,10 +1028,10 @@ func test_near_ping_packet_did_not_verify() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
- 		expireTimestamp := time.Now().Unix() + 10
+	for i := 0; i < 10; i++ {
+		expireTimestamp := time.Now().Unix() + 10
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 8 + 8 + 8 + 32)
+			packet := make([]byte, 18+8+8+8+32)
 			packet[0] = 20 // NEAR_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[16+8+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
@@ -1108,23 +1108,23 @@ func test_near_ping_packet_responded_with_pong() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 8 + 8 && receiveBuffer[0] == 21 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+8+8 && receiveBuffer[0] == 21 && from.String() == serverAddress.String() {
 				receivedPong = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 
- 		expireTimestamp := uint64(time.Now().Unix()) + 10
+		expireTimestamp := uint64(time.Now().Unix()) + 10
 
 		pingToken := make([]byte, 32)
 
 		core.GeneratePingTokens(expireTimestamp, &clientAddress, []net.UDPAddr{serverAddress}, pingKey, pingToken)
 
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 8 + 8 + 8 + 32)
+			packet := make([]byte, 18+8+8+8+32)
 			packet[0] = 20 // NEAR_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+1:], sessionId)
@@ -1198,9 +1198,9 @@ func test_relay_pong_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 76 // RELAY_PONG_PACKET
 			var magic [constants.MagicBytes]byte
@@ -1263,9 +1263,9 @@ func test_relay_ping_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 75 // RELAY_PING_PACKET
 			var magic [constants.MagicBytes]byte
@@ -1328,9 +1328,9 @@ func test_relay_ping_packet_expired() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 1 + 8 + 8 + 32)
+			packet := make([]byte, 18+1+8+8+32)
 			packet[0] = 75 // RELAY_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1392,10 +1392,10 @@ func test_relay_ping_packet_did_not_verify() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
- 		expireTimestamp := time.Now().Unix() + 10
+	for i := 0; i < 10; i++ {
+		expireTimestamp := time.Now().Unix() + 10
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 1 + 8 + 8 + 32)
+			packet := make([]byte, 18+1+8+8+32)
 			packet[0] = 75 // RELAY_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[16+1+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
@@ -1460,9 +1460,9 @@ func test_route_request_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
@@ -1525,9 +1525,9 @@ func test_route_request_packet_could_not_read_token() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 111*2)
+			packet := make([]byte, 18+111*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
@@ -1593,14 +1593,14 @@ func test_route_request_packet_token_expired() {
 	publicKey := Base64String(TestRelayPublicKey)
 	privateKey := Base64String(TestRelayBackendPrivateKey)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 111*2)
+			packet := make([]byte, 18+111*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			token := core.RouteToken{}
-			token.NextAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
-			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0,0,0,0), Port: 0}
+			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
+			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 			core.WriteEncryptedRouteToken(&token, packet[16:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1674,16 +1674,16 @@ func test_route_request_packet_forward_to_next_hop_public_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 111 && receiveBuffer[0] == 9 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+111 && receiveBuffer[0] == 9 && from.String() == serverAddress.String() {
 				receivedRouteRequestPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 111*2)
+			packet := make([]byte, 18+111*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			token := core.RouteToken{}
@@ -1768,16 +1768,16 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 111 && receiveBuffer[0] == 9 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+111 && receiveBuffer[0] == 9 && from.String() == serverAddress.String() {
 				receivedRouteRequestPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 111*2)
+			packet := make([]byte, 18+111*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			token := core.RouteToken{}
@@ -1854,9 +1854,9 @@ func test_route_response_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
@@ -1919,9 +1919,9 @@ func test_route_response_packet_could_not_find_session() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33)
+			packet := make([]byte, 18+33)
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -1988,7 +1988,7 @@ func test_route_response_packet_already_received() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -2008,9 +2008,9 @@ func test_route_response_packet_already_received() {
 	// now send a bunch of route response packets with sequence number 0, they will trigger already received
 	// (sequence number starts at zero...)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33)
+			packet := make([]byte, 18+33)
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -2080,7 +2080,7 @@ func test_route_response_packet_header_did_not_verify() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -2102,7 +2102,7 @@ func test_route_response_packet_header_did_not_verify() {
 	// send a route response packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18 + 33)
+		packet := make([]byte, 18+33)
 		packet[0] = 10 // ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
@@ -2177,7 +2177,7 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.SessionId = sessionId
@@ -2201,8 +2201,8 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 	// send a valid route response packet so it gets forwarded to previous hop (client address)
 
 	{
-		packet := make([]byte, 18 + 33)
-		
+		packet := make([]byte, 18+33)
+
 		sequence := uint64(1)
 
 		packet[0] = 10 // ROUTE_RESPONSE_PACKET
@@ -2210,12 +2210,12 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 		binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
 
 		nonce := [12]byte{}
-		binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET 
+		binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-		additional := packet[16+8:16+8+8+1]
+		additional := packet[16+8 : 16+8+8+1]
 
-		buffer := packet[16+8+8+1:18+33-2]
+		buffer := packet[16+8+8+1 : 18+33-2]
 
 		encryptedLength := uint64(0)
 
@@ -2242,13 +2242,13 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 		var toAddressBuffer [32]byte
 		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-		
+
 		packetLength := len(packet)
-		
+
 		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -2313,7 +2313,7 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.SessionId = sessionId
@@ -2339,8 +2339,8 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	// send a valid route response packet so it gets forwarded to previous hop (client address)
 
 	{
-		packet := make([]byte, 18 + 33)
-		
+		packet := make([]byte, 18+33)
+
 		sequence := uint64(1)
 
 		packet[0] = 10 // ROUTE_RESPONSE_PACKET
@@ -2348,12 +2348,12 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 		binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
 
 		nonce := [12]byte{}
-		binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET 
+		binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-		additional := packet[16+8:16+8+8+1]
+		additional := packet[16+8 : 16+8+8+1]
 
-		buffer := packet[16+8+8+1:18+33-2]
+		buffer := packet[16+8+8+1 : 18+33-2]
 
 		encryptedLength := uint64(0)
 
@@ -2380,13 +2380,13 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 		var toAddressBuffer [32]byte
 		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-		
+
 		packetLength := len(packet)
-		
+
 		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -2444,9 +2444,9 @@ func test_continue_request_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // CONTINUE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
@@ -2509,9 +2509,9 @@ func test_continue_request_packet_could_not_read_token() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 57*2)
+			packet := make([]byte, 18+57*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
@@ -2577,9 +2577,9 @@ func test_continue_request_packet_token_expired() {
 	publicKey := Base64String(TestRelayPublicKey)
 	privateKey := Base64String(TestRelayBackendPrivateKey)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 57*2)
+			packet := make([]byte, 18+57*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // CONTINUE_REQUEST_PACKET
 			token := core.ContinueToken{}
@@ -2647,9 +2647,9 @@ func test_continue_request_packet_could_not_find_session() {
 	publicKey := Base64String(TestRelayPublicKey)
 	privateKey := Base64String(TestRelayBackendPrivateKey)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 57*2)
+			packet := make([]byte, 18+57*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // CONTINUE_REQUEST_PACKET
 			token := core.ContinueToken{}
@@ -2720,7 +2720,7 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -2750,16 +2750,16 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 57 && receiveBuffer[0] == 15 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+57 && receiveBuffer[0] == 15 && from.String() == serverAddress.String() {
 				receivedContinueRequestPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 57*2)
+			packet := make([]byte, 18+57*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // CONTINUE_REQUEST_PACKET
 			token := core.ContinueToken{}
@@ -2836,7 +2836,7 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -2868,16 +2868,16 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 57 && receiveBuffer[0] == 15 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+57 && receiveBuffer[0] == 15 && from.String() == serverAddress.String() {
 				receivedContinueRequestPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 57*2)
+			packet := make([]byte, 18+57*2)
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // CONTINUE_REQUEST_PACKET
 			token := core.ContinueToken{}
@@ -2951,9 +2951,9 @@ func test_continue_response_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
@@ -3016,9 +3016,9 @@ func test_continue_response_packet_could_not_find_session() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33)
+			packet := make([]byte, 18+33)
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -3085,7 +3085,7 @@ func test_continue_response_packet_already_received() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -3105,9 +3105,9 @@ func test_continue_response_packet_already_received() {
 	// now send a bunch of continue response packets with sequence number 0, they will trigger already received
 	// (sequence number starts at zero...)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33)
+			packet := make([]byte, 18+33)
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -3177,7 +3177,7 @@ func test_continue_response_packet_header_did_not_verify() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -3199,7 +3199,7 @@ func test_continue_response_packet_header_did_not_verify() {
 	// send a continue response packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18 + 33)
+		packet := make([]byte, 18+33)
 		packet[0] = 16 // ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
@@ -3274,7 +3274,7 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.SessionId = sessionId
@@ -3298,8 +3298,8 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 	// send a valid continue response packet so it gets forwarded to previous hop (client address)
 
 	{
-		packet := make([]byte, 18 + 33)
-		
+		packet := make([]byte, 18+33)
+
 		sequence := uint64(1)
 
 		packet[0] = 16 // CONTINUE_RESPONSE_PACKET
@@ -3307,12 +3307,12 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 		binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
 
 		nonce := [12]byte{}
-		binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET 
+		binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-		additional := packet[16+8:16+8+8+1]
+		additional := packet[16+8 : 16+8+8+1]
 
-		buffer := packet[16+8+8+1:18+33-2]
+		buffer := packet[16+8+8+1 : 18+33-2]
 
 		encryptedLength := uint64(0)
 
@@ -3339,13 +3339,13 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 		var toAddressBuffer [32]byte
 		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-		
+
 		packetLength := len(packet)
-		
+
 		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -3410,7 +3410,7 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.SessionId = sessionId
@@ -3436,8 +3436,8 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	// send a valid continue response packet so it gets forwarded to previous hop (client address)
 
 	{
-		packet := make([]byte, 18 + 33)
-		
+		packet := make([]byte, 18+33)
+
 		sequence := uint64(1)
 
 		packet[0] = 16 // CONTINUE_RESPONSE_PACKET
@@ -3445,12 +3445,12 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 		binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
 
 		nonce := [12]byte{}
-		binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET 
+		binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-		additional := packet[16+8:16+8+8+1]
+		additional := packet[16+8 : 16+8+8+1]
 
-		buffer := packet[16+8+8+1:18+33-2]
+		buffer := packet[16+8+8+1 : 18+33-2]
 
 		encryptedLength := uint64(0)
 
@@ -3477,13 +3477,13 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 		var toAddressBuffer [32]byte
 		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-		
+
 		packetLength := len(packet)
-		
+
 		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		
+
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -3541,9 +3541,9 @@ func test_client_to_server_packet_too_small() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,18+33-1))
+			packet := make([]byte, common.RandomInt(18, 18+33-1))
 			common.RandomBytes(packet[:])
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
@@ -3606,9 +3606,9 @@ func test_client_to_server_packet_too_big() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(1500,4095))
+			packet := make([]byte, common.RandomInt(1500, 4095))
 			common.RandomBytes(packet[:])
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
@@ -3671,9 +3671,9 @@ func test_client_to_server_packet_could_not_find_session() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 256)
+			packet := make([]byte, 18+33+256)
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -3740,7 +3740,7 @@ func test_client_to_server_packet_already_received() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -3760,9 +3760,9 @@ func test_client_to_server_packet_already_received() {
 	// now send a bunch of client to server packets with sequence number 0, they will trigger already received
 	// (sequence number starts at zero...)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 256)
+			packet := make([]byte, 18+33+256)
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -3832,7 +3832,7 @@ func test_client_to_server_packet_header_did_not_verify() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -3854,7 +3854,7 @@ func test_client_to_server_packet_header_did_not_verify() {
 	// send a client to server packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18 + 33 + 256)
+		packet := make([]byte, 18+33+256)
 		packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
@@ -3929,7 +3929,7 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -3961,18 +3961,18 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 256 && receiveBuffer[0] == 11 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+256 && receiveBuffer[0] == 11 && from.String() == serverAddress.String() {
 				receivedClientToServerPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 256)
-			
+			packet := make([]byte, 18+33+256)
+
 			sequence := uint64(1)
 
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
@@ -3983,9 +3983,9 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 11) // CLIENT_TO_SERVER_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -4006,18 +4006,18 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4084,7 +4084,7 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -4118,18 +4118,18 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 256 && receiveBuffer[0] == 11 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+256 && receiveBuffer[0] == 11 && from.String() == serverAddress.String() {
 				receivedClientToServerPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 256)
-			
+			packet := make([]byte, 18+33+256)
+
 			sequence := uint64(1)
 
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
@@ -4140,9 +4140,9 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 11) // CLIENT_TO_SERVER_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -4163,18 +4163,18 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4234,9 +4234,9 @@ func test_server_to_client_packet_too_small() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,18+33-1))
+			packet := make([]byte, common.RandomInt(18, 18+33-1))
 			common.RandomBytes(packet[:])
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
@@ -4299,9 +4299,9 @@ func test_server_to_client_packet_too_big() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(1500,4095))
+			packet := make([]byte, common.RandomInt(1500, 4095))
 			common.RandomBytes(packet[:])
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
@@ -4364,9 +4364,9 @@ func test_server_to_client_packet_could_not_find_session() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 256)
+			packet := make([]byte, 18+33+256)
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -4433,7 +4433,7 @@ func test_server_to_client_packet_already_received() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -4453,9 +4453,9 @@ func test_server_to_client_packet_already_received() {
 	// now send a bunch of server to client packets with sequence number 0, they will trigger already received
 	// (sequence number starts at zero...)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 256)
+			packet := make([]byte, 18+33+256)
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -4525,7 +4525,7 @@ func test_server_to_client_packet_header_did_not_verify() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -4547,7 +4547,7 @@ func test_server_to_client_packet_header_did_not_verify() {
 	// send a server to client packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18 + 33 + 256)
+		packet := make([]byte, 18+33+256)
 		packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
@@ -4622,7 +4622,7 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -4654,18 +4654,18 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 256 && receiveBuffer[0] == 12 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+256 && receiveBuffer[0] == 12 && from.String() == serverAddress.String() {
 				receivedServerToClientPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 256)
-			
+			packet := make([]byte, 18+33+256)
+
 			sequence := uint64(1)
 
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
@@ -4676,9 +4676,9 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 12) // SERVER_TO_CLIENT_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -4699,18 +4699,18 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4777,7 +4777,7 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -4811,18 +4811,18 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 256 && receiveBuffer[0] == 12 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+256 && receiveBuffer[0] == 12 && from.String() == serverAddress.String() {
 				receivedServerToClientPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 256)
-			
+			packet := make([]byte, 18+33+256)
+
 			sequence := uint64(1)
 
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
@@ -4833,9 +4833,9 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 12) // SERVER_TO_CLIENT_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -4856,18 +4856,18 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4927,9 +4927,9 @@ func test_session_ping_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 13 // SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
@@ -4992,9 +4992,9 @@ func test_session_ping_packet_could_not_find_session() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 8)
+			packet := make([]byte, 18+33+8)
 			packet[0] = 13 // SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -5061,7 +5061,7 @@ func test_session_ping_packet_already_received() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -5081,9 +5081,9 @@ func test_session_ping_packet_already_received() {
 	// now send a bunch of session ping packets with sequence number 0, they will trigger already received
 	// (sequence number starts at zero...)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 8)
+			packet := make([]byte, 18+33+8)
 			packet[0] = 13 // SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -5153,7 +5153,7 @@ func test_session_ping_packet_header_did_not_verify() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -5175,7 +5175,7 @@ func test_session_ping_packet_header_did_not_verify() {
 	// send a session ping packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18 + 33 + 8)
+		packet := make([]byte, 18+33+8)
 		packet[0] = 13 // SESSION_PING_PACKET
 		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
@@ -5250,7 +5250,7 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -5282,18 +5282,18 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 8 && receiveBuffer[0] == 13 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+8 && receiveBuffer[0] == 13 && from.String() == serverAddress.String() {
 				receivedSessionPingPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 8)
-			
+			packet := make([]byte, 18+33+8)
+
 			sequence := uint64(1)
 
 			packet[0] = 13 // SESSION_PING_PACKET
@@ -5304,9 +5304,9 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 13) // SESSION_PING_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -5327,18 +5327,18 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5405,7 +5405,7 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -5439,18 +5439,18 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 8 && receiveBuffer[0] == 13 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+8 && receiveBuffer[0] == 13 && from.String() == serverAddress.String() {
 				receivedSessionPingPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 8)
-			
+			packet := make([]byte, 18+33+8)
+
 			sequence := uint64(1)
 
 			packet[0] = 13 // SESSION_PING_PACKET
@@ -5461,9 +5461,9 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 13) // SESSION_PING_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -5484,18 +5484,18 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5555,9 +5555,9 @@ func test_session_pong_packet_wrong_size() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18,1500))
+			packet := make([]byte, common.RandomInt(18, 1500))
 			common.RandomBytes(packet[:])
 			packet[0] = 14 // SESSION_PONG_PACKET
 			var magic [constants.MagicBytes]byte
@@ -5620,9 +5620,9 @@ func test_session_pong_packet_could_not_find_session() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 8)
+			packet := make([]byte, 18+33+8)
 			packet[0] = 14 // SESSION_PONG_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -5689,7 +5689,7 @@ func test_session_pong_packet_already_received() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -5709,9 +5709,9 @@ func test_session_pong_packet_already_received() {
 	// now send a bunch of session ping packets with sequence number 0, they will trigger already received
 	// (sequence number starts at zero...)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18 + 33 + 8)
+			packet := make([]byte, 18+33+8)
 			packet[0] = 14 // SESSION_PONG_PACKET
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
@@ -5781,7 +5781,7 @@ func test_session_pong_packet_header_did_not_verify() {
 
 	// send a route request packet to create a session on the relay
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -5803,7 +5803,7 @@ func test_session_pong_packet_header_did_not_verify() {
 	// send a session ping packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18 + 33 + 8)
+		packet := make([]byte, 18+33+8)
 		packet[0] = 14 // SESSION_PONG_PACKET
 		binary.LittleEndian.PutUint64(packet[16:], 1)
 		var magic [constants.MagicBytes]byte
@@ -5878,7 +5878,7 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -5910,18 +5910,18 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 8 && receiveBuffer[0] == 14 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+8 && receiveBuffer[0] == 14 && from.String() == serverAddress.String() {
 				receivedSessionPongPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 8)
-			
+			packet := make([]byte, 18+33+8)
+
 			sequence := uint64(1)
 
 			packet[0] = 14 // SESSION_PONG_PACKET
@@ -5932,9 +5932,9 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 14) // SESSION_PONG_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -5955,18 +5955,18 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -6033,7 +6033,7 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6067,18 +6067,18 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18 + 33 + 8 && receiveBuffer[0] == 14 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+33+8 && receiveBuffer[0] == 14 && from.String() == serverAddress.String() {
 				receivedSessionPongPacket = true
 				break
 			}
 		}
 	}()
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 8)
-			
+			packet := make([]byte, 18+33+8)
+
 			sequence := uint64(1)
 
 			packet[0] = 14 // SESSION_PONG_PACKET
@@ -6089,9 +6089,9 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 			binary.LittleEndian.PutUint32(nonce[0:], 14) // SESSION_PONG_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -6112,18 +6112,18 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 			if result != 0 {
 				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
 			}
-			
+
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -6192,7 +6192,7 @@ func test_session_destroy() {
 
 	// first send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6215,7 +6215,7 @@ func test_session_destroy() {
 
 	// now wait until the session should definitely be destroyed
 
-	time.Sleep(15*time.Second)
+	time.Sleep(15 * time.Second)
 
 	// verify that we see the session destroyed
 
@@ -6272,7 +6272,7 @@ func test_session_expired_route_response_packet() {
 
 	// send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6294,29 +6294,29 @@ func test_session_expired_route_response_packet() {
 
 	// now wait until the session should expire
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// now throw a bunch of route response packets at the relay, and verify that the session is expired
 	// and doesn't forward the route response packet
 
 	sequence := uint64(1)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33)
-			
+			packet := make([]byte, 18+33)
+
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
 
 			nonce := [12]byte{}
-			binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET 
+			binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -6343,13 +6343,13 @@ func test_session_expired_route_response_packet() {
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-			
+
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 
 			sequence++
@@ -6415,7 +6415,7 @@ func test_session_expired_continue_response_packet() {
 
 	// send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6437,29 +6437,29 @@ func test_session_expired_continue_response_packet() {
 
 	// now wait until the session should expire
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// now throw a bunch of continue response packets at the relay, and verify that the session is expired
 	// and doesn't forward any continue response packets
 
 	sequence := uint64(1)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33)
-			
+			packet := make([]byte, 18+33)
+
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
 
 			nonce := [12]byte{}
-			binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET 
+			binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -6486,13 +6486,13 @@ func test_session_expired_continue_response_packet() {
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-			
+
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 
 			sequence++
@@ -6558,7 +6558,7 @@ func test_session_expired_client_to_server_packet() {
 
 	// send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6580,18 +6580,18 @@ func test_session_expired_client_to_server_packet() {
 
 	// now wait until the session should expire
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// now throw a bunch of packets at the relay, and verify that the session is expired
 	// and doesn't forward any
 
 	sequence := uint64(1)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 256)
-			
+			packet := make([]byte, 18+33+256)
+
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
@@ -6600,9 +6600,9 @@ func test_session_expired_client_to_server_packet() {
 			binary.LittleEndian.PutUint32(nonce[0:], 11) // CLIENT_TO_SERVER_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -6629,13 +6629,13 @@ func test_session_expired_client_to_server_packet() {
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-			
+
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 
 			sequence++
@@ -6701,7 +6701,7 @@ func test_session_expired_server_to_client_packet() {
 
 	// send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6723,18 +6723,18 @@ func test_session_expired_server_to_client_packet() {
 
 	// now wait until the session should expire
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// now throw a bunch of packets at the relay, and verify that the session is expired
 	// and doesn't forward any
 
 	sequence := uint64(1)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 256)
-			
+			packet := make([]byte, 18+33+256)
+
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
@@ -6743,9 +6743,9 @@ func test_session_expired_server_to_client_packet() {
 			binary.LittleEndian.PutUint32(nonce[0:], 12) // SERVER_TO_CLIENT_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -6772,13 +6772,13 @@ func test_session_expired_server_to_client_packet() {
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-			
+
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 
 			sequence++
@@ -6844,7 +6844,7 @@ func test_session_expired_session_ping_packet() {
 
 	// send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -6866,18 +6866,18 @@ func test_session_expired_session_ping_packet() {
 
 	// now wait until the session should expire
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// now throw a bunch of packets at the relay, and verify that the session is expired
 	// and doesn't forward any
 
 	sequence := uint64(1)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 8)
-			
+			packet := make([]byte, 18+33+8)
+
 			packet[0] = 13 // SESSION_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
@@ -6886,9 +6886,9 @@ func test_session_expired_session_ping_packet() {
 			binary.LittleEndian.PutUint32(nonce[0:], 13) // SESSION_PING_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -6915,13 +6915,13 @@ func test_session_expired_session_ping_packet() {
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-			
+
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 
 			sequence++
@@ -6987,7 +6987,7 @@ func test_session_expired_session_pong_packet() {
 
 	// send a route request packet to create the session
 	{
-		packet := make([]byte, 18 + 111*2)
+		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
 		packet[0] = 9 // ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
@@ -7009,18 +7009,18 @@ func test_session_expired_session_pong_packet() {
 
 	// now wait until the session should expire
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// now throw a bunch of packets at the relay, and verify that the session is expired
 	// and doesn't forward any
 
 	sequence := uint64(1)
 
- 	for i := 0; i < 10; i++ {
+	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18 + 33 + 8)
-			
+			packet := make([]byte, 18+33+8)
+
 			packet[0] = 14 // SESSION_PONG_PACKET
 			binary.LittleEndian.PutUint64(packet[16:], sequence)
 			binary.LittleEndian.PutUint64(packet[16+8:], sessionId)
@@ -7029,9 +7029,9 @@ func test_session_expired_session_pong_packet() {
 			binary.LittleEndian.PutUint32(nonce[0:], 12) // SESSION_PONG_PACKET
 			binary.LittleEndian.PutUint64(nonce[4:], sequence)
 
-			additional := packet[16+8:16+8+8+1]
+			additional := packet[16+8 : 16+8+8+1]
 
-			buffer := packet[16+8+8+1:18+33-2]
+			buffer := packet[16+8+8+1 : 18+33-2]
 
 			encryptedLength := uint64(0)
 
@@ -7058,13 +7058,13 @@ func test_session_expired_session_pong_packet() {
 			var toAddressBuffer [32]byte
 			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
 			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
-			
+
 			packetLength := len(packet)
-			
+
 			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			
+
 			conn.WriteToUDP(packet, &serverAddress)
 
 			sequence++
@@ -7128,7 +7128,7 @@ func test_relay_backend_stats() {
 	publicKey := Base64String(TestRelayPublicKey)
 	privateKey := Base64String(TestRelayBackendPrivateKey)
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
@@ -7149,7 +7149,7 @@ func test_relay_backend_stats() {
 
 	// wait and make sure we see stats in the backend
 
-	time.Sleep(5*time.Second)
+	time.Sleep(5 * time.Second)
 
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_cmd.Process.Signal(os.Interrupt)
@@ -7213,7 +7213,7 @@ func test_relay_backend_counters() {
 	publicKey := Base64String(TestRelayPublicKey)
 	privateKey := Base64String(TestRelayBackendPrivateKey)
 
-	packet := make([]byte, 18 + 111*2)
+	packet := make([]byte, 18+111*2)
 	packet[0] = 9 // ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15

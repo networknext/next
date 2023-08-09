@@ -984,7 +984,7 @@ func (controller *Controller) CreateBuyerKeypair() (BuyerKeypairData, error) {
 	if err := result.Scan(&buyerKeypairId); err != nil {
 		return BuyerKeypairData{}, fmt.Errorf("could not insert buyer keypair: %v\n", err)
 	}
-	return BuyerKeypairData{BuyerKeypairId: buyerKeypairId, PublicKeyBase64: publicKeyBase64, PrivateKeyBase64: privateKeyBase64,}, nil
+	return BuyerKeypairData{BuyerKeypairId: buyerKeypairId, PublicKeyBase64: publicKeyBase64, PrivateKeyBase64: privateKeyBase64}, nil
 }
 
 func (controller *Controller) ReadBuyerKeypairs() ([]BuyerKeypairData, error) {
