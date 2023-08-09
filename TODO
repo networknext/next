@@ -8,88 +8,18 @@ DONE
 
 	Worked out how I can run the plugin locally again
 
+	Fix up the plugin so it works
+
+	Publish the terraform plugin
+
 TODO
 
-	Get all the resource types working
+	Update api logs so they are all one liners. They will work better with concurrency this way.
 
+	Update api test to make sure it covers all resource types. At minumum, the relay keypair and buyer keypair resources were untested.
+
+	Implement a func test that uses the published terraform provider against a postgres instance and the api service to make sure it works.
 	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	----------------
-
-	Publish terraform plugin
-
-	Test buyer and relay keypairs in terraform
-
-	Review provider docs and adjust as needed
-
-	----------------
-
-	Implement terraform func test in semaphore based on public provider
-
 	----------------
 
 	Setup some relays in dev with terraform!!!

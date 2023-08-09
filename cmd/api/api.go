@@ -403,8 +403,7 @@ func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		customerData.CustomerId = customerId
-		core.Log("create customer %x", customerId)
-		core.Debug("%+v", customerData)
+		core.Debug("create customer %x -> %+v", customerId, customerData)
 		response.Customer = customerData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -418,14 +417,13 @@ type AdminReadCustomersResponse struct {
 }
 
 func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read customers")
 	customers, err := controller.ReadCustomers()
 	response := AdminReadCustomersResponse{Customers: customers}
 	if err != nil {
 		core.Error("failed to read customers: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("customers = %+v", customers)
+		core.Debug("read customers -> %+v", customers)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -445,14 +443,13 @@ func adminReadCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read customer %x", customerId)
 	customer, err := controller.ReadCustomer(customerId)
 	response := AdminReadCustomerResponse{Customer: customer}
 	if err != nil {
 		core.Error("failed to read customer: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", customer)
+		core.Debug("read customer %x -> %+v", customerId, customer)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -472,14 +469,13 @@ func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update customer %x", customer.CustomerId)
 	response := AdminUpdateCustomerResponse{Customer: customer}
 	err = controller.UpdateCustomer(&customer)
 	if err != nil {
 		core.Error("failed to update customer: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", customer)
+		core.Debug("update customer %x -> %+v", customer.CustomerId, customer)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -498,7 +494,7 @@ func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete customer %x", customerId)
+	core.Debug("delete customer %x", customerId)
 	response := AdminDeleteCustomerResponse{}
 	err = controller.DeleteCustomer(customerId)
 	if err != nil {
@@ -532,8 +528,7 @@ func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		sellerData.SellerId = sellerId
-		core.Log("create seller %x", sellerId)
-		core.Debug("%+v", sellerData)
+		core.Debug("create seller %x -> %+v", sellerId, sellerData)
 		response.Seller = sellerData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -547,14 +542,13 @@ type AdminReadSellersResponse struct {
 }
 
 func adminReadSellersHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read sellers")
 	sellers, err := controller.ReadSellers()
 	response := AdminReadSellersResponse{Sellers: sellers}
 	if err != nil {
 		core.Error("failed to read sellers: %v", err)
 		response.Error = err.Error()
 	}
-	core.Debug("sellers = %+v", sellers)
+	core.Debug("read sellers -> %+v", sellers)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -572,13 +566,12 @@ func adminReadSellerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read seller %x", sellerId)
 	seller, err := controller.ReadSeller(sellerId)
 	response := AdminReadSellerResponse{Seller: seller}
 	if err != nil {
 		response.Error = err.Error()
 	}
-	core.Debug("%+v", seller)
+	core.Debug("read seller %x -> %+v", sellerId, seller)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -596,14 +589,13 @@ func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update seller %x", seller.SellerId)
 	response := AdminUpdateSellerResponse{Seller: seller}
 	err = controller.UpdateSeller(&seller)
 	if err != nil {
 		core.Error("failed to update seller: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", seller)
+		core.Debug("update seller %x -> %+v", seller.SellerId, seller)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -622,7 +614,7 @@ func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete seller %x", sellerId)
+	core.Debug("delete seller %x", sellerId)
 	response := AdminDeleteSellerResponse{}
 	err = controller.DeleteSeller(sellerId)
 	if err != nil {
@@ -656,8 +648,7 @@ func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		buyerData.BuyerId = buyerId
-		core.Log("create buyer %x", buyerId)
-		core.Debug("%+v", buyerData)
+		core.Debug("create buyer %x -> %+v", buyerId, buyerData)
 		response.Buyer = buyerData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -674,10 +665,10 @@ func adminReadBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	buyers, err := controller.ReadBuyers()
 	response := AdminReadBuyersResponse{Buyers: buyers}
 	if err != nil {
-		// todo
+		core.Error("failed to read buyers: %v", err)
 		response.Error = err.Error()
 	}
-	// todo
+	core.Debug("read buyers -> %+v", buyers)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -695,14 +686,13 @@ func adminReadBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read buyer %x", buyerId)
 	buyer, err := controller.ReadBuyer(buyerId)
 	response := AdminReadBuyerResponse{Buyer: buyer}
 	if err != nil {
 		core.Error("failed to read buyer: %v", err)
 		response.Error = err.Error()
 	}
-	core.Debug("%+v", buyer)
+	core.Debug("read buyer %x -> %+v", buyerId, buyer)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -720,14 +710,13 @@ func adminUpdateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update buyer %x", buyer.BuyerId)
 	response := AdminUpdateBuyerResponse{Buyer: buyer}
 	err = controller.UpdateBuyer(&buyer)
 	if err != nil {
 		core.Error("failed to update buyer: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", buyer)
+		core.Debug("update buyer %x -> %+v", buyer.BuyerId, buyer)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -746,7 +735,7 @@ func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete buyer %x", buyerId)
+	core.Debug("delete buyer %x", buyerId)
 	response := AdminDeleteBuyerResponse{}
 	err = controller.DeleteBuyer(buyerId)
 	if err != nil {
@@ -780,8 +769,7 @@ func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		datacenterData.DatacenterId = datacenterId
-		core.Log("create datacenter %x", datacenterId)
-		core.Debug("%+v", datacenterData)
+		core.Debug("create datacenter %x -> %+v", datacenterId, datacenterData)
 		response.Datacenter = datacenterData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -795,14 +783,13 @@ type AdminReadDatacentersResponse struct {
 }
 
 func adminReadDatacentersHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read datacenters")
 	datacenters, err := controller.ReadDatacenters()
 	response := AdminReadDatacentersResponse{Datacenters: datacenters}
 	if err != nil {
 		core.Error("failed to read datacenters: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("datacenters = %+v", datacenters)
+		core.Debug("read datacenters -> %+v", datacenters)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -822,14 +809,13 @@ func adminReadDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read datacenter %x", datacenterId)
 	datacenter, err := controller.ReadDatacenter(datacenterId)
 	response := AdminReadDatacenterResponse{Datacenter: datacenter}
 	if err != nil {
 		core.Error("failed to read datacenter: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", datacenter)
+		core.Debug("read datacenter %x -> %+v", datacenterId, datacenter)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -849,14 +835,13 @@ func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update datacenter %x", datacenter.DatacenterId)
 	response := AdminUpdateDatacenterResponse{Datacenter: datacenter}
 	err = controller.UpdateDatacenter(&datacenter)
 	if err != nil {
 		core.Error("failed to update datacenter: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", datacenter)
+		core.Debug("update datacenter %x -> %+v", datacenter.DatacenterId, datacenter)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -875,7 +860,7 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete datacenter %x", datacenterId)
+	core.Debug("delete datacenter %x", datacenterId)
 	response := AdminDeleteDatacenterResponse{}
 	err = controller.DeleteDatacenter(datacenterId)
 	if err != nil {
@@ -909,8 +894,7 @@ func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		relayData.RelayId = relayId
-		core.Log("create relay %x", relayId)
-		core.Debug("%+v", relayData)
+		core.Debug("create relay %x -> %+v", relayId, relayData)
 		response.Relay = relayData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -924,14 +908,13 @@ type AdminReadRelaysResponse struct {
 }
 
 func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read relays")
 	relays, err := controller.ReadRelays()
 	response := AdminReadRelaysResponse{Relays: relays}
 	if err != nil {
 		core.Error("failed to read relays: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("relays = %+v", relays)
+		core.Debug("read relay -> %+v", relays)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -951,14 +934,13 @@ func adminReadRelayHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read relay %x", relayId)
 	relay, err := controller.ReadRelay(relayId)
 	response := AdminReadRelayResponse{Relay: relay}
 	if err != nil {
 		core.Error("failed to read relay: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", relay)
+		core.Debug("read relay %x -> %+v", relayId, relay)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -978,14 +960,13 @@ func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update relay %x", relay.RelayId)
 	response := AdminUpdateRelayResponse{Relay: relay}
 	err = controller.UpdateRelay(&relay)
 	if err != nil {
 		core.Error("failed to update relay: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", relay)
+		core.Debug("update relay %x -> %+v", relay.RelayId, relay)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1004,7 +985,7 @@ func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete relay %x", relayId)
+	core.Debug("delete relay %x", relayId)
 	response := AdminDeleteRelayResponse{}
 	err = controller.DeleteRelay(relayId)
 	if err != nil {
@@ -1038,8 +1019,7 @@ func adminCreateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		routeShaderData.RouteShaderId = routeShaderId
-		core.Log("create route shader %x", routeShaderId)
-		core.Debug("%+v", routeShaderData)
+		core.Debug("create route shader %x -> %+v", routeShaderId, routeShaderData)
 		response.RouteShader = routeShaderData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1053,14 +1033,13 @@ type AdminReadRouteShadersResponse struct {
 }
 
 func adminReadRouteShadersHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read route shaders")
 	routeShaders, err := controller.ReadRouteShaders()
 	response := AdminReadRouteShadersResponse{RouteShaders: routeShaders}
 	if err != nil {
 		core.Error("failed to read route shaders: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("route shaders = %+v", routeShaders)
+		core.Debug("read route shaders -> %+v", routeShaders)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1080,14 +1059,13 @@ func adminReadRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read route shader %x", routeShaderId)
 	routeShader, err := controller.ReadRouteShader(routeShaderId)
 	response := AdminReadRouteShaderResponse{RouteShader: routeShader}
 	if err != nil {
 		core.Error("failed to read route shader: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", routeShader)
+		core.Debug("read route shader %x -> %+v", routeShaderId, routeShader)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1107,14 +1085,13 @@ func adminUpdateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update route shader %x", routeShader.RouteShaderId)
 	response := AdminUpdateRouteShaderResponse{RouteShader: routeShader}
 	err = controller.UpdateRouteShader(&routeShader)
 	if err != nil {
 		core.Error("failed to update route shader: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", routeShader)
+		core.Debug("update route shader %x -> %+v", routeShader.RouteShaderId, routeShader)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1133,7 +1110,7 @@ func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete route shader %x", routeShaderId)
+	core.Debug("delete route shader %x", routeShaderId)
 	response := AdminDeleteRouteShaderResponse{}
 	err = controller.DeleteRouteShader(routeShaderId)
 	if err != nil {
@@ -1168,8 +1145,7 @@ func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	} else {
 		buyerId := settings.BuyerId
 		datacenterId := settings.DatacenterId
-		core.Log("create buyer datacenter settings %x.%x", buyerId, datacenterId)
-		core.Debug("%+v", settings)
+		core.Debug("create buyer datacenter settings %x.%x -> %+v", buyerId, datacenterId, settings)
 		response.Settings = settings
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1211,14 +1187,13 @@ func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Requ
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read buyer datacenter settings %x.%x", buyerId, datacenterId)
 	settings, err := controller.ReadBuyerDatacenterSettings(buyerId, datacenterId)
 	response := AdminReadBuyerDatacenterSettingsResponse{Settings: settings}
 	if err != nil {
 		core.Error("failed to read buyer datacenter settings: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", settings)
+		core.Debug("read buyer datacenter settings %x.%x -> %+v", buyerId, datacenterId, settings)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1238,14 +1213,13 @@ func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update buyer datacenter settings %x.%x", settings.BuyerId, settings.DatacenterId)
 	response := AdminUpdateBuyerDatacenterSettingsResponse{Settings: settings}
 	err = controller.UpdateBuyerDatacenterSettings(&settings)
 	if err != nil {
 		core.Error("failed to update buyer datacenter settings: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", settings)
+		core.Debug("update buyer datacenter settings %x.%x -> %+v", settings.BuyerId, settings.DatacenterId, settings)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1268,7 +1242,7 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete buyer datacenter settings %x.%x", buyerId, datacenterId)
+	core.Debug("delete buyer datacenter settings %x.%x", buyerId, datacenterId)
 	response := AdminDeleteBuyerDatacenterSettingsResponse{}
 	err = controller.DeleteBuyerDatacenterSettings(buyerId, datacenterId)
 	if err != nil {
@@ -1289,21 +1263,12 @@ type AdminCreateBuyerKeypairResponse struct {
 
 func adminCreateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 	var response AdminCreateBuyerKeypairResponse
-	var buyerKeypairData admin.BuyerKeypairData
-	err := json.NewDecoder(r.Body).Decode(&buyerKeypairData)
-	if err != nil {
-		core.Error("failed to read buyer keypair data in create buyer keypair request: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	buyerKeypairId, err := controller.CreateBuyerKeypair(&buyerKeypairData)
+	buyerKeypairData, err := controller.CreateBuyerKeypair()
 	if err != nil {
 		core.Error("failed to create buyer keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		buyerKeypairData.BuyerKeypairId = buyerKeypairId
-		core.Log("create buyer keypair %x", buyerKeypairId)
-		core.Debug("%+v", buyerKeypairData)
+		core.Debug("create buyer keypair -> %+v", buyerKeypairData)
 		response.BuyerKeypair = buyerKeypairData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1317,14 +1282,13 @@ type AdminReadBuyerKeypairsResponse struct {
 }
 
 func adminReadBuyerKeypairsHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read buyer keypairs")
 	buyerKeypairs, err := controller.ReadBuyerKeypairs()
 	response := AdminReadBuyerKeypairsResponse{BuyerKeypairs: buyerKeypairs}
 	if err != nil {
 		core.Error("failed to read buyer keypairs: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("buyer keypairs = %+v", buyerKeypairs)
+		core.Debug("read buyer keypairs -> %+v", buyerKeypairs)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1344,14 +1308,13 @@ func adminReadBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read buyer keypair %x", buyerKeypairId)
 	buyerKeypair, err := controller.ReadBuyerKeypair(buyerKeypairId)
 	response := AdminReadBuyerKeypairResponse{BuyerKeypair: buyerKeypair}
 	if err != nil {
 		core.Error("failed to read buyer keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", buyerKeypair)
+		core.Debug("read buyer keypair %x -> %+v", buyerKeypairId, buyerKeypair)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1371,14 +1334,13 @@ func adminUpdateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update buyer keypair %x", buyerKeypair.BuyerKeypairId)
 	response := AdminUpdateBuyerKeypairResponse{BuyerKeypair: buyerKeypair}
 	err = controller.UpdateBuyerKeypair(&buyerKeypair)
 	if err != nil {
 		core.Error("failed to update buyer keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", buyerKeypair)
+		core.Debug("update buyer keypair %x -> %+v", buyerKeypair.BuyerKeypairId, buyerKeypair)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1397,7 +1359,7 @@ func adminDeleteBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete buyer keypair %x", buyerKeypairId)
+	core.Debug("delete buyer keypair %x", buyerKeypairId)
 	response := AdminDeleteBuyerKeypairResponse{}
 	err = controller.DeleteBuyerKeypair(buyerKeypairId)
 	if err != nil {
@@ -1423,8 +1385,7 @@ func adminCreateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to create relay keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Log("create relay keypair")
-		core.Debug("%+v", relayKeypairData)
+		core.Debug("create relay keypair -> %+v", relayKeypairData)
 		response.RelayKeypair = relayKeypairData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1438,14 +1399,13 @@ type AdminReadRelayKeypairsResponse struct {
 }
 
 func adminReadRelayKeypairsHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("read relay keypairs")
 	relayKeypairs, err := controller.ReadRelayKeypairs()
 	response := AdminReadRelayKeypairsResponse{RelayKeypairs: relayKeypairs}
 	if err != nil {
 		core.Error("failed to read relay keypairs: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("relay keypairs = %+v", relayKeypairs)
+		core.Debug("get relay keypairs -> %+v", relayKeypairs)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1465,14 +1425,13 @@ func adminReadRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("read relay keypair %x", relayKeypairId)
 	relayKeypair, err := controller.ReadRelayKeypair(relayKeypairId)
 	response := AdminReadRelayKeypairResponse{RelayKeypair: relayKeypair}
 	if err != nil {
 		core.Error("failed to read relay keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", relayKeypair)
+		core.Debug("read relay keypair %x -> %+v", relayKeypairId, relayKeypair)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1492,14 +1451,13 @@ func adminUpdateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("update relay keypair %x", relayKeypair.RelayKeypairId)
 	response := AdminUpdateRelayKeypairResponse{RelayKeypair: relayKeypair}
 	err = controller.UpdateRelayKeypair(&relayKeypair)
 	if err != nil {
 		core.Error("failed to update relay keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("%+v", relayKeypair)
+		core.Debug("update relay keypair %x -> %+v", relayKeypair.RelayKeypairId, relayKeypair)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1518,7 +1476,7 @@ func adminDeleteRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Log("delete relay keypair %x", relayKeypairId)
+	core.Debug("delete relay keypair %x", relayKeypairId)
 	response := AdminDeleteRelayKeypairResponse{}
 	err = controller.DeleteRelayKeypair(relayKeypairId)
 	if err != nil {
