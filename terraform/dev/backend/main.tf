@@ -21,6 +21,15 @@ variable "cloudflare_zone_id_api" { type = string }
 variable "cloudflare_zone_id_relay_backend" { type = string }
 variable "cloudflare_zone_id_server_backend" { type = string }
 
+variable "relay_backend_public_key" { type = string }
+variable "relay_backend_private_key" { type = string }
+variable "server_backend_public_key" { type = string }
+variable "server_backend_private_key" { type = string }
+variable "ping_key" { type = string }
+variable "api_private_key" { type = string }
+variable "customer_public_key" { type = string }
+variable "customer_private_key" { type = string }
+
 # ----------------------------------------------------------------------------------------
 
 terraform {
@@ -325,9 +334,9 @@ module "relay_gateway" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
-    RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
-    RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
-    PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
+    PING_KEY=${var.ping_key}
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
@@ -461,7 +470,7 @@ module "api" {
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
-    API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
+    API_PRIVATE_KEY=${var.api_private_key}
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
@@ -568,13 +577,13 @@ module "server_backend" {
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
-    RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
-    RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
-    SERVER_BACKEND_PUBLIC_KEY=TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=
-    SERVER_BACKEND_PRIVATE_KEY=FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==
+    SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
+    SERVER_BACKEND_PRIVATE_KEY=${var.server_backend_private_key}
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
+    PING_KEY=${var.ping_key}
     EOF
     sudo systemctl start app.service
   EOF1
@@ -651,7 +660,7 @@ module "raspberry_server" {
     DEBUG_LOGS=1
     NEXT_LOG_LEVEL=4
     NEXT_DATACENTER=cloud
-    NEXT_CUSTOMER_PRIVATE_KEY=UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3
+    NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
@@ -687,7 +696,7 @@ module "raspberry_client" {
     ENV=dev
     DEBUG_LOGS=1
     NEXT_LOG_LEVEL=4
-    NEXT_CUSTOMER_PUBLIC_KEY=leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==
+    NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     RASPBERRY_NUM_CLIENTS=64
     EOF

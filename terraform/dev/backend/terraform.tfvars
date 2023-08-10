@@ -1,6 +1,4 @@
 
-tag = "dev-012"
-
 extra = ""
 
 vpn_address = "45.79.157.168"
@@ -19,3 +17,12 @@ cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id_api            = "eba5d882ea2aa23f92dfb50fbf7e3cf4" # -> virtualgo.net
 cloudflare_zone_id_relay_backend  = "4690b11494ddc59f6fdf514780d24e0a" # -> losangelesfreewaysatnight.com
 cloudflare_zone_id_server_backend = "d74db52c8b51a2b80a76f736713e3edd" # -> spacecats.net
+
+relay_backend_public_key    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+relay_backend_private_key   = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
+server_backend_public_key   = "TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A="
+server_backend_private_key  = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
+ping_key 					= "56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64="
+api_private_key             = "this is the private key that generates API keys. make sure you change this value in production"
+customer_public_key         = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+customer_private_key        = "UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3"
