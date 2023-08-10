@@ -21,11 +21,10 @@ blocks:
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_${SEMAPHORE_GIT_BRANCH}_artifacts/           # todo: have a single artifact bucket
-
-
-#            SEMAPHORE_GIT_BRANCH
-#            SEMAPHORE_GIT_TAG_NAME
+            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_dev_artifacts/           # todo: have a single artifact bucket
+            - echo $ARTIFACT_BUCKET
+            - echo $SEMAPHORE_GIT_TAG_NAME
+            - echo $SEMAPHORE_GIT_BRANCH
 
       jobs:
         - name: "Bootstrap"
