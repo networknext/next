@@ -16,10 +16,6 @@ DONE
 
 TODO
 
-	Update deploy by tag so it 
-
-	----------------
-
 	Trigger a deploy by tag and verify it works
 
 	----------------
@@ -28,17 +24,15 @@ TODO
 
 	----------------
 
+	It's possible to store terraform state in a google cloud bucket. Sounds like the way to go.
+
+	https://cloud.google.com/docs/terraform/resource-management/store-state
+
 	----------------
 
 	Update artifact push to use "--force", so it can be run again if it heisenbug fails.
 
 	--force
-
-	----------------
-
-	There definitely needs to be some sanity checks prior to terraform deploy artifacts.
-
-	In particular, need to verify that all the artifacts exist -- otherwise, it's a really painful situation with broken MIGS
 
 	----------------
 

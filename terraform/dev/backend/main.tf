@@ -275,7 +275,7 @@ module "magic_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a magic_backend.tar.gz
     cat <<EOF > /app/app.env
@@ -313,7 +313,7 @@ module "relay_gateway" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh  -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
@@ -322,13 +322,13 @@ module "relay_gateway" {
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
+    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
     DATABASE_PATH="/app/database.bin"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
     PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -358,7 +358,7 @@ module "relay_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
@@ -367,11 +367,11 @@ module "relay_backend" {
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
+    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -403,21 +403,21 @@ module "analytics" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a analytics.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
+    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
     DATABASE_PATH="/app/database.bin"
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     BIGQUERY_DATASET=dev
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -449,7 +449,7 @@ module "api" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
@@ -457,12 +457,12 @@ module "api" {
     DEBUG_LOGS=1
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
+    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -492,7 +492,7 @@ module "portal_cruncher" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
@@ -524,7 +524,7 @@ module "map_cruncher" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
     cat <<EOF > /app/app.env
@@ -556,7 +556,7 @@ module "server_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
@@ -575,7 +575,7 @@ module "server_backend" {
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -606,7 +606,7 @@ module "raspberry_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
@@ -643,7 +643,7 @@ module "raspberry_server" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
     cat <<EOF > /app/app.env
@@ -654,7 +654,7 @@ module "raspberry_server" {
     NEXT_CUSTOMER_PRIVATE_KEY=UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/libnext.so /usr/local/lib/libnext.so
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
     sudo systemctl start app.service
   EOF1
@@ -680,7 +680,7 @@ module "raspberry_client" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
     cat <<EOF > /app/app.env
@@ -691,7 +691,7 @@ module "raspberry_client" {
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     RASPBERRY_NUM_CLIENTS=64
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/libnext.so /usr/local/lib/libnext.so
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
     sudo systemctl start app.service
   EOF1

@@ -6,11 +6,12 @@ artifact=
 
 print_usage() {
     printf "Usage: bootstrap.sh -t tag -b bucket_name -a artifact\n\n"
+    printf "t [string]\tGit tag of release\n"
     printf "b [string]\tBucket name on GCP Storage\n"
     printf "a [string]\tArtifact name on GCP Storage\n"
 
     printf "Example:\n\n"
-    printf "> bootstrap.sh -b gs://network_next_dev_artifacts -a server_backend.tar.gz\n"
+    printf "> bootstrap.sh -t dev-007 -b gs://test_network_next_artifacts -a server_backend.tar.gz\n"
 }
 
 while getopts 't:b:a:h' flag; do
