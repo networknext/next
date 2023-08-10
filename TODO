@@ -34,11 +34,9 @@ DONE
 
 	The database can be uploaded via the next tool. It can live in a new bucket in google cloud storage, named so that the environment is clear, eg. dev.bin
 
-TODO
-
 	Sketch out a new bucket and give it permissions
 
-	----------------
+TODO
 
 	Many variables passed into startup script need to be converted to terraform vars, esp. private keys etc.
 
