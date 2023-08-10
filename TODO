@@ -1,47 +1,14 @@
 DONE
 
-	Fix up cloudflare to also setup relay backend and server backend domains. Will need to work out zone id cruft.
-
-	Switch back to network next GCP and get dev environment up to "next ping" -> pong
-
-	Dive back into networknext terraform plugin and work out what's going on
-
-	Worked out how I can run the plugin locally again
-
-	Fix up the plugin so it works
-
-	Publish the terraform plugin
-
-	Update api logs so they are all one liners. They will work better with concurrency this way.
-
-	Update api test to make sure it covers all resource types. At minumum, the relay keypair and buyer keypair resources were untested.
-
-	Implement a func test that uses the published terraform provider against a postgres instance and the api service to make sure it works.
-	
-	Point the terraform at dev API and then run a terraform apply. Does it work?
-
-	It does not work, because... the database doesn't have all the rows it needs.
-
-	Where do I initialize the database with create.sql?
-
-	The answer is that currently I do not.
-	
-	How can I do this?
-
-	This can be automated, but by far the simplest option is to just manually import in the google cloud console for now, then I can work on other more interesting things in the short term.
-
-	For the one off, the data needs to be uploaded to a google cloud storage bucket, then from this, it seems straightforward to load into cloud storage. Most likely, I'll end up doing this via terraform or some init step.
-
-	Now try terraform apply again
-
-	It works!
+	Get tag based test and upload artifacts working
 
 TODO
 
+	Update the terraform scripts to fully commit to tag based deployment
 
 	----------------
 
-	Happy path is broken in linux again. What's going wrong here? Why is it flaky?
+	Happy path is failing in semaphore again, but works fine locally. What's going on?
 
 	----------------
 

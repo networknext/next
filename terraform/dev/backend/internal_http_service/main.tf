@@ -14,7 +14,7 @@ terraform {
 variable "service_name" { type = string }
 variable "startup_script" { type = string }
 variable "machine_type" { type = string }
-variable "git_hash" { type = string }
+variable "tag" { type = string }
 variable "project" { type = string }
 variable "region" { type = string }
 variable "default_network" { type = string }
@@ -84,7 +84,7 @@ resource "google_compute_region_backend_service" "service" {
 }
 
 resource "google_compute_instance_template" "service" {
-  name         = "${var.service_name}-${var.git_hash}"
+  name         = "${var.service_name}-${var.tag}"
   project      = var.project
   machine_type = var.machine_type
 

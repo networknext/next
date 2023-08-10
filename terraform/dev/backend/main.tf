@@ -8,7 +8,7 @@ variable "zone" { type = string }
 variable "service_account" { type = string }
 variable "artifacts_bucket" { type = string }
 variable "machine_type" { type = string }
-variable "git_hash" { type = string }
+variable "tag" { type = string }
 variable "vpn_address" { type = string }
 variable "cloudflare_api_token" { type = string }
 variable "cloudflare_zone_id_api" { type = string }
@@ -279,7 +279,7 @@ module "magic_backend" {
   EOF1
 
   machine_type               = var.machine_type
-  git_hash                   = var.git_hash
+  tag                        = var.tag
   project                    = var.project
   region                     = var.region
   default_network            = google_compute_network.development.id
@@ -325,7 +325,7 @@ module "relay_gateway" {
   EOF1
 
   machine_type             = var.machine_type
-  git_hash                 = var.git_hash
+  tag                      = var.tag
   project                  = var.project
   zone                     = var.zone
   default_network          = google_compute_network.development.id
@@ -367,7 +367,7 @@ module "relay_backend" {
   EOF1
 
   machine_type               = var.machine_type
-  git_hash                   = var.git_hash
+  tag                        = var.tag
   project                    = var.project
   region                     = var.region
   default_network            = google_compute_network.development.id
@@ -412,7 +412,7 @@ module "analytics" {
   EOF1
 
   machine_type               = var.machine_type
-  git_hash                   = var.git_hash
+  tag                        = var.tag
   project                    = var.project
   region                     = var.region
   default_network            = google_compute_network.development.id
@@ -456,7 +456,7 @@ module "api" {
   EOF1
 
   machine_type             = var.machine_type
-  git_hash                 = var.git_hash
+  tag                      = var.tag
   project                  = var.project
   zone                     = var.zone
   default_network          = google_compute_network.development.id
@@ -492,7 +492,7 @@ module "portal_cruncher" {
   EOF1
 
   machine_type       = var.machine_type
-  git_hash           = var.git_hash
+  tag                = var.tag
   project            = var.project
   region             = var.region
   default_network    = google_compute_network.development.id
@@ -523,7 +523,7 @@ module "map_cruncher" {
   EOF1
 
   machine_type       = var.machine_type
-  git_hash           = var.git_hash
+  tag                = var.tag
   project            = var.project
   region             = var.region
   default_network    = google_compute_network.development.id
@@ -566,7 +566,7 @@ module "server_backend" {
   EOF1
 
   machine_type       = var.machine_type
-  git_hash           = var.git_hash
+  tag                = var.tag
   project            = var.project
   region             = var.region
   port               = 40000
@@ -603,7 +603,7 @@ module "raspberry_backend" {
   EOF1
 
   machine_type             = var.machine_type
-  git_hash                 = var.git_hash
+  tag                      = var.tag
   project                  = var.project
   zone                     = var.zone
   default_network          = google_compute_network.development.id
@@ -644,7 +644,7 @@ module "raspberry_server" {
   EOF1
 
   machine_type       = var.machine_type
-  git_hash           = var.git_hash
+  tag                = var.tag
   project            = var.project
   region             = var.region
   default_network    = google_compute_network.development.id
@@ -680,7 +680,7 @@ module "raspberry_client" {
   EOF1
 
   machine_type       = var.machine_type
-  git_hash           = var.git_hash
+  tag                = var.tag
   project            = var.project
   region             = var.region
   default_network    = google_compute_network.development.id
