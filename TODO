@@ -56,6 +56,8 @@ TODO
 
 	Some func tests are flaky:
 
+	client_to_server_packet_too_big --- highest probability of happening
+
 		============================================
 		panic: missing counter: RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 00:18
 		goroutine 1 [running]: 00:18
