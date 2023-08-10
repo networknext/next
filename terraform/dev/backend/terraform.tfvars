@@ -1,13 +1,18 @@
-service_account      = "terraform@development-394617.iam.gserviceaccount.com"
-credentials          = "~/secrets/terraform-development.json"
-project              = "development-394617"
-location             = "US"
-region               = "us-central1"
-zone                 = "us-central1-a"
-artifacts_bucket     = "gs://test_network_next_dev_artifacts"
-machine_type         = "f1-micro"
-tag                  = "dev-004"
-vpn_address          = "45.79.157.168"
+
+tag = "dev-007"
+
+extra = ""
+
+vpn_address = "45.79.157.168"
+
+google_service_account      = "terraform@development-394617.iam.gserviceaccount.com"
+google_credentials          = "~/secrets/terraform-development.json"
+google_project              = "development-394617"
+google_location             = "US"
+google_region               = "us-central1"
+google_zone                 = "us-central1-a"
+google_artifacts_bucket     = "gs://test_network_next_dev_artifacts"
+google_machine_type         = "f1-micro"
 
 cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id_api            = "eba5d882ea2aa23f92dfb50fbf7e3cf4" # -> virtualgo.net

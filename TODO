@@ -8,9 +8,17 @@ DONE
 
 	Update main.tf to pass in tag to bootstrap.sh
 
+	Check that the artifacts uploaded to the correct tag directory
+
+	Rename variables in deploy script so the google vars are prefixed by "google_"
+
+	Add a new "extra" var which will allow iterating on a deployment for a 
+
 TODO
 
-	Check that the artifacts uploaded to the correct tag directory
+	Update deploy by tag so it 
+
+	----------------
 
 	Trigger a deploy by tag and verify it works
 

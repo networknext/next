@@ -1,16 +1,19 @@
 # ----------------------------------------------------------------------------------------
 
-# todo: many of these variables should be prefixed by "google_"
-variable "credentials" { type = string }
-variable "project" { type = string }
-variable "location" { type = string }
-variable "region" { type = string }
-variable "zone" { type = string }
-variable "service_account" { type = string }
-variable "artifacts_bucket" { type = string }
-variable "machine_type" { type = string }
 variable "tag" { type = string }
+
+variable "extra" { type = string }
+
 variable "vpn_address" { type = string }
+
+variable "google_credentials" { type = string }
+variable "google_project" { type = string }
+variable "google_location" { type = string }
+variable "google_region" { type = string }
+variable "google_zone" { type = string }
+variable "google_service_account" { type = string }
+variable "google_artifacts_bucket" { type = string }
+variable "google_machine_type" { type = string }
 
 variable "cloudflare_api_token" { type = string }
 variable "cloudflare_zone_id_api" { type = string }
@@ -33,15 +36,17 @@ terraform {
 }
 
 provider "google" {
-  credentials = file(var.credentials)
-  project     = var.project
-  region      = var.region
-  zone        = var.zone
+  credentials = file(var.google_credentials)
+  project     = var.google_project
+  region      = var.google_region
+  zone        = var.google_zone
 }
 
 provider "cloudflare" {
   api_token = file(var.cloudflare_api_token)
 }
+
+# ----------------------------------------------------------------------------------------
 
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id_api
@@ -71,23 +76,23 @@ resource "cloudflare_record" "relay_backend_domain" {
 
 resource "google_compute_network" "development" {
   name                    = "development"
-  project                 = var.project
+  project                 = var.google_project
   auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "development" {
   name                     = "development"
-  project                  = var.project
+  project                  = var.google_project
   ip_cidr_range            = "10.0.0.0/16"
-  region                   = var.region
+  region                   = var.google_region
   network                  = google_compute_network.development.id
   private_ip_google_access = true
 }
 
 resource "google_compute_subnetwork" "internal_http_load_balancer" {
   name          = "internal-http-load-balancer"
-  project       = var.project
-  region        = var.region
+  project       = var.google_project
+  region        = var.google_region
   purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
   role          = "ACTIVE"
   network       = google_compute_network.development.id
@@ -98,7 +103,7 @@ resource "google_compute_subnetwork" "internal_http_load_balancer" {
 
 resource "google_compute_firewall" "allow_ssh" {
   name          = "allow-ssh"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
@@ -111,7 +116,7 @@ resource "google_compute_firewall" "allow_ssh" {
 
 resource "google_compute_firewall" "allow_health_checks" {
   name          = "allow-health-checks"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
@@ -126,7 +131,7 @@ resource "google_compute_firewall" "allow_health_checks" {
 
 resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
   name          = "allow-network-load-balancer-traffic"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20", "209.85.152.0/22", "209.85.204.0/22"]
@@ -141,7 +146,7 @@ resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
 
 resource "google_compute_firewall" "allow_http" {
   name          = "allow-http"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -154,7 +159,7 @@ resource "google_compute_firewall" "allow_http" {
 
 resource "google_compute_firewall" "allow_http_vpn_only" {
   name          = "allow-http-vpn-only"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["${var.vpn_address}/32"]
@@ -167,7 +172,7 @@ resource "google_compute_firewall" "allow_http_vpn_only" {
 
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -180,7 +185,7 @@ resource "google_compute_firewall" "allow_udp_40000" {
 
 resource "google_compute_firewall" "allow_udp_all" {
   name          = "allow-udp-all"
-  project       = var.project
+  project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -225,7 +230,7 @@ resource "google_service_networking_connection" "postgres" {
 resource "google_sql_database_instance" "postgres" {
   name = "postgres"
   database_version = "POSTGRES_14"
-  region = "${var.region}"
+  region = "${var.google_region}"
   depends_on = [google_service_networking_connection.postgres]
   settings {
     tier = "db-f1-micro"
@@ -270,9 +275,9 @@ module "magic_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a magic_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a magic_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -280,15 +285,16 @@ module "magic_backend" {
     sudo systemctl start app.service
   EOF1
 
-  machine_type               = var.machine_type
   tag                        = var.tag
-  project                    = var.project
-  region                     = var.region
+  extra                      = var.extra
+  machine_type               = var.google_machine_type
+  project                    = var.google_project
+  region                     = var.google_region
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.service_account
+  service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
@@ -307,32 +313,33 @@ module "relay_gateway" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh  -t ${var.tag} -b ${var.artifacts_bucket} -a relay_gateway.tar.gz
+    sudo ./bootstrap.sh  -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    GOOGLE_PROJECT_ID=${var.project}
+    GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.artifacts_bucket}/database.bin"
+    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
     PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
-  machine_type             = var.machine_type
   tag                      = var.tag
-  project                  = var.project
-  zone                     = var.zone
+  extra                    = var.extra
+  machine_type             = var.google_machine_type
+  project                  = var.google_project
+  zone                     = var.google_zone
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.service_account
+  service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
@@ -351,32 +358,33 @@ module "relay_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a relay_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    GOOGLE_PROJECT_ID=${var.project}
+    GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.artifacts_bucket}/database.bin"
+    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
-  machine_type               = var.machine_type
   tag                        = var.tag
-  project                    = var.project
-  region                     = var.region
+  extra                      = var.extra
+  machine_type               = var.google_machine_type
+  project                    = var.google_project
+  region                     = var.google_region
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.service_account
+  service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
@@ -395,33 +403,34 @@ module "analytics" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a analytics.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a analytics.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    GOOGLE_PROJECT_ID=${var.project}
-    DATABASE_URL="${var.artifacts_bucket}/database.bin"
+    GOOGLE_PROJECT_ID=${var.google_project}
+    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     BIGQUERY_DATASET=dev
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
-  machine_type               = var.machine_type
   tag                        = var.tag
-  project                    = var.project
-  region                     = var.region
+  extra                      = var.extra
+  machine_type               = var.google_machine_type
+  project                    = var.google_project
+  region                     = var.google_region
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.service_account
+  service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks"]
 }
 
@@ -440,30 +449,31 @@ module "api" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a api.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
-    GOOGLE_PROJECT_ID=${var.project}
-    DATABASE_URL="${var.artifacts_bucket}/database.bin"
+    GOOGLE_PROJECT_ID=${var.google_project}
+    DATABASE_URL="${var.google_artifacts_bucket}/database.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
-  machine_type             = var.machine_type
   tag                      = var.tag
-  project                  = var.project
-  zone                     = var.zone
+  extra                    = var.extra
+  machine_type             = var.google_machine_type
+  project                  = var.google_project
+  zone                     = var.google_zone
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.service_account
+  service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http-vpn-only"]
 }
 
@@ -482,9 +492,9 @@ module "portal_cruncher" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a portal_cruncher.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -493,13 +503,14 @@ module "portal_cruncher" {
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
   tag                = var.tag
-  project            = var.project
-  region             = var.region
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
@@ -513,9 +524,9 @@ module "map_cruncher" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a map_cruncher.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -524,13 +535,14 @@ module "map_cruncher" {
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
   tag                = var.tag
-  project            = var.project
-  region             = var.region
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
@@ -544,15 +556,15 @@ module "server_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a server_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    GOOGLE_PROJECT_ID=${var.project}
+    GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
@@ -563,18 +575,19 @@ module "server_backend" {
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_artifacts_bucket}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
   tag                = var.tag
-  project            = var.project
-  region             = var.region
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
   port               = 40000
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
 }
 
@@ -593,9 +606,9 @@ module "raspberry_backend" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a raspberry_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -604,13 +617,14 @@ module "raspberry_backend" {
     sudo systemctl start app.service
   EOF1
 
-  machine_type             = var.machine_type
   tag                      = var.tag
-  project                  = var.project
-  zone                     = var.zone
+  extra                    = var.extra
+  machine_type             = var.google_machine_type
+  project                  = var.google_project
+  zone                     = var.google_zone
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.service_account
+  service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
 
@@ -629,9 +643,9 @@ module "raspberry_server" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a raspberry_server.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -640,18 +654,19 @@ module "raspberry_server" {
     NEXT_CUSTOMER_PRIVATE_KEY=UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/libnext.so /usr/local/lib/libnext.so
+    sudo gsutil cp ${var.google_artifacts_bucket}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
   tag                = var.tag
-  project            = var.project
-  region             = var.region
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
 }
 
@@ -665,9 +680,9 @@ module "raspberry_client" {
 
   startup_script = <<-EOF1
     #!/bin/bash
-    gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
+    gsutil cp ${var.google_artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a raspberry_client.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -676,18 +691,19 @@ module "raspberry_client" {
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
     RASPBERRY_NUM_CLIENTS=64
     EOF
-    sudo gsutil cp ${var.artifacts_bucket}/libnext.so /usr/local/lib/libnext.so
+    sudo gsutil cp ${var.google_artifacts_bucket}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
     sudo systemctl start app.service
   EOF1
 
-  machine_type       = var.machine_type
   tag                = var.tag
-  project            = var.project
-  region             = var.region
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.service_account
+  service_account    = var.google_service_account
   tags               = ["allow-ssh"]
 }
 
