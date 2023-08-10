@@ -1212,7 +1212,7 @@ blocks:
 
 # ------------------------------------------------------------------------------------------------------------
 
-  - name: "Build Functional Tests (backend)"
+  - name: "Load Tests"
     dependencies: []
     task:
 
