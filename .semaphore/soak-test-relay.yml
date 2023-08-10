@@ -33,8 +33,8 @@ blocks:
 
             - mv dist/func_backend dist/func_backend_soak_test_relay
 
-            - artifact push workflow dist/func_backend_soak_test_relay
-            - artifact push workflow dist/soak_test_relay
+            - artifact push workflow dist/func_backend_soak_test_relay --force
+            - artifact push workflow dist/soak_test_relay --force
 
 
   - name: "Run Soak Test (relay)"

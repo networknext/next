@@ -37,10 +37,10 @@ blocks:
             - mv dist/func_server dist/func_server_sdk
             - mv dist/func_backend dist/func_backend_sdk
 
-            - artifact push workflow dist/func_client_sdk
-            - artifact push workflow dist/func_server_sdk
-            - artifact push workflow dist/func_backend_sdk
-            - artifact push workflow dist/func_test_sdk
+            - artifact push workflow dist/func_client_sdk --force
+            - artifact push workflow dist/func_server_sdk --force
+            - artifact push workflow dist/func_backend_sdk --force
+            - artifact push workflow dist/func_test_sdk --force
 
   - name: "Run Functional Tests (sdk) - A"
     dependencies: ["Build Functional Tests (sdk)"]
@@ -353,8 +353,8 @@ blocks:
 
             - mv dist/func_backend dist/func_backend_relay
 
-            - artifact push workflow dist/func_backend_relay
-            - artifact push workflow dist/func_test_relay
+            - artifact push workflow dist/func_backend_relay --force
+            - artifact push workflow dist/func_test_relay --force
 
 
   - name: "Run Functional Tests (relay) - A"
@@ -803,10 +803,10 @@ blocks:
             - make clean
             - make -j dist/func_test_backend dist/magic_backend dist/relay_gateway dist/relay_backend
 
-            - artifact push workflow dist/func_test_backend
-            - artifact push workflow dist/magic_backend
-            - artifact push workflow dist/relay_gateway
-            - artifact push workflow dist/relay_backend
+            - artifact push workflow dist/func_test_backend --force
+            - artifact push workflow dist/magic_backend --force
+            - artifact push workflow dist/relay_gateway --force
+            - artifact push workflow dist/relay_backend --force
 
   - name: "Run Functional Tests (backend)"
     dependencies: ["Build Functional Tests (backend)"]
@@ -924,7 +924,7 @@ blocks:
 
             - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql schemas/sql/sellers/*.sql
 
-            - artifact push workflow functional_test_database.tar.gz
+            - artifact push workflow functional_test_database.tar.gz --force
 
   - name: "Run Functional Tests (database)"
     dependencies: ["Build Functional Tests (database)"]
@@ -995,7 +995,7 @@ blocks:
 
             - tar -zcvf functional_test_api.tar.gz dist/api dist/func_test_api schemas/sql/create.sql schemas/sql/destroy.sql
 
-            - artifact push workflow functional_test_api.tar.gz
+            - artifact push workflow functional_test_api.tar.gz --force
 
   - name: "Run Functional Tests (api)"
     dependencies: ["Build Functional Tests (api)"]
@@ -1080,7 +1080,7 @@ blocks:
 
             - tar -zcvf functional_test_portal.tar.gz dist/api dist/func_test_portal
 
-            - artifact push workflow functional_test_portal.tar.gz
+            - artifact push workflow functional_test_portal.tar.gz --force
 
   - name: "Run Functional Tests (portal)"
     dependencies: ["Build Functional Tests (portal)"]
@@ -1140,7 +1140,7 @@ blocks:
 
             - tar -zcvf functional_test_terraform.tar.gz dist/api dist/func_test_terraform schemas/sql/create.sql schemas/sql/destroy.sql
 
-            - artifact push workflow functional_test_terraform.tar.gz
+            - artifact push workflow functional_test_terraform.tar.gz --force
 
   - name: "Run Functional Tests (terraform)"
     dependencies: ["Build Functional Tests (terraform)"]

@@ -14,6 +14,8 @@ DONE
 
 	Add a new "extra" var which will allow iterating on a deployment for a 
 
+	Sometimes test fail with port already bound. This is unacceptable.
+
 TODO
 
 	Trigger a deploy by tag and verify it works

@@ -27,15 +27,15 @@ blocks:
             - checkout
             - mkdir dist
             - make -j ./dist/relay-debug ./dist/relay-release ./dist/libnext.so
-            - artifact push workflow ./dist/relay-debug
-            - artifact push workflow ./dist/relay-release
-            - artifact push workflow ./dist/libnext.so
-            - artifact push workflow deploy/bootstrap.sh
-            - artifact push workflow config/google.txt
-            - artifact push workflow config/amazon.txt
-            - artifact push workflow config/akamai.txt
-            - artifact push workflow config/vultr.txt
-            - artifact push workflow config/multiplay.txt
+            - artifact push workflow ./dist/relay-debug --force
+            - artifact push workflow ./dist/relay-release --force
+            - artifact push workflow ./dist/libnext.so --force
+            - artifact push workflow deploy/bootstrap.sh --force
+            - artifact push workflow config/google.txt --force
+            - artifact push workflow config/amazon.txt --force
+            - artifact push workflow config/akamai.txt --force
+            - artifact push workflow config/vultr.txt --force
+            - artifact push workflow config/multiplay.txt --force
 
   - name: "Sodium"
     dependencies: []
@@ -54,7 +54,7 @@ blocks:
             - make -j
             - sudo make install
             - ls -al /usr/local/lib
-            - artifact push workflow /usr/local/lib/libsodium.so
+            - artifact push workflow /usr/local/lib/libsodium.so --force
 
   - name: "Backend"
     dependencies: []
@@ -112,47 +112,47 @@ blocks:
         - name: "Analytics"
           commands:
             - make dist/analytics.tar.gz
-            - artifact push workflow dist/analytics.tar.gz
+            - artifact push workflow dist/analytics.tar.gz --force
 
         - name: "API"
           commands:
             - make dist/api.tar.gz
-            - artifact push workflow dist/api.tar.gz
+            - artifact push workflow dist/api.tar.gz --force
 
         - name: "Map Cruncher"
           commands:
             - make dist/map_cruncher.tar.gz
-            - artifact push workflow dist/map_cruncher.tar.gz
+            - artifact push workflow dist/map_cruncher.tar.gz --force
 
         - name: "Portal Cruncher"
           commands:
             - make dist/portal_cruncher.tar.gz
-            - artifact push workflow dist/portal_cruncher.tar.gz
+            - artifact push workflow dist/portal_cruncher.tar.gz --force
 
         - name: "Relay Gateway"
           commands:
             - make dist/relay_gateway.tar.gz
-            - artifact push workflow dist/relay_gateway.tar.gz
+            - artifact push workflow dist/relay_gateway.tar.gz --force
 
         - name: "Relay Backend"
           commands:
             - make dist/relay_backend.tar.gz
-            - artifact push workflow dist/relay_backend.tar.gz
+            - artifact push workflow dist/relay_backend.tar.gz --force
 
         - name: "Server Backend"
           commands:
             - make dist/server_backend.tar.gz
-            - artifact push workflow dist/server_backend.tar.gz
+            - artifact push workflow dist/server_backend.tar.gz --force
 
         - name: "Magic Backend"
           commands:
             - make dist/magic_backend.tar.gz
-            - artifact push workflow dist/magic_backend.tar.gz
+            - artifact push workflow dist/magic_backend.tar.gz --force
 
         - name: "Raspberry Backend"
           commands:
             - make dist/raspberry_backend.tar.gz
-            - artifact push workflow dist/raspberry_backend.tar.gz
+            - artifact push workflow dist/raspberry_backend.tar.gz --force
 
   - name: "Build Artifacts (Native)"
 
@@ -176,7 +176,7 @@ blocks:
         - name: "Raspberry Server"
           commands:
             - make -j dist/raspberry_server.tar.gz
-            - artifact push workflow dist/raspberry_server.tar.gz
+            - artifact push workflow dist/raspberry_server.tar.gz --force
 
         - name: "Raspberry Client"
           commands:
