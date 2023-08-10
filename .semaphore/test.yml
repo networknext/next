@@ -15,7 +15,7 @@ blocks:
 
 # ------------------------------------------------------------------------------------------------------------
 
-  - name: "[SDK] Build Functional Tests"
+  - name: "SDK - Build Functional Tests"
     dependencies: []
     task:
 
@@ -46,8 +46,8 @@ blocks:
             - artifact push workflow dist/func_backend_sdk
             - artifact push workflow dist/func_test_sdk
 
-  - name: "[SDK] Run Functional Tests (A)"
-    dependencies: ["[SDK] Build Functional Tests"]
+  - name: "SDK - Run Functional Tests (A)"
+    dependencies: ["SDK - Build Functional Tests"]
     task:
 
       agent:
@@ -279,8 +279,8 @@ blocks:
             - cd ./dist && ./func_test_sdk test_flush_retry
 
 
-  - name: "[SDK] Run Functional Tests (B)"
-    dependencies: ["[SDK] Build Functional Tests"]
+  - name: "SDK - Run Functional Tests (B)"
+    dependencies: ["SDK - Build Functional Tests"]
     task:
 
       agent:
@@ -1208,7 +1208,7 @@ blocks:
             - artifact pull workflow libnext.so
             - chmod +x relay-debug
 
-            - cd ./dist && ./soak_test_relay stop
+            - ./soak_test_relay stop
 
 # ------------------------------------------------------------------------------------------------------------
 
