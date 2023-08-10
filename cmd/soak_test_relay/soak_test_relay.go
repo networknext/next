@@ -164,7 +164,7 @@ func soak_test_relay(run_forever bool) {
 
 		if !run_forever {
 			duration := time.Now().Sub(startTime)
-			if duration > 5*time.Minute {
+			if duration > time.Minute {
 				break
 			}
 		}

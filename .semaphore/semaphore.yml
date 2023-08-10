@@ -185,7 +185,19 @@ blocks:
 
 promotions:
 
-  - name: "Deploy"
-    pipeline_file: deploy.yml
+  - name: "Test"
+    pipeline_file: test.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '.*'"
+
+  - name: "Upload Config"
+    pipeline_file: upload-config.yml
+
+  - name: "Upload Relay"
+    pipeline_file: upload-relay.yml
+
+  - name: "Upload Database"
+    pipeline_file: upload-database.yml
+
+  - name: "Update Golang Cache"
+    pipeline_file: update-golang-cache.yml
