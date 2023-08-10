@@ -13,6 +13,8 @@ agent:
 
 blocks:
 
+# ------------------------------------------------------------------------------------------------------------
+
   - name: "Build Functional Tests (sdk)"
     dependencies: []
     task:
@@ -43,7 +45,6 @@ blocks:
             - artifact push workflow dist/func_server_sdk
             - artifact push workflow dist/func_backend_sdk
             - artifact push workflow dist/func_test_sdk
-
 
   - name: "Run Functional Tests (sdk) - A"
     dependencies: ["Build Functional Tests (sdk)"]
@@ -329,3 +330,852 @@ blocks:
         - name: "test_big_packets"
           commands:
             - cd ./dist && ./func_test_sdk test_big_packets
+
+# ------------------------------------------------------------------------------------------------------------
+
+  - name: "Build Functional Tests (relay)"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - cd ~/next
+            - make clean
+            - make dist/func_backend dist/func_test_relay
+
+            - mv dist/func_backend dist/func_backend_relay
+
+            - artifact push workflow dist/func_backend_relay
+            - artifact push workflow dist/func_test_relay
+
+
+  - name: "Run Functional Tests (relay) - A"
+    dependencies: ["Build Functional Tests (relay)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sudo apt-get install -y libsodium-dev
+            - mkdir -p dist
+            - cd dist
+
+            - artifact pull workflow func_backend_relay
+            - artifact pull workflow func_test_relay
+            - artifact pull workflow relay-debug
+            - artifact pull workflow libnext.so
+
+            - mv func_backend_relay func_backend
+
+            - chmod +x func_backend
+            - chmod +x func_test_relay
+            - chmod +x relay-debug
+
+            - sudo mv libnext.so /usr/local/lib
+            - sudo ldconfig
+
+            - cd ~
+
+      jobs:
+
+        - name: "test_initialize_success"
+          commands:
+            - cd ./dist && ./func_test_relay test_initialize_success
+
+        - name: "test_initialize_fail"
+          commands:
+            - cd ./dist && ./func_test_relay test_initialize_fail
+
+        - name: "test_relay_name_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_name_not_set
+
+        - name: "test_relay_public_address_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_public_address_not_set
+
+        - name: "test_relay_public_address_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_public_address_invalid
+
+        - name: "test_relay_internal_address_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_internal_address_invalid
+
+        - name: "test_relay_public_key_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_public_key_not_set
+
+        - name: "test_relay_public_key_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_public_key_invalid
+
+        - name: "test_relay_private_key_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_private_key_not_set
+
+        - name: "test_relay_private_key_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_private_key_invalid
+
+        - name: "test_relay_keypair_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_keypair_invalid
+
+        - name: "test_relay_backend_public_key_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_public_key_not_set
+
+        - name: "test_relay_backend_public_key_invalid"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_public_key_invalid
+
+        - name: "test_relay_backend_public_key_mismatch"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_public_key_mismatch
+
+        - name: "test_relay_backend_hostname_not_set"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_hostname_not_set
+
+        - name: "test_relay_cant_bind_to_port_zero"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_cant_bind_to_port_zero
+
+        - name: "test_num_threads"
+          commands:
+            - cd ./dist && ./func_test_relay test_num_threads
+
+        - name: "test_relay_pings"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_pings
+
+        - name: "test_cost_matrix"
+          commands:
+            - cd ./dist && ./func_test_relay test_cost_matrix
+
+        - name: "test_basic_packet_filter"
+          commands:
+            - cd ./dist && ./func_test_relay test_basic_packet_filter
+
+        - name: "test_advanced_packet_filter"
+          commands:
+            - cd ./dist && ./func_test_relay test_advanced_packet_filter
+
+        - name: "test_clean_shutdown"
+          commands:
+            - cd ./dist && ./func_test_relay test_clean_shutdown
+
+        - name: "test_unknown_packets"
+          commands:
+            - cd ./dist && ./func_test_relay test_unknown_packets
+
+        - name: "test_near_ping_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_ping_packet_wrong_size
+
+        - name: "test_near_ping_packet_expired"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_ping_packet_expired
+
+        - name: "test_near_ping_packet_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_ping_packet_did_not_verify
+
+        - name: "test_near_ping_packet_responded_with_pong"
+          commands:
+            - cd ./dist && ./func_test_relay test_near_ping_packet_responded_with_pong
+
+        - name: "test_relay_pong_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_pong_packet_wrong_size
+
+        - name: "test_relay_ping_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_ping_packet_wrong_size
+
+        - name: "test_relay_ping_packet_expired"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_ping_packet_expired
+
+        - name: "test_relay_ping_packet_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_ping_packet_did_not_verify
+
+        - name: "test_route_request_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_wrong_size
+
+        - name: "test_route_request_packet_could_not_read_token"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_could_not_read_token
+
+        - name: "test_route_request_packet_token_expired"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_token_expired
+
+        - name: "test_route_request_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_forward_to_next_hop_public_address
+
+        - name: "test_route_request_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_forward_to_next_hop_internal_address
+
+        - name: "test_route_response_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_wrong_size
+
+        - name: "test_route_response_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_already_received
+
+        - name: "test_route_response_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_header_did_not_verify
+
+        - name: "test_route_response_packet_forward_to_previous_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_forward_to_previous_hop_public_address
+
+        - name: "test_route_response_packet_forward_to_previous_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_response_packet_forward_to_previous_hop_internal_address
+
+        - name: "test_continue_request_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_wrong_size
+
+        - name: "test_continue_request_packet_could_not_read_token"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_could_not_read_token
+
+        - name: "test_continue_request_packet_token_expired"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_token_expired
+
+        - name: "test_continue_request_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_could_not_find_session
+
+        - name: "test_continue_request_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_forward_to_next_hop_public_address
+
+        - name: "test_continue_request_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_forward_to_next_hop_internal_address
+
+        - name: "test_continue_response_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_wrong_size
+
+        - name: "test_continue_response_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_could_not_find_session
+
+
+  - name: "Run Functional Tests (relay) - B"
+    dependencies: ["Build Functional Tests (relay)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sudo apt-get install -y libsodium-dev
+            - mkdir -p dist
+            - cd dist
+
+            - artifact pull workflow func_backend_relay
+            - artifact pull workflow func_test_relay
+            - artifact pull workflow relay-debug
+            - artifact pull workflow libnext.so
+
+            - mv func_backend_relay func_backend
+
+            - chmod +x func_backend
+            - chmod +x func_test_relay
+            - chmod +x relay-debug
+
+            - sudo mv libnext.so /usr/local/lib
+            - sudo ldconfig
+
+            - cd ~
+
+      jobs:
+
+        - name: "test_continue_response_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_already_received
+
+        - name: "test_continue_response_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_header_did_not_verify
+
+        - name: "test_continue_response_packet_forward_to_previous_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_forward_to_previous_hop_public_address
+
+        - name: "test_continue_response_packet_forward_to_previous_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_response_packet_forward_to_previous_hop_internal_address
+
+        - name: "test_client_to_server_packet_too_small"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_too_small
+
+        - name: "test_client_to_server_packet_too_big"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_too_big
+
+        - name: "test_client_to_server_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_could_not_find_session
+
+        - name: "test_client_to_server_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_already_received
+
+        - name: "test_client_to_server_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_header_did_not_verify
+
+        - name: "test_client_to_server_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_forward_to_next_hop_public_address
+
+        - name: "test_client_to_server_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_forward_to_next_hop_internal_address
+
+        - name: "test_server_to_client_packet_too_small"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_too_small
+
+        - name: "test_server_to_client_packet_too_big"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_too_big
+
+        - name: "test_server_to_client_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_could_not_find_session
+
+        - name: "test_server_to_client_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_already_received
+
+        - name: "test_server_to_client_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_header_did_not_verify
+
+        - name: "test_server_to_client_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_forward_to_previous_hop_public_address
+
+        - name: "test_server_to_client_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_forward_to_previous_hop_internal_address
+
+        - name: "test_session_ping_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_wrong_size
+
+        - name: "test_session_ping_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_could_not_find_session
+
+        - name: "test_session_ping_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_already_received
+
+        - name: "test_session_ping_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_header_did_not_verify
+
+        - name: "test_session_ping_packet_forward_to_next_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_forward_to_next_hop_public_address
+
+        - name: "test_session_ping_packet_forward_to_next_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_ping_packet_forward_to_next_hop_internal_address
+
+        - name: "test_session_pong_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_pong_packet_wrong_size
+
+        - name: "test_session_pong_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_pong_packet_could_not_find_session
+
+        - name: "test_session_pong_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_pong_packet_already_received
+
+        - name: "test_session_pong_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_pong_packet_header_did_not_verify
+
+        - name: "test_session_pong_packet_forward_to_previous_hop_public_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_pong_packet_forward_to_previous_hop_public_address
+
+        - name: "test_session_pong_packet_forward_to_previous_hop_internal_address"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_pong_packet_forward_to_previous_hop_internal_address
+
+        - name: "test_session_destroy"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_destroy
+
+        - name: "test_session_expired_route_response_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_route_response_packet
+
+        - name: "test_session_expired_continue_response_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_continue_response_packet
+
+        - name: "test_session_expired_client_to_server_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_client_to_server_packet
+
+        - name: "test_session_expired_server_to_client_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_server_to_client_packet
+
+        - name: "test_session_expired_session_ping_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_session_ping_packet
+
+        - name: "test_session_expired_session_pong_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_session_pong_packet
+
+        - name: "test_relay_backend_stats"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_stats
+
+        - name: "test_relay_backend_counters"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_backend_counters
+
+# ------------------------------------------------------------------------------------------------------------
+
+  - name: "Build Functional Tests (backend)"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - cache restore golang
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - make clean
+            - make -j dist/func_test_backend dist/magic_backend dist/relay_gateway dist/relay_backend
+
+            - artifact push workflow dist/func_test_backend
+            - artifact push workflow dist/magic_backend
+            - artifact push workflow dist/relay_gateway
+            - artifact push workflow dist/relay_backend
+
+  - name: "Run Functional Tests (backend)"
+    dependencies: ["Build Functional Tests (backend)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sudo apt-get install -y libsodium-dev google-cloud-sdk-pubsub-emulator redis-server
+
+            - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64
+            - sudo mv bigquery-emulator-linux-amd64 /usr/local/bin/bigquery-emulator
+            - sudo chmod +x /usr/local/bin/bigquery-emulator
+
+            - mkdir -p dist
+            - cd dist
+
+            - artifact pull workflow func_test_backend
+            - artifact pull workflow magic_backend
+            - artifact pull workflow relay_gateway
+            - artifact pull workflow relay_backend
+
+            - chmod +x func_test_backend
+            - chmod +x magic_backend
+            - chmod +x relay_gateway
+            - chmod +x relay_backend
+
+            - cd ~
+
+      jobs:
+
+        - name: "test_magic_backend"
+          commands:
+            - cd ./dist && ./func_test_backend test_magic_backend
+
+        - name: "test_redis_streams"
+          commands:
+            - cd ./dist && ./func_test_backend test_redis_streams
+
+        - name: "test_redis_pubsub"
+          commands:
+            - cd ./dist && ./func_test_backend test_redis_pubsub
+
+        - name: "test_google_pubsub"
+          commands:
+            - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
+            - cd ./dist && ./func_test_backend test_google_pubsub
+
+        - name: "test_google_bigquery"
+          commands:
+            - bigquery-emulator --project="local" --dataset="local" &
+            - cd ./dist && ./func_test_backend test_google_bigquery
+
+        - name: "test_redis_leader_store_no_flap"
+          commands:
+            - cd ./dist && ./func_test_backend test_redis_leader_store_no_flap
+
+        - name: "test_redis_leader_store_migration"
+          commands:
+            - cd ./dist && ./func_test_backend test_redis_leader_store_migration
+
+        - name: "test_cost_matrix_read_write"
+          commands:
+            - cd ./dist && ./func_test_backend test_cost_matrix_read_write
+
+        - name: "test_route_matrix_read_write"
+          commands:
+            - cd ./dist && ./func_test_backend test_route_matrix_read_write
+
+        - name: "test_session_data_serialize"
+          commands:
+            - cd ./dist && ./func_test_backend test_session_data_serialize
+
+        - name: "test_relay_manager"
+          commands:
+            - cd ./dist && ./func_test_backend test_relay_manager
+
+        - name: "test_optimize"
+          commands:
+            - cd ./dist && ./func_test_backend test_optimize
+
+        - name: "test_relay_backend"
+          commands:
+            - cd ./dist && ./func_test_backend test_relay_backend
+
+# ------------------------------------------------------------------------------------------------------------
+
+  - name: "Build Functional Tests (database)"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - cache restore golang
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - make clean
+            - make -j dist/api dist/func_test_database
+
+            - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/create.sql schemas/sql/destroy.sql schemas/sql/local.sql schemas/sql/dev.sql schemas/sql/sellers/*.sql
+
+            - artifact push workflow functional_test_database.tar.gz
+
+  - name: "Run Functional Tests (database)"
+    dependencies: ["Build Functional Tests (database)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sem-service start postgres 14
+            - sem-service status postgres
+            - psql -U postgres -h localhost -c "CREATE USER developer;"
+            - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
+
+            - sudo apt-get install -y libsodium-dev
+
+            - artifact pull workflow functional_test_database.tar.gz
+
+            - tar -zxf functional_test_database.tar.gz
+
+            - chmod +x ./dist/func_test_database
+
+            - ls -al
+
+      jobs:
+
+        - name: "test_local"
+          commands:
+            - cd ./dist && ./func_test_database test_local
+
+        - name: "test_dev"
+          commands:
+            - cd ./dist && ./func_test_database test_dev
+
+        - name: "test_api"
+          commands:
+            - cd ./dist && ./func_test_database test_api
+
+# ------------------------------------------------------------------------------------------------------------
+
+  - name: "Build Functional Tests (api)"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - cache restore golang
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - make clean
+            
+            - make -j dist/api dist/func_test_api
+
+            - tar -zcvf functional_test_api.tar.gz dist/api dist/func_test_api schemas/sql/create.sql schemas/sql/destroy.sql
+
+            - artifact push workflow functional_test_api.tar.gz
+
+  - name: "Run Functional Tests (api)"
+    dependencies: ["Build Functional Tests (api)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sem-service start postgres 14
+            - sem-service status postgres
+            - psql -U postgres -h localhost -c "CREATE USER developer;"
+            - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
+
+            - sudo apt-get install -y libsodium-dev
+
+            - artifact pull workflow functional_test_api.tar.gz
+
+            - tar -zxf functional_test_api.tar.gz
+
+            - chmod +x ./dist/api
+            - chmod +x ./dist/func_test_api
+
+      jobs:
+
+        - name: "test_customer"
+          commands:
+            - cd ./dist && ./func_test_api test_customer
+
+        - name: "test_buyer"
+          commands:
+            - cd ./dist && ./func_test_api test_buyer
+
+        - name: "test_seller"
+          commands:
+            - cd ./dist && ./func_test_api test_seller
+
+        - name: "test_datacenter"
+          commands:
+            - cd ./dist && ./func_test_api test_datacenter
+
+        - name: "test_relay"
+          commands:
+            - cd ./dist && ./func_test_api test_relay
+
+        - name: "test_route_shader"
+          commands:
+            - cd ./dist && ./func_test_api test_route_shader
+
+        - name: "test_buyer_datacenter_settings"
+          commands:
+            - cd ./dist && ./func_test_api test_buyer_datacenter_settings
+
+# ------------------------------------------------------------------------------------------------------------
+
+  - name: "Build Functional Tests (portal)"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - cache restore golang
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - make clean
+            - make -j dist/api dist/func_test_portal
+
+            - tar -zcvf functional_test_portal.tar.gz dist/api dist/func_test_portal
+
+            - artifact push workflow functional_test_portal.tar.gz
+
+  - name: "Run Functional Tests (portal)"
+    dependencies: ["Build Functional Tests (portal)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sem-service start redis 7
+            - sem-service status redis
+
+            - sudo apt-get install -y libsodium-dev
+
+            - artifact pull workflow functional_test_portal.tar.gz
+
+            - tar -zxf functional_test_portal.tar.gz
+
+            - chmod +x ./dist/api
+            - chmod +x ./dist/func_test_portal
+
+      jobs:
+
+        - name: "test_portal"
+          commands:
+            - cd ./dist && ./func_test_portal test_portal
+
+# ------------------------------------------------------------------------------------------------------------
+
+  - name: "Build Functional Tests (terraform)"
+    dependencies: []
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-8
+          os_image: ubuntu2004
+
+      jobs:
+        - name: "Build"
+          commands:
+
+            - cache restore golang
+
+            - sudo apt-get install -y libsodium-dev
+
+            - checkout
+            - cp envs/local.env .env
+
+            - make clean
+            
+            - make -j dist/api dist/func_test_terraform
+
+            - tar -zcvf functional_test_terraform.tar.gz dist/api dist/func_test_terraform schemas/sql/create.sql schemas/sql/destroy.sql
+
+            - artifact push workflow functional_test_terraform.tar.gz
+
+  - name: "Run Functional Tests (terraform)"
+    dependencies: ["Build Functional Tests (terraform)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sem-service start postgres 14
+            - sem-service status postgres
+            - psql -U postgres -h localhost -c "CREATE USER developer;"
+            - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
+
+            - sudo apt-get install -y libsodium-dev
+
+            - artifact pull workflow functional_test_terraform.tar.gz
+
+            - tar -zxf functional_test_terraform.tar.gz
+
+            - chmod +x ./dist/api
+            - chmod +x ./dist/func_test_terraform
+
+      jobs:
+
+        - name: "test_terraform"
+          commands:
+            - cd ./dist && ./func_test_terraform test_terraform
+
+# ------------------------------------------------------------------------------------------------------------
