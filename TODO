@@ -16,9 +16,27 @@ DONE
 
 	Sometimes test fail with port already bound. This is unacceptable.
 
+	Trigger a deploy by tag and verify it works
+
+	Update artifact push to use "--force", so it can be run again if it heisenbug fails.
+
+	Services that need database.bin to operate:
+
+		- api
+		- relay backend
+		- relay gateway
+
+	The question now is where should they get their database.bin from?
+
+	Now that there is a directory per-deployment, there is no longer anywhere to put the database.bin
+
+	How should database.bin be handled moving forward?
+
+	The database can be uploaded via the next tool. It can live in a new bucket in google cloud storage, named so that the environment is clear, eg. dev.bin
+
 TODO
 
-	Trigger a deploy by tag and verify it works
+	Sketch out a new bucket and give it permissions
 
 	----------------
 
@@ -32,9 +50,7 @@ TODO
 
 	----------------
 
-	Update artifact push to use "--force", so it can be run again if it heisenbug fails.
-
-	--force
+	If we store terraform state in a google cloud bucket, why not also just run the terraform script in semaphore?
 
 	----------------
 

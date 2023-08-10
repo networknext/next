@@ -181,7 +181,7 @@ blocks:
         - name: "Raspberry Client"
           commands:
             - make -j dist/raspberry_client.tar.gz
-            - artifact push workflow dist/raspberry_client.tar.gz
+            - artifact push workflow dist/raspberry_client.tar.gz --force
 
 promotions:
 

@@ -1,5 +1,5 @@
 
-tag = "dev-008"
+tag = "dev-010"
 
 extra = ""
 
@@ -11,7 +11,8 @@ google_project              = "development-394617"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
-google_artifacts_bucket     = "gs://test_network_next_dev_artifacts"
+google_artifacts_bucket     = "gs://test_network_next_backend_artifacts"
+google_database_bucket      = "gs://test_network_next_database_files"
 google_machine_type         = "f1-micro"
 
 cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"

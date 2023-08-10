@@ -13,6 +13,7 @@ variable "google_region" { type = string }
 variable "google_zone" { type = string }
 variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
+variable "google_database_bucket" { type = string }
 variable "google_machine_type" { type = string }
 
 variable "cloudflare_api_token" { type = string }
@@ -322,13 +323,13 @@ module "relay_gateway" {
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
+    DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     RELAY_BACKEND_PRIVATE_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
     PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -367,11 +368,11 @@ module "relay_backend" {
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
+    DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -410,14 +411,14 @@ module "analytics" {
     ENV=dev
     DEBUG_LOGS=1
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
+    DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     BIGQUERY_DATASET=dev
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -457,12 +458,12 @@ module "api" {
     DEBUG_LOGS=1
     REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_artifacts_bucket}/${var.tag}/database.bin"
+    DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY="this is the private key that generates API keys. make sure you change this value in production"
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -575,7 +576,6 @@ module "server_backend" {
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/database.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
