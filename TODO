@@ -32,22 +32,18 @@ DONE
 
 	For the one off, the data needs to be uploaded to a google cloud storage bucket, then from this, it seems straightforward to load into cloud storage. Most likely, I'll end up doing this via terraform or some init step.
 
-TODO
-
 	Now try terraform apply again
 
-	----------------
+	It works!
 
-	Really need to upload artifacts to buckets according to tag
+TODO
 
-	Then drive semaphore only to upload artifacts after running full tests on them, from a tag.
-
-	The current way of uploading artifacts is very bad workflow, there is no easy way to undo a deploy, there is no history of artifacts, and any commit to dev uploads artifacts (which can theoretically, affect prod).
-
-	RULE: dev/prod should not be affected, until you make a terraform change.
 
 	----------------
 
+	Happy path is broken in linux again. What's going wrong here? Why is it flaky?
+
+	----------------
 
 
 

@@ -6,6 +6,12 @@ SETUP
 
 	--------
 
+	Need to find a way to automatically setup the database by loading create.sql
+
+	This probably requires uploading the database files to cloud storage
+
+	--------
+
 	Pain point. Manually enabling APIs is annoying.
 
 	The APIs can be enabled via terraform...
@@ -40,6 +46,12 @@ SETUP
 
 	--------
 
-	Next. Create dev relays.
+	Upload artifacts to buckets according to tag
+
+	Then drive semaphore only to upload artifacts after running full tests on them, from a tag.
+
+	The current way of uploading artifacts is very bad workflow, there is no easy way to undo a deploy, there is no history of artifacts, and any commit to dev uploads artifacts (which can theoretically, affect prod).
+
+	RULE: dev/prod should not be affected, until you make a terraform change.
 
 	--------

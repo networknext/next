@@ -185,49 +185,7 @@ blocks:
 
 promotions:
 
-  - name: "Upload Artifacts"
-    pipeline_file: upload-artifacts.yml
+  - name: "Deploy"
+    pipeline_file: deploy.yml
     auto_promote:
-      when: "result = 'passed' and (branch = 'dev' or branch = 'staging')"
-
-  - name: "Upload Config"
-    pipeline_file: upload-config.yml
-
-  - name: "Upload Relay"
-    pipeline_file: upload-relay.yml
-
-  - name: "Upload Database"
-    pipeline_file: upload-database.yml
-
-  - name: "Functional Test Backend"
-    pipeline_file: functional-test-backend.yml
-
-  - name: "Functional Test SDK"
-    pipeline_file: functional-test-sdk.yml
-
-  - name: "Functional Test Relay"
-    pipeline_file: functional-test-relay.yml
-
-  - name: "Functional Test API"
-    pipeline_file: functional-test-api.yml
-
-  - name: "Functional Test Terraform"
-    pipeline_file: functional-test-terraform.yml
-
-  - name: "Functional Test Portal"
-    pipeline_file: functional-test-portal.yml
-
-  - name: "Functional Test Database"
-    pipeline_file: functional-test-database.yml
-
-  - name: "Soak Test Relay"
-    pipeline_file: soak-test-relay.yml
-
-  - name: "Load Tests"
-    pipeline_file: load-tests.yml
-
-  - name: "Happy Path"
-    pipeline_file: happy-path.yml
-
-  - name: "Update Golang Cache"
-    pipeline_file: update-golang-cache.yml
+      when: "result = 'passed' and tag =~ '.*'"

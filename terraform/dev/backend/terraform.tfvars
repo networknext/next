@@ -6,7 +6,7 @@ region               = "us-central1"
 zone                 = "us-central1-a"
 artifacts_bucket     = "gs://test_network_next_dev_artifacts"
 machine_type         = "f1-micro"
-git_hash             = "12345"
+git_hash             = "666"
 vpn_address          = "45.79.157.168"
 
 cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"
