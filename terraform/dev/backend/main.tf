@@ -43,6 +43,10 @@ terraform {
       version = "~> 4.0"
     }
   }
+  backend "gcs" {
+    bucket  = "test_network_next_terraform_state"
+    prefix  = "terraform/state"
+  }
 }
 
 provider "google" {

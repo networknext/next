@@ -36,11 +36,9 @@ DONE
 
 	Sketch out a new bucket and give it permissions
 
-TODO
-
 	Many variables passed into startup script need to be converted to terraform vars, esp. private keys etc.
 
-	----------------
+TODO
 
 	It's possible to store terraform state in a google cloud bucket. Sounds like the way to go.
 
