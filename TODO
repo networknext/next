@@ -10,7 +10,41 @@ TODO
 
 	----------------
 
+	Update bootstrap.sh to use the tag
+
+	----------------
+
+	Update main.tf to pass the tag into bootstrap.sh
+
+	----------------
+
+	Many variables passed into startup script need to be converted to terraform vars, esp. private keys etc.
+
+	----------------
+
 	Trigger a deploy by tag and verify it works
+
+	----------------
+
+	There definitely needs to be some sanity checks prior to terraform deploy artifacts.
+
+	In particular, need to verify that all the artifacts exist -- otherwise, it's a really painful situation with broken MIGS
+
+	----------------
+
+	Some func tests are flaky:
+
+		============================================
+		panic: missing counter: RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 00:18
+		goroutine 1 [running]: 00:18
+		main.checkCounter({0xd16a53, 0x2e}, {0xc000572000, 0x903}) 00:18
+			/home/semaphore/next/cmd/func_test_relay/func_test_relay.go:7495 +0x16b 00:18
+		main.test_client_to_server_packet_too_big() 00:18
+			/home/semaphore/next/cmd/func_test_relay/func_test_relay.go:3639 +0x4bd 00:18
+		main.main() 00:18
+			/home/semaphore/next/cmd/func_test_relay/func_test_relay.go:7380 +0x789 00:18
+		  00:18
+		Exporting environment variables
 
 	----------------
 

@@ -1,5 +1,6 @@
 # ----------------------------------------------------------------------------------------
 
+# todo: many of these variables should be prefixed by "google_"
 variable "credentials" { type = string }
 variable "project" { type = string }
 variable "location" { type = string }
@@ -10,6 +11,7 @@ variable "artifacts_bucket" { type = string }
 variable "machine_type" { type = string }
 variable "tag" { type = string }
 variable "vpn_address" { type = string }
+
 variable "cloudflare_api_token" { type = string }
 variable "cloudflare_zone_id_api" { type = string }
 variable "cloudflare_zone_id_relay_backend" { type = string }
@@ -270,7 +272,7 @@ module "magic_backend" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a magic_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a magic_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -307,7 +309,7 @@ module "relay_gateway" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a relay_gateway.tar.gz
+    sudo ./bootstrap.sh  -t ${var.tag} -b ${var.artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -351,7 +353,7 @@ module "relay_backend" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a relay_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -395,7 +397,7 @@ module "analytics" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a analytics.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a analytics.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -440,7 +442,7 @@ module "api" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a api.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -482,7 +484,7 @@ module "portal_cruncher" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a portal_cruncher.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -513,7 +515,7 @@ module "map_cruncher" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a map_cruncher.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a map_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -544,7 +546,7 @@ module "server_backend" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a server_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -593,7 +595,7 @@ module "raspberry_backend" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a raspberry_backend.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -629,7 +631,7 @@ module "raspberry_server" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a raspberry_server.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a raspberry_server.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -665,7 +667,7 @@ module "raspberry_client" {
     #!/bin/bash
     gsutil cp ${var.artifacts_bucket}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -b ${var.artifacts_bucket} -a raspberry_client.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.artifacts_bucket} -a raspberry_client.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
