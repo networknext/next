@@ -4,17 +4,15 @@ DONE
 
 	Update the terraform scripts to fully commit to tag based deployment
 
+	Update bootstrap.sh to use the tag
+
+	Update main.tf to pass in tag to bootstrap.sh
+
 TODO
 
 	Check that the artifacts uploaded to the correct tag directory
 
-	----------------
-
-	Update bootstrap.sh to use the tag
-
-	----------------
-
-	Update main.tf to pass the tag into bootstrap.sh
+	Trigger a deploy by tag and verify it works
 
 	----------------
 
@@ -22,7 +20,11 @@ TODO
 
 	----------------
 
-	Trigger a deploy by tag and verify it works
+	----------------
+
+	Update artifact push to use "--force", so it can be run again if it heisenbug fails.
+
+	--force
 
 	----------------
 

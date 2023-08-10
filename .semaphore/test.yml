@@ -11,7 +11,7 @@ blocks:
 
 # ------------------------------------------------------------------------------------------------------------
 
-  - name: "SDK - Build Functional Tests"
+  - name: "Build Functional Tests (sdk)"
     dependencies: []
     task:
 
@@ -42,8 +42,8 @@ blocks:
             - artifact push workflow dist/func_backend_sdk
             - artifact push workflow dist/func_test_sdk
 
-  - name: "SDK - Run Functional Tests (A)"
-    dependencies: ["SDK - Build Functional Tests"]
+  - name: "Run Functional Tests (sdk) - A"
+    dependencies: ["Build Functional Tests (sdk)"]
     task:
 
       agent:
@@ -275,8 +275,8 @@ blocks:
             - cd ./dist && ./func_test_sdk test_flush_retry
 
 
-  - name: "SDK - Run Functional Tests (B)"
-    dependencies: ["SDK - Build Functional Tests"]
+  - name: "Run Functional Tests (sdk) - B"
+    dependencies: ["Build Functional Tests (sdk)"]
     task:
 
       agent:
@@ -1308,3 +1308,5 @@ promotions:
     pipeline_file: upload-artifacts.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '.*'"
+
+# ------------------------------------------------------------------------------------------------------------

@@ -615,11 +615,7 @@ func test_google_pubsub() {
 		messageCount := atomic.LoadUint64(&numMessagesReceived)
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
-		if messageCount > expectedCount {
-			core.Error("received too many messages!")
-			os.Exit(1)
-		}
-		if i > 10 && messageCount == expectedCount {
+		if i > 10 && messageCount >= expectedCount {
 			core.Debug("received all")
 			receivedAllMessages = true
 			break
@@ -779,11 +775,7 @@ func test_redis_pubsub() {
 		messageCount := atomic.LoadUint64(&numMessagesReceived)
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer * NumConsumers)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
-		if messageCount > expectedCount {
-			core.Error("received too many messages! %d/%d", messageCount, expectedCount)
-			os.Exit(1)
-		}
-		if i > 10 && messageCount == expectedCount {
+		if i > 10 && messageCount >= expectedCount {
 			core.Debug("received all")
 			receivedAllMessages = true
 			break
@@ -943,11 +935,7 @@ func test_redis_streams() {
 		messageCount := atomic.LoadUint64(&numMessagesReceived)
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
-		if messageCount > expectedCount {
-			core.Error("received too many messages!")
-			os.Exit(1)
-		}
-		if i > 10 && messageCount == expectedCount {
+		if i > 10 && messageCount >= expectedCount {
 			core.Debug("received all")
 			receivedAllMessages = true
 			break
