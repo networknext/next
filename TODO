@@ -2,9 +2,15 @@ DONE
 
 	Get tag based test and upload artifacts working
 
+	Update the terraform scripts to fully commit to tag based deployment
+
 TODO
 
-	Update the terraform scripts to fully commit to tag based deployment
+	Check that the artifacts uploaded to the correct tag directory
+
+	----------------
+
+	Trigger a deploy by tag and verify it works
 
 	----------------
 
