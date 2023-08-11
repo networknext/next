@@ -55,3 +55,9 @@ SETUP
 	RULE: dev/prod should not be affected, until you make a terraform change.
 
 	--------
+
+	gcloud auth application-default login
+
+	Running this is necessary for terraform to work with state in google cloud buckets
+
+	--------

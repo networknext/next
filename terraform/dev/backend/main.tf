@@ -2,7 +2,10 @@
 
 variable "tag" { type = string }
 
-variable "extra" { type = string }
+variable "extra" { 
+  type = string 
+  default = ""
+}
 
 variable "vpn_address" { type = string }
 

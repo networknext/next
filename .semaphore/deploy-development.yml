@@ -1,0 +1,31 @@
+version: v1.0
+
+name: "Deploy to Development"
+
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: company-name
+    - name: google-cloud-platform
+
+blocks:
+
+  - name: "Deploy to Development"
+
+    task:
+
+      jobs:
+        - name: "Deploy"
+          commands:
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+            - echo $SEMAPHORE_GIT_TAG_NAME
+            - echo $SEMAPHORE_GIT_BRANCH
+            - echo $SEMAPHORE_WORKFLOW_NUMBER
+            - checkout
+            - cd terraform/dev/backend
+            - terraform init
+            - terraform apply -var="tag=${SEMAPHORE_GIT_TAG_NAME} extra=-${SEMAPHORE_WORKFLOW_NUMBER}"

@@ -38,15 +38,17 @@ DONE
 
 	Many variables passed into startup script need to be converted to terraform vars, esp. private keys etc.
 
-TODO
-
 	It's possible to store terraform state in a google cloud bucket. Sounds like the way to go.
 
 	https://cloud.google.com/docs/terraform/resource-management/store-state
 
-	----------------
+TODO
 
 	If we store terraform state in a google cloud bucket, why not also just run the terraform script in semaphore?
+
+	Try this by adding a new "deploy-development.yml" that triggers off "dev-*" tags
+
+	It should be as simple as synchronizing the repo, then changing to the terraform directory and running "terraform apply".
 
 	----------------
 

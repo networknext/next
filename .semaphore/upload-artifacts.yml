@@ -96,3 +96,14 @@ blocks:
           commands:
             - artifact pull workflow raspberry_client.tar.gz
             - gsutil cp raspberry_client.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/raspberry_client.tar.gz
+
+# ------------------------------------------------------------------------------------------------------------
+
+promotions:
+
+  - name: "Deploy to Development"
+    pipeline_file: deploy-development.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ '^dev.*'"
+
+# ------------------------------------------------------------------------------------------------------------
