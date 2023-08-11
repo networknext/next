@@ -69,7 +69,7 @@ func bash(command string) string {
 	cmd.Stderr = &output
 	err := cmd.Run()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("error running command '%s': %v", command, err))
 	}
 	return output.String()
 }
@@ -116,7 +116,7 @@ func main() {
 		for i := 1; i < len(lines); i++ {
 			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
 			match := re.FindStringSubmatch(lines[i])
-			if len(match) > 0 {
+			if len(match) > 0 && len(strings.Split(match[0], "-")) == 2 {
 				regions = append(regions, match[0])
 			}
 		}
@@ -164,7 +164,7 @@ func main() {
 		for i := 1; i < len(lines); i++ {
 			re := regexp.MustCompile(`^([a-zA-Z0-9-]+)\w+`)
 			match := re.FindStringSubmatch(lines[i])
-			if len(match) >= 1 {
+			if len(match) >= 1 && len(strings.Split(match[0], "-")) == 3 {
 				zones = append(zones, &Zone{match[0], "", "", 0, 0})
 			}
 		}
@@ -211,6 +211,9 @@ func main() {
 
 	for i := range zones {
 		values := strings.Split(zones[i].Zone, "-")
+		if len(values) != 3 {
+			continue
+		}
 		a := values[0]
 		b := values[1]
 		c := values[2]
@@ -316,4 +319,6 @@ func main() {
 	fmt.Fprintf(file, "}\n")
 
 	file.Close()
+
+	fmt.Printf("\n")
 }

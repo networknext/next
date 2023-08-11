@@ -194,16 +194,16 @@ func main() {
 		load_test_server_update()
 	} else if command == "load-test-session-update" {
 		load_test_session_update()
-	} else if command == "amazon-config" {
-		amazon_config()
-	} else if command == "google-config" {
-		google_config()
-	} else if command == "akamai-config" {
-		akamai_config()
-	} else if command == "vultr-config" {
-		vultr_config()
 	} else if command == "soak-test-relay" {
 		soak_test_relay()
+	} else if command == "config-amazon" {
+		config_amazon()
+	} else if command == "config-google" {
+		config_google()
+	} else if command == "config-akamai" {
+		config_akamai()
+	} else if command == "config-vultr" {
+		config_vultr()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -510,20 +510,20 @@ func load_test_session_update() {
 	bash("go run tools/load_test_session_update/load_test_session_update.go")
 }
 
-func amazon_config() {
-	bash("go run tools/amazon_config/amazon_config.go")
+func config_amazon() {
+	bash("go run sellers/amazon.go")
 }
 
-func google_config() {
-	bash("go run tools/google_config/google_config.go")
+func config_google() {
+	bash("go run sellers/google.go")
 }
 
-func akamai_config() {
-	bash("go run tools/akamai_config/akamai_config.go")
+func config_akamai() {
+	bash("go run sellers/akamai.go")
 }
 
-func vultr_config() {
-	bash("go run tools/vultr_config/vultr_config.go")
+func config_vultr() {
+	bash("go run sellers/vultr.go")
 }
 
 func soak_test_relay() {

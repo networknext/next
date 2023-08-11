@@ -4,47 +4,47 @@ locals {
   datacenter_map = {
 
     "akamai.mumbai" = {
-      zone   = "ap-west"
+      zone = "ap-west"
     }
 
     "akamai.toronto" = {
-      zone   = "ca-central"
+      zone = "ca-central"
     }
 
     "akamai.sydney" = {
-      zone   = "ap-southeast"
+      zone = "ap-southeast"
     }
 
     "akamai.dallas" = {
-      zone   = "us-central"
+      zone = "us-central"
     }
 
     "akamai.fremont" = {
-      zone   = "us-west"
+      zone = "us-west"
     }
 
     "akamai.atlanta" = {
-      zone   = "us-southeast"
+      zone = "us-southeast"
     }
 
     "akamai.newyork" = {
-      zone   = "us-east"
+      zone = "us-east"
     }
 
     "akamai.london" = {
-      zone   = "eu-west"
+      zone = "eu-west"
     }
 
     "akamai.singapore" = {
-      zone   = "ap-south"
+      zone = "ap-south"
     }
 
     "akamai.frankfurt" = {
-      zone   = "eu-central"
+      zone = "eu-central"
     }
 
     "akamai.tokyo" = {
-      zone   = "ap-northeast"
+      zone = "ap-northeast"
     }
 
   }

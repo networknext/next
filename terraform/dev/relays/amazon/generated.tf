@@ -52,6 +52,14 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
+  alias                    = "il-central-1"
+  region                   = "il-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
   alias                    = "ca-central-1"
   region                   = "ca-central-1"
 }
@@ -266,6 +274,15 @@ module "region_me_central_1" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.me-central-1
+  }
+}
+
+module "region_il_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.il-central-1
   }
 }
 
@@ -1181,6 +1198,7 @@ locals {
     "eu-south-1",
     "eu-south-2",
     "me-central-1",
+    "il-central-1",
     "ca-central-1",
     "eu-central-1",
     "eu-central-2",
@@ -1210,38 +1228,12 @@ locals {
 
   relays = {
 
+    "amazon.seattle.1" = { datacenter_name = "amazon.seattle.1" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
     "amazon.tokyo.1" = { datacenter_name = "amazon.tokyo.1" },
-    "amazon.seattle.1" = { datacenter_name = "amazon.seattle.1" },
   }
 
-}
-
-module "relay_amazon_virginia_1" {
-  source            = "./relay"
-  name              = "amazon.virginia.1"
-  zone              = local.datacenter_map["amazon.virginia.1"].zone
-  region            = local.datacenter_map["amazon.virginia.1"].region
-  type              = "m5a.large"
-  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-  security_group_id = module.region_us_east_1.security_group_id
-  providers = {
-    aws = aws.us-east-1
-  }
-}
-
-module "relay_amazon_virginia_2" {
-  source            = "./relay"
-  name              = "amazon.virginia.2"
-  zone              = local.datacenter_map["amazon.virginia.2"].zone
-  region            = local.datacenter_map["amazon.virginia.2"].region
-  type              = "a1.large"
-  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
-  security_group_id = module.region_us_east_1.security_group_id
-  providers = {
-    aws = aws.us-east-1
-  }
 }
 
 module "relay_amazon_tokyo_1" {
@@ -1267,6 +1259,32 @@ module "relay_amazon_seattle_1" {
   security_group_id = module.region_us_west_2.security_group_id
   providers = {
     aws = aws.us-west-2
+  }
+}
+
+module "relay_amazon_virginia_1" {
+  source            = "./relay"
+  name              = "amazon.virginia.1"
+  zone              = local.datacenter_map["amazon.virginia.1"].zone
+  region            = local.datacenter_map["amazon.virginia.1"].region
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_east_1.security_group_id
+  providers = {
+    aws = aws.us-east-1
+  }
+}
+
+module "relay_amazon_virginia_2" {
+  source            = "./relay"
+  name              = "amazon.virginia.2"
+  zone              = local.datacenter_map["amazon.virginia.2"].zone
+  region            = local.datacenter_map["amazon.virginia.2"].region
+  type              = "a1.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  security_group_id = module.region_us_east_1.security_group_id
+  providers = {
+    aws = aws.us-east-1
   }
 }
 

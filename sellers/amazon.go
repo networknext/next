@@ -94,9 +94,7 @@ type Datacenter struct {
 /*
 	This definition drives amazon relays in dev
 
-	To deploy after changes:
-
-		next select dev && run amazon-config && next init relays && next deploy relays
+	To refresh: 'next select dev && run amazon-config'
 */
 
 var devRelayMap = map[string][]string{
@@ -118,7 +116,7 @@ func bash(command string) string {
 	cmd.Stderr = &output
 	err := cmd.Run()
 	if err != nil {
-		panic(err)
+		return ""
 	}
 	return output.String()
 }
@@ -179,6 +177,8 @@ func main() {
 
 	if !loadedRegionsCache {
 
+		fmt.Printf("\n")
+
 		output := bash("aws ec2 describe-regions --all-regions")
 
 		if err := json.Unmarshal([]byte(output), &regionsResponse); err != nil {
@@ -225,6 +225,11 @@ func main() {
 			fmt.Printf("\n%s zones:\n\n", regionsResponse.Regions[i].RegionName)
 
 			output := bash(fmt.Sprintf("aws ec2 describe-availability-zones --region=%s --all-availability-zones", regionsResponse.Regions[i].RegionName))
+
+			if output == "" {
+				fmt.Printf("  could not get zones for region '%s'. is it enabled in your AWS account?\n", regionsResponse.Regions[i].RegionName)
+				continue
+			}
 
 			availabilityZonesResponse := AvailabilityZonesResponse{}
 			if err := json.Unmarshal([]byte(output), &availabilityZonesResponse); err != nil {
@@ -490,4 +495,6 @@ terraform {
 	fmt.Fprintf(file, "\n  }\n\n}\n")
 
 	file.Close()
+
+	fmt.Printf("\n")
 }

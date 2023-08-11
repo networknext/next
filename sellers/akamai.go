@@ -11,40 +11,21 @@ import (
 
 // ===========================================================================================================================================
 
-// This definition drives the set of vultr datacenters, eg. "vultr.[country/city]"
+// This definition drives the set of akamai datacenters, eg. "akamai.[country/city]"
 
 var datacenterMap = map[string]*Datacenter{
 
-	"ams": {"amsterdam", 2.3676, 4.9041},
-	"atl": {"atlanta", 33.7488, -84.3877},
-	"blr": {"bangalore", 12.9716, 77.5946},
-	"bom": {"mumbai", 19.0760, 72.8777},
-	"cdg": {"paris", 48.8566, 2.3522},
-	"del": {"delhi", 28.7041, 77.1025},
-	"dfw": {"dallas", 32.7767, -96.7970},
-	"ewr": {"newyork", 40.7128, -74.0060},
-	"fra": {"frankfurt", 50.1109, 8.6821},
-	"hnl": {"honolulu", 21.3099, -157.8581},
-	"icn": {"seoul", 37.5665, 126.9780},
-	"itm": {"osaka", 34.6937, 135.5023},
-	"jnb": {"johannesburg", -26.2041, 28.0473},
-	"lax": {"losangeles", 34.0522, -118.2437},
-	"lhr": {"london", 51.5072, -0.1276},
-	"mad": {"madrid", 40.4168, -3.7038},
-	"mel": {"melbourne", -37.8136, 144.9631},
-	"mex": {"mexico", 19.4326, -99.1332},
-	"mia": {"miami", 25.7617, -80.1918},
-	"nrt": {"tokyo", 35.6762, 139.6503},
-	"ord": {"chicago", 41.8781, -87.6298},
-	"sao": {"saopaulo", -23.5558, -46.6396},
-	"scl": {"santiago", -33.4489, -70.6693},
-	"sea": {"seattle", 47.6062, -122.3321},
-	"sgp": {"singapore", 1.3521, 103.8198},
-	"sjc": {"siliconvalley", 37.3387, -121.8853},
-	"sto": {"stockholm", 59.3293, 18.0686},
-	"syd": {"sydney", -33.8688, 151.2093},
-	"waw": {"warsaw", 52.2297, 21.0122},
-	"yto": {"toronto", 43.6532, -79.3832},
+	"ap-west":      {"mumbai", 19.0760, 72.8777},
+	"ca-central":   {"toronto", 43.6532, -79.3832},
+	"ap-southeast": {"sydney", -33.8688, 151.2093},
+	"us-central":   {"dallas", 32.7767, -96.7970},
+	"us-west":      {"fremont", 37.5485, -121.9886},
+	"us-southeast": {"atlanta", 33.7488, -84.3877},
+	"us-east":      {"newyork", 40.7128, -74.0060},
+	"eu-west":      {"london", 51.5072, -0.1276},
+	"ap-south":     {"singapore", 1.3521, 103.8198},
+	"eu-central":   {"frankfurt", 50.1109, 8.6821},
+	"ap-northeast": {"tokyo", 35.6762, 139.6503},
 }
 
 type Datacenter struct {
@@ -88,7 +69,7 @@ func main() {
 	loadedZonesCache := false
 
 	{
-		file, err := os.Open("cache/vultr_zones.bin")
+		file, err := os.Open("cache/akamai_zones.bin")
 		if err == nil {
 			gob.NewDecoder(file).Decode(&zones)
 			if err == nil {
@@ -98,19 +79,19 @@ func main() {
 		}
 	}
 
-	// otherwise, get vultr zones and save to cache
+	// otherwise, get akamai zones and save to cache
 
 	if !loadedZonesCache {
 
-		output := bash("curl -s https://api.vultr.com/v2/regions -X GET")
+		output := bash("curl -s https://api.linode.com/v4/regions")
 
-		type RegionData struct {
-			Id   string `json:"id"`
-			City string `json:"city"`
+		type ResponseData struct {
+			Id    string `json:"id"`
+			Label string `json:"label"`
 		}
 
 		type Response struct {
-			Regions []RegionData `json:"regions"`
+			Data []ResponseData `json:"data"`
 		}
 
 		response := Response{}
@@ -119,12 +100,12 @@ func main() {
 			panic(err)
 		}
 
-		for i := range response.Regions {
-			zones = append(zones, &Zone{Zone: response.Regions[i].Id, Label: response.Regions[i].City})
+		for i := range response.Data {
+			zones = append(zones, &Zone{Zone: response.Data[i].Id, Label: response.Data[i].Label})
 		}
 
 		{
-			file, err := os.Create("cache/vultr_zones.bin")
+			file, err := os.Create("cache/akamai_zones.bin")
 			if err != nil {
 				panic(err)
 			}
@@ -147,7 +128,7 @@ func main() {
 	for i := range zones {
 		datacenter := datacenterMap[zones[i].Zone]
 		if datacenter != nil {
-			zones[i].DatacenterName = fmt.Sprintf("vultr.%s", datacenter.name)
+			zones[i].DatacenterName = fmt.Sprintf("akamai.%s", datacenter.name)
 			zones[i].Latitude = datacenter.latitude
 			zones[i].Longitude = datacenter.longitude
 			fmt.Printf("  %s\n", zones[i].DatacenterName)
@@ -165,11 +146,11 @@ func main() {
 		}
 	}
 
-	// generate vultr.txt
+	// generate akamai.txt
 
-	fmt.Printf("\nGenerating vultr.txt\n")
+	fmt.Printf("\nGenerating akamai.txt\n")
 
-	file, err := os.Create("config/vultr.txt")
+	file, err := os.Create("config/akamai.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -182,16 +163,16 @@ func main() {
 
 	file.Close()
 
-	// generate vultr.sql
+	// generate akamai.sql
 
-	fmt.Printf("\nGenerating vultr.sql\n")
+	fmt.Printf("\nGenerating akamai.sql\n")
 
-	file, err = os.Create("schemas/sql/sellers/vultr.sql")
+	file, err = os.Create("schemas/sql/sellers/akamai.sql")
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Fprintf(file, "\n-- vultr datacenters\n")
+	fmt.Fprintf(file, "\n-- akamai datacenters\n")
 
 	format_string := "\nINSERT INTO datacenters(\n" +
 		"	datacenter_name,\n" +
@@ -204,7 +185,7 @@ func main() {
 		"   '%s',\n" +
 		"   %f,\n" +
 		"   %f,\n" +
-		"   (select seller_id from sellers where seller_name = 'vultr')\n" +
+		"   (select seller_id from sellers where seller_name = 'akamai')\n" +
 		");\n"
 
 	for i := range zones {
@@ -215,14 +196,14 @@ func main() {
 
 	file.Close()
 
-	// generate vultr/generated.tf
+	// generate akamai/generated.tf
 
-	file, err = os.Create("terraform/suppliers/vultr/generated.tf")
+	file, err = os.Create("terraform/suppliers/akamai/generated.tf")
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("\nGenerating vultr/generated.tf\n")
+	fmt.Printf("\nGenerating akamai/generated.tf\n")
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
@@ -242,4 +223,6 @@ func main() {
 	fmt.Fprintf(file, "}\n")
 
 	file.Close()
+
+	fmt.Printf("\n")
 }

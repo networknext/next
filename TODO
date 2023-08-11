@@ -10,15 +10,17 @@ DONE
 
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
 
-TODO
-
 	How to integrate relay spin up terraform with the database modifying terraform using the network next provider?
 
 	Seems like first we need to populate the database with definitions of suppliers, datacenters etc.
 
 	Start here...
 
+	Got "run amazon-config" working again, with better error handling this time.
 
+TODO
+
+	Need to create a new "Relays (Development)" project in google cloud, and setup a service account for terraform, eg. ~/secrets/terraform-development-relays.json
 
 
 
