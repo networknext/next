@@ -6244,6 +6244,15 @@ int main( int argc, const char ** argv )
         }
     }
 
+    if ( num_threads > 1 )
+    {
+        printf( "Relay is running with %d threads\n", num_threads );
+    }
+    else
+    {
+        printf( "Relay is running with one thread\n" );
+    }
+
     // -----------------------------------------------------------------------------------------------------------------------------
 
     const char * relay_upgrade_url = relay_platform_getenv( "RELAY_UPGRADE_URL" );

@@ -2,9 +2,16 @@ DONE
 
 	Try to make client_to_server_packet_too_big more reliable in relay func tests.
 
+	Happy path is failing in semaphore again, but works fine locally. What's going on?
+
+	Broken assumption with linux relay multithread.
+
+	Need to use BPF to steer packets to cores according to session id + session version
+
+	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
+
 TODO
 
-	Happy path is failing in semaphore again, but works fine locally. What's going on?
 
 	----------------
 

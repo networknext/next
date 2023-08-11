@@ -199,7 +199,7 @@ func test_initialize_success() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 16
+	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -221,7 +221,7 @@ func test_initialize_fail() {
 	fmt.Printf("test_initialize_fail\n")
 
 	config := RelayConfig{}
-	config.num_threads = 16
+	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -517,7 +517,7 @@ func test_relay_pings() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_1_cmd, relay_1_stdout := relay("relay", 2000, config)
@@ -601,7 +601,7 @@ func test_cost_matrix() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_1_cmd, relay_1_stdout := relay("relay", 2000, config)
@@ -654,7 +654,7 @@ func test_basic_packet_filter() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -697,7 +697,7 @@ func test_advanced_packet_filter() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -759,7 +759,7 @@ func test_clean_shutdown() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -812,7 +812,7 @@ func test_unknown_packets() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -877,7 +877,7 @@ func test_near_ping_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -942,7 +942,7 @@ func test_near_ping_packet_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1006,7 +1006,7 @@ func test_near_ping_packet_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1072,7 +1072,7 @@ func test_near_ping_packet_responded_with_pong() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1176,7 +1176,7 @@ func test_relay_pong_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1241,7 +1241,7 @@ func test_relay_ping_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1306,7 +1306,7 @@ func test_relay_ping_packet_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1370,7 +1370,7 @@ func test_relay_ping_packet_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1438,7 +1438,7 @@ func test_route_request_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1503,7 +1503,7 @@ func test_route_request_packet_could_not_read_token() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1568,7 +1568,7 @@ func test_route_request_packet_token_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1640,7 +1640,7 @@ func test_route_request_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1734,7 +1734,7 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1832,7 +1832,7 @@ func test_route_response_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1897,7 +1897,7 @@ func test_route_response_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1961,7 +1961,7 @@ func test_route_response_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2053,7 +2053,7 @@ func test_route_response_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2146,7 +2146,7 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2282,7 +2282,7 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2422,7 +2422,7 @@ func test_continue_request_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2487,7 +2487,7 @@ func test_continue_request_packet_could_not_read_token() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2552,7 +2552,7 @@ func test_continue_request_packet_token_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2622,7 +2622,7 @@ func test_continue_request_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2693,7 +2693,7 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2809,7 +2809,7 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2929,7 +2929,7 @@ func test_continue_response_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2994,7 +2994,7 @@ func test_continue_response_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3058,7 +3058,7 @@ func test_continue_response_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3150,7 +3150,7 @@ func test_continue_response_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3243,7 +3243,7 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3379,7 +3379,7 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3519,7 +3519,7 @@ func test_client_to_server_packet_too_small() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3584,7 +3584,7 @@ func test_client_to_server_packet_too_big() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3649,7 +3649,7 @@ func test_client_to_server_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3713,7 +3713,7 @@ func test_client_to_server_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3805,7 +3805,7 @@ func test_client_to_server_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3898,7 +3898,7 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4053,7 +4053,7 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4212,7 +4212,7 @@ func test_server_to_client_packet_too_small() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4277,7 +4277,7 @@ func test_server_to_client_packet_too_big() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4342,7 +4342,7 @@ func test_server_to_client_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4406,7 +4406,7 @@ func test_server_to_client_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4498,7 +4498,7 @@ func test_server_to_client_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4591,7 +4591,7 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4746,7 +4746,7 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4905,7 +4905,7 @@ func test_session_ping_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4970,7 +4970,7 @@ func test_session_ping_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5034,7 +5034,7 @@ func test_session_ping_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5126,7 +5126,7 @@ func test_session_ping_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5219,7 +5219,7 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5374,7 +5374,7 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5533,7 +5533,7 @@ func test_session_pong_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5598,7 +5598,7 @@ func test_session_pong_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5662,7 +5662,7 @@ func test_session_pong_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5754,7 +5754,7 @@ func test_session_pong_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5847,7 +5847,7 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -6002,7 +6002,7 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -6161,7 +6161,7 @@ func test_session_destroy() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -6240,7 +6240,7 @@ func test_session_expired_route_response_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6383,7 +6383,7 @@ func test_session_expired_continue_response_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6526,7 +6526,7 @@ func test_session_expired_client_to_server_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6669,7 +6669,7 @@ func test_session_expired_server_to_client_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6812,7 +6812,7 @@ func test_session_expired_session_ping_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6955,7 +6955,7 @@ func test_session_expired_session_pong_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 4
+	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -7100,7 +7100,7 @@ func test_relay_backend_stats() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 16
+	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -7187,7 +7187,7 @@ func test_relay_backend_counters() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 16
+	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
