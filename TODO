@@ -42,13 +42,13 @@ DONE
 
 	https://cloud.google.com/docs/terraform/resource-management/store-state
 
-TODO
-
 	If we store terraform state in a google cloud bucket, why not also just run the terraform script in semaphore?
 
 	Try this by adding a new "deploy-development.yml" that triggers off "dev-*" tags
 
 	It should be as simple as synchronizing the repo, then changing to the terraform directory and running "terraform apply".
+
+TODO
 
 	----------------
 
@@ -263,10 +263,6 @@ Nice to have:
 
 	Functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in bad database.bin files
 
-	--------------
-
-	There should be relay functional tests.
-
 	---------------
 
 	I really can't answer the question "why are half the relays not carrying sessions in dev?"
@@ -381,19 +377,7 @@ Nice to have:
 
 	--------------
 
-	Multipath across two network next routes (Psyonix).
-
-	--------------
-
-	Atomics in SDK mean I can't just clear the whole structs. Godfucking damnit.
-
-	--------------
-
-	Fix compile warnings on linux, both in raspberry, and in next.cpp
-
-	--------------
-
-	Need to fix up the silly next/prev internal overlay w. addresses in route tokens
+	Multipath across two network next routes.
 
 	--------------
 
@@ -410,36 +394,6 @@ Nice to have:
 	--------------
 
 	Chaos monkey testing. The goal is to ensure no fallback to directs.
-
-	--------------
-
-	Any configuration in the SDK must be easily identified at the top of the file, especially bucket for google.txt, amazon.txt, multiplay.txt
-
-	Domains for server backend
-
-	Relay backend keypairs
-
-	Server backend keypairs
-
-	Customer private keys 
-
-	etc...
-
-	--------------
-
-	Any configuration in the semaphore needs to be considered, eg. buckets to upload artifacts, sdk config etc.
-
-	Secrets for accessing google cloud to upload files to google cloud storage
-
-	--------------
-
-	Optimize code so it doesn't run tests unless stuff has changed, eg. https://docs.semaphoreci.com/reference/conditions-reference/
-
-	Don't waste money when only changing TODO...
-
-	Don't allow production deploy unless on prod branch.
-
-	The other branches, whatever...
 
 	--------------
 
@@ -462,10 +416,6 @@ Nice to have:
 	--------------
 
 	Remember to bring back logic to exclude near relays with significantly higher than average jitter
-
-	--------------
-
-	Need some way to easily deploy backend code without having to manually edit terraform.tfvars to increase the counter
 
 	--------------
 
