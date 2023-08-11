@@ -22,11 +22,30 @@ DONE
 
 	Get all suppliers configs setup and working.
 
+	Get the terraform/dev/relays up and working again.
+
+	Amazon config needs to take care not to export regions or zones you don't have access to:
+
+		module "region_il_central_1" { 
+		  source              = "./region"
+		  vpn_address         = var.vpn_address
+		  ssh_public_key_file = var.ssh_public_key_file
+		  providers = {
+		    aws = aws.il-central-1
+		  }
+		}
+
+	Otherwise it fails the terraform apply.
+
 TODO
 
-	Now work out how to incorporate the suppliers into the database driven by terraform.
+	Fix the amazon config so it excludes regions and zones that aren't enabled on the account.
 
+	----------------------
 
+	Work out how to include/import the database definitions for each supplier.
+
+	----------------------
 
 
 
