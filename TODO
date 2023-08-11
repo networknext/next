@@ -1,26 +1,8 @@
 DONE
 
+	Try to make client_to_server_packet_too_big more reliable in relay func tests.
+
 TODO
-
-	----------------
-
-	Some func tests are flaky:
-
-	client_to_server_packet_too_big --- highest probability of happening
-
-		============================================
-		panic: missing counter: RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED 00:18
-		goroutine 1 [running]: 00:18
-		main.checkCounter({0xd16a53, 0x2e}, {0xc000572000, 0x903}) 00:18
-			/home/semaphore/next/cmd/func_test_relay/func_test_relay.go:7495 +0x16b 00:18
-		main.test_client_to_server_packet_too_big() 00:18
-			/home/semaphore/next/cmd/func_test_relay/func_test_relay.go:3639 +0x4bd 00:18
-		main.main() 00:18
-			/home/semaphore/next/cmd/func_test_relay/func_test_relay.go:7380 +0x789 00:18
-		  00:18
-		Exporting environment variables
-
-	----------------
 
 	Happy path is failing in semaphore again, but works fine locally. What's going on?
 
