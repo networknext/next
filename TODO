@@ -18,10 +18,13 @@ DONE
 
 	Got "run amazon-config" working again, with better error handling this time.
 
-TODO
-
 	Need to create a new "Relays (Development)" project in google cloud, and setup a service account for terraform, eg. ~/secrets/terraform-development-relays.json
 
+	Get all suppliers configs setup and working.
+
+TODO
+
+	Now work out how to incorporate the suppliers into the database driven by terraform.
 
 
 

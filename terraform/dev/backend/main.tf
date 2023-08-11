@@ -286,7 +286,7 @@ output "postgres_address" {
 
 module "magic_backend" {
 
-  source = "./internal_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "magic-backend"
 
@@ -324,7 +324,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "./external_http_service"
+  source = "../../modules/external_http_service"
 
   service_name = "relay-gateway"
 
@@ -369,7 +369,7 @@ output "relay_gateway_address" {
 
 module "relay_backend" {
 
-  source = "./internal_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "relay-backend"
 
@@ -414,7 +414,7 @@ output "relay_backend_address" {
 
 module "analytics" {
 
-  source = "./internal_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "analytics"
 
@@ -460,7 +460,7 @@ output "analytics_address" {
 
 module "api" {
 
-  source = "./external_http_service"
+  source = "../../modules/external_http_service"
 
   service_name = "api"
 
@@ -503,7 +503,7 @@ output "api_address" {
 
 module "portal_cruncher" {
 
-  source = "./internal_mig_with_health_check"
+  source = "../../modules/internal_mig_with_health_check"
 
   service_name = "portal-cruncher"
 
@@ -535,7 +535,7 @@ module "portal_cruncher" {
 
 module "map_cruncher" {
 
-  source = "./internal_mig_with_health_check"
+  source = "../../modules/internal_mig_with_health_check"
 
   service_name = "map-cruncher"
 
@@ -567,7 +567,7 @@ module "map_cruncher" {
 
 module "server_backend" {
 
-  source = "./external_udp_service"
+  source = "../../modules/external_udp_service"
 
   service_name = "server-backend"
 
@@ -616,7 +616,7 @@ output "server_backend_address" {
 
 module "raspberry_backend" {
 
-  source = "./external_http_service"
+  source = "../../modules/external_http_service"
 
   service_name = "raspberry-backend"
 
@@ -653,7 +653,7 @@ output "raspberry_backend_address" {
 
 module "raspberry_server" {
 
-  source = "./external_mig_without_health_check"
+  source = "../../modules/external_mig_without_health_check"
 
   service_name = "raspberry-server"
 
@@ -690,7 +690,7 @@ module "raspberry_server" {
 
 module "raspberry_client" {
 
-  source = "./external_mig_without_health_check"
+  source = "../../modules/external_mig_without_health_check"
 
   service_name = "raspberry-client"
 
