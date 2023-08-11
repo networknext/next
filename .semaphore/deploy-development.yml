@@ -31,4 +31,4 @@ blocks:
             - checkout
             - cd terraform/dev/backend
             - terraform init
-            - terraform apply -var="tag=${SEMAPHORE_GIT_TAG_NAME}" -var="extra=-${SEMAPHORE_WORKFLOW_NUMBER}" -auto-approve
+            - terraform apply -var="tag=${SEMAPHORE_GIT_TAG_NAME}" -var="extra=-${SEMAPHORE_WORKFLOW_NUMBER}" -auto-approve -lock=false
