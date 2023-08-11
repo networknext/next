@@ -3541,7 +3541,7 @@ func test_client_to_server_packet_too_small() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 30; i++ {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, 18+33-1))
 			common.RandomBytes(packet[:])
@@ -3606,7 +3606,7 @@ func test_client_to_server_packet_too_big() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 30; i++ {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(1500, 4095))
 			common.RandomBytes(packet[:])
