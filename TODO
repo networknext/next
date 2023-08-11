@@ -12,12 +12,11 @@ DONE
 
 TODO
 
+	How to integrate relay spin up terraform with the database modifying terraform using the network next provider?
 
-	----------------
+	Seems like first we need to populate the database with definitions of suppliers, datacenters etc.
 
-
-
-
+	Start here...
 
 
 
