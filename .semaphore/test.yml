@@ -1,6 +1,6 @@
 version: v1.0
 
-name: Run Tests
+name: Test
 
 agent:
   machine:

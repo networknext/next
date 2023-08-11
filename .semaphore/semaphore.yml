@@ -185,7 +185,7 @@ blocks:
 
 promotions:
 
-  - name: "Test"
+  - name: "Run Tests"
     pipeline_file: test.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '.*'"
