@@ -40,9 +40,11 @@ DONE
 
 	Setup dev backend with terraform
 
-TODO
-
 	Finish the terraform plugin and publish it
+
+	Get tag based development working with semaphoreci and terraform
+
+TODO
 
 	------------
 
@@ -73,6 +75,10 @@ TODO
 	------------	
 
 	Document *everything*.
+
+	------------
+
+	Multithreaded relay with eBPF
 
 	------------
 
