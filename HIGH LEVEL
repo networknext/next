@@ -79,6 +79,8 @@ TODO
 	------------
 
 	Multithreaded relay with eBPF
+	
+	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
 
 	------------
 
