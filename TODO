@@ -36,13 +36,19 @@ DONE
 
 	Setup raspberry buyer
 
-TODO
-
 	Test that once the database is setup that I can SSH into each dev relay via "next ssh"
 
-	---------------
+	I can, but amazon requires the VPN be active, even before the relays are provisioned.
 
-	How to provision the relays? Manually configuring via SSH is super lame...
+TODO
+
+	How to provision the relays?
+
+	Initially I'm going to start with "next setup [relay]"
+
+	This will SSH in and run a custom script with data gathered from the database, so the relay is configured as specified in terraform.
+
+	Once this basic setup is working and reliable, then we can try to automate it further.
 
 	---------------
 

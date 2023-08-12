@@ -1,18 +1,3 @@
-# input specific to this relay (these change with each relay you set up)
-
-export RELAY_NAME=google.virginia.1
-export RELAY_PUBLIC_ADDRESS=35.236.236.4:40000
-export RELAY_INTERNAL_ADDRESS=10.150.0.19:40000
-export RELAY_PUBLIC_KEY=5KcEWA5Digp5hBm5TOfXtX3twEk/etE0SB8rwlIrjWQ=
-export RELAY_PRIVATE_KEY=SCrHFjgowY4n4fEkPZnS8wvxseCUiwFGHvaCSkJItqo=
-
-# inputs specific to the environment (these change infrequently)
-
-export RELAY_VERSION=reference-1.0.19
-export RELAY_BACKEND_HOSTNAME=http://34.117.3.168
-export RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
-export VPN_ADDRESS=45.33.53.242
-export ENVIRONMENT=dev
 
 # remove any old journalctl files to free up disk space (if necessary)
 

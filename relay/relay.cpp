@@ -4069,7 +4069,7 @@ void * upgrade_thread_function( void * data )
 
     char command[4096];
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "rm -f relay-%s", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "rm -f %s", upgrade->target_version );
     int result = system( command );
     (void) result;
 
@@ -4079,7 +4079,7 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "wget %s/relay-%s", upgrade->relay_upgrade_url, upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "wget %s/%s", upgrade->relay_upgrade_url, upgrade->target_version );
     if ( system( command ) != 0 )
     {
         printf( "error: failed to download relay version %s\n", upgrade->target_version );
@@ -4097,17 +4097,17 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "chmod +x relay-%s", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "chmod +x %s", upgrade->target_version );
     if ( system( command ) != 0 ) 
     {
-        printf( "error: failed to chmod +x relay-%s\n", upgrade->target_version );
+        printf( "error: failed to chmod +x %s\n", upgrade->target_version );
         relay_platform_mutex_acquire( upgrade->mutex );
         upgrade->upgrading = false;
         relay_platform_mutex_release( upgrade->mutex );
         RELAY_PLATFORM_THREAD_RETURN();
     }
 
-    printf( "chmod +x relay-%s succeeded\n", upgrade->target_version );
+    printf( "chmod +x %s succeeded\n", upgrade->target_version );
 
     if ( quit )
     {
@@ -4115,7 +4115,7 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "./relay-%s version", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "./%s version", upgrade->target_version );
     FILE * file = popen( command, "r" );
     char buffer[1024];
     if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr( buffer, upgrade->target_version ) == NULL )
@@ -4144,7 +4144,7 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "mv relay-%s relay", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "mv %s relay", upgrade->target_version );
     if ( system( command ) != 0 )
     {
         printf( "error: could not install new relay binary\n" );

@@ -368,48 +368,6 @@ func main() {
 		},
 	}
 
-	var initCommand = &ffcli.Command{
-		Name:       "init",
-		ShortUsage: "next init <component>",
-		ShortHelp:  "Terraform init component, eg. 'next init backend', or 'next init relays'.",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
-			}
-			component := args[0]
-			terraformInit(env, component)
-			return nil
-		},
-	}
-
-	var deployCommand = &ffcli.Command{
-		Name:       "deploy",
-		ShortUsage: "next deploy <component>",
-		ShortHelp:  "Deploy component to current env with terraform, eg. 'next deploy backend', or 'next deploy relays'",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
-			}
-			component := args[0]
-			terraformDeploy(env, component)
-			return nil
-		},
-	}
-
-	var destroyCommand = &ffcli.Command{
-		Name:       "destroy",
-		ShortUsage: "next destroy <component>",
-		ShortHelp:  "Tear down the entire terraform environment, eg. 'next destroy backend', or 'next destroy relays'",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
-			}
-			component := args[0]
-			terraformDestroy(env, component)
-			return nil
-		},
-	}
-
 	var pingCommand = &ffcli.Command{
 		Name:       "ping",
 		ShortUsage: "next ping",
@@ -707,9 +665,6 @@ func main() {
 		selectCommand,
 		envCommand,
 		pingCommand,
-		initCommand,
-		deployCommand,
-		destroyCommand,
 		databaseCommand,
 		relaysCommand,
 		sshCommand,
@@ -1051,14 +1006,137 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 
 // ------------------------------------------------------------------------------
 
-// todo: we need to configure where relay artifacts live -- it's hard coded below in "LoadRelayScript" =p
-
 const (
+
+/*
+	$RELAY_NAME
+	$RELAY_VERSION
+	$RELAY_PUBLIC_ADDRESS
+	$RELAY_INTERNAL_ADDRESS
+	$RELAY_PUBLIC_KEY
+	$RELAY_PRIVATE_KEY
+	$VPN_ADDRESS
+	$ENVIRONMENT
+*/
+
+	SetupRelayScript = `
+
+# remove any old journalctl files to free up disk space (if necessary)
+
+sudo journalctl --vacuum-size 10M
+
+# clean up old packages from apt-get to free up disk space (if necessary)
+
+sudo apt autoremove -y
+
+# update installed packages
+
+sudo apt update -y
+sudo apt upgrade -y
+sudo apt dist-upgrade -y
+sudo apt autoremove -y
+
+# install build essentials so we can build libsodium
+
+sudo apt install build-essential -y
+
+# install unattended upgrades so the relay keeps up to date with security fixes
+
+sudo apt install unattended-upgrades -y
+
+# only allow ssh from vpn address
+
+echo sshd: ALL > hosts.deny
+echo sshd: $VPN_ADDRESS > hosts.allow
+sudo mv hosts.deny /etc/hosts.deny
+sudo mv hosts.allow /etc/hosts.allow
+
+# make the relay prompt cool
+
+sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
+sudo echo "source ~/.bashrc" >> ~/.profile.sh
+
+# build and install libsodium optimized for this relay
+
+wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
+tar -zxf libsodium-1.0.18.tar.gz
+cd libsodium-1.0.18
+./configure
+make -j
+sudo make install
+ldconfig
+cd ~
+
+# download the relay binary and rename it to 'relay'
+
+wget https://storage.googleapis.com/test_network_next_relay_artifacts/$RELAY_VERSION --no-cache
+sudo mv relay-$RELAY_VERSION relay
+sudo chmod +x relay
+
+# setup the relay environment file
+
+sudo cat > relay.env <<- EOM
+RELAY_NAME=$RELAY_NAME
+RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
+RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
+RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
+RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
+RELAY_BACKEND_HOSTNAME=$RELAY_BACKEND_HOSTNAME
+RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
+EOM
+
+# setup the relay service file
+
+sudo cat > relay.service <<- EOM
+[Unit]
+Description=Network Next Relay
+ConditionPathExists=/app/relay
+After=network.target
+
+[Service]
+Type=simple
+LimitNOFILE=1024
+WorkingDirectory=/app
+ExecStart=/app/relay
+EnvironmentFile=/app/relay.env
+Restart=on-failure
+RestartSec=12
+
+[Install]
+WantedBy=multi-user.target
+EOM
+
+# move everything into the /app dir
+
+sudo rm -rf /app
+sudo mkdir /app
+sudo mv relay /app/relay
+sudo mv relay.env /app/relay.env
+sudo mv relay.service /app/relay.service
+
+# limit maximum journalctl logs to 200MB so we don't run out of disk space
+
+sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
+sudo systemctl restart systemd-journald
+
+# install the relay service, then start it and watch the logs
+
+sudo systemctl enable /app/relay.service
+sudo systemctl start relay
+sudo journalctl -fu relay -n 100
+`
+
 	StartRelayScript   = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
+
 	StopRelayScript    = `sudo systemctl stop relay && sudo systemctl disable relay`
-	LoadRelayScript    = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+
+	// todo: we need to configure where relay artifacts are. it's hard coded in this command
+	LoadRelayScript    = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/test_network_next_relay_artifacts/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
+
 	RebootRelayScript  = `sudo reboot`
+
 	ConfigRelayScript  = `sudo vi /app/relay.env && exit`
 )
 
