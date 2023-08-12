@@ -295,13 +295,17 @@ resource "networknext_relay" "relays" {
   datacenter_id = local.datacenter_map[each.value.datacenter_name].id
   public_key_base64=networknext_relay_keypair.relay_keypairs[each.key].public_key_base64
   private_key_base64=networknext_relay_keypair.relay_keypairs[each.key].private_key_base64
+  public_ip = each.value.public_ip
+  public_port = each.value.public_port
+  internal_ip = each.value.internal_ip
+  internal_port = each.value.internal_port
+  internal_group = each.value.internal_group
+  ssh_ip = each.value.ssh_ip
+  ssh_port = each.value.ssh_port
+  ssh_user = each.value.ssh_user
+  version = var.relay_version
 
-  # todo: might be a problem here. separated public ip and port?
-  public_ip = each.value.public_address
-
-  # todo: internal address. port etc.
-
-  # todo: ssh address, port, user etc.
+  # todo: we need some config map to optionally insert values here, eg. notes, version and so on.
 }
 
 
