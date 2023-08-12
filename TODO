@@ -13,9 +13,22 @@ DONE
 		3. latitude
 		4. longitude
 
+	Now I need to create the actual relays. It should be easy...
+
+	Almost there, but the structure of the relays map returned by supplier terraform needs to be adjusted to keep the port number separate from addresses.
+
 TODO
 
-	Now I need to create the actual relays. It should be easy...
+	Change each supplier to return exactly the data as needed by the relay database entry:
+
+		public_ip
+		public_port
+		internal_ip
+		internal_port
+		internal_group
+		ssh_ip
+		ssh_port
+		ssh_user
 
 
 
