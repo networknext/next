@@ -17,8 +17,6 @@ DONE
 
 	Almost there, but the structure of the relays map returned by supplier terraform needs to be adjusted to keep the port number separate from addresses.
 
-TODO
-
 	Change each supplier to return exactly the data as needed by the relay database entry:
 
 		public_ip
@@ -30,6 +28,21 @@ TODO
 		ssh_port
 		ssh_user
 
+	Database relays are now successfully setup from terraform!
+
+TODO
+
+	Now we need to set up the rest of the dev database in terraform.
+
+	Raspberry customer/buyer, route shader, buyer keypair...
+
+	Probably need to make it possible to specify a buyer keypair instead of generating one always.
+
+	We also need to work out how to provision the relays, right now the relays are just created and technically we should be able to ssh into them, but they are not setup yet to run the relay binary.
+
+	Also, we need to work out a process for deploying the database.bin
+
+	Stopping work for the weekend now I have chores I need to do.
 
 
 
