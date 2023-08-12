@@ -102,4 +102,9 @@ output "relays" {
   }
 }
 
+output "datacenters" {
+  description = "Data for each akamai datacenter"
+  value = local.datacenter_map
+}
+
 # ----------------------------------------------------------------------------------------

@@ -99,4 +99,9 @@ output "relays" {
   }
 }
 
+output "datacenters" {
+  description = "Data for each vultr datacenter"
+  value = local.datacenter_map
+}
+
 # ----------------------------------------------------------------------------------------

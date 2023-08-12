@@ -42,3 +42,10 @@ variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
 
 # --------------------------------------------------------------------------
+
+output "datacenters" {
+  description = "Data for each amazon datacenter"
+  value = local.datacenter_map
+}
+
+# --------------------------------------------------------------------------

@@ -216,12 +216,76 @@ locals {
     module.vultr_relays.relays,
   )
 
+  datacenters = merge(
+    module.google_relays.datacenters,
+    module.amazon_relays.datacenters,
+    module.akamai_relays.datacenters,
+    module.vultr_relays.datacenters,
+  )
+
   seller_names = distinct([for k, relay in local.relays : relay.supplier_name])
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
-
 }
 
+resource "networknext_seller" "sellers" {
+  count = length(local.seller_names)
+  name  = local.seller_names[count.index]
+}
+
+data "networknext_sellers" "test" {
+  depends_on = [
+    networknext_seller.sellers,
+  ]
+}
+
+locals {
+  seller_map = {
+    for seller in networknext_seller.sellers: 
+      seller.name => seller
+  }
+}
+
+output "sellers" {
+  value = data.networknext_sellers.test
+}
+
+output "seller_map" {
+  value = local.seller_map
+}
+
+resource "networknext_datacenter" "datacenters" {
+  for_each = local.datacenters
+  name = each.key
+
+  # hack: todo remove
+  seller_id = networknext_seller.sellers[0].id
+  latitude = 0
+  longitude = 0
+
+  # todo: almost there
+  #seller_id = local.seller_map[each.value.seller_name]
+  #latitude = each.value.latitude
+  #longitude = each.value.longitude
+
+  # todo: native_name
+}
+
+data "networknext_datacenters" "test" {
+  depends_on = [
+    networknext_datacenter.datacenters,
+  ]
+}
+
+output "datacenters" {
+  value = data.networknext_datacenters.test
+}
+
+
+
+
+
+/*
 resource "networknext_customer" "test" {
   name = "Test Customer"
   code = "test"
@@ -282,5 +346,6 @@ output "datacenter_names" {
   description = "Datacenter names"
   value = local.datacenter_names
 }
+*/
 
 # ----------------------------------------------------------------------------------------

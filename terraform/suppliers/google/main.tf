@@ -135,4 +135,9 @@ output "relays" {
   }
 }
 
+output "datacenters" {
+  description = "Data for each google datacenter"
+  value = local.datacenter_map
+}
+
 # ----------------------------------------------------------------------------------------

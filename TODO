@@ -49,14 +49,33 @@ DONE
 
 		4. Configure the set of relays according to their supplier, settings per-relay exported from the supplier module etc.
 
-TODO
-
 	For #1, each relay has "supplier_name"
 
 	I can just create a list of these, then unique it.
 
+	For #2, each relay has "datacenter_name" so same approach.
 
+	For #3, I need each supplier module to export "datacenters" var with a map from datacenter name -> datacenter data.
 
+	Done. Each supplier module exports "datacenters" alongside "relays" now.
+
+	#4 is done. Datacenters is merged across each supplier.
+
+	Built a map from seller name to networknext seller object, which lets a datacenter look up its seller id.
+
+TODO
+
+	Now we need to extend each generated.tf per-supplier to add the following per-datacenter map entry:
+
+		1. seller_name --> eg. "google" for all google relays
+		2. native_name --> eg. zone name, for google cloud.
+		3. latitude
+		4. longitude
+
+	We also need to make sure that we always work with hashes instead of lists, because lists have their order shuffled and cause unnecessary modifications.
+
+	eg. convert datacenters list to datacenters map, sellers list to sellers map and so on.
+	
 
 
 
