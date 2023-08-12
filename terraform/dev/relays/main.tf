@@ -262,17 +262,10 @@ output "seller_map" {
 resource "networknext_datacenter" "datacenters" {
   for_each = local.datacenters
   name = each.key
-
-  # hack: todo remove
-  seller_id = networknext_seller.sellers["google"].id
-  latitude = 0
-  longitude = 0
-
-  # todo: almost there
-  #seller_id = local.seller_map[each.value.seller_name]
-  #latitude = each.value.latitude
-  #longitude = each.value.longitude
-  #native_name = each.value.native_name
+  seller_id = local.seller_map[each.value.seller_name]
+  latitude = each.value.latitude
+  longitude = each.value.longitude
+  native_name = each.value.native_name
 }
 
 data "networknext_datacenters" "test" {
