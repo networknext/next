@@ -50,9 +50,23 @@ DONE
 
 	Added setup command.
 
+	Relays are all setup. We just need to push the database.bin and it should be working.
+
+	But when I go "next database" it doesn't print out relays.
+
+	What's going on?
+
+	I think the database.bin that is being copied down is the committed database, instead of the database extracted from the SQL.
+
+	What I really need to see when working with the next tool is the database as per-the SQL.
+
+	Removed buyer keypairs from terraform plugin and REST API. We simply don't need to track buyer keypairs as a resource.
+
 TODO
 
-	Relays are all setup. We just need to push the database.bin and it should be working.
+	Extend admin REST API to have a database method.
+
+	---------------
 
 	How should we do this? 
 
@@ -67,10 +81,6 @@ TODO
 	Need to get other things from environment as needed... eg. RELAY_BACKEND_ADDRESS
 
 	---------------
-
-	Remove buyer keypairs from terraform plugin and REST API. We simply don't need to track buyer keypairs as a resource.
-
-	How to deploy database.bin?
 
 	Terraform func test needs to create enough resources of each type to avoid hitting the hex issue I just had.
 

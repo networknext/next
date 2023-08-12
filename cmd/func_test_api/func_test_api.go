@@ -1917,128 +1917,6 @@ func test_relay_keypair() {
 
 // ----------------------------------------------------------------------------------------
 
-func test_buyer_keypair() {
-
-	fmt.Printf("\ntest_buyer_keypair\n\n")
-
-	clearDatabase()
-
-	api_cmd, _ := api()
-
-	defer func() {
-		api_cmd.Process.Signal(os.Interrupt)
-		api_cmd.Wait()
-	}()
-
-	// create buyer keypair
-
-	buyerKeypair := admin.BuyerKeypairData{}
-
-	var response CreateBuyerKeypairResponse
-
-	err := Create("admin/create_buyer_keypair", buyerKeypair, &response)
-
-	if err != nil {
-		panic(err)
-	}
-
-	buyerKeypairId := response.BuyerKeypair.BuyerKeypairId
-
-	// read all buyer keypairs
-	{
-		response := ReadBuyerKeypairsResponse{}
-
-		err := GetJSON("admin/buyer_keypairs", &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if len(response.BuyerKeypairs) != 1 {
-			panic(fmt.Sprintf("expect one buyer keypair in response, got %d", len(response.BuyerKeypairs)))
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		data, err := base64.StdEncoding.DecodeString(response.BuyerKeypairs[0].PublicKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		data, err = base64.StdEncoding.DecodeString(response.BuyerKeypairs[0].PrivateKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		_ = data
-	}
-
-	// read a specific buyer keypair
-	{
-		response := ReadBuyerKeypairResponse{}
-
-		err := GetJSON(fmt.Sprintf("admin/buyer_keypair/%x", buyerKeypairId), &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		data, err := base64.StdEncoding.DecodeString(response.BuyerKeypair.PublicKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		data, err = base64.StdEncoding.DecodeString(response.BuyerKeypair.PrivateKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		_ = data
-	}
-
-	// update buyer keypair
-	{
-		buyerKeypair.BuyerKeypairId = buyerKeypairId
-		buyerKeypair.PublicKeyBase64 = "aaaaaaaaaaaaaaaaaa"
-		buyerKeypair.PrivateKeyBase64 = "bbbbbbbbbbbbbbbbbb"
-
-		response := UpdateBuyerKeypairResponse{}
-
-		err := Update("admin/update_buyer_keypair", buyerKeypair, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error == "" {
-			panic("expect error string to be valid. we do not support updating buyer keypairs")
-		}
-	}
-
-	// delete buyer keypair
-	{
-		response := DeleteBuyerKeypairResponse{}
-
-		err := Delete(fmt.Sprintf("admin/delete_buyer_keypair/%x", buyerKeypairId), &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-	}
-}
-
-// ----------------------------------------------------------------------------------------
-
 type test_function func()
 
 func main() {
@@ -2052,7 +1930,6 @@ func main() {
 		test_buyer,
 		test_buyer_datacenter_settings,
 		test_relay_keypair,
-		test_buyer_keypair,
 	}
 
 	var tests []test_function

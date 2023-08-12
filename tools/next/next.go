@@ -311,6 +311,9 @@ func main() {
 				bashQuiet("psql -U developer postgres -f ../schemas/sql/destroy.sql")
 				bashQuiet("psql -U developer postgres -f ../schemas/sql/create.sql")
 				bashQuiet("psql -U developer postgres -f ../schemas/sql/local.sql")
+			} else {
+				bashQuiet("rm -f database.bin")
+				getDatabase()
 			}
 
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])

@@ -123,12 +123,6 @@ func main() {
 		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", isAuthorized(adminUpdateBuyerDatacenterSettingsHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", isAuthorized(adminDeleteBuyerDatacenterSettingsHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_buyer_keypair", isAuthorized(adminCreateBuyerKeypairHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/buyer_keypairs", isAuthorized(adminReadBuyerKeypairsHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/buyer_keypair/{buyerKeypairId}", isAuthorized(adminReadBuyerKeypairHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/update_buyer_keypair", isAuthorized(adminUpdateBuyerKeypairHandler)).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_buyer_keypair/{buyerKeypairId}", isAuthorized(adminDeleteBuyerKeypairHandler)).Methods("DELETE")
-
 		service.Router.HandleFunc("/admin/create_relay_keypair", isAuthorized(adminCreateRelayKeypairHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/relay_keypairs", isAuthorized(adminReadRelayKeypairsHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/relay_keypair/{relayKeypairId}", isAuthorized(adminReadRelayKeypairHandler)).Methods("GET")
@@ -1247,123 +1241,6 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	err = controller.DeleteBuyerDatacenterSettings(buyerId, datacenterId)
 	if err != nil {
 		core.Error("failed to delete buyer datacenter settings: %v", err)
-		response.Error = err.Error()
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-type AdminCreateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-func adminCreateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	var response AdminCreateBuyerKeypairResponse
-	buyerKeypairData, err := controller.CreateBuyerKeypair()
-	if err != nil {
-		core.Error("failed to create buyer keypair: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("create buyer keypair -> %+v", buyerKeypairData)
-		response.BuyerKeypair = buyerKeypairData
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadBuyerKeypairsResponse struct {
-	BuyerKeypairs []admin.BuyerKeypairData `json:"buyer_keypairs"`
-	Error         string                   `json:"error"`
-}
-
-func adminReadBuyerKeypairsHandler(w http.ResponseWriter, r *http.Request) {
-	buyerKeypairs, err := controller.ReadBuyerKeypairs()
-	response := AdminReadBuyerKeypairsResponse{BuyerKeypairs: buyerKeypairs}
-	if err != nil {
-		core.Error("failed to read buyer keypairs: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read buyer keypairs -> %+v", buyerKeypairs)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-func adminReadBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	buyerKeypairId, err := strconv.ParseUint(vars["buyerKeypairId"], 10, 64)
-	if err != nil {
-		core.Error("read buyer keypair could not parse buyer keypair id")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	buyerKeypair, err := controller.ReadBuyerKeypair(buyerKeypairId)
-	response := AdminReadBuyerKeypairResponse{BuyerKeypair: buyerKeypair}
-	if err != nil {
-		core.Error("failed to read buyer keypair: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read buyer keypair %x -> %+v", buyerKeypairId, buyerKeypair)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-func adminUpdateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	var buyerKeypair admin.BuyerKeypairData
-	err := json.NewDecoder(r.Body).Decode(&buyerKeypair)
-	if err != nil {
-		core.Error("failed to decode update buyer keypair request json: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	response := AdminUpdateBuyerKeypairResponse{BuyerKeypair: buyerKeypair}
-	err = controller.UpdateBuyerKeypair(&buyerKeypair)
-	if err != nil {
-		core.Error("failed to update buyer keypair: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("update buyer keypair %x -> %+v", buyerKeypair.BuyerKeypairId, buyerKeypair)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminDeleteBuyerKeypairResponse struct {
-	Error string `json:"error"`
-}
-
-func adminDeleteBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	buyerKeypairId, err := strconv.ParseUint(vars["buyerKeypairId"], 10, 64)
-	if err != nil {
-		core.Error("delete buyer keypair could not parse buyer keypair id: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	core.Debug("delete buyer keypair %x", buyerKeypairId)
-	response := AdminDeleteBuyerKeypairResponse{}
-	err = controller.DeleteBuyerKeypair(buyerKeypairId)
-	if err != nil {
-		core.Error("failed to delete buyer keypair: %v", err)
 		response.Error = err.Error()
 	}
 	w.WriteHeader(http.StatusOK)

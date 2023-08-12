@@ -132,7 +132,7 @@ output "relays" {
         40000,
         google_compute_address.internal[k].address,
         40000,
-        local.datacenter_map[v.datacenter_name].region,
+        "",
         google_compute_address.public[k].address,
         22,
         "ubuntu",
