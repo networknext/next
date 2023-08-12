@@ -40,8 +40,6 @@ DONE
 
 	I can, but amazon requires the VPN be active, even before the relays are provisioned.
 
-TODO
-
 	How to provision the relays?
 
 	Initially I'm going to start with "next setup [relay]"
@@ -49,6 +47,24 @@ TODO
 	This will SSH in and run a custom script with data gathered from the database, so the relay is configured as specified in terraform.
 
 	Once this basic setup is working and reliable, then we can try to automate it further.
+
+	Added setup command.
+
+TODO
+
+	Relays are all setup. We just need to push the database.bin and it should be working.
+
+	How should we do this? 
+
+	"next commit"?
+
+	Download the database.bin then commit it to google cloud storage?
+
+	---------------
+
+	Need to extend 'next' tool env to include VPN_ADDRESS config var.
+
+	Need to get other things from environment as needed... eg. RELAY_BACKEND_ADDRESS
 
 	---------------
 
@@ -66,8 +82,11 @@ TODO
 
 	----------
 
+	In dev, "next database" should get the latest database from the API, cache it to database.bin, then print it.
 
+	"next select dev" should delete the database.bin cache in ~/next
 
+	----------
 
 
 
@@ -249,12 +268,6 @@ Nice to have:
 
 	---------------
 
-	Relay gateway verify keypair on startup
-
-	Server backend verify keypairs on startup
-
-	---------------
-
 	Should be func tests that spin up the bigquery emulator and verify that each analytics message type can be written to the appropriate table created from schema
 
 	---------------
@@ -327,20 +340,6 @@ Nice to have:
 
 	--------------
 
-	Implement a fix for a re-ordering of route tokens / continue tokens to create loops. Order of tokens must be enforced.
-
-	This probably means we need to have some sort of signed bit, that indicates that indeed, this is token n, n+1 etc.
-
-	And then this can be checked.
-
-	Needs to be designed...
-
-	--------------
-
-	The SDK must never transmit the user hash in plaintext. It must always be encrypted.
-
-	--------------
-
 	Code in service.go to only shut down service once various subsystems have reported that they're complete
 
 	Extend this to the server backend to make sure that we flush all channels of messages before shutting down
@@ -350,11 +349,6 @@ Nice to have:
 	Multipath across two network next routes.
 
 	--------------
-
-	I think I can fix up the whole crazy thing with ordering of tokens by requiring that the "prev address" is specified, and is not just inferred by the address packets come in on.
-
-	Given that the advanced packet filter will check that the packets are actually coming from the client external address already, nothing of value is lost here.
-
 	--------------
 
 	There are issues where cleanup does not occur in func tests due to panics.
@@ -363,13 +357,7 @@ Nice to have:
 
 	--------------
 
-	Chaos monkey testing. The goal is to ensure no fallback to directs.
-
-	--------------
-
-	The nice prompt for relay SSH needs to be done on ssh login via next tool
-
-	It can't easily be done in start script for google cloud relays :(
+	Chaos monkey testing in staging. The goal is to ensure no fallback to directs.
 
 	--------------
 
@@ -416,10 +404,6 @@ Nice to have:
 	Lumen has VMs and bare metal via terraform!!!
 
 	https://registry.terraform.io/providers/LumenTech/lumen/latest/docs/guides/getting_started
-
-	-----------------------------------
-
-	Need a functional test for terraform.
 
 	-----------------------------------
 

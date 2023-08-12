@@ -13,3 +13,4 @@ cd libsodium-1.0.18
 make -j
 sudo make install
 sudo ldconfig
+sudo mkdir /app

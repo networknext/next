@@ -401,7 +401,7 @@ func main() {
 			privateKey := env.APIPrivateKey
 			tokenString, err := token.SignedString([]byte(privateKey))
 			if err != nil {
-				fmt.Printf("error: not generate API_KEY: %s", err.Error())
+				fmt.Printf("error: could not generate API_KEY: %s", err.Error())
 				os.Exit(1)
 			}
 			fmt.Printf("API_KEY = %s\n\n", tokenString)
@@ -474,6 +474,22 @@ func main() {
 			}
 
 			relayLog(env, args)
+
+			return nil
+		},
+	}
+
+	var setupCommand = &ffcli.Command{
+		Name:       "setup",
+		ShortUsage: "next setup [regex...]",
+		ShortHelp:  "Setup the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			setupRelays(env, regexes)
 
 			return nil
 		},
@@ -669,6 +685,7 @@ func main() {
 		relaysCommand,
 		sshCommand,
 		logCommand,
+		setupCommand,
 		startCommand,
 		stopCommand,
 		loadCommand,
@@ -902,14 +919,11 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if relay == nil {
 			continue
 		}
-		// todo: relay flags are not passed up yet -- random data
-		/*
-			if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
-				relay.Status = "shutting down"
-			} else {
-		*/
-		relay.Status = "online"
-		// }
+		if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
+			relay.Status = "shutting down"
+		} else {
+			relay.Status = "online"
+		}
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
 	}
@@ -1008,43 +1022,11 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 
 const (
 
-/*
-	$RELAY_NAME
-	$RELAY_VERSION
-	$RELAY_PUBLIC_ADDRESS
-	$RELAY_INTERNAL_ADDRESS
-	$RELAY_PUBLIC_KEY
-	$RELAY_PRIVATE_KEY
-	$VPN_ADDRESS
-	$ENVIRONMENT
-*/
-
 	SetupRelayScript = `
 
-# remove any old journalctl files to free up disk space (if necessary)
-
-sudo journalctl --vacuum-size 10M
-
-# clean up old packages from apt-get to free up disk space (if necessary)
-
-sudo apt autoremove -y
-
-# update installed packages
-
-sudo apt update -y
-sudo apt upgrade -y
-sudo apt dist-upgrade -y
-sudo apt autoremove -y
-
-# install build essentials so we can build libsodium
-
-sudo apt install build-essential -y
-
-# install unattended upgrades so the relay keeps up to date with security fixes
-
-sudo apt install unattended-upgrades -y
-
 # only allow ssh from vpn address
+
+echo ssh only allowed from vpn address
 
 echo sshd: ALL > hosts.deny
 echo sshd: $VPN_ADDRESS > hosts.allow
@@ -1053,27 +1035,23 @@ sudo mv hosts.allow /etc/hosts.allow
 
 # make the relay prompt cool
 
+echo making relay command line prompt cool
+
 sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
 sudo echo "source ~/.bashrc" >> ~/.profile.sh
 
-# build and install libsodium optimized for this relay
-
-wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
-tar -zxf libsodium-1.0.18.tar.gz
-cd libsodium-1.0.18
-./configure
-make -j
-sudo make install
-ldconfig
-cd ~
-
 # download the relay binary and rename it to 'relay'
 
+echo downloading relay binary
+
+rm -f $RELAY_VERSION
 wget https://storage.googleapis.com/test_network_next_relay_artifacts/$RELAY_VERSION --no-cache
-sudo mv relay-$RELAY_VERSION relay
+sudo mv $RELAY_VERSION relay
 sudo chmod +x relay
 
 # setup the relay environment file
+
+echo setting up relay environment
 
 sudo cat > relay.env <<- EOM
 RELAY_NAME=$RELAY_NAME
@@ -1086,6 +1064,8 @@ RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
 EOM
 
 # setup the relay service file
+
+echo setting up relay service file
 
 sudo cat > relay.service <<- EOM
 [Unit]
@@ -1108,6 +1088,8 @@ EOM
 
 # move everything into the /app dir
 
+echo moving everything into /app
+
 sudo rm -rf /app
 sudo mkdir /app
 sudo mv relay /app/relay
@@ -1116,14 +1098,24 @@ sudo mv relay.service /app/relay.service
 
 # limit maximum journalctl logs to 200MB so we don't run out of disk space
 
+echo limiting max journalctl logs to 200MB
+
 sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
 sudo systemctl restart systemd-journald
 
 # install the relay service, then start it and watch the logs
 
+echo installing relay service
+
 sudo systemctl enable /app/relay.service
+
+echo starting relay service
+
 sudo systemctl start relay
-sudo journalctl -fu relay -n 100
+
+sudo touch /app/setup-completed
+
+echo setup completed
 `
 
 	StartRelayScript   = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
@@ -1140,34 +1132,20 @@ sudo journalctl -fu relay -n 100
 	ConfigRelayScript  = `sudo vi /app/relay.env && exit`
 )
 
-type RelayInfo struct {
-	Id         uint64
-	Name       string
-	SSHAddress string
-	SSHUser    string
-	SSHPort    int
-}
-
-func getRelayInfo(env Environment, regex string) []RelayInfo {
+func getRelayInfo(env Environment, regex string) []admin.RelayData {
 
 	relaysResponse := AdminRelaysResponse{}
 
 	GetJSON(fmt.Sprintf("%s/admin/relays", env.AdminURL), &relaysResponse)
 
-	relays := make([]RelayInfo, 0)
+	relays := make([]admin.RelayData, 0)
 
 	for i := range relaysResponse.Relays {
 		matched, _ := regexp.Match(regex, []byte(relaysResponse.Relays[i].RelayName))
 		if !matched {
 			continue
 		}
-		relayInfo := RelayInfo{}
-		relayInfo.Id = relaysResponse.Relays[i].RelayId
-		relayInfo.Name = relaysResponse.Relays[i].RelayName
-		relayInfo.SSHAddress = relaysResponse.Relays[i].SSH_IP
-		relayInfo.SSHUser = relaysResponse.Relays[i].SSH_User
-		relayInfo.SSHPort = relaysResponse.Relays[i].SSH_Port
-		relays = append(relays, relayInfo)
+		relays = append(relays, relaysResponse.Relays[i])
 	}
 
 	return relays
@@ -1182,12 +1160,12 @@ func ssh(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("%s does not have an SSH address\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("%s does not have an SSH address\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.Connect()
 			break
 		}
@@ -1204,16 +1182,66 @@ func config(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			if !con.ConnectAndIssueCmd(ConfigRelayScript) {
 				continue
 			}
 			break
+		}
+	}
+}
+
+func setupRelays(env Environment, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for i := range relays {
+			
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
+				continue
+			}
+			
+			fmt.Printf("setting up relay %s\n", relays[i].RelayName)
+			
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+			
+			script := SetupRelayScript
+
+			relayName := relays[i].RelayName
+			relayVersion := relays[i].Version
+			relayPublicAddress := fmt.Sprintf("%s:%d", relays[i].PublicIP, relays[i].PublicPort)
+			relayInternalAddress := fmt.Sprintf("%s:%d", relays[i].InternalIP, relays[i].InternalPort)
+			relayPublicKeyBase64 := relays[i].PublicKeyBase64
+			relayPrivateKeyBase64 := relays[i].PrivateKeyBase64
+
+			// todo: these need to come from environment config
+			relayBackendHostname := "losangelesfreewaysatnight.com"
+			relayBackendPublicKeyBase64 := "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+			vpnAddress := "45.79.157.168" // todo: need to get this from env config
+
+			environment := env.Name
+
+			script = strings.ReplaceAll(script, "$RELAY_NAME", relayName)
+			script = strings.ReplaceAll(script, "$RELAY_VERSION", relayVersion)
+			script = strings.ReplaceAll(script, "$RELAY_PUBLIC_ADDRESS", relayPublicAddress)
+			script = strings.ReplaceAll(script, "$RELAY_INTERNAL_ADDRESS", relayInternalAddress)
+			script = strings.ReplaceAll(script, "$RELAY_PUBLIC_KEY", relayPublicKeyBase64)
+			script = strings.ReplaceAll(script, "$RELAY_PRIVATE_KEY", relayPrivateKeyBase64)
+			script = strings.ReplaceAll(script, "$RELAY_BACKEND_HOSTNAME", relayBackendHostname)
+			script = strings.ReplaceAll(script, "$RELAY_BACKEND_PUBLIC_KEY", relayBackendPublicKeyBase64)
+			script = strings.ReplaceAll(script, "$VPN_ADDRESS", vpnAddress)
+			script = strings.ReplaceAll(script, "$ENVIRONMENT", environment)
+
+			con.ConnectAndIssueCmd(script)
 		}
 	}
 }
@@ -1226,12 +1254,12 @@ func startRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("starting relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("starting relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(StartRelayScript)
 		}
 	}
@@ -1246,12 +1274,12 @@ func stopRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("stopping relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("stopping relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1266,12 +1294,12 @@ func upgradeRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("upgrading relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("upgrading relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1286,12 +1314,12 @@ func rebootRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("rebooting relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("rebooting relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1305,12 +1333,12 @@ func loadRelays(env Environment, regexes []string, version string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("loading relay-%s onto %s\n", version, relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
 		}
 	}
@@ -1320,12 +1348,12 @@ func relayLog(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("journalctl -fu relay -n 1000")
 			break
 		}
@@ -1336,12 +1364,12 @@ func keys(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("sudo cat /app/relay.env | grep _KEY")
 			break
 		}
@@ -1568,26 +1596,6 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
 
-	fmt.Printf("\n")
-}
-
-// -------------------------------------------------------------------------------------------
-
-func terraformInit(env Environment, component string) {
-	fmt.Printf("initializing %s in %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform init", env.Name, component))
-	fmt.Printf("\n")
-}
-
-func terraformDeploy(env Environment, component string) {
-	fmt.Printf("deploying %s to %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform apply", env.Name, component))
-	fmt.Printf("\n")
-}
-
-func terraformDestroy(env Environment, component string) {
-	fmt.Printf("destroying %s in %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
 	fmt.Printf("\n")
 }
 

@@ -638,11 +638,11 @@ type RelayData struct {
 	PublicIP         string `json:"public_ip"`
 	PublicPort       int    `json:"public_port"`
 	InternalIP       string `json:"internal_ip"`
-	InternalPort     int    `json:"internal_port`
-	InternalGroup    string `json:"internal_group`
+	InternalPort     int    `json:"internal_port"`
+	InternalGroup    string `json:"internal_group"`
 	SSH_IP           string `json:"ssh_ip"`
-	SSH_Port         int    `json:"ssh_port`
-	SSH_User         string `json:"ssh_user`
+	SSH_Port         int    `json:"ssh_port"`
+	SSH_User         string `json:"ssh_user"`
 	PublicKeyBase64  string `json:"public_key_base64"`
 	PrivateKeyBase64 string `json:"private_key_base64"`
 	Version          string `json:"version"`
