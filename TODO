@@ -37,18 +37,23 @@ DONE
 
 	Otherwise it fails the terraform apply.
 
-TODO
-
 	Fix the amazon config so it excludes regions and zones that aren't enabled on the account.
 
-	----------------------
+	What I need to do is:
 
-	Work out how to include/import the database definitions for each supplier.
+		1. Extract the set of unique sellers from the set of relays
 
-	----------------------
+		2. Extract the unique set of datacenters from the set of relays
 
+		3. Grab the datacenter info from the module looked up by datacenter name (need a new export var, hash map datacenter name -> data)
 
+		4. Configure the set of relays according to their supplier, settings per-relay exported from the supplier module etc.
 
+TODO
+
+	For #1, each relay has "supplier_name"
+
+	I can just create a list of these, then unique it.
 
 
 

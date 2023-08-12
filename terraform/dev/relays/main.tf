@@ -216,6 +216,10 @@ locals {
     module.vultr_relays.relays,
   )
 
+  seller_names = distinct([for k, relay in local.relays : relay.supplier_name])
+
+  datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
+
 }
 
 resource "networknext_customer" "test" {
@@ -267,6 +271,16 @@ resource "networknext_buyer_datacenter_settings" "test" {
 output "relay_names" {
   description = "Relay names"
   value = local.relay_names
+}
+
+output "seller_names" {
+  description = "Seller names"
+  value = local.seller_names
+}
+
+output "datacenter_names" {
+  description = "Datacenter names"
+  value = local.datacenter_names
 }
 
 # ----------------------------------------------------------------------------------------
