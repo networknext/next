@@ -1,68 +1,11 @@
 DONE
 
-	Try to make client_to_server_packet_too_big more reliable in relay func tests.
+	Fix hex id bug in terraform provider -> v5.0.2
 
-	Happy path is failing in semaphore again, but works fine locally. What's going on?
+	Work with maps not lists.
 
-	Broken assumption with linux relay multithread.
-
-	Need to use BPF to steer packets to cores according to session id + session version
-
-	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
-
-	How to integrate relay spin up terraform with the database modifying terraform using the network next provider?
-
-	Seems like first we need to populate the database with definitions of suppliers, datacenters etc.
-
-	Start here...
-
-	Got "run amazon-config" working again, with better error handling this time.
-
-	Need to create a new "Relays (Development)" project in google cloud, and setup a service account for terraform, eg. ~/secrets/terraform-development-relays.json
-
-	Get all suppliers configs setup and working.
-
-	Get the terraform/dev/relays up and working again.
-
-	Amazon config needs to take care not to export regions or zones you don't have access to:
-
-		module "region_il_central_1" { 
-		  source              = "./region"
-		  vpn_address         = var.vpn_address
-		  ssh_public_key_file = var.ssh_public_key_file
-		  providers = {
-		    aws = aws.il-central-1
-		  }
-		}
-
-	Otherwise it fails the terraform apply.
-
-	Fix the amazon config so it excludes regions and zones that aren't enabled on the account.
-
-	What I need to do is:
-
-		1. Extract the set of unique sellers from the set of relays
-
-		2. Extract the unique set of datacenters from the set of relays
-
-		3. Grab the datacenter info from the module looked up by datacenter name (need a new export var, hash map datacenter name -> data)
-
-		4. Configure the set of relays according to their supplier, settings per-relay exported from the supplier module etc.
-
-	For #1, each relay has "supplier_name"
-
-	I can just create a list of these, then unique it.
-
-	For #2, each relay has "datacenter_name" so same approach.
-
-	For #3, I need each supplier module to export "datacenters" var with a map from datacenter name -> datacenter data.
-
-	Done. Each supplier module exports "datacenters" alongside "relays" now.
-
-	#4 is done. Datacenters is merged across each supplier.
-
-	Built a map from seller name to networknext seller object, which lets a datacenter look up its seller id.
-
+	This means don't work with seller_names and datacenter_names as drivers, but instead do for_each over the maps.
+	
 TODO
 
 	Now we need to extend each generated.tf per-supplier to add the following per-datacenter map entry:
@@ -72,15 +15,11 @@ TODO
 		3. latitude
 		4. longitude
 
-	We also need to make sure that we always work with hashes instead of lists, because lists have their order shuffled and cause unnecessary modifications.
+	----------
 
-	eg. convert datacenters list to datacenters map, sellers list to sellers map and so on.
-	
+	Terraform func test needs to create enough resources of each type to avoid hitting the hex issue I just had.
 
-
-
-
-
+	----------
 
 
 

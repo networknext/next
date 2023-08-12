@@ -303,14 +303,18 @@ func main() {
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
 	format_string = "    \"%s\" = {\n" +
-		"      zone   = \"%s\"\n" +
-		"      region = \"%s\"\n" +
+		"      zone        = \"%s\"\n" +
+		"      region      = \"%s\"\n" +
+		"      native_name = \"%s\"\n" +
+		"      longitude   = %.2f\n" +
+		"      latitude    = %.2f\n" +
+		"      seller_name = \"google\"\n" +
 		"    }\n" +
 		"\n"
 
 	for i := range zones {
 		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Region)
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Region, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
 		}
 	}
 

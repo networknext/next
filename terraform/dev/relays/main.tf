@@ -20,7 +20,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0"
+      version = "~> 5.0.2"
     }
   }
 }
@@ -225,12 +225,17 @@ locals {
 
   seller_names = distinct([for k, relay in local.relays : relay.supplier_name])
 
+  sellers = {
+    for seller_name in local.seller_names: 
+      seller_name => true
+  }
+
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
 }
 
 resource "networknext_seller" "sellers" {
-  count = length(local.seller_names)
-  name  = local.seller_names[count.index]
+  for_each = local.sellers
+  name     = each.key
 }
 
 data "networknext_sellers" "test" {
@@ -259,7 +264,7 @@ resource "networknext_datacenter" "datacenters" {
   name = each.key
 
   # hack: todo remove
-  seller_id = networknext_seller.sellers[0].id
+  seller_id = networknext_seller.sellers["google"].id
   latitude = 0
   longitude = 0
 
@@ -267,8 +272,7 @@ resource "networknext_datacenter" "datacenters" {
   #seller_id = local.seller_map[each.value.seller_name]
   #latitude = each.value.latitude
   #longitude = each.value.longitude
-
-  # todo: native_name
+  #native_name = each.value.native_name
 }
 
 data "networknext_datacenters" "test" {
