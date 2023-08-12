@@ -238,25 +238,11 @@ resource "networknext_seller" "sellers" {
   name     = each.key
 }
 
-data "networknext_sellers" "test" {
-  depends_on = [
-    networknext_seller.sellers,
-  ]
-}
-
 locals {
   seller_map = {
     for seller in networknext_seller.sellers: 
       seller.name => seller
   }
-}
-
-output "sellers" {
-  value = data.networknext_sellers.test
-}
-
-output "seller_map" {
-  value = local.seller_map
 }
 
 resource "networknext_datacenter" "datacenters" {
@@ -266,16 +252,6 @@ resource "networknext_datacenter" "datacenters" {
   latitude = each.value.latitude
   longitude = each.value.longitude
   native_name = each.value.native_name
-}
-
-data "networknext_datacenters" "test" {
-  depends_on = [
-    networknext_datacenter.datacenters,
-  ]
-}
-
-output "datacenters" {
-  value = data.networknext_datacenters.test
 }
 
 locals {
@@ -308,68 +284,24 @@ resource "networknext_relay" "relays" {
   # todo: we need some config map to optionally insert values here, eg. notes, version and so on.
 }
 
+# ----------------------------------------------------------------------------------------
 
-/*
-resource "networknext_customer" "test" {
-  name = "Test Customer"
-  code = "test"
-  debug = true
+# Print out set of relays in the database
+
+data "networknext_relays" "relays" {
+  depends_on = [
+    networknext_relay.relays,
+  ]
 }
 
-resource "networknext_seller" "test" {
-  name = "test"
+locals {
+  database_relays = {
+    for k,v in networknext_relay.relays: k => v.public_ip
+  }
 }
 
-resource "networknext_datacenter" "test" {
-  name = "test"
-  seller_id = networknext_seller.test.id
-  latitude = 100
-  longitude = 50
+output "database_relays" {
+  value = local.database_relays
 }
-
-resource "networknext_relay_keypair" "test" {}
-
-resource "networknext_relay" "test" {
-  name = "test.relay"
-  datacenter_id = networknext_datacenter.test.id
-  public_ip = "127.0.0.1"
-  public_key_base64=networknext_relay_keypair.test.public_key_base64
-  private_key_base64=networknext_relay_keypair.test.private_key_base64
-}
-
-resource "networknext_route_shader" test {
-  name = "test"
-}
-
-resource "networknext_buyer_keypair" "test" {}
-
-resource "networknext_buyer" "test" {
-  name = "Test Buyer"
-  customer_id = networknext_customer.test.id
-  route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = networknext_buyer_keypair.test.public_key_base64
-}
-
-resource "networknext_buyer_datacenter_settings" "test" {
-  buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.test.id
-  enable_acceleration = true
-}
-
-output "relay_names" {
-  description = "Relay names"
-  value = local.relay_names
-}
-
-output "seller_names" {
-  description = "Seller names"
-  value = local.seller_names
-}
-
-output "datacenter_names" {
-  description = "Datacenter names"
-  value = local.datacenter_names
-}
-*/
 
 # ----------------------------------------------------------------------------------------
