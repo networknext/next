@@ -91,7 +91,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0"
+      version = "~> 5.0.3"
     }
   }
 }
@@ -206,25 +206,11 @@ output "route_shaders" {
 
 # ---------------------------------------------------------
 
-resource "networknext_buyer_keypair" "test" {}
-
-data "networknext_buyer_keypairs" "test" {
-  depends_on = [
-    networknext_buyer_keypair.test,
-  ]
-}
-
-output "buyer_keypairs" {
-  value = data.networknext_buyer_keypairs.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_buyer" "test" {
   name = "Test Buyer"
   customer_id = networknext_customer.test.id
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = networknext_buyer_keypair.test.public_key_base64
+  public_key_base64 = "1928371987391287398719387"
 }
 
 data "networknext_buyers" "test" {
@@ -266,7 +252,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0"
+      version = "~> 5.0.3"
     }
   }
 }
@@ -381,25 +367,11 @@ output "route_shaders" {
 
 # ---------------------------------------------------------
 
-resource "networknext_buyer_keypair" "test" {}
-
-data "networknext_buyer_keypairs" "test" {
-  depends_on = [
-    networknext_buyer_keypair.test,
-  ]
-}
-
-output "buyer_keypairs" {
-  value = data.networknext_buyer_keypairs.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_buyer" "test" {
   name = "Test Buyer (update)"
   customer_id = networknext_customer.test.id
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = networknext_buyer_keypair.test.public_key_base64
+  public_key_base64 = "aoesnuhaonuthaontehunathunath"
 }
 
 data "networknext_buyers" "test" {
