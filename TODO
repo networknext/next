@@ -62,7 +62,15 @@ DONE
 
 	Removed buyer keypairs from terraform plugin and REST API. We simply don't need to track buyer keypairs as a resource.
 
+	Only AWS relays need the internal group to be set to the region (or in the case of local zones... the local zone itself, presumably)
+
+	Google doesn't need this treatment. Set the internal group to ""
+
 TODO
+
+	Extend "next database" to always delete the cached database and grab it again
+
+	---------------
 
 	Extend admin REST API to have a database method.
 
@@ -78,23 +86,11 @@ TODO
 
 	Need to extend 'next' tool env to include VPN_ADDRESS config var.
 
-	Need to get other things from environment as needed... eg. RELAY_BACKEND_ADDRESS
+	Need to get other things from environment as needed... eg. RELAY_BACKEND_ADDRESS etc.
 
 	---------------
 
 	Terraform func test needs to create enough resources of each type to avoid hitting the hex issue I just had.
-
-	----------
-
-	Only AWS relays need the internal group to be set to the region (or in the case of local zones... the local zone itself, presumably)
-
-	Google doesn't need this treatment. Set the internal group to ""
-
-	----------
-
-	In dev, "next database" should get the latest database from the API, cache it to database.bin, then print it.
-
-	"next select dev" should delete the database.bin cache in ~/next
 
 	----------
 

@@ -311,9 +311,6 @@ func main() {
 				bashQuiet("psql -U developer postgres -f ../schemas/sql/destroy.sql")
 				bashQuiet("psql -U developer postgres -f ../schemas/sql/create.sql")
 				bashQuiet("psql -U developer postgres -f ../schemas/sql/local.sql")
-			} else {
-				bashQuiet("rm -f database.bin")
-				getDatabase()
 			}
 
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
@@ -348,6 +345,12 @@ func main() {
 			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
 			env.APIKey = getKeyValue(envFilePath, "API_KEY")
 			env.Write()
+
+			cachedDatabase = nil
+			if env.Name != "local" {
+				bash("rm -f database.bin")
+				getDatabase()
+			}
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
 
