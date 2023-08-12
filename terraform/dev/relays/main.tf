@@ -16,9 +16,25 @@ variable "relay_backend_public_key" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
-# ============
-# GOOGLE CLOUD
-# ============
+terraform {
+  required_providers {
+    networknext = {
+      source = "networknext/networknext"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "networknext" {
+  hostname = "http://dev.virtualgo.net"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# =============
+# GOOGLE RELAYS
+# =============
 
 locals {
 
@@ -79,16 +95,11 @@ module "google_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-output "google_relays" {
-  description = "Data for each google relay"
-  value = module.google_relays.relays
-}
-
 # ----------------------------------------------------------------------------------------
 
-# ============
-# AMAZON CLOUD
-# ============
+# =============
+# AMAZON RELAYS
+# =============
 
 locals {
   amazon_config      = ["~/.aws/config"]
@@ -107,16 +118,11 @@ module "amazon_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-output "amazon_relays" {
-  description = "Data for each amazon relay"
-  value = module.amazon_relays.relays
-}
-
 # ----------------------------------------------------------------------------------------
 
-# ===================
-# AKAMAI (linode.com)
-# ===================
+# =============
+# AKAMAI RELAYS
+# =============
 
 locals {
 
@@ -155,16 +161,11 @@ module "akamai_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-output "akamai_relays" {
-  description = "Data for each akamai relay"
-  value = module.akamai_relays.relays
-}
-
 # ----------------------------------------------------------------------------------------
 
-# =====
-# VULTR
-# =====
+# ============
+# VULTR RELAYS
+# ============
 
 locals {
 
@@ -191,9 +192,81 @@ module "vultr_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-output "vultr_relays" {
-  description = "Data for each vultr relay"
-  value = module.vultr_relays.relays
+# ----------------------------------------------------------------------------------------
+
+# =======================
+# INITIALIZE DEV DATABASE
+# =======================
+
+locals {
+  
+  relay_names = sort(
+    concat(
+      keys(module.google_relays.relays),
+      keys(module.amazon_relays.relays),
+      keys(module.akamai_relays.relays),
+      keys(module.vultr_relays.relays),
+    )
+  )
+
+  relays = merge(
+    module.google_relays.relays,
+    module.amazon_relays.relays,
+    module.akamai_relays.relays,
+    module.vultr_relays.relays,
+  )
+
+}
+
+resource "networknext_customer" "test" {
+  name = "Test Customer"
+  code = "test"
+  debug = true
+}
+
+resource "networknext_seller" "test" {
+  name = "test"
+}
+
+resource "networknext_datacenter" "test" {
+  name = "test"
+  seller_id = networknext_seller.test.id
+  latitude = 100
+  longitude = 50
+}
+
+resource "networknext_relay_keypair" "test" {}
+
+resource "networknext_relay" "test" {
+  name = "test.relay"
+  datacenter_id = networknext_datacenter.test.id
+  public_ip = "127.0.0.1"
+  public_key_base64=networknext_relay_keypair.test.public_key_base64
+  private_key_base64=networknext_relay_keypair.test.private_key_base64
+}
+
+resource "networknext_route_shader" test {
+  name = "test"
+}
+
+resource "networknext_buyer_keypair" "test" {}
+
+resource "networknext_buyer" "test" {
+  name = "Test Buyer"
+  customer_id = networknext_customer.test.id
+  route_shader_id = networknext_route_shader.test.id
+  public_key_base64 = networknext_buyer_keypair.test.public_key_base64
+}
+
+resource "networknext_buyer_datacenter_settings" "test" {
+  buyer_id = networknext_buyer.test.id
+  datacenter_id = networknext_datacenter.test.id
+  enable_acceleration = true
+}
+
+output "relay_names" {
+  description = "Relay names"
+  value = local.relay_names
 }
 
 # ----------------------------------------------------------------------------------------
