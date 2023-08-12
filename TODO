@@ -66,19 +66,19 @@ DONE
 
 	Google doesn't need this treatment. Set the internal group to ""
 
+	Extend "next database" to always delete the cached database and grab it again on env change
+
 TODO
-
-	Extend "next database" to always delete the cached database and grab it again
-
-	---------------
 
 	Extend admin REST API to have a database method.
 
+	Call this admin database method when we "getDatabase".
+
+	The "next" tool works from the SQL. The runtime works from the database.bin
+
 	---------------
 
-	How should we do this? 
-
-	"next commit"?
+	Implement "next commit"?
 
 	Download the database.bin then commit it to google cloud storage?
 
