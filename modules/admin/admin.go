@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"crypto/ed25519"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"

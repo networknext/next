@@ -500,32 +500,6 @@ type DeleteRelayKeypairResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
-type CreateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-type ReadBuyerKeypairsResponse struct {
-	BuyerKeypairs []admin.BuyerKeypairData `json:"buyer_keypairs"`
-	Error         string                   `json:"error"`
-}
-
-type ReadBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-type UpdateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-type DeleteBuyerKeypairResponse struct {
-	Error string `json:"error"`
-}
-
-// ----------------------------------------------------------------------------------------
-
 func test_customer() {
 
 	fmt.Printf("\ntest_customer\n\n")
