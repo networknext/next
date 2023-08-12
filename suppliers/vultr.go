@@ -227,7 +227,7 @@ func main() {
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
 	format_string = "    \"%s\" = {\n" +
-		"      zone = \"%s\"\n" +
+		"      zone        = \"%s\"\n" +
 		"      native_name = \"%s\"\n" +
 		"      latitude    = %.2f\n" +
 		"      longitude   = %.2f\n" +
