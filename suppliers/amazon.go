@@ -496,10 +496,13 @@ terraform {
       "relay_name"       = "%s"
       "datacenter_name"  = "%s"
       "supplier_name"    = "amazon"
-      "public_address"   = "${module.relay_%s.public_address}:40000"
-      "internal_address" = "${module.relay_%s.internal_address}:40000"
+      "public_ip"        = module.relay_%s.public_address
+      "public_port"      = 40000
+      "internal_ip"      = module.relay_%s.internal_address
+      "internal_port"    = 40000
       "internal_group"   = "%s"
-      "ssh_address"      = "${module.relay_%s.public_address}:22"
+      "ssh_ip"           = module.relay_%s.public_address
+      "ssh_port"         = 22
       "ssh_user"         = "ubuntu"
     }
 
