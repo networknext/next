@@ -198,6 +198,8 @@ module "vultr_relays" {
 # INITIALIZE DEV DATABASE
 # =======================
 
+# Setup sellers, datacenters and relays in dev
+
 locals {
   
   relay_names = sort(
@@ -233,7 +235,7 @@ locals {
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
 }
 
-resource "networknext_seller" "sellers" {
+resource "networknext_seller" sellers {
   for_each = local.sellers
   name     = each.key
 }
@@ -245,7 +247,7 @@ locals {
   }
 }
 
-resource "networknext_datacenter" "datacenters" {
+resource "networknext_datacenter" datacenters {
   for_each = local.datacenters
   name = each.key
   seller_id = local.seller_map[each.value.seller_name].id
@@ -261,11 +263,11 @@ locals {
   }
 }
 
-resource "networknext_relay_keypair" "relay_keypairs" {
+resource "networknext_relay_keypair" relay_keypairs {
   for_each = local.relays
 }
 
-resource "networknext_relay" "relays" {
+resource "networknext_relay" relays {
   for_each = local.relays
   name = each.key
   datacenter_id = local.datacenter_map[each.value.datacenter_name].id
@@ -280,15 +282,13 @@ resource "networknext_relay" "relays" {
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
   version = var.relay_version
-
-  # todo: we need some config map to optionally insert values here, eg. notes, version and so on.
 }
 
 # ----------------------------------------------------------------------------------------
 
 # Print out set of relays in the database
 
-data "networknext_relays" "relays" {
+data "networknext_relays" relays {
   depends_on = [
     networknext_relay.relays,
   ]
@@ -302,6 +302,31 @@ locals {
 
 output "database_relays" {
   value = local.database_relays
+}
+
+# ----------------------------------------------------------------------------------------
+
+# Setup the raspberry buyer
+
+resource "networknext_customer" raspberry {
+  name = "Raspberry"
+  code = "raspberry"
+  debug = true
+  live = true
+}
+
+resource "networknext_route_shader" raspberry {
+  name = "raspberry"
+  force_next = true
+  route_select_threshold = 300
+  route_switch_threshold = 300
+}
+
+resource "networknext_buyer" raspberry {
+  name = "Raspberry"
+  customer_id = networknext_customer.raspberry.id
+  route_shader_id = networknext_route_shader.raspberry.id
+  public_key_base64 = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 }
 
 # ----------------------------------------------------------------------------------------

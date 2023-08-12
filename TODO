@@ -30,40 +30,25 @@ DONE
 
 	Database relays are now successfully setup from terraform!
 
+	Setup raspberry customer
+
+	Setup raspberry route shader
+
+	Setup raspberry buyer
+
 TODO
 
-	Now we need to set up the rest of the dev database in terraform.
+	Test that once the database is setup that I can SSH into each dev relay via "next ssh"
 
-	Raspberry customer/buyer, route shader, buyer keypair...
+	---------------
 
-	Probably need to make it possible to specify a buyer keypair instead of generating one always.
+	How to provision the relays? Manually configuring via SSH is super lame...
 
-	We also need to work out how to provision the relays, right now the relays are just created and technically we should be able to ssh into them, but they are not setup yet to run the relay binary.
+	---------------
 
-	Also, we need to work out a process for deploying the database.bin
+	Remove buyer keypairs from terraform plugin and REST API. We simply don't need to track buyer keypairs as a resource.
 
-	Stopping work for the weekend now I have chores I need to do.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	----------
+	How to deploy database.bin?
 
 	Terraform func test needs to create enough resources of each type to avoid hitting the hex issue I just had.
 
