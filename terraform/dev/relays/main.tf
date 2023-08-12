@@ -262,7 +262,7 @@ output "seller_map" {
 resource "networknext_datacenter" "datacenters" {
   for_each = local.datacenters
   name = each.key
-  seller_id = local.seller_map[each.value.seller_name]
+  seller_id = local.seller_map[each.value.seller_name].id
   latitude = each.value.latitude
   longitude = each.value.longitude
   native_name = each.value.native_name
