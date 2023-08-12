@@ -60,7 +60,11 @@ TODO
 
 	----------
 
+	Only AWS relays need the internal group to be set to the region (or in the case of local zones... the local zone itself, presumably)
 
+	Google doesn't need this treatment. Set the internal group to ""
+
+	----------
 
 
 
