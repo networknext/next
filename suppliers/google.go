@@ -306,8 +306,8 @@ func main() {
 		"      zone        = \"%s\"\n" +
 		"      region      = \"%s\"\n" +
 		"      native_name = \"%s\"\n" +
-		"      longitude   = %.2f\n" +
 		"      latitude    = %.2f\n" +
+		"      longitude   = %.2f\n" +
 		"      seller_name = \"google\"\n" +
 		"    }\n" +
 		"\n"

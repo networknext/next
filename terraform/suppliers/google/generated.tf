@@ -7,8 +7,8 @@ locals {
       zone        = "asia-east1-a"
       region      = "asia-east1"
       native_name = "asia-east1-a"
-      longitude   = 25.11
-      latitude    = 121.60
+      latitude    = 25.11
+      longitude   = 121.60
       seller_name = "google"
     }
 
@@ -16,8 +16,8 @@ locals {
       zone        = "asia-east1-b"
       region      = "asia-east1"
       native_name = "asia-east1-b"
-      longitude   = 25.11
-      latitude    = 121.60
+      latitude    = 25.11
+      longitude   = 121.60
       seller_name = "google"
     }
 
@@ -25,8 +25,8 @@ locals {
       zone        = "asia-east1-c"
       region      = "asia-east1"
       native_name = "asia-east1-c"
-      longitude   = 25.11
-      latitude    = 121.60
+      latitude    = 25.11
+      longitude   = 121.60
       seller_name = "google"
     }
 
@@ -34,8 +34,8 @@ locals {
       zone        = "asia-east2-a"
       region      = "asia-east2"
       native_name = "asia-east2-a"
-      longitude   = 22.32
-      latitude    = 114.17
+      latitude    = 22.32
+      longitude   = 114.17
       seller_name = "google"
     }
 
@@ -43,8 +43,8 @@ locals {
       zone        = "asia-east2-b"
       region      = "asia-east2"
       native_name = "asia-east2-b"
-      longitude   = 22.32
-      latitude    = 114.17
+      latitude    = 22.32
+      longitude   = 114.17
       seller_name = "google"
     }
 
@@ -52,8 +52,8 @@ locals {
       zone        = "asia-east2-c"
       region      = "asia-east2"
       native_name = "asia-east2-c"
-      longitude   = 22.32
-      latitude    = 114.17
+      latitude    = 22.32
+      longitude   = 114.17
       seller_name = "google"
     }
 
@@ -61,8 +61,8 @@ locals {
       zone        = "asia-northeast1-a"
       region      = "asia-northeast1"
       native_name = "asia-northeast1-a"
-      longitude   = 35.68
-      latitude    = 139.65
+      latitude    = 35.68
+      longitude   = 139.65
       seller_name = "google"
     }
 
@@ -70,8 +70,8 @@ locals {
       zone        = "asia-northeast1-b"
       region      = "asia-northeast1"
       native_name = "asia-northeast1-b"
-      longitude   = 35.68
-      latitude    = 139.65
+      latitude    = 35.68
+      longitude   = 139.65
       seller_name = "google"
     }
 
@@ -79,8 +79,8 @@ locals {
       zone        = "asia-northeast1-c"
       region      = "asia-northeast1"
       native_name = "asia-northeast1-c"
-      longitude   = 35.68
-      latitude    = 139.65
+      latitude    = 35.68
+      longitude   = 139.65
       seller_name = "google"
     }
 
@@ -88,8 +88,8 @@ locals {
       zone        = "asia-northeast2-a"
       region      = "asia-northeast2"
       native_name = "asia-northeast2-a"
-      longitude   = 34.69
-      latitude    = 135.50
+      latitude    = 34.69
+      longitude   = 135.50
       seller_name = "google"
     }
 
@@ -97,8 +97,8 @@ locals {
       zone        = "asia-northeast2-b"
       region      = "asia-northeast2"
       native_name = "asia-northeast2-b"
-      longitude   = 34.69
-      latitude    = 135.50
+      latitude    = 34.69
+      longitude   = 135.50
       seller_name = "google"
     }
 
@@ -106,8 +106,8 @@ locals {
       zone        = "asia-northeast2-c"
       region      = "asia-northeast2"
       native_name = "asia-northeast2-c"
-      longitude   = 34.69
-      latitude    = 135.50
+      latitude    = 34.69
+      longitude   = 135.50
       seller_name = "google"
     }
 
@@ -115,8 +115,8 @@ locals {
       zone        = "asia-northeast3-a"
       region      = "asia-northeast3"
       native_name = "asia-northeast3-a"
-      longitude   = 37.57
-      latitude    = 126.98
+      latitude    = 37.57
+      longitude   = 126.98
       seller_name = "google"
     }
 
@@ -124,8 +124,8 @@ locals {
       zone        = "asia-northeast3-b"
       region      = "asia-northeast3"
       native_name = "asia-northeast3-b"
-      longitude   = 37.57
-      latitude    = 126.98
+      latitude    = 37.57
+      longitude   = 126.98
       seller_name = "google"
     }
 
@@ -133,8 +133,8 @@ locals {
       zone        = "asia-northeast3-c"
       region      = "asia-northeast3"
       native_name = "asia-northeast3-c"
-      longitude   = 37.57
-      latitude    = 126.98
+      latitude    = 37.57
+      longitude   = 126.98
       seller_name = "google"
     }
 
@@ -142,8 +142,8 @@ locals {
       zone        = "asia-south1-a"
       region      = "asia-south1"
       native_name = "asia-south1-a"
-      longitude   = 19.08
-      latitude    = 72.88
+      latitude    = 19.08
+      longitude   = 72.88
       seller_name = "google"
     }
 
@@ -151,8 +151,8 @@ locals {
       zone        = "asia-south1-b"
       region      = "asia-south1"
       native_name = "asia-south1-b"
-      longitude   = 19.08
-      latitude    = 72.88
+      latitude    = 19.08
+      longitude   = 72.88
       seller_name = "google"
     }
 
@@ -160,8 +160,8 @@ locals {
       zone        = "asia-south1-c"
       region      = "asia-south1"
       native_name = "asia-south1-c"
-      longitude   = 19.08
-      latitude    = 72.88
+      latitude    = 19.08
+      longitude   = 72.88
       seller_name = "google"
     }
 
@@ -169,8 +169,8 @@ locals {
       zone        = "asia-south2-a"
       region      = "asia-south2"
       native_name = "asia-south2-a"
-      longitude   = 28.70
-      latitude    = 77.10
+      latitude    = 28.70
+      longitude   = 77.10
       seller_name = "google"
     }
 
@@ -178,8 +178,8 @@ locals {
       zone        = "asia-south2-b"
       region      = "asia-south2"
       native_name = "asia-south2-b"
-      longitude   = 28.70
-      latitude    = 77.10
+      latitude    = 28.70
+      longitude   = 77.10
       seller_name = "google"
     }
 
@@ -187,8 +187,8 @@ locals {
       zone        = "asia-south2-c"
       region      = "asia-south2"
       native_name = "asia-south2-c"
-      longitude   = 28.70
-      latitude    = 77.10
+      latitude    = 28.70
+      longitude   = 77.10
       seller_name = "google"
     }
 
@@ -196,8 +196,8 @@ locals {
       zone        = "asia-southeast1-a"
       region      = "asia-southeast1"
       native_name = "asia-southeast1-a"
-      longitude   = 1.35
-      latitude    = 103.82
+      latitude    = 1.35
+      longitude   = 103.82
       seller_name = "google"
     }
 
@@ -205,8 +205,8 @@ locals {
       zone        = "asia-southeast1-b"
       region      = "asia-southeast1"
       native_name = "asia-southeast1-b"
-      longitude   = 1.35
-      latitude    = 103.82
+      latitude    = 1.35
+      longitude   = 103.82
       seller_name = "google"
     }
 
@@ -214,8 +214,8 @@ locals {
       zone        = "asia-southeast1-c"
       region      = "asia-southeast1"
       native_name = "asia-southeast1-c"
-      longitude   = 1.35
-      latitude    = 103.82
+      latitude    = 1.35
+      longitude   = 103.82
       seller_name = "google"
     }
 
@@ -223,8 +223,8 @@ locals {
       zone        = "asia-southeast2-a"
       region      = "asia-southeast2"
       native_name = "asia-southeast2-a"
-      longitude   = 6.21
-      latitude    = 106.85
+      latitude    = 6.21
+      longitude   = 106.85
       seller_name = "google"
     }
 
@@ -232,8 +232,8 @@ locals {
       zone        = "asia-southeast2-b"
       region      = "asia-southeast2"
       native_name = "asia-southeast2-b"
-      longitude   = 6.21
-      latitude    = 106.85
+      latitude    = 6.21
+      longitude   = 106.85
       seller_name = "google"
     }
 
@@ -241,8 +241,8 @@ locals {
       zone        = "asia-southeast2-c"
       region      = "asia-southeast2"
       native_name = "asia-southeast2-c"
-      longitude   = 6.21
-      latitude    = 106.85
+      latitude    = 6.21
+      longitude   = 106.85
       seller_name = "google"
     }
 
@@ -250,8 +250,8 @@ locals {
       zone        = "australia-southeast1-a"
       region      = "australia-southeast1"
       native_name = "australia-southeast1-a"
-      longitude   = -33.87
-      latitude    = 151.21
+      latitude    = -33.87
+      longitude   = 151.21
       seller_name = "google"
     }
 
@@ -259,8 +259,8 @@ locals {
       zone        = "australia-southeast1-b"
       region      = "australia-southeast1"
       native_name = "australia-southeast1-b"
-      longitude   = -33.87
-      latitude    = 151.21
+      latitude    = -33.87
+      longitude   = 151.21
       seller_name = "google"
     }
 
@@ -268,8 +268,8 @@ locals {
       zone        = "australia-southeast1-c"
       region      = "australia-southeast1"
       native_name = "australia-southeast1-c"
-      longitude   = -33.87
-      latitude    = 151.21
+      latitude    = -33.87
+      longitude   = 151.21
       seller_name = "google"
     }
 
@@ -277,8 +277,8 @@ locals {
       zone        = "australia-southeast2-a"
       region      = "australia-southeast2"
       native_name = "australia-southeast2-a"
-      longitude   = -37.81
-      latitude    = 144.96
+      latitude    = -37.81
+      longitude   = 144.96
       seller_name = "google"
     }
 
@@ -286,8 +286,8 @@ locals {
       zone        = "australia-southeast2-b"
       region      = "australia-southeast2"
       native_name = "australia-southeast2-b"
-      longitude   = -37.81
-      latitude    = 144.96
+      latitude    = -37.81
+      longitude   = 144.96
       seller_name = "google"
     }
 
@@ -295,8 +295,8 @@ locals {
       zone        = "australia-southeast2-c"
       region      = "australia-southeast2"
       native_name = "australia-southeast2-c"
-      longitude   = -37.81
-      latitude    = 144.96
+      latitude    = -37.81
+      longitude   = 144.96
       seller_name = "google"
     }
 
@@ -304,8 +304,8 @@ locals {
       zone        = "europe-central2-a"
       region      = "europe-central2"
       native_name = "europe-central2-a"
-      longitude   = 52.23
-      latitude    = 21.01
+      latitude    = 52.23
+      longitude   = 21.01
       seller_name = "google"
     }
 
@@ -313,8 +313,8 @@ locals {
       zone        = "europe-central2-b"
       region      = "europe-central2"
       native_name = "europe-central2-b"
-      longitude   = 52.23
-      latitude    = 21.01
+      latitude    = 52.23
+      longitude   = 21.01
       seller_name = "google"
     }
 
@@ -322,8 +322,8 @@ locals {
       zone        = "europe-central2-c"
       region      = "europe-central2"
       native_name = "europe-central2-c"
-      longitude   = 52.23
-      latitude    = 21.01
+      latitude    = 52.23
+      longitude   = 21.01
       seller_name = "google"
     }
 
@@ -331,8 +331,8 @@ locals {
       zone        = "europe-north1-a"
       region      = "europe-north1"
       native_name = "europe-north1-a"
-      longitude   = 60.57
-      latitude    = 27.19
+      latitude    = 60.57
+      longitude   = 27.19
       seller_name = "google"
     }
 
@@ -340,8 +340,8 @@ locals {
       zone        = "europe-north1-b"
       region      = "europe-north1"
       native_name = "europe-north1-b"
-      longitude   = 60.57
-      latitude    = 27.19
+      latitude    = 60.57
+      longitude   = 27.19
       seller_name = "google"
     }
 
@@ -349,8 +349,8 @@ locals {
       zone        = "europe-north1-c"
       region      = "europe-north1"
       native_name = "europe-north1-c"
-      longitude   = 60.57
-      latitude    = 27.19
+      latitude    = 60.57
+      longitude   = 27.19
       seller_name = "google"
     }
 
@@ -358,8 +358,8 @@ locals {
       zone        = "europe-southwest1-a"
       region      = "europe-southwest1"
       native_name = "europe-southwest1-a"
-      longitude   = 40.42
-      latitude    = 3.70
+      latitude    = 40.42
+      longitude   = 3.70
       seller_name = "google"
     }
 
@@ -367,8 +367,8 @@ locals {
       zone        = "europe-southwest1-b"
       region      = "europe-southwest1"
       native_name = "europe-southwest1-b"
-      longitude   = 40.42
-      latitude    = 3.70
+      latitude    = 40.42
+      longitude   = 3.70
       seller_name = "google"
     }
 
@@ -376,8 +376,8 @@ locals {
       zone        = "europe-southwest1-c"
       region      = "europe-southwest1"
       native_name = "europe-southwest1-c"
-      longitude   = 40.42
-      latitude    = 3.70
+      latitude    = 40.42
+      longitude   = 3.70
       seller_name = "google"
     }
 
@@ -385,8 +385,8 @@ locals {
       zone        = "europe-west1-b"
       region      = "europe-west1"
       native_name = "europe-west1-b"
-      longitude   = 50.47
-      latitude    = 3.82
+      latitude    = 50.47
+      longitude   = 3.82
       seller_name = "google"
     }
 
@@ -394,8 +394,8 @@ locals {
       zone        = "europe-west1-c"
       region      = "europe-west1"
       native_name = "europe-west1-c"
-      longitude   = 50.47
-      latitude    = 3.82
+      latitude    = 50.47
+      longitude   = 3.82
       seller_name = "google"
     }
 
@@ -403,8 +403,8 @@ locals {
       zone        = "europe-west1-d"
       region      = "europe-west1"
       native_name = "europe-west1-d"
-      longitude   = 50.47
-      latitude    = 3.82
+      latitude    = 50.47
+      longitude   = 3.82
       seller_name = "google"
     }
 
@@ -412,8 +412,8 @@ locals {
       zone        = "europe-west2-a"
       region      = "europe-west2"
       native_name = "europe-west2-a"
-      longitude   = 51.51
-      latitude    = -0.13
+      latitude    = 51.51
+      longitude   = -0.13
       seller_name = "google"
     }
 
@@ -421,8 +421,8 @@ locals {
       zone        = "europe-west2-b"
       region      = "europe-west2"
       native_name = "europe-west2-b"
-      longitude   = 51.51
-      latitude    = -0.13
+      latitude    = 51.51
+      longitude   = -0.13
       seller_name = "google"
     }
 
@@ -430,8 +430,8 @@ locals {
       zone        = "europe-west2-c"
       region      = "europe-west2"
       native_name = "europe-west2-c"
-      longitude   = 51.51
-      latitude    = -0.13
+      latitude    = 51.51
+      longitude   = -0.13
       seller_name = "google"
     }
 
@@ -439,8 +439,8 @@ locals {
       zone        = "europe-west3-a"
       region      = "europe-west3"
       native_name = "europe-west3-a"
-      longitude   = 50.11
-      latitude    = 8.68
+      latitude    = 50.11
+      longitude   = 8.68
       seller_name = "google"
     }
 
@@ -448,8 +448,8 @@ locals {
       zone        = "europe-west3-b"
       region      = "europe-west3"
       native_name = "europe-west3-b"
-      longitude   = 50.11
-      latitude    = 8.68
+      latitude    = 50.11
+      longitude   = 8.68
       seller_name = "google"
     }
 
@@ -457,8 +457,8 @@ locals {
       zone        = "europe-west3-c"
       region      = "europe-west3"
       native_name = "europe-west3-c"
-      longitude   = 50.11
-      latitude    = 8.68
+      latitude    = 50.11
+      longitude   = 8.68
       seller_name = "google"
     }
 
@@ -466,8 +466,8 @@ locals {
       zone        = "europe-west4-a"
       region      = "europe-west4"
       native_name = "europe-west4-a"
-      longitude   = 53.44
-      latitude    = 6.84
+      latitude    = 53.44
+      longitude   = 6.84
       seller_name = "google"
     }
 
@@ -475,8 +475,8 @@ locals {
       zone        = "europe-west4-b"
       region      = "europe-west4"
       native_name = "europe-west4-b"
-      longitude   = 53.44
-      latitude    = 6.84
+      latitude    = 53.44
+      longitude   = 6.84
       seller_name = "google"
     }
 
@@ -484,8 +484,8 @@ locals {
       zone        = "europe-west4-c"
       region      = "europe-west4"
       native_name = "europe-west4-c"
-      longitude   = 53.44
-      latitude    = 6.84
+      latitude    = 53.44
+      longitude   = 6.84
       seller_name = "google"
     }
 
@@ -493,8 +493,8 @@ locals {
       zone        = "europe-west6-a"
       region      = "europe-west6"
       native_name = "europe-west6-a"
-      longitude   = 47.38
-      latitude    = 8.54
+      latitude    = 47.38
+      longitude   = 8.54
       seller_name = "google"
     }
 
@@ -502,8 +502,8 @@ locals {
       zone        = "europe-west6-b"
       region      = "europe-west6"
       native_name = "europe-west6-b"
-      longitude   = 47.38
-      latitude    = 8.54
+      latitude    = 47.38
+      longitude   = 8.54
       seller_name = "google"
     }
 
@@ -511,8 +511,8 @@ locals {
       zone        = "europe-west6-c"
       region      = "europe-west6"
       native_name = "europe-west6-c"
-      longitude   = 47.38
-      latitude    = 8.54
+      latitude    = 47.38
+      longitude   = 8.54
       seller_name = "google"
     }
 
@@ -520,8 +520,8 @@ locals {
       zone        = "europe-west8-a"
       region      = "europe-west8"
       native_name = "europe-west8-a"
-      longitude   = 45.46
-      latitude    = 9.19
+      latitude    = 45.46
+      longitude   = 9.19
       seller_name = "google"
     }
 
@@ -529,8 +529,8 @@ locals {
       zone        = "europe-west8-b"
       region      = "europe-west8"
       native_name = "europe-west8-b"
-      longitude   = 45.46
-      latitude    = 9.19
+      latitude    = 45.46
+      longitude   = 9.19
       seller_name = "google"
     }
 
@@ -538,8 +538,8 @@ locals {
       zone        = "europe-west8-c"
       region      = "europe-west8"
       native_name = "europe-west8-c"
-      longitude   = 45.46
-      latitude    = 9.19
+      latitude    = 45.46
+      longitude   = 9.19
       seller_name = "google"
     }
 
@@ -547,8 +547,8 @@ locals {
       zone        = "europe-west9-a"
       region      = "europe-west9"
       native_name = "europe-west9-a"
-      longitude   = 48.86
-      latitude    = 2.35
+      latitude    = 48.86
+      longitude   = 2.35
       seller_name = "google"
     }
 
@@ -556,8 +556,8 @@ locals {
       zone        = "europe-west9-b"
       region      = "europe-west9"
       native_name = "europe-west9-b"
-      longitude   = 48.86
-      latitude    = 2.35
+      latitude    = 48.86
+      longitude   = 2.35
       seller_name = "google"
     }
 
@@ -565,8 +565,8 @@ locals {
       zone        = "europe-west9-c"
       region      = "europe-west9"
       native_name = "europe-west9-c"
-      longitude   = 48.86
-      latitude    = 2.35
+      latitude    = 48.86
+      longitude   = 2.35
       seller_name = "google"
     }
 
@@ -574,8 +574,8 @@ locals {
       zone        = "me-west1-a"
       region      = "me-west1"
       native_name = "me-west1-a"
-      longitude   = 32.09
-      latitude    = 34.78
+      latitude    = 32.09
+      longitude   = 34.78
       seller_name = "google"
     }
 
@@ -583,8 +583,8 @@ locals {
       zone        = "me-west1-b"
       region      = "me-west1"
       native_name = "me-west1-b"
-      longitude   = 32.09
-      latitude    = 34.78
+      latitude    = 32.09
+      longitude   = 34.78
       seller_name = "google"
     }
 
@@ -592,8 +592,8 @@ locals {
       zone        = "me-west1-c"
       region      = "me-west1"
       native_name = "me-west1-c"
-      longitude   = 32.09
-      latitude    = 34.78
+      latitude    = 32.09
+      longitude   = 34.78
       seller_name = "google"
     }
 
@@ -601,8 +601,8 @@ locals {
       zone        = "northamerica-northeast1-a"
       region      = "northamerica-northeast1"
       native_name = "northamerica-northeast1-a"
-      longitude   = 45.50
-      latitude    = -73.57
+      latitude    = 45.50
+      longitude   = -73.57
       seller_name = "google"
     }
 
@@ -610,8 +610,8 @@ locals {
       zone        = "northamerica-northeast1-b"
       region      = "northamerica-northeast1"
       native_name = "northamerica-northeast1-b"
-      longitude   = 45.50
-      latitude    = -73.57
+      latitude    = 45.50
+      longitude   = -73.57
       seller_name = "google"
     }
 
@@ -619,8 +619,8 @@ locals {
       zone        = "northamerica-northeast1-c"
       region      = "northamerica-northeast1"
       native_name = "northamerica-northeast1-c"
-      longitude   = 45.50
-      latitude    = -73.57
+      latitude    = 45.50
+      longitude   = -73.57
       seller_name = "google"
     }
 
@@ -628,8 +628,8 @@ locals {
       zone        = "northamerica-northeast2-a"
       region      = "northamerica-northeast2"
       native_name = "northamerica-northeast2-a"
-      longitude   = 43.65
-      latitude    = -79.38
+      latitude    = 43.65
+      longitude   = -79.38
       seller_name = "google"
     }
 
@@ -637,8 +637,8 @@ locals {
       zone        = "northamerica-northeast2-b"
       region      = "northamerica-northeast2"
       native_name = "northamerica-northeast2-b"
-      longitude   = 43.65
-      latitude    = -79.38
+      latitude    = 43.65
+      longitude   = -79.38
       seller_name = "google"
     }
 
@@ -646,8 +646,8 @@ locals {
       zone        = "northamerica-northeast2-c"
       region      = "northamerica-northeast2"
       native_name = "northamerica-northeast2-c"
-      longitude   = 43.65
-      latitude    = -79.38
+      latitude    = 43.65
+      longitude   = -79.38
       seller_name = "google"
     }
 
@@ -655,8 +655,8 @@ locals {
       zone        = "southamerica-east1-a"
       region      = "southamerica-east1"
       native_name = "southamerica-east1-a"
-      longitude   = -23.56
-      latitude    = -46.64
+      latitude    = -23.56
+      longitude   = -46.64
       seller_name = "google"
     }
 
@@ -664,8 +664,8 @@ locals {
       zone        = "southamerica-east1-b"
       region      = "southamerica-east1"
       native_name = "southamerica-east1-b"
-      longitude   = -23.56
-      latitude    = -46.64
+      latitude    = -23.56
+      longitude   = -46.64
       seller_name = "google"
     }
 
@@ -673,8 +673,8 @@ locals {
       zone        = "southamerica-east1-c"
       region      = "southamerica-east1"
       native_name = "southamerica-east1-c"
-      longitude   = -23.56
-      latitude    = -46.64
+      latitude    = -23.56
+      longitude   = -46.64
       seller_name = "google"
     }
 
@@ -682,8 +682,8 @@ locals {
       zone        = "southamerica-west1-a"
       region      = "southamerica-west1"
       native_name = "southamerica-west1-a"
-      longitude   = -33.45
-      latitude    = -70.67
+      latitude    = -33.45
+      longitude   = -70.67
       seller_name = "google"
     }
 
@@ -691,8 +691,8 @@ locals {
       zone        = "southamerica-west1-b"
       region      = "southamerica-west1"
       native_name = "southamerica-west1-b"
-      longitude   = -33.45
-      latitude    = -70.67
+      latitude    = -33.45
+      longitude   = -70.67
       seller_name = "google"
     }
 
@@ -700,8 +700,8 @@ locals {
       zone        = "southamerica-west1-c"
       region      = "southamerica-west1"
       native_name = "southamerica-west1-c"
-      longitude   = -33.45
-      latitude    = -70.67
+      latitude    = -33.45
+      longitude   = -70.67
       seller_name = "google"
     }
 
@@ -709,8 +709,8 @@ locals {
       zone        = "us-central1-a"
       region      = "us-central1"
       native_name = "us-central1-a"
-      longitude   = 41.88
-      latitude    = -93.10
+      latitude    = 41.88
+      longitude   = -93.10
       seller_name = "google"
     }
 
@@ -718,8 +718,8 @@ locals {
       zone        = "us-central1-b"
       region      = "us-central1"
       native_name = "us-central1-b"
-      longitude   = 41.88
-      latitude    = -93.10
+      latitude    = 41.88
+      longitude   = -93.10
       seller_name = "google"
     }
 
@@ -727,8 +727,8 @@ locals {
       zone        = "us-central1-c"
       region      = "us-central1"
       native_name = "us-central1-c"
-      longitude   = 41.88
-      latitude    = -93.10
+      latitude    = 41.88
+      longitude   = -93.10
       seller_name = "google"
     }
 
@@ -736,8 +736,8 @@ locals {
       zone        = "us-central1-f"
       region      = "us-central1"
       native_name = "us-central1-f"
-      longitude   = 41.88
-      latitude    = -93.10
+      latitude    = 41.88
+      longitude   = -93.10
       seller_name = "google"
     }
 
@@ -745,8 +745,8 @@ locals {
       zone        = "us-east1-b"
       region      = "us-east1"
       native_name = "us-east1-b"
-      longitude   = 33.84
-      latitude    = -81.16
+      latitude    = 33.84
+      longitude   = -81.16
       seller_name = "google"
     }
 
@@ -754,8 +754,8 @@ locals {
       zone        = "us-east1-c"
       region      = "us-east1"
       native_name = "us-east1-c"
-      longitude   = 33.84
-      latitude    = -81.16
+      latitude    = 33.84
+      longitude   = -81.16
       seller_name = "google"
     }
 
@@ -763,8 +763,8 @@ locals {
       zone        = "us-east1-d"
       region      = "us-east1"
       native_name = "us-east1-d"
-      longitude   = 33.84
-      latitude    = -81.16
+      latitude    = 33.84
+      longitude   = -81.16
       seller_name = "google"
     }
 
@@ -772,8 +772,8 @@ locals {
       zone        = "us-east4-a"
       region      = "us-east4"
       native_name = "us-east4-a"
-      longitude   = 37.43
-      latitude    = -78.66
+      latitude    = 37.43
+      longitude   = -78.66
       seller_name = "google"
     }
 
@@ -781,8 +781,8 @@ locals {
       zone        = "us-east4-b"
       region      = "us-east4"
       native_name = "us-east4-b"
-      longitude   = 37.43
-      latitude    = -78.66
+      latitude    = 37.43
+      longitude   = -78.66
       seller_name = "google"
     }
 
@@ -790,8 +790,8 @@ locals {
       zone        = "us-east4-c"
       region      = "us-east4"
       native_name = "us-east4-c"
-      longitude   = 37.43
-      latitude    = -78.66
+      latitude    = 37.43
+      longitude   = -78.66
       seller_name = "google"
     }
 
@@ -799,8 +799,8 @@ locals {
       zone        = "us-east5-a"
       region      = "us-east5"
       native_name = "us-east5-a"
-      longitude   = 39.96
-      latitude    = -83.00
+      latitude    = 39.96
+      longitude   = -83.00
       seller_name = "google"
     }
 
@@ -808,8 +808,8 @@ locals {
       zone        = "us-east5-b"
       region      = "us-east5"
       native_name = "us-east5-b"
-      longitude   = 39.96
-      latitude    = -83.00
+      latitude    = 39.96
+      longitude   = -83.00
       seller_name = "google"
     }
 
@@ -817,8 +817,8 @@ locals {
       zone        = "us-east5-c"
       region      = "us-east5"
       native_name = "us-east5-c"
-      longitude   = 39.96
-      latitude    = -83.00
+      latitude    = 39.96
+      longitude   = -83.00
       seller_name = "google"
     }
 
@@ -826,8 +826,8 @@ locals {
       zone        = "us-south1-a"
       region      = "us-south1"
       native_name = "us-south1-a"
-      longitude   = 32.78
-      latitude    = -96.80
+      latitude    = 32.78
+      longitude   = -96.80
       seller_name = "google"
     }
 
@@ -835,8 +835,8 @@ locals {
       zone        = "us-south1-b"
       region      = "us-south1"
       native_name = "us-south1-b"
-      longitude   = 32.78
-      latitude    = -96.80
+      latitude    = 32.78
+      longitude   = -96.80
       seller_name = "google"
     }
 
@@ -844,8 +844,8 @@ locals {
       zone        = "us-south1-c"
       region      = "us-south1"
       native_name = "us-south1-c"
-      longitude   = 32.78
-      latitude    = -96.80
+      latitude    = 32.78
+      longitude   = -96.80
       seller_name = "google"
     }
 
@@ -853,8 +853,8 @@ locals {
       zone        = "us-west1-a"
       region      = "us-west1"
       native_name = "us-west1-a"
-      longitude   = 45.59
-      latitude    = -121.18
+      latitude    = 45.59
+      longitude   = -121.18
       seller_name = "google"
     }
 
@@ -862,8 +862,8 @@ locals {
       zone        = "us-west1-b"
       region      = "us-west1"
       native_name = "us-west1-b"
-      longitude   = 45.59
-      latitude    = -121.18
+      latitude    = 45.59
+      longitude   = -121.18
       seller_name = "google"
     }
 
@@ -871,8 +871,8 @@ locals {
       zone        = "us-west1-c"
       region      = "us-west1"
       native_name = "us-west1-c"
-      longitude   = 45.59
-      latitude    = -121.18
+      latitude    = 45.59
+      longitude   = -121.18
       seller_name = "google"
     }
 
@@ -880,8 +880,8 @@ locals {
       zone        = "us-west2-a"
       region      = "us-west2"
       native_name = "us-west2-a"
-      longitude   = 34.05
-      latitude    = -118.24
+      latitude    = 34.05
+      longitude   = -118.24
       seller_name = "google"
     }
 
@@ -889,8 +889,8 @@ locals {
       zone        = "us-west2-b"
       region      = "us-west2"
       native_name = "us-west2-b"
-      longitude   = 34.05
-      latitude    = -118.24
+      latitude    = 34.05
+      longitude   = -118.24
       seller_name = "google"
     }
 
@@ -898,8 +898,8 @@ locals {
       zone        = "us-west2-c"
       region      = "us-west2"
       native_name = "us-west2-c"
-      longitude   = 34.05
-      latitude    = -118.24
+      latitude    = 34.05
+      longitude   = -118.24
       seller_name = "google"
     }
 
@@ -907,8 +907,8 @@ locals {
       zone        = "us-west3-a"
       region      = "us-west3"
       native_name = "us-west3-a"
-      longitude   = 40.76
-      latitude    = -111.89
+      latitude    = 40.76
+      longitude   = -111.89
       seller_name = "google"
     }
 
@@ -916,8 +916,8 @@ locals {
       zone        = "us-west3-b"
       region      = "us-west3"
       native_name = "us-west3-b"
-      longitude   = 40.76
-      latitude    = -111.89
+      latitude    = 40.76
+      longitude   = -111.89
       seller_name = "google"
     }
 
@@ -925,8 +925,8 @@ locals {
       zone        = "us-west3-c"
       region      = "us-west3"
       native_name = "us-west3-c"
-      longitude   = 40.76
-      latitude    = -111.89
+      latitude    = 40.76
+      longitude   = -111.89
       seller_name = "google"
     }
 
@@ -934,8 +934,8 @@ locals {
       zone        = "us-west4-a"
       region      = "us-west4"
       native_name = "us-west4-a"
-      longitude   = 36.17
-      latitude    = -115.14
+      latitude    = 36.17
+      longitude   = -115.14
       seller_name = "google"
     }
 
@@ -943,8 +943,8 @@ locals {
       zone        = "us-west4-b"
       region      = "us-west4"
       native_name = "us-west4-b"
-      longitude   = 36.17
-      latitude    = -115.14
+      latitude    = 36.17
+      longitude   = -115.14
       seller_name = "google"
     }
 
@@ -952,8 +952,8 @@ locals {
       zone        = "us-west4-c"
       region      = "us-west4"
       native_name = "us-west4-c"
-      longitude   = 36.17
-      latitude    = -115.14
+      latitude    = 36.17
+      longitude   = -115.14
       seller_name = "google"
     }
 
