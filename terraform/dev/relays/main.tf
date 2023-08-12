@@ -278,8 +278,31 @@ output "datacenters" {
   value = data.networknext_datacenters.test
 }
 
+locals {
+  datacenter_map = {
+    for datacenter in networknext_datacenter.datacenters:
+      datacenter.name => datacenter
+  }
+}
 
+resource "networknext_relay_keypair" "relay_keypairs" {
+  for_each = local.relays
+}
 
+resource "networknext_relay" "relays" {
+  for_each = local.relays
+  name = each.key
+  datacenter_id = local.datacenter_map[each.value.datacenter_name].id
+  public_key_base64=networknext_relay_keypair.relay_keypairs[each.key].public_key_base64
+  private_key_base64=networknext_relay_keypair.relay_keypairs[each.key].private_key_base64
+
+  # todo: might be a problem here. separated public ip and port?
+  public_ip = each.value.public_address
+
+  # todo: internal address. port etc.
+
+  # todo: ssh address, port, user etc.
+}
 
 
 /*

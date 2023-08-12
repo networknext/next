@@ -6,14 +6,36 @@ DONE
 
 	This means don't work with seller_names and datacenter_names as drivers, but instead do for_each over the maps.
 	
-TODO
-
 	Now we need to extend each generated.tf per-supplier to add the following per-datacenter map entry:
 
 		1. seller_name --> eg. "google" for all google relays
 		2. native_name --> eg. zone name, for google cloud.
 		3. latitude
 		4. longitude
+
+TODO
+
+	Now I need to create the actual relays. It should be easy...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	----------
 
