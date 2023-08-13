@@ -91,7 +91,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~= 5.0"
+      version = "~> 5.0"
     }
   }
 }
