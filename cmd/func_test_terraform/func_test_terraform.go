@@ -91,7 +91,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = ">= 5.0.3"
+      version = "~= 5.0"
     }
   }
 }
@@ -252,7 +252,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = ">= 5.0.3"
+      version = "~> 5.0"
     }
   }
 }
