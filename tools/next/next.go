@@ -744,7 +744,7 @@ func getDatabase() *db.Database {
 	}
 
 	if env.Name != "local" {
-		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", env.DatabaseURL))
+		database_binary := GetBinary(fmt.Sprintf("%s/admin/database", env.AdminURL))
 		os.WriteFile("database.bin", database_binary, 0644)
 	}
 

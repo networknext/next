@@ -14,6 +14,7 @@ import (
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
+	db "github.com/networknext/next/modules/database"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
@@ -28,12 +29,14 @@ var service *common.Service
 
 var privateKey string
 
+var pgsqlConfig string
+
 func main() {
 
 	service = common.CreateService("api")
 
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
-	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
+	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
@@ -80,6 +83,8 @@ func main() {
 	if enableAdmin {
 
 		controller = admin.CreateController(pgsqlConfig)
+
+		service.Router.HandleFunc("/admin/database", isAuthorized(adminDatabaseHandler)).Methods("GET")
 
 		service.Router.HandleFunc("/admin/create_customer", isAuthorized(adminCreateCustomerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/customers", isAuthorized(adminReadCustomersHandler)).Methods("GET")
@@ -372,6 +377,27 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	data := common.LoadMasterServiceData(pool, "relay_backend", "cost_matrix")
+	w.Write(data)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func adminDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	database, err := db.ExtractDatabase(pgsqlConfig)
+	if err != nil {
+		fmt.Printf("error: failed to extract database: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.WriteHeader(http.StatusOK)
+	data := database.GetBinary()
 	w.Write(data)
 }
 
