@@ -304,6 +304,10 @@ output "database_relays" {
   value = local.database_relays
 }
 
+output "all_relays" {
+  value = data.networknext_relays.relays
+}
+
 # ----------------------------------------------------------------------------------------
 
 # Setup the raspberry buyer

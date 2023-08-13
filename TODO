@@ -78,6 +78,10 @@ TODO
 
 	---------------
 
+	Need a way to get errors, especially validation errors down to the next tool as text.
+
+	---------------
+
 	Implement "next commit"?
 
 	Download the database.bin then commit it to google cloud storage?
@@ -94,6 +98,13 @@ TODO
 
 	----------
 
+	I would like for each service instance to have the git tag embedded and known.
+
+	The API "pong" could return a pong, and also the tag.
+
+	This would provide a nice confirmation that the tag that you have deployed is live.
+
+	----------
 
 
 
