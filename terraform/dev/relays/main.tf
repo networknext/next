@@ -21,7 +21,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0.2"
+      version = "~> 5.0.4"
     }
   }
 }
@@ -303,6 +303,10 @@ locals {
 
 output "database_relays" {
   value = local.database_relays
+}
+
+output "all_relays" {
+  value = networknext_relay.relays
 }
 
 # ----------------------------------------------------------------------------------------

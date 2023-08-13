@@ -78,10 +78,18 @@ DONE
 
 	Set up destination datacenters for the raspberry buyer.
 
-TODO
-
 	Amazon relay internal groups don't appear to be set correctly. Each amazon relay should have its region set as internal group, since they
 	can only send packets via internal addresses within their region.
+
+	I have confirmed that the create relay coming from terraform seems to (at least at the database level), have an internal group of ""
+
+	Not sure if it is JSON serialization level problems, or database problems, but I suspect the JSON is not passing across the internal_group on create.
+
+	Confirmed. We were using version 5.0.2 which didn't have the JSON fixes.
+
+TODO
+
+	Recreate relays w. terraform and verify amazon internal group is set correctly.
 
 	---------------
 
