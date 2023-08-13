@@ -893,6 +893,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		Name            string
 		PublicAddress   string
 		InternalAddress string
+		InternalGroup   string
 		Id              string
 		Status          string
 		Sessions        int
@@ -914,6 +915,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if adminRelaysResponse.Relays[i].InternalIP != "0.0.0.0" {
 			relay.InternalAddress = fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].InternalIP, adminRelaysResponse.Relays[i].InternalPort)
 		}
+		relay.InternalGroup = adminRelaysResponse.Relays[i].InternalGroup
 		relay.Status = "offline"
 		relay.Sessions = 0
 		relay.Version = adminRelaysResponse.Relays[i].Version

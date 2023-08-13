@@ -68,29 +68,44 @@ DONE
 
 	Extend "next database" to always delete the cached database and grab it again on env change
 
-TODO
-
 	Extend admin REST API to have a database method.
 
 	Call this admin database method when we "getDatabase".
 
 	The "next" tool works from the SQL. The runtime works from the database.bin
 
+	Verified that I can now go "next select dev" and "next database" and it prints the contents of the SQL db.
+
+	Set up destination datacenters for the raspberry buyer.
+
+TODO
+
+	Amazon relay internal groups don't appear to be set correctly. Each amazon relay should have its region set as internal group, since they
+	can only send packets via internal addresses within their region.
+
 	---------------
 
 	Need a way to get errors, especially validation errors down to the next tool as text.
 
-	---------------
-
-	Implement "next commit"?
-
-	Download the database.bin then commit it to google cloud storage?
+	Diving in to the API ssh console is not the way to debug why the database doesn't validate...
 
 	---------------
 
-	Need to extend 'next' tool env to include VPN_ADDRESS config var.
+	Implement "next commit"
 
-	Need to get other things from environment as needed... eg. RELAY_BACKEND_ADDRESS etc.
+	Extend the admin API to have a "PUT" method called "commit"
+
+	This takes the database.bin in the PUT data, parses it, validates it, then uploads to google cloud storage for the env.
+
+	IMPORTANT: This method also needs a way to return validation errors down to the caller as text to be printed out from the next tool.
+
+	---------------
+
+	Extend 'next' tool env to include:
+
+		VPNAddress
+		RelayBackendAddress
+		RelayBackendPublicKey
 
 	---------------
 
@@ -98,9 +113,11 @@ TODO
 
 	----------
 
-	I would like for each service instance to have the git tag embedded and known.
+	Each service instance to have the git tag embedded and known, and it should be included in the status output and console TTY for the service when it runs.
 
-	The API "pong" could return a pong, and also the tag.
+	----------
+
+	The API "pong" could return a pong, and also the build tag, if it's not set to "" (eg. in a local build)
 
 	This would provide a nice confirmation that the tag that you have deployed is live.
 

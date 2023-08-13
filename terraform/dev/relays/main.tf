@@ -13,6 +13,7 @@ variable "relay_public_key" { type = string }
 variable "relay_private_key" { type = string }
 variable "relay_backend_hostname" { type = string }
 variable "relay_backend_public_key" { type = string }
+variable "raspberry_datacenters" { type = list(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -304,10 +305,6 @@ output "database_relays" {
   value = local.database_relays
 }
 
-output "all_relays" {
-  value = data.networknext_relays.relays
-}
-
 # ----------------------------------------------------------------------------------------
 
 # Setup the raspberry buyer
@@ -331,6 +328,13 @@ resource "networknext_buyer" raspberry {
   customer_id = networknext_customer.raspberry.id
   route_shader_id = networknext_route_shader.raspberry.id
   public_key_base64 = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+}
+
+resource "networknext_buyer_datacenter_settings" raspberry {
+  count = length(var.raspberry_datacenters)
+  buyer_id = networknext_buyer.raspberry.id
+  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
+  enable_acceleration = true
 }
 
 # ----------------------------------------------------------------------------------------

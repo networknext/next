@@ -298,7 +298,7 @@ func (database *Database) GetDatacenterRelays(datacenterId uint64) []uint64 {
 
 func (database *Database) String() string {
 
-	output := "\nHeaders:\n\n"
+	output := "Headers:\n\n"
 
 	// header
 
