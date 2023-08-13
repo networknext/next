@@ -1239,12 +1239,11 @@ func ExtractDatabase(config string) (*Database, error) {
 		}
 
 		relay.SSHAddress = core.ParseAddress(row.ssh_ip)
-		relay.SSHAddress.Port = row.ssh_port
-		relay.SSHUser = row.ssh_user
-
 		if relay.SSHAddress.String() == "0.0.0.0:0" {
 			relay.SSHAddress = relay.PublicAddress
 		}
+		relay.SSHAddress.Port = row.ssh_port
+		relay.SSHUser = row.ssh_user
 
 		relay.PublicKey, err = base64.StdEncoding.DecodeString(row.public_key_base64)
 		if err != nil {
