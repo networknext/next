@@ -190,7 +190,7 @@ func (database *Database) Validate() error {
 			return fmt.Errorf("relay %s ssh address is 0.0.0.0", relay.Name)
 		}
 		if relay.SSHAddress.Port == 0 {
-			return fmt.Errorf("relay %s ssh address port is zero", relay.Name)
+			return fmt.Errorf("relay %s ssh address port is zero: '%s'", relay.Name, relay.SSHAddress.String())
 		}
 	}
 
@@ -1239,6 +1239,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		}
 
 		relay.SSHAddress = core.ParseAddress(row.ssh_ip)
+		relay.SSHAddress.Port = row.ssh_port
 		relay.SSHUser = row.ssh_user
 
 		if relay.SSHAddress.String() == "0.0.0.0:0" {
