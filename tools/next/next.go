@@ -226,41 +226,6 @@ func secureShell(user string, address string, port int) {
 	}
 }
 
-func readJSONData(entity string, args []string) []byte {
-	// Check if the input is piped or a filepath
-	fileInfo, err := os.Stdin.Stat()
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Error checking stdin stat: %v\n", err), 1)
-	}
-	isPipedInput := fileInfo.Mode()&os.ModeCharDevice == 0
-
-	var data []byte
-	if isPipedInput {
-		// Read the piped input from stdin
-		data, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
-		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error reading from stdin: %v\n", err), 1)
-		}
-	} else {
-		// Read the file at the given filepath
-		if len(args) == 0 {
-			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\n", entity), 0)
-		}
-
-		data, err = ioutil.ReadFile(args[0])
-		if err != nil {
-			// Can't read the file, assume it is raw json data
-			data = []byte(args[0])
-			if !json.Valid(data) {
-				// It's not valid json, so error out
-				handleRunTimeError("invalid input, not a valid filepath or valid JSON", 1)
-			}
-		}
-	}
-
-	return data
-}
-
 // level 0: user error
 // level 1: program error
 func handleRunTimeError(msg string, level int) {
@@ -344,6 +309,10 @@ func main() {
 			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
 			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
 			env.APIKey = getKeyValue(envFilePath, "API_KEY")
+			env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
+			env.RelayBackendHostname = getKeyValue(envFilePath, "RELAY_BACKEND_HOSTNAME")
+			env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
+			env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
 			env.Write()
 
 			cachedDatabase = nil
@@ -904,8 +873,8 @@ func PostJSON(url string, requestData interface{}, responseData interface{}) err
 var cachedDatabase *db.Database
 
 type AdminDatabaseResponse struct {
-	Database string 		`json:"database_base64"`
-	Error    string      `json:"error"`
+	Database string `json:"database_base64"`
+	Error    string `json:"error"`
 }
 
 func getDatabase() *db.Database {
@@ -947,12 +916,12 @@ func printDatabase() {
 }
 
 type AdminCommitRequest struct {
-	User 		string `json:"user"`
-	Database 	string `json:"database_base64"`
+	User     string `json:"user"`
+	Database string `json:"database_base64"`
 }
 
 type AdminCommitResponse struct {
-	Error    string         `json:"error"`
+	Error string `json:"error"`
 }
 
 func commitDatabase() {
@@ -960,7 +929,7 @@ func commitDatabase() {
 	database, err := db.LoadDatabase("database.bin")
 	if err != nil {
 		fmt.Printf("error: could not load database.bin")
-		os.Exit(1)		
+		os.Exit(1)
 	}
 
 	gitUser := bashQuiet("git config user.name")
@@ -982,7 +951,7 @@ func commitDatabase() {
 	if err != nil {
 		fmt.Printf("error: could not post JSON to commit database endpoint: %v", err)
 		os.Exit(1)
-	}	
+	}
 
 	if response.Error != "" {
 		fmt.Printf("error: failed to commit database: %s\n\n", response.Error)
@@ -1049,11 +1018,11 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		}
 		// todo: flags not ready yet?
 		/*
-		if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
-			relay.Status = "shutting down"
-		} else {
-			*/
-			relay.Status = "online"
+			if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
+				relay.Status = "shutting down"
+			} else {
+		*/
+		relay.Status = "online"
 		// }
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
@@ -1152,7 +1121,6 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
-
 	SetupRelayScript = `
 
 # run once only
@@ -1171,7 +1139,7 @@ sudo echo "source ~/.bashrc" >> ~/.profile.sh
 echo downloading relay binary
 
 rm -f $RELAY_VERSION
-wget https://storage.googleapis.com/test_network_next_relay_artifacts/$RELAY_VERSION --no-cache
+wget https://storage.googleapis.com/$RELAY_ARTIFACTS_BUCKET_NAME/$RELAY_VERSION --no-cache
 sudo mv $RELAY_VERSION relay
 sudo chmod +x relay
 
@@ -1244,18 +1212,17 @@ sudo touch /etc/next_setup_completed
 echo setup completed
 `
 
-	StartRelayScript   = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
+	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 
-	StopRelayScript    = `sudo systemctl stop relay && sudo systemctl disable relay`
+	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 
-	// todo: we need to configure where relay artifacts are. it's hard coded in this command
-	LoadRelayScript    = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/test_network_next_relay_artifacts/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	LoadRelayScript = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget %s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
 
-	RebootRelayScript  = `sudo reboot`
+	RebootRelayScript = `sudo reboot`
 
-	ConfigRelayScript  = `sudo vi /app/relay.env && exit`
+	ConfigRelayScript = `sudo vi /app/relay.env && exit`
 )
 
 func getRelayInfo(env Environment, regex string) []admin.RelayData {
@@ -1330,16 +1297,16 @@ func setupRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			
+
 			if relays[i].SSH_IP == "0.0.0.0" {
 				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			
+
 			fmt.Printf("setting up relay %s\n", relays[i].RelayName)
-			
+
 			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			
+
 			script := SetupRelayScript
 
 			relayName := relays[i].RelayName
@@ -1348,11 +1315,10 @@ func setupRelays(env Environment, regexes []string) {
 			relayInternalAddress := fmt.Sprintf("%s:%d", relays[i].InternalIP, relays[i].InternalPort)
 			relayPublicKeyBase64 := relays[i].PublicKeyBase64
 			relayPrivateKeyBase64 := relays[i].PrivateKeyBase64
-
-			// todo: these need to come from environment config
-			relayBackendHostname := "dev.losangelesfreewaysatnight.com"
-			relayBackendPublicKeyBase64 := "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-			vpnAddress := "45.79.157.168" // todo: need to get this from env config
+			relayBackendHostname := env.RelayBackendHostname
+			relayBackendPublicKeyBase64 := env.RelayBackendPublicKey
+			vpnAddress := env.VPNAddress
+			relayArtifactsBucketName := env.RelayArtifactsBucketName
 
 			environment := env.Name
 
@@ -1366,14 +1332,16 @@ func setupRelays(env Environment, regexes []string) {
 			script = strings.ReplaceAll(script, "$RELAY_BACKEND_PUBLIC_KEY", relayBackendPublicKeyBase64)
 			script = strings.ReplaceAll(script, "$VPN_ADDRESS", vpnAddress)
 			script = strings.ReplaceAll(script, "$ENVIRONMENT", environment)
+			script = strings.ReplaceAll(script, "$RELAY_ARTIFACTS_BUCKET_NAME", relayArtifactsBucketName)
 
 			con.ConnectAndIssueCmd(script)
 
 			if len(relays) > 1 {
-				fmt.Printf( "\n----------------------------------------------\n\n")
+				fmt.Printf("\n----------------------------------------------\n\n")
 			}
 		}
 	}
+	fmt.Printf("\n")
 }
 
 func startRelays(env Environment, regexes []string) {
@@ -1469,7 +1437,7 @@ func loadRelays(env Environment, regexes []string, version string) {
 			}
 			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
 			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
+			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version))
 		}
 	}
 }
@@ -1532,24 +1500,32 @@ func keygen() {
 // --------------------------------------------------------------------------------------------
 
 type Environment struct {
-	Name          string `json:"name"`
-	AdminURL      string `json:"admin_url"`
-	PortalURL     string `json:"portal_url"`
-	DatabaseURL   string `json:"database_url"`
-	SSHKeyFile    string `json:"ssh_key_filepath"`
-	APIPrivateKey string `json:"api_private_key"`
-	APIKey        string `json:"api_key"`
+	Name                     string `json:"name"`
+	AdminURL                 string `json:"admin_url"`
+	PortalURL                string `json:"portal_url"`
+	DatabaseURL              string `json:"database_url"`
+	SSHKeyFile               string `json:"ssh_key_filepath"`
+	APIPrivateKey            string `json:"api_private_key"`
+	APIKey                   string `json:"api_key"`
+	VPNAddress               string `json:"vpn_address"`
+	RelayBackendHostname     string `json:"relay_backend_hostname"`
+	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
+	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
 }
 
 func (e *Environment) String() string {
 	var sb strings.Builder
-
-	sb.WriteString(fmt.Sprintf("Environment: %s\n\n", e.Name))
-	sb.WriteString(fmt.Sprintf("Admin URL: %s\n", e.AdminURL))
-	sb.WriteString(fmt.Sprintf("Portal URL: %s\n", e.PortalURL))
-	sb.WriteString(fmt.Sprintf("Database URL: %s\n\n", e.DatabaseURL))
-	sb.WriteString(fmt.Sprintf("SSHKeyFile: %s\n", e.SSHKeyFile))
-
+	sb.WriteString(fmt.Sprintf("[%s]\n\n", e.Name))
+	sb.WriteString(fmt.Sprintf(" + Admin URL = %s\n", e.AdminURL))
+	sb.WriteString(fmt.Sprintf(" + Portal URL = %s\n", e.PortalURL))
+	sb.WriteString(fmt.Sprintf(" + Database URL = %s\n", e.DatabaseURL))
+	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
+	sb.WriteString(fmt.Sprintf(" + API Private Key = %s\n", e.APIPrivateKey))
+	sb.WriteString(fmt.Sprintf(" + API Key = %s\n", e.APIKey))
+	sb.WriteString(fmt.Sprintf(" + VPN Address = %s\n", e.VPNAddress))
+	sb.WriteString(fmt.Sprintf(" + Relay Backend Hostname = %s\n", e.RelayBackendHostname))
+	sb.WriteString(fmt.Sprintf(" + Relay Backend Public Key = %s\n", e.RelayBackendPublicKey))
+	sb.WriteString(fmt.Sprintf(" + Relay Artifacts Bucket Name = %s\n", e.RelayArtifactsBucketName))
 	return sb.String()
 }
 

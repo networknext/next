@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,9 +14,9 @@ import (
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
+	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
-	db "github.com/networknext/next/modules/database"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
@@ -392,8 +392,8 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminDatabaseResponse struct {
-	Database string 		`json:"database_base64"`
-	Error    string         `json:"error"`
+	Database string `json:"database_base64"`
+	Error    string `json:"error"`
 }
 
 func adminDatabaseHandler(w http.ResponseWriter, r *http.Request) {
@@ -419,12 +419,12 @@ func adminDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type AdminCommitRequest struct {
-	User 		string `json:"user"`
-	Database 	string `json:"database_base64"`
+	User     string `json:"user"`
+	Database string `json:"database_base64"`
 }
 
 type AdminCommitResponse struct {
-	Error    string         `json:"error"`
+	Error string `json:"error"`
 }
 
 func bash(command string) bool {

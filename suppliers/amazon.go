@@ -121,7 +121,7 @@ type RegionsResponse struct {
 
 type RegionData struct {
 	RegionName string
-	Excluded bool
+	Excluded   bool
 }
 
 type AvailabilityZonesResponse struct {
@@ -324,7 +324,7 @@ func main() {
 
 	for i := range regionsResponse.Regions {
 		if regionsResponse.Regions[i].Excluded {
-			fmt.Printf( "  %s\n", regionsResponse.Regions[i].RegionName)
+			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
 		}
 	}
 

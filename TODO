@@ -40,21 +40,37 @@ DONE
 
 	This would provide a nice confirmation that the tag that you have deployed is live.
 
-TODO
-
 	API func test needs to test the "admin/database" method
 
-	---------------
+	Tidy up env in next.go
 
-	Extend 'next' tool env to include:
-
-		VPNAddress
-		RelayBackendAddress
-		RelayBackendPublicKey
-
-	---------------
+TODO
 
 	For bare metal relays, "next setup" must detect that the initial setup has not run, and perform it manually.
+
+	---------------
+
+
+
+
+
+
+
+
+
+	---------------
+
+	Get the portal working again
+
+	---------------
+
+
+
+
+
+
+
+
 
 	-----------------------------------
 

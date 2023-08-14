@@ -410,7 +410,7 @@ func versionHandlerFunc(buildTime string, commitMessage string, commitHash strin
 		"build_time":     buildTime,
 		"commit_message": commitMessage,
 		"commit_hash":    commitHash,
-		"tag":    	      tag,
+		"tag":            tag,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

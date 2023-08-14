@@ -1892,8 +1892,8 @@ func test_relay_keypair() {
 }
 
 type AdminDatabaseResponse struct {
-	Database string 		`json:"database_base64"`
-	Error    string      `json:"error"`
+	Database string `json:"database_base64"`
+	Error    string `json:"error"`
 }
 
 func test_database() {
