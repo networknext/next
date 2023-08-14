@@ -1057,6 +1057,10 @@ blocks:
           commands:
             - cd ./dist && ./func_test_api test_buyer_datacenter_settings
 
+        - name: "test_database"
+          commands:
+            - cd ./dist && ./func_test_api test_database
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (portal)"

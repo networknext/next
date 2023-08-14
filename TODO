@@ -34,15 +34,15 @@ DONE
 
 	Extend next tool to pass up the database commit request.
 
-TODO
-
 	Each service instance to have the git tag embedded and known, and it should be included in the status output and console TTY for the service when it runs.
 
-	----------
-
-	The API "pong" could return a pong, and also the build tag, if it's not set to "" (eg. in a local build)
+	The API "pong" could return a pong, and also the build tag, or the dev if no tag is applied (eg. local builds)
 
 	This would provide a nice confirmation that the tag that you have deployed is live.
+
+TODO
+
+	API func test needs to test the "admin/database" method
 
 	---------------
 
@@ -54,58 +54,13 @@ TODO
 
 	---------------
 
-	API func test needs to test the "admin/database" method
-
-	---------------
-
-	Terraform func test needs to create enough resources of each type to avoid hitting the hex issue I just had.
-
-	---------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
-
-	Then this needs to be plugged in to the dev terraform setup
-
-	https://registry.terraform.io/providers/vancluever/acme/latest/docs/guides/dns-providers-cloudflare
-
-	https://letsencrypt.org/how-it-works/
-
-	"We recommend that most people with shell access use the Certbot ACME client. It can automate certificate issuance and installation with no downtime. It also has expert modes for people who don’t want autoconfiguration. It’s easy to use, works on many operating systems, and has great documentation. Visit the Certbot site to get customized instructions for your operating system and web server."
-
-	https://certbot.eff.org
-
-	https://registry.terraform.io/providers/vancluever/acme/latest
-
-	https://itnext.io/lets-encrypt-certs-with-terraform-f870def3ce6d
-
-	https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/certificate_pack
-
-	https://itnext.io/lets-encrypt-certs-with-terraform-f870def3ce6d
-
-	https://blog.bryantluk.com/post/2018/06/02/terraform-and-lets-encrypt-on-google-cloud-platform/
-
-	https://cloud.google.com/certificate-authority-service/docs/using-terraform
-
-	https://xbery.medium.com/say-goodbye-to-lets-encrypt-welcome-google-managed-ssl-certificates-4d92831750e1
-
-	^------ winner. work directly with google. may need to bypass cloudflare?
+	For bare metal relays, "next setup" must detect that the initial setup has not run, and perform it manually.
 
 	-----------------------------------
 
 	API service must run over https in dev.
+
+	https://xbery.medium.com/say-goodbye-to-lets-encrypt-welcome-google-managed-ssl-certificates-4d92831750e1
 
 	-----------------------------------
 
@@ -205,16 +160,6 @@ Nice to have:
 
 	It's wasteful to pass this data back to the client with each session update response.
 
-	---------------
-
-	Implement the near relay ping token.
-
-	We need to do this now, so we don't have problems with it in the future.
-
-	It can be as simple as an expire time for pings
-
-	The relay can also have a count of the maximum number of pings to reply to, eg. 10 * 10 = 100.
-
 	--------------
 
 	Extend the SDK so we have the option of doing near relay pings at multiple times throughout the session.
@@ -227,10 +172,6 @@ Nice to have:
 
 	Disable SSH related actions in "local". They don't have anywhere to go...
 
-	--------------
-
-	Functional tests to verify that relay gateway, relay backend, server backend 5 are resilient to invalid or won't read in bad database.bin files
-
 	---------------
 
 	I really can't answer the question "why are half the relays not carrying sessions in dev?"
@@ -238,8 +179,6 @@ Nice to have:
 	Is it just a property of the optimizer, eg. it will go away if I disable mispredict and set all costs to zero?
 
 	Or is there some sort of bias causing this. It seems important to explore this and work it out.
-
-	If there is some systemic bias that just makes some relays carry a lot of sessions while other relays don't... that's a serious problem in production.
 
 	---------------
 
@@ -327,7 +266,6 @@ Nice to have:
 
 	Multipath across two network next routes.
 
-	--------------
 	--------------
 
 	There are issues where cleanup does not occur in func tests due to panics.

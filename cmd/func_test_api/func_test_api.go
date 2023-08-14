@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/admin"
+	"github.com/networknext/next/modules/common"
+	db "github.com/networknext/next/modules/database"
 )
 
 var hostname = "http://127.0.0.1:50000"
@@ -1440,7 +1442,7 @@ func test_buyer() {
 		BuyerName:       "Test",
 		CustomerId:      customerId,
 		RouteShaderId:   routeShaderId,
-		PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
+		PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
 	}
 
 	buyerId := uint64(0)
@@ -1618,7 +1620,7 @@ func test_buyer_datacenter_settings() {
 			BuyerName:       "Test",
 			CustomerId:      customerId,
 			RouteShaderId:   routeShaderId,
-			PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
+			PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
 		}
 
 		var response CreateBuyerResponse
@@ -1889,6 +1891,264 @@ func test_relay_keypair() {
 	}
 }
 
+type AdminDatabaseResponse struct {
+	Database string 		`json:"database_base64"`
+	Error    string      `json:"error"`
+}
+
+func test_database() {
+
+	fmt.Printf("\ntest_database\n\n")
+
+	clearDatabase()
+
+	api_cmd, _ := api()
+
+	defer func() {
+		api_cmd.Process.Signal(os.Interrupt)
+		api_cmd.Wait()
+	}()
+
+	// create customer
+
+	customerId := uint64(0)
+	{
+		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
+
+		var response CreateCustomerResponse
+
+		err := Create("admin/create_customer", customer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		customerId = response.Customer.CustomerId
+	}
+
+	// create route shader
+
+	routeShaderId := uint64(0)
+	{
+		routeShader := admin.RouteShaderData{
+			RouteShaderName:               "Test",
+			ABTest:                        true,
+			AcceptableLatency:             10.0,
+			AcceptablePacketLossInstant:   0.25,
+			AcceptablePacketLossSustained: 0.01,
+			AnalysisOnly:                  true,
+			BandwidthEnvelopeUpKbps:       1024,
+			BandwidthEnvelopeDownKbps:     512,
+			DisableNetworkNext:            true,
+			LatencyReductionThreshold:     10.0,
+			Multipath:                     true,
+			SelectionPercent:              100,
+			MaxLatencyTradeOff:            20,
+			MaxNextRTT:                    200,
+			RouteSwitchThreshold:          10,
+			RouteSelectThreshold:          5,
+			RTTVeto:                       10,
+			ForceNext:                     true,
+			RouteDiversity:                5,
+		}
+
+		var response CreateRouteShaderResponse
+
+		err := Create("admin/create_route_shader", routeShader, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		routeShaderId = response.RouteShader.RouteShaderId
+	}
+
+	// create buyer
+
+	buyerId := uint64(0)
+	{
+		buyer := admin.BuyerData{
+			BuyerName:       "Test",
+			CustomerId:      customerId,
+			RouteShaderId:   routeShaderId,
+			PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
+		}
+
+		var response CreateBuyerResponse
+
+		err := Create("admin/create_buyer", buyer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		buyerId = response.Buyer.BuyerId
+	}
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+
+		var response CreateSellerResponse
+
+		err := Create("admin/create_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		sellerId = response.Seller.SellerId
+	}
+
+	// create datacenter
+
+	datacenterId := uint64(0)
+	{
+		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+
+		var response CreateDatacenterResponse
+
+		err := Create("admin/create_datacenter", datacenter, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		datacenterId = response.Datacenter.DatacenterId
+	}
+
+	// create buyer datacenter settings
+
+	expected := admin.BuyerDatacenterSettings{
+		BuyerId:            buyerId,
+		DatacenterId:       datacenterId,
+		EnableAcceleration: true,
+	}
+
+	{
+		settings := expected
+
+		var response CreateBuyerDatacenterSettingsResponse
+
+		err := Create("admin/create_buyer_datacenter_settings", settings, &response)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// read all settings
+	{
+		response := ReadBuyerDatacenterSettingsListResponse{}
+
+		err := GetJSON("admin/buyer_datacenter_settings", &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(response.Settings) != 1 {
+			panic(fmt.Sprintf("expect one setting in response, got %d", len(response.Settings)))
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings[0] != expected {
+			panic("buyer datacenter settings do not match expected")
+		}
+	}
+
+	// read specific settings
+	{
+		response := ReadBuyerDatacenterSettingsResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/buyer_datacenter_settings/%x/%x", buyerId, datacenterId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings != expected {
+			panic("settings do not match expected")
+		}
+	}
+
+	// update settings
+	{
+		expected.EnableAcceleration = false
+
+		settings := expected
+
+		response := UpdateBuyerDatacenterSettingsResponse{}
+
+		err := Update("admin/update_buyer_datacenter_settings", settings, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings != expected {
+			panic("settings do not match expected")
+		}
+	}
+
+	// delete settings
+	{
+		response := DeleteBuyerDatacenterSettingsResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_buyer_datacenter_settings/%x/%x", buyerId, datacenterId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+
+	// get database and verify it
+
+	var response AdminDatabaseResponse
+
+	err := GetJSON("admin/database", &response)
+
+	if err != nil {
+		panic(err)
+	}
+
+	database_binary, err := base64.StdEncoding.DecodeString(response.Database)
+	if err != nil {
+		panic(err)
+	}
+
+	tempFile := fmt.Sprintf("/tmp/database-%s.bin", common.RandomString(64))
+	err = os.WriteFile(tempFile, database_binary, 0666)
+	if err != nil {
+		panic(err)
+	}
+	database, err := db.LoadDatabase(tempFile)
+	if err != nil {
+		panic(err)
+	}
+	err = database.Validate()
+	if err != nil {
+		panic(err)
+	}
+}
+
 // ----------------------------------------------------------------------------------------
 
 type test_function func()
@@ -1904,6 +2164,7 @@ func main() {
 		test_buyer,
 		test_buyer_datacenter_settings,
 		test_relay_keypair,
+		test_database,
 	}
 
 	var tests []test_function
