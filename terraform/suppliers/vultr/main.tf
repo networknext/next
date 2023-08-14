@@ -30,7 +30,7 @@ resource "vultr_ssh_key" "relay" {
 
 resource "vultr_startup_script" "setup_relay" {
   name   = "setup-relay"
-  script = base64encode(file("./setup_relay.sh"))
+  script = base64encode(replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address))
 }
 
 data "vultr_plan" "relay" {
@@ -59,6 +59,8 @@ resource "vultr_instance" "relay" {
   script_id   = vultr_startup_script.setup_relay.id
 }
 
+// todo: temporarily disabled due to quota issue
+/*
 resource "vultr_reserved_ip" "relay" {
   for_each    = var.relays
   label       = each.key
@@ -66,6 +68,7 @@ resource "vultr_reserved_ip" "relay" {
   ip_type     = "v4"
   instance_id = vultr_instance.relay[each.key].id
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 

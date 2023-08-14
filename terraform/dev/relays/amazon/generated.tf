@@ -1694,6 +1694,7 @@ module "relay_amazon_virginia_1" {
   type              = "m5a.large"
   ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
   security_group_id = module.region_us_east_1.security_group_id
+  vpn_address       = var.vpn_address
   providers = {
     aws = aws.us-east-1
   }
@@ -1704,9 +1705,10 @@ module "relay_amazon_virginia_2" {
   name              = "amazon.virginia.2"
   zone              = local.datacenter_map["amazon.virginia.2"].zone
   region            = local.datacenter_map["amazon.virginia.2"].region
-  type              = "a1.large"
-  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
   security_group_id = module.region_us_east_1.security_group_id
+  vpn_address       = var.vpn_address
   providers = {
     aws = aws.us-east-1
   }
@@ -1720,6 +1722,7 @@ module "relay_amazon_tokyo_1" {
   type              = "m5a.large"
   ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
   security_group_id = module.region_ap_northeast_1.security_group_id
+  vpn_address       = var.vpn_address
   providers = {
     aws = aws.ap-northeast-1
   }
@@ -1733,6 +1736,7 @@ module "relay_amazon_seattle_1" {
   type              = "c5d.2xlarge"
   ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
   security_group_id = module.region_us_west_2.security_group_id
+  vpn_address       = var.vpn_address
   providers = {
     aws = aws.us-west-2
   }

@@ -18,3 +18,10 @@ raspberry_datacenters = [
 	"google.iowa.3",
 	"google.iowa.6"
 ]
+
+seller_names = [
+	"akamai",
+	"amazon", 
+	"google", 
+	"vultr"
+]

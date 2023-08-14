@@ -25,4 +25,4 @@ server_backend_private_key  = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR
 ping_key 					= "56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64="
 api_private_key             = "this is the private key that generates API keys. make sure you change this value in production"
 customer_public_key         = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-customer_private_key        = "UoFYERKJnCtieFM9lnPGJHvHDRAuOYDIbMKhx3QnkTnGrsPwsQFuB3XyZTncixbOURcPalgP3J35OJmKr35wwX1wcbiQzBG3"
+customer_private_key        = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"

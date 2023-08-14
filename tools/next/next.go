@@ -927,11 +927,14 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if relay == nil {
 			continue
 		}
+		// todo: flags not ready yet?
+		/*
 		if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
 			relay.Status = "shutting down"
 		} else {
+			*/
 			relay.Status = "online"
-		}
+		// }
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
 	}
@@ -1032,18 +1035,9 @@ const (
 
 	SetupRelayScript = `
 
-# only allow ssh from vpn address
-
-echo ssh only allowed from vpn address
-
-echo sshd: ALL > hosts.deny
-echo sshd: $VPN_ADDRESS > hosts.allow
-sudo mv hosts.deny /etc/hosts.deny
-sudo mv hosts.allow /etc/hosts.allow
-
 # make the relay prompt cool
 
-echo making relay command line prompt cool
+echo making the relay prompt cool
 
 sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
 sudo echo "source ~/.bashrc" >> ~/.profile.sh
@@ -1232,7 +1226,7 @@ func setupRelays(env Environment, regexes []string) {
 			relayPrivateKeyBase64 := relays[i].PrivateKeyBase64
 
 			// todo: these need to come from environment config
-			relayBackendHostname := "losangelesfreewaysatnight.com"
+			relayBackendHostname := "dev.losangelesfreewaysatnight.com"
 			relayBackendPublicKeyBase64 := "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 			vpnAddress := "45.79.157.168" // todo: need to get this from env config
 

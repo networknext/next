@@ -101,7 +101,7 @@ resource "latitudesh_ssh_key" "relay" {
 resource "latitudesh_user_data" "relay" {
   description = "Setup relay"
   project = latitudesh_project.relay.id
-  content = base64encode(file("./setup_relay.sh"))
+  content = base64encode(replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address))
 }
 
 resource "latitudesh_server" "relay" {

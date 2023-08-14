@@ -14,6 +14,7 @@ variable "relay_private_key" { type = string }
 variable "relay_backend_hostname" { type = string }
 variable "relay_backend_public_key" { type = string }
 variable "raspberry_datacenters" { type = list(string) }
+variable "seller_names" { type = list(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -183,6 +184,7 @@ locals {
       plan            = "vc2-1c-1gb"
       os              = "Ubuntu 22.04 LTS x64"
     },
+
   }
 }
 
@@ -226,10 +228,8 @@ locals {
     module.vultr_relays.datacenters,
   )
 
-  seller_names = distinct([for k, relay in local.relays : relay.supplier_name])
-
   sellers = {
-    for seller_name in local.seller_names: 
+    for seller_name in var.seller_names: 
       seller_name => true
   }
 

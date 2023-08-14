@@ -1,4 +1,9 @@
 #!/bin/sh
+if [[ -f /etc/setup_relay_has_run ]]; then exit 0; fi
+echo sshd: ALL > hosts.deny
+echo sshd: $VPN_ADDRESS > hosts.allow
+sudo mv hosts.deny /etc/hosts.deny
+sudo mv hosts.allow /etc/hosts.allow
 sudo journalctl --vacuum-size 10M
 sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 sudo NEEDRESTART_SUSPEND=1 apt update -y
@@ -13,4 +18,4 @@ cd libsodium-1.0.18
 make -j
 sudo make install
 sudo ldconfig
-sudo mkdir /app
+sudo touch /etc/setup_relay_has_run

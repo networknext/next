@@ -19,7 +19,7 @@ import (
 var devRelayMap = map[string][]string{
 
 	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "a1.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"},
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.tokyo.1":    {"amazon.tokyo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.seattle.1":  {"amazon.seattle.1", "c5d.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
@@ -473,6 +473,7 @@ terraform {
   type              = "%s"
   ami               = "%s"
   security_group_id = module.region_%s.security_group_id
+  vpn_address       = var.vpn_address
   providers = {
     aws = aws.%s
   }

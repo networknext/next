@@ -1,101 +1,30 @@
 DONE
 
-	Fix hex id bug in terraform provider -> v5.0.2
+	Modified setup_relay.sh so it doesn't run more than once, in case on certain suppliers it runs each time the machine starts.
 
-	Work with maps not lists.
+	When a relay is initially setup via startup script, it should limit SSH to the VPN only. Otherwise, it's a period of lower security before setup is applied.
 
-	This means don't work with seller_names and datacenter_names as drivers, but instead do for_each over the maps.
-	
-	Now we need to extend each generated.tf per-supplier to add the following per-datacenter map entry:
+	There is a problem with the terraform scirpt. If you delete all relays from a supplier and try to terraform apply, it can't work, because it no longer knows about the seller.
 
-		1. seller_name --> eg. "google" for all google relays
-		2. native_name --> eg. zone name, for google cloud.
-		3. latitude
-		4. longitude
+	The seller is derived from the relays. Now there are no relays for that seller, so the seller goes away. How to fix?
 
-	Now I need to create the actual relays. It should be easy...
-
-	Almost there, but the structure of the relays map returned by supplier terraform needs to be adjusted to keep the port number separate from addresses.
-
-	Change each supplier to return exactly the data as needed by the relay database entry:
-
-		public_ip
-		public_port
-		internal_ip
-		internal_port
-		internal_group
-		ssh_ip
-		ssh_port
-		ssh_user
-
-	Database relays are now successfully setup from terraform!
-
-	Setup raspberry customer
-
-	Setup raspberry route shader
-
-	Setup raspberry buyer
-
-	Test that once the database is setup that I can SSH into each dev relay via "next ssh"
-
-	I can, but amazon requires the VPN be active, even before the relays are provisioned.
-
-	How to provision the relays?
-
-	Initially I'm going to start with "next setup [relay]"
-
-	This will SSH in and run a custom script with data gathered from the database, so the relay is configured as specified in terraform.
-
-	Once this basic setup is working and reliable, then we can try to automate it further.
-
-	Added setup command.
-
-	Relays are all setup. We just need to push the database.bin and it should be working.
-
-	But when I go "next database" it doesn't print out relays.
-
-	What's going on?
-
-	I think the database.bin that is being copied down is the committed database, instead of the database extracted from the SQL.
-
-	What I really need to see when working with the next tool is the database as per-the SQL.
-
-	Removed buyer keypairs from terraform plugin and REST API. We simply don't need to track buyer keypairs as a resource.
-
-	Only AWS relays need the internal group to be set to the region (or in the case of local zones... the local zone itself, presumably)
-
-	Google doesn't need this treatment. Set the internal group to ""
-
-	Extend "next database" to always delete the cached database and grab it again on env change
-
-	Extend admin REST API to have a database method.
-
-	Call this admin database method when we "getDatabase".
-
-	The "next" tool works from the SQL. The runtime works from the database.bin
-
-	Verified that I can now go "next select dev" and "next database" and it prints the contents of the SQL db.
-
-	Set up destination datacenters for the raspberry buyer.
-
-	Amazon relay internal groups don't appear to be set correctly. Each amazon relay should have its region set as internal group, since they
-	can only send packets via internal addresses within their region.
-
-	I have confirmed that the create relay coming from terraform seems to (at least at the database level), have an internal group of ""
-
-	Not sure if it is JSON serialization level problems, or database problems, but I suspect the JSON is not passing across the internal_group on create.
-
-	Confirmed. We were using version 5.0.2 which didn't have the JSON fixes.
+	Fixed by not deriving seller list from set of relays.
 
 TODO
+	
+	Server is stuck in a loop. It cannot initialize with the server backend. Not sure why not.
 
-	Recreate relays w. terraform and verify amazon internal group is set correctly.
+	The buyer has the wrong id. Check the customer public keys.
 
 	---------------
 
 	Need a way to get errors, especially validation errors down to the next tool as text.
 
 	Diving in to the API ssh console is not the way to debug why the database doesn't validate...
+
+	Extend the database response to return a json object, with "database" (base64 string), and "error"
+
+	Then extend next tool to check the error, and print out the error if it is not "".
 
 	---------------
 
@@ -131,12 +60,28 @@ TODO
 
 	----------
 
-
-
-
-
+	Work out how to setup relays automatically with a script that runs once only when the relay restarts
 
 	----------------------
+
+	Had to modify max_connections = 4096. For some reason postgres stuck with: "remaining connection slots are reserved for non-replication superuser connections"
+
+	Need to modify terraform setup script to automatically set this when postgres is created.
+
+	----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Research how to get a HTTPS certificate automatically from letsencrypt.com (ideally, via terrafom...?)
 
@@ -463,4 +408,40 @@ Nice to have:
 
 	Allows to quickly look at sessions that experienced certain events vs. not, without needing to look at slices.
 
-	-----------------------------------
+	----------------------
+
+	Build relay binaries for both x64 and arm, and then autodetect in scripts via OS which one is needed.
+
+	The relay can have its "platform" set to a free form string, eg. "x64" or "arm64", then we postfix it to the relay version.
+
+	eg. relay-debug-1.0.20-x64
+
+	Then, each supplier can just return the "platform" var with each relay and this will be automatic and we suppoart both x86 and arm
+
+	---------------
+
+	Add "platform" relay property to the database schema (optional)
+
+	Add platform relay property to admin.go
+
+	Add platform relay property to next.go (print it out on "next relays")
+
+	Add platform relay property to extract database (print it out on "next database")
+
+	Implement google terraform to detect platform and return it
+
+	Implement akamai terraform to return platform "x64" hardcoded.
+
+	Implement vultr terraform to return platform "x64" hardcoded.
+
+	---------------
+
+	Work out how to cross compile relay to arm64
+
+	Update relay release process build release/debug and x64/arm64 platforms
+
+	Extend relay startup script to pick relay binary according to version AND platform
+
+	Extend relay upgrade version 
+
+	---------------

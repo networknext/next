@@ -51,7 +51,7 @@ resource "linode_firewall" "relays" {
 resource "linode_stackscript" "setup_relay" {
   label = "setup-relay"
   description = "Set up relay"
-  script = file("./setup_relay.sh")
+  script = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
   images = ["linode/ubuntu22.04"]
 }
 
