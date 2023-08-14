@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -29,15 +30,19 @@ var controller *admin.Controller
 var service *common.Service
 
 var privateKey string
-
 var pgsqlConfig string
+var environment string
+var databaseBucket string
 
 func main() {
 
 	service = common.CreateService("api")
 
+	environment = service.Env
+
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
+	databaseBucket = envvar.GetString("DATABASE_BUCKET", "")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
@@ -411,31 +416,85 @@ func adminDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminCommitRequest struct {
+	User 		string `json:"user"`
+	Database 	string `json:"database_base64"`
+}
+
 type AdminCommitResponse struct {
 	Error    string         `json:"error"`
 }
 
+func bash(command string) bool {
+	cmd := exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		return false
+	}
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("error: failed to run command: %v\n", err)
+		return false
+	}
+	cmd.Wait()
+	return true
+}
+
 func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
-	// var response AdminCommitResponse
-	// todo
-	/*
-	database, err := db.ExtractDatabase(pgsqlConfig)
+	var request AdminCommitRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		fmt.Printf("error: failed to extract database: %v\n", err)
+		core.Error("failed to read commit request data in commit handler: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	database_binary, err := base64.StdEncoding.DecodeString(request.Database)
+	if err != nil {
+		core.Error("failed to decode database base64 string: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var response AdminCommitResponse
+	if databaseBucket == "" {
+		core.Error("DATABASE_BUCKET env var is not set. We have nowhere to write the database.bin to")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	tempFileA := fmt.Sprintf("/tmp/database-%s.bin", common.RandomString(64))
+	err = os.WriteFile(tempFileA, database_binary, 0666)
+	if err != nil {
+		core.Error("could not write database binary data to temp file '%s'", tempFileA)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	database, err := db.LoadDatabase(tempFileA)
+	if err != nil {
+		core.Error("could not load database from binary data in temp file '%s'", tempFileA)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	err = database.Validate()
 	if err != nil {
-		fmt.Printf("error: database did not validate: %v\n", err)
-		response.Error = err
-	} else {
-		response.Database = base64.StdEncoding.EncodeToString(database.Binary())
+		response.Error = fmt.Sprintf("error: database did not validate: %v\n", err)
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+	database.Creator = request.User
+	tempFileB := fmt.Sprintf("/tmp/database-%s.bin", common.RandomString(64))
+	err = database.Save(tempFileB)
+	if err != nil {
+		core.Error("could not save database to temp file '%s'", tempFileB)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !bash(fmt.Sprintf("gsutil %s %s", tempFileB, databaseBucket)) {
+		core.Error("could not upload database.bin to database bucket")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	*/
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
