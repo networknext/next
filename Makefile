@@ -48,7 +48,7 @@ clean: ## clean everything
 # Build most golang services
 
 dist/%: cmd/%/*.go $(shell find modules -name '*.go')
-	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH)" -o $@ $(<D)/*.go
+	@go build -ldflags "-s -w -X $(MODULE).buildTime=$(BUILD_TIME) -X \"$(MODULE).commitMessage=$(COMMIT_MESSAGE)\" -X $(MODULE).commitHash=$(COMMIT_HASH) -X $(MODULE).tag=$(SEMAPHORE_GIT_TAG_NAME)" -o $@ $(<D)/*.go
 	@echo $@
 
 # Build artifacts

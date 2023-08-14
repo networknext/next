@@ -202,7 +202,11 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 func pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("pong"))
+	if service.Tag != "" {
+		w.Write([]byte(fmt.Sprintf("pong [%s]", service.Tag)))
+	} else {
+		w.Write([]byte(fmt.Sprintf("pong [%s]", service.Env)))
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

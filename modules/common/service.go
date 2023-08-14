@@ -33,6 +33,7 @@ var (
 	buildTime     string
 	commitMessage string
 	commitHash    string
+	tag           string
 )
 
 type RelayData struct {
@@ -58,6 +59,7 @@ type Service struct {
 	BuildTime     string
 	CommitMessage string
 	CommitHash    string
+	Tag           string
 	Local         bool
 
 	Router mux.Router
@@ -110,6 +112,7 @@ func CreateService(serviceName string) *Service {
 	service.CommitMessage = commitMessage
 	service.CommitHash = commitHash
 	service.BuildTime = buildTime
+	service.Tag = tag
 
 	core.Log("%s", service.ServiceName)
 
@@ -133,7 +136,7 @@ func CreateService(serviceName string) *Service {
 		core.Log("build time: %s", service.BuildTime)
 	}
 
-	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, []string{}))
+	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, tag, []string{}))
 	service.Router.HandleFunc("/status", service.statusHandlerFunc())
 	service.Router.HandleFunc("/database", service.databaseHandlerFunc())
 	service.Router.HandleFunc("/lb_health", service.lbHealthHandlerFunc())
@@ -401,12 +404,13 @@ func (service *Service) readyHandlerFunc() func(w http.ResponseWriter, r *http.R
 	}
 }
 
-func versionHandlerFunc(buildTime string, commitMessage string, commitHash string, allowedOrigins []string) func(w http.ResponseWriter, r *http.Request) {
+func versionHandlerFunc(buildTime string, commitMessage string, commitHash string, tag string, allowedOrigins []string) func(w http.ResponseWriter, r *http.Request) {
 
 	version := map[string]string{
 		"build_time":     buildTime,
 		"commit_message": commitMessage,
 		"commit_hash":    commitHash,
+		"tag":    	      tag,
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
