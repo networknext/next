@@ -746,61 +746,6 @@ func main() {
 
 // -------------------------------------------------------------------------------------------------------
 
-var cachedDatabase *db.Database
-
-type AdminDatabaseResponse struct {
-	Database string 		`json:"database_base64"`
-	Error    string      `json:"error"`
-}
-
-func getDatabase() *db.Database {
-
-	if cachedDatabase != nil {
-		return cachedDatabase
-	}
-
-	if env.Name != "local" {
-		response := AdminDatabaseResponse{}
-		GetJSON(fmt.Sprintf("%s/admin/database", env.AdminURL), &response)
-		if response.Error != "" {
-			fmt.Printf("%s\n", response.Error)
-			os.Exit(1)
-		}
-		database_binary, err := base64.StdEncoding.DecodeString(response.Database)
-		if err != nil {
-			fmt.Printf("error: could not decode base64 database string\n")
-			os.Exit(1)
-		}
-		os.WriteFile("database.bin", database_binary, 0644)
-	}
-
-	cachedDatabase, err := db.LoadDatabase("database.bin")
-	if err != nil {
-		fmt.Printf("error: could not load database.bin: %v\n", err)
-		os.Exit(1)
-		return nil
-	}
-
-	return cachedDatabase
-}
-
-func printDatabase() {
-	fmt.Printf("updating database.bin from Postgres SQL instance\n\n")
-	database := getDatabase()
-	fmt.Println(database.String())
-	fmt.Printf("\n")
-}
-
-func commitDatabase() {
-	fmt.Printf("committing local database.bin to %s\n\n", env.Name)
-	gitUser := bashQuiet("git config user.name")
-	gitEmail := bashQuiet("git config user.email")
-	gitUser = strings.ReplaceAll(gitUser, "\n", "")
-	gitEmail = strings.ReplaceAll(gitEmail, "\n", "")
-	fmt.Printf("local user: %s <%s>\n\n", gitUser, gitEmail)
-	// ...
-}
-
 func GetJSON(url string, object interface{}) {
 
 	var err error
@@ -907,6 +852,124 @@ func GetBinary(url string) []byte {
 	response.Body.Close()
 
 	return body
+}
+
+func PostJSON(url string, requestData interface{}, responseData interface{}) error {
+
+	buffer := new(bytes.Buffer)
+
+	json.NewEncoder(buffer).Encode(requestData)
+
+	request, _ := http.NewRequest("PUT", url, buffer)
+
+	request.Header.Set("Authorization", "Bearer "+env.APIKey)
+
+	httpClient := &http.Client{}
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		response, err = httpClient.Do(request)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %v", url, err)
+	}
+
+	if response == nil {
+		return fmt.Errorf("no response from %s", url)
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
+
+	response.Body.Close()
+
+	err = json.Unmarshal([]byte(body), &responseData)
+	if err != nil {
+		return fmt.Errorf("could not parse json response for %s: %v", url, err)
+	}
+
+	return nil
+}
+
+// -------------------------------------------------------------------------------------------------------
+
+var cachedDatabase *db.Database
+
+type AdminDatabaseResponse struct {
+	Database string 		`json:"database_base64"`
+	Error    string      `json:"error"`
+}
+
+func getDatabase() *db.Database {
+
+	if cachedDatabase != nil {
+		return cachedDatabase
+	}
+
+	if env.Name != "local" {
+		response := AdminDatabaseResponse{}
+		GetJSON(fmt.Sprintf("%s/admin/database", env.AdminURL), &response)
+		if response.Error != "" {
+			fmt.Printf("%s\n", response.Error)
+			os.Exit(1)
+		}
+		database_binary, err := base64.StdEncoding.DecodeString(response.Database)
+		if err != nil {
+			fmt.Printf("error: could not decode base64 database string\n")
+			os.Exit(1)
+		}
+		os.WriteFile("database.bin", database_binary, 0644)
+	}
+
+	cachedDatabase, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin: %v\n", err)
+		os.Exit(1)
+		return nil
+	}
+
+	return cachedDatabase
+}
+
+func printDatabase() {
+	fmt.Printf("updating database.bin from Postgres SQL instance\n\n")
+	database := getDatabase()
+	fmt.Println(database.String())
+	fmt.Printf("\n")
+}
+
+type AdminCommitRequest struct {
+	User 		string `json:"user"`
+	Database 	string `json:"database_base64"`
+}
+
+type AdminCommitResponse struct {
+	Error    string         `json:"error"`
+}
+
+func commitDatabase() {
+	fmt.Printf("committing local database.bin to %s\n\n", env.Name)
+	gitUser := bashQuiet("git config user.name")
+	gitEmail := bashQuiet("git config user.email")
+	gitUser = strings.ReplaceAll(gitUser, "\n", "")
+	gitEmail = strings.ReplaceAll(gitEmail, "\n", "")
+	fmt.Printf("local user: %s <%s>\n\n", gitUser, gitEmail)
+
+	// todo: load database.bin into a binary array
+
+	// todo: encode binary array into base64
+
+	// todo: construct admin commit request
+
+	// todo: PostJSON
 }
 
 type PortalRelaysResponse struct {

@@ -28,11 +28,13 @@ DONE
 
 	Extract the git user and email and print on "next commit"
 
-TODO
-
 	Implement the admin API commit to accept a "user" string and a "database_base64" in JSON, create the database, verify it, and return "error" if it doesn't verify.
 
 	Damnit I'm going to need to adjust permissions so I can write to the database.bin directory from the terraform service account...
+
+TODO
+
+	Extend next tool to pass up the database request.
 
 	---------------
 
