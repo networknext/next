@@ -31,18 +31,15 @@ var service *common.Service
 
 var privateKey string
 var pgsqlConfig string
-var environment string
-var databaseBucket string
+var databaseURL string
 
 func main() {
 
 	service = common.CreateService("api")
 
-	environment = service.Env
-
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
-	databaseBucket = envvar.GetString("DATABASE_BUCKET", "")
+	databaseURL = envvar.GetString("DATABASE_URL", "")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
@@ -56,6 +53,7 @@ func main() {
 	}
 
 	core.Debug("pgsql config: %s", pgsqlConfig)
+	core.Debug("database url: %s", databaseURL)
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)
@@ -454,8 +452,8 @@ func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var response AdminCommitResponse
-	if databaseBucket == "" {
-		core.Error("DATABASE_BUCKET env var is not set. We have nowhere to write the database.bin to")
+	if databaseURL == "" {
+		core.Error("DATABASE_URL env var is not set. We have nowhere to write the database.bin to")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -487,11 +485,12 @@ func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if !bash(fmt.Sprintf("gsutil %s %s", tempFileB, databaseBucket)) {
+	if !bash(fmt.Sprintf("gsutil %s %s", tempFileB, databaseURL)) {
 		core.Error("could not upload database.bin to database bucket")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	core.Log("committed database to %s for %s at time %s", databaseURL, request.User, database.CreationTime)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
