@@ -387,9 +387,19 @@ func main() {
 	var databaseCommand = &ffcli.Command{
 		Name:       "database",
 		ShortUsage: "next database",
-		ShortHelp:  "Print the database for the current environment",
+		ShortHelp:  "Update local database.bin from the current environment Postgres DB and print it",
 		Exec: func(_ context.Context, args []string) error {
 			printDatabase()
+			return nil
+		},
+	}
+
+	var commitCommand = &ffcli.Command{
+		Name:       "commit",
+		ShortUsage: "next commit",
+		ShortHelp:  "Commit the local database.bin to the current environment runtime (server and relay backends)",
+		Exec: func(_ context.Context, args []string) error {
+			commitDatabase()
 			return nil
 		},
 	}
@@ -688,6 +698,7 @@ func main() {
 		envCommand,
 		pingCommand,
 		databaseCommand,
+		commitCommand,
 		relaysCommand,
 		sshCommand,
 		logCommand,
@@ -774,9 +785,20 @@ func getDatabase() *db.Database {
 }
 
 func printDatabase() {
+	fmt.Printf("updating database.bin from Postgres SQL instance\n\n")
 	database := getDatabase()
 	fmt.Println(database.String())
 	fmt.Printf("\n")
+}
+
+func commitDatabase() {
+	fmt.Printf("committing local database.bin to %s\n\n", env.Name)
+	gitUser := bashQuiet("git config user.name")
+	gitEmail := bashQuiet("git config user.email")
+	gitUser = strings.ReplaceAll(gitUser, "\n", "")
+	gitEmail = strings.ReplaceAll(gitEmail, "\n", "")
+	fmt.Printf("local user: %s <%s>\n\n", gitUser, gitEmail)
+	// ...
 }
 
 func GetJSON(url string, object interface{}) {

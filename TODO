@@ -18,8 +18,6 @@ DONE
 
 	Make the "next setup [relay]" re-entrant, eg. if a relay is already setup, quit.
 
-TODO
-
 	Need a way to get errors, especially validation errors down to the next tool as text.
 
 	Diving in to the API ssh console is not the way to debug why the database doesn't validate...
@@ -28,15 +26,13 @@ TODO
 
 	Then extend next tool to check the error, and print out the error if it is not "".
 
-	---------------
+	Extract the git user and email and print on "next commit"
 
-	Implement "next commit"
+TODO
 
-	Extend the admin API to have a "PUT" method called "commit"
+	Implement the admin API commit to accept a "user" string and a "database_base64" in JSON, create the database, verify it, and return "error" if it doesn't verify.
 
-	This takes the database.bin in the PUT data, parses it, validates it, then uploads to google cloud storage for the env.
-
-	IMPORTANT: This method also needs a way to return validation errors down to the caller as text to be printed out from the next tool.
+	Damnit I'm going to need to adjust permissions so I can write to the database.bin directory from the terraform service account...
 
 	---------------
 
