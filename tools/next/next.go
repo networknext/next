@@ -856,6 +856,8 @@ func GetBinary(url string) []byte {
 
 func PostJSON(url string, requestData interface{}, responseData interface{}) error {
 
+	fmt.Printf("url is %s\n", url)
+
 	buffer := new(bytes.Buffer)
 
 	json.NewEncoder(buffer).Encode(requestData)
@@ -956,20 +958,44 @@ type AdminCommitResponse struct {
 }
 
 func commitDatabase() {
-	fmt.Printf("committing local database.bin to %s\n\n", env.Name)
+
+	database, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin")
+		os.Exit(1)		
+	}
+
+	fmt.Printf("committing local database.bin to %s\n", env.Name)
+
 	gitUser := bashQuiet("git config user.name")
 	gitEmail := bashQuiet("git config user.email")
 	gitUser = strings.ReplaceAll(gitUser, "\n", "")
 	gitEmail = strings.ReplaceAll(gitEmail, "\n", "")
-	fmt.Printf("local user: %s <%s>\n\n", gitUser, gitEmail)
 
-	// todo: load database.bin into a binary array
+	fmt.Printf("user is %s <%s>\n", gitUser, gitEmail)
 
-	// todo: encode binary array into base64
+	database_binary := database.GetBinary()
 
-	// todo: construct admin commit request
+	database_base64 := base64.StdEncoding.EncodeToString(database_binary)
 
-	// todo: PostJSON
+	var request AdminCommitRequest
+	var response AdminCommitResponse
+
+	request.User = fmt.Sprintf("%s <%s>", gitUser, gitEmail)
+	request.Database = database_base64
+
+	err = PostJSON(fmt.Sprintf("%s/admin/commit", env.AdminURL), &request, &response)
+	if err != nil {
+		fmt.Printf("error: could not post JSON to commit database endpoint: %v", err)
+		os.Exit(1)
+	}	
+
+	if response.Error != "" {
+		fmt.Printf("error: failed to commit database: %s\n\n", response.Error)
+		os.Exit(1)
+	}
+
+	fmt.Printf("successfully committed database\n\n")
 }
 
 type PortalRelaysResponse struct {

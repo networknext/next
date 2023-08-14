@@ -485,7 +485,7 @@ func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if !bash(fmt.Sprintf("gsutil %s %s", tempFileB, databaseURL)) {
+	if !bash(fmt.Sprintf("gsutil cp %s %s", tempFileB, databaseURL)) {
 		core.Error("could not upload database.bin to database bucket")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
