@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -85,6 +86,7 @@ func main() {
 		controller = admin.CreateController(pgsqlConfig)
 
 		service.Router.HandleFunc("/admin/database", isAuthorized(adminDatabaseHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/commit", isAuthorized(adminCommitHandler)).Methods("PUT")
 
 		service.Router.HandleFunc("/admin/create_customer", isAuthorized(adminCreateCustomerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/customers", isAuthorized(adminReadCustomersHandler)).Methods("GET")
@@ -382,23 +384,58 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type AdminDatabaseResponse struct {
+	Database string 		`json:"database_base64"`
+	Error    string         `json:"error"`
+}
+
 func adminDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminDatabaseResponse
 	database, err := db.ExtractDatabase(pgsqlConfig)
 	if err != nil {
 		fmt.Printf("error: failed to extract database: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = database.Validate()
 	if err != nil {
 		fmt.Printf("error: database did not validate: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		response.Error = fmt.Sprintf("error: database did not validate: %v\n", err)
+	} else {
+		response.Database = base64.StdEncoding.EncodeToString(database.GetBinary())
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminCommitResponse struct {
+	Error    string         `json:"error"`
+}
+
+func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
+	// var response AdminCommitResponse
+	// todo
+	/*
+	database, err := db.ExtractDatabase(pgsqlConfig)
+	if err != nil {
+		fmt.Printf("error: failed to extract database: %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Content-Type", "application/octet-stream")
+	err = database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		response.Error = err
+	} else {
+		response.Database = base64.StdEncoding.EncodeToString(database.Binary())
+	}
 	w.WriteHeader(http.StatusOK)
-	data := database.GetBinary()
-	w.Write(data)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+	*/
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

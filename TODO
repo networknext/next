@@ -20,8 +20,6 @@ DONE
 
 TODO
 
-	---------------
-	
 	Need a way to get errors, especially validation errors down to the next tool as text.
 
 	Diving in to the API ssh console is not the way to debug why the database doesn't validate...

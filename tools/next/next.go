@@ -737,6 +737,11 @@ func main() {
 
 var cachedDatabase *db.Database
 
+type AdminDatabaseResponse struct {
+	Database string 		`json:"database_base64"`
+	Error    string      `json:"error"`
+}
+
 func getDatabase() *db.Database {
 
 	if cachedDatabase != nil {
@@ -744,7 +749,17 @@ func getDatabase() *db.Database {
 	}
 
 	if env.Name != "local" {
-		database_binary := GetBinary(fmt.Sprintf("%s/admin/database", env.AdminURL))
+		response := AdminDatabaseResponse{}
+		GetJSON(fmt.Sprintf("%s/admin/database", env.AdminURL), &response)
+		if response.Error != "" {
+			fmt.Printf("%s\n", response.Error)
+			os.Exit(1)
+		}
+		database_binary, err := base64.StdEncoding.DecodeString(response.Database)
+		if err != nil {
+			fmt.Printf("error: could not decode base64 database string\n")
+			os.Exit(1)
+		}
 		os.WriteFile("database.bin", database_binary, 0644)
 	}
 
