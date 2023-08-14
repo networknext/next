@@ -1035,6 +1035,10 @@ const (
 
 	SetupRelayScript = `
 
+# run once only
+
+if [[ -f /etc/next_setup_completed ]]; then echo "already setup" && exit 0; fi
+
 # make the relay prompt cool
 
 echo making the relay prompt cool
@@ -1115,7 +1119,7 @@ echo starting relay service
 
 sudo systemctl start relay
 
-sudo touch /app/setup-completed
+sudo touch /etc/next_setup_completed
 
 echo setup completed
 `
@@ -1244,6 +1248,10 @@ func setupRelays(env Environment, regexes []string) {
 			script = strings.ReplaceAll(script, "$ENVIRONMENT", environment)
 
 			con.ConnectAndIssueCmd(script)
+
+			if len(relays) > 1 {
+				fmt.Printf( "\n----------------------------------------------\n\n")
+			}
 		}
 	}
 }

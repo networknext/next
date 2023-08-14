@@ -10,14 +10,18 @@ DONE
 
 	Fixed by not deriving seller list from set of relays.
 
-TODO
-	
 	Server is stuck in a loop. It cannot initialize with the server backend. Not sure why not.
 
 	The buyer has the wrong id. Check the customer public keys.
 
-	---------------
+	Fixed. The relays are now carrying sessions!
 
+	Make the "next setup [relay]" re-entrant, eg. if a relay is already setup, quit.
+
+TODO
+
+	---------------
+	
 	Need a way to get errors, especially validation errors down to the next tool as text.
 
 	Diving in to the API ssh console is not the way to debug why the database doesn't validate...
@@ -58,7 +62,7 @@ TODO
 
 	This would provide a nice confirmation that the tag that you have deployed is live.
 
-	----------
+	----------------------
 
 	Work out how to setup relays automatically with a script that runs once only when the relay restarts
 
