@@ -44,12 +44,23 @@ DONE
 
 	Tidy up env in next.go
 
-TODO
-
 	For bare metal relays, "next setup" must detect that the initial setup has not run, and perform it manually.
 
-	---------------
+	Make sure that all relays "come back" after reboot. If not, why not?
 
+	They didn't but it was just chance. The redis is out of memory:
+
+	error: failed to send batched pubsub messages to redis: OOM command not allowed when used memory > 'maxmemory'.
+
+	Increasing instance size to 10G.
+
+	vultr resources did not come back, because they didn't have a fixed IP.
+
+	Turning back on the reserved IP thing w. vultr.
+
+TODO
+
+	Need to destroy the dev environment. Exclude vultr from it.
 
 
 

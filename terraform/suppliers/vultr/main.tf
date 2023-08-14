@@ -59,8 +59,6 @@ resource "vultr_instance" "relay" {
   script_id   = vultr_startup_script.setup_relay.id
 }
 
-// todo: temporarily disabled due to quota issue
-/*
 resource "vultr_reserved_ip" "relay" {
   for_each    = var.relays
   label       = each.key
@@ -68,7 +66,6 @@ resource "vultr_reserved_ip" "relay" {
   ip_type     = "v4"
   instance_id = vultr_instance.relay[each.key].id
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 

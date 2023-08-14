@@ -926,6 +926,10 @@ type AdminCommitResponse struct {
 
 func commitDatabase() {
 
+	bash("rm database.bin")
+
+	getDatabase()
+
 	database, err := db.LoadDatabase("database.bin")
 	if err != nil {
 		fmt.Printf("error: could not load database.bin")
@@ -958,7 +962,7 @@ func commitDatabase() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("successfully committed database.bin to %s\n\n", env.Name)
+	fmt.Printf("successfully committed database to %s\n\n", env.Name)
 }
 
 type PortalRelaysResponse struct {
@@ -1125,32 +1129,7 @@ const (
 
 # run once only
 
-if [[ -f /etc/next_setup_completed ]]; then echo "already setup" && exit 0; fi
-
-# if the setup_relay.sh has not run yet then do it here
-
-if [[ ! -f /etc/setup_relay_has_run ]]; 
-then
-	echo sshd: ALL > hosts.deny
-	echo sshd: $VPN_ADDRESS > hosts.allow
-	sudo mv hosts.deny /etc/hosts.deny
-	sudo mv hosts.allow /etc/hosts.allow
-	sudo journalctl --vacuum-size 10M
-	sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
-	sudo NEEDRESTART_SUSPEND=1 apt update -y
-	sudo NEEDRESTART_SUSPEND=1 apt upgrade -y
-	sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
-	sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential unattended-upgrades -y
-	sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
-	wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
-	tar -zxf libsodium-1.0.18.tar.gz
-	cd libsodium-1.0.18
-	./configure
-	make -j
-	sudo make install
-	sudo ldconfig
-	sudo touch /etc/setup_relay_has_run
-fi
+if [[ -f /etc/relay_setup_completed ]]; then echo "already setup" && exit 0; fi
 
 # make the relay prompt cool
 
@@ -1164,8 +1143,16 @@ sudo echo "source ~/.bashrc" >> ~/.profile.sh
 echo downloading relay binary
 
 rm -f $RELAY_VERSION
+
 wget https://storage.googleapis.com/$RELAY_ARTIFACTS_BUCKET_NAME/$RELAY_VERSION --no-cache
+
+if [ ! $? -eq 0 ]; then
+    echo "download relay binary failed"
+    exit 1
+fi
+
 sudo mv $RELAY_VERSION relay
+
 sudo chmod +x relay
 
 # setup the relay environment file
@@ -1232,7 +1219,7 @@ echo starting relay service
 
 sudo systemctl start relay
 
-sudo touch /etc/next_setup_completed
+sudo touch /etc/relay_setup_completed
 
 echo setup completed
 `
