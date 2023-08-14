@@ -32,9 +32,17 @@ DONE
 
 	Damnit I'm going to need to adjust permissions so I can write to the database.bin directory from the terraform service account...
 
+	Extend next tool to pass up the database commit request.
+
 TODO
 
-	Extend next tool to pass up the database request.
+	Each service instance to have the git tag embedded and known, and it should be included in the status output and console TTY for the service when it runs.
+
+	----------
+
+	The API "pong" could return a pong, and also the build tag, if it's not set to "" (eg. in a local build)
+
+	This would provide a nice confirmation that the tag that you have deployed is live.
 
 	---------------
 
@@ -46,29 +54,13 @@ TODO
 
 	---------------
 
+	API func test needs to test the "admin/database" method
+
+	---------------
+
 	Terraform func test needs to create enough resources of each type to avoid hitting the hex issue I just had.
 
-	----------
-
-	Each service instance to have the git tag embedded and known, and it should be included in the status output and console TTY for the service when it runs.
-
-	----------
-
-	The API "pong" could return a pong, and also the build tag, if it's not set to "" (eg. in a local build)
-
-	This would provide a nice confirmation that the tag that you have deployed is live.
-
-	----------------------
-
-	Work out how to setup relays automatically with a script that runs once only when the relay restarts
-
-	----------------------
-
-	Had to modify max_connections = 4096. For some reason postgres stuck with: "remaining connection slots are reserved for non-replication superuser connections"
-
-	Need to modify terraform setup script to automatically set this when postgres is created.
-
-	----------------------
+	---------------
 
 
 

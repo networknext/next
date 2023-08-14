@@ -44,11 +44,13 @@ DONE
 
 	Get tag based development working with semaphoreci and terraform
 
+	Setup relays in dev
+
+	Get raspberry clients sending traffic over relays in dev
+
 TODO
 
-	------------
-
-	Setup relays in dev
+	Rebuild portal
 
 	------------
 
@@ -67,10 +69,6 @@ TODO
 	Setup bigquery in dev with terraform.
 
 	Analytics service inserts data into bigquery in dev.
-
-	------------
-
-	Rebuild portal
 
 	------------	
 

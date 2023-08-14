@@ -856,8 +856,6 @@ func GetBinary(url string) []byte {
 
 func PostJSON(url string, requestData interface{}, responseData interface{}) error {
 
-	fmt.Printf("url is %s\n", url)
-
 	buffer := new(bytes.Buffer)
 
 	json.NewEncoder(buffer).Encode(requestData)
@@ -965,14 +963,10 @@ func commitDatabase() {
 		os.Exit(1)		
 	}
 
-	fmt.Printf("committing local database.bin to %s\n", env.Name)
-
 	gitUser := bashQuiet("git config user.name")
 	gitEmail := bashQuiet("git config user.email")
 	gitUser = strings.ReplaceAll(gitUser, "\n", "")
 	gitEmail = strings.ReplaceAll(gitEmail, "\n", "")
-
-	fmt.Printf("user is %s <%s>\n", gitUser, gitEmail)
 
 	database_binary := database.GetBinary()
 
@@ -995,7 +989,7 @@ func commitDatabase() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("successfully committed database\n\n")
+	fmt.Printf("successfully committed database.bin to %s\n\n", env.Name)
 }
 
 type PortalRelaysResponse struct {

@@ -1,5 +1,13 @@
 SETUP
 
+	-------
+
+	Postgres
+
+	Had to modify max_connections = 4096. For some reason postgres stuck with: "remaining connection slots are reserved for non-replication superuser connections"
+
+	Need to modify terraform setup script to automatically set this when postgres is created.
+
 	--------
 
 	Update instructions in dev to setup cloudflare.
