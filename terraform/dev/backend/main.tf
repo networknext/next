@@ -478,6 +478,7 @@ module "api" {
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY=${var.api_private_key}
+    ALLOWED_ORIGIN="*"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service

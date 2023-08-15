@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
+	// "strings"
 	"time"
 
 	"github.com/networknext/next/modules/admin"
@@ -18,7 +18,7 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	// jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 )
@@ -76,7 +76,7 @@ func main() {
 		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
-		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
+		// service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
@@ -166,6 +166,10 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		endpoint(w, r)
+
+		// todo: temporarily disabled
+		/*
 		auth := r.Header.Get("Authorization")
 
 		split := strings.Split(auth, "Bearer ")
@@ -194,6 +198,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 			fmt.Fprintf(w, "Not Authorized")
 
 		}
+		*/
 	}
 }
 

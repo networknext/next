@@ -24,8 +24,10 @@ import (
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 
-	"github.com/gomodule/redigo/redis"
+    "github.com/rs/cors"
+   	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
+	// "github.com/gorilla/handlers"
 	"github.com/oschwald/geoip2-golang"
 )
 
@@ -424,16 +426,32 @@ func versionHandlerFunc(buildTime string, commitMessage string, commitHash strin
 
 func (service *Service) StartWebServer() {
 	port := envvar.GetString("HTTP_PORT", "80")
+	allowedOrigin := envvar.GetString("ALLOWED_ORIGIN", "")
 	core.Log("starting http server on port %s", port)
 	go func() {
 		bindAddress := ":" + port
 		if service.Local {
 			bindAddress = "127.0.0.1:" + port
 		}
-		err := http.ListenAndServe(bindAddress, &service.Router)
-		if err != nil {
-			core.Error("error starting http server: %v", err)
-			os.Exit(1)
+		if allowedOrigin == "" {
+			// standard
+			err := http.ListenAndServe(bindAddress, &service.Router)
+			if err != nil {
+				core.Error("error starting http server: %v", err)
+				os.Exit(1)
+			}
+		} else {
+			// CORS
+			core.Log("allowed origin: %s", allowedOrigin)
+		    c := cors.New(cors.Options{
+	    	    AllowedOrigins: []string{allowedOrigin},
+	        	AllowCredentials: true,
+		    })
+			err := http.ListenAndServe(bindAddress, c.Handler(&service.Router))
+			if err != nil {
+				core.Error("error starting http server: %v", err)
+				os.Exit(1)
+			}
 		}
 	}()
 }
