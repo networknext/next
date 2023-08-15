@@ -76,7 +76,7 @@ func main() {
 		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
-		// service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
