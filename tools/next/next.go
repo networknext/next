@@ -1031,14 +1031,12 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if relay == nil {
 			continue
 		}
-		// todo: flags not ready yet?
-		/*
-			if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
-				relay.Status = "shutting down"
-			} else {
-		*/
-		relay.Status = "online"
-		// }
+		relayFlags, _ := strconv.ParseUint(portalRelaysResponse.Relays[i].RelayFlags, 16, 64)
+		if (relayFlags & constants.RelayFlags_ShuttingDown) != 0 {
+			relay.Status = "shutting down"
+		} else {
+			relay.Status = "online"
+		}
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
 		relay.Version = portalRelaysResponse.Relays[i].Version
 	}
