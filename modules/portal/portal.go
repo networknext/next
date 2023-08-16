@@ -1011,7 +1011,7 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerDat
 
 	args := redis.Args{}
 	for i := range serverEntries {
-		args = args.Add(serverEntries[i].Address)
+		args = args.Add(fmt.Sprintf("svd-%s", serverEntries[i].Address))
 	}
 
 	redisClient.Send("MGET", args...)
