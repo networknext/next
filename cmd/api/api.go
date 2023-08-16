@@ -250,6 +250,8 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	response.Sessions = portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
 	database := service.Database()
 	if database != nil {
+		response.BuyerNames = make([]string, len(response.Sessions))
+		response.DatacenterNames = make([]string, len(response.Sessions))
 		for i := range response.Sessions {
 			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
 			if buyer != nil {
