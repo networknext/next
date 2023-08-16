@@ -751,8 +751,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					message := messages.PortalRelayUpdateMessage{
 						Version:                   messages.PortalRelayUpdateMessageVersion_Write,
 						Timestamp:                 uint64(time.Now().Unix()),
-						// todo: set this once ready to write
-						// RelayName:                 relayName,
+						RelayName:                 relayName,
 						RelayId:                   relayId,
 						SessionCount:              relayUpdateRequest.SessionCount,
 						MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),

@@ -11,7 +11,7 @@ import (
 const (
 	PortalRelayUpdateMessageVersion_Min   = 1
 	PortalRelayUpdateMessageVersion_Max   = 2
-	PortalRelayUpdateMessageVersion_Write = 1
+	PortalRelayUpdateMessageVersion_Write = 2
 )
 
 type PortalRelayUpdateMessage struct {
