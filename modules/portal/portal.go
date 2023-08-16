@@ -469,6 +469,7 @@ func GenerateRandomServerData() *ServerData {
 // --------------------------------------------------------------------------------------------------
 
 type RelayData struct {
+	RelayName    string `json:"relay_name"`
 	RelayId      uint64 `json:"relay_id"`
 	RelayAddress string `json:"relay_address"`
 	NumSessions  uint32 `json:"num_sessions"`
@@ -479,7 +480,8 @@ type RelayData struct {
 }
 
 func (data *RelayData) Value() string {
-	return fmt.Sprintf("%x|%s|%d|%d|%x|%x|%s",
+	return fmt.Sprintf("%s|%x|%s|%d|%d|%x|%x|%s",
+		data.RelayName,
 		data.RelayId,
 		data.RelayAddress,
 		data.NumSessions,
@@ -492,31 +494,33 @@ func (data *RelayData) Value() string {
 
 func (data *RelayData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 7 {
+	if len(values) != 8 {
 		return
 	}
-	relayId, err := strconv.ParseUint(values[0], 16, 64)
+	relayName := values[0]
+	relayId, err := strconv.ParseUint(values[1], 16, 64)
 	if err != nil {
 		return
 	}
-	relayAddress := values[1]
-	numSessions, err := strconv.ParseUint(values[2], 10, 32)
+	relayAddress := values[2]
+	numSessions, err := strconv.ParseUint(values[3], 10, 32)
 	if err != nil {
 		return
 	}
-	maxSessions, err := strconv.ParseUint(values[3], 10, 32)
+	maxSessions, err := strconv.ParseUint(values[4], 10, 32)
 	if err != nil {
 		return
 	}
-	startTime, err := strconv.ParseUint(values[4], 16, 64)
+	startTime, err := strconv.ParseUint(values[5], 16, 64)
 	if err != nil {
 		return
 	}
-	relayFlags, err := strconv.ParseUint(values[5], 16, 64)
+	relayFlags, err := strconv.ParseUint(values[6], 16, 64)
 	if err != nil {
 		return
 	}
-	version := values[6]
+	version := values[7]
+	data.RelayName = relayName
 	data.RelayId = relayId
 	data.RelayAddress = relayAddress
 	data.NumSessions = uint32(numSessions)
@@ -528,6 +532,7 @@ func (data *RelayData) Parse(value string) {
 
 func GenerateRandomRelayData() *RelayData {
 	data := RelayData{}
+	data.RelayName = common.RandomString(32)
 	data.RelayId = rand.Uint64()
 	data.RelayAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
 	data.NumSessions = rand.Uint32()

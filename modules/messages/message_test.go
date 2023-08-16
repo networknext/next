@@ -361,6 +361,10 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 		CurrentTime:  rand.Uint64(),
 	}
 
+	if message.Version >= 2 {
+		message.RelayName = common.RandomString(constants.MaxRelayNameLength)
+	}
+
 	return message
 }
 
