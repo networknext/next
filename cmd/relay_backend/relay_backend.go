@@ -764,6 +764,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
 						RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
 						RelayFlags:                relayUpdateRequest.RelayFlags,
+						RelayVersion:              relayUpdateRequest.RelayVersion,
 						NumRoutable:               uint32(numRoutable),
 						NumUnroutable:             uint32(numUnroutable),
 						StartTime:                 relayUpdateRequest.StartTime,
