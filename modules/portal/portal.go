@@ -819,7 +819,7 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 
 	args := redis.Args{}
 	for i := range sessionEntries {
-		args = args.Add(sessionEntries[i].SessionId)
+		args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
 	}
 
 	redisClient.Send("MGET", args...)
