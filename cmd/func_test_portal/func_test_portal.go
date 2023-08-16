@@ -59,7 +59,7 @@ type PortalRelayData struct {
 	MaxSessions  uint32 `json:"max_sessions"`
 	StartTime    string `json:"start_time"`
 	RelayFlags   string `json:"relay_flags"`
-	Version      string `json:"version"`
+	RelayVersion string `json:"relay_version"`
 }
 
 type PortalNearRelayData struct {
@@ -252,13 +252,16 @@ func Get(url string, object interface{}) {
 
 	json.NewEncoder(buffer).Encode(object)
 
-	request, _ := http.NewRequest("GET", url, buffer)
+	request, err := http.NewRequest("GET", url, buffer)
+
+	if err != nil {
+		panic(err)
+	}
 
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{}
 
-	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		response, err = client.Do(request)
@@ -374,9 +377,9 @@ func test_portal() {
 
 			fmt.Printf("first session id is %016x\n", sessionsResponse.Sessions[0].SessionId)
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%d", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%s", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
 
-			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
+			fmt.Printf("session %s has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
 		}
 
 		serverCountResponse := PortalServerCountResponse{}
