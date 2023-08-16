@@ -217,7 +217,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "google_redis_instance" "redis" {
   name               = "redis"
   tier               = "BASIC"
-  memory_size_gb     = 1
+  memory_size_gb     = 10
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
   authorized_network = google_compute_network.development.id
@@ -254,6 +254,10 @@ resource "google_sql_database_instance" "postgres" {
     ip_configuration {
       ipv4_enabled    = "false"
       private_network = google_compute_network.development.id
+    }
+    database_flags {
+      name  = "max_connections"
+      value = "1024"
     }
   }
   deletion_protection = false
