@@ -99,7 +99,7 @@ func (controller *Controller) DeleteCustomer(customerId uint64) error {
 // -----------------------------------------------------------------------
 
 type RouteShaderData struct {
-	RouteShaderId                 uint64  `json:"route_shader_id,string"`
+	RouteShaderId                 uint64  `json:"route_shader_id"`
 	RouteShaderName               string  `json:"route_shader_name"`
 	ABTest                        bool    `json:"ab_test"`
 	AcceptableLatency             int     `json:"acceptable_latency"`
@@ -408,10 +408,10 @@ func (controller *Controller) DeleteRouteShader(routeShaderId uint64) error {
 // -----------------------------------------------------------------------
 
 type BuyerData struct {
-	BuyerId         uint64 `json:"buyer_id,string"`
+	BuyerId         uint64 `json:"buyer_id"`
 	BuyerName       string `json:"buyer_name"`
 	PublicKeyBase64 string `json:"public_key_base64"`
-	CustomerId      uint64 `json:"customer_id,string"`
+	CustomerId      uint64 `json:"customer_id"`
 	RouteShaderId   uint64 `json:"route_shader_id,string"`
 }
 
@@ -475,9 +475,9 @@ func (controller *Controller) DeleteBuyer(buyerId uint64) error {
 // -----------------------------------------------------------------------
 
 type SellerData struct {
-	SellerId   uint64 `json:"seller_id,string"`
+	SellerId   uint64 `json:"seller_id"`
 	SellerName string `json:"seller_name"`
-	CustomerId uint64 `json:"customer_id,string"`
+	CustomerId uint64 `json:"customer_id"`
 }
 
 func (controller *Controller) CreateSeller(sellerData *SellerData) (uint64, error) {
@@ -556,12 +556,12 @@ func (controller *Controller) DeleteSeller(sellerId uint64) error {
 // -----------------------------------------------------------------------
 
 type DatacenterData struct {
-	DatacenterId   uint64  `json:"datacenter_id,string"`
+	DatacenterId   uint64  `json:"datacenter_id"`
 	DatacenterName string  `json:"datacenter_name"`
 	NativeName     string  `json:"native_name"`
 	Latitude       float64 `json:"latitude"`
 	Longitude      float64 `json:"longitude"`
-	SellerId       uint64  `json:"seller_id,string"`
+	SellerId       uint64  `json:"seller_id"`
 	Notes          string  `json:"notes"`
 }
 
@@ -631,9 +631,9 @@ func (controller *Controller) DeleteDatacenter(datacenterId uint64) error {
 // -----------------------------------------------------------------------
 
 type RelayData struct {
-	RelayId          uint64 `json:"relay_id,string"`
+	RelayId          uint64 `json:"relay_id"`
 	RelayName        string `json:"relay_name"`
-	DatacenterId     uint64 `json:"datacenter_id,string"`
+	DatacenterId     uint64 `json:"datacenter_id"`
 	PublicIP         string `json:"public_ip"`
 	PublicPort       int    `json:"public_port"`
 	InternalIP       string `json:"internal_ip"`
@@ -896,8 +896,8 @@ func (controller *Controller) DeleteRelay(relayId uint64) error {
 // -----------------------------------------------------------------------
 
 type BuyerDatacenterSettings struct {
-	BuyerId            uint64 `json:"buyer_id,string"`
-	DatacenterId       uint64 `json:"datacenter_id,string"`
+	BuyerId            uint64 `json:"buyer_id"`
+	DatacenterId       uint64 `json:"datacenter_id"`
 	EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
@@ -957,7 +957,7 @@ func (controller *Controller) DeleteBuyerDatacenterSettings(buyerId uint64, data
 // -----------------------------------------------------------------------
 
 type RelayKeypairData struct {
-	RelayKeypairId   uint64 `json:"relay_keypair_id,string"`
+	RelayKeypairId   uint64 `json:"relay_keypair_id"`
 	PublicKeyBase64  string `json:"public_key_base64"`
 	PrivateKeyBase64 string `json:"private_key_base64"`
 }
