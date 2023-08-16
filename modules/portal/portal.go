@@ -546,20 +546,20 @@ func GenerateRandomRelayData() *RelayData {
 // --------------------------------------------------------------------------------------------------
 
 type RelaySample struct {
-	Timestamp                 uint64			// todo: needs json here
-	NumSessions               uint32
-	EnvelopeBandwidthUpKbps   uint32
-	EnvelopeBandwidthDownKbps uint32
-	PacketsSentPerSecond      float32
-	PacketsReceivedPerSecond  float32
-	BandwidthSentKbps         float32
-	BandwidthReceivedKbps     float32
-	NearPingsPerSecond        float32
-	RelayPingsPerSecond       float32
-	RelayFlags                uint64
-	NumRoutable               uint32
-	NumUnroutable             uint32
-	CurrentTime               uint64
+	Timestamp                 uint64  `json:"timestamp,string"`
+	NumSessions               uint32  `json:"num_sessions"`
+	EnvelopeBandwidthUpKbps   uint32  `json:"envelope_bandwidth_up_kbps"`
+	EnvelopeBandwidthDownKbps uint32  `json:"envelope_bandwidth_down_kbps"`
+	PacketsSentPerSecond      float32 `json:"packets_sent_per_second"`
+	PacketsReceivedPerSecond  float32 `json:"packets_recieved_per_second"`
+	BandwidthSentKbps         float32 `json:"bandwidth_sent_kbps"`
+	BandwidthReceivedKbps     float32 `json:"bandwidth_received_kbps"`
+	NearPingsPerSecond        float32 `json:"near_pings_per_second"`
+	RelayPingsPerSecond       float32 `json:"relay_pings_per_second"`
+	RelayFlags                uint64  `json:"relay_flags,string"`
+	NumRoutable               uint32  `json:"num_routable"`
+	NumUnroutable             uint32  `json:"num_unroutable"`
+	CurrentTime               uint64  `json:"current_time,string"`
 }
 
 func (data *RelaySample) Value() string {

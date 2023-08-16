@@ -64,6 +64,18 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    "google.iowa.3" = {
+      datacenter_name = "google.iowa.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.6" = {
+      datacenter_name = "google.iowa.6"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
     # OREGON
 
     "google.oregon.1" = {

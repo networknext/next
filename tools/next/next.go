@@ -36,7 +36,6 @@ import (
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
-	"github.com/networknext/next/modules/portal"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/modood/table"
@@ -965,8 +964,20 @@ func commitDatabase() {
 	fmt.Printf("successfully committed database to %s\n\n", env.Name)
 }
 
+type PortalRelayData struct {
+	RelayName    string `json:"relay_name"`
+	RelayId      string `json:"relay_id"`
+	RelayAddress string `json:"relay_address"`
+	NumSessions  uint32 `json:"num_sessions"`
+	MaxSessions  uint32 `json:"max_sessions"`
+	StartTime    string `json:"start_time"`
+	RelayFlags   string `json:"relay_flags"`
+	Version      string `json:"version"`
+}
+
+
 type PortalRelaysResponse struct {
-	Relays []portal.RelayData `json:"relays"`
+	Relays []PortalRelayData `json:"relays"`
 }
 
 type AdminRelaysResponse struct {
