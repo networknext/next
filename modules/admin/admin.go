@@ -32,7 +32,7 @@ func CreateController(config string) *Controller {
 // -----------------------------------------------------------------------
 
 type CustomerData struct {
-	CustomerId   uint64 `json:"customer_id,string"`
+	CustomerId   uint64 `json:"customer_id"`
 	CustomerName string `json:"customer_name"`
 	CustomerCode string `json:"customer_code"`
 	Live         bool   `json:"live"`
@@ -412,7 +412,7 @@ type BuyerData struct {
 	BuyerName       string `json:"buyer_name"`
 	PublicKeyBase64 string `json:"public_key_base64"`
 	CustomerId      uint64 `json:"customer_id"`
-	RouteShaderId   uint64 `json:"route_shader_id,string"`
+	RouteShaderId   uint64 `json:"route_shader_id"`
 }
 
 func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) {
