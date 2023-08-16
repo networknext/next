@@ -79,10 +79,6 @@ func main() {
 		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
 
-		// todo: portal needs to serve up datacenters
-
-		// todo: portal needs to server up suppliers (eg. sellers)
-
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
 		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
@@ -155,7 +151,6 @@ func main() {
 		service.Router.HandleFunc("/database/sellers", isAuthorized(databaseSellersHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/datacenters", isAuthorized(databaseDatacentersHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/relays", isAuthorized(databaseRelaysHandler)).Methods("GET")
-		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
 	}
 
