@@ -29,15 +29,15 @@ func HashString(s string) uint64 {
 }
 
 type Relay struct {
-	Id                 uint64      `json:"id"`
+	Id                 uint64      `json:"id,string"`
 	Name               string      `json:"name"`
-	DatacenterId       uint64      `json:"datacenter_id"`
-	PublicAddress      net.UDPAddr `json:"public_address"`
+	DatacenterId       uint64      `json:"datacenter_id,string"`
+	PublicAddress      net.UDPAddr `json:"public_address,string"`
 	HasInternalAddress bool        `json:"has_internal_address"`
-	InternalAddress    net.UDPAddr `json:"internal_address"`
-	InternalGroup      uint64      `json:"internal_group"`
-	SSHAddress         net.UDPAddr `json:"ssh_address"`
-	SSHUser            string      `json:"ssh_user"`
+	InternalAddress    net.UDPAddr `json:"internal_address,string"`
+	InternalGroup      uint64      `json:"internal_group,string"`
+	SSHAddress         net.UDPAddr `json:"ssh_address,string"`
+	SSHUser            string      `json:"ssh_user,string"`
 	PublicKey          []byte      `json:"public_key"`
 	PrivateKey         []byte      `json:"private_key"`
 	MaxSessions        int         `json:"max_sessions"`
@@ -48,7 +48,7 @@ type Relay struct {
 }
 
 type Buyer struct {
-	Id          uint64           `json:"id"`
+	Id          uint64           `json:"id,string"`
 	Name        string           `json:"name"`
 	Live        bool             `json:"live"`
 	Debug       bool             `json:"debug"`
@@ -57,12 +57,12 @@ type Buyer struct {
 }
 
 type Seller struct {
-	Id   uint64 `json:"id"`
+	Id   uint64 `json:"id,string"`
 	Name string `json:"name"`
 }
 
 type Datacenter struct {
-	Id        uint64  `json:"id"`
+	Id        uint64  `json:"id,string"`
 	Name      string  `json:"name"`
 	Native    string  `json:"native"`
 	Latitude  float32 `json:"latitude"`
@@ -70,8 +70,8 @@ type Datacenter struct {
 }
 
 type BuyerDatacenterSettings struct {
-	BuyerId            uint64 `json:"buyer_id"`
-	DatacenterId       uint64 `json:"datacenter_id"`
+	BuyerId            uint64 `json:"buyer_id,string"`
+	DatacenterId       uint64 `json:"datacenter_id,string"`
 	EnableAcceleration bool   `json:"enable_acceleration"`
 }
 
