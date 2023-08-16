@@ -249,14 +249,16 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionsResponse{}
 	response.Sessions = portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
 	database := service.Database()
-	for i := range response.Sessions {
-		buyer := database.GetBuyer(response.Sessions[i].BuyerId)
-		if buyer != nil {
-			response.BuyerNames[i] = buyer.Name
-		}
-		datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
-		if datacenter != nil {
-			response.DatacenterNames[i] = datacenter.Name
+	if database != nil {
+		for i := range response.Sessions {
+			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
+			if buyer != nil {
+				response.BuyerNames[i] = buyer.Name
+			}
+			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
+			if datacenter != nil {
+				response.DatacenterNames[i] = datacenter.Name
+			}
 		}
 	}
 	w.WriteHeader(http.StatusOK)
