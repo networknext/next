@@ -196,9 +196,6 @@ promotions:
   - name: "Upload Relay"
     pipeline_file: upload-relay.yml
 
-  - name: "Upload Database"
-    pipeline_file: upload-database.yml
-
   - name: "Update Golang Cache"
     pipeline_file: update-golang-cache.yml
 
