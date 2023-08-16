@@ -236,7 +236,7 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 		MaxSessions:  message.MaxSessions,
 		StartTime:    message.StartTime,
 		RelayFlags:   message.RelayFlags,
-		Version:      message.RelayVersion,
+		RelayVersion: message.RelayVersion,
 	}
 
 	relaySample := portal.RelaySample{

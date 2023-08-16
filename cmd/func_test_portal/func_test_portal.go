@@ -279,7 +279,6 @@ func Get(url string, object interface{}) {
 
 	response.Body.Close()
 
-	// todo
 	fmt.Printf("--------------------------------------------------------------------\n")
 	fmt.Printf("%s", body)
 	fmt.Printf("--------------------------------------------------------------------\n")

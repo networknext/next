@@ -476,7 +476,7 @@ type RelayData struct {
 	MaxSessions  uint32 `json:"max_sessions"`
 	StartTime    uint64 `json:"start_time,string"`
 	RelayFlags   uint64 `json:"relay_flags,string"`
-	Version      string `json:"version"`
+	RelayVersion string `json:"relay_version"`
 }
 
 func (data *RelayData) Value() string {
@@ -488,11 +488,12 @@ func (data *RelayData) Value() string {
 		data.MaxSessions,
 		data.StartTime,
 		data.RelayFlags,
-		data.Version,
+		data.RelayVersion,
 	)
 }
 
 func (data *RelayData) Parse(value string) {
+
 	values := strings.Split(value, "|")
 	if len(values) != 8 {
 		return
@@ -519,7 +520,7 @@ func (data *RelayData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	version := values[7]
+	relayVersion := values[7]
 	data.RelayName = relayName
 	data.RelayId = relayId
 	data.RelayAddress = relayAddress
@@ -527,7 +528,7 @@ func (data *RelayData) Parse(value string) {
 	data.MaxSessions = uint32(maxSessions)
 	data.StartTime = startTime
 	data.RelayFlags = relayFlags
-	data.Version = version
+	data.RelayVersion = relayVersion
 }
 
 func GenerateRandomRelayData() *RelayData {
@@ -539,7 +540,7 @@ func GenerateRandomRelayData() *RelayData {
 	data.MaxSessions = rand.Uint32()
 	data.StartTime = rand.Uint64()
 	data.RelayFlags = rand.Uint64()
-	data.Version = common.RandomString(constants.MaxRelayVersionLength)
+	data.RelayVersion = common.RandomString(constants.MaxRelayVersionLength)
 	return &data
 }
 
@@ -1483,6 +1484,7 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 
 	key := fmt.Sprintf("rd-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("SET", key, relayData.Value())
+
 	inserter.redisClient.Send("EXPIRE", key, "30")
 
 	key = fmt.Sprintf("rs-%s", relayData.RelayAddress)

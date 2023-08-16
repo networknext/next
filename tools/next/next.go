@@ -972,9 +972,8 @@ type PortalRelayData struct {
 	MaxSessions  uint32 `json:"max_sessions"`
 	StartTime    string `json:"start_time"`
 	RelayFlags   string `json:"relay_flags"`
-	Version      string `json:"version"`
+	RelayVersion string `json:"relay_version"`
 }
-
 
 type PortalRelaysResponse struct {
 	Relays []PortalRelayData `json:"relays"`
@@ -1038,7 +1037,9 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 			relay.Status = "online"
 		}
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
-		relay.Version = portalRelaysResponse.Relays[i].Version
+		if portalRelaysResponse.Relays[i].RelayVersion != "" {
+			relay.Version = portalRelaysResponse.Relays[i].RelayVersion
+		}
 	}
 
 	relays := make([]RelayRow, len(relayMap))
