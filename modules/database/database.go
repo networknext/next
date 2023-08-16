@@ -288,6 +288,10 @@ func (database *Database) DatacenterEnabled(buyerId uint64, datacenterId uint64)
 	return settings.EnableAcceleration
 }
 
+func (database *Database) GetBuyer(buyerId uint64) *Buyer {
+	return database.BuyerMap[buyerId]
+}
+
 func (database *Database) GetDatacenter(datacenterId uint64) *Datacenter {
 	return database.DatacenterMap[datacenterId]
 }

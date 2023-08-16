@@ -21,8 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -493,9 +493,9 @@ func StartWebServer() {
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	router.HandleFunc("/cost_matrix", CostMatrixHandler).Methods("GET")
 
-   credentials := handlers.AllowCredentials()
-   methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
-   origins := handlers.AllowedOrigins([]string{"127.0.0.1"})
+	credentials := handlers.AllowCredentials()
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
+	origins := handlers.AllowedOrigins([]string{"127.0.0.1"})
 
 	http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", NEXT_RELAY_BACKEND_PORT), handlers.CORS(credentials, methods, origins)(router))
 }

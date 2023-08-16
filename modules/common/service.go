@@ -24,10 +24,10 @@ import (
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 
-    "github.com/rs/cors"
-   	"github.com/gomodule/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/oschwald/geoip2-golang"
+	"github.com/rs/cors"
 )
 
 var (
@@ -442,10 +442,10 @@ func (service *Service) StartWebServer() {
 		} else {
 			// CORS
 			core.Log("allowed origin: %s", allowedOrigin)
-		    c := cors.New(cors.Options{
-	    	    AllowedOrigins: []string{allowedOrigin},
-	        	AllowCredentials: true,
-		    })
+			c := cors.New(cors.Options{
+				AllowedOrigins:   []string{allowedOrigin},
+				AllowCredentials: true,
+			})
 			err := http.ListenAndServe(bindAddress, c.Handler(&service.Router))
 			if err != nil {
 				core.Error("error starting http server: %v", err)

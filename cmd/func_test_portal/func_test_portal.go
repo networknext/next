@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
-	"github.com/networknext/next/modules/constants"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -87,15 +87,15 @@ type PortalSessionData struct {
 }
 
 type PortalServerData struct {
-	ServerAddress    string  `json:"server_address"`
-	SDKVersion_Major uint8	 `json:"sdk_version_major"`
-	SDKVersion_Minor uint8   `json:"sdk_version_minor"`
-	SDKVersion_Patch uint8   `json:"sdk_version_patch"`
-	MatchId          string  `json:"match_id"`
-	BuyerId          string  `json:"buyer_id"`
-	DatacenterId     string  `json:"datacenter_id"`
-	NumSessions      uint32  `json:"num_sessions"`
-	StartTime        string  `json:"start_time"`
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	MatchId          string `json:"match_id"`
+	BuyerId          string `json:"buyer_id"`
+	DatacenterId     string `json:"datacenter_id"`
+	NumSessions      uint32 `json:"num_sessions"`
+	StartTime        string `json:"start_time"`
 }
 
 type PortalRelaySample struct {

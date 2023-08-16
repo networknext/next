@@ -169,34 +169,34 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 		// todo: temporarily disabled
 		/*
-		auth := r.Header.Get("Authorization")
+			auth := r.Header.Get("Authorization")
 
-		split := strings.Split(auth, "Bearer ")
+			split := strings.Split(auth, "Bearer ")
 
-		if len(split) == 2 {
+			if len(split) == 2 {
 
-			apiKey := split[1]
+				apiKey := split[1]
 
-			token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("There was an error")
+				token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
+					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+						return nil, fmt.Errorf("There was an error")
+					}
+					return []byte(privateKey), nil
+				})
+
+				if token == nil || err != nil {
+					w.WriteHeader(http.StatusUnauthorized)
+					fmt.Fprintf(w, err.Error())
 				}
-				return []byte(privateKey), nil
-			})
 
-			if token == nil || err != nil {
+				endpoint(w, r)
+
+			} else {
+
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprintf(w, err.Error())
+				fmt.Fprintf(w, "Not Authorized")
+
 			}
-
-			endpoint(w, r)
-
-		} else {
-
-			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprintf(w, "Not Authorized")
-
-		}
 		*/
 	}
 }
@@ -229,7 +229,9 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionsResponse struct {
-	Sessions []portal.SessionData `json:"sessions"`
+	Sessions        []portal.SessionData `json:"sessions"`
+	BuyerNames      []string             `json:"buyer_names"`
+	DatacenterNames []string             `json:"datacenter_names"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +248,17 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalSessionsResponse{}
 	response.Sessions = portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	database := service.Database()
+	for i := range response.Sessions {
+		buyer := database.GetBuyer(response.Sessions[i].BuyerId)
+		if buyer != nil {
+			response.BuyerNames[i] = buyer.Name
+		}
+		datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
+		if datacenter != nil {
+			response.DatacenterNames[i] = datacenter.Name
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

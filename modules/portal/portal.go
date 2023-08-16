@@ -378,15 +378,15 @@ func GenerateRandomSessionData() *SessionData {
 // --------------------------------------------------------------------------------------------------
 
 type ServerData struct {
-	ServerAddress    string  `json:"server_address"`
-	SDKVersion_Major uint8	 `json:"sdk_version_major"`
-	SDKVersion_Minor uint8   `json:"sdk_version_minor"`
-	SDKVersion_Patch uint8   `json:"sdk_version_patch"`
-	MatchId          uint64  `json:"match_id,string"`
-	BuyerId          uint64  `json:"buyer_id,string"`
-	DatacenterId     uint64  `json:"datacenter_id,string"`
-	NumSessions      uint32  `json:"num_sessions"`
-	StartTime        uint64  `json:"start_time,string"`
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	MatchId          uint64 `json:"match_id,string"`
+	BuyerId          uint64 `json:"buyer_id,string"`
+	DatacenterId     uint64 `json:"datacenter_id,string"`
+	NumSessions      uint32 `json:"num_sessions"`
+	StartTime        uint64 `json:"start_time,string"`
 }
 
 func (data *ServerData) Value() string {
