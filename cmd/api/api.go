@@ -79,6 +79,10 @@ func main() {
 		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
 
+		// todo: portal needs to serve up datacenters
+
+		// todo: portal needs to server up suppliers (eg. sellers)
+
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
 		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))

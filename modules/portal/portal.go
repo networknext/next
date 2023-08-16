@@ -18,7 +18,7 @@ import (
 // --------------------------------------------------------------------------------------------------
 
 type SliceData struct {
-	Timestamp        uint64  `json:"timestamp"`
+	Timestamp        uint64  `json:"timestamp,string"`
 	SliceNumber      uint32  `json:"slice_number"`
 	DirectRTT        uint32  `json:"direct_rtt"`
 	NextRTT          uint32  `json:"next_rtt"`
@@ -30,8 +30,8 @@ type SliceData struct {
 	NextPacketLoss   float32 `json:"next_packet_loss"`
 	RealPacketLoss   float32 `json:"real_packet_loss"`
 	RealOutOfOrder   float32 `json:"real_out_of_order"`
-	InternalEvents   uint64  `json:"internal_events"`
-	SessionEvents    uint64  `json:"session_events"`
+	InternalEvents   uint64  `json:"internal_events,string"`
+	SessionEvents    uint64  `json:"session_events,string"`
 	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
 	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
 	NextKbpsUp       uint32  `json:"next_kbps_up"`
@@ -184,7 +184,7 @@ func GenerateRandomSliceData() *SliceData {
 // --------------------------------------------------------------------------------------------------
 
 type NearRelayData struct {
-	Timestamp           uint64                           `json:"timestamp"`
+	Timestamp           uint64                           `json:"timestamp,string"`
 	NumNearRelays       uint32                           `json:"num_near_relays"`
 	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
 	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
@@ -265,7 +265,7 @@ func GenerateRandomNearRelayData() *NearRelayData {
 // --------------------------------------------------------------------------------------------------
 
 type SessionData struct {
-	SessionId      uint64  `json:"session_id"`
+	SessionId      uint64  `json:"session_id,string"`
 	ISP            string  `json:"isp"`
 	ConnectionType uint8   `json:"connection_type"`
 	PlatformType   uint8   `json:"platform_type"`
@@ -273,9 +273,9 @@ type SessionData struct {
 	Longitude      float32 `json:"longitude"`
 	DirectRTT      uint32  `json:"direct_rtt"`
 	NextRTT        uint32  `json:"next_rtt"`
-	MatchId        uint64  `json:"match_id"`
-	BuyerId        uint64  `json:"buyer_id"`
-	DatacenterId   uint64  `json:"datacenter_id"`
+	MatchId        uint64  `json:"match_id,string"`
+	BuyerId        uint64  `json:"buyer_id,string"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
 	ServerAddress  string  `json:"server_address"`
 }
 
@@ -382,11 +382,11 @@ type ServerData struct {
 	SDKVersion_Major uint8	 `json:"sdk_version_major"`
 	SDKVersion_Minor uint8   `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8   `json:"sdk_version_patch"`
-	MatchId          uint64  `json:"match_id"`
-	BuyerId          uint64  `json:"buyer_id"`
-	DatacenterId     uint64  `json:"datacenter_id"`
+	MatchId          uint64  `json:"match_id,string"`
+	BuyerId          uint64  `json:"buyer_id,string"`
+	DatacenterId     uint64  `json:"datacenter_id,string"`
 	NumSessions      uint32  `json:"num_sessions"`
-	StartTime        uint64  `json:"start_time"`
+	StartTime        uint64  `json:"start_time,string"`
 }
 
 func (data *ServerData) Value() string {
@@ -470,12 +470,12 @@ func GenerateRandomServerData() *ServerData {
 
 type RelayData struct {
 	RelayName    string `json:"relay_name"`
-	RelayId      uint64 `json:"relay_id"`
+	RelayId      uint64 `json:"relay_id,string"`
 	RelayAddress string `json:"relay_address"`
 	NumSessions  uint32 `json:"num_sessions"`
 	MaxSessions  uint32 `json:"max_sessions"`
-	StartTime    uint64 `json:"start_time"`
-	RelayFlags   uint64 `json:"relay_flags"`
+	StartTime    uint64 `json:"start_time,string"`
+	RelayFlags   uint64 `json:"relay_flags,string"`
 	Version      string `json:"version"`
 }
 
@@ -546,7 +546,7 @@ func GenerateRandomRelayData() *RelayData {
 // --------------------------------------------------------------------------------------------------
 
 type RelaySample struct {
-	Timestamp                 uint64
+	Timestamp                 uint64			// todo: needs json here
 	NumSessions               uint32
 	EnvelopeBandwidthUpKbps   uint32
 	EnvelopeBandwidthDownKbps uint32
@@ -730,7 +730,7 @@ func GetSessionCounts(pool *redis.Pool, minutes int64) (int, int) {
 }
 
 type SessionEntry struct {
-	SessionId uint64 `json:"session_id"`
+	SessionId uint64 `json:"session_id,string"`
 	Score     uint32 `json:"score"`
 }
 

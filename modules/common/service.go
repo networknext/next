@@ -27,7 +27,6 @@ import (
     "github.com/rs/cors"
    	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
-	// "github.com/gorilla/handlers"
 	"github.com/oschwald/geoip2-golang"
 )
 
