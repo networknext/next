@@ -3759,3 +3759,5 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 }
 
 // --------------------------------------------------------------
+
+// todo: we need to test that 			state.SessionFlags |= constants.SessionFlags_Next is set when expected --- it wasn't, and we totally missed it because it is not tested anywhere here

@@ -1085,6 +1085,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.Longitude = state.Output.Longitude
 	message.SliceNumber = state.Input.SliceNumber
 	message.SessionFlags = state.SessionFlags
+	if state.Output.RouteState.Next {
+		state.SessionFlags |= constants.SessionFlags_Next
+	}
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
 	message.ConnectionType = uint8(state.Request.ConnectionType)
