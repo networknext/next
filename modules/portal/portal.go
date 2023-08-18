@@ -266,6 +266,7 @@ func GenerateRandomNearRelayData() *NearRelayData {
 
 type SessionData struct {
 	SessionId      uint64  `json:"session_id,string"`
+	UserHash       uint64  `json:"user_hash,string"`
 	ISP            string  `json:"isp"`
 	ConnectionType uint8   `json:"connection_type"`
 	PlatformType   uint8   `json:"platform_type"`
@@ -280,8 +281,9 @@ type SessionData struct {
 }
 
 func (data *SessionData) Value() string {
-	return fmt.Sprintf("%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%s",
+	return fmt.Sprintf("%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%s",
 		data.SessionId,
+		data.UserHash,
 		data.ISP,
 		data.ConnectionType,
 		data.PlatformType,
@@ -298,53 +300,58 @@ func (data *SessionData) Value() string {
 
 func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 12 {
+	if len(values) != 13 {
 		return
 	}
 	sessionId, err := strconv.ParseUint(values[0], 16, 64)
 	if err != nil {
 		return
 	}
-	isp := values[1]
-	connectionType, err := strconv.ParseUint(values[2], 10, 32)
+	userHash, err := strconv.ParseUint(values[1], 16, 64)
 	if err != nil {
 		return
 	}
-	platformType, err := strconv.ParseUint(values[3], 10, 32)
+	isp := values[2]
+	connectionType, err := strconv.ParseUint(values[3], 10, 32)
 	if err != nil {
 		return
 	}
-	latitude, err := strconv.ParseFloat(values[4], 32)
+	platformType, err := strconv.ParseUint(values[4], 10, 32)
 	if err != nil {
 		return
 	}
-	longitude, err := strconv.ParseFloat(values[5], 32)
+	latitude, err := strconv.ParseFloat(values[5], 32)
 	if err != nil {
 		return
 	}
-	directRTT, err := strconv.ParseUint(values[6], 10, 32)
+	longitude, err := strconv.ParseFloat(values[6], 32)
 	if err != nil {
 		return
 	}
-	nextRTT, err := strconv.ParseUint(values[7], 10, 32)
+	directRTT, err := strconv.ParseUint(values[7], 10, 32)
 	if err != nil {
 		return
 	}
-	matchId, err := strconv.ParseUint(values[8], 16, 64)
+	nextRTT, err := strconv.ParseUint(values[8], 10, 32)
 	if err != nil {
 		return
 	}
-	buyerId, err := strconv.ParseUint(values[9], 16, 64)
+	matchId, err := strconv.ParseUint(values[9], 16, 64)
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[10], 16, 64)
+	buyerId, err := strconv.ParseUint(values[10], 16, 64)
 	if err != nil {
 		return
 	}
-	serverAddress := values[11]
+	datacenterId, err := strconv.ParseUint(values[11], 16, 64)
+	if err != nil {
+		return
+	}
+	serverAddress := values[12]
 
 	data.SessionId = sessionId
+	data.UserHash = userHash
 	data.ISP = isp
 	data.ConnectionType = uint8(connectionType)
 	data.PlatformType = uint8(platformType)
@@ -361,6 +368,7 @@ func (data *SessionData) Parse(value string) {
 func GenerateRandomSessionData() *SessionData {
 	data := SessionData{}
 	data.SessionId = rand.Uint64()
+	data.UserHash = rand.Uint64()
 	data.ISP = "Comcast Internet Company, LLC"
 	data.ConnectionType = uint8(common.RandomInt(0, constants.MaxConnectionType))
 	data.PlatformType = uint8(common.RandomInt(0, constants.MaxPlatformType))
