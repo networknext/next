@@ -864,8 +864,6 @@ func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceDa
 		return nil, nil, nil
 	}
 
-	fmt.Printf("session %016x has %d slices\n", sessionId, len(redis_slice_data))
-
 	redis_near_relay_data, err := redis.Strings(redisClient.Receive())
 	if err != nil {
 		return nil, nil, nil
@@ -1317,15 +1315,15 @@ func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next boo
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)
 	inserter.redisClient.Send("SET", key, sessionData.Value())
-	inserter.redisClient.Send("EXPIRE", key, 30)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
 	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
-	inserter.redisClient.Send("EXPIRE", key, 30)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
 	inserter.redisClient.Send("HSET", key, sessionIdString, currentTime.Unix())
-	inserter.redisClient.Send("EXPIRE", key, 30)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	inserter.numPending++
 
@@ -1337,11 +1335,11 @@ func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
 		minutes := currentTime.Unix() / 60
 		if len(inserter.allSessions) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.allSessions...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 600)
 		}
 		if len(inserter.nextSessions) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.nextSessions...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 600)
 		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()
@@ -1429,14 +1427,14 @@ func (inserter *ServerInserter) Insert(serverData *ServerData) {
 	inserter.servers = inserter.servers.Add(serverData.ServerAddress)
 
 	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%s", serverData.ServerAddress), 30)
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%s", serverData.ServerAddress), 600)
 
 	inserter.numPending++
 
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
 		if len(inserter.servers) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.servers...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sv-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sv-%d", minutes), 600)
 		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()
@@ -1485,7 +1483,7 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 	key := fmt.Sprintf("rd-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("SET", key, relayData.Value())
 
-	inserter.redisClient.Send("EXPIRE", key, "30")
+	inserter.redisClient.Send("EXPIRE", key, "600")
 
 	key = fmt.Sprintf("rs-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("RPUSH", key, relaySample.Value())
@@ -1497,7 +1495,7 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
 		if len(inserter.relays) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.relays...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("r-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("r-%d", minutes), 600)
 		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()
