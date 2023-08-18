@@ -1079,6 +1079,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
 
 	message.SessionId = state.Input.SessionId
+	message.UserHash = state.Request.UserHash
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
 	message.Latitude = state.Output.Latitude

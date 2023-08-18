@@ -340,6 +340,10 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		message.NearRelayRoutable[i] = common.RandomBool()
 	}
 
+	if message.Version >= 2 {
+		message.UserHash = rand.Uint64()
+	}
+
 	return message
 }
 
