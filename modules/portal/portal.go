@@ -1300,7 +1300,7 @@ func CreateSessionInserter(pool *redis.Pool, batchSize int) *SessionInserter {
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(sessionId uint64, userHash uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
 
 	currentTime := time.Now()
 
@@ -1321,11 +1321,17 @@ func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next boo
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
+	userHashString := fmt.Sprintf("%016x", userHash)
+
 	key := fmt.Sprintf("sd-%s", sessionIdString)
 	inserter.redisClient.Send("SET", key, sessionData.Value())
 	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
+	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
+	inserter.redisClient.Send("EXPIRE", key, 600)
+
+	key = fmt.Sprintf("us-%s", userHashString)
 	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
 	inserter.redisClient.Send("EXPIRE", key, 600)
 

@@ -137,6 +137,8 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 	sessionId := message.SessionId
 
+	userHash := message.UserHash
+
 	next := (message.SessionFlags & constants.SessionFlags_Next) != 0
 
 	score := uint32(0)
@@ -186,7 +188,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		NextKbpsDown:     message.NextKbpsDown,
 	}
 
-	sessionInserter[threadNumber].Insert(sessionId, score, next, &sessionData, &sliceData)
+	sessionInserter[threadNumber].Insert(sessionId, userHash, score, next, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
