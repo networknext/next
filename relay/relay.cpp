@@ -4478,6 +4478,8 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
+    // todo: this is whack. just look up the stuff from the backend, vs. trip wiring it against env
+    /*
     if ( ( expected_has_internal_address != 0 ) != main->has_internal_address )
     {
         printf( "error: relay is misconfigured. it doesn't have an internal address, but it should\n" );
@@ -4493,6 +4495,7 @@ int main_update( main_t * main )
         printf( "error: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n", relay_internal_address_string, expected_internal_address_string );
         return RELAY_ERROR;
     }
+    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
