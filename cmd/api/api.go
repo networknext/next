@@ -229,10 +229,27 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type PortalSessionData struct {
+	SessionId      uint64  `json:"session_id,string"`
+	UserHash       uint64  `json:"user_hash,string"`
+	StartTime      uint64  `json:"start_time,string"`
+	ISP            string  `json:"isp"`
+	ConnectionType uint8   `json:"connection_type"`
+	PlatformType   uint8   `json:"platform_type"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	DirectRTT      uint32  `json:"direct_rtt"`
+	NextRTT        uint32  `json:"next_rtt"`
+	MatchId        uint64  `json:"match_id,string"`
+	BuyerId        uint64  `json:"buyer_id,string"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
+	ServerAddress  string  `json:"server_address"`
+	DatacenterName string  `json:"datacenter_name"`	
+	BuyerName      string  `json:"buyer_name"`	
+}
+
 type PortalSessionsResponse struct {
-	Sessions        []portal.SessionData `json:"sessions"`
-	BuyerNames      []string             `json:"buyer_names"`
-	DatacenterNames []string             `json:"datacenter_names"`
+	Sessions        []PortalSessionData `json:"sessions"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -248,19 +265,32 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalSessionsResponse{}
-	response.Sessions = portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
-	if database != nil {
-		response.BuyerNames = make([]string, len(response.Sessions))
-		response.DatacenterNames = make([]string, len(response.Sessions))
-		for i := range response.Sessions {
+	for i := range response.Sessions {
+		response.Sessions[i].SessionId = sessions[i].SessionId
+		response.Sessions[i].UserHash = sessions[i].UserHash
+		response.Sessions[i].StartTime = sessions[i].StartTime
+		response.Sessions[i].ISP = sessions[i].ISP
+		response.Sessions[i].ConnectionType = sessions[i].ConnectionType
+		response.Sessions[i].PlatformType = sessions[i].PlatformType
+		response.Sessions[i].Latitude = sessions[i].Latitude
+		response.Sessions[i].Longitude = sessions[i].Longitude
+		response.Sessions[i].DirectRTT = sessions[i].DirectRTT
+		response.Sessions[i].NextRTT = sessions[i].NextRTT
+		response.Sessions[i].MatchId = sessions[i].MatchId
+		response.Sessions[i].BuyerId = sessions[i].BuyerId
+		response.Sessions[i].DatacenterId = sessions[i].DatacenterId
+		response.Sessions[i].ServerAddress = sessions[i].ServerAddress
+		if database != nil {
 			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
 			if buyer != nil {
-				response.BuyerNames[i] = buyer.Name
+				response.Sessions[i].BuyerName = buyer.Name
 			}
 			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
 			if datacenter != nil {
-				response.DatacenterNames[i] = datacenter.Name
+				response.Sessions[i].DatacenterName = datacenter.Name
 			}
 		}
 	}
