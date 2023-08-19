@@ -344,6 +344,10 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		message.UserHash = rand.Uint64()
 	}
 
+	if message.Version >= 3 {
+		message.StartTime = rand.Uint64()
+	}
+
 	return message
 }
 

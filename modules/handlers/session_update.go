@@ -1080,6 +1080,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.SessionId = state.Input.SessionId
 	message.UserHash = state.Request.UserHash
+	message.StartTime = state.Output.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
 	message.Latitude = state.Output.Latitude
