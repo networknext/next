@@ -33,6 +33,7 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 				for j := 0; j < 10000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
+					userHash := uint64(j) + iteration
 					score := uint32(rand.Intn(10000))
 					next := ((uint64(j) + iteration) % 10) == 0
 
@@ -40,7 +41,7 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					sessionInserter.Insert(sessionId, score, next, sessionData, sliceData)
+					sessionInserter.Insert(sessionId, userHash, score, next, sessionData, sliceData)
 
 					if sessionId > near_relay_max {
 						nearRelayData := portal.GenerateRandomNearRelayData()
