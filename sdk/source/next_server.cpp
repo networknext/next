@@ -55,6 +55,7 @@ struct next_server_internal_t
     uint64_t customer_id;
     uint64_t datacenter_id;
     uint64_t match_id;
+    uint64_t start_time;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -314,6 +315,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_server_internal_verify_sentinels( server );
 
     server->context = context;
+    server->start_time = time( NULL );
     server->customer_id = next_global_config.server_customer_id;
     memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
     server->valid_customer_private_key = next_global_config.valid_customer_private_key;
@@ -3036,6 +3038,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.match_id = server->match_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
+        packet.start_time = server->start_time;
 
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
