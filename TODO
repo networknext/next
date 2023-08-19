@@ -202,14 +202,6 @@ Nice to have:
 
 	---------------
 
-	I really can't answer the question "why are half the relays not carrying sessions in dev?"
-
-	Is it just a property of the optimizer, eg. it will go away if I disable mispredict and set all costs to zero?
-
-	Or is there some sort of bias causing this. It seems important to explore this and work it out.
-
-	---------------
-
 	Leader election func tests for relay backends + ready delay
 
 	---------------

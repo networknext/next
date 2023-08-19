@@ -400,11 +400,22 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type PortalRelayData struct {
+	RelayName      string `json:"relay_name"`
+	RelayId        uint64 `json:"relay_id,string"`
+	RelayAddress   string `json:"relay_address"`
+	NumSessions    uint32 `json:"num_sessions"`
+	MaxSessions    uint32 `json:"max_sessions"`
+	StartTime      uint64 `json:"start_time,string"`
+	RelayFlags     uint64 `json:"relay_flags,string"`
+	RelayVersion   string `json:"relay_version"`
+	DatacenterName string `json:"datacenter_name"`
+	SellerName     string `json:"seller_name"`
+	Uptime         uint64 `json:"uptime,string"`
+}
+
 type PortalRelaysResponse struct {
-	Relays          []portal.RelayData `json:"relays"`
-	DatacenterNames []string           `json:"datacenter_names"`
-	SellerNames     []string           `json:"seller_names"`
-	Uptime          []uint64           `json:"uptime,string"`
+	Relays []PortalRelayData `json:"relays"`
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
@@ -419,22 +430,27 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	relays := portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalRelaysResponse{}
-	response.Relays = portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
-	response.SellerNames = make([]string, len(response.Relays))
-	response.DatacenterNames = make([]string, len(response.Relays))
-	response.Uptime = make([]uint64, len(response.Relays))
 	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
 	if database != nil {
 		for i := range response.Relays {
+			response.Relays[i].RelayName = relays[i].RelayName
+			response.Relays[i].RelayId = relays[i].RelayId
+			response.Relays[i].RelayAddress = relays[i].RelayAddress
+			response.Relays[i].NumSessions = relays[i].NumSessions
+			response.Relays[i].MaxSessions = relays[i].MaxSessions
+			response.Relays[i].StartTime = relays[i].StartTime
+			response.Relays[i].RelayFlags = relays[i].RelayFlags
+			response.Relays[i].RelayVersion = relays[i].RelayVersion
 			relay := database.GetRelay(response.Relays[i].RelayId)
 			if relay == nil {
 				continue
 			}
-			response.DatacenterNames[i] = relay.Datacenter.Name
-			response.SellerNames[i] = relay.Seller.Name
-			response.Uptime[i] = currentTime - response.Relays[i].StartTime
+			response.Relays[i].DatacenterName = relay.Datacenter.Name
+			response.Relays[i].SellerName = relay.Seller.Name
+			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
 		}
 	}
 	w.WriteHeader(http.StatusOK)
