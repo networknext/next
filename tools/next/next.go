@@ -29,6 +29,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"math"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -973,6 +974,7 @@ type PortalRelayData struct {
 	StartTime    string `json:"start_time"`
 	RelayFlags   string `json:"relay_flags"`
 	RelayVersion string `json:"relay_version"`
+	Uptime       string `json:"uptime"`
 }
 
 type PortalRelaysResponse struct {
@@ -982,6 +984,20 @@ type PortalRelaysResponse struct {
 type AdminRelaysResponse struct {
 	Relays []admin.RelayData `json:"relays"`
 	Error  string            `json:"error"`
+}
+
+func niceUptime(uptimeString string) string {
+	value, _ := strconv.ParseInt(uptimeString, 10, 64)
+   if (value > 86400) {
+     return fmt.Sprintf("%dd", int(math.Floor(float64(value/86400))))
+   }
+   if (value > 3600) {
+     return fmt.Sprintf("%dh", int(math.Floor(float64(value/3600))))
+   }
+   if (value > 60) {
+     return fmt.Sprintf("%dm", int(math.Floor(float64(value/60))))
+   }
+   return fmt.Sprintf("%ds", value)
 }
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
@@ -1000,6 +1016,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		Id              string
 		Status          string
 		Sessions        int
+		Uptime          string
 		Version         string
 	}
 
@@ -1040,6 +1057,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if portalRelaysResponse.Relays[i].RelayVersion != "" {
 			relay.Version = portalRelaysResponse.Relays[i].RelayVersion
 		}
+		relay.Uptime = niceUptime(portalRelaysResponse.Relays[i].Uptime)
 	}
 
 	relays := make([]RelayRow, len(relayMap))
