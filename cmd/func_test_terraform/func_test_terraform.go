@@ -104,7 +104,8 @@ provider "networknext" {
 # ---------------------------------------------------------
 
 resource "networknext_seller" "test" {
-  name = "test"
+  name = "Test"
+  code = "test"
 }
 
 data "networknext_sellers" "test" {
@@ -250,6 +251,7 @@ provider "networknext" {
 
 resource "networknext_seller" "test" {
   name = "test (update)"
+  code = "test"
 }
 
 data "networknext_sellers" "test" {
