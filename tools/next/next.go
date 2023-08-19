@@ -16,6 +16,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -29,7 +30,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"math"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -988,16 +988,16 @@ type AdminRelaysResponse struct {
 
 func niceUptime(uptimeString string) string {
 	value, _ := strconv.ParseInt(uptimeString, 10, 64)
-   if (value > 86400) {
-     return fmt.Sprintf("%dd", int(math.Floor(float64(value/86400))))
-   }
-   if (value > 3600) {
-     return fmt.Sprintf("%dh", int(math.Floor(float64(value/3600))))
-   }
-   if (value > 60) {
-     return fmt.Sprintf("%dm", int(math.Floor(float64(value/60))))
-   }
-   return fmt.Sprintf("%ds", value)
+	if value > 86400 {
+		return fmt.Sprintf("%dd", int(math.Floor(float64(value/86400))))
+	}
+	if value > 3600 {
+		return fmt.Sprintf("%dh", int(math.Floor(float64(value/3600))))
+	}
+	if value > 60 {
+		return fmt.Sprintf("%dm", int(math.Floor(float64(value/60))))
+	}
+	return fmt.Sprintf("%ds", value)
 }
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {

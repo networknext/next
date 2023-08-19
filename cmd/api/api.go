@@ -92,12 +92,6 @@ func main() {
 		service.Router.HandleFunc("/admin/database", isAuthorized(adminDatabaseHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/commit", isAuthorized(adminCommitHandler)).Methods("PUT")
 
-		service.Router.HandleFunc("/admin/create_customer", isAuthorized(adminCreateCustomerHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/customers", isAuthorized(adminReadCustomersHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/customer/{customerId}", isAuthorized(adminReadCustomerHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/update_customer", isAuthorized(adminUpdateCustomerHandler)).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_customer/{customerId}", isAuthorized(adminDeleteCustomerHandler)).Methods("DELETE")
-
 		service.Router.HandleFunc("/admin/create_seller", isAuthorized(adminCreateSellerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/sellers", isAuthorized(adminReadSellersHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/seller/{sellerId}", isAuthorized(adminReadSellerHandler)).Methods("GET")
@@ -244,12 +238,12 @@ type PortalSessionData struct {
 	BuyerId        uint64  `json:"buyer_id,string"`
 	DatacenterId   uint64  `json:"datacenter_id,string"`
 	ServerAddress  string  `json:"server_address"`
-	DatacenterName string  `json:"datacenter_name"`	
-	BuyerName      string  `json:"buyer_name"`	
+	DatacenterName string  `json:"datacenter_name"`
+	BuyerName      string  `json:"buyer_name"`
 }
 
 type PortalSessionsResponse struct {
-	Sessions        []PortalSessionData `json:"sessions"`
+	Sessions []PortalSessionData `json:"sessions"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -659,131 +653,6 @@ func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	core.Log("committed database to %s for %s at time %s", databaseURL, request.User, database.CreationTime)
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-type AdminCreateCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	var response AdminCreateCustomerResponse
-	var customerData admin.CustomerData
-	err := json.NewDecoder(r.Body).Decode(&customerData)
-	if err != nil {
-		core.Error("failed to read customer data in create customer request: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	customerId, err := controller.CreateCustomer(&customerData)
-	if err != nil {
-		core.Error("failed to create customer: %v", err)
-		response.Error = err.Error()
-	} else {
-		customerData.CustomerId = customerId
-		core.Debug("create customer %d -> %+v", customerId, customerData)
-		response.Customer = customerData
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadCustomersResponse struct {
-	Customers []admin.CustomerData `json:"customers"`
-	Error     string               `json:"error"`
-}
-
-func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
-	customers, err := controller.ReadCustomers()
-	response := AdminReadCustomersResponse{Customers: customers}
-	if err != nil {
-		core.Error("failed to read customers: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read customers -> %+v", customers)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-func adminReadCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	customerId, err := strconv.ParseUint(vars["customerId"], 10, 64)
-	if err != nil {
-		core.Error("read customer could not parse customer id")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	customer, err := controller.ReadCustomer(customerId)
-	response := AdminReadCustomerResponse{Customer: customer}
-	if err != nil {
-		core.Error("failed to read customer: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read customer %d -> %+v", customerId, customer)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	var customer admin.CustomerData
-	err := json.NewDecoder(r.Body).Decode(&customer)
-	if err != nil {
-		core.Error("failed to decode update customer request json: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	response := AdminUpdateCustomerResponse{Customer: customer}
-	err = controller.UpdateCustomer(&customer)
-	if err != nil {
-		core.Error("failed to update customer: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("update customer %d -> %+v", customer.CustomerId, customer)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminDeleteCustomerResponse struct {
-	Error string `json:"error"`
-}
-
-func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	customerId, err := strconv.ParseUint(vars["customerId"], 10, 64)
-	if err != nil {
-		core.Error("delete customer could not parse customer id: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	core.Debug("delete customer %d", customerId)
-	response := AdminDeleteCustomerResponse{}
-	err = controller.DeleteCustomer(customerId)
-	if err != nil {
-		core.Error("failed to delete customer: %v", err)
-		response.Error = err.Error()
-	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

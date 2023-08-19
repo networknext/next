@@ -50,6 +50,7 @@ type Relay struct {
 type Buyer struct {
 	Id          uint64           `json:"id,string"`
 	Name        string           `json:"name"`
+	Code        string           `jnon:"code"`
 	Live        bool             `json:"live"`
 	Debug       bool             `json:"debug"`
 	PublicKey   []byte           `json:"public_key"`
@@ -59,6 +60,7 @@ type Buyer struct {
 type Seller struct {
 	Id   uint64 `json:"id,string"`
 	Name string `json:"name"`
+	Code string `json:"code"`
 }
 
 type Datacenter struct {
@@ -886,14 +888,16 @@ func ExtractDatabase(config string) (*Database, error) {
 	type BuyerRow struct {
 		buyer_id          uint64
 		buyer_name        string
+		buyer_code        string
 		public_key_base64 string
-		customer_id       uint64
 		route_shader_id   uint64
+		live              bool
+		debug             bool
 	}
 
 	buyerRows := make([]BuyerRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT buyer_id, buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers")
+		rows, err := pgsql.Query("SELECT buyer_id, buyer_name, buyer_code, public_key_base64, route_shader_id, live, debug FROM buyers")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract buyers: %v\n", err)
 		}
@@ -902,7 +906,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := BuyerRow{}
-			if err := rows.Scan(&row.buyer_id, &row.buyer_name, &row.public_key_base64, &row.customer_id, &row.route_shader_id); err != nil {
+			if err := rows.Scan(&row.buyer_id, &row.buyer_name, &row.buyer_code, &row.public_key_base64, &row.route_shader_id, &row.live, &row.debug); err != nil {
 				return nil, fmt.Errorf("failed to scan buyer row: %v\n", err)
 			}
 			buyerRows = append(buyerRows, row)
@@ -914,12 +918,12 @@ func ExtractDatabase(config string) (*Database, error) {
 	type SellerRow struct {
 		seller_id   uint64
 		seller_name string
-		customer_id sql.NullInt64
+		seller_code string
 	}
 
 	sellerRows := make([]SellerRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT seller_id, seller_name, customer_id FROM sellers")
+		rows, err := pgsql.Query("SELECT seller_id, seller_name, seller_code FROM sellers")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract sellers: %v\n", err)
 		}
@@ -928,38 +932,10 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := SellerRow{}
-			if err := rows.Scan(&row.seller_id, &row.seller_name, &row.customer_id); err != nil {
+			if err := rows.Scan(&row.seller_id, &row.seller_name, &row.seller_code); err != nil {
 				return nil, fmt.Errorf("failed to scan seller row: %v\n", err)
 			}
 			sellerRows = append(sellerRows, row)
-		}
-	}
-
-	// customers
-
-	type CustomerRow struct {
-		customer_id   uint64
-		customer_name string
-		customer_code string
-		live          bool
-		debug         bool
-	}
-
-	customerRows := make([]CustomerRow, 0)
-	{
-		rows, err := pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers")
-		if err != nil {
-			return nil, fmt.Errorf("could not extract customers: %v\n", err)
-		}
-
-		defer rows.Close()
-
-		for rows.Next() {
-			row := CustomerRow{}
-			if err := rows.Scan(&row.customer_id, &row.customer_name, &row.customer_code, &row.live, &row.debug); err != nil {
-				return nil, fmt.Errorf("failed to scan customer row: %v\n", err)
-			}
-			customerRows = append(customerRows, row)
 		}
 	}
 
@@ -1045,17 +1021,12 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nbuyers:\n")
 	for _, row := range buyerRows {
-		fmt.Printf("%d: %s, %s, %d\n", row.buyer_id, row.buyer_name, row.public_key_base64, row.customer_id)
+		fmt.Printf("%d: %s, %s, %s\n", row.buyer_id, row.buyer_name, row.buyer_code, row.public_key_base64)
 	}
 
 	fmt.Printf("\nsellers:\n")
 	for _, row := range sellerRows {
-		fmt.Printf("%d: %s, %d\n", row.seller_id, row.seller_name, row.customer_id.Int64)
-	}
-
-	fmt.Printf("\ncustomers:\n")
-	for _, row := range customerRows {
-		fmt.Printf("%d: %s, %s, %v, %v\n", row.customer_id, row.customer_name, row.customer_code, row.live, row.debug)
+		fmt.Printf("%d: %s, %s\n", row.seller_id, row.seller_name, row.seller_code)
 	}
 
 	fmt.Printf("\nroute shaders:\n")
@@ -1091,13 +1062,6 @@ func ExtractDatabase(config string) (*Database, error) {
 	datacenterIndex := make(map[uint64]DatacenterRow)
 	for _, row := range datacenterRows {
 		datacenterIndex[row.datacenter_id] = row
-	}
-
-	// index customers by postgres id
-
-	customerIndex := make(map[uint64]CustomerRow)
-	for _, row := range customerRows {
-		customerIndex[row.customer_id] = row
 	}
 
 	// index buyers by postgres id
@@ -1138,10 +1102,11 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		seller.Id = row.seller_id
 		seller.Name = row.seller_name
+		seller.Code = row.seller_code
 
 		database.SellerMap[seller.Id] = &seller
 
-		fmt.Printf("seller %d: %s [%d]\n", i, seller.Name, seller.Id)
+		fmt.Printf("seller %d: %s %s [%d]\n", i, seller.Name, seller.Code, seller.Id)
 	}
 
 	for i, row := range buyerRows {
@@ -1149,6 +1114,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer := Buyer{}
 
 		buyer.Name = row.buyer_name
+		buyer.Code = row.buyer_code
 
 		data, err := base64.StdEncoding.DecodeString(row.public_key_base64)
 		if err != nil {
@@ -1162,13 +1128,8 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.Id = binary.LittleEndian.Uint64(data[:8])
 		buyer.PublicKey = data[8:40]
 
-		customer_row, customer_exists := customerIndex[row.customer_id]
-		if !customer_exists {
-			return nil, fmt.Errorf("buyer %s does not have a customer?!\n", buyer.Name)
-		}
-
-		buyer.Live = customer_row.live
-		buyer.Debug = customer_row.debug
+		buyer.Live = row.live
+		buyer.Debug = row.debug
 
 		route_shader_row, route_shader_exists := routeShaderIndex[row.route_shader_id]
 		if !route_shader_exists {
@@ -1196,7 +1157,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		database.BuyerMap[buyer.Id] = &buyer
 
-		fmt.Printf("buyer %d: %s [%x] (live=%v, debug=%v)\n", i, buyer.Name, buyer.Id, buyer.Live, buyer.Debug)
+		fmt.Printf("buyer %d: %s %s [%x] (live=%v, debug=%v)\n", i, buyer.Name, buyer.Code, buyer.Id, buyer.Live, buyer.Debug)
 	}
 
 	for i, row := range datacenterRows {
@@ -1214,8 +1175,8 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("datacenter %s doesn't have a seller?!\n", datacenter.Name)
 		}
 
-		if !strings.Contains(datacenter.Name, seller_row.seller_name) {
-			return nil, fmt.Errorf("datacenter '%s' does not contain the seller name '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.seller_name)
+		if !strings.Contains(datacenter.Name, seller_row.seller_code) {
+			return nil, fmt.Errorf("datacenter '%s' does not contain the seller code '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.seller_code)
 		}
 
 		database.DatacenterMap[datacenter.Id] = &datacenter

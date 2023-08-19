@@ -154,8 +154,6 @@ func main() {
 		sql_create()
 	} else if command == "sql-destroy" {
 		sql_destroy()
-	} else if command == "sql-dev" {
-		sql_dev()
 	} else if command == "sql-local" {
 		sql_local()
 	} else if command == "sql-docker" {
@@ -428,10 +426,6 @@ func sql_create() {
 
 func sql_destroy() {
 	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql -v ON_ERROR_STOP=1")
-}
-
-func sql_dev() {
-	bash("psql -U developer postgres -f ./schemas/sql/dev.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_local() {
