@@ -810,6 +810,7 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 		index++
 	}
 
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
 	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
 
 	maxSize := end - begin
@@ -919,6 +920,7 @@ func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int
 		index++
 	}
 
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
 	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
 
 	maxSize := end - begin
