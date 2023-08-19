@@ -401,7 +401,10 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelaysResponse struct {
-	Relays []portal.RelayData `json:"relays"`
+	Relays          []portal.RelayData `json:"relays"`
+	DatacenterNames []string           `json:"datacenter_names"`
+	SellerNames     []string           `json:"seller_names"`
+	Uptime          []uint64           `json:"uptime,string"`
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
@@ -418,6 +421,28 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalRelaysResponse{}
 	response.Relays = portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
+	response.SellerNames = make([]string, len(response.Relays))
+	response.DatacenterNames = make([]string, len(response.Relays))
+	response.Uptime = make([]uint64, len(response.Relays))
+	database := service.Database()
+	currentTime := uint64(time.Now().Unix())
+	if database != nil {
+		for i := range response.Relays {
+			relay := database.GetRelay(response.Relays[i].RelayId)
+			if relay == nil {
+				continue
+			}
+			datacenter := database.GetDatacenter(relay.DatacenterId)
+			if datacenter != nil {
+				response.DatacenterNames[i] = datacenter.Name
+			}
+			seller := database.GetSeller(relay.Seller.Id)
+			if seller != nil {
+				response.SellerNames[i] = seller.Name
+			}
+			response.Uptime[i] = currentTime - response.Relays[i].StartTime
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
