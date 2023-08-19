@@ -36,7 +36,7 @@ resource "equinix_metal_device" "relay" {
   billing_cycle       = "hourly"
   project_id          = var.project
   project_ssh_key_ids = [equinix_metal_project_ssh_key.relay.id]
-  user_data           = file("./setup_relay.sh")
+  user_data           = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
 }
 
 output "relays" {

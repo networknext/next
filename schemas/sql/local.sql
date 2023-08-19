@@ -1,36 +1,25 @@
 
-INSERT INTO customers 
-(
-	live,
-	debug, 
-	customer_name, 
-	customer_code
-) 
-VALUES (
-	true,
-	true,
-	'Local',
-	'local'
-);
-
 INSERT INTO route_shaders(route_shader_name, force_next) VALUES('local', true);
 
 INSERT INTO buyers
 (
+	live,
+	debug,
 	buyer_name,
+	buyer_code,
 	public_key_base64, 
-	customer_id,
 	route_shader_id
-
 ) 
 VALUES(
+	true,
+	true,
+	'Local',
 	'local',
 	'leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==',
-	(select customer_id from customers where customer_code = 'local'),
 	(select route_shader_id from route_shaders where route_shader_name = 'local')
 );
 
-INSERT INTO sellers(seller_name) VALUES('local');
+INSERT INTO sellers(seller_name, seller_code) VALUES('Local', 'local');
 
 -- local datacenters
 
@@ -43,7 +32,7 @@ VALUES(
 	'local',
 	40.7128,
 	-74.0060,
-	(select seller_id from sellers where seller_name = 'local')
+	(select seller_id from sellers where seller_code = 'local')
 );
 
 -- local relays
@@ -211,7 +200,7 @@ VALUES(
 -- enable datacenters for buyers
 
 INSERT INTO buyer_datacenter_settings VALUES(
-	(select buyer_id from buyers where buyer_name = 'local'),
+	(select buyer_id from buyers where buyer_code = 'local'),
 	(select datacenter_id from datacenters where datacenter_name = 'local'),
 	true
 );

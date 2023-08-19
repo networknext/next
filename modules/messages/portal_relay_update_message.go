@@ -10,13 +10,14 @@ import (
 
 const (
 	PortalRelayUpdateMessageVersion_Min   = 1
-	PortalRelayUpdateMessageVersion_Max   = 1
-	PortalRelayUpdateMessageVersion_Write = 1
+	PortalRelayUpdateMessageVersion_Max   = 2
+	PortalRelayUpdateMessageVersion_Write = 2
 )
 
 type PortalRelayUpdateMessage struct {
 	Version                   uint8
 	Timestamp                 uint64
+	RelayName                 string
 	RelayId                   uint64
 	SessionCount              uint32
 	MaxSessions               uint32
@@ -38,7 +39,7 @@ type PortalRelayUpdateMessage struct {
 }
 
 func (message *PortalRelayUpdateMessage) GetMaxSize() int {
-	return 256
+	return 512
 }
 
 func (message *PortalRelayUpdateMessage) Read(buffer []byte) error {
@@ -55,6 +56,12 @@ func (message *PortalRelayUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
 		return fmt.Errorf("failed to read timestamp")
+	}
+
+	if message.Version >= 2 {
+		if !encoding.ReadString(buffer, &index, &message.RelayName, constants.MaxRelayNameLength) {
+			return fmt.Errorf("failed to read relay name")
+		}
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayId) {
@@ -142,6 +149,9 @@ func (message *PortalRelayUpdateMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
+	if message.Version >= 2 {
+		encoding.WriteString(buffer, &index, message.RelayName, constants.MaxRelayNameLength)
+	}
 	encoding.WriteUint64(buffer, &index, message.RelayId)
 	encoding.WriteUint32(buffer, &index, message.SessionCount)
 	encoding.WriteUint32(buffer, &index, message.MaxSessions)

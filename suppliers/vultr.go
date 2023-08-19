@@ -227,13 +227,17 @@ func main() {
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
 	format_string = "    \"%s\" = {\n" +
-		"      zone = \"%s\"\n" +
+		"      zone        = \"%s\"\n" +
+		"      native_name = \"%s\"\n" +
+		"      latitude    = %.2f\n" +
+		"      longitude   = %.2f\n" +
+		"      seller_name = \"vultr\"\n" +
 		"    }\n" +
 		"\n"
 
 	for i := range zones {
 		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone)
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
 		}
 	}
 
@@ -242,4 +246,6 @@ func main() {
 	fmt.Fprintf(file, "}\n")
 
 	file.Close()
+
+	fmt.Printf("\n")
 }

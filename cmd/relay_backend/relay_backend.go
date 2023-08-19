@@ -751,6 +751,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					message := messages.PortalRelayUpdateMessage{
 						Version:                   messages.PortalRelayUpdateMessageVersion_Write,
 						Timestamp:                 uint64(time.Now().Unix()),
+						RelayName:                 relayName,
 						RelayId:                   relayId,
 						SessionCount:              relayUpdateRequest.SessionCount,
 						MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
@@ -763,6 +764,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
 						RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
 						RelayFlags:                relayUpdateRequest.RelayFlags,
+						RelayVersion:              relayUpdateRequest.RelayVersion,
 						NumRoutable:               uint32(numRoutable),
 						NumUnroutable:             uint32(numUnroutable),
 						StartTime:                 relayUpdateRequest.StartTime,

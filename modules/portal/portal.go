@@ -18,7 +18,7 @@ import (
 // --------------------------------------------------------------------------------------------------
 
 type SliceData struct {
-	Timestamp        uint64  `json:"timestamp"`
+	Timestamp        uint64  `json:"timestamp,string"`
 	SliceNumber      uint32  `json:"slice_number"`
 	DirectRTT        uint32  `json:"direct_rtt"`
 	NextRTT          uint32  `json:"next_rtt"`
@@ -30,8 +30,8 @@ type SliceData struct {
 	NextPacketLoss   float32 `json:"next_packet_loss"`
 	RealPacketLoss   float32 `json:"real_packet_loss"`
 	RealOutOfOrder   float32 `json:"real_out_of_order"`
-	InternalEvents   uint64  `json:"internal_events"`
-	SessionEvents    uint64  `json:"session_events"`
+	InternalEvents   uint64  `json:"internal_events,string"`
+	SessionEvents    uint64  `json:"session_events,string"`
 	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
 	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
 	NextKbpsUp       uint32  `json:"next_kbps_up"`
@@ -184,7 +184,7 @@ func GenerateRandomSliceData() *SliceData {
 // --------------------------------------------------------------------------------------------------
 
 type NearRelayData struct {
-	Timestamp           uint64                           `json:"timestamp"`
+	Timestamp           uint64                           `json:"timestamp,string"`
 	NumNearRelays       uint32                           `json:"num_near_relays"`
 	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
 	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
@@ -265,7 +265,9 @@ func GenerateRandomNearRelayData() *NearRelayData {
 // --------------------------------------------------------------------------------------------------
 
 type SessionData struct {
-	SessionId      uint64  `json:"session_id"`
+	SessionId      uint64  `json:"session_id,string"`
+	UserHash       uint64  `json:"user_hash,string"`
+	StartTime      uint64  `json:"start_time,string"`
 	ISP            string  `json:"isp"`
 	ConnectionType uint8   `json:"connection_type"`
 	PlatformType   uint8   `json:"platform_type"`
@@ -273,15 +275,17 @@ type SessionData struct {
 	Longitude      float32 `json:"longitude"`
 	DirectRTT      uint32  `json:"direct_rtt"`
 	NextRTT        uint32  `json:"next_rtt"`
-	MatchId        uint64  `json:"match_id"`
-	BuyerId        uint64  `json:"buyer_id"`
-	DatacenterId   uint64  `json:"datacenter_id"`
+	MatchId        uint64  `json:"match_id,string"`
+	BuyerId        uint64  `json:"buyer_id,string"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
 	ServerAddress  string  `json:"server_address"`
 }
 
 func (data *SessionData) Value() string {
-	return fmt.Sprintf("%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%s",
+	return fmt.Sprintf("%x|%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%s",
 		data.SessionId,
+		data.UserHash,
+		data.StartTime,
 		data.ISP,
 		data.ConnectionType,
 		data.PlatformType,
@@ -298,53 +302,63 @@ func (data *SessionData) Value() string {
 
 func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 12 {
+	if len(values) != 14 {
 		return
 	}
 	sessionId, err := strconv.ParseUint(values[0], 16, 64)
 	if err != nil {
 		return
 	}
-	isp := values[1]
-	connectionType, err := strconv.ParseUint(values[2], 10, 32)
+	userHash, err := strconv.ParseUint(values[1], 16, 64)
 	if err != nil {
 		return
 	}
-	platformType, err := strconv.ParseUint(values[3], 10, 32)
+	startTime, err := strconv.ParseUint(values[2], 16, 64)
 	if err != nil {
 		return
 	}
-	latitude, err := strconv.ParseFloat(values[4], 32)
+	isp := values[3]
+	connectionType, err := strconv.ParseUint(values[4], 10, 32)
 	if err != nil {
 		return
 	}
-	longitude, err := strconv.ParseFloat(values[5], 32)
+	platformType, err := strconv.ParseUint(values[5], 10, 32)
 	if err != nil {
 		return
 	}
-	directRTT, err := strconv.ParseUint(values[6], 10, 32)
+	latitude, err := strconv.ParseFloat(values[6], 32)
 	if err != nil {
 		return
 	}
-	nextRTT, err := strconv.ParseUint(values[7], 10, 32)
+	longitude, err := strconv.ParseFloat(values[7], 32)
 	if err != nil {
 		return
 	}
-	matchId, err := strconv.ParseUint(values[8], 16, 64)
+	directRTT, err := strconv.ParseUint(values[8], 10, 32)
 	if err != nil {
 		return
 	}
-	buyerId, err := strconv.ParseUint(values[9], 16, 64)
+	nextRTT, err := strconv.ParseUint(values[9], 10, 32)
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[10], 16, 64)
+	matchId, err := strconv.ParseUint(values[10], 16, 64)
 	if err != nil {
 		return
 	}
-	serverAddress := values[11]
+	buyerId, err := strconv.ParseUint(values[11], 16, 64)
+	if err != nil {
+		return
+	}
+	datacenterId, err := strconv.ParseUint(values[12], 16, 64)
+	if err != nil {
+		return
+	}
+	serverAddress := values[13]
 
 	data.SessionId = sessionId
+	data.UserHash = userHash
+	data.StartTime = startTime
 	data.ISP = isp
 	data.ConnectionType = uint8(connectionType)
 	data.PlatformType = uint8(platformType)
@@ -361,6 +375,7 @@ func (data *SessionData) Parse(value string) {
 func GenerateRandomSessionData() *SessionData {
 	data := SessionData{}
 	data.SessionId = rand.Uint64()
+	data.UserHash = rand.Uint64()
 	data.ISP = "Comcast Internet Company, LLC"
 	data.ConnectionType = uint8(common.RandomInt(0, constants.MaxConnectionType))
 	data.PlatformType = uint8(common.RandomInt(0, constants.MaxPlatformType))
@@ -378,15 +393,15 @@ func GenerateRandomSessionData() *SessionData {
 // --------------------------------------------------------------------------------------------------
 
 type ServerData struct {
-	ServerAddress    string
-	SDKVersion_Major uint8
-	SDKVersion_Minor uint8
-	SDKVersion_Patch uint8
-	MatchId          uint64
-	BuyerId          uint64
-	DatacenterId     uint64
-	NumSessions      uint32
-	StartTime        uint64
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	MatchId          uint64 `json:"match_id,string"`
+	BuyerId          uint64 `json:"buyer_id,string"`
+	DatacenterId     uint64 `json:"datacenter_id,string"`
+	NumSessions      uint32 `json:"num_sessions"`
+	StartTime        uint64 `json:"start_time,string"`
 }
 
 func (data *ServerData) Value() string {
@@ -469,92 +484,98 @@ func GenerateRandomServerData() *ServerData {
 // --------------------------------------------------------------------------------------------------
 
 type RelayData struct {
-	RelayId      uint64 `json:"relay_id"`
+	RelayName    string `json:"relay_name"`
+	RelayId      uint64 `json:"relay_id,string"`
 	RelayAddress string `json:"relay_address"`
 	NumSessions  uint32 `json:"num_sessions"`
 	MaxSessions  uint32 `json:"max_sessions"`
-	StartTime    uint64 `json:"start_time"`
-	RelayFlags   uint64 `json:"relay_flags"`
-	Version      string `json:"version"`
+	StartTime    uint64 `json:"start_time,string"`
+	RelayFlags   uint64 `json:"relay_flags,string"`
+	RelayVersion string `json:"relay_version"`
 }
 
 func (data *RelayData) Value() string {
-	return fmt.Sprintf("%x|%s|%d|%d|%x|%x|%s",
+	return fmt.Sprintf("%s|%x|%s|%d|%d|%x|%x|%s",
+		data.RelayName,
 		data.RelayId,
 		data.RelayAddress,
 		data.NumSessions,
 		data.MaxSessions,
 		data.StartTime,
 		data.RelayFlags,
-		data.Version,
+		data.RelayVersion,
 	)
 }
 
 func (data *RelayData) Parse(value string) {
+
 	values := strings.Split(value, "|")
-	if len(values) != 7 {
+	if len(values) != 8 {
 		return
 	}
-	relayId, err := strconv.ParseUint(values[0], 16, 64)
+	relayName := values[0]
+	relayId, err := strconv.ParseUint(values[1], 16, 64)
 	if err != nil {
 		return
 	}
-	relayAddress := values[1]
-	numSessions, err := strconv.ParseUint(values[2], 10, 32)
+	relayAddress := values[2]
+	numSessions, err := strconv.ParseUint(values[3], 10, 32)
 	if err != nil {
 		return
 	}
-	maxSessions, err := strconv.ParseUint(values[3], 10, 32)
+	maxSessions, err := strconv.ParseUint(values[4], 10, 32)
 	if err != nil {
 		return
 	}
-	startTime, err := strconv.ParseUint(values[4], 16, 64)
+	startTime, err := strconv.ParseUint(values[5], 16, 64)
 	if err != nil {
 		return
 	}
-	relayFlags, err := strconv.ParseUint(values[5], 16, 64)
+	relayFlags, err := strconv.ParseUint(values[6], 16, 64)
 	if err != nil {
 		return
 	}
-	version := values[6]
+	relayVersion := values[7]
+	data.RelayName = relayName
 	data.RelayId = relayId
 	data.RelayAddress = relayAddress
 	data.NumSessions = uint32(numSessions)
 	data.MaxSessions = uint32(maxSessions)
 	data.StartTime = startTime
 	data.RelayFlags = relayFlags
-	data.Version = version
+	data.RelayVersion = relayVersion
 }
 
 func GenerateRandomRelayData() *RelayData {
 	data := RelayData{}
+	data.RelayName = common.RandomString(32)
 	data.RelayId = rand.Uint64()
 	data.RelayAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
 	data.NumSessions = rand.Uint32()
 	data.MaxSessions = rand.Uint32()
 	data.StartTime = rand.Uint64()
 	data.RelayFlags = rand.Uint64()
-	data.Version = common.RandomString(constants.MaxRelayVersionLength)
+	data.RelayVersion = common.RandomString(constants.MaxRelayVersionLength)
 	return &data
 }
 
 // --------------------------------------------------------------------------------------------------
 
 type RelaySample struct {
-	Timestamp                 uint64
-	NumSessions               uint32
-	EnvelopeBandwidthUpKbps   uint32
-	EnvelopeBandwidthDownKbps uint32
-	PacketsSentPerSecond      float32
-	PacketsReceivedPerSecond  float32
-	BandwidthSentKbps         float32
-	BandwidthReceivedKbps     float32
-	NearPingsPerSecond        float32
-	RelayPingsPerSecond       float32
-	RelayFlags                uint64
-	NumRoutable               uint32
-	NumUnroutable             uint32
-	CurrentTime               uint64
+	Timestamp                 uint64  `json:"timestamp,string"`
+	NumSessions               uint32  `json:"num_sessions"`
+	EnvelopeBandwidthUpKbps   uint32  `json:"envelope_bandwidth_up_kbps"`
+	EnvelopeBandwidthDownKbps uint32  `json:"envelope_bandwidth_down_kbps"`
+	PacketsSentPerSecond      float32 `json:"packets_sent_per_second"`
+	PacketsReceivedPerSecond  float32 `json:"packets_recieved_per_second"`
+	BandwidthSentKbps         float32 `json:"bandwidth_sent_kbps"`
+	BandwidthReceivedKbps     float32 `json:"bandwidth_received_kbps"`
+	NearPingsPerSecond        float32 `json:"near_pings_per_second"`
+	RelayPingsPerSecond       float32 `json:"relay_pings_per_second"`
+	RelayFlags                uint64  `json:"relay_flags,string"`
+	NumRoutable               uint32  `json:"num_routable"`
+	NumUnroutable             uint32  `json:"num_unroutable"`
+	CurrentTime               uint64  `json:"current_time,string"`
 }
 
 func (data *RelaySample) Value() string {
@@ -725,7 +746,7 @@ func GetSessionCounts(pool *redis.Pool, minutes int64) (int, int) {
 }
 
 type SessionEntry struct {
-	SessionId uint64 `json:"session_id"`
+	SessionId uint64 `json:"session_id,string"`
 	Score     uint32 `json:"score"`
 }
 
@@ -796,6 +817,7 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 		index++
 	}
 
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
 	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
 
 	maxSize := end - begin
@@ -813,7 +835,117 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 
 	args := redis.Args{}
 	for i := range sessionEntries {
-		args = args.Add(sessionEntries[i].SessionId)
+		args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
+	}
+
+	redisClient.Send("MGET", args...)
+
+	redisClient.Flush()
+
+	redis_session_data, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis mget get session data failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	sessions := make([]SessionData, len(redis_session_data))
+
+	for i := range sessions {
+		sessions[i].Parse(redis_session_data[i])
+		sessions[i].SessionId = sessionEntries[i].SessionId
+	}
+
+	return sessions
+}
+
+func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int, end int) []SessionData {
+
+	if begin < 0 {
+		core.Error("invalid begin passed to get user sessions: %d", begin)
+		return nil
+	}
+
+	if end < 0 {
+		core.Error("invalid end passed to get user sessions: %d", end)
+		return nil
+	}
+
+	if end <= begin {
+		core.Error("invalid begin passed to get user sessions: %d", begin)
+		return nil
+	}
+
+	// get session ids in order in the range [begin,end]
+
+	redisClient := pool.Get()
+
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("u-%016x-%d", userHash, minutes-1), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("u-%016x-%d", userHash, minutes), begin, end-1, "WITHSCORES")
+
+	redisClient.Flush()
+
+	sessions_a, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis get sessions a failed: %v", err)
+		return nil
+	}
+
+	sessions_b, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis get sessions b failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	sessionsMap := make(map[uint64]SessionEntry)
+
+	for i := 0; i < len(sessions_b); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
+			SessionId: uint64(sessionId),
+			Score:     uint32(score),
+		}
+	}
+
+	for i := 0; i < len(sessions_a); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
+			SessionId: uint64(sessionId),
+			Score:     uint32(score),
+		}
+	}
+
+	sessionEntries := make([]SessionEntry, len(sessionsMap))
+	index := 0
+	for _, v := range sessionsMap {
+		sessionEntries[index] = v
+		index++
+	}
+
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
+
+	maxSize := end - begin
+	if len(sessionEntries) > maxSize {
+		sessionEntries = sessionEntries[:maxSize]
+	}
+
+	// now get session data for the set of session ids in [begin, end]
+
+	if len(sessionEntries) == 0 {
+		return nil
+	}
+
+	redisClient = pool.Get()
+
+	args := redis.Args{}
+	for i := range sessionEntries {
+		args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
 	}
 
 	redisClient.Send("MGET", args...)
@@ -857,8 +989,6 @@ func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceDa
 	if err != nil {
 		return nil, nil, nil
 	}
-
-	fmt.Printf("session %016x has %d slices\n", sessionId, len(redis_slice_data))
 
 	redis_near_relay_data, err := redis.Strings(redisClient.Receive())
 	if err != nil {
@@ -1005,7 +1135,7 @@ func GetServers(pool *redis.Pool, minutes int64, begin int, end int) []ServerDat
 
 	args := redis.Args{}
 	for i := range serverEntries {
-		args = args.Add(serverEntries[i].Address)
+		args = args.Add(fmt.Sprintf("svd-%s", serverEntries[i].Address))
 	}
 
 	redisClient.Send("MGET", args...)
@@ -1270,13 +1400,15 @@ func GetRelayData(pool *redis.Pool, relayAddress string) (*RelayData, []RelaySam
 // ----------------------------------------------------------------------------------------------------
 
 type SessionInserter struct {
-	redisPool     *redis.Pool
-	redisClient   redis.Conn
-	lastFlushTime time.Time
-	batchSize     int
-	numPending    int
-	allSessions   redis.Args
-	nextSessions  redis.Args
+	redisPool          *redis.Pool
+	redisClient        redis.Conn
+	lastFlushTime      time.Time
+	batchSize          int
+	numPending         int
+	allSessions        redis.Args
+	nextSessions       redis.Args
+	userSessions       redis.Args
+	expireUserSessions redis.Args
 }
 
 func CreateSessionInserter(pool *redis.Pool, batchSize int) *SessionInserter {
@@ -1288,7 +1420,7 @@ func CreateSessionInserter(pool *redis.Pool, batchSize int) *SessionInserter {
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(sessionId uint64, userHash uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
 
 	currentTime := time.Now()
 
@@ -1297,29 +1429,34 @@ func (inserter *SessionInserter) Insert(sessionId uint64, score uint32, next boo
 	if len(inserter.allSessions) == 0 {
 		inserter.allSessions = redis.Args{}.Add(fmt.Sprintf("s-%d", minutes))
 		inserter.nextSessions = redis.Args{}.Add(fmt.Sprintf("n-%d", minutes))
-	}
-
-	inserter.allSessions = inserter.allSessions.Add(score)
-	inserter.allSessions = inserter.allSessions.Add(fmt.Sprintf("%016x", sessionId))
-
-	if next {
-		inserter.nextSessions = inserter.nextSessions.Add(score)
-		inserter.nextSessions = inserter.nextSessions.Add(fmt.Sprintf("%016x", sessionId))
+		inserter.userSessions = redis.Args{}.Add(fmt.Sprintf("u-%016x-%d", userHash, minutes))
+		inserter.expireUserSessions = redis.Args{}.Add(fmt.Sprintf("u-%016x-%d", userHash, minutes))
 	}
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
+	inserter.allSessions = inserter.allSessions.Add(score)
+	inserter.allSessions = inserter.allSessions.Add(sessionIdString)
+
+	if next {
+		inserter.nextSessions = inserter.nextSessions.Add(score)
+		inserter.nextSessions = inserter.nextSessions.Add(sessionIdString)
+	}
+
+	inserter.userSessions = inserter.userSessions.Add(sessionData.StartTime)
+	inserter.userSessions = inserter.userSessions.Add(sessionIdString)
+
 	key := fmt.Sprintf("sd-%s", sessionIdString)
 	inserter.redisClient.Send("SET", key, sessionData.Value())
-	inserter.redisClient.Send("EXPIRE", key, 30)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
 	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
-	inserter.redisClient.Send("EXPIRE", key, 30)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
 	inserter.redisClient.Send("HSET", key, sessionIdString, currentTime.Unix())
-	inserter.redisClient.Send("EXPIRE", key, 30)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	inserter.numPending++
 
@@ -1331,11 +1468,17 @@ func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
 		minutes := currentTime.Unix() / 60
 		if len(inserter.allSessions) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.allSessions...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("s-%d", minutes), 600)
 		}
 		if len(inserter.nextSessions) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.nextSessions...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 600)
+		}
+		if len(inserter.userSessions) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.userSessions...)
+		}
+		if len(inserter.expireUserSessions) > 1 {
+			inserter.redisClient.Send("EXPIRE", inserter.expireUserSessions...)
 		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()
@@ -1344,6 +1487,8 @@ func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
 		inserter.redisClient = inserter.redisPool.Get()
 		inserter.allSessions = redis.Args{}
 		inserter.nextSessions = redis.Args{}
+		inserter.userSessions = redis.Args{}
+		inserter.expireUserSessions = redis.Args{}
 	}
 }
 
@@ -1423,14 +1568,14 @@ func (inserter *ServerInserter) Insert(serverData *ServerData) {
 	inserter.servers = inserter.servers.Add(serverData.ServerAddress)
 
 	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value())
-	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%s", serverData.ServerAddress), 30)
+	inserter.redisClient.Send("EXPIRE", fmt.Sprintf("svd-%s", serverData.ServerAddress), 600)
 
 	inserter.numPending++
 
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
 		if len(inserter.servers) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.servers...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sv-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("sv-%d", minutes), 600)
 		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()
@@ -1478,7 +1623,8 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 
 	key := fmt.Sprintf("rd-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("SET", key, relayData.Value())
-	inserter.redisClient.Send("EXPIRE", key, "30")
+
+	inserter.redisClient.Send("EXPIRE", key, "600")
 
 	key = fmt.Sprintf("rs-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("RPUSH", key, relaySample.Value())
@@ -1490,7 +1636,7 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
 		if len(inserter.relays) > 1 {
 			inserter.redisClient.Send("ZADD", inserter.relays...)
-			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("r-%d", minutes), 30)
+			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("r-%d", minutes), 600)
 		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()

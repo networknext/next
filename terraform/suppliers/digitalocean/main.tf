@@ -68,7 +68,7 @@ resource "digitalocean_droplet" "relay" {
   region    = var.relays[count.index].region
   size      = var.relays[count.index].size
   ssh_keys  = [digitalocean_ssh_key.relay.id]
-  user_data = file("./setup_relay.sh")
+  user_data = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
 }
 
 # ----------------------------------------------------------------------------------------

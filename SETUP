@@ -1,8 +1,22 @@
 SETUP
 
+	-------
+
+	Postgres
+
+	Had to modify max_connections = 4096. For some reason postgres stuck with: "remaining connection slots are reserved for non-replication superuser connections"
+
+	Need to modify terraform setup script to automatically set this when postgres is created.
+
 	--------
 
 	Update instructions in dev to setup cloudflare.
+
+	--------
+
+	Need to find a way to automatically setup the database by loading create.sql
+
+	This probably requires uploading the database files to cloud storage
 
 	--------
 
@@ -40,6 +54,18 @@ SETUP
 
 	--------
 
-	Next. Create dev relays.
+	Upload artifacts to buckets according to tag
+
+	Then drive semaphore only to upload artifacts after running full tests on them, from a tag.
+
+	The current way of uploading artifacts is very bad workflow, there is no easy way to undo a deploy, there is no history of artifacts, and any commit to dev uploads artifacts (which can theoretically, affect prod).
+
+	RULE: dev/prod should not be affected, until you make a terraform change.
+
+	--------
+
+	gcloud auth application-default login
+
+	Running this is necessary for terraform to work with state in google cloud buckets
 
 	--------

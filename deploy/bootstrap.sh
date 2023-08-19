@@ -1,19 +1,22 @@
 #!/bin/bash
 
+tag=
 bucket=
 artifact=
 
 print_usage() {
-    printf "Usage: bootstrap.sh -b bucket_name -a artifact\n\n"
+    printf "Usage: bootstrap.sh -t tag -b bucket_name -a artifact\n\n"
+    printf "t [string]\tGit tag of release\n"
     printf "b [string]\tBucket name on GCP Storage\n"
     printf "a [string]\tArtifact name on GCP Storage\n"
 
     printf "Example:\n\n"
-    printf "> bootstrap.sh -b gs://network_next_dev_artifacts -a server_backend.tar.gz\n"
+    printf "> bootstrap.sh -t dev-007 -b gs://test_network_next_artifacts -a server_backend.tar.gz\n"
 }
 
-while getopts 'b:a:h' flag; do
+while getopts 't:b:a:h' flag; do
   case "${flag}" in
+    t) tag="${OPTARG}" ;;
     b) bucket="${OPTARG}" ;;
     a) artifact="${OPTARG}" ;;
     h) print_usage
@@ -29,13 +32,13 @@ mkdir -p /app
 cd /app
 
 # Copy libsodium from GCP Storage
-gsutil cp "$bucket/libsodium.so" '/usr/local/lib'
+gsutil cp "$bucket/$tag/libsodium.so" '/usr/local/lib'
 
 # Refresh the known libs on the system
 ldconfig
 
 # Copy the required files for the service from GCP Storage
-gsutil cp "$bucket/$artifact" artifact.tar.gz
+gsutil cp "$bucket/$tag/$artifact" artifact.tar.gz
 
 # Uncompress the artifact files
 tar -xvf artifact.tar.gz

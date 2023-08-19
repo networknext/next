@@ -340,6 +340,14 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		message.NearRelayRoutable[i] = common.RandomBool()
 	}
 
+	if message.Version >= 2 {
+		message.UserHash = rand.Uint64()
+	}
+
+	if message.Version >= 3 {
+		message.StartTime = rand.Uint64()
+	}
+
 	return message
 }
 
@@ -359,6 +367,10 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 		RelayVersion: common.RandomString(constants.MaxRelayVersionLength),
 		StartTime:    rand.Uint64(),
 		CurrentTime:  rand.Uint64(),
+	}
+
+	if message.Version >= 2 {
+		message.RelayName = common.RandomString(constants.MaxRelayNameLength)
 	}
 
 	return message

@@ -103,26 +103,9 @@ provider "networknext" {
 
 # ---------------------------------------------------------
 
-resource "networknext_customer" "test" {
-  name = "Test Customer"
-  code = "test"
-  debug = true
-}
-
-data "networknext_customers" "test" {
-  depends_on = [
-    networknext_customer.test,
-  ]
-}
-
-output "customers" {
-  value = data.networknext_customers.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_seller" "test" {
-  name = "test"
+  name = "Test"
+  code = "test"
 }
 
 data "networknext_sellers" "test" {
@@ -206,25 +189,13 @@ output "route_shaders" {
 
 # ---------------------------------------------------------
 
-resource "networknext_buyer_keypair" "test" {}
-
-data "networknext_buyer_keypairs" "test" {
-  depends_on = [
-    networknext_buyer_keypair.test,
-  ]
-}
-
-output "buyer_keypairs" {
-  value = data.networknext_buyer_keypairs.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_buyer" "test" {
   name = "Test Buyer"
-  customer_id = networknext_customer.test.id
+  code = "test"
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = networknext_buyer_keypair.test.public_key_base64
+  public_key_base64 = "1928371987391287398719387"
+  live = true
+  debug = true
 }
 
 data "networknext_buyers" "test" {
@@ -278,26 +249,9 @@ provider "networknext" {
 
 # ---------------------------------------------------------
 
-resource "networknext_customer" "test" {
-  name = "Test Customer (update)"
-  code = "test"
-  debug = true
-}
-
-data "networknext_customers" "test" {
-  depends_on = [
-    networknext_customer.test,
-  ]
-}
-
-output "customers" {
-  value = data.networknext_customers.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_seller" "test" {
   name = "test (update)"
+  code = "test"
 }
 
 data "networknext_sellers" "test" {
@@ -381,25 +335,11 @@ output "route_shaders" {
 
 # ---------------------------------------------------------
 
-resource "networknext_buyer_keypair" "test" {}
-
-data "networknext_buyer_keypairs" "test" {
-  depends_on = [
-    networknext_buyer_keypair.test,
-  ]
-}
-
-output "buyer_keypairs" {
-  value = data.networknext_buyer_keypairs.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_buyer" "test" {
   name = "Test Buyer (update)"
-  customer_id = networknext_customer.test.id
+  code = "test"
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = networknext_buyer_keypair.test.public_key_base64
+  public_key_base64 = "aoesnuhaonuthaontehunathunath"
 }
 
 data "networknext_buyers" "test" {

@@ -8,9 +8,6 @@ import (
 // -------------------------------------------------
 
 const (
-
-	// todo: everything in here should be moved to constants module
-
 	SDK_SessionDataVersion_Min   = 1
 	SDK_SessionDataVersion_Max   = 1
 	SDK_SessionDataVersion_Write = 1

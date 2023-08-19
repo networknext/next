@@ -14,7 +14,8 @@ terraform {
 variable "service_name" { type = string }
 variable "startup_script" { type = string }
 variable "machine_type" { type = string }
-variable "git_hash" { type = string }
+variable "tag" { type = string }
+variable "extra" { type = string }
 variable "project" { type = string }
 variable "region" { type = string }
 variable "default_network" { type = string }
@@ -25,7 +26,7 @@ variable "tags" { type = list }
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_instance_template" "service" {
-  name         = "${var.service_name}-${var.git_hash}"
+  name         = "${var.service_name}-${var.tag}${var.extra}"
   machine_type = var.machine_type
 
   network_interface {

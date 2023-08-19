@@ -21,75 +21,89 @@ blocks:
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_${SEMAPHORE_GIT_BRANCH}_artifacts/
+            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_backend_artifacts
+            - echo $ARTIFACT_BUCKET
+            - echo $SEMAPHORE_GIT_TAG_NAME
+            - echo $SEMAPHORE_GIT_BRANCH
 
       jobs:
         - name: "Bootstrap"
           commands:
             - artifact pull workflow bootstrap.sh
-            - gsutil cp bootstrap.sh $ARTIFACT_BUCKET
+            - gsutil cp bootstrap.sh ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/bootstrap.sh
 
         - name: "Sodium"
           commands:
             - artifact pull workflow libsodium.so
-            - gsutil cp libsodium.so $ARTIFACT_BUCKET
+            - gsutil cp libsodium.so ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/libsodium.so
 
         - name: "SDK"
           commands:
             - artifact pull workflow libnext.so
-            - gsutil cp libnext.so $ARTIFACT_BUCKET
+            - gsutil cp libnext.so ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/libnext.so
 
         - name: "Analytics"
           commands:
             - artifact pull workflow analytics.tar.gz
-            - gsutil cp analytics.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp analytics.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/analytics.tar.gz
 
         - name: "API"
           commands:
             - artifact pull workflow api.tar.gz
-            - gsutil cp api.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp api.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/api.tar.gz
 
         - name: "Map Cruncher"
           commands:
             - artifact pull workflow map_cruncher.tar.gz
-            - gsutil cp map_cruncher.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp map_cruncher.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/map_cruncher.tar.gz
 
         - name: "Portal Cruncher"
           commands:
             - artifact pull workflow portal_cruncher.tar.gz
-            - gsutil cp portal_cruncher.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp portal_cruncher.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/portal_cruncher.tar.gz
 
         - name: "Relay Gateway"
           commands:
             - artifact pull workflow relay_gateway.tar.gz
-            - gsutil cp relay_gateway.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp relay_gateway.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/relay_gateway.tar.gz
 
         - name: "Relay Backend"
           commands:
             - artifact pull workflow relay_backend.tar.gz
-            - gsutil cp relay_backend.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp relay_backend.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/relay_backend.tar.gz
 
         - name: "Server Backend"
           commands:
             - artifact pull workflow server_backend.tar.gz
-            - gsutil cp server_backend.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp server_backend.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/server_backend.tar.gz
 
         - name: "Magic Backend"
           commands:
             - artifact pull workflow magic_backend.tar.gz
-            - gsutil cp magic_backend.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp magic_backend.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/magic_backend.tar.gz
 
         - name: "Raspberry Backend"
           commands:
             - artifact pull workflow raspberry_backend.tar.gz
-            - gsutil cp raspberry_backend.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp raspberry_backend.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/raspberry_backend.tar.gz
 
         - name: "Raspberry Server"
           commands:
             - artifact pull workflow raspberry_server.tar.gz
-            - gsutil cp raspberry_server.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp raspberry_server.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/raspberry_server.tar.gz
 
         - name: "Raspberry Client"
           commands:
             - artifact pull workflow raspberry_client.tar.gz
-            - gsutil cp raspberry_client.tar.gz $ARTIFACT_BUCKET
+            - gsutil cp raspberry_client.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/raspberry_client.tar.gz
+
+# ------------------------------------------------------------------------------------------------------------
+
+promotions:
+
+  - name: "Deploy to Development"
+    pipeline_file: deploy-development.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ '^dev.*'"
+
+# ------------------------------------------------------------------------------------------------------------

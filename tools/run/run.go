@@ -154,8 +154,6 @@ func main() {
 		sql_create()
 	} else if command == "sql-destroy" {
 		sql_destroy()
-	} else if command == "sql-dev" {
-		sql_dev()
 	} else if command == "sql-local" {
 		sql_local()
 	} else if command == "sql-docker" {
@@ -194,16 +192,16 @@ func main() {
 		load_test_server_update()
 	} else if command == "load-test-session-update" {
 		load_test_session_update()
-	} else if command == "amazon-config" {
-		amazon_config()
-	} else if command == "google-config" {
-		google_config()
-	} else if command == "akamai-config" {
-		akamai_config()
-	} else if command == "vultr-config" {
-		vultr_config()
 	} else if command == "soak-test-relay" {
 		soak_test_relay()
+	} else if command == "config-amazon" {
+		config_amazon()
+	} else if command == "config-google" {
+		config_google()
+	} else if command == "config-akamai" {
+		config_akamai()
+	} else if command == "config-vultr" {
+		config_vultr()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -430,10 +428,6 @@ func sql_destroy() {
 	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql -v ON_ERROR_STOP=1")
 }
 
-func sql_dev() {
-	bash("psql -U developer postgres -f ./schemas/sql/dev.sql -v ON_ERROR_STOP=1")
-}
-
 func sql_local() {
 	bash("psql -U developer postgres -f ./schemas/sql/local.sql -v ON_ERROR_STOP=1")
 }
@@ -510,20 +504,20 @@ func load_test_session_update() {
 	bash("go run tools/load_test_session_update/load_test_session_update.go")
 }
 
-func amazon_config() {
-	bash("go run tools/amazon_config/amazon_config.go")
+func config_amazon() {
+	bash("go run suppliers/amazon.go")
 }
 
-func google_config() {
-	bash("go run tools/google_config/google_config.go")
+func config_google() {
+	bash("go run suppliers/google.go")
 }
 
-func akamai_config() {
-	bash("go run tools/akamai_config/akamai_config.go")
+func config_akamai() {
+	bash("go run suppliers/akamai.go")
 }
 
-func vultr_config() {
-	bash("go run tools/vultr_config/vultr_config.go")
+func config_vultr() {
+	bash("go run suppliers/vultr.go")
 }
 
 func soak_test_relay() {

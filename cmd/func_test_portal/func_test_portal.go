@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
 
@@ -26,6 +27,93 @@ import (
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
 
 var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+
+// ----------------------------------------------------------------------------------------
+
+type PortalSliceData struct {
+	Timestamp        string  `json:"timestamp"`
+	SliceNumber      uint32  `json:"slice_number"`
+	DirectRTT        uint32  `json:"direct_rtt"`
+	NextRTT          uint32  `json:"next_rtt"`
+	PredictedRTT     uint32  `json:"predicted_rtt"`
+	DirectJitter     uint32  `json:"direct_jitter"`
+	NextJitter       uint32  `json:"next_jitter"`
+	RealJitter       uint32  `json:"real_jitter"`
+	DirectPacketLoss float32 `json:"direct_packet_loss"`
+	NextPacketLoss   float32 `json:"next_packet_loss"`
+	RealPacketLoss   float32 `json:"real_packet_loss"`
+	RealOutOfOrder   float32 `json:"real_out_of_order"`
+	InternalEvents   string  `json:"internal_events"`
+	SessionEvents    string  `json:"session_events"`
+	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
+	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
+	NextKbpsUp       uint32  `json:"next_kbps_up"`
+	NextKbpsDown     uint32  `json:"next_kbps_down"`
+}
+
+type PortalRelayData struct {
+	RelayName    string `json:"relay_name"`
+	RelayId      string `json:"relay_id"`
+	RelayAddress string `json:"relay_address"`
+	NumSessions  uint32 `json:"num_sessions"`
+	MaxSessions  uint32 `json:"max_sessions"`
+	StartTime    string `json:"start_time"`
+	RelayFlags   string `json:"relay_flags"`
+	RelayVersion string `json:"relay_version"`
+}
+
+type PortalNearRelayData struct {
+	Timestamp           string                           `json:"timestamp"`
+	NumNearRelays       uint32                           `json:"num_near_relays"`
+	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
+	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
+	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
+	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
+}
+
+type PortalSessionData struct {
+	SessionId      string  `json:"session_id"`
+	ISP            string  `json:"isp"`
+	ConnectionType uint8   `json:"connection_type"`
+	PlatformType   uint8   `json:"platform_type"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	DirectRTT      uint32  `json:"direct_rtt"`
+	NextRTT        uint32  `json:"next_rtt"`
+	MatchId        string  `json:"match_id"`
+	BuyerId        string  `json:"buyer_id"`
+	DatacenterId   string  `json:"datacenter_id"`
+	ServerAddress  string  `json:"server_address"`
+}
+
+type PortalServerData struct {
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	MatchId          string `json:"match_id"`
+	BuyerId          string `json:"buyer_id"`
+	DatacenterId     string `json:"datacenter_id"`
+	NumSessions      uint32 `json:"num_sessions"`
+	StartTime        string `json:"start_time"`
+}
+
+type PortalRelaySample struct {
+	Timestamp                 string  `json:"timestamp"`
+	NumSessions               uint32  `json:"num_sessions"`
+	EnvelopeBandwidthUpKbps   uint32  `json:"envelope_bandwidth_up_kbps"`
+	EnvelopeBandwidthDownKbps uint32  `json:"envelope_bandwidth_down_kbps"`
+	PacketsSentPerSecond      float32 `json:"packets_sent_per_second"`
+	PacketsReceivedPerSecond  float32 `json:"packets_recieved_per_second"`
+	BandwidthSentKbps         float32 `json:"bandwidth_sent_kbps"`
+	BandwidthReceivedKbps     float32 `json:"bandwidth_received_kbps"`
+	NearPingsPerSecond        float32 `json:"near_pings_per_second"`
+	RelayPingsPerSecond       float32 `json:"relay_pings_per_second"`
+	RelayFlags                string  `json:"relay_flags"`
+	NumRoutable               uint32  `json:"num_routable"`
+	NumUnroutable             uint32  `json:"num_unroutable"`
+	CurrentTime               string  `json:"current_time"`
+}
 
 // ----------------------------------------------------------------------------------------
 
@@ -81,6 +169,7 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 				for j := 0; j < 1000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
+					userHash := uint64(j) + iteration
 					score := uint32(rand.Intn(10000))
 					next := ((uint64(j) + iteration) % 10) == 0
 
@@ -90,7 +179,7 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					sessionInserter.Insert(sessionId, score, next, sessionData, sliceData)
+					sessionInserter.Insert(sessionId, userHash, score, next, sessionData, sliceData)
 
 					nearRelayData := portal.GenerateRandomNearRelayData()
 					nearRelayInserter.Insert(sessionId, nearRelayData)
@@ -164,13 +253,16 @@ func Get(url string, object interface{}) {
 
 	json.NewEncoder(buffer).Encode(object)
 
-	request, _ := http.NewRequest("GET", url, buffer)
+	request, err := http.NewRequest("GET", url, buffer)
+
+	if err != nil {
+		panic(err)
+	}
 
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{}
 
-	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		response, err = client.Do(request)
@@ -191,11 +283,9 @@ func Get(url string, object interface{}) {
 
 	response.Body.Close()
 
-	/*
-		fmt.Printf("--------------------------------------------------------------------\n")
-		fmt.Printf("%s", body)
-		fmt.Printf("--------------------------------------------------------------------\n")
-	*/
+	fmt.Printf("--------------------------------------------------------------------\n")
+	fmt.Printf("%s", body)
+	fmt.Printf("--------------------------------------------------------------------\n")
 
 	err = json.Unmarshal([]byte(body), &object)
 	if err != nil {
@@ -209,13 +299,13 @@ type PortalSessionCountsResponse struct {
 }
 
 type PortalSessionsResponse struct {
-	Sessions []portal.SessionData `json:"sessions"`
+	Sessions []PortalSessionData `json:"sessions"`
 }
 
 type PortalSessionDataResponse struct {
-	SessionData   *portal.SessionData    `json:"session_data"`
-	SliceData     []portal.SliceData     `json:"slice_data"`
-	NearRelayData []portal.NearRelayData `json:"near_relay_data"`
+	SessionData   *PortalSessionData    `json:"session_data"`
+	SliceData     []PortalSliceData     `json:"slice_data"`
+	NearRelayData []PortalNearRelayData `json:"near_relay_data"`
 }
 
 type PortalServerCountResponse struct {
@@ -223,12 +313,12 @@ type PortalServerCountResponse struct {
 }
 
 type PortalServersResponse struct {
-	Servers []portal.ServerData `json:"servers"`
+	Servers []PortalServerData `json:"servers"`
 }
 
 type PortalServerDataResponse struct {
-	ServerData       *portal.ServerData `json:"server_data"`
-	ServerSessionIds []uint64           `json:"server_session_ids"`
+	ServerData       *PortalServerData `json:"server_data"`
+	ServerSessionIds []uint64          `json:"server_session_ids"`
 }
 
 type PortalRelayCountResponse struct {
@@ -236,12 +326,12 @@ type PortalRelayCountResponse struct {
 }
 
 type PortalRelaysResponse struct {
-	Relays []portal.RelayData `json:"relays"`
+	Relays []PortalRelayData `json:"relays"`
 }
 
 type PortalRelayDataResponse struct {
-	RelayData    *portal.RelayData    `json:"relay_data"`
-	RelaySamples []portal.RelaySample `json:"relay_samples"`
+	RelayData    *PortalRelayData    `json:"relay_data"`
+	RelaySamples []PortalRelaySample `json:"relay_samples"`
 }
 
 func test_portal() {
@@ -288,9 +378,9 @@ func test_portal() {
 
 			fmt.Printf("first session id is %016x\n", sessionsResponse.Sessions[0].SessionId)
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%d", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%s", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
 
-			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
+			fmt.Printf("session %s has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
 		}
 
 		serverCountResponse := PortalServerCountResponse{}

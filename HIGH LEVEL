@@ -40,13 +40,17 @@ DONE
 
 	Setup dev backend with terraform
 
-TODO
-
 	Finish the terraform plugin and publish it
 
-	------------
+	Get tag based development working with semaphoreci and terraform
 
 	Setup relays in dev
+
+	Get raspberry clients sending traffic over relays in dev
+
+TODO
+
+	Rebuild portal
 
 	------------
 
@@ -66,13 +70,15 @@ TODO
 
 	Analytics service inserts data into bigquery in dev.
 
-	------------
-
-	Rebuild portal
-
 	------------	
 
 	Document *everything*.
+
+	------------
+
+	Multithreaded relay with eBPF
+	
+	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
 
 	------------
 

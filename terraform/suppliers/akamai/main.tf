@@ -51,7 +51,7 @@ resource "linode_firewall" "relays" {
 resource "linode_stackscript" "setup_relay" {
   label = "setup-relay"
   description = "Set up relay"
-  script = file("./setup_relay.sh")
+  script = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
   images = ["linode/ubuntu22.04"]
 }
 
@@ -82,24 +82,35 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
-        "public_address", 
-        "internal_address", 
-        "internal_group", 
-        "ssh_address", 
+        "public_ip",
+        "public_port",
+        "internal_ip",
+        "internal_port",
+        "internal_group",
+        "ssh_ip",
+        "ssh_port",
         "ssh_user",
       ], 
       [
         k,
         v.datacenter_name,
         "akamai", 
-        "${linode_instance.relay[k].ip_address}:40000",
+        linode_instance.relay[k].ip_address,
+        40000,
         "0.0.0.0",
+        0,
         "", 
-        "${linode_instance.relay[k].ip_address}:22",
+        linode_instance.relay[k].ip_address,
+        22,
         "root",
       ]
     )
   }
+}
+
+output "datacenters" {
+  description = "Data for each akamai datacenter"
+  value = local.datacenter_map
 }
 
 # ----------------------------------------------------------------------------------------

@@ -365,7 +365,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.MatchId = requestPacket.MatchId
 			message.DatacenterId = requestPacket.DatacenterId
 			message.NumSessions = requestPacket.NumSessions
-			// todo: message.StartTime = requestPacket.StartTime
+			message.StartTime = requestPacket.StartTime
 			message.ServerAddress = *from
 
 			handler.PortalServerUpdateMessageChannel <- &message

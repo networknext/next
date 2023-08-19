@@ -14,7 +14,19 @@ import (
 
 // ===========================================================================================================================================
 
-// This definition drives the set of amazon datacenters, eg. "amazon.[country/city].[number]"
+// Development relays
+
+var devRelayMap = map[string][]string{
+
+	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.tokyo.1":    {"amazon.tokyo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.seattle.1":  {"amazon.seattle.1", "c5d.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+}
+
+// ===========================================================================================================================================
+
+// Amazon datacenters, eg. "amazon.[country/city].[number]"
 
 var datacenterMap = map[string]*Datacenter{
 
@@ -89,26 +101,6 @@ type Datacenter struct {
 	longitude float32
 }
 
-// -------------------------------------------------------------------------------------------------------------------------------------------
-
-/*
-	This definition drives amazon relays in dev
-
-	To deploy after changes:
-
-		next select dev && run amazon-config && next init relays && next deploy relays
-*/
-
-var devRelayMap = map[string][]string{
-
-	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "a1.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"},
-	"amazon.tokyo.1":    {"amazon.tokyo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.seattle.1":  {"amazon.seattle.1", "c5d.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-}
-
-// IMPORTANT: To research instance types and cost, see - https://instances.vantage.sh/aws/ec2/c5d.2xlarge
-
 // ===========================================================================================================================================
 
 func bash(command string) string {
@@ -118,7 +110,7 @@ func bash(command string) string {
 	cmd.Stderr = &output
 	err := cmd.Run()
 	if err != nil {
-		panic(err)
+		return ""
 	}
 	return output.String()
 }
@@ -129,6 +121,7 @@ type RegionsResponse struct {
 
 type RegionData struct {
 	RegionName string
+	Excluded   bool
 }
 
 type AvailabilityZonesResponse struct {
@@ -177,7 +170,11 @@ func main() {
 
 	// otherwise, get all regions and save to cache
 
+	needToSaveRegionsCache := false
+
 	if !loadedRegionsCache {
+
+		fmt.Printf("\n")
 
 		output := bash("aws ec2 describe-regions --all-regions")
 
@@ -189,14 +186,7 @@ func main() {
 			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
 		}
 
-		{
-			file, err := os.Create("cache/amazon_regions.bin")
-			if err != nil {
-				panic(err)
-			}
-			gob.NewEncoder(file).Encode(&regionsResponse)
-			file.Close()
-		}
+		needToSaveRegionsCache = true
 	}
 
 	// load zones cache, if possible
@@ -225,6 +215,12 @@ func main() {
 			fmt.Printf("\n%s zones:\n\n", regionsResponse.Regions[i].RegionName)
 
 			output := bash(fmt.Sprintf("aws ec2 describe-availability-zones --region=%s --all-availability-zones", regionsResponse.Regions[i].RegionName))
+
+			if output == "" {
+				fmt.Printf("  Excluding region '%s' because it's not enabled in your AWS account.\n", regionsResponse.Regions[i].RegionName)
+				regionsResponse.Regions[i].Excluded = true
+				continue
+			}
 
 			availabilityZonesResponse := AvailabilityZonesResponse{}
 			if err := json.Unmarshal([]byte(output), &availabilityZonesResponse); err != nil {
@@ -262,6 +258,17 @@ func main() {
 			gob.NewEncoder(file).Encode(zones)
 			file.Close()
 		}
+	}
+
+	// write regions cache here, because we need to save the excluded flag above, post-iterating across all regions and getting zones
+
+	if needToSaveRegionsCache {
+		file, err := os.Create("cache/amazon_regions.bin")
+		if err != nil {
+			panic(err)
+		}
+		gob.NewEncoder(file).Encode(&regionsResponse)
+		file.Close()
 	}
 
 	// print all zones
@@ -308,6 +315,16 @@ func main() {
 		fmt.Printf("\nUnknown datacenters:\n\n")
 		for i := range unknown {
 			fmt.Printf("  %s -> %s\n", unknown[i].Zone, unknown[i].AZID)
+		}
+	}
+
+	// print excluded regions (not enabled in AWS account)
+
+	fmt.Printf("\nExcluded regions:\n\n")
+
+	for i := range regionsResponse.Regions {
+		if regionsResponse.Regions[i].Excluded {
+			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
 		}
 	}
 
@@ -391,7 +408,9 @@ terraform {
 		"}\n"
 
 	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
+		if !regionsResponse.Regions[i].Excluded {
+			fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
+		}
 	}
 
 	format_string = "\nmodule \"region_%s\" { \n" +
@@ -404,28 +423,36 @@ terraform {
 		"}\n"
 
 	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
+		if !regionsResponse.Regions[i].Excluded {
+			fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
+		}
 	}
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
 	format_string = "    \"%s\" = {\n" +
-		"      azid   = \"%s\"\n" +
-		"      zone   = \"%s\"\n" +
-		"      region = \"%s\"\n" +
+		"      azid        = \"%s\"\n" +
+		"      zone        = \"%s\"\n" +
+		"      region      = \"%s\"\n" +
+		"      native_name = \"%s\"\n" +
+		"      latitude    = %.2f\n" +
+		"      longitude   = %.2f\n" +
+		"      seller_name = \"amazon\"\n" +
 		"    }\n" +
 		"\n"
 
 	for i := range zones {
 		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Zone, zones[i].Region)
+			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Zone, zones[i].Region, fmt.Sprintf("%s (%s)", zones[i].AZID, zones[i].Zone), zones[i].Latitude, zones[i].Longitude)
 		}
 	}
 
 	fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
 	for i := range regionsResponse.Regions {
-		fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
+		if !regionsResponse.Regions[i].Excluded {
+			fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
+		}
 	}
 
 	fmt.Fprintf(file, "  ]\n}\n")
@@ -446,6 +473,7 @@ terraform {
   type              = "%s"
   ami               = "%s"
   security_group_id = module.region_%s.security_group_id
+  vpn_address       = var.vpn_address
   providers = {
     aws = aws.%s
   }
@@ -469,10 +497,13 @@ terraform {
       "relay_name"       = "%s"
       "datacenter_name"  = "%s"
       "supplier_name"    = "amazon"
-      "public_address"   = "${module.relay_%s.public_address}:40000"
-      "internal_address" = "${module.relay_%s.internal_address}:40000"
+      "public_ip"        = module.relay_%s.public_address
+      "public_port"      = 40000
+      "internal_ip"      = module.relay_%s.internal_address
+      "internal_port"    = 40000
       "internal_group"   = "%s"
-      "ssh_address"      = "${module.relay_%s.public_address}:22"
+      "ssh_ip"           = module.relay_%s.public_address
+      "ssh_port"         = 22
       "ssh_user"         = "ubuntu"
     }
 
@@ -490,4 +521,6 @@ terraform {
 	fmt.Fprintf(file, "\n  }\n\n}\n")
 
 	file.Close()
+
+	fmt.Printf("\n")
 }

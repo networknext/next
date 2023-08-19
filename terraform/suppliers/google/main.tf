@@ -100,7 +100,7 @@ resource "google_compute_instance" "relay" {
   lifecycle {
     create_before_destroy = true
   }
-  metadata_startup_script = file("./setup_relay.sh")
+  metadata_startup_script = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
 }
 
 # ----------------------------------------------------------------------------------------
@@ -115,24 +115,35 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
-        "public_address", 
-        "internal_address", 
-        "internal_group", 
-        "ssh_address", 
+        "public_ip",
+        "public_port",
+        "internal_ip",
+        "internal_port",
+        "internal_group",
+        "ssh_ip",
+        "ssh_port",
         "ssh_user",
       ], 
       [
         k,
         v.datacenter_name,
         "google", 
-        "${google_compute_address.public[k].address}:40000",
-        "${google_compute_address.internal[k].address}:40000",
-        "", 
-        "${google_compute_address.public[k].address}:22",
+        google_compute_address.public[k].address,
+        40000,
+        google_compute_address.internal[k].address,
+        40000,
+        "",
+        google_compute_address.public[k].address,
+        22,
         "ubuntu",
       ]
     )
   }
+}
+
+output "datacenters" {
+  description = "Data for each google datacenter"
+  value = local.datacenter_map
 }
 
 # ----------------------------------------------------------------------------------------

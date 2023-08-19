@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"crypto/ed25519"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
@@ -28,73 +27,6 @@ func CreateController(config string) *Controller {
 	}
 	fmt.Printf("successfully connected to postgres\n")
 	return &Controller{pgsql: pgsql}
-}
-
-// -----------------------------------------------------------------------
-
-type CustomerData struct {
-	CustomerId   uint64 `json:"customer_id"`
-	CustomerName string `json:"customer_name"`
-	CustomerCode string `json:"customer_code"`
-	Live         bool   `json:"live"`
-	Debug        bool   `json:"debug"`
-}
-
-func (controller *Controller) CreateCustomer(customerData *CustomerData) (uint64, error) {
-	sql := "INSERT INTO customers (customer_name, customer_code, live, debug) VALUES ($1, $2, $3, $4) RETURNING customer_id;"
-	result := controller.pgsql.QueryRow(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug)
-	customerId := uint64(0)
-	if err := result.Scan(&customerId); err != nil {
-		return 0, fmt.Errorf("could not insert customer: %v\n", err)
-	}
-	return customerId, nil
-}
-
-func (controller *Controller) ReadCustomers() ([]CustomerData, error) {
-	customers := make([]CustomerData, 0)
-	rows, err := controller.pgsql.Query("SELECT customer_id, customer_name, customer_code, live, debug FROM customers;")
-	if err != nil {
-		return nil, fmt.Errorf("could not read customers: %v\n", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		row := CustomerData{}
-		if err := rows.Scan(&row.CustomerId, &row.CustomerName, &row.CustomerCode, &row.Live, &row.Debug); err != nil {
-			return nil, fmt.Errorf("could not scan customer row: %v\n", err)
-		}
-		customers = append(customers, row)
-	}
-	return customers, nil
-}
-
-func (controller *Controller) ReadCustomer(customerId uint64) (CustomerData, error) {
-	customer := CustomerData{}
-	rows, err := controller.pgsql.Query("SELECT customer_name, customer_code, live, debug FROM customers WHERE customer_id = $1;", customerId)
-	if err != nil {
-		return customer, fmt.Errorf("could not read customer: %v\n", err)
-	}
-	defer rows.Close()
-	if rows.Next() {
-		if err := rows.Scan(&customer.CustomerName, &customer.CustomerCode, &customer.Live, &customer.Debug); err != nil {
-			return customer, fmt.Errorf("could not scan customer row: %v\n", err)
-		}
-		customer.CustomerId = customerId
-		return customer, nil
-	}
-	return customer, fmt.Errorf("customer %x not found", customerId)
-}
-
-func (controller *Controller) UpdateCustomer(customerData *CustomerData) error {
-	// IMPORTANT: Cannot change customer id once created
-	sql := "UPDATE customers SET customer_name = $1, customer_code = $2, live = $3, debug = $4 WHERE customer_id = $5;"
-	_, err := controller.pgsql.Exec(sql, customerData.CustomerName, customerData.CustomerCode, customerData.Live, customerData.Debug, customerData.CustomerId)
-	return err
-}
-
-func (controller *Controller) DeleteCustomer(customerId uint64) error {
-	sql := "DELETE FROM customers WHERE customer_id = $1;"
-	_, err := controller.pgsql.Exec(sql, customerId)
-	return err
 }
 
 // -----------------------------------------------------------------------
@@ -411,14 +343,16 @@ func (controller *Controller) DeleteRouteShader(routeShaderId uint64) error {
 type BuyerData struct {
 	BuyerId         uint64 `json:"buyer_id"`
 	BuyerName       string `json:"buyer_name"`
+	BuyerCode       string `json:"buyer_code"`
 	PublicKeyBase64 string `json:"public_key_base64"`
-	CustomerId      uint64 `json:"customer_id"`
 	RouteShaderId   uint64 `json:"route_shader_id"`
+	Live            bool   `json:"live"`
+	Debug           bool   `json:"debug"`
 }
 
 func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) {
-	sql := "INSERT INTO buyers (buyer_name, public_key_base64, customer_id, route_shader_id) VALUES ($1, $2, $3, $4) RETURNING buyer_id;"
-	result := controller.pgsql.QueryRow(sql, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId)
+	sql := "INSERT INTO buyers (buyer_name, buyer_code, public_key_base64, route_shader_id, live, debug) VALUES ($1, $2, $3, $4, $5, $6) RETURNING buyer_id;"
+	result := controller.pgsql.QueryRow(sql, buyerData.BuyerName, buyerData.BuyerCode, buyerData.PublicKeyBase64, buyerData.RouteShaderId, buyerData.Live, buyerData.Debug)
 	buyerId := uint64(0)
 	if err := result.Scan(&buyerId); err != nil {
 		return 0, fmt.Errorf("could not insert buyer: %v\n", err)
@@ -428,14 +362,14 @@ func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) 
 
 func (controller *Controller) ReadBuyers() ([]BuyerData, error) {
 	buyers := make([]BuyerData, 0)
-	rows, err := controller.pgsql.Query("SELECT buyer_id, buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers;")
+	rows, err := controller.pgsql.Query("SELECT buyer_id, buyer_name, buyer_code, public_key_base64, route_shader_id, live, debug FROM buyers;")
 	if err != nil {
 		return nil, fmt.Errorf("could not read buyers: %v\n", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := BuyerData{}
-		if err := rows.Scan(&row.BuyerId, &row.BuyerName, &row.PublicKeyBase64, &row.CustomerId, &row.RouteShaderId); err != nil {
+		if err := rows.Scan(&row.BuyerId, &row.BuyerName, &row.BuyerCode, &row.PublicKeyBase64, &row.RouteShaderId, &row.Live, &row.Debug); err != nil {
 			return nil, fmt.Errorf("could not scan buyer row: %v\n", err)
 		}
 		buyers = append(buyers, row)
@@ -445,13 +379,13 @@ func (controller *Controller) ReadBuyers() ([]BuyerData, error) {
 
 func (controller *Controller) ReadBuyer(buyerId uint64) (BuyerData, error) {
 	buyer := BuyerData{}
-	rows, err := controller.pgsql.Query("SELECT buyer_name, public_key_base64, customer_id, route_shader_id FROM buyers WHERE buyer_id = $1;", buyerId)
+	rows, err := controller.pgsql.Query("SELECT buyer_name, buyer_code, public_key_base64, route_shader_id, live, debug FROM buyers WHERE buyer_id = $1;", buyerId)
 	if err != nil {
 		return buyer, fmt.Errorf("could not read buyer: %v\n", err)
 	}
 	defer rows.Close()
 	if rows.Next() {
-		if err := rows.Scan(&buyer.BuyerName, &buyer.PublicKeyBase64, &buyer.CustomerId, &buyer.RouteShaderId); err != nil {
+		if err := rows.Scan(&buyer.BuyerName, &buyer.BuyerCode, &buyer.PublicKeyBase64, &buyer.RouteShaderId, &buyer.Live, &buyer.Debug); err != nil {
 			return buyer, fmt.Errorf("could not scan buyer row: %v\n", err)
 		}
 		buyer.BuyerId = buyerId
@@ -462,8 +396,8 @@ func (controller *Controller) ReadBuyer(buyerId uint64) (BuyerData, error) {
 
 func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
 	// IMPORTANT: Cannot change buyer id once created
-	sql := "UPDATE buyers SET buyer_name = $1, public_key_base64 = $2, customer_id = $3, route_shader_id = $4 WHERE buyer_id = $5;"
-	_, err := controller.pgsql.Exec(sql, buyerData.BuyerName, buyerData.PublicKeyBase64, buyerData.CustomerId, buyerData.RouteShaderId, buyerData.BuyerId)
+	sql := "UPDATE buyers SET buyer_name = $1, buyer_code = $2, public_key_base64 = $3, route_shader_id = $4, live = $5, debug = $6 WHERE buyer_id = $7;"
+	_, err := controller.pgsql.Exec(sql, buyerData.BuyerName, buyerData.BuyerCode, buyerData.PublicKeyBase64, buyerData.RouteShaderId, buyerData.Live, buyerData.Debug, buyerData.BuyerId)
 	return err
 }
 
@@ -478,18 +412,13 @@ func (controller *Controller) DeleteBuyer(buyerId uint64) error {
 type SellerData struct {
 	SellerId   uint64 `json:"seller_id"`
 	SellerName string `json:"seller_name"`
-	CustomerId uint64 `json:"customer_id"`
+	SellerCode string `json:"seller_code"`
 }
 
 func (controller *Controller) CreateSeller(sellerData *SellerData) (uint64, error) {
 	var result *sql.Row
-	if sellerData.CustomerId != 0 {
-		sql := "INSERT INTO sellers (seller_name, customer_id) VALUES ($1, $2) RETURNING seller_id;"
-		result = controller.pgsql.QueryRow(sql, sellerData.SellerName, sellerData.CustomerId)
-	} else {
-		sql := "INSERT INTO sellers (seller_name) VALUES ($1) RETURNING seller_id;"
-		result = controller.pgsql.QueryRow(sql, sellerData.SellerName)
-	}
+	sql := "INSERT INTO sellers (seller_name, seller_code) VALUES ($1, $2) RETURNING seller_id;"
+	result = controller.pgsql.QueryRow(sql, sellerData.SellerName, sellerData.SellerCode)
 	sellerId := uint64(0)
 	if err := result.Scan(&sellerId); err != nil {
 		return 0, fmt.Errorf("could not insert seller: %v\n", err)
@@ -499,18 +428,16 @@ func (controller *Controller) CreateSeller(sellerData *SellerData) (uint64, erro
 
 func (controller *Controller) ReadSellers() ([]SellerData, error) {
 	sellers := make([]SellerData, 0)
-	rows, err := controller.pgsql.Query("SELECT seller_id, seller_name, customer_id FROM sellers;")
+	rows, err := controller.pgsql.Query("SELECT seller_id, seller_name, seller_code FROM sellers;")
 	if err != nil {
 		return nil, fmt.Errorf("could not read sellers: %v\n", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := SellerData{}
-		customerId := sql.NullInt64{}
-		if err := rows.Scan(&row.SellerId, &row.SellerName, &customerId); err != nil {
+		if err := rows.Scan(&row.SellerId, &row.SellerName, &row.SellerCode); err != nil {
 			return nil, fmt.Errorf("could not scan seller row: %v\n", err)
 		}
-		row.CustomerId = uint64(customerId.Int64)
 		sellers = append(sellers, row)
 	}
 	return sellers, nil
@@ -518,18 +445,16 @@ func (controller *Controller) ReadSellers() ([]SellerData, error) {
 
 func (controller *Controller) ReadSeller(sellerId uint64) (SellerData, error) {
 	seller := SellerData{}
-	rows, err := controller.pgsql.Query("SELECT seller_name, customer_id FROM sellers WHERE seller_id = $1;", sellerId)
+	rows, err := controller.pgsql.Query("SELECT seller_name, seller_code FROM sellers WHERE seller_id = $1;", sellerId)
 	if err != nil {
 		return seller, fmt.Errorf("could not read seller: %v\n", err)
 	}
 	defer rows.Close()
 	if rows.Next() {
-		customerId := sql.NullInt64{}
-		if err := rows.Scan(&seller.SellerName, &customerId); err != nil {
+		if err := rows.Scan(&seller.SellerName, &seller.SellerCode); err != nil {
 			return seller, fmt.Errorf("could not scan seller row: %v\n", err)
 		}
 		seller.SellerId = sellerId
-		seller.CustomerId = uint64(customerId.Int64)
 		return seller, nil
 	}
 	return seller, fmt.Errorf("seller %x not found", sellerId)
@@ -538,13 +463,8 @@ func (controller *Controller) ReadSeller(sellerId uint64) (SellerData, error) {
 func (controller *Controller) UpdateSeller(sellerData *SellerData) error {
 	// IMPORTANT: Cannot change seller id once created
 	var err error
-	if sellerData.CustomerId != 0 {
-		sql := "UPDATE sellers SET seller_name = $1, customer_id = $2 WHERE seller_id = $3;"
-		_, err = controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.CustomerId, sellerData.SellerId)
-	} else {
-		sql := "UPDATE sellers SET seller_name = $1 WHERE seller_id = $2;"
-		_, err = controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.SellerId)
-	}
+	sql := "UPDATE sellers SET seller_name = $1, seller_code = $2 WHERE seller_id = $3;"
+	_, err = controller.pgsql.Exec(sql, sellerData.SellerName, sellerData.SellerCode, sellerData.SellerId)
 	return err
 }
 
@@ -638,11 +558,11 @@ type RelayData struct {
 	PublicIP         string `json:"public_ip"`
 	PublicPort       int    `json:"public_port"`
 	InternalIP       string `json:"internal_ip"`
-	InternalPort     int    `json:"internal_port`
-	InternalGroup    string `json:"internal_group`
+	InternalPort     int    `json:"internal_port"`
+	InternalGroup    string `json:"internal_group"`
 	SSH_IP           string `json:"ssh_ip"`
-	SSH_Port         int    `json:"ssh_port`
-	SSH_User         string `json:"ssh_user`
+	SSH_Port         int    `json:"ssh_port"`
+	SSH_User         string `json:"ssh_user"`
 	PublicKeyBase64  string `json:"public_key_base64"`
 	PrivateKeyBase64 string `json:"private_key_base64"`
 	Version          string `json:"version"`
@@ -952,81 +872,6 @@ func (controller *Controller) UpdateBuyerDatacenterSettings(settings *BuyerDatac
 func (controller *Controller) DeleteBuyerDatacenterSettings(buyerId uint64, datacenterId uint64) error {
 	sql := "DELETE FROM buyer_datacenter_settings WHERE buyer_id = $1 AND datacenter_id = $2;"
 	_, err := controller.pgsql.Exec(sql, buyerId, datacenterId)
-	return err
-}
-
-// -----------------------------------------------------------------------
-
-type BuyerKeypairData struct {
-	BuyerKeypairId   uint64 `json:"buyer_keypair_id"`
-	PublicKeyBase64  string `json:"public_key_base64"`
-	PrivateKeyBase64 string `json:"private_key_base64"`
-}
-
-func (controller *Controller) CreateBuyerKeypair() (BuyerKeypairData, error) {
-	buyerKeypairId := uint64(0)
-	buyerId := make([]byte, 8)
-	rand.Read(buyerId)
-	publicKey, privateKey, err := ed25519.GenerateKey(nil)
-	if err != nil {
-		return BuyerKeypairData{}, fmt.Errorf("could not generate buyer keypair: %v", err)
-	}
-	buyerPublicKey := make([]byte, 0)
-	buyerPublicKey = append(buyerPublicKey, buyerId...)
-	buyerPublicKey = append(buyerPublicKey, publicKey...)
-	buyerPrivateKey := make([]byte, 0)
-	buyerPrivateKey = append(buyerPrivateKey, buyerId...)
-	buyerPrivateKey = append(buyerPrivateKey, privateKey...)
-	publicKeyBase64 := base64.StdEncoding.EncodeToString(buyerPublicKey[:])
-	privateKeyBase64 := base64.StdEncoding.EncodeToString(buyerPrivateKey[:])
-	sql := "INSERT INTO buyer_keypairs (public_key_base64, private_key_base64) VALUES ($1, $2) RETURNING buyer_keypair_id;"
-	result := controller.pgsql.QueryRow(sql, publicKeyBase64, privateKeyBase64)
-	if err := result.Scan(&buyerKeypairId); err != nil {
-		return BuyerKeypairData{}, fmt.Errorf("could not insert buyer keypair: %v\n", err)
-	}
-	return BuyerKeypairData{BuyerKeypairId: buyerKeypairId, PublicKeyBase64: publicKeyBase64, PrivateKeyBase64: privateKeyBase64}, nil
-}
-
-func (controller *Controller) ReadBuyerKeypairs() ([]BuyerKeypairData, error) {
-	buyerKeypairs := make([]BuyerKeypairData, 0)
-	rows, err := controller.pgsql.Query("SELECT buyer_keypair_id, public_key_base64, private_key_base64 FROM buyer_keypairs;")
-	if err != nil {
-		return nil, fmt.Errorf("could not read buyer keypairs: %v\n", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		row := BuyerKeypairData{}
-		if err := rows.Scan(&row.BuyerKeypairId, &row.PublicKeyBase64, &row.PrivateKeyBase64); err != nil {
-			return nil, fmt.Errorf("could not scan buyer keypair row: %v\n", err)
-		}
-		buyerKeypairs = append(buyerKeypairs, row)
-	}
-	return buyerKeypairs, nil
-}
-
-func (controller *Controller) ReadBuyerKeypair(buyerKeypairId uint64) (BuyerKeypairData, error) {
-	buyerKeypair := BuyerKeypairData{}
-	rows, err := controller.pgsql.Query("SELECT buyer_keypair_id, public_key_base64, private_key_base64 FROM buyer_keypairs WHERE buyer_keypair_id = $1;", buyerKeypairId)
-	if err != nil {
-		return buyerKeypair, fmt.Errorf("could not read buyer keypair: %v\n", err)
-	}
-	defer rows.Close()
-	if rows.Next() {
-		if err := rows.Scan(&buyerKeypair.BuyerKeypairId, &buyerKeypair.PublicKeyBase64, &buyerKeypair.PrivateKeyBase64); err != nil {
-			return buyerKeypair, fmt.Errorf("could not scan buyer keypair row: %v\n", err)
-		}
-		return buyerKeypair, nil
-	}
-	return buyerKeypair, fmt.Errorf("buyer keypair %x not found", buyerKeypairId)
-}
-
-func (controller *Controller) UpdateBuyerKeypair(buyerKeypairData *BuyerKeypairData) error {
-	return fmt.Errorf("updating buyer keypair is not supported")
-}
-
-func (controller *Controller) DeleteBuyerKeypair(buyerKeypairId uint64) error {
-	sql := "DELETE FROM buyer_keypairs WHERE buyer_keypair_id = $1;"
-	_, err := controller.pgsql.Exec(sql, buyerKeypairId)
 	return err
 }
 

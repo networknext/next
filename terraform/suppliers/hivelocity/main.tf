@@ -52,7 +52,7 @@ resource "hivelocity_bare_metal_device" "relay" {
   product_id        = data.hivelocity_product.relay[count.index].product_id
   location_name     = data.hivelocity_product.relay[count.index].data_center
   public_ssh_key_id = hivelocity_ssh_key.relay.ssh_key_id
-  script            = file("./setup_relay.sh")
+  script            = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
 }
 
 /*

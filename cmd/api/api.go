@@ -1,21 +1,24 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
-	"strings"
+	// "strings"
 	"time"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
+	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	// jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 )
@@ -27,13 +30,16 @@ var controller *admin.Controller
 var service *common.Service
 
 var privateKey string
+var pgsqlConfig string
+var databaseURL string
 
 func main() {
 
 	service = common.CreateService("api")
 
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
-	pgsqlConfig := envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
+	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
+	databaseURL = envvar.GetString("DATABASE_URL", "")
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
@@ -47,6 +53,7 @@ func main() {
 	}
 
 	core.Debug("pgsql config: %s", pgsqlConfig)
+	core.Debug("database url: %s", databaseURL)
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)
@@ -62,6 +69,7 @@ func main() {
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
 		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
@@ -81,11 +89,8 @@ func main() {
 
 		controller = admin.CreateController(pgsqlConfig)
 
-		service.Router.HandleFunc("/admin/create_customer", isAuthorized(adminCreateCustomerHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/customers", isAuthorized(adminReadCustomersHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/customer/{customerId}", isAuthorized(adminReadCustomerHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/update_customer", isAuthorized(adminUpdateCustomerHandler)).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_customer/{customerId}", isAuthorized(adminDeleteCustomerHandler)).Methods("DELETE")
+		service.Router.HandleFunc("/admin/database", isAuthorized(adminDatabaseHandler)).Methods("GET")
+		service.Router.HandleFunc("/admin/commit", isAuthorized(adminCommitHandler)).Methods("PUT")
 
 		service.Router.HandleFunc("/admin/create_seller", isAuthorized(adminCreateSellerHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/sellers", isAuthorized(adminReadSellersHandler)).Methods("GET")
@@ -123,12 +128,6 @@ func main() {
 		service.Router.HandleFunc("/admin/update_buyer_datacenter_settings", isAuthorized(adminUpdateBuyerDatacenterSettingsHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_buyer_datacenter_settings/{buyerId}/{datacenterId}", isAuthorized(adminDeleteBuyerDatacenterSettingsHandler)).Methods("DELETE")
 
-		service.Router.HandleFunc("/admin/create_buyer_keypair", isAuthorized(adminCreateBuyerKeypairHandler)).Methods("POST")
-		service.Router.HandleFunc("/admin/buyer_keypairs", isAuthorized(adminReadBuyerKeypairsHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/buyer_keypair/{buyerKeypairId}", isAuthorized(adminReadBuyerKeypairHandler)).Methods("GET")
-		service.Router.HandleFunc("/admin/update_buyer_keypair", isAuthorized(adminUpdateBuyerKeypairHandler)).Methods("PUT")
-		service.Router.HandleFunc("/admin/delete_buyer_keypair/{buyerKeypairId}", isAuthorized(adminDeleteBuyerKeypairHandler)).Methods("DELETE")
-
 		service.Router.HandleFunc("/admin/create_relay_keypair", isAuthorized(adminCreateRelayKeypairHandler)).Methods("POST")
 		service.Router.HandleFunc("/admin/relay_keypairs", isAuthorized(adminReadRelayKeypairsHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/relay_keypair/{relayKeypairId}", isAuthorized(adminReadRelayKeypairHandler)).Methods("GET")
@@ -148,7 +147,6 @@ func main() {
 		service.Router.HandleFunc("/database/datacenters", isAuthorized(databaseDatacentersHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/relays", isAuthorized(databaseRelaysHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
-		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
 	}
 
 	service.StartWebServer()
@@ -162,34 +160,39 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		auth := r.Header.Get("Authorization")
+		endpoint(w, r)
 
-		split := strings.Split(auth, "Bearer ")
+		// todo: temporarily disabled
+		/*
+			auth := r.Header.Get("Authorization")
 
-		if len(split) == 2 {
+			split := strings.Split(auth, "Bearer ")
 
-			apiKey := split[1]
+			if len(split) == 2 {
 
-			token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("There was an error")
+				apiKey := split[1]
+
+				token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
+					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+						return nil, fmt.Errorf("There was an error")
+					}
+					return []byte(privateKey), nil
+				})
+
+				if token == nil || err != nil {
+					w.WriteHeader(http.StatusUnauthorized)
+					fmt.Fprintf(w, err.Error())
 				}
-				return []byte(privateKey), nil
-			})
 
-			if token == nil || err != nil {
+				endpoint(w, r)
+
+			} else {
+
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprintf(w, err.Error())
+				fmt.Fprintf(w, "Not Authorized")
+
 			}
-
-			endpoint(w, r)
-
-		} else {
-
-			w.WriteHeader(http.StatusUnauthorized)
-			fmt.Fprintf(w, "Not Authorized")
-
-		}
+		*/
 	}
 }
 
@@ -198,7 +201,11 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 func pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("pong"))
+	if service.Tag != "" {
+		w.Write([]byte(fmt.Sprintf("pong [%s]", service.Tag)))
+	} else {
+		w.Write([]byte(fmt.Sprintf("pong [%s]", service.Env)))
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -216,8 +223,27 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type PortalSessionData struct {
+	SessionId      uint64  `json:"session_id,string"`
+	UserHash       uint64  `json:"user_hash,string"`
+	StartTime      uint64  `json:"start_time,string"`
+	ISP            string  `json:"isp"`
+	ConnectionType uint8   `json:"connection_type"`
+	PlatformType   uint8   `json:"platform_type"`
+	Latitude       float32 `json:"latitude"`
+	Longitude      float32 `json:"longitude"`
+	DirectRTT      uint32  `json:"direct_rtt"`
+	NextRTT        uint32  `json:"next_rtt"`
+	MatchId        uint64  `json:"match_id,string"`
+	BuyerId        uint64  `json:"buyer_id,string"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
+	ServerAddress  string  `json:"server_address"`
+	DatacenterName string  `json:"datacenter_name"`
+	BuyerName      string  `json:"buyer_name"`
+}
+
 type PortalSessionsResponse struct {
-	Sessions []portal.SessionData `json:"sessions"`
+	Sessions []PortalSessionData `json:"sessions"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +259,80 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalSessionsResponse{}
-	response.Sessions = portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	response.Sessions = make([]PortalSessionData, len(sessions))
+	database := service.Database()
+	for i := range response.Sessions {
+		response.Sessions[i].SessionId = sessions[i].SessionId
+		response.Sessions[i].UserHash = sessions[i].UserHash
+		response.Sessions[i].StartTime = sessions[i].StartTime
+		response.Sessions[i].ISP = sessions[i].ISP
+		response.Sessions[i].ConnectionType = sessions[i].ConnectionType
+		response.Sessions[i].PlatformType = sessions[i].PlatformType
+		response.Sessions[i].Latitude = sessions[i].Latitude
+		response.Sessions[i].Longitude = sessions[i].Longitude
+		response.Sessions[i].DirectRTT = sessions[i].DirectRTT
+		response.Sessions[i].NextRTT = sessions[i].NextRTT
+		response.Sessions[i].MatchId = sessions[i].MatchId
+		response.Sessions[i].BuyerId = sessions[i].BuyerId
+		response.Sessions[i].DatacenterId = sessions[i].DatacenterId
+		response.Sessions[i].ServerAddress = sessions[i].ServerAddress
+		if database != nil {
+			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
+			if buyer != nil {
+				response.Sessions[i].BuyerName = buyer.Name
+			}
+			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
+			if datacenter != nil {
+				response.Sessions[i].DatacenterName = datacenter.Name
+			}
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type PortalUserSessionsResponse struct {
+	Sessions        []portal.SessionData `json:"sessions"`
+	BuyerNames      []string             `json:"buyer_names"`
+	DatacenterNames []string             `json:"datacenter_names"`
+}
+
+func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userHash, err := strconv.ParseUint(vars["user_hash"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	response := PortalUserSessionsResponse{}
+	response.Sessions = portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	database := service.Database()
+	if database != nil {
+		response.BuyerNames = make([]string, len(response.Sessions))
+		response.DatacenterNames = make([]string, len(response.Sessions))
+		for i := range response.Sessions {
+			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
+			if buyer != nil {
+				response.BuyerNames[i] = buyer.Name
+			}
+			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
+			if datacenter != nil {
+				response.DatacenterNames[i] = datacenter.Name
+			}
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -273,8 +372,21 @@ func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type PortalServerData struct {
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	MatchId          uint64 `json:"match_id,string"`
+	BuyerId          uint64 `json:"buyer_id,string"`
+	DatacenterId     uint64 `json:"datacenter_id,string"`
+	NumSessions      uint32 `json:"num_sessions"`
+	StartTime        uint64 `json:"start_time,string"`
+	Uptime           uint64 `json:"uptime,string"`
+}
+
 type PortalServersResponse struct {
-	Servers []portal.ServerData `json:"servers"`
+	Servers []PortalServerData `json:"servers"`
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
@@ -289,8 +401,22 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	servers := portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalServersResponse{}
-	response.Servers = portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
+	response.Servers = make([]PortalServerData, len(servers))
+	currentTime := uint64(time.Now().Unix())
+	for i := range servers {
+		response.Servers[i].ServerAddress = servers[i].ServerAddress
+		response.Servers[i].SDKVersion_Major = servers[i].SDKVersion_Major
+		response.Servers[i].SDKVersion_Minor = servers[i].SDKVersion_Minor
+		response.Servers[i].SDKVersion_Patch = servers[i].SDKVersion_Patch
+		response.Servers[i].MatchId = servers[i].MatchId
+		response.Servers[i].BuyerId = servers[i].BuyerId
+		response.Servers[i].DatacenterId = servers[i].DatacenterId
+		response.Servers[i].NumSessions = servers[i].NumSessions
+		response.Servers[i].StartTime = servers[i].StartTime
+		response.Servers[i].Uptime = currentTime - servers[i].StartTime
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -325,8 +451,24 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type PortalRelayData struct {
+	RelayName      string `json:"relay_name"`
+	RelayId        uint64 `json:"relay_id,string"`
+	RelayAddress   string `json:"relay_address"`
+	NumSessions    uint32 `json:"num_sessions"`
+	MaxSessions    uint32 `json:"max_sessions"`
+	StartTime      uint64 `json:"start_time,string"`
+	RelayFlags     uint64 `json:"relay_flags,string"`
+	RelayVersion   string `json:"relay_version"`
+	DatacenterName string `json:"datacenter_name"`
+	SellerName     string `json:"seller_name"`
+	Uptime         uint64 `json:"uptime,string"`
+	SellerId       uint64 `json:"seller_id,string"`
+	DatacenterId   uint64 `json:"datacenter_id,string"`
+}
+
 type PortalRelaysResponse struct {
-	Relays []portal.RelayData `json:"relays"`
+	Relays []PortalRelayData `json:"relays"`
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
@@ -341,8 +483,32 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	relays := portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalRelaysResponse{}
-	response.Relays = portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
+	database := service.Database()
+	currentTime := uint64(time.Now().Unix())
+	response.Relays = make([]PortalRelayData, len(relays))
+	for i := range response.Relays {
+		response.Relays[i].RelayName = relays[i].RelayName
+		response.Relays[i].RelayId = relays[i].RelayId
+		response.Relays[i].RelayAddress = relays[i].RelayAddress
+		response.Relays[i].NumSessions = relays[i].NumSessions
+		response.Relays[i].MaxSessions = relays[i].MaxSessions
+		response.Relays[i].StartTime = relays[i].StartTime
+		response.Relays[i].RelayFlags = relays[i].RelayFlags
+		response.Relays[i].RelayVersion = relays[i].RelayVersion
+		if database != nil {
+			relay := database.GetRelay(response.Relays[i].RelayId)
+			if relay == nil {
+				continue
+			}
+			response.Relays[i].DatacenterName = relay.Datacenter.Name
+			response.Relays[i].SellerName = relay.Seller.Name
+			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
+			response.Relays[i].DatacenterId = relay.Datacenter.Id
+			response.Relays[i].SellerId = relay.Seller.Id
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -383,124 +549,110 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-type AdminCreateCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
+type AdminDatabaseResponse struct {
+	Database string `json:"database_base64"`
+	Error    string `json:"error"`
 }
 
-func adminCreateCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	var response AdminCreateCustomerResponse
-	var customerData admin.CustomerData
-	err := json.NewDecoder(r.Body).Decode(&customerData)
+func adminDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	var response AdminDatabaseResponse
+	database, err := db.ExtractDatabase(pgsqlConfig)
 	if err != nil {
-		core.Error("failed to read customer data in create customer request: %v", err)
+		fmt.Printf("error: failed to extract database: %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	customerId, err := controller.CreateCustomer(&customerData)
+	err = database.Validate()
 	if err != nil {
-		core.Error("failed to create customer: %v", err)
-		response.Error = err.Error()
+		fmt.Printf("error: database did not validate: %v\n", err)
+		response.Error = fmt.Sprintf("error: database did not validate: %v\n", err)
 	} else {
-		customerData.CustomerId = customerId
-		core.Debug("create customer %x -> %+v", customerId, customerData)
-		response.Customer = customerData
+		response.Database = base64.StdEncoding.EncodeToString(database.GetBinary())
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
-type AdminReadCustomersResponse struct {
-	Customers []admin.CustomerData `json:"customers"`
-	Error     string               `json:"error"`
+// ---------------------------------------------------------------------------------------------------------------------
+
+type AdminCommitRequest struct {
+	User     string `json:"user"`
+	Database string `json:"database_base64"`
 }
 
-func adminReadCustomersHandler(w http.ResponseWriter, r *http.Request) {
-	customers, err := controller.ReadCustomers()
-	response := AdminReadCustomersResponse{Customers: customers}
-	if err != nil {
-		core.Error("failed to read customers: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read customers -> %+v", customers)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-func adminReadCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	customerId, err := strconv.ParseUint(vars["customerId"], 10, 64)
-	if err != nil {
-		core.Error("read customer could not parse customer id")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	customer, err := controller.ReadCustomer(customerId)
-	response := AdminReadCustomerResponse{Customer: customer}
-	if err != nil {
-		core.Error("failed to read customer: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read customer %x -> %+v", customerId, customer)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-func adminUpdateCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	var customer admin.CustomerData
-	err := json.NewDecoder(r.Body).Decode(&customer)
-	if err != nil {
-		core.Error("failed to decode update customer request json: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	response := AdminUpdateCustomerResponse{Customer: customer}
-	err = controller.UpdateCustomer(&customer)
-	if err != nil {
-		core.Error("failed to update customer: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("update customer %x -> %+v", customer.CustomerId, customer)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminDeleteCustomerResponse struct {
+type AdminCommitResponse struct {
 	Error string `json:"error"`
 }
 
-func adminDeleteCustomerHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	customerId, err := strconv.ParseUint(vars["customerId"], 10, 64)
+func bash(command string) bool {
+	cmd := exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		return false
+	}
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("error: failed to run command: %v\n", err)
+		return false
+	}
+	cmd.Wait()
+	return true
+}
+
+func adminCommitHandler(w http.ResponseWriter, r *http.Request) {
+	var request AdminCommitRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		core.Error("delete customer could not parse customer id: %v", err)
+		core.Error("failed to read commit request data in commit handler: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete customer %x", customerId)
-	response := AdminDeleteCustomerResponse{}
-	err = controller.DeleteCustomer(customerId)
+	database_binary, err := base64.StdEncoding.DecodeString(request.Database)
 	if err != nil {
-		core.Error("failed to delete customer: %v", err)
-		response.Error = err.Error()
+		core.Error("failed to decode database base64 string: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
+	var response AdminCommitResponse
+	if databaseURL == "" {
+		core.Error("DATABASE_URL env var is not set. We have nowhere to write the database.bin to")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	tempFileA := fmt.Sprintf("/tmp/database-%s.bin", common.RandomString(64))
+	err = os.WriteFile(tempFileA, database_binary, 0666)
+	if err != nil {
+		core.Error("could not write database binary data to temp file '%s'", tempFileA)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	database, err := db.LoadDatabase(tempFileA)
+	if err != nil {
+		core.Error("could not load database from binary data in temp file '%s'", tempFileA)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = database.Validate()
+	if err != nil {
+		response.Error = fmt.Sprintf("error: database did not validate: %v\n", err)
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+	database.Creator = request.User
+	tempFileB := fmt.Sprintf("/tmp/database-%s.bin", common.RandomString(64))
+	err = database.Save(tempFileB)
+	if err != nil {
+		core.Error("could not save database to temp file '%s'", tempFileB)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !bash(fmt.Sprintf("gsutil cp %s %s", tempFileB, databaseURL)) {
+		core.Error("could not upload database.bin to database bucket")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	core.Log("committed database to %s for %s at time %s", databaseURL, request.User, database.CreationTime)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -528,7 +680,7 @@ func adminCreateSellerHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		sellerData.SellerId = sellerId
-		core.Debug("create seller %x -> %+v", sellerId, sellerData)
+		core.Debug("create seller %d -> %+v", sellerId, sellerData)
 		response.Seller = sellerData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -571,7 +723,7 @@ func adminReadSellerHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		response.Error = err.Error()
 	}
-	core.Debug("read seller %x -> %+v", sellerId, seller)
+	core.Debug("read seller %d -> %+v", sellerId, seller)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -595,7 +747,7 @@ func adminUpdateSellerHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to update seller: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update seller %x -> %+v", seller.SellerId, seller)
+		core.Debug("update seller %d -> %+v", seller.SellerId, seller)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -614,7 +766,7 @@ func adminDeleteSellerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete seller %x", sellerId)
+	core.Debug("delete seller %d", sellerId)
 	response := AdminDeleteSellerResponse{}
 	err = controller.DeleteSeller(sellerId)
 	if err != nil {
@@ -648,7 +800,7 @@ func adminCreateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		buyerData.BuyerId = buyerId
-		core.Debug("create buyer %x -> %+v", buyerId, buyerData)
+		core.Debug("create buyer %d -> %+v", buyerId, buyerData)
 		response.Buyer = buyerData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -692,7 +844,7 @@ func adminReadBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read buyer: %v", err)
 		response.Error = err.Error()
 	}
-	core.Debug("read buyer %x -> %+v", buyerId, buyer)
+	core.Debug("read buyer %d -> %+v", buyerId, buyer)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -716,7 +868,7 @@ func adminUpdateBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to update buyer: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update buyer %x -> %+v", buyer.BuyerId, buyer)
+		core.Debug("update buyer %d -> %+v", buyer.BuyerId, buyer)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -735,7 +887,7 @@ func adminDeleteBuyerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete buyer %x", buyerId)
+	core.Debug("delete buyer %d", buyerId)
 	response := AdminDeleteBuyerResponse{}
 	err = controller.DeleteBuyer(buyerId)
 	if err != nil {
@@ -769,7 +921,7 @@ func adminCreateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		datacenterData.DatacenterId = datacenterId
-		core.Debug("create datacenter %x -> %+v", datacenterId, datacenterData)
+		core.Debug("create datacenter %d -> %+v", datacenterId, datacenterData)
 		response.Datacenter = datacenterData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -815,7 +967,7 @@ func adminReadDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read datacenter: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read datacenter %x -> %+v", datacenterId, datacenter)
+		core.Debug("read datacenter %d -> %+v", datacenterId, datacenter)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -841,7 +993,7 @@ func adminUpdateDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to update datacenter: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update datacenter %x -> %+v", datacenter.DatacenterId, datacenter)
+		core.Debug("update datacenter %d -> %+v", datacenter.DatacenterId, datacenter)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -860,7 +1012,7 @@ func adminDeleteDatacenterHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete datacenter %x", datacenterId)
+	core.Debug("delete datacenter %d", datacenterId)
 	response := AdminDeleteDatacenterResponse{}
 	err = controller.DeleteDatacenter(datacenterId)
 	if err != nil {
@@ -894,7 +1046,7 @@ func adminCreateRelayHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		relayData.RelayId = relayId
-		core.Debug("create relay %x -> %+v", relayId, relayData)
+		core.Debug("create relay %d -> %+v", relayId, relayData)
 		response.Relay = relayData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -940,7 +1092,7 @@ func adminReadRelayHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read relay: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read relay %x -> %+v", relayId, relay)
+		core.Debug("read relay %d -> %+v", relayId, relay)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -966,7 +1118,7 @@ func adminUpdateRelayHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to update relay: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update relay %x -> %+v", relay.RelayId, relay)
+		core.Debug("update relay %d -> %+v", relay.RelayId, relay)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -985,7 +1137,7 @@ func adminDeleteRelayHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete relay %x", relayId)
+	core.Debug("delete relay %d", relayId)
 	response := AdminDeleteRelayResponse{}
 	err = controller.DeleteRelay(relayId)
 	if err != nil {
@@ -1019,7 +1171,7 @@ func adminCreateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		response.Error = err.Error()
 	} else {
 		routeShaderData.RouteShaderId = routeShaderId
-		core.Debug("create route shader %x -> %+v", routeShaderId, routeShaderData)
+		core.Debug("create route shader %d -> %+v", routeShaderId, routeShaderData)
 		response.RouteShader = routeShaderData
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1065,7 +1217,7 @@ func adminReadRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read route shader: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read route shader %x -> %+v", routeShaderId, routeShader)
+		core.Debug("read route shader %d -> %+v", routeShaderId, routeShader)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1091,7 +1243,7 @@ func adminUpdateRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to update route shader: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update route shader %x -> %+v", routeShader.RouteShaderId, routeShader)
+		core.Debug("update route shader %d -> %+v", routeShader.RouteShaderId, routeShader)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1110,7 +1262,7 @@ func adminDeleteRouteShaderHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete route shader %x", routeShaderId)
+	core.Debug("delete route shader %d", routeShaderId)
 	response := AdminDeleteRouteShaderResponse{}
 	err = controller.DeleteRouteShader(routeShaderId)
 	if err != nil {
@@ -1145,7 +1297,7 @@ func adminCreateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 	} else {
 		buyerId := settings.BuyerId
 		datacenterId := settings.DatacenterId
-		core.Debug("create buyer datacenter settings %x.%x -> %+v", buyerId, datacenterId, settings)
+		core.Debug("create buyer datacenter settings %d.%d -> %+v", buyerId, datacenterId, settings)
 		response.Settings = settings
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1193,7 +1345,7 @@ func adminReadBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Requ
 		core.Error("failed to read buyer datacenter settings: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read buyer datacenter settings %x.%x -> %+v", buyerId, datacenterId, settings)
+		core.Debug("read buyer datacenter settings %d.%d -> %+v", buyerId, datacenterId, settings)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1219,7 +1371,7 @@ func adminUpdateBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		core.Error("failed to update buyer datacenter settings: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update buyer datacenter settings %x.%x -> %+v", settings.BuyerId, settings.DatacenterId, settings)
+		core.Debug("update buyer datacenter settings %d.%d -> %+v", settings.BuyerId, settings.DatacenterId, settings)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1242,128 +1394,11 @@ func adminDeleteBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete buyer datacenter settings %x.%x", buyerId, datacenterId)
+	core.Debug("delete buyer datacenter settings %d.%d", buyerId, datacenterId)
 	response := AdminDeleteBuyerDatacenterSettingsResponse{}
 	err = controller.DeleteBuyerDatacenterSettings(buyerId, datacenterId)
 	if err != nil {
 		core.Error("failed to delete buyer datacenter settings: %v", err)
-		response.Error = err.Error()
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-type AdminCreateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-func adminCreateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	var response AdminCreateBuyerKeypairResponse
-	buyerKeypairData, err := controller.CreateBuyerKeypair()
-	if err != nil {
-		core.Error("failed to create buyer keypair: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("create buyer keypair -> %+v", buyerKeypairData)
-		response.BuyerKeypair = buyerKeypairData
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadBuyerKeypairsResponse struct {
-	BuyerKeypairs []admin.BuyerKeypairData `json:"buyer_keypairs"`
-	Error         string                   `json:"error"`
-}
-
-func adminReadBuyerKeypairsHandler(w http.ResponseWriter, r *http.Request) {
-	buyerKeypairs, err := controller.ReadBuyerKeypairs()
-	response := AdminReadBuyerKeypairsResponse{BuyerKeypairs: buyerKeypairs}
-	if err != nil {
-		core.Error("failed to read buyer keypairs: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read buyer keypairs -> %+v", buyerKeypairs)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminReadBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-func adminReadBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	buyerKeypairId, err := strconv.ParseUint(vars["buyerKeypairId"], 10, 64)
-	if err != nil {
-		core.Error("read buyer keypair could not parse buyer keypair id")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	buyerKeypair, err := controller.ReadBuyerKeypair(buyerKeypairId)
-	response := AdminReadBuyerKeypairResponse{BuyerKeypair: buyerKeypair}
-	if err != nil {
-		core.Error("failed to read buyer keypair: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("read buyer keypair %x -> %+v", buyerKeypairId, buyerKeypair)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminUpdateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-func adminUpdateBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	var buyerKeypair admin.BuyerKeypairData
-	err := json.NewDecoder(r.Body).Decode(&buyerKeypair)
-	if err != nil {
-		core.Error("failed to decode update buyer keypair request json: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	response := AdminUpdateBuyerKeypairResponse{BuyerKeypair: buyerKeypair}
-	err = controller.UpdateBuyerKeypair(&buyerKeypair)
-	if err != nil {
-		core.Error("failed to update buyer keypair: %v", err)
-		response.Error = err.Error()
-	} else {
-		core.Debug("update buyer keypair %x -> %+v", buyerKeypair.BuyerKeypairId, buyerKeypair)
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type AdminDeleteBuyerKeypairResponse struct {
-	Error string `json:"error"`
-}
-
-func adminDeleteBuyerKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	buyerKeypairId, err := strconv.ParseUint(vars["buyerKeypairId"], 10, 64)
-	if err != nil {
-		core.Error("delete buyer keypair could not parse buyer keypair id: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	core.Debug("delete buyer keypair %x", buyerKeypairId)
-	response := AdminDeleteBuyerKeypairResponse{}
-	err = controller.DeleteBuyerKeypair(buyerKeypairId)
-	if err != nil {
-		core.Error("failed to delete buyer keypair: %v", err)
 		response.Error = err.Error()
 	}
 	w.WriteHeader(http.StatusOK)
@@ -1431,7 +1466,7 @@ func adminReadRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read relay keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read relay keypair %x -> %+v", relayKeypairId, relayKeypair)
+		core.Debug("read relay keypair %d -> %+v", relayKeypairId, relayKeypair)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1457,7 +1492,7 @@ func adminUpdateRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to update relay keypair: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("update relay keypair %x -> %+v", relayKeypair.RelayKeypairId, relayKeypair)
+		core.Debug("update relay keypair %d -> %+v", relayKeypair.RelayKeypairId, relayKeypair)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -1476,7 +1511,7 @@ func adminDeleteRelayKeypairHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	core.Debug("delete relay keypair %x", relayKeypairId)
+	core.Debug("delete relay keypair %d", relayKeypairId)
 	response := AdminDeleteRelayKeypairResponse{}
 	err = controller.DeleteRelayKeypair(relayKeypairId)
 	if err != nil {

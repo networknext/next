@@ -16,6 +16,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -36,7 +37,6 @@ import (
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
-	"github.com/networknext/next/modules/portal"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/modood/table"
@@ -226,41 +226,6 @@ func secureShell(user string, address string, port int) {
 	}
 }
 
-func readJSONData(entity string, args []string) []byte {
-	// Check if the input is piped or a filepath
-	fileInfo, err := os.Stdin.Stat()
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Error checking stdin stat: %v\n", err), 1)
-	}
-	isPipedInput := fileInfo.Mode()&os.ModeCharDevice == 0
-
-	var data []byte
-	if isPipedInput {
-		// Read the piped input from stdin
-		data, err = ioutil.ReadAll(bufio.NewReader(os.Stdin))
-		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Error reading from stdin: %v\n", err), 1)
-		}
-	} else {
-		// Read the file at the given filepath
-		if len(args) == 0 {
-			handleRunTimeError(fmt.Sprintf("Supply a file path to read the %s JSON or pipe it through stdin\n", entity), 0)
-		}
-
-		data, err = ioutil.ReadFile(args[0])
-		if err != nil {
-			// Can't read the file, assume it is raw json data
-			data = []byte(args[0])
-			if !json.Valid(data) {
-				// It's not valid json, so error out
-				handleRunTimeError("invalid input, not a valid filepath or valid JSON", 1)
-			}
-		}
-	}
-
-	return data
-}
-
 // level 0: user error
 // level 1: program error
 func handleRunTimeError(msg string, level int) {
@@ -344,7 +309,17 @@ func main() {
 			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
 			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
 			env.APIKey = getKeyValue(envFilePath, "API_KEY")
+			env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
+			env.RelayBackendHostname = getKeyValue(envFilePath, "RELAY_BACKEND_HOSTNAME")
+			env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
+			env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
 			env.Write()
+
+			cachedDatabase = nil
+			if env.Name != "local" {
+				bash("rm -f database.bin")
+				getDatabase()
+			}
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
 
@@ -368,48 +343,6 @@ func main() {
 		},
 	}
 
-	var initCommand = &ffcli.Command{
-		Name:       "init",
-		ShortUsage: "next init <component>",
-		ShortHelp:  "Terraform init component, eg. 'next init backend', or 'next init relays'.",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
-			}
-			component := args[0]
-			terraformInit(env, component)
-			return nil
-		},
-	}
-
-	var deployCommand = &ffcli.Command{
-		Name:       "deploy",
-		ShortUsage: "next deploy <component>",
-		ShortHelp:  "Deploy component to current env with terraform, eg. 'next deploy backend', or 'next deploy relays'",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
-			}
-			component := args[0]
-			terraformDeploy(env, component)
-			return nil
-		},
-	}
-
-	var destroyCommand = &ffcli.Command{
-		Name:       "destroy",
-		ShortUsage: "next destroy <component>",
-		ShortHelp:  "Tear down the entire terraform environment, eg. 'next destroy backend', or 'next destroy relays'",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
-			}
-			component := args[0]
-			terraformDestroy(env, component)
-			return nil
-		},
-	}
-
 	var pingCommand = &ffcli.Command{
 		Name:       "ping",
 		ShortUsage: "next ping",
@@ -423,9 +356,19 @@ func main() {
 	var databaseCommand = &ffcli.Command{
 		Name:       "database",
 		ShortUsage: "next database",
-		ShortHelp:  "Print the database for the current environment",
+		ShortHelp:  "Update local database.bin from the current environment Postgres DB and print it",
 		Exec: func(_ context.Context, args []string) error {
 			printDatabase()
+			return nil
+		},
+	}
+
+	var commitCommand = &ffcli.Command{
+		Name:       "commit",
+		ShortUsage: "next commit",
+		ShortHelp:  "Commit the local database.bin to the current environment runtime (server and relay backends)",
+		Exec: func(_ context.Context, args []string) error {
+			commitDatabase()
 			return nil
 		},
 	}
@@ -443,7 +386,7 @@ func main() {
 			privateKey := env.APIPrivateKey
 			tokenString, err := token.SignedString([]byte(privateKey))
 			if err != nil {
-				fmt.Printf("error: not generate API_KEY: %s", err.Error())
+				fmt.Printf("error: could not generate API_KEY: %s", err.Error())
 				os.Exit(1)
 			}
 			fmt.Printf("API_KEY = %s\n\n", tokenString)
@@ -516,6 +459,22 @@ func main() {
 			}
 
 			relayLog(env, args)
+
+			return nil
+		},
+	}
+
+	var setupCommand = &ffcli.Command{
+		Name:       "setup",
+		ShortUsage: "next setup [regex...]",
+		ShortHelp:  "Setup the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			setupRelays(env, regexes)
 
 			return nil
 		},
@@ -707,13 +666,12 @@ func main() {
 		selectCommand,
 		envCommand,
 		pingCommand,
-		initCommand,
-		deployCommand,
-		destroyCommand,
 		databaseCommand,
+		commitCommand,
 		relaysCommand,
 		sshCommand,
 		logCommand,
+		setupCommand,
 		startCommand,
 		stopCommand,
 		loadCommand,
@@ -756,35 +714,6 @@ func main() {
 }
 
 // -------------------------------------------------------------------------------------------------------
-
-var cachedDatabase *db.Database
-
-func getDatabase() *db.Database {
-
-	if cachedDatabase != nil {
-		return cachedDatabase
-	}
-
-	if env.Name != "local" {
-		database_binary := GetBinary(fmt.Sprintf("%s/database/binary", env.DatabaseURL))
-		os.WriteFile("database.bin", database_binary, 0644)
-	}
-
-	cachedDatabase, err := db.LoadDatabase("database.bin")
-	if err != nil {
-		fmt.Printf("error: could not load database.bin: %v\n", err)
-		os.Exit(1)
-		return nil
-	}
-
-	return cachedDatabase
-}
-
-func printDatabase() {
-	database := getDatabase()
-	fmt.Println(database.String())
-	fmt.Printf("\n")
-}
 
 func GetJSON(url string, object interface{}) {
 
@@ -894,13 +823,181 @@ func GetBinary(url string) []byte {
 	return body
 }
 
+func PostJSON(url string, requestData interface{}, responseData interface{}) error {
+
+	buffer := new(bytes.Buffer)
+
+	json.NewEncoder(buffer).Encode(requestData)
+
+	request, _ := http.NewRequest("PUT", url, buffer)
+
+	request.Header.Set("Authorization", "Bearer "+env.APIKey)
+
+	httpClient := &http.Client{}
+
+	var err error
+	var response *http.Response
+	for i := 0; i < 5; i++ {
+		response, err = httpClient.Do(request)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %v", url, err)
+	}
+
+	if response == nil {
+		return fmt.Errorf("no response from %s", url)
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response body for %s: %v", url, err)
+	}
+
+	response.Body.Close()
+
+	err = json.Unmarshal([]byte(body), &responseData)
+	if err != nil {
+		return fmt.Errorf("could not parse json response for %s: %v", url, err)
+	}
+
+	return nil
+}
+
+// -------------------------------------------------------------------------------------------------------
+
+var cachedDatabase *db.Database
+
+type AdminDatabaseResponse struct {
+	Database string `json:"database_base64"`
+	Error    string `json:"error"`
+}
+
+func getDatabase() *db.Database {
+
+	if cachedDatabase != nil {
+		return cachedDatabase
+	}
+
+	if env.Name != "local" {
+		response := AdminDatabaseResponse{}
+		GetJSON(fmt.Sprintf("%s/admin/database", env.AdminURL), &response)
+		if response.Error != "" {
+			fmt.Printf("%s\n", response.Error)
+			os.Exit(1)
+		}
+		database_binary, err := base64.StdEncoding.DecodeString(response.Database)
+		if err != nil {
+			fmt.Printf("error: could not decode base64 database string\n")
+			os.Exit(1)
+		}
+		os.WriteFile("database.bin", database_binary, 0644)
+	}
+
+	cachedDatabase, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin: %v\n", err)
+		os.Exit(1)
+		return nil
+	}
+
+	return cachedDatabase
+}
+
+func printDatabase() {
+	fmt.Printf("updating database.bin from Postgres SQL instance\n\n")
+	database := getDatabase()
+	fmt.Println(database.String())
+	fmt.Printf("\n")
+}
+
+type AdminCommitRequest struct {
+	User     string `json:"user"`
+	Database string `json:"database_base64"`
+}
+
+type AdminCommitResponse struct {
+	Error string `json:"error"`
+}
+
+func commitDatabase() {
+
+	bash("rm database.bin")
+
+	getDatabase()
+
+	database, err := db.LoadDatabase("database.bin")
+	if err != nil {
+		fmt.Printf("error: could not load database.bin")
+		os.Exit(1)
+	}
+
+	gitUser := bashQuiet("git config user.name")
+	gitEmail := bashQuiet("git config user.email")
+	gitUser = strings.ReplaceAll(gitUser, "\n", "")
+	gitEmail = strings.ReplaceAll(gitEmail, "\n", "")
+
+	database_binary := database.GetBinary()
+
+	database_base64 := base64.StdEncoding.EncodeToString(database_binary)
+
+	var request AdminCommitRequest
+	var response AdminCommitResponse
+
+	request.User = fmt.Sprintf("%s <%s>", gitUser, gitEmail)
+	request.Database = database_base64
+
+	err = PostJSON(fmt.Sprintf("%s/admin/commit", env.AdminURL), &request, &response)
+	if err != nil {
+		fmt.Printf("error: could not post JSON to commit database endpoint: %v", err)
+		os.Exit(1)
+	}
+
+	if response.Error != "" {
+		fmt.Printf("error: failed to commit database: %s\n\n", response.Error)
+		os.Exit(1)
+	}
+
+	fmt.Printf("successfully committed database to %s\n\n", env.Name)
+}
+
+type PortalRelayData struct {
+	RelayName    string `json:"relay_name"`
+	RelayId      string `json:"relay_id"`
+	RelayAddress string `json:"relay_address"`
+	NumSessions  uint32 `json:"num_sessions"`
+	MaxSessions  uint32 `json:"max_sessions"`
+	StartTime    string `json:"start_time"`
+	RelayFlags   string `json:"relay_flags"`
+	RelayVersion string `json:"relay_version"`
+	Uptime       string `json:"uptime"`
+}
+
 type PortalRelaysResponse struct {
-	Relays []portal.RelayData `json:"relays"`
+	Relays []PortalRelayData `json:"relays"`
 }
 
 type AdminRelaysResponse struct {
 	Relays []admin.RelayData `json:"relays"`
 	Error  string            `json:"error"`
+}
+
+func niceUptime(uptimeString string) string {
+	value, _ := strconv.ParseInt(uptimeString, 10, 64)
+	if value > 86400 {
+		return fmt.Sprintf("%dd", int(math.Floor(float64(value/86400))))
+	}
+	if value > 3600 {
+		return fmt.Sprintf("%dh", int(math.Floor(float64(value/3600))))
+	}
+	if value > 60 {
+		return fmt.Sprintf("%dm", int(math.Floor(float64(value/60))))
+	}
+	return fmt.Sprintf("%ds", value)
 }
 
 func printRelays(env Environment, relayCount int64, alphaSort bool, regexName string) {
@@ -915,9 +1012,11 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		Name            string
 		PublicAddress   string
 		InternalAddress string
+		InternalGroup   string
 		Id              string
 		Status          string
 		Sessions        int
+		Uptime          string
 		Version         string
 	}
 
@@ -936,6 +1035,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if adminRelaysResponse.Relays[i].InternalIP != "0.0.0.0" {
 			relay.InternalAddress = fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].InternalIP, adminRelaysResponse.Relays[i].InternalPort)
 		}
+		relay.InternalGroup = adminRelaysResponse.Relays[i].InternalGroup
 		relay.Status = "offline"
 		relay.Sessions = 0
 		relay.Version = adminRelaysResponse.Relays[i].Version
@@ -947,16 +1047,17 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		if relay == nil {
 			continue
 		}
-		// todo: relay flags are not passed up yet -- random data
-		/*
-			if (portalRelaysResponse.Relays[i].RelayId & constants.RelayFlags_ShuttingDown) != 0 {
-				relay.Status = "shutting down"
-			} else {
-		*/
-		relay.Status = "online"
-		// }
+		relayFlags, _ := strconv.ParseUint(portalRelaysResponse.Relays[i].RelayFlags, 16, 64)
+		if (relayFlags & constants.RelayFlags_ShuttingDown) != 0 {
+			relay.Status = "shutting down"
+		} else {
+			relay.Status = "online"
+		}
 		relay.Sessions = int(portalRelaysResponse.Relays[i].NumSessions)
-		relay.Version = portalRelaysResponse.Relays[i].Version
+		if portalRelaysResponse.Relays[i].RelayVersion != "" {
+			relay.Version = portalRelaysResponse.Relays[i].RelayVersion
+		}
+		relay.Uptime = niceUptime(portalRelaysResponse.Relays[i].Uptime)
 	}
 
 	relays := make([]RelayRow, len(relayMap))
@@ -1051,45 +1152,133 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 
 // ------------------------------------------------------------------------------
 
-// todo: we need to configure where relay artifacts live -- it's hard coded below in "LoadRelayScript" =p
-
 const (
-	StartRelayScript   = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
-	StopRelayScript    = `sudo systemctl stop relay && sudo systemctl disable relay`
-	LoadRelayScript    = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/relay_artifacts/relay-%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	SetupRelayScript = `
+
+# run once only
+
+if [[ -f /etc/relay_setup_completed ]]; then echo "already setup" && exit 0; fi
+
+# make the relay prompt cool
+
+echo making the relay prompt cool
+
+sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
+sudo echo "source ~/.bashrc" >> ~/.profile.sh
+
+# download the relay binary and rename it to 'relay'
+
+echo downloading relay binary
+
+rm -f $RELAY_VERSION
+
+wget https://storage.googleapis.com/$RELAY_ARTIFACTS_BUCKET_NAME/$RELAY_VERSION --no-cache
+
+if [ ! $? -eq 0 ]; then
+    echo "download relay binary failed"
+    exit 1
+fi
+
+sudo mv $RELAY_VERSION relay
+
+sudo chmod +x relay
+
+# setup the relay environment file
+
+echo setting up relay environment
+
+sudo cat > relay.env <<- EOM
+RELAY_NAME=$RELAY_NAME
+RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
+RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
+RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
+RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
+RELAY_BACKEND_HOSTNAME=$RELAY_BACKEND_HOSTNAME
+RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
+EOM
+
+# setup the relay service file
+
+echo setting up relay service file
+
+sudo cat > relay.service <<- EOM
+[Unit]
+Description=Network Next Relay
+ConditionPathExists=/app/relay
+After=network.target
+
+[Service]
+Type=simple
+LimitNOFILE=1024
+WorkingDirectory=/app
+ExecStart=/app/relay
+EnvironmentFile=/app/relay.env
+Restart=on-failure
+RestartSec=12
+
+[Install]
+WantedBy=multi-user.target
+EOM
+
+# move everything into the /app dir
+
+echo moving everything into /app
+
+sudo rm -rf /app
+sudo mkdir /app
+sudo mv relay /app/relay
+sudo mv relay.env /app/relay.env
+sudo mv relay.service /app/relay.service
+
+# limit maximum journalctl logs to 200MB so we don't run out of disk space
+
+echo limiting max journalctl logs to 200MB
+
+sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
+sudo systemctl restart systemd-journald
+
+# install the relay service, then start it and watch the logs
+
+echo installing relay service
+
+sudo systemctl enable /app/relay.service
+
+echo starting relay service
+
+sudo systemctl start relay
+
+sudo touch /etc/relay_setup_completed
+
+echo setup completed
+`
+
+	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
+
+	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
+
+	LoadRelayScript = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
-	RebootRelayScript  = `sudo reboot`
-	ConfigRelayScript  = `sudo vi /app/relay.env && exit`
+
+	RebootRelayScript = `sudo reboot`
+
+	ConfigRelayScript = `sudo vi /app/relay.env && exit`
 )
 
-type RelayInfo struct {
-	Id         uint64
-	Name       string
-	SSHAddress string
-	SSHUser    string
-	SSHPort    int
-}
-
-func getRelayInfo(env Environment, regex string) []RelayInfo {
+func getRelayInfo(env Environment, regex string) []admin.RelayData {
 
 	relaysResponse := AdminRelaysResponse{}
 
 	GetJSON(fmt.Sprintf("%s/admin/relays", env.AdminURL), &relaysResponse)
 
-	relays := make([]RelayInfo, 0)
+	relays := make([]admin.RelayData, 0)
 
 	for i := range relaysResponse.Relays {
 		matched, _ := regexp.Match(regex, []byte(relaysResponse.Relays[i].RelayName))
 		if !matched {
 			continue
 		}
-		relayInfo := RelayInfo{}
-		relayInfo.Id = relaysResponse.Relays[i].RelayId
-		relayInfo.Name = relaysResponse.Relays[i].RelayName
-		relayInfo.SSHAddress = relaysResponse.Relays[i].SSH_IP
-		relayInfo.SSHUser = relaysResponse.Relays[i].SSH_User
-		relayInfo.SSHPort = relaysResponse.Relays[i].SSH_Port
-		relays = append(relays, relayInfo)
+		relays = append(relays, relaysResponse.Relays[i])
 	}
 
 	return relays
@@ -1104,12 +1293,12 @@ func ssh(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("%s does not have an SSH address\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("%s does not have an SSH address\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.Connect()
 			break
 		}
@@ -1126,18 +1315,73 @@ func config(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			if !con.ConnectAndIssueCmd(ConfigRelayScript) {
 				continue
 			}
 			break
 		}
 	}
+}
+
+func setupRelays(env Environment, regexes []string) {
+	for _, regex := range regexes {
+		relays := getRelayInfo(env, regex)
+		if len(relays) == 0 {
+			fmt.Printf("no relays matched the regex '%s'\n", regex)
+			continue
+		}
+		for i := range relays {
+
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
+				continue
+			}
+
+			fmt.Printf("setting up relay %s\n", relays[i].RelayName)
+
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+
+			script := SetupRelayScript
+
+			relayName := relays[i].RelayName
+			relayVersion := relays[i].Version
+			relayPublicAddress := fmt.Sprintf("%s:%d", relays[i].PublicIP, relays[i].PublicPort)
+			relayInternalAddress := fmt.Sprintf("%s:%d", relays[i].InternalIP, relays[i].InternalPort)
+			relayPublicKeyBase64 := relays[i].PublicKeyBase64
+			relayPrivateKeyBase64 := relays[i].PrivateKeyBase64
+			relayBackendHostname := env.RelayBackendHostname
+			relayBackendPublicKeyBase64 := env.RelayBackendPublicKey
+			vpnAddress := env.VPNAddress
+			relayArtifactsBucketName := env.RelayArtifactsBucketName
+
+			environment := env.Name
+
+			script = strings.ReplaceAll(script, "$RELAY_NAME", relayName)
+			script = strings.ReplaceAll(script, "$RELAY_VERSION", relayVersion)
+			script = strings.ReplaceAll(script, "$RELAY_PUBLIC_ADDRESS", relayPublicAddress)
+			script = strings.ReplaceAll(script, "$RELAY_INTERNAL_ADDRESS", relayInternalAddress)
+			script = strings.ReplaceAll(script, "$RELAY_PUBLIC_KEY", relayPublicKeyBase64)
+			script = strings.ReplaceAll(script, "$RELAY_PRIVATE_KEY", relayPrivateKeyBase64)
+			script = strings.ReplaceAll(script, "$RELAY_BACKEND_HOSTNAME", relayBackendHostname)
+			script = strings.ReplaceAll(script, "$RELAY_BACKEND_PUBLIC_KEY", relayBackendPublicKeyBase64)
+			script = strings.ReplaceAll(script, "$VPN_ADDRESS", vpnAddress)
+			script = strings.ReplaceAll(script, "$ENVIRONMENT", environment)
+			script = strings.ReplaceAll(script, "$RELAY_ARTIFACTS_BUCKET_NAME", relayArtifactsBucketName)
+
+			con.ConnectAndIssueCmd(script)
+
+			if len(relays) > 1 {
+				fmt.Printf("\n----------------------------------------------\n\n")
+			}
+		}
+	}
+	fmt.Printf("\n")
 }
 
 func startRelays(env Environment, regexes []string) {
@@ -1148,12 +1392,12 @@ func startRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("starting relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("starting relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(StartRelayScript)
 		}
 	}
@@ -1168,12 +1412,12 @@ func stopRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("stopping relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("stopping relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1188,12 +1432,12 @@ func upgradeRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("upgrading relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("upgrading relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1208,12 +1452,12 @@ func rebootRelays(env Environment, regexes []string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("rebooting relay %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("rebooting relay %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd(script)
 		}
 	}
@@ -1227,13 +1471,13 @@ func loadRelays(env Environment, regexes []string, version string) {
 			continue
 		}
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("loading relay-%s onto %s\n", version, relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version))
+			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version))
 		}
 	}
 }
@@ -1242,12 +1486,12 @@ func relayLog(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("journalctl -fu relay -n 1000")
 			break
 		}
@@ -1258,12 +1502,12 @@ func keys(env Environment, regexes []string) {
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		for i := range relays {
-			if relays[i].SSHAddress == "0.0.0.0" {
-				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].Name)
+			if relays[i].SSH_IP == "0.0.0.0" {
+				fmt.Printf("Relay %s does not have an SSH address :(\n", relays[i].RelayName)
 				continue
 			}
-			fmt.Printf("connecting to %s\n", relays[i].Name)
-			con := NewSSHConn(relays[i].SSHUser, relays[i].SSHAddress, fmt.Sprintf("%d", relays[i].SSHPort), env.SSHKeyFile)
+			fmt.Printf("connecting to %s\n", relays[i].RelayName)
+			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
 			con.ConnectAndIssueCmd("sudo cat /app/relay.env | grep _KEY")
 			break
 		}
@@ -1296,24 +1540,32 @@ func keygen() {
 // --------------------------------------------------------------------------------------------
 
 type Environment struct {
-	Name          string `json:"name"`
-	AdminURL      string `json:"admin_url"`
-	PortalURL     string `json:"portal_url"`
-	DatabaseURL   string `json:"database_url"`
-	SSHKeyFile    string `json:"ssh_key_filepath"`
-	APIPrivateKey string `json:"api_private_key"`
-	APIKey        string `json:"api_key"`
+	Name                     string `json:"name"`
+	AdminURL                 string `json:"admin_url"`
+	PortalURL                string `json:"portal_url"`
+	DatabaseURL              string `json:"database_url"`
+	SSHKeyFile               string `json:"ssh_key_filepath"`
+	APIPrivateKey            string `json:"api_private_key"`
+	APIKey                   string `json:"api_key"`
+	VPNAddress               string `json:"vpn_address"`
+	RelayBackendHostname     string `json:"relay_backend_hostname"`
+	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
+	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
 }
 
 func (e *Environment) String() string {
 	var sb strings.Builder
-
-	sb.WriteString(fmt.Sprintf("Environment: %s\n\n", e.Name))
-	sb.WriteString(fmt.Sprintf("Admin URL: %s\n", e.AdminURL))
-	sb.WriteString(fmt.Sprintf("Portal URL: %s\n", e.PortalURL))
-	sb.WriteString(fmt.Sprintf("Database URL: %s\n\n", e.DatabaseURL))
-	sb.WriteString(fmt.Sprintf("SSHKeyFile: %s\n", e.SSHKeyFile))
-
+	sb.WriteString(fmt.Sprintf("[%s]\n\n", e.Name))
+	sb.WriteString(fmt.Sprintf(" + Admin URL = %s\n", e.AdminURL))
+	sb.WriteString(fmt.Sprintf(" + Portal URL = %s\n", e.PortalURL))
+	sb.WriteString(fmt.Sprintf(" + Database URL = %s\n", e.DatabaseURL))
+	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
+	sb.WriteString(fmt.Sprintf(" + API Private Key = %s\n", e.APIPrivateKey))
+	sb.WriteString(fmt.Sprintf(" + API Key = %s\n", e.APIKey))
+	sb.WriteString(fmt.Sprintf(" + VPN Address = %s\n", e.VPNAddress))
+	sb.WriteString(fmt.Sprintf(" + Relay Backend Hostname = %s\n", e.RelayBackendHostname))
+	sb.WriteString(fmt.Sprintf(" + Relay Backend Public Key = %s\n", e.RelayBackendPublicKey))
+	sb.WriteString(fmt.Sprintf(" + Relay Artifacts Bucket Name = %s\n", e.RelayArtifactsBucketName))
 	return sb.String()
 }
 
@@ -1490,26 +1742,6 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
 
-	fmt.Printf("\n")
-}
-
-// -------------------------------------------------------------------------------------------
-
-func terraformInit(env Environment, component string) {
-	fmt.Printf("initializing %s in %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform init", env.Name, component))
-	fmt.Printf("\n")
-}
-
-func terraformDeploy(env Environment, component string) {
-	fmt.Printf("deploying %s to %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform apply", env.Name, component))
-	fmt.Printf("\n")
-}
-
-func terraformDestroy(env Environment, component string) {
-	fmt.Printf("destroying %s in %s\n\n", component, env.Name)
-	bash(fmt.Sprintf("cd terraform/%s/%s && terraform destroy", env.Name, component))
 	fmt.Printf("\n")
 }
 

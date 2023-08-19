@@ -413,6 +413,7 @@ struct NextBackendServerUpdateRequestPacket
     uint64_t match_id;
     uint32_t num_sessions;
     next_address_t server_address;
+    uint64_t start_time;
 
     NextBackendServerUpdateRequestPacket()
     {
@@ -425,6 +426,7 @@ struct NextBackendServerUpdateRequestPacket
         match_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
+        start_time = 0;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -438,6 +440,7 @@ struct NextBackendServerUpdateRequestPacket
         serialize_uint64( stream, match_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
+        serialize_uint64( stream, start_time );
         return true;
     }
 };

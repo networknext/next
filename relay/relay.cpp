@@ -4069,7 +4069,7 @@ void * upgrade_thread_function( void * data )
 
     char command[4096];
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "rm -f relay-%s", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "rm -f %s", upgrade->target_version );
     int result = system( command );
     (void) result;
 
@@ -4079,7 +4079,7 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "wget %s/relay-%s", upgrade->relay_upgrade_url, upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "wget %s/%s", upgrade->relay_upgrade_url, upgrade->target_version );
     if ( system( command ) != 0 )
     {
         printf( "error: failed to download relay version %s\n", upgrade->target_version );
@@ -4097,17 +4097,17 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "chmod +x relay-%s", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "chmod +x %s", upgrade->target_version );
     if ( system( command ) != 0 ) 
     {
-        printf( "error: failed to chmod +x relay-%s\n", upgrade->target_version );
+        printf( "error: failed to chmod +x %s\n", upgrade->target_version );
         relay_platform_mutex_acquire( upgrade->mutex );
         upgrade->upgrading = false;
         relay_platform_mutex_release( upgrade->mutex );
         RELAY_PLATFORM_THREAD_RETURN();
     }
 
-    printf( "chmod +x relay-%s succeeded\n", upgrade->target_version );
+    printf( "chmod +x %s succeeded\n", upgrade->target_version );
 
     if ( quit )
     {
@@ -4115,7 +4115,7 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "./relay-%s version", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "./%s version", upgrade->target_version );
     FILE * file = popen( command, "r" );
     char buffer[1024];
     if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr( buffer, upgrade->target_version ) == NULL )
@@ -4144,7 +4144,7 @@ void * upgrade_thread_function( void * data )
     }
 
     memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "mv relay-%s relay", upgrade->target_version );
+    snprintf( command, sizeof(command) - 1, "mv %s relay", upgrade->target_version );
     if ( system( command ) != 0 )
     {
         printf( "error: could not install new relay binary\n" );
@@ -4478,6 +4478,8 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
+    // todo: this is whack. just look up the stuff from the backend, vs. trip wiring it against env
+    /*
     if ( ( expected_has_internal_address != 0 ) != main->has_internal_address )
     {
         printf( "error: relay is misconfigured. it doesn't have an internal address, but it should\n" );
@@ -4493,6 +4495,7 @@ int main_update( main_t * main )
         printf( "error: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n", relay_internal_address_string, expected_internal_address_string );
         return RELAY_ERROR;
     }
+    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
@@ -5186,7 +5189,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. could not find session (thread %d)", from_string );
+                relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignored route response packet. could not find session (thread %d)", from_string, relay->thread_index );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
@@ -6242,6 +6245,15 @@ int main( int argc, const char ** argv )
         {
             num_threads = 1;
         }
+    }
+
+    if ( num_threads > 1 )
+    {
+        printf( "Relay is running with %d threads\n", num_threads );
+    }
+    else
+    {
+        printf( "Relay is running with one thread\n" );
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------

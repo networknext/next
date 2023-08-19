@@ -10,8 +10,8 @@ import (
 
 const (
 	PortalSessionUpdateMessageVersion_Min   = 1
-	PortalSessionUpdateMessageVersion_Max   = 1
-	PortalSessionUpdateMessageVersion_Write = 1
+	PortalSessionUpdateMessageVersion_Max   = 3
+	PortalSessionUpdateMessageVersion_Write = 3
 )
 
 type PortalSessionUpdateMessage struct {
@@ -22,6 +22,8 @@ type PortalSessionUpdateMessage struct {
 	SDKVersion_Patch byte
 
 	SessionId      uint64
+	UserHash       uint64
+	StartTime      uint64
 	MatchId        uint64
 	BuyerId        uint64
 	DatacenterId   uint64
@@ -82,6 +84,12 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
 
 	encoding.WriteUint64(buffer, &index, message.SessionId)
+	if message.Version >= 2 {
+		encoding.WriteUint64(buffer, &index, message.UserHash)
+	}
+	if message.Version >= 3 {
+		encoding.WriteUint64(buffer, &index, message.StartTime)
+	}
 	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
@@ -157,6 +165,18 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
 		return fmt.Errorf("failed to read session id")
+	}
+
+	if message.Version >= 2 {
+		if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
+			return fmt.Errorf("failed to read user hash")
+		}
+	}
+
+	if message.Version >= 3 {
+		if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
+			return fmt.Errorf("failed to read start time")
+		}
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {

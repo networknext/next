@@ -137,6 +137,8 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 	sessionId := message.SessionId
 
+	userHash := message.UserHash
+
 	next := (message.SessionFlags & constants.SessionFlags_Next) != 0
 
 	score := uint32(0)
@@ -151,6 +153,8 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
+		UserHash:       message.UserHash,
+		StartTime:      message.StartTime,
 		ISP:            isp,
 		ConnectionType: message.ConnectionType,
 		PlatformType:   message.PlatformType,
@@ -185,7 +189,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		NextKbpsDown:     message.NextKbpsDown,
 	}
 
-	sessionInserter[threadNumber].Insert(sessionId, score, next, &sessionData, &sliceData)
+	sessionInserter[threadNumber].Insert(sessionId, userHash, score, next, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
@@ -231,12 +235,13 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 
 	relayData := portal.RelayData{
 		RelayId:      message.RelayId,
+		RelayName:    message.RelayName,
 		RelayAddress: message.RelayAddress.String(),
 		NumSessions:  message.SessionCount,
 		MaxSessions:  message.MaxSessions,
 		StartTime:    message.StartTime,
 		RelayFlags:   message.RelayFlags,
-		Version:      message.RelayVersion,
+		RelayVersion: message.RelayVersion,
 	}
 
 	relaySample := portal.RelaySample{

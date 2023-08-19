@@ -17,6 +17,7 @@ variable "region" { type = string }
 variable "type" { type = string }
 variable "ami" { type = string }
 variable "security_group_id" { type = string }
+variable "vpn_address" { type = string }
 
 # --------------------------------------------------------------------------
 
@@ -45,7 +46,7 @@ resource "aws_instance" "relay" {
   lifecycle {
     create_before_destroy = true
   }
-  user_data = file("./setup_relay.sh")
+  user_data = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
 }
 
 # --------------------------------------------------------------------------

@@ -30,7 +30,7 @@ resource "vultr_ssh_key" "relay" {
 
 resource "vultr_startup_script" "setup_relay" {
   name   = "setup-relay"
-  script = base64encode(file("./setup_relay.sh"))
+  script = base64encode(replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address))
 }
 
 data "vultr_plan" "relay" {
@@ -79,24 +79,35 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
-        "public_address", 
-        "internal_address", 
-        "internal_group", 
-        "ssh_address", 
+        "public_ip",
+        "public_port",
+        "internal_ip",
+        "internal_port",
+        "internal_group",
+        "ssh_ip",
+        "ssh_port",
         "ssh_user",
-      ], 
+      ],
       [
         k,
         v.datacenter_name,
         "vultr", 
-        "${vultr_instance.relay[k].main_ip}:40000",
+        vultr_instance.relay[k].main_ip,
+        40000,
         "0.0.0.0",
+        0,
         "", 
-        "${vultr_instance.relay[k].main_ip}:22",
+        vultr_instance.relay[k].main_ip,
+        22,
         "root",
       ]
     )
   }
+}
+
+output "datacenters" {
+  description = "Data for each vultr datacenter"
+  value = local.datacenter_map
 }
 
 # ----------------------------------------------------------------------------------------

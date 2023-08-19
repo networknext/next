@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/admin"
+	"github.com/networknext/next/modules/common"
+	db "github.com/networknext/next/modules/database"
 )
 
 var hostname = "http://127.0.0.1:50000"
@@ -292,32 +294,6 @@ func Delete(path string, responseData interface{}) error {
 
 // ----------------------------------------------------------------------------------------
 
-type CreateCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-type ReadCustomersResponse struct {
-	Customers []admin.CustomerData `json:"customers"`
-	Error     string               `json:"error"`
-}
-
-type ReadCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-type UpdateCustomerResponse struct {
-	Customer admin.CustomerData `json:"customer"`
-	Error    string             `json:"error"`
-}
-
-type DeleteCustomerResponse struct {
-	Error string `json:"error"`
-}
-
-// ----------------------------------------------------------------------------------------
-
 type CreateSellerResponse struct {
 	Seller admin.SellerData `json:"seller"`
 	Error  string           `json:"error"`
@@ -500,191 +476,6 @@ type DeleteRelayKeypairResponse struct {
 
 // ----------------------------------------------------------------------------------------
 
-type CreateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-type ReadBuyerKeypairsResponse struct {
-	BuyerKeypairs []admin.BuyerKeypairData `json:"buyer_keypairs"`
-	Error         string                   `json:"error"`
-}
-
-type ReadBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-type UpdateBuyerKeypairResponse struct {
-	BuyerKeypair admin.BuyerKeypairData `json:"buyer_keypair"`
-	Error        string                 `json:"error"`
-}
-
-type DeleteBuyerKeypairResponse struct {
-	Error string `json:"error"`
-}
-
-// ----------------------------------------------------------------------------------------
-
-func test_customer() {
-
-	fmt.Printf("\ntest_customer\n\n")
-
-	clearDatabase()
-
-	api_cmd, _ := api()
-
-	defer func() {
-		api_cmd.Process.Signal(os.Interrupt)
-		api_cmd.Wait()
-	}()
-
-	// create customer
-
-	customerId := uint64(0)
-	{
-		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-
-		var response CreateCustomerResponse
-
-		err := Create("admin/create_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		customerId = response.Customer.CustomerId
-	}
-
-	// read all customers
-	{
-		customersResponse := ReadCustomersResponse{}
-
-		err := GetJSON("admin/customers", &customersResponse)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if len(customersResponse.Customers) != 1 {
-			panic("expect one customer in response")
-		}
-
-		if customersResponse.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		if customersResponse.Customers[0].CustomerId != customerId {
-			panic("wrong customer id")
-		}
-
-		if customersResponse.Customers[0].CustomerName != "Test" {
-			panic("wrong customer name")
-		}
-
-		if customersResponse.Customers[0].CustomerCode != "test" {
-			panic("wrong customer code")
-		}
-
-		if !customersResponse.Customers[0].Live {
-			panic("customer should have live true")
-		}
-
-		if !customersResponse.Customers[0].Debug {
-			panic("customer should have debug true")
-		}
-	}
-
-	// read a specific customer
-	{
-		response := ReadCustomerResponse{}
-
-		err := GetJSON(fmt.Sprintf("admin/customer/%x", customerId), &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		if response.Customer.CustomerId != customerId {
-			panic(fmt.Sprintf("wrong customer id: got %x, expected %x", response.Customer.CustomerId, customerId))
-		}
-
-		if response.Customer.CustomerName != "Test" {
-			panic("wrong customer name")
-		}
-
-		if response.Customer.CustomerCode != "test" {
-			panic("wrong customer code")
-		}
-
-		if !response.Customer.Live {
-			panic("customer should have live true")
-		}
-
-		if !response.Customer.Debug {
-			panic("customer should have debug true")
-		}
-	}
-
-	// update customer
-	{
-		customer := admin.CustomerData{CustomerId: customerId, CustomerName: "Updated", CustomerCode: "updated", Live: false, Debug: false}
-
-		response := UpdateCustomerResponse{}
-
-		err := Update("admin/update_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		if response.Customer.CustomerId != customerId {
-			panic("wrong customer id")
-		}
-
-		if response.Customer.CustomerName != "Updated" {
-			panic("wrong customer name")
-		}
-
-		if response.Customer.CustomerCode != "updated" {
-			panic("wrong customer code")
-		}
-
-		if response.Customer.Live {
-			panic("customer should have live false")
-		}
-
-		if response.Customer.Debug {
-			panic("customer should have debug false")
-		}
-	}
-
-	// delete customer
-	{
-		response := DeleteCustomerResponse{}
-
-		err := Delete(fmt.Sprintf("admin/delete_customer/%x", customerId), &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-	}
-}
-
-// ----------------------------------------------------------------------------------------
-
 func test_seller() {
 
 	fmt.Printf("\ntest_seller\n\n")
@@ -698,28 +489,11 @@ func test_seller() {
 		api_cmd.Wait()
 	}()
 
-	// create customer
-
-	customerId := uint64(0)
-	{
-		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-
-		var response CreateCustomerResponse
-
-		err := Create("admin/create_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		customerId = response.Customer.CustomerId
-	}
-
 	// create seller
 
 	sellerId := uint64(0)
 	{
-		seller := admin.SellerData{SellerName: "Test"}
+		seller := admin.SellerData{SellerName: "Test", SellerCode: "test"}
 
 		var response CreateSellerResponse
 
@@ -758,8 +532,8 @@ func test_seller() {
 			panic("wrong seller name")
 		}
 
-		if response.Sellers[0].CustomerId != 0 {
-			panic(fmt.Sprintf("wrong customer id on seller. expected %d, got %d", 0, response.Sellers[0].CustomerId))
+		if response.Sellers[0].SellerCode != "test" {
+			panic("wrong seller code")
 		}
 	}
 
@@ -774,7 +548,7 @@ func test_seller() {
 		}
 
 		if response.Error != "" {
-			panic("expect error string to be empty")
+			panic(fmt.Sprintf("expect error string to be empty: %s", response.Error))
 		}
 
 		if response.Seller.SellerId != sellerId {
@@ -785,14 +559,14 @@ func test_seller() {
 			panic("wrong seller name")
 		}
 
-		if response.Seller.CustomerId != 0 {
-			panic(fmt.Sprintf("wrong customer id on seller. expected %d, got %d", 0, response.Seller.CustomerId))
+		if response.Seller.SellerCode != "test" {
+			panic("wrong seller code")
 		}
 	}
 
 	// update seller
 	{
-		seller := admin.SellerData{SellerId: sellerId, SellerName: "Updated", CustomerId: customerId}
+		seller := admin.SellerData{SellerId: sellerId, SellerName: "Updated"}
 
 		response := UpdateSellerResponse{}
 
@@ -812,10 +586,6 @@ func test_seller() {
 
 		if response.Seller.SellerName != "Updated" {
 			panic("wrong seller name")
-		}
-
-		if response.Seller.CustomerId != customerId {
-			panic(fmt.Sprintf("wrong customer id on seller. expected %d, got %d", customerId, response.Seller.CustomerId))
 		}
 	}
 
@@ -850,28 +620,11 @@ func test_datacenter() {
 		api_cmd.Wait()
 	}()
 
-	// create customer
-
-	customerId := uint64(0)
-	{
-		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-
-		var response CreateCustomerResponse
-
-		err := Create("admin/create_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		customerId = response.Customer.CustomerId
-	}
-
 	// create seller
 
 	sellerId := uint64(0)
 	{
-		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+		seller := admin.SellerData{SellerName: "Test"}
 
 		var response CreateSellerResponse
 
@@ -888,7 +641,7 @@ func test_datacenter() {
 
 	datacenterId := uint64(0)
 	{
-		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+		datacenter := admin.DatacenterData{DatacenterName: "test", Latitude: 100, Longitude: 200, SellerId: sellerId}
 
 		var response CreateDatacenterResponse
 
@@ -923,7 +676,7 @@ func test_datacenter() {
 			panic("wrong datacenter id")
 		}
 
-		if response.Datacenters[0].DatacenterName != "Test" {
+		if response.Datacenters[0].DatacenterName != "test" {
 			panic("wrong datacenter name")
 		}
 
@@ -962,7 +715,7 @@ func test_datacenter() {
 			panic(fmt.Sprintf("wrong datacenter id: got %x, expected %x", response.Datacenter.DatacenterId, datacenterId))
 		}
 
-		if response.Datacenter.DatacenterName != "Test" {
+		if response.Datacenter.DatacenterName != "test" {
 			panic("wrong datacenter name")
 		}
 
@@ -1047,28 +800,11 @@ func test_relay() {
 		api_cmd.Wait()
 	}()
 
-	// create customer
-
-	customerId := uint64(0)
-	{
-		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-
-		var response CreateCustomerResponse
-
-		err := Create("admin/create_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		customerId = response.Customer.CustomerId
-	}
-
 	// create seller
 
 	sellerId := uint64(0)
 	{
-		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+		seller := admin.SellerData{SellerName: "Test", SellerCode: "test"}
 
 		var response CreateSellerResponse
 
@@ -1085,7 +821,7 @@ func test_relay() {
 
 	datacenterId := uint64(0)
 	{
-		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+		datacenter := admin.DatacenterData{DatacenterName: "test", Latitude: 100, Longitude: 200, SellerId: sellerId}
 
 		var response CreateDatacenterResponse
 
@@ -1102,7 +838,7 @@ func test_relay() {
 
 	relayId := uint64(0)
 	{
-		relay := admin.RelayData{RelayName: "Test", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
+		relay := admin.RelayData{RelayName: "test", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
 
 		var response CreateRelayResponse
 
@@ -1137,7 +873,7 @@ func test_relay() {
 			panic("wrong relay id")
 		}
 
-		if response.Relays[0].RelayName != "Test" {
+		if response.Relays[0].RelayName != "test" {
 			panic("wrong relay name")
 		}
 
@@ -1176,7 +912,7 @@ func test_relay() {
 			panic(fmt.Sprintf("wrong relay id: got %x, expected %x", response.Relay.RelayId, relayId))
 		}
 
-		if response.Relay.RelayName != "Test" {
+		if response.Relay.RelayName != "test" {
 			panic("wrong relay name")
 		}
 
@@ -1406,23 +1142,6 @@ func test_buyer() {
 		api_cmd.Wait()
 	}()
 
-	// create customer
-
-	customerId := uint64(0)
-	{
-		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-
-		var response CreateCustomerResponse
-
-		err := Create("admin/create_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		customerId = response.Customer.CustomerId
-	}
-
 	// create route shader
 
 	routeShaderId := uint64(0)
@@ -1464,9 +1183,11 @@ func test_buyer() {
 
 	expected := admin.BuyerData{
 		BuyerName:       "Test",
-		CustomerId:      customerId,
+		BuyerCode:       "test",
 		RouteShaderId:   routeShaderId,
-		PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
+		PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
+		Live:            true,
+		Debug:           true,
 	}
 
 	buyerId := uint64(0)
@@ -1531,6 +1252,7 @@ func test_buyer() {
 	// update buyer
 	{
 		expected.BuyerName = "Updated"
+		expected.BuyerCode = "updated"
 
 		buyer := expected
 
@@ -1582,23 +1304,6 @@ func test_buyer_datacenter_settings() {
 		api_cmd.Wait()
 	}()
 
-	// create customer
-
-	customerId := uint64(0)
-	{
-		customer := admin.CustomerData{CustomerName: "Test", CustomerCode: "test", Live: true, Debug: true}
-
-		var response CreateCustomerResponse
-
-		err := Create("admin/create_customer", customer, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		customerId = response.Customer.CustomerId
-	}
-
 	// create route shader
 
 	routeShaderId := uint64(0)
@@ -1642,9 +1347,9 @@ func test_buyer_datacenter_settings() {
 	{
 		buyer := admin.BuyerData{
 			BuyerName:       "Test",
-			CustomerId:      customerId,
+			BuyerCode:       "test",
 			RouteShaderId:   routeShaderId,
-			PublicKeyBase64: "@@!#$@!$@#!R*$!@*R",
+			PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
 		}
 
 		var response CreateBuyerResponse
@@ -1662,7 +1367,7 @@ func test_buyer_datacenter_settings() {
 
 	sellerId := uint64(0)
 	{
-		seller := admin.SellerData{SellerName: "Test", CustomerId: customerId}
+		seller := admin.SellerData{SellerName: "Test", SellerCode: "test"}
 
 		var response CreateSellerResponse
 
@@ -1679,7 +1384,7 @@ func test_buyer_datacenter_settings() {
 
 	datacenterId := uint64(0)
 	{
-		datacenter := admin.DatacenterData{DatacenterName: "Test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+		datacenter := admin.DatacenterData{DatacenterName: "test", Latitude: 100, Longitude: 200, SellerId: sellerId}
 
 		var response CreateDatacenterResponse
 
@@ -1915,11 +1620,14 @@ func test_relay_keypair() {
 	}
 }
 
-// ----------------------------------------------------------------------------------------
+type AdminDatabaseResponse struct {
+	Database string `json:"database_base64"`
+	Error    string `json:"error"`
+}
 
-func test_buyer_keypair() {
+func test_database() {
 
-	fmt.Printf("\ntest_buyer_keypair\n\n")
+	fmt.Printf("\ntest_database\n\n")
 
 	clearDatabase()
 
@@ -1930,110 +1638,228 @@ func test_buyer_keypair() {
 		api_cmd.Wait()
 	}()
 
-	// create buyer keypair
+	// create route shader
 
-	buyerKeypair := admin.BuyerKeypairData{}
+	routeShaderId := uint64(0)
+	{
+		routeShader := admin.RouteShaderData{
+			RouteShaderName:               "Test",
+			ABTest:                        true,
+			AcceptableLatency:             10.0,
+			AcceptablePacketLossInstant:   0.25,
+			AcceptablePacketLossSustained: 0.01,
+			AnalysisOnly:                  true,
+			BandwidthEnvelopeUpKbps:       1024,
+			BandwidthEnvelopeDownKbps:     512,
+			DisableNetworkNext:            true,
+			LatencyReductionThreshold:     10.0,
+			Multipath:                     true,
+			SelectionPercent:              100,
+			MaxLatencyTradeOff:            20,
+			MaxNextRTT:                    200,
+			RouteSwitchThreshold:          10,
+			RouteSelectThreshold:          5,
+			RTTVeto:                       10,
+			ForceNext:                     true,
+			RouteDiversity:                5,
+		}
 
-	var response CreateBuyerKeypairResponse
+		var response CreateRouteShaderResponse
 
-	err := Create("admin/create_buyer_keypair", buyerKeypair, &response)
+		err := Create("admin/create_route_shader", routeShader, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		routeShaderId = response.RouteShader.RouteShaderId
+	}
+
+	// create buyer
+
+	buyerId := uint64(0)
+	{
+		buyer := admin.BuyerData{
+			BuyerName:       "Test",
+			BuyerCode:       "test",
+			RouteShaderId:   routeShaderId,
+			PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
+			Live:            true,
+			Debug:           true,
+		}
+
+		var response CreateBuyerResponse
+
+		err := Create("admin/create_buyer", buyer, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		buyerId = response.Buyer.BuyerId
+	}
+
+	// create seller
+
+	sellerId := uint64(0)
+	{
+		seller := admin.SellerData{SellerName: "Test", SellerCode: "test"}
+
+		var response CreateSellerResponse
+
+		err := Create("admin/create_seller", seller, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		sellerId = response.Seller.SellerId
+	}
+
+	// create datacenter
+
+	datacenterId := uint64(0)
+	{
+		datacenter := admin.DatacenterData{DatacenterName: "test", Latitude: 100, Longitude: 200, SellerId: sellerId}
+
+		var response CreateDatacenterResponse
+
+		err := Create("admin/create_datacenter", datacenter, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		datacenterId = response.Datacenter.DatacenterId
+	}
+
+	// create buyer datacenter settings
+
+	expected := admin.BuyerDatacenterSettings{
+		BuyerId:            buyerId,
+		DatacenterId:       datacenterId,
+		EnableAcceleration: true,
+	}
+
+	{
+		settings := expected
+
+		var response CreateBuyerDatacenterSettingsResponse
+
+		err := Create("admin/create_buyer_datacenter_settings", settings, &response)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// read all settings
+	{
+		response := ReadBuyerDatacenterSettingsListResponse{}
+
+		err := GetJSON("admin/buyer_datacenter_settings", &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if len(response.Settings) != 1 {
+			panic(fmt.Sprintf("expect one setting in response, got %d", len(response.Settings)))
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings[0] != expected {
+			panic("buyer datacenter settings do not match expected")
+		}
+	}
+
+	// read specific settings
+	{
+		response := ReadBuyerDatacenterSettingsResponse{}
+
+		err := GetJSON(fmt.Sprintf("admin/buyer_datacenter_settings/%x/%x", buyerId, datacenterId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings != expected {
+			panic("settings do not match expected")
+		}
+	}
+
+	// update settings
+	{
+		expected.EnableAcceleration = false
+
+		settings := expected
+
+		response := UpdateBuyerDatacenterSettingsResponse{}
+
+		err := Update("admin/update_buyer_datacenter_settings", settings, &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+
+		if response.Settings != expected {
+			panic("settings do not match expected")
+		}
+	}
+
+	// delete settings
+	{
+		response := DeleteBuyerDatacenterSettingsResponse{}
+
+		err := Delete(fmt.Sprintf("admin/delete_buyer_datacenter_settings/%x/%x", buyerId, datacenterId), &response)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if response.Error != "" {
+			panic("expect error string to be empty")
+		}
+	}
+
+	// get database and verify it
+
+	var response AdminDatabaseResponse
+
+	err := GetJSON("admin/database", &response)
 
 	if err != nil {
 		panic(err)
 	}
 
-	buyerKeypairId := response.BuyerKeypair.BuyerKeypairId
-
-	// read all buyer keypairs
-	{
-		response := ReadBuyerKeypairsResponse{}
-
-		err := GetJSON("admin/buyer_keypairs", &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if len(response.BuyerKeypairs) != 1 {
-			panic(fmt.Sprintf("expect one buyer keypair in response, got %d", len(response.BuyerKeypairs)))
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		data, err := base64.StdEncoding.DecodeString(response.BuyerKeypairs[0].PublicKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		data, err = base64.StdEncoding.DecodeString(response.BuyerKeypairs[0].PrivateKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		_ = data
+	database_binary, err := base64.StdEncoding.DecodeString(response.Database)
+	if err != nil {
+		panic(err)
 	}
 
-	// read a specific buyer keypair
-	{
-		response := ReadBuyerKeypairResponse{}
-
-		err := GetJSON(fmt.Sprintf("admin/buyer_keypair/%x", buyerKeypairId), &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
-
-		data, err := base64.StdEncoding.DecodeString(response.BuyerKeypair.PublicKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		data, err = base64.StdEncoding.DecodeString(response.BuyerKeypair.PrivateKeyBase64)
-		if err != nil {
-			panic(err)
-		}
-
-		_ = data
+	tempFile := fmt.Sprintf("/tmp/database-%s.bin", common.RandomString(64))
+	err = os.WriteFile(tempFile, database_binary, 0666)
+	if err != nil {
+		panic(err)
 	}
-
-	// update buyer keypair
-	{
-		buyerKeypair.BuyerKeypairId = buyerKeypairId
-		buyerKeypair.PublicKeyBase64 = "aaaaaaaaaaaaaaaaaa"
-		buyerKeypair.PrivateKeyBase64 = "bbbbbbbbbbbbbbbbbb"
-
-		response := UpdateBuyerKeypairResponse{}
-
-		err := Update("admin/update_buyer_keypair", buyerKeypair, &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error == "" {
-			panic("expect error string to be valid. we do not support updating buyer keypairs")
-		}
+	database, err := db.LoadDatabase(tempFile)
+	if err != nil {
+		panic(err)
 	}
-
-	// delete buyer keypair
-	{
-		response := DeleteBuyerKeypairResponse{}
-
-		err := Delete(fmt.Sprintf("admin/delete_buyer_keypair/%x", buyerKeypairId), &response)
-
-		if err != nil {
-			panic(err)
-		}
-
-		if response.Error != "" {
-			panic("expect error string to be empty")
-		}
+	err = database.Validate()
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -2044,7 +1870,6 @@ type test_function func()
 func main() {
 
 	allTests := []test_function{
-		test_customer,
 		test_seller,
 		test_datacenter,
 		test_relay,
@@ -2052,7 +1877,7 @@ func main() {
 		test_buyer,
 		test_buyer_datacenter_settings,
 		test_relay_keypair,
-		test_buyer_keypair,
+		test_database,
 	}
 
 	var tests []test_function
