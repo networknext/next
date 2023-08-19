@@ -434,16 +434,17 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalRelaysResponse{}
 	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
-	if database != nil {
-		for i := range response.Relays {
-			response.Relays[i].RelayName = relays[i].RelayName
-			response.Relays[i].RelayId = relays[i].RelayId
-			response.Relays[i].RelayAddress = relays[i].RelayAddress
-			response.Relays[i].NumSessions = relays[i].NumSessions
-			response.Relays[i].MaxSessions = relays[i].MaxSessions
-			response.Relays[i].StartTime = relays[i].StartTime
-			response.Relays[i].RelayFlags = relays[i].RelayFlags
-			response.Relays[i].RelayVersion = relays[i].RelayVersion
+	response.Relays = make([]PortalRelayData, len(relays))
+	for i := range response.Relays {
+		response.Relays[i].RelayName = relays[i].RelayName
+		response.Relays[i].RelayId = relays[i].RelayId
+		response.Relays[i].RelayAddress = relays[i].RelayAddress
+		response.Relays[i].NumSessions = relays[i].NumSessions
+		response.Relays[i].MaxSessions = relays[i].MaxSessions
+		response.Relays[i].StartTime = relays[i].StartTime
+		response.Relays[i].RelayFlags = relays[i].RelayFlags
+		response.Relays[i].RelayVersion = relays[i].RelayVersion
+		if database != nil {
 			relay := database.GetRelay(response.Relays[i].RelayId)
 			if relay == nil {
 				continue
