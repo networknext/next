@@ -85,7 +85,7 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.SessionId)
 	if message.Version >= 2 {
 		encoding.WriteUint64(buffer, &index, message.UserHash)
-	}	
+	}
 	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)

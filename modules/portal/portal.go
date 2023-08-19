@@ -856,17 +856,17 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int, end int) []SessionData {
 
 	if begin < 0 {
-		core.Error("invalid begin passed to get sessions: %d", begin)
+		core.Error("invalid begin passed to get user sessions: %d", begin)
 		return nil
 	}
 
 	if end < 0 {
-		core.Error("invalid end passed to get sessions: %d", end)
+		core.Error("invalid end passed to get user sessions: %d", end)
 		return nil
 	}
 
 	if end <= begin {
-		core.Error("invalid begin passed to get sessions: %d", begin)
+		core.Error("invalid begin passed to get user sessions: %d", begin)
 		return nil
 	}
 
@@ -874,8 +874,8 @@ func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int
 
 	redisClient := pool.Get()
 
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("us-%016x-%d", userHash, minutes-1), begin, end-1, "WITHSCORES")
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("us-%016x-%d", userHash, minutes), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("u-%016x-%d", userHash, minutes-1), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("u-%016x-%d", userHash, minutes), begin, end-1, "WITHSCORES")
 
 	redisClient.Flush()
 
@@ -1393,13 +1393,15 @@ func GetRelayData(pool *redis.Pool, relayAddress string) (*RelayData, []RelaySam
 // ----------------------------------------------------------------------------------------------------
 
 type SessionInserter struct {
-	redisPool     *redis.Pool
-	redisClient   redis.Conn
-	lastFlushTime time.Time
-	batchSize     int
-	numPending    int
-	allSessions   redis.Args
-	nextSessions  redis.Args
+	redisPool          *redis.Pool
+	redisClient        redis.Conn
+	lastFlushTime      time.Time
+	batchSize          int
+	numPending         int
+	allSessions        redis.Args
+	nextSessions       redis.Args
+	userSessions       redis.Args
+	expireUserSessions redis.Args
 }
 
 func CreateSessionInserter(pool *redis.Pool, batchSize int) *SessionInserter {
@@ -1420,29 +1422,28 @@ func (inserter *SessionInserter) Insert(sessionId uint64, userHash uint64, score
 	if len(inserter.allSessions) == 0 {
 		inserter.allSessions = redis.Args{}.Add(fmt.Sprintf("s-%d", minutes))
 		inserter.nextSessions = redis.Args{}.Add(fmt.Sprintf("n-%d", minutes))
-	}
-
-	inserter.allSessions = inserter.allSessions.Add(score)
-	inserter.allSessions = inserter.allSessions.Add(fmt.Sprintf("%016x", sessionId))
-
-	if next {
-		inserter.nextSessions = inserter.nextSessions.Add(score)
-		inserter.nextSessions = inserter.nextSessions.Add(fmt.Sprintf("%016x", sessionId))
+		inserter.userSessions = redis.Args{}.Add(fmt.Sprintf("u-%016x-%d", userHash, minutes))
+		inserter.expireUserSessions = redis.Args{}.Add(fmt.Sprintf("u-%016x-%d", userHash, minutes))
 	}
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-	userHashString := fmt.Sprintf("%016x", userHash)
+	inserter.allSessions = inserter.allSessions.Add(score)
+	inserter.allSessions = inserter.allSessions.Add(sessionIdString)
+
+	if next {
+		inserter.nextSessions = inserter.nextSessions.Add(score)
+		inserter.nextSessions = inserter.nextSessions.Add(sessionIdString)
+	}
+
+	inserter.userSessions = inserter.userSessions.Add(score)
+	inserter.userSessions = inserter.userSessions.Add(sessionIdString)
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)
 	inserter.redisClient.Send("SET", key, sessionData.Value())
 	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
-	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
-	inserter.redisClient.Send("EXPIRE", key, 600)
-
-	key = fmt.Sprintf("us-%s-%d", userHashString, minutes)
 	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
 	inserter.redisClient.Send("EXPIRE", key, 600)
 
@@ -1466,6 +1467,12 @@ func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
 			inserter.redisClient.Send("ZADD", inserter.nextSessions...)
 			inserter.redisClient.Send("EXPIRE", fmt.Sprintf("n-%d", minutes), 600)
 		}
+		if len(inserter.userSessions) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.userSessions...)
+		}
+		if len(inserter.expireUserSessions) > 1 {
+			inserter.redisClient.Send("EXPIRE", inserter.expireUserSessions...)
+		}
 		inserter.redisClient.Do("")
 		inserter.redisClient.Close()
 		inserter.numPending = 0
@@ -1473,6 +1480,8 @@ func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
 		inserter.redisClient = inserter.redisPool.Get()
 		inserter.allSessions = redis.Args{}
 		inserter.nextSessions = redis.Args{}
+		inserter.userSessions = redis.Args{}
+		inserter.expireUserSessions = redis.Args{}
 	}
 }
 
