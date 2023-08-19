@@ -103,24 +103,6 @@ provider "networknext" {
 
 # ---------------------------------------------------------
 
-resource "networknext_customer" "test" {
-  name = "Test Customer"
-  code = "test"
-  debug = true
-}
-
-data "networknext_customers" "test" {
-  depends_on = [
-    networknext_customer.test,
-  ]
-}
-
-output "customers" {
-  value = data.networknext_customers.test
-}
-
-# ---------------------------------------------------------
-
 resource "networknext_seller" "test" {
   name = "test"
 }
@@ -208,9 +190,11 @@ output "route_shaders" {
 
 resource "networknext_buyer" "test" {
   name = "Test Buyer"
-  customer_id = networknext_customer.test.id
+  code = "test"
   route_shader_id = networknext_route_shader.test.id
   public_key_base64 = "1928371987391287398719387"
+  live = true
+  debug = true
 }
 
 data "networknext_buyers" "test" {
@@ -260,24 +244,6 @@ terraform {
 provider "networknext" {
   hostname = "http://localhost:50000"
   api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-}
-
-# ---------------------------------------------------------
-
-resource "networknext_customer" "test" {
-  name = "Test Customer (update)"
-  code = "test"
-  debug = true
-}
-
-data "networknext_customers" "test" {
-  depends_on = [
-    networknext_customer.test,
-  ]
-}
-
-output "customers" {
-  value = data.networknext_customers.test
 }
 
 # ---------------------------------------------------------
@@ -369,7 +335,7 @@ output "route_shaders" {
 
 resource "networknext_buyer" "test" {
   name = "Test Buyer (update)"
-  customer_id = networknext_customer.test.id
+  code = "test"
   route_shader_id = networknext_route_shader.test.id
   public_key_base64 = "aoesnuhaonuthaontehunathunath"
 }
