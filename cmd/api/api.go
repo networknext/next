@@ -469,6 +469,8 @@ type PortalRelayData struct {
 	DatacenterName string `json:"datacenter_name"`
 	SellerName     string `json:"seller_name"`
 	Uptime         uint64 `json:"uptime,string"`
+	SellerId       uint64 `json:"seller_id,string"`
+	DatacenterId   uint64 `json:"datacenter_id,string"`
 }
 
 type PortalRelaysResponse struct {
@@ -509,6 +511,8 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 			response.Relays[i].DatacenterName = relay.Datacenter.Name
 			response.Relays[i].SellerName = relay.Seller.Name
 			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
+			response.Relays[i].DatacenterId = relay.Datacenter.Id
+			response.Relays[i].SellerId = relay.Seller.Id
 		}
 	}
 	w.WriteHeader(http.StatusOK)
