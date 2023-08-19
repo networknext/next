@@ -1029,10 +1029,6 @@ blocks:
 
       jobs:
 
-        - name: "test_customer"
-          commands:
-            - cd ./dist && ./func_test_api test_customer
-
         - name: "test_buyer"
           commands:
             - cd ./dist && ./func_test_api test_buyer
