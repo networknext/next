@@ -852,6 +852,115 @@ func GetSessions(pool *redis.Pool, minutes int64, begin int, end int) []SessionD
 	return sessions
 }
 
+func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int, end int) []SessionData {
+
+	if begin < 0 {
+		core.Error("invalid begin passed to get sessions: %d", begin)
+		return nil
+	}
+
+	if end < 0 {
+		core.Error("invalid end passed to get sessions: %d", end)
+		return nil
+	}
+
+	if end <= begin {
+		core.Error("invalid begin passed to get sessions: %d", begin)
+		return nil
+	}
+
+	// get session ids in order in the range [begin,end]
+
+	redisClient := pool.Get()
+
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("us-%016x-%d", userHash, minutes-1), begin, end-1, "WITHSCORES")
+	redisClient.Send("ZREVRANGE", fmt.Sprintf("us-%016x-%d", userHash, minutes), begin, end-1, "WITHSCORES")
+
+	redisClient.Flush()
+
+	sessions_a, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis get sessions a failed: %v", err)
+		return nil
+	}
+
+	sessions_b, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis get sessions b failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	sessionsMap := make(map[uint64]SessionEntry)
+
+	for i := 0; i < len(sessions_b); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
+			SessionId: uint64(sessionId),
+			Score:     uint32(score),
+		}
+	}
+
+	for i := 0; i < len(sessions_a); i += 2 {
+		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+		sessionsMap[sessionId] = SessionEntry{
+			SessionId: uint64(sessionId),
+			Score:     uint32(score),
+		}
+	}
+
+	sessionEntries := make([]SessionEntry, len(sessionsMap))
+	index := 0
+	for _, v := range sessionsMap {
+		sessionEntries[index] = v
+		index++
+	}
+
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
+
+	maxSize := end - begin
+	if len(sessionEntries) > maxSize {
+		sessionEntries = sessionEntries[:maxSize]
+	}
+
+	// now get session data for the set of session ids in [begin, end]
+
+	if len(sessionEntries) == 0 {
+		return nil
+	}
+
+	redisClient = pool.Get()
+
+	args := redis.Args{}
+	for i := range sessionEntries {
+		args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
+	}
+
+	redisClient.Send("MGET", args...)
+
+	redisClient.Flush()
+
+	redis_session_data, err := redis.Strings(redisClient.Receive())
+	if err != nil {
+		core.Error("redis mget get session data failed: %v", err)
+		return nil
+	}
+
+	redisClient.Close()
+
+	sessions := make([]SessionData, len(redis_session_data))
+
+	for i := range sessions {
+		sessions[i].Parse(redis_session_data[i])
+		sessions[i].SessionId = sessionEntries[i].SessionId
+	}
+
+	return sessions
+}
+
 func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
 	redisClient := pool.Get()
@@ -1331,7 +1440,7 @@ func (inserter *SessionInserter) Insert(sessionId uint64, userHash uint64, score
 	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
 	inserter.redisClient.Send("EXPIRE", key, 600)
 
-	key = fmt.Sprintf("us-%s", userHashString)
+	key = fmt.Sprintf("us-%s-%d", userHashString, minutes)
 	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
 	inserter.redisClient.Send("EXPIRE", key, 600)
 

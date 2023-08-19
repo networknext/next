@@ -69,6 +69,7 @@ func main() {
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
 		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
@@ -248,6 +249,51 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalSessionsResponse{}
 	response.Sessions = portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	database := service.Database()
+	if database != nil {
+		response.BuyerNames = make([]string, len(response.Sessions))
+		response.DatacenterNames = make([]string, len(response.Sessions))
+		for i := range response.Sessions {
+			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
+			if buyer != nil {
+				response.BuyerNames[i] = buyer.Name
+			}
+			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
+			if datacenter != nil {
+				response.DatacenterNames[i] = datacenter.Name
+			}
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type PortalUserSessionsResponse struct {
+	Sessions        []portal.SessionData `json:"sessions"`
+	BuyerNames      []string             `json:"buyer_names"`
+	DatacenterNames []string             `json:"datacenter_names"`
+}
+
+func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userHash, err := strconv.ParseUint(vars["user_hash"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	response := PortalUserSessionsResponse{}
+	response.Sessions = portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
 	database := service.Database()
 	if database != nil {
 		response.BuyerNames = make([]string, len(response.Sessions))
