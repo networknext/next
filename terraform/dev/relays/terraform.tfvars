@@ -19,9 +19,9 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-seller_names = [
-	"akamai",
-	"amazon", 
-	"google", 
-	"vultr"
-]
+sellers = {
+	"Akamai" = "akamai"
+	"Amazon" = "amazon"
+	"Google" = "google"
+	"Vultr"  = "vultr"
+}

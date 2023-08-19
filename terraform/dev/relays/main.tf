@@ -14,7 +14,7 @@ variable "relay_private_key" { type = string }
 variable "relay_backend_hostname" { type = string }
 variable "relay_backend_public_key" { type = string }
 variable "raspberry_datacenters" { type = list(string) }
-variable "seller_names" { type = list(string) }
+variable "sellers" { type = map(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -22,7 +22,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0.5"
+      version = "~> 5.0.6"
     }
   }
 }
@@ -240,23 +240,19 @@ locals {
     module.vultr_relays.datacenters,
   )
 
-  sellers = {
-    for seller_name in var.seller_names: 
-      seller_name => true
-  }
-
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
 }
 
 resource "networknext_seller" sellers {
-  for_each = local.sellers
+  for_each = var.sellers
   name     = each.key
+  code     = each.value
 }
 
 locals {
   seller_map = {
     for seller in networknext_seller.sellers: 
-      seller.name => seller
+      seller.code => seller
   }
 }
 
@@ -337,7 +333,6 @@ resource "networknext_buyer" raspberry {
   code = "raspberry"
   debug = true
   live = true
-  customer_id = networknext_customer.raspberry.id
   route_shader_id = networknext_route_shader.raspberry.id
   public_key_base64 = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 }
