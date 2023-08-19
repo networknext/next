@@ -378,8 +378,21 @@ func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type PortalServerData struct {
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	MatchId          uint64 `json:"match_id,string"`
+	BuyerId          uint64 `json:"buyer_id,string"`
+	DatacenterId     uint64 `json:"datacenter_id,string"`
+	NumSessions      uint32 `json:"num_sessions"`
+	StartTime        uint64 `json:"start_time,string"`
+	Uptime           uint64 `json:"uptime,string"`
+}
+
 type PortalServersResponse struct {
-	Servers []portal.ServerData `json:"servers"`
+	Servers []PortalServerData `json:"servers"`
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
@@ -394,8 +407,22 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	servers := portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalServersResponse{}
-	response.Servers = portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
+	response.Servers = make([]PortalServerData, len(servers))
+	currentTime := uint64(time.Now().Unix())
+	for i := range servers {
+		response.Servers[i].ServerAddress = servers[i].ServerAddress
+		response.Servers[i].SDKVersion_Major = servers[i].SDKVersion_Major
+		response.Servers[i].SDKVersion_Minor = servers[i].SDKVersion_Minor
+		response.Servers[i].SDKVersion_Patch = servers[i].SDKVersion_Patch
+		response.Servers[i].MatchId = servers[i].MatchId
+		response.Servers[i].BuyerId = servers[i].BuyerId
+		response.Servers[i].DatacenterId = servers[i].DatacenterId
+		response.Servers[i].NumSessions = servers[i].NumSessions
+		response.Servers[i].StartTime = servers[i].StartTime
+		response.Servers[i].Uptime = currentTime - servers[i].StartTime
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
