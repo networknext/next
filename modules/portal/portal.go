@@ -1436,7 +1436,7 @@ func (inserter *SessionInserter) Insert(sessionId uint64, userHash uint64, score
 		inserter.nextSessions = inserter.nextSessions.Add(sessionIdString)
 	}
 
-	inserter.userSessions = inserter.userSessions.Add(score)
+	inserter.userSessions = inserter.userSessions.Add(sessionData.StartTime)
 	inserter.userSessions = inserter.userSessions.Add(sessionIdString)
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)

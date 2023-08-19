@@ -11,7 +11,7 @@ import (
 const (
 	PortalSessionUpdateMessageVersion_Min   = 1
 	PortalSessionUpdateMessageVersion_Max   = 3
-	PortalSessionUpdateMessageVersion_Write = 2
+	PortalSessionUpdateMessageVersion_Write = 3
 )
 
 type PortalSessionUpdateMessage struct {

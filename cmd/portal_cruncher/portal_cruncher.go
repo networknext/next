@@ -154,6 +154,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
 		UserHash:       message.UserHash,
+		StartTime:      message.StartTime,
 		ISP:            isp,
 		ConnectionType: message.ConnectionType,
 		PlatformType:   message.PlatformType,
