@@ -432,14 +432,8 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 			if relay == nil {
 				continue
 			}
-			datacenter := database.GetDatacenter(relay.DatacenterId)
-			if datacenter != nil {
-				response.DatacenterNames[i] = datacenter.Name
-			}
-			seller := database.GetSeller(relay.Seller.Id)
-			if seller != nil {
-				response.SellerNames[i] = seller.Name
-			}
+			response.DatacenterNames[i] = relay.Datacenter.Name
+			response.SellerNames[i] = relay.Seller.Name
 			response.Uptime[i] = currentTime - response.Relays[i].StartTime
 		}
 	}
