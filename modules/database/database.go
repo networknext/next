@@ -87,6 +87,7 @@ type Database struct {
 	DatacenterMap           map[uint64]*Datacenter                         `json:"datacenter"`
 	DatacenterRelays        map[uint64][]uint64                            `json:"datacenter_relays"`
 	BuyerDatacenterSettings map[uint64]map[uint64]*BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
+	RelayNameMap            map[string]*Relay                              `json:"relay_name_map"`
 }
 
 func CreateDatabase() *Database {
@@ -101,6 +102,7 @@ func CreateDatabase() *Database {
 		DatacenterMap:           make(map[uint64]*Datacenter),
 		DatacenterRelays:        make(map[uint64][]uint64),
 		BuyerDatacenterSettings: make(map[uint64]map[uint64]*BuyerDatacenterSettings),
+		RelayNameMap:            make(map[string]*Relay),
 	}
 
 	return database
@@ -196,6 +198,12 @@ func (database *Database) Validate() error {
 		}
 	}
 
+	for k,v := range database.RelayNameMap {
+		if v.Name != k {
+			return fmt.Errorf("relay %s has wrong key %s in relay name map", v.Name, k)
+		}
+	}
+
 	for i := range database.Relays {
 		relayId := database.Relays[i].Id
 		datacenterId := database.Relays[i].Datacenter.Id
@@ -235,6 +243,14 @@ func (database *Database) Validate() error {
 				return fmt.Errorf("bad buyer id in buyer datacenter settings: %d vs %d", buyerId, settings.BuyerId)
 			}
 		}
+	}
+
+	if len(database.Relays) != len(database.RelayMap) {
+		return fmt.Errorf("mismatch between number of relays in relay list vs. relay map (%d vs. %d)", len(database.Relays), len(database.RelayMap))
+	}
+
+	if len(database.Relays) != len(database.RelayNameMap) {
+		return fmt.Errorf("mismatch between number of relays in relay list vs. relay name map (%d vs. %d)", len(database.Relays), len(database.RelayNameMap))
 	}
 
 	return nil
@@ -292,6 +308,10 @@ func (database *Database) DatacenterEnabled(buyerId uint64, datacenterId uint64)
 
 func (database *Database) GetRelay(relayId uint64) *Relay {
 	return database.RelayMap[relayId]
+}
+
+func (database *Database) GetRelayByName(relayName string) *Relay {
+	return database.RelayNameMap[relayName]
 }
 
 func (database *Database) GetBuyer(buyerId uint64) *Buyer {
@@ -1265,6 +1285,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.datacenter_name, relay.DatacenterId)
 
 		database.RelayMap[relay.Id] = relay
+		database.RelayNameMap[relay.Name] = relay
 	}
 
 	for i, row := range buyerDatacenterSettingsRows {

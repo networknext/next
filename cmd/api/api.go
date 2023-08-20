@@ -78,7 +78,7 @@ func main() {
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
 		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
-		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
+		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
@@ -540,9 +540,16 @@ type PortalRelayDataResponse struct {
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	relayAddress := vars["relay_address"]			// todo: this should become relay name
+	relayName := vars["relay_name"]
+	database := service.Database()
 	response := PortalRelayDataResponse{}
-	response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
+	if database != nil {
+		relay := database.GetRelayByName(relayName)
+		if relay != nil {
+			relayAddress := relay.PublicAddress.String()
+			response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

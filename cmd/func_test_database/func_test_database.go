@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/networknext/next/modules/core"
 	db "github.com/networknext/next/modules/database"
 )
 
@@ -184,8 +185,23 @@ func test_api() {
 	database.Creator = "test"
 	database.BuyerMap[1] = &db.Buyer{Id: 1, Name: "buyer", Live: true, Debug: true}
 	database.SellerMap[1] = &db.Seller{Id: 1, Name: "seller"}
-	database.DatacenterMap[1] = &db.Datacenter{Id: 1, Name: "datacenter", Latitude: 100, Longitude: 200}
-	database.Relays = append(database.Relays, db.Relay{Id: 1, Name: "relay", Datacenter: *database.DatacenterMap[1]})
+	database.DatacenterMap[1] = &db.Datacenter{Id: 1, Name: "local", Latitude: 100, Longitude: 200}
+	for i := 0; i < 1; i++ {
+		relayId := uint64(1+i)
+		relay := db.Relay{
+			Id: relayId, 
+			Name: fmt.Sprintf("local-%d", i+1), 
+			PublicAddress: core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i)),
+			SSHAddress: core.ParseAddress("127.0.0.1:22"),
+			Datacenter: *database.DatacenterMap[1], 
+			Seller: *database.SellerMap[1],
+		}
+		database.Relays = append(database.Relays, relay)
+		newRelay := &database.Relays[len(database.Relays)-1]
+		database.RelayMap[relayId] = newRelay
+		database.RelayNameMap[relay.Name] = newRelay
+		database.DatacenterRelays[1] = append(database.DatacenterRelays[1], uint64(1+i))
+	}
 	datacenterRelays := [1]uint64{1}
 	database.DatacenterRelays[1] = datacenterRelays[:]
 	database.BuyerDatacenterSettings[1] = make(map[uint64]*db.BuyerDatacenterSettings)
@@ -306,11 +322,11 @@ func test_api() {
 		panic("seller is invalid")
 	}
 
-	if database_datacenters.Datacenters[0].Id != 1 || database_datacenters.Datacenters[0].Name != "datacenter" || database_datacenters.Datacenters[0].Latitude != 100 || database_datacenters.Datacenters[0].Longitude != 200 {
+	if database_datacenters.Datacenters[0].Id != 1 || database_datacenters.Datacenters[0].Name != "local" || database_datacenters.Datacenters[0].Latitude != 100 || database_datacenters.Datacenters[0].Longitude != 200 {
 		panic("datacenter is invalid")
 	}
 
-	if database_relays.Relays[0].Id != 1 || database_relays.Relays[0].Name != "relay" {
+	if database_relays.Relays[0].Id != 1 || database_relays.Relays[0].Name != "local-1" {
 		panic("relay is invalid")
 	}
 
