@@ -79,6 +79,7 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
+        "supplier_code",
         "public_ip",
         "public_port",
         "internal_ip",
@@ -91,7 +92,8 @@ output "relays" {
       [
         k,
         v.datacenter_name,
-        "vultr", 
+        "VULTR", 
+        "vultr",
         vultr_instance.relay[k].main_ip,
         40000,
         "0.0.0.0",

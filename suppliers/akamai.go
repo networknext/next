@@ -212,7 +212,8 @@ func main() {
 		"      native_name = \"%s\"\n" +
 		"      latitude    = %.2f\n" +
 		"      longitude   = %.2f\n" +
-		"      seller_name = \"akamai\"\n" +
+		"      seller_name = \"Akamai\"\n" +
+		"      seller_code = \"akamai\"\n" +
 		"    }\n" +
 		"\n"
 

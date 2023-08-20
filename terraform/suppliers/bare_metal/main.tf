@@ -24,6 +24,7 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
+        "supplier_code",
         "public_address", 
         "internal_address", 
         "internal_group", 
@@ -33,7 +34,8 @@ output "relays" {
       [
         k,
         v.datacenter_name,
-        v.supplier_name, 
+        v.supplier_name,
+        v.supplier_code, 
         v.public_address, 
         v.internal_address, 
         v.internal_group, 

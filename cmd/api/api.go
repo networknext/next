@@ -383,6 +383,9 @@ type PortalServerData struct {
 	NumSessions      uint32 `json:"num_sessions"`
 	StartTime        uint64 `json:"start_time,string"`
 	Uptime           uint64 `json:"uptime,string"`
+	BuyerName        string `json:"buyer_name"`
+	BuyerCode        string `json:"buyer_code"`
+	DatacenterName   string `json:"datacenter_name"`
 }
 
 type PortalServersResponse struct {
@@ -404,6 +407,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	servers := portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
+	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
 	for i := range servers {
 		response.Servers[i].ServerAddress = servers[i].ServerAddress
@@ -416,6 +420,17 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		response.Servers[i].NumSessions = servers[i].NumSessions
 		response.Servers[i].StartTime = servers[i].StartTime
 		response.Servers[i].Uptime = currentTime - servers[i].StartTime
+		if database != nil {
+			buyer := database.GetBuyer(response.Servers[i].BuyerId)
+			if buyer != nil {
+				response.Servers[i].BuyerName = buyer.Name
+				response.Servers[i].BuyerCode = buyer.Code
+			}
+			datacenter := database.GetDatacenter(response.Servers[i].DatacenterId)
+			if datacenter != nil {
+				response.Servers[i].DatacenterName = datacenter.Name
+			}
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

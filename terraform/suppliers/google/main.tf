@@ -115,6 +115,7 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
+        "supplier_code",
         "public_ip",
         "public_port",
         "internal_ip",
@@ -127,7 +128,8 @@ output "relays" {
       [
         k,
         v.datacenter_name,
-        "google", 
+        "Google", 
+        "google",
         google_compute_address.public[k].address,
         40000,
         google_compute_address.internal[k].address,

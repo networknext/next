@@ -308,7 +308,8 @@ func main() {
 		"      native_name = \"%s\"\n" +
 		"      latitude    = %.2f\n" +
 		"      longitude   = %.2f\n" +
-		"      seller_name = \"google\"\n" +
+		"      seller_name = \"Google\"\n" +
+		"      seller_code = \"google\"\n" +
 		"    }\n" +
 		"\n"
 

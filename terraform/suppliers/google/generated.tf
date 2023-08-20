@@ -9,7 +9,8 @@ locals {
       native_name = "asia-east1-a"
       latitude    = 25.11
       longitude   = 121.60
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.taiwan.2" = {
@@ -18,7 +19,8 @@ locals {
       native_name = "asia-east1-b"
       latitude    = 25.11
       longitude   = 121.60
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.taiwan.3" = {
@@ -27,7 +29,8 @@ locals {
       native_name = "asia-east1-c"
       latitude    = 25.11
       longitude   = 121.60
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.hongkong.1" = {
@@ -36,7 +39,8 @@ locals {
       native_name = "asia-east2-a"
       latitude    = 22.32
       longitude   = 114.17
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.hongkong.2" = {
@@ -45,7 +49,8 @@ locals {
       native_name = "asia-east2-b"
       latitude    = 22.32
       longitude   = 114.17
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.hongkong.3" = {
@@ -54,7 +59,8 @@ locals {
       native_name = "asia-east2-c"
       latitude    = 22.32
       longitude   = 114.17
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.tokyo.1" = {
@@ -63,7 +69,8 @@ locals {
       native_name = "asia-northeast1-a"
       latitude    = 35.68
       longitude   = 139.65
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.tokyo.2" = {
@@ -72,7 +79,8 @@ locals {
       native_name = "asia-northeast1-b"
       latitude    = 35.68
       longitude   = 139.65
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.tokyo.3" = {
@@ -81,7 +89,8 @@ locals {
       native_name = "asia-northeast1-c"
       latitude    = 35.68
       longitude   = 139.65
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.osaka.1" = {
@@ -90,7 +99,8 @@ locals {
       native_name = "asia-northeast2-a"
       latitude    = 34.69
       longitude   = 135.50
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.osaka.2" = {
@@ -99,7 +109,8 @@ locals {
       native_name = "asia-northeast2-b"
       latitude    = 34.69
       longitude   = 135.50
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.osaka.3" = {
@@ -108,7 +119,8 @@ locals {
       native_name = "asia-northeast2-c"
       latitude    = 34.69
       longitude   = 135.50
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.seoul.1" = {
@@ -117,7 +129,8 @@ locals {
       native_name = "asia-northeast3-a"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.seoul.2" = {
@@ -126,7 +139,8 @@ locals {
       native_name = "asia-northeast3-b"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.seoul.3" = {
@@ -135,7 +149,8 @@ locals {
       native_name = "asia-northeast3-c"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.mumbai.1" = {
@@ -144,7 +159,8 @@ locals {
       native_name = "asia-south1-a"
       latitude    = 19.08
       longitude   = 72.88
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.mumbai.2" = {
@@ -153,7 +169,8 @@ locals {
       native_name = "asia-south1-b"
       latitude    = 19.08
       longitude   = 72.88
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.mumbai.3" = {
@@ -162,7 +179,8 @@ locals {
       native_name = "asia-south1-c"
       latitude    = 19.08
       longitude   = 72.88
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.delhi.1" = {
@@ -171,7 +189,8 @@ locals {
       native_name = "asia-south2-a"
       latitude    = 28.70
       longitude   = 77.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.delhi.2" = {
@@ -180,7 +199,8 @@ locals {
       native_name = "asia-south2-b"
       latitude    = 28.70
       longitude   = 77.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.delhi.3" = {
@@ -189,7 +209,8 @@ locals {
       native_name = "asia-south2-c"
       latitude    = 28.70
       longitude   = 77.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.singapore.1" = {
@@ -198,7 +219,8 @@ locals {
       native_name = "asia-southeast1-a"
       latitude    = 1.35
       longitude   = 103.82
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.singapore.2" = {
@@ -207,7 +229,8 @@ locals {
       native_name = "asia-southeast1-b"
       latitude    = 1.35
       longitude   = 103.82
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.singapore.3" = {
@@ -216,7 +239,8 @@ locals {
       native_name = "asia-southeast1-c"
       latitude    = 1.35
       longitude   = 103.82
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.jakarta.1" = {
@@ -225,7 +249,8 @@ locals {
       native_name = "asia-southeast2-a"
       latitude    = 6.21
       longitude   = 106.85
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.jakarta.2" = {
@@ -234,7 +259,8 @@ locals {
       native_name = "asia-southeast2-b"
       latitude    = 6.21
       longitude   = 106.85
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.jakarta.3" = {
@@ -243,7 +269,8 @@ locals {
       native_name = "asia-southeast2-c"
       latitude    = 6.21
       longitude   = 106.85
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.sydney.1" = {
@@ -252,7 +279,8 @@ locals {
       native_name = "australia-southeast1-a"
       latitude    = -33.87
       longitude   = 151.21
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.sydney.2" = {
@@ -261,7 +289,8 @@ locals {
       native_name = "australia-southeast1-b"
       latitude    = -33.87
       longitude   = 151.21
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.sydney.3" = {
@@ -270,7 +299,8 @@ locals {
       native_name = "australia-southeast1-c"
       latitude    = -33.87
       longitude   = 151.21
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.melbourne.1" = {
@@ -279,7 +309,8 @@ locals {
       native_name = "australia-southeast2-a"
       latitude    = -37.81
       longitude   = 144.96
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.melbourne.2" = {
@@ -288,7 +319,8 @@ locals {
       native_name = "australia-southeast2-b"
       latitude    = -37.81
       longitude   = 144.96
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.melbourne.3" = {
@@ -297,7 +329,8 @@ locals {
       native_name = "australia-southeast2-c"
       latitude    = -37.81
       longitude   = 144.96
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.warsaw.1" = {
@@ -306,7 +339,8 @@ locals {
       native_name = "europe-central2-a"
       latitude    = 52.23
       longitude   = 21.01
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.warsaw.2" = {
@@ -315,7 +349,8 @@ locals {
       native_name = "europe-central2-b"
       latitude    = 52.23
       longitude   = 21.01
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.warsaw.3" = {
@@ -324,7 +359,8 @@ locals {
       native_name = "europe-central2-c"
       latitude    = 52.23
       longitude   = 21.01
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.finland.1" = {
@@ -333,7 +369,8 @@ locals {
       native_name = "europe-north1-a"
       latitude    = 60.57
       longitude   = 27.19
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.finland.2" = {
@@ -342,7 +379,8 @@ locals {
       native_name = "europe-north1-b"
       latitude    = 60.57
       longitude   = 27.19
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.finland.3" = {
@@ -351,7 +389,8 @@ locals {
       native_name = "europe-north1-c"
       latitude    = 60.57
       longitude   = 27.19
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.madrid.1" = {
@@ -360,7 +399,8 @@ locals {
       native_name = "europe-southwest1-a"
       latitude    = 40.42
       longitude   = 3.70
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.madrid.2" = {
@@ -369,7 +409,8 @@ locals {
       native_name = "europe-southwest1-b"
       latitude    = 40.42
       longitude   = 3.70
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.madrid.3" = {
@@ -378,7 +419,8 @@ locals {
       native_name = "europe-southwest1-c"
       latitude    = 40.42
       longitude   = 3.70
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.belgium.2" = {
@@ -387,7 +429,8 @@ locals {
       native_name = "europe-west1-b"
       latitude    = 50.47
       longitude   = 3.82
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.belgium.3" = {
@@ -396,7 +439,8 @@ locals {
       native_name = "europe-west1-c"
       latitude    = 50.47
       longitude   = 3.82
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.belgium.4" = {
@@ -405,7 +449,8 @@ locals {
       native_name = "europe-west1-d"
       latitude    = 50.47
       longitude   = 3.82
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.london.1" = {
@@ -414,7 +459,8 @@ locals {
       native_name = "europe-west2-a"
       latitude    = 51.51
       longitude   = -0.13
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.london.2" = {
@@ -423,7 +469,8 @@ locals {
       native_name = "europe-west2-b"
       latitude    = 51.51
       longitude   = -0.13
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.london.3" = {
@@ -432,7 +479,8 @@ locals {
       native_name = "europe-west2-c"
       latitude    = 51.51
       longitude   = -0.13
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.frankfurt.1" = {
@@ -441,7 +489,8 @@ locals {
       native_name = "europe-west3-a"
       latitude    = 50.11
       longitude   = 8.68
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.frankfurt.2" = {
@@ -450,7 +499,8 @@ locals {
       native_name = "europe-west3-b"
       latitude    = 50.11
       longitude   = 8.68
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.frankfurt.3" = {
@@ -459,7 +509,8 @@ locals {
       native_name = "europe-west3-c"
       latitude    = 50.11
       longitude   = 8.68
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.netherlands.1" = {
@@ -468,7 +519,8 @@ locals {
       native_name = "europe-west4-a"
       latitude    = 53.44
       longitude   = 6.84
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.netherlands.2" = {
@@ -477,7 +529,8 @@ locals {
       native_name = "europe-west4-b"
       latitude    = 53.44
       longitude   = 6.84
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.netherlands.3" = {
@@ -486,7 +539,8 @@ locals {
       native_name = "europe-west4-c"
       latitude    = 53.44
       longitude   = 6.84
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.zurich.1" = {
@@ -495,7 +549,8 @@ locals {
       native_name = "europe-west6-a"
       latitude    = 47.38
       longitude   = 8.54
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.zurich.2" = {
@@ -504,7 +559,8 @@ locals {
       native_name = "europe-west6-b"
       latitude    = 47.38
       longitude   = 8.54
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.zurich.3" = {
@@ -513,7 +569,8 @@ locals {
       native_name = "europe-west6-c"
       latitude    = 47.38
       longitude   = 8.54
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.milan.1" = {
@@ -522,7 +579,8 @@ locals {
       native_name = "europe-west8-a"
       latitude    = 45.46
       longitude   = 9.19
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.milan.2" = {
@@ -531,7 +589,8 @@ locals {
       native_name = "europe-west8-b"
       latitude    = 45.46
       longitude   = 9.19
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.milan.3" = {
@@ -540,7 +599,8 @@ locals {
       native_name = "europe-west8-c"
       latitude    = 45.46
       longitude   = 9.19
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.paris.1" = {
@@ -549,7 +609,8 @@ locals {
       native_name = "europe-west9-a"
       latitude    = 48.86
       longitude   = 2.35
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.paris.2" = {
@@ -558,7 +619,8 @@ locals {
       native_name = "europe-west9-b"
       latitude    = 48.86
       longitude   = 2.35
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.paris.3" = {
@@ -567,7 +629,8 @@ locals {
       native_name = "europe-west9-c"
       latitude    = 48.86
       longitude   = 2.35
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.telaviv.1" = {
@@ -576,7 +639,8 @@ locals {
       native_name = "me-west1-a"
       latitude    = 32.09
       longitude   = 34.78
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.telaviv.2" = {
@@ -585,7 +649,8 @@ locals {
       native_name = "me-west1-b"
       latitude    = 32.09
       longitude   = 34.78
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.telaviv.3" = {
@@ -594,7 +659,8 @@ locals {
       native_name = "me-west1-c"
       latitude    = 32.09
       longitude   = 34.78
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.montreal.1" = {
@@ -603,7 +669,8 @@ locals {
       native_name = "northamerica-northeast1-a"
       latitude    = 45.50
       longitude   = -73.57
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.montreal.2" = {
@@ -612,7 +679,8 @@ locals {
       native_name = "northamerica-northeast1-b"
       latitude    = 45.50
       longitude   = -73.57
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.montreal.3" = {
@@ -621,7 +689,8 @@ locals {
       native_name = "northamerica-northeast1-c"
       latitude    = 45.50
       longitude   = -73.57
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.toronto.1" = {
@@ -630,7 +699,8 @@ locals {
       native_name = "northamerica-northeast2-a"
       latitude    = 43.65
       longitude   = -79.38
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.toronto.2" = {
@@ -639,7 +709,8 @@ locals {
       native_name = "northamerica-northeast2-b"
       latitude    = 43.65
       longitude   = -79.38
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.toronto.3" = {
@@ -648,7 +719,8 @@ locals {
       native_name = "northamerica-northeast2-c"
       latitude    = 43.65
       longitude   = -79.38
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.saopaulo.1" = {
@@ -657,7 +729,8 @@ locals {
       native_name = "southamerica-east1-a"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.saopaulo.2" = {
@@ -666,7 +739,8 @@ locals {
       native_name = "southamerica-east1-b"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.saopaulo.3" = {
@@ -675,7 +749,8 @@ locals {
       native_name = "southamerica-east1-c"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.santiago.1" = {
@@ -684,7 +759,8 @@ locals {
       native_name = "southamerica-west1-a"
       latitude    = -33.45
       longitude   = -70.67
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.santiago.2" = {
@@ -693,7 +769,8 @@ locals {
       native_name = "southamerica-west1-b"
       latitude    = -33.45
       longitude   = -70.67
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.santiago.3" = {
@@ -702,7 +779,8 @@ locals {
       native_name = "southamerica-west1-c"
       latitude    = -33.45
       longitude   = -70.67
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.iowa.1" = {
@@ -711,7 +789,8 @@ locals {
       native_name = "us-central1-a"
       latitude    = 41.88
       longitude   = -93.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.iowa.2" = {
@@ -720,7 +799,8 @@ locals {
       native_name = "us-central1-b"
       latitude    = 41.88
       longitude   = -93.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.iowa.3" = {
@@ -729,7 +809,8 @@ locals {
       native_name = "us-central1-c"
       latitude    = 41.88
       longitude   = -93.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.iowa.6" = {
@@ -738,7 +819,8 @@ locals {
       native_name = "us-central1-f"
       latitude    = 41.88
       longitude   = -93.10
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.southcarolina.2" = {
@@ -747,7 +829,8 @@ locals {
       native_name = "us-east1-b"
       latitude    = 33.84
       longitude   = -81.16
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.southcarolina.3" = {
@@ -756,7 +839,8 @@ locals {
       native_name = "us-east1-c"
       latitude    = 33.84
       longitude   = -81.16
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.southcarolina.4" = {
@@ -765,7 +849,8 @@ locals {
       native_name = "us-east1-d"
       latitude    = 33.84
       longitude   = -81.16
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.virginia.1" = {
@@ -774,7 +859,8 @@ locals {
       native_name = "us-east4-a"
       latitude    = 37.43
       longitude   = -78.66
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.virginia.2" = {
@@ -783,7 +869,8 @@ locals {
       native_name = "us-east4-b"
       latitude    = 37.43
       longitude   = -78.66
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.virginia.3" = {
@@ -792,7 +879,8 @@ locals {
       native_name = "us-east4-c"
       latitude    = 37.43
       longitude   = -78.66
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.ohio.1" = {
@@ -801,7 +889,8 @@ locals {
       native_name = "us-east5-a"
       latitude    = 39.96
       longitude   = -83.00
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.ohio.2" = {
@@ -810,7 +899,8 @@ locals {
       native_name = "us-east5-b"
       latitude    = 39.96
       longitude   = -83.00
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.ohio.3" = {
@@ -819,7 +909,8 @@ locals {
       native_name = "us-east5-c"
       latitude    = 39.96
       longitude   = -83.00
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.dallas.1" = {
@@ -828,7 +919,8 @@ locals {
       native_name = "us-south1-a"
       latitude    = 32.78
       longitude   = -96.80
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.dallas.2" = {
@@ -837,7 +929,8 @@ locals {
       native_name = "us-south1-b"
       latitude    = 32.78
       longitude   = -96.80
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.dallas.3" = {
@@ -846,7 +939,8 @@ locals {
       native_name = "us-south1-c"
       latitude    = 32.78
       longitude   = -96.80
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.oregon.1" = {
@@ -855,7 +949,8 @@ locals {
       native_name = "us-west1-a"
       latitude    = 45.59
       longitude   = -121.18
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.oregon.2" = {
@@ -864,7 +959,8 @@ locals {
       native_name = "us-west1-b"
       latitude    = 45.59
       longitude   = -121.18
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.oregon.3" = {
@@ -873,7 +969,8 @@ locals {
       native_name = "us-west1-c"
       latitude    = 45.59
       longitude   = -121.18
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.losangeles.1" = {
@@ -882,7 +979,8 @@ locals {
       native_name = "us-west2-a"
       latitude    = 34.05
       longitude   = -118.24
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.losangeles.2" = {
@@ -891,7 +989,8 @@ locals {
       native_name = "us-west2-b"
       latitude    = 34.05
       longitude   = -118.24
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.losangeles.3" = {
@@ -900,7 +999,8 @@ locals {
       native_name = "us-west2-c"
       latitude    = 34.05
       longitude   = -118.24
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.saltlakecity.1" = {
@@ -909,7 +1009,8 @@ locals {
       native_name = "us-west3-a"
       latitude    = 40.76
       longitude   = -111.89
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.saltlakecity.2" = {
@@ -918,7 +1019,8 @@ locals {
       native_name = "us-west3-b"
       latitude    = 40.76
       longitude   = -111.89
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.saltlakecity.3" = {
@@ -927,7 +1029,8 @@ locals {
       native_name = "us-west3-c"
       latitude    = 40.76
       longitude   = -111.89
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.lasvegas.1" = {
@@ -936,7 +1039,8 @@ locals {
       native_name = "us-west4-a"
       latitude    = 36.17
       longitude   = -115.14
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.lasvegas.2" = {
@@ -945,7 +1049,8 @@ locals {
       native_name = "us-west4-b"
       latitude    = 36.17
       longitude   = -115.14
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
     "google.lasvegas.3" = {
@@ -954,7 +1059,8 @@ locals {
       native_name = "us-west4-c"
       latitude    = 36.17
       longitude   = -115.14
-      seller_name = "google"
+      seller_name = "Google"
+      seller_code = "google"
     }
 
   }

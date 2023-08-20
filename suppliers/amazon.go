@@ -437,7 +437,8 @@ terraform {
 		"      native_name = \"%s\"\n" +
 		"      latitude    = %.2f\n" +
 		"      longitude   = %.2f\n" +
-		"      seller_name = \"amazon\"\n" +
+		"      seller_name = \"Amazon\"\n" +
+		"      seller_code = \"amazon\"\n" +
 		"    }\n" +
 		"\n"
 
@@ -496,7 +497,8 @@ terraform {
 	relay_output := `    "%s" = {
       "relay_name"       = "%s"
       "datacenter_name"  = "%s"
-      "supplier_name"    = "amazon"
+      "supplier_name"    = "Amazon"
+      "supplier_code"    = "amazon"
       "public_ip"        = module.relay_%s.public_address
       "public_port"      = 40000
       "internal_ip"      = module.relay_%s.internal_address

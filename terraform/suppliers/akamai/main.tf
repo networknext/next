@@ -82,6 +82,7 @@ output "relays" {
         "relay_name", 
         "datacenter_name",
         "supplier_name", 
+        "supplier_code",
         "public_ip",
         "public_port",
         "internal_ip",
@@ -94,6 +95,7 @@ output "relays" {
       [
         k,
         v.datacenter_name,
+        "Akamai",
         "akamai", 
         linode_instance.relay[k].ip_address,
         40000,
