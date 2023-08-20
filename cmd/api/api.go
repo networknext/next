@@ -347,12 +347,14 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionData, sliceData, nearRelayData := portal.GetSessionData(pool, sessionId)
-	database := service.Database()
 	response := PortalSessionDataResponse{}
-	upgradePortalSessionData(database, sessionData, &response.SessionData)
-	response.SliceData = sliceData
-	response.NearRelayData = nearRelayData
+	sessionData, sliceData, nearRelayData := portal.GetSessionData(pool, sessionId)
+	if sessionData != nil {
+		database := service.Database()
+		upgradePortalSessionData(database, sessionData, &response.SessionData)
+		response.SliceData = sliceData
+		response.NearRelayData = nearRelayData
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

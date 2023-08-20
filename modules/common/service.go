@@ -125,6 +125,10 @@ func CreateService(serviceName string) *Service {
 
 	service.Env = env
 
+	if service.Tag != "" {
+		core.Log("tag: %s", service.Tag)
+	}
+
 	if service.CommitMessage != "" {
 		core.Log("commit message: %s", service.CommitMessage)
 	}

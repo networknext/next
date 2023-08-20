@@ -20,6 +20,7 @@ import (
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
+	db "github.com/networknext/next/modules/database"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -146,6 +147,9 @@ func api() *exec.Cmd {
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
 	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
 
 	cmd.Start()
 
@@ -342,7 +346,36 @@ func test_portal() {
 
 	redisClient.Do("FLUSHALL")
 
+	// create a dummy database
+
+	database := db.CreateDatabase()
+
+	database.CreationTime = "now"
+	database.Creator = "test"
+	database.BuyerMap[1] = &db.Buyer{Id: 1, Name: "buyer", Live: true, Debug: true}
+	database.SellerMap[1] = &db.Seller{Id: 1, Name: "seller"}
+	database.DatacenterMap[1] = &db.Datacenter{Id: 1, Name: "datacenter", Latitude: 100, Longitude: 200}
+	database.Relays = append(database.Relays, db.Relay{Id: 1, Name: "relay", Datacenter: *database.DatacenterMap[1]})
+	datacenterRelays := [1]uint64{1}
+	database.DatacenterRelays[1] = datacenterRelays[:]
+	database.BuyerDatacenterSettings[1] = make(map[uint64]*db.BuyerDatacenterSettings)
+	database.BuyerDatacenterSettings[1][1] = &db.BuyerDatacenterSettings{BuyerId: 1, DatacenterId: 1, EnableAcceleration: true}
+
+	err := database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		os.Exit(1)
+	}
+
+	// save it to database.bin
+
+	database.Save("database.bin")
+
+	// run the API service, it will load the database
+
 	api_cmd := api()
+
+	// run redis insertion threads
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
@@ -354,9 +387,13 @@ func test_portal() {
 	RunServerInsertThreads(redisPool, threadCount)
 	RunRelayInsertThreads(redisPool, threadCount)
 
+	// simulate portal activity
+
 	var ready bool
 
 	for i := 0; i < 10; i++ {
+
+		fmt.Printf("iteration %d\n", i)
 
 		sessionCountsResponse := PortalSessionCountsResponse{}
 
