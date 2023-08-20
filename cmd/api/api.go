@@ -137,8 +137,6 @@ func main() {
 
 	if enableDatabase {
 
-		service.LoadDatabase()
-
 		service.Router.HandleFunc("/database/json", isAuthorized(databaseJSONHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/binary", isAuthorized(databaseBinaryHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/header", isAuthorized(databaseHeaderHandler)).Methods("GET")
@@ -147,6 +145,10 @@ func main() {
 		service.Router.HandleFunc("/database/datacenters", isAuthorized(databaseDatacentersHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/relays", isAuthorized(databaseRelaysHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
+	}
+
+	if enablePortal || enableDatabase {
+		service.LoadDatabase()	// needed by both portal and database REST APIs
 	}
 
 	service.StartWebServer()
@@ -305,7 +307,7 @@ type PortalUserSessionsResponse struct {
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userHash, err := strconv.ParseUint(vars["user_hash"], 10, 64)
+	userHash, err := strconv.ParseUint(vars["user_hash"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -340,7 +342,7 @@ type PortalSessionDataResponse struct {
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sessionId, err := strconv.ParseUint(vars["session_id"], 10, 64)
+	sessionId, err := strconv.ParseUint(vars["session_id"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -536,7 +538,7 @@ type PortalRelayDataResponse struct {
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	relayAddress := vars["relay_address"]
+	relayAddress := vars["relay_address"]			// todo: this should become relay name
 	response := PortalRelayDataResponse{}
 	response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
 	w.WriteHeader(http.StatusOK)
