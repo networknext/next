@@ -236,10 +236,11 @@ type PortalSessionData struct {
 	NextRTT        uint32  `json:"next_rtt"`
 	MatchId        uint64  `json:"match_id,string"`
 	BuyerId        uint64  `json:"buyer_id,string"`
-	DatacenterId   uint64  `json:"datacenter_id,string"`
-	ServerAddress  string  `json:"server_address"`
-	DatacenterName string  `json:"datacenter_name"`
 	BuyerName      string  `json:"buyer_name"`
+	BuyerCode      string  `json:"buyer_code"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
+	DatacenterName string  `json:"datacenter_name"`
+	ServerAddress  string  `json:"server_address"`
 }
 
 type PortalSessionsResponse struct {
@@ -281,6 +282,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
 			if buyer != nil {
 				response.Sessions[i].BuyerName = buyer.Name
+				response.Sessions[i].BuyerCode = buyer.Code
 			}
 			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
 			if datacenter != nil {
@@ -475,11 +477,12 @@ type PortalRelayData struct {
 	StartTime      uint64 `json:"start_time,string"`
 	RelayFlags     uint64 `json:"relay_flags,string"`
 	RelayVersion   string `json:"relay_version"`
-	DatacenterName string `json:"datacenter_name"`
-	SellerName     string `json:"seller_name"`
-	Uptime         uint64 `json:"uptime,string"`
 	SellerId       uint64 `json:"seller_id,string"`
+	SellerName     string `json:"seller_name"`
+	SellerCode     string `json:"seller_code"`
 	DatacenterId   uint64 `json:"datacenter_id,string"`
+	DatacenterName string `json:"datacenter_name"`
+	Uptime         uint64 `json:"uptime,string"`
 }
 
 type PortalRelaysResponse struct {
@@ -517,11 +520,12 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 			if relay == nil {
 				continue
 			}
-			response.Relays[i].DatacenterName = relay.Datacenter.Name
-			response.Relays[i].SellerName = relay.Seller.Name
-			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
-			response.Relays[i].DatacenterId = relay.Datacenter.Id
 			response.Relays[i].SellerId = relay.Seller.Id
+			response.Relays[i].SellerName = relay.Seller.Name
+			response.Relays[i].SellerCode = relay.Seller.Code
+			response.Relays[i].DatacenterId = relay.Datacenter.Id
+			response.Relays[i].DatacenterName = relay.Datacenter.Name
+			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
 		}
 	}
 	w.WriteHeader(http.StatusOK)
