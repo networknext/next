@@ -50,7 +50,7 @@ type Relay struct {
 type Buyer struct {
 	Id          uint64           `json:"id,string"`
 	Name        string           `json:"name"`
-	Code        string           `jnon:"code"`
+	Code        string           `json:"code"`
 	Live        bool             `json:"live"`
 	Debug       bool             `json:"debug"`
 	PublicKey   []byte           `json:"public_key"`
