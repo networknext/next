@@ -178,6 +178,7 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 	database.Relays = relays
 	for i := range relays {
 		database.RelayMap[relays[i].Id] = &relays[i]
+		database.RelayNameMap[relays[i].Name] = &relays[i]
 		array := [1]uint64{uint64(i)}
 		database.DatacenterRelays[uint64(i)] = array[:]
 	}
