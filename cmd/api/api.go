@@ -243,6 +243,34 @@ type PortalSessionData struct {
 	ServerAddress  string  `json:"server_address"`
 }
 
+func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
+	output.SessionId = input.SessionId
+	output.UserHash = input.UserHash
+	output.StartTime = input.StartTime
+	output.ISP = input.ISP
+	output.ConnectionType = input.ConnectionType
+	output.PlatformType = input.PlatformType
+	output.Latitude = input.Latitude
+	output.Longitude = input.Longitude
+	output.DirectRTT = input.DirectRTT
+	output.NextRTT = input.NextRTT
+	output.MatchId = input.MatchId
+	output.BuyerId = input.BuyerId
+	output.DatacenterId = input.DatacenterId
+	output.ServerAddress = input.ServerAddress
+	if database != nil {
+		buyer := database.GetBuyer(input.BuyerId)
+		if buyer != nil {
+			output.BuyerName = buyer.Name
+			output.BuyerCode = buyer.Code
+		}
+		datacenter := database.GetDatacenter(input.DatacenterId)
+		if datacenter != nil {
+			output.DatacenterName = datacenter.Name
+		}
+	}	
+}
+
 type PortalSessionsResponse struct {
 	Sessions []PortalSessionData `json:"sessions"`
 }
@@ -264,31 +292,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
 	for i := range response.Sessions {
-		response.Sessions[i].SessionId = sessions[i].SessionId
-		response.Sessions[i].UserHash = sessions[i].UserHash
-		response.Sessions[i].StartTime = sessions[i].StartTime
-		response.Sessions[i].ISP = sessions[i].ISP
-		response.Sessions[i].ConnectionType = sessions[i].ConnectionType
-		response.Sessions[i].PlatformType = sessions[i].PlatformType
-		response.Sessions[i].Latitude = sessions[i].Latitude
-		response.Sessions[i].Longitude = sessions[i].Longitude
-		response.Sessions[i].DirectRTT = sessions[i].DirectRTT
-		response.Sessions[i].NextRTT = sessions[i].NextRTT
-		response.Sessions[i].MatchId = sessions[i].MatchId
-		response.Sessions[i].BuyerId = sessions[i].BuyerId
-		response.Sessions[i].DatacenterId = sessions[i].DatacenterId
-		response.Sessions[i].ServerAddress = sessions[i].ServerAddress
-		if database != nil {
-			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
-			if buyer != nil {
-				response.Sessions[i].BuyerName = buyer.Name
-				response.Sessions[i].BuyerCode = buyer.Code
-			}
-			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
-			if datacenter != nil {
-				response.Sessions[i].DatacenterName = datacenter.Name
-			}
-		}
+		upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -296,9 +300,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalUserSessionsResponse struct {
-	Sessions        []portal.SessionData `json:"sessions"`
-	BuyerNames      []string             `json:"buyer_names"`
-	DatacenterNames []string             `json:"datacenter_names"`
+	Sessions        []PortalSessionData `json:"sessions"`
 }
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -319,21 +321,11 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalUserSessionsResponse{}
-	response.Sessions = portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
-	if database != nil {
-		response.BuyerNames = make([]string, len(response.Sessions))
-		response.DatacenterNames = make([]string, len(response.Sessions))
-		for i := range response.Sessions {
-			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
-			if buyer != nil {
-				response.BuyerNames[i] = buyer.Name
-			}
-			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
-			if datacenter != nil {
-				response.DatacenterNames[i] = datacenter.Name
-			}
-		}
+	for i := range response.Sessions {
+		upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -341,7 +333,7 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionDataResponse struct {
-	SessionData   *portal.SessionData    `json:"session_data"`
+	SessionData   PortalSessionData      `json:"session_data"`
 	SliceData     []portal.SliceData     `json:"slice_data"`
 	NearRelayData []portal.NearRelayData `json:"near_relay_data"`
 }
@@ -353,8 +345,12 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	sessionData, sliceData, nearRelayData := portal.GetSessionData(pool, sessionId)
+	database := service.Database()
 	response := PortalSessionDataResponse{}
-	response.SessionData, response.SliceData, response.NearRelayData = portal.GetSessionData(pool, sessionId)
+	upgradePortalSessionData(database, sessionData, &response.SessionData)
+	response.SliceData = sliceData
+	response.NearRelayData = nearRelayData
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
