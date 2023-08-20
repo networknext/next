@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"time"
+	"strconv"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -253,6 +254,8 @@ func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
 
 func Get(url string, object interface{}) {
 
+	fmt.Printf("Get URL: %s\nn", url)
+
 	buffer := new(bytes.Buffer)
 
 	json.NewEncoder(buffer).Encode(object)
@@ -391,7 +394,7 @@ func test_portal() {
 
 	var ready bool
 
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 10; i++ {
 
 		fmt.Printf("iteration %d\n", i)
 
@@ -413,11 +416,16 @@ func test_portal() {
 
 		if len(sessionsResponse.Sessions) > 0 {
 
-			fmt.Printf("first session id is %016x\n", sessionsResponse.Sessions[0].SessionId)
+			sessionId, err := strconv.ParseInt(sessionsResponse.Sessions[0].SessionId, 16, 64)
+			if err != nil {
+				panic(err)
+			}
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%s", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
+			fmt.Printf("first session id is %016x\n", sessionId)
 
-			fmt.Printf("session %s has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%016x", sessionId), &sessionDataResponse)
+
+			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
 		}
 
 		serverCountResponse := PortalServerCountResponse{}
