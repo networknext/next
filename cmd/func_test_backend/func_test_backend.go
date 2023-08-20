@@ -1805,6 +1805,8 @@ func test_relay_backend() {
 
 		database.RelayMap[relay.Id] = &relay
 
+		database.RelayNameMap[relay.Name] = &relay
+
 		database.DatacenterRelays[datacenter.Id] = append(database.DatacenterRelays[datacenter.Id], relay.Id)
 	}
 
