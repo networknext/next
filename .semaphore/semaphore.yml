@@ -15,8 +15,6 @@ blocks:
 
   - name: "Components"
     dependencies: []
-    run:
-      when: "change_in('/deploy/') OR change_in('/config/') OR change_in('/relay/') OR change_in('/sdk/')"
     task:
       agent:
         machine:
@@ -41,8 +39,6 @@ blocks:
 
   - name: "Sodium"
     dependencies: []
-    run:
-      when: "change_in('/deploy/') OR change_in('/config/') OR change_in('/relay/') OR change_in('/sdk/')"
     task:
       jobs:
         - name: "Build libsodium.so"
@@ -58,8 +54,6 @@ blocks:
 
   - name: "Backend"
     dependencies: []
-    run:
-      when: "change_in('/modules/')"
     task:
       jobs:
         - name: "Unit Tests"
@@ -72,8 +66,6 @@ blocks:
 
   - name: "SDK"
     dependencies: []
-    run:
-      when: "change_in('/sdk/')"
     task:
       jobs:
         - name: "Unit Tests"
@@ -89,9 +81,6 @@ blocks:
   - name: "Build Artifacts (Golang)"
 
     dependencies: []
-
-    run:
-      when: "change_in('/deploy/') OR change_in('/modules/') OR change_in('/cmd/')"
 
     task:
 
@@ -151,9 +140,6 @@ blocks:
   - name: "Build Artifacts (Native)"
 
     dependencies: []
-
-    run:
-      when: "change_in('/sdk/') OR change_in('/cmd/raspberry_client/') OR change_in('/cmd/raspberry_server/')"
 
     task:
 
