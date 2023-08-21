@@ -123,6 +123,13 @@ func LoadDatabase(filename string) (*Database, error) {
 
 	// fixup so we can handle old database.bin versions without barfing
 
+	if database.RelayMap == nil {
+		database.RelayMap = make(map[uint64]*Relay, len(database.Relays))
+		for i := range database.Relays {
+			database.RelayMap[database.Relays[i].Id] = &database.Relays[i]
+		}
+	}
+
 	if database.RelayNameMap == nil {
 		database.RelayNameMap = make(map[string]*Relay, len(database.Relays))
 		for i := range database.Relays {
