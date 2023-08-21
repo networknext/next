@@ -2524,7 +2524,7 @@ func test_server_ready_autodetect_multiplay_success() {
 		serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
 		serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
 		serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-		serverFoundInap := strings.Contains(server_stdout.String(), "debug: found supplier inap")
+		serverFoundInap := strings.Contains(server_stdout.String(), "debug: found seller inap")
 		serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'inap.newyork' [323c61af696bff50]")
 
 		os.Remove("whois.txt")

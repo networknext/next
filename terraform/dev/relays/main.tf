@@ -104,7 +104,7 @@ module "google_relays" {
   relays              = local.google_relays
   project             = local.google_project
   credentials         = local.google_credentials
-  source              = "../../suppliers/google"
+  source              = "../../sellers/google"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
@@ -170,7 +170,7 @@ locals {
 
 module "akamai_relays" {
   relays              = local.akamai_relays
-  source              = "../../suppliers/akamai"
+  source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
@@ -202,7 +202,7 @@ locals {
 
 module "vultr_relays" {
   relays              = local.vultr_relays
-  source              = "../../suppliers/vultr"
+  source              = "../../sellers/vultr"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
