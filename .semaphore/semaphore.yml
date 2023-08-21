@@ -58,7 +58,7 @@ blocks:
 
   - name: "Backend"
     run:
-      when: "change_in('/deploy') OR change_in('/modules') OR change_in('/cmd')"
+      when: "change_in('/modules')"
     dependencies: []
     task:
       jobs:
