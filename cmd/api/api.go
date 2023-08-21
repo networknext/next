@@ -601,8 +601,19 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type PortalDatacenterData struct {
+	Id        uint64  `json:"id,string"`
+	Name      string  `json:"name"`
+	Native    string  `json:"native"`
+	Latitude  float32 `json:"latitude"`
+	Longitude float32 `json:"longitude"`
+	SellerId   uint64 `json:"seller_id,string"`
+	SellerCode string `json:"seller_code,string"`
+	SellerName string `json:"seller_code,string"`
+}
+
 type PortalDatacenterDataResponse struct {
-	DatacenterData    *db.Datacenter    `json:"datacenter_data"`
+	DatacenterData    *PortalDatacenterData    `json:"datacenter_data"`
 }
 
 func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -611,7 +622,18 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 	database := service.Database()
 	response := PortalDatacenterDataResponse{}
 	if database != nil {
-		response.DatacenterData = database.GetDatacenterByName(datacenterName)
+		datacenter := database.GetDatacenterByName(datacenterName)
+		response.DatacenterData.Id = datacenter.Id
+		response.DatacenterData.Name = datacenter.Name
+		response.DatacenterData.Native = datacenter.Native
+		response.DatacenterData.Latitude = datacenter.Latitude
+		response.DatacenterData.Longitude = datacenter.Longitude
+		response.DatacenterData.SellerId = datacenter.SellerId
+		seller := database.GetSeller(datacenter.SellerId)
+		if seller != nil {
+			response.DatacenterData.SellerName = seller.Name
+			response.DatacenterData.SellerCode = seller.Code
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

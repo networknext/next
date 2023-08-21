@@ -69,6 +69,7 @@ type Datacenter struct {
 	Native    string  `json:"native"`
 	Latitude  float32 `json:"latitude"`
 	Longitude float32 `json:"longitude"`
+	SellerId  uint64  `json:"seller_id,string"`
 }
 
 type BuyerDatacenterSettings struct {
@@ -1275,6 +1276,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenter.Native = row.native_name
 		datacenter.Latitude = row.latitude
 		datacenter.Longitude = row.longitude
+		datacenter.SellerId = row.seller_id
 
 		seller_row, seller_exists := sellerIndex[row.seller_id]
 		if !seller_exists {
