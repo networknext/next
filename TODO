@@ -1,4 +1,3 @@
-
 DONE
 
 	Modified setup_relay.sh so it doesn't run more than once, in case on certain suppliers it runs each time the machine starts.
