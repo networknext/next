@@ -121,6 +121,15 @@ func LoadDatabase(filename string) (*Database, error) {
 
 	err = gob.NewDecoder(databaseFile).Decode(database)
 
+	// fixup so we can handle old database.bin versions without barfing
+
+	if database.RelayNameMap == nil {
+		database.RelayNameMap = make(map[string]*Relay, len(database.Relays))
+		for i := range database.Relays {
+			database.RelayNameMap[database.Relays[i].Name] = &database.Relays[i]
+		}
+	}
+
 	return database, err
 }
 
