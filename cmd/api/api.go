@@ -63,34 +63,6 @@ func main() {
 
 	service.Router.HandleFunc("/ping", isAuthorized(pingHandler))
 
-	if enablePortal {
-
-		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
-
-		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
-		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
-		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
-		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
-
-		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
-		service.Router.HandleFunc("/portal/servers/{begin}/{end}", isAuthorized(portalServersHandler))
-		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
-
-		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
-		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
-		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
-
-		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
-
-		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
-
-		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
-
-		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
-
-		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
-	}
-
 	if enableAdmin {
 
 		controller = admin.CreateController(pgsqlConfig)
@@ -139,6 +111,35 @@ func main() {
 		service.Router.HandleFunc("/admin/relay_keypair/{relayKeypairId}", isAuthorized(adminReadRelayKeypairHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/update_relay_keypair", isAuthorized(adminUpdateRelayKeypairHandler)).Methods("PUT")
 		service.Router.HandleFunc("/admin/delete_relay_keypair/{relayKeypairId}", isAuthorized(adminDeleteRelayKeypairHandler)).Methods("DELETE")
+	}
+
+	if enablePortal {
+
+		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+
+		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
+		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
+		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
+
+		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
+		service.Router.HandleFunc("/portal/servers/{begin}/{end}", isAuthorized(portalServersHandler))
+		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
+
+		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
+		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
+
+		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
+
+		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
+
+		service.Router.HandleFunc("/portal/datacenters", isAuthorized(portalDatacentersHandler))
+		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
+
+		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
+
+		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
 	}
 
 	if enableDatabase {
@@ -610,6 +611,36 @@ type PortalDatacenterData struct {
 	SellerId   uint64 `json:"seller_id,string"`
 	SellerCode string `json:"seller_code,string"`
 	SellerName string `json:"seller_code,string"`
+}
+
+type PortalDatacentersResponse struct {
+	Datacenters []PortalDatacenterData `json:"datacenters"`
+}
+
+func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	database_response := database.GetDatacenters()
+	response := PortalDatacentersResponse{}
+	response.Datacenters = make([]PortalDatacenterData, len(database_response.Datacenters))
+	for i := range response.Datacenters {
+		response.Datacenters[i].Id = database_response.Datacenters[i].Id
+		response.Datacenters[i].Name = database_response.Datacenters[i].Name
+		response.Datacenters[i].Native = database_response.Datacenters[i].Native
+		response.Datacenters[i].Latitude = database_response.Datacenters[i].Latitude
+		response.Datacenters[i].Longitude = database_response.Datacenters[i].Longitude
+		response.Datacenters[i].SellerId = database_response.Datacenters[i].SellerId
+		seller := database.GetSeller(database_response.Datacenters[i].SellerId)
+		if seller != nil {
+			response.Datacenters[i].SellerName = seller.Name
+			response.Datacenters[i].SellerCode = seller.Code
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 type PortalDatacenterDataResponse struct {
