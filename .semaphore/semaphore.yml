@@ -15,7 +15,7 @@ blocks:
 
   - name: "Components"
     run:
-      when: "change_in('/deploy') OR change_in('/config') OR change_in('/relay') OR change_in('/sdk')"
+      when: "change_in('/deploy/') OR change_in('/config/') OR change_in('/relay/') OR change_in('/sdk/')"
     dependencies: []
     task:
       agent:
@@ -41,7 +41,7 @@ blocks:
 
   - name: "Sodium"
     run:
-      when: "change_in('/deploy') OR change_in('/config') OR change_in('/relay') OR change_in('/sdk')"
+      when: "change_in('/deploy/') OR change_in('/config/') OR change_in('/relay/') OR change_in('/sdk/')"
     dependencies: []
     task:
       jobs:
@@ -58,7 +58,7 @@ blocks:
 
   - name: "Backend"
     run:
-      when: "change_in('/modules')"
+      when: "change_in('/modules/')"
     dependencies: []
     task:
       jobs:
@@ -72,7 +72,7 @@ blocks:
 
   - name: "SDK"
     run:
-      when: "change_in('/sdk')"
+      when: "change_in('/sdk/')"
     dependencies: []
     task:
       jobs:
@@ -89,7 +89,7 @@ blocks:
   - name: "Build Artifacts (Golang)"
 
     run:
-      when: "change_in('/deploy') OR change_in('/modules') OR change_in('/cmd')"
+      when: "change_in('/deploy/') OR change_in('/modules/') OR change_in('/cmd/')"
 
     dependencies: []
 
@@ -151,7 +151,7 @@ blocks:
   - name: "Build Artifacts (Native)"
 
     run:
-      when: "change_in('/sdk') OR change_in('/cmd/raspberry_client') OR change_in('/cmd/raspberry_server')"
+      when: "change_in('/sdk/') OR change_in('/cmd/raspberry_client/') OR change_in('/cmd/raspberry_server/')"
 
     dependencies: []
 
