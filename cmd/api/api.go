@@ -609,8 +609,8 @@ type PortalDatacenterData struct {
 	Latitude  float32 `json:"latitude"`
 	Longitude float32 `json:"longitude"`
 	SellerId   uint64 `json:"seller_id,string"`
-	SellerCode string `json:"seller_code,string"`
-	SellerName string `json:"seller_name,string"`
+	SellerCode string `json:"seller_code"`
+	SellerName string `json:"seller_name"`
 }
 
 type PortalDatacentersResponse struct {
