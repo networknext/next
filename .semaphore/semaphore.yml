@@ -14,9 +14,9 @@ agent:
 blocks:
 
   - name: "Components"
+    dependencies: []
     run:
       when: "change_in('/deploy/') OR change_in('/config/') OR change_in('/relay/') OR change_in('/sdk/')"
-    dependencies: []
     task:
       agent:
         machine:
@@ -40,9 +40,9 @@ blocks:
             - artifact push workflow config/multiplay.txt --force
 
   - name: "Sodium"
+    dependencies: []
     run:
       when: "change_in('/deploy/') OR change_in('/config/') OR change_in('/relay/') OR change_in('/sdk/')"
-    dependencies: []
     task:
       jobs:
         - name: "Build libsodium.so"
@@ -57,9 +57,9 @@ blocks:
             - artifact push workflow /usr/local/lib/libsodium.so --force
 
   - name: "Backend"
+    dependencies: []
     run:
       when: "change_in('/modules/')"
-    dependencies: []
     task:
       jobs:
         - name: "Unit Tests"
@@ -71,9 +71,9 @@ blocks:
             - go test ./modules/...
 
   - name: "SDK"
+    dependencies: []
     run:
       when: "change_in('/sdk/')"
-    dependencies: []
     task:
       jobs:
         - name: "Unit Tests"
@@ -88,10 +88,10 @@ blocks:
 
   - name: "Build Artifacts (Golang)"
 
+    dependencies: []
+
     run:
       when: "change_in('/deploy/') OR change_in('/modules/') OR change_in('/cmd/')"
-
-    dependencies: []
 
     task:
 
@@ -150,10 +150,10 @@ blocks:
 
   - name: "Build Artifacts (Native)"
 
+    dependencies: []
+
     run:
       when: "change_in('/sdk/') OR change_in('/cmd/raspberry_client/') OR change_in('/cmd/raspberry_server/')"
-
-    dependencies: []
 
     task:
 
