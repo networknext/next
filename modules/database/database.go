@@ -455,7 +455,7 @@ func (database *Database) String() string {
 		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
-			Id:              fmt.Sprintf("%0x", v.Id),
+			Id:              fmt.Sprintf("%016x", v.Id),
 			Name:            v.Name,
 			Live:            fmt.Sprintf("%v", v.Live),
 			Debug:           fmt.Sprintf("%v", v.Debug),
@@ -499,11 +499,12 @@ func (database *Database) String() string {
 	output += "\n\nDatacenters:\n\n"
 
 	type DatacenterRow struct {
-		Name      string
-		Native    string
-		Id        string
-		Latitude  string
-		Longitude string
+		Id              string
+		Name      		string
+		Native    		string
+		Seller          string
+		Latitude        string
+		Longitude       string
 	}
 
 	datacenters := []DatacenterRow{}
@@ -511,11 +512,12 @@ func (database *Database) String() string {
 	for _, v := range database.DatacenterMap {
 
 		row := DatacenterRow{
-			Id:        fmt.Sprintf("%0x", v.Id),
-			Name:      v.Name,
-			Native:    v.Native,
-			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
-			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
+			Id:         fmt.Sprintf("%016x", v.Id),
+			Name:       v.Name,
+			Native:     v.Native,
+			Latitude:   fmt.Sprintf("%+3.2f", v.Latitude),
+			Longitude:  fmt.Sprintf("%+3.2f", v.Longitude),
+			Seller:     fmt.Sprintf("%s [%d]", database.GetSeller(v.SellerId).Name, v.SellerId),
 		}
 
 		datacenters = append(datacenters, row)
@@ -544,7 +546,7 @@ func (database *Database) String() string {
 	for _, v := range database.RelayMap {
 
 		row := RelayRow{
-			Id:            fmt.Sprintf("%0x", v.Id),
+			Id:            fmt.Sprintf("%016x", v.Id),
 			Name:          v.Name,
 			PublicAddress: v.PublicAddress.String(),
 			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
@@ -699,7 +701,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
-			Id:              fmt.Sprintf("%0x", v.Id),
+			Id:              fmt.Sprintf("%016x", v.Id),
 			Name:            v.Name,
 			Live:            fmt.Sprintf("%v", v.Live),
 			Debug:           fmt.Sprintf("%v", v.Debug),
@@ -731,7 +733,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 	for _, v := range database.SellerMap {
 
 		row := SellerRow{
-			Id:   fmt.Sprintf("%0x", v.Id),
+			Id:   fmt.Sprintf("%016x", v.Id),
 			Name: v.Name,
 		}
 
@@ -762,7 +764,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 	for _, v := range database.DatacenterMap {
 
 		row := DatacenterRow{
-			Id:        fmt.Sprintf("%0x", v.Id),
+			Id:        fmt.Sprintf("%016x", v.Id),
 			Name:      v.Name,
 			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
 			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
@@ -798,7 +800,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 	for _, v := range database.RelayMap {
 
 		row := RelayRow{
-			Id:            fmt.Sprintf("%0x", v.Id),
+			Id:            fmt.Sprintf("%016x", v.Id),
 			Name:          v.Name,
 			PublicAddress: v.PublicAddress.String(),
 			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),

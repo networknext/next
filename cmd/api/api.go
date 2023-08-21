@@ -644,7 +644,7 @@ func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalDatacenterDataResponse struct {
-	DatacenterData    *PortalDatacenterData    `json:"datacenter_data"`
+	DatacenterData    PortalDatacenterData    `json:"datacenter_data"`
 }
 
 func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -654,16 +654,18 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalDatacenterDataResponse{}
 	if database != nil {
 		datacenter := database.GetDatacenterByName(datacenterName)
-		response.DatacenterData.Id = datacenter.Id
-		response.DatacenterData.Name = datacenter.Name
-		response.DatacenterData.Native = datacenter.Native
-		response.DatacenterData.Latitude = datacenter.Latitude
-		response.DatacenterData.Longitude = datacenter.Longitude
-		response.DatacenterData.SellerId = datacenter.SellerId
-		seller := database.GetSeller(datacenter.SellerId)
-		if seller != nil {
-			response.DatacenterData.SellerName = seller.Name
-			response.DatacenterData.SellerCode = seller.Code
+		if datacenter != nil {
+			response.DatacenterData.Id = datacenter.Id
+			response.DatacenterData.Name = datacenter.Name
+			response.DatacenterData.Native = datacenter.Native
+			response.DatacenterData.Latitude = datacenter.Latitude
+			response.DatacenterData.Longitude = datacenter.Longitude
+			response.DatacenterData.SellerId = datacenter.SellerId
+			seller := database.GetSeller(datacenter.SellerId)
+			if seller != nil {
+				response.DatacenterData.SellerName = seller.Name
+				response.DatacenterData.SellerCode = seller.Code
+			}
 		}
 	}
 	w.WriteHeader(http.StatusOK)
