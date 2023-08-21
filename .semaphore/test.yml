@@ -21,7 +21,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -339,7 +339,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -790,7 +790,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -909,7 +909,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -979,7 +979,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1065,7 +1065,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1124,7 +1124,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1187,7 +1187,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1218,7 +1218,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       prologue:
@@ -1291,7 +1291,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
