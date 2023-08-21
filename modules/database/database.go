@@ -81,12 +81,12 @@ type Database struct {
 	CreationTime            string                                         `json:"creation_time"`
 	Creator                 string                                         `json:"creator"`
 	Relays                  []Relay                                        `json:"relays"`
-	RelayMap                map[uint64]*Relay                              `json:"relay_map"`
 	BuyerMap                map[uint64]*Buyer                              `json:"buyer_map"`
 	SellerMap               map[uint64]*Seller                             `json:"seller_map"`
 	DatacenterMap           map[uint64]*Datacenter                         `json:"datacenter"`
 	DatacenterRelays        map[uint64][]uint64                            `json:"datacenter_relays"`
 	BuyerDatacenterSettings map[uint64]map[uint64]*BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
+	RelayMap                map[uint64]*Relay
 	RelayNameMap            map[string]*Relay
 	BuyerCodeMap            map[string]*Buyer
 	SellerCodeMap           map[string]*Seller
@@ -99,12 +99,12 @@ func CreateDatabase() *Database {
 		CreationTime:            "",
 		Creator:                 "",
 		Relays:                  []Relay{},
-		RelayMap:                make(map[uint64]*Relay),
 		BuyerMap:                make(map[uint64]*Buyer),
 		SellerMap:               make(map[uint64]*Seller),
 		DatacenterMap:           make(map[uint64]*Datacenter),
 		DatacenterRelays:        make(map[uint64][]uint64),
 		BuyerDatacenterSettings: make(map[uint64]map[uint64]*BuyerDatacenterSettings),
+		RelayMap:                make(map[uint64]*Relay),
 		RelayNameMap:            make(map[string]*Relay),
 		BuyerCodeMap:            make(map[string]*Buyer),
 		SellerCodeMap:           make(map[string]*Seller),
@@ -136,7 +136,12 @@ func LoadDatabase(filename string) (*Database, error) {
 
 func (database *Database) Fixup() {
 
-	core.Log("fixup database")
+	if len(database.RelayMap) != len(database.Relays) {
+		database.RelayMap = make(map[uint64]*Relay, len(database.Relays))
+		for i := range database.Relays {
+			database.RelayMap[database.Relays[i].Id] = &database.Relays[i]
+		}
+	}
 
 	if len(database.RelayNameMap) != len(database.Relays) {
 		database.RelayNameMap = make(map[string]*Relay, len(database.Relays))
@@ -146,7 +151,6 @@ func (database *Database) Fixup() {
 	}
 
 	if len(database.BuyerCodeMap) != len(database.BuyerMap) {
-		core.Log("fixup buyer code map")
 		database.BuyerCodeMap = make(map[string]*Buyer, len(database.BuyerMap))
 		for _,v := range database.BuyerMap {
 			database.BuyerCodeMap[v.Code] = v
