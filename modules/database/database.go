@@ -136,12 +136,7 @@ func LoadDatabase(filename string) (*Database, error) {
 
 func (database *Database) Fixup() {
 
-	if len(database.RelayMap) != len(database.Relays) {
-		database.RelayMap = make(map[uint64]*Relay, len(database.Relays))
-		for i := range database.Relays {
-			database.RelayMap[database.Relays[i].Id] = &database.Relays[i]
-		}
-	}
+	core.Log("fixup database")
 
 	if len(database.RelayNameMap) != len(database.Relays) {
 		database.RelayNameMap = make(map[string]*Relay, len(database.Relays))
@@ -151,6 +146,7 @@ func (database *Database) Fixup() {
 	}
 
 	if len(database.BuyerCodeMap) != len(database.BuyerMap) {
+		core.Log("fixup buyer code map")
 		database.BuyerCodeMap = make(map[string]*Buyer, len(database.BuyerMap))
 		for _,v := range database.BuyerMap {
 			database.BuyerCodeMap[v.Code] = v
@@ -1420,6 +1416,8 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenterRelays = append(datacenterRelays, relayId)
 		database.DatacenterRelays[datacenterId] = datacenterRelays
 	}
+
+	database.Fixup()
 
 	return database, nil
 }
