@@ -80,6 +80,12 @@ func main() {
 		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
+		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
+
+		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
+
+		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
+
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
 		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
@@ -549,6 +555,63 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 			relayAddress := relay.PublicAddress.String()
 			response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
 		}
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalBuyerDataResponse struct {
+	BuyerData    *db.Buyer    `json:"buyer_data"`
+}
+
+func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	buyerCode := vars["buyer_code"]
+	database := service.Database()
+	response := PortalBuyerDataResponse{}
+	if database != nil {
+		response.BuyerData = database.GetBuyerByCode(buyerCode)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalSellerDataResponse struct {
+	SellerData    *db.Seller    `json:"seller_data"`
+}
+
+func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sellerCode := vars["seller_code"]
+	database := service.Database()
+	response := PortalSellerDataResponse{}
+	if database != nil {
+		response.SellerData = database.GetSellerByCode(sellerCode)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalDatacenterDataResponse struct {
+	DatacenterData    *db.Datacenter    `json:"datacenter_data"`
+}
+
+func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	datacenterName := vars["datacenter_name"]
+	database := service.Database()
+	response := PortalDatacenterDataResponse{}
+	if database != nil {
+		response.DatacenterData = database.GetDatacenterByName(datacenterName)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

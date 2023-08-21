@@ -372,11 +372,10 @@ func test_portal() {
 			Seller: *database.SellerMap[1],
 		}
 		database.Relays = append(database.Relays, relay)
-		newRelay := &database.Relays[len(database.Relays)-1]
-		database.RelayMap[relayId] = newRelay
-		database.RelayNameMap[relay.Name] = newRelay
 		database.DatacenterRelays[1] = append(database.DatacenterRelays[1], uint64(1+i))
 	}
+
+	database.Fixup()
 
 	fmt.Printf("database is %s\n", database.String())
 

@@ -60,18 +60,6 @@ DONE
 
 TODO
 
-	For some reason after fully recreating the relays and uploading the database, the raspberry clients aren't going over next. Why?
-
-	It's the raspberry backend. It lost its connection to redis and is in limbo. It needs to be restarted...
-
-
-
-
-
-
-
-	---------------
-
 	Get the portal working again
 
 	---------------
