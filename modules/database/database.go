@@ -517,7 +517,7 @@ func (database *Database) String() string {
 			Native:     v.Native,
 			Latitude:   fmt.Sprintf("%+3.2f", v.Latitude),
 			Longitude:  fmt.Sprintf("%+3.2f", v.Longitude),
-			Seller:     fmt.Sprintf("%s [%d]", database.GetSeller(v.SellerId).Name, v.SellerId),
+			Seller:     fmt.Sprintf("%d", v.SellerId),
 		}
 
 		datacenters = append(datacenters, row)
