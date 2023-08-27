@@ -31,3 +31,7 @@ terraform.tfstate.*
 
 # cache
 cache/*
+
+# portal
+node_modules
+yarn.lock
