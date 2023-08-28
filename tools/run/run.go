@@ -40,14 +40,10 @@ func bash(command string) {
 		sig := <-c
 		if cmd.Process != nil {
 			fmt.Printf("\n\n")
-			if sig == syscall.SIGINT {
-				if err := cmd.Process.Kill(); err != nil {
-					fmt.Printf("Error trying to kill a process: %v\n", err)
-				}
-			} else if err := cmd.Process.Signal(sig); err != nil {
-				fmt.Printf("Error trying to interrupt a process: %v\n", err)
+			if err := cmd.Process.Signal(sig); err != nil {
+				fmt.Printf("error trying to signal child process: %v\n", err)
 			}
-			os.Exit(1)
+			cmd.Wait()
 		}
 	}()
 
