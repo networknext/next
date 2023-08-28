@@ -178,7 +178,6 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 	database.Relays = relays
 	for i := range relays {
 		database.RelayMap[relays[i].Id] = &relays[i]
-		database.RelayNameMap[relays[i].Name] = &relays[i]
 		array := [1]uint64{uint64(i)}
 		database.DatacenterRelays[uint64(i)] = array[:]
 	}
@@ -189,6 +188,8 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 		database.DatacenterMap[datacenters[i].Id] = &datacenters[i]
 		database.BuyerDatacenterSettings[BuyerId][datacenters[i].Id] = &db.BuyerDatacenterSettings{DatacenterId: uint64(i), BuyerId: BuyerId, EnableAcceleration: true}
 	}
+
+	database.Fixup()
 
 	err := database.Validate()
 	if err != nil {

@@ -505,19 +505,19 @@ func load_test_session_update() {
 }
 
 func config_amazon() {
-	bash("go run suppliers/amazon.go")
+	bash("go run sellers/amazon.go")
 }
 
 func config_google() {
-	bash("go run suppliers/google.go")
+	bash("go run sellers/google.go")
 }
 
 func config_akamai() {
-	bash("go run suppliers/akamai.go")
+	bash("go run sellers/akamai.go")
 }
 
 func config_vultr() {
-	bash("go run suppliers/vultr.go")
+	bash("go run sellers/vultr.go")
 }
 
 func soak_test_relay() {

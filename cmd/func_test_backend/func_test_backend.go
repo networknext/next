@@ -1803,12 +1803,10 @@ func test_relay_backend() {
 
 		database.Relays = append(database.Relays, relay)
 
-		database.RelayMap[relay.Id] = &relay
-
-		database.RelayNameMap[relay.Name] = &relay
-
 		database.DatacenterRelays[datacenter.Id] = append(database.DatacenterRelays[datacenter.Id], relay.Id)
 	}
+
+	database.Fixup()
 
 	// write the database out to a temporary file
 

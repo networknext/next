@@ -197,15 +197,14 @@ func test_api() {
 			Seller: *database.SellerMap[1],
 		}
 		database.Relays = append(database.Relays, relay)
-		newRelay := &database.Relays[len(database.Relays)-1]
-		database.RelayMap[relayId] = newRelay
-		database.RelayNameMap[relay.Name] = newRelay
 		database.DatacenterRelays[1] = append(database.DatacenterRelays[1], uint64(1+i))
 	}
 	datacenterRelays := [1]uint64{1}
 	database.DatacenterRelays[1] = datacenterRelays[:]
 	database.BuyerDatacenterSettings[1] = make(map[uint64]*db.BuyerDatacenterSettings)
 	database.BuyerDatacenterSettings[1][1] = &db.BuyerDatacenterSettings{BuyerId: 1, DatacenterId: 1, EnableAcceleration: true}
+
+	database.Fixup()
 
 	err := database.Validate()
 	if err != nil {
