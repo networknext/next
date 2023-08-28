@@ -6,12 +6,14 @@
 
     <div class="container-fluid">
 
-      <div class="d-xxl-none">
-        <router-link class="navbar-brand" to="/"><img src="@/assets/n_black.png" style="width: 35.2; height:40px;"/></router-link>
-        <SessionCounts/>
-      </div>
-      <div class="d-none d-xxl-block">
-        <router-link class="navbar-brand" to="/"><img src="@/assets/logo_black.png" style="width: 342.035928143712575px; height:40px;"/></router-link>
+      <div style="height=60px">
+        <div class="d-xxl-none">
+          <router-link class="navbar-brand" to="/"><img src="@/assets/n_black.png" style="width: 35.2; height:40px;"/></router-link>
+          <SessionCounts/>
+        </div>
+        <div class="d-none d-xxl-block">
+          <router-link class="navbar-brand" to="/"><img src="@/assets/logo_black.png" style="width: 342.035928143712575px; height:40px;"/></router-link>
+        </div>
       </div>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" @click="visible=!visible">
