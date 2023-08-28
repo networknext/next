@@ -291,6 +291,17 @@ func main() {
 
 			defer rawFile.Close()
 
+			rootEnvFile, err := os.Create(".env")
+			if err != nil {
+				return err
+			}
+
+			defer rootEnvFile.Close()
+
+			if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
+				return err
+			}
+
 			env.Name = args[0]
 			env.AdminURL = getKeyValue(envFilePath, "ADMIN_REST_API_URL")
 			env.PortalURL = getKeyValue(envFilePath, "PORTAL_REST_API_URL")

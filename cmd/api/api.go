@@ -53,7 +53,9 @@ func main() {
 	}
 
 	core.Debug("pgsql config: %s", pgsqlConfig)
-	core.Debug("database url: %s", databaseURL)
+	if databaseURL != "" {
+		core.Debug("database url: %s", databaseURL)
+	}
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)

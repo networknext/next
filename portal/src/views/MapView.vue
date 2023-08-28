@@ -19,14 +19,20 @@ export default {
   methods: {
 
     async update() {
-      console.log('update map')
-      fetch(process.env.VUE_APP_API_URL + '/portal/map_data', {
-        headers: {
-          'Accept': 'application/octet-stream'
-         }
-      })
-      .then(response => response.text())
-      .then(data => console.log("got map data " + data))
+      /*
+      try {
+        console.log('update map')
+        fetch(process.env.VUE_APP_API_URL + '/portal/map_data', {
+          headers: {
+            'Accept': 'application/octet-stream'
+           }
+        })
+        .then(response => response.text())
+        .then(data => console.log("got map data " + data))
+      } catch (error) {
+        console.log(error);
+      }
+      */
     }
 
   }

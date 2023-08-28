@@ -34,6 +34,23 @@ func bash(command string) {
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.")
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		sig := <-c
+		if cmd.Process != nil {
+			fmt.Printf("\n\n")
+			if sig == syscall.SIGINT {
+				if err := cmd.Process.Kill(); err != nil {
+					fmt.Printf("Error trying to kill a process: %v\n", err)
+				}
+			} else if err := cmd.Process.Signal(sig); err != nil {
+				fmt.Printf("Error trying to interrupt a process: %v\n", err)
+			}
+			os.Exit(1)
+		}
+	}()
+
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("error: failed to run command: %v\n", err)
 		os.Exit(1)

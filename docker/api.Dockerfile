@@ -13,5 +13,7 @@ RUN go build -o api /app/cmd/api/*.go
 EXPOSE 80
 
 ENV ENV docker
+ENV ALLOWED_ORIGIN *
+ENV DEBUG_LOGS 1
 
 CMD [ "/app/api" ]

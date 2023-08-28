@@ -6,7 +6,7 @@ WORKDIR /app
 COPY portal/package*.json ./
 RUN npm install
 COPY portal/ .
-RUN npm run build
+RUN npm run build-local
 
 EXPOSE 8080
 CMD [ "http-server", "dist" ]
