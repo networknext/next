@@ -42,7 +42,8 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/database/sellers');
+        // todo: this should be updated to the portal version of this API
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/database/sellers');
         this.items = []
         let i = 0;
         let data = []

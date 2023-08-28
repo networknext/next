@@ -69,7 +69,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/portal/datacenters');
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/datacenters');
         res.data.datacenters.sort(function (a, b) {
           if (a.name < b.name) {
             return -1;

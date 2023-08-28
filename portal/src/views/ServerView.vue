@@ -34,7 +34,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/portal/server/' + this.$route.params.id)
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/server/' + this.$route.params.id)
         if (res.data.server_data !== null) {
           this.sessions = res.data.server_data.num_sessions
         }

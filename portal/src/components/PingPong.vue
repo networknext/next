@@ -20,7 +20,7 @@ export default {
   },
   async created() {
     try {
-      const res = await axios.get('http://dev.virtualgo.net/ping');
+      const res = await axios.get(process.env.VUE_APP_API_URL + '/ping');
       this.items = []
       this.items.push(res.data);
     } catch (error) {

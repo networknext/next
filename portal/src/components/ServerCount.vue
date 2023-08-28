@@ -21,7 +21,7 @@ export default {
   },
   async created() {
     try {
-      const res = await axios.get('http://dev.virtualgo.net/portal/server_count');
+      const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/server_count');
       this.items = []
       this.items.push(res.data.server_count);
     } catch (error) {

@@ -36,7 +36,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/portal/session_counts')
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/session_counts')
         this.total_sessions = res.data.total_session_count
         this.next_sessions = res.data.next_session_count
       } catch (error) {

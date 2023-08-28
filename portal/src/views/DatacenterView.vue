@@ -35,7 +35,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/portal/datacenter/' + this.$route.params.id)
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/datacenter/' + this.$route.params.id)
         if (res.data.session_data !== null) {
           this.latitude = res.data.datacenter_data.latitude
           this.longitude = res.data.datacenter_data.longitude

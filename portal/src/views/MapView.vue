@@ -20,7 +20,7 @@ export default {
 
     async update() {
       console.log('update map')
-      fetch('http://dev.virtualgo.net/portal/map_data', {
+      fetch(process.env.VUE_APP_API_URL + '/portal/map_data', {
         headers: {
           'Accept': 'application/octet-stream'
          }

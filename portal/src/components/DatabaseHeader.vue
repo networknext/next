@@ -36,7 +36,7 @@ export default {
 
   async created() {
     try {
-      const res = await axios.get('http://dev.virtualgo.net/database/header');
+      const res = await axios.get(process.env.VUE_APP_API_URL + '/database/header');
       let row = {"Creator":res.data.creator, "Creation Time":res.data.creation_time, "Relays":res.data.num_relays, "Datacenters":res.data.num_datacenters, "Buyers":res.data.num_buyers, "Sellers":res.data.num_sellers}
       this.data.push(row)
     } catch (error) {

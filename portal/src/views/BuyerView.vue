@@ -34,7 +34,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/portal/buyer/' + this.$route.params.id)
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/buyer/' + this.$route.params.id)
         if (res.data.buyer_data !== null) {
           this.buyer_name = res.data.buyer_data.name
         }

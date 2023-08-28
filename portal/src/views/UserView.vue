@@ -125,7 +125,7 @@ export default {
     async update() {
       try {
         const user_hash = this.$route.params.id
-        const res = await axios.get('http://dev.virtualgo.net/portal/user_sessions/' + user_hash + '/0/1000');
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/user_sessions/' + user_hash + '/0/1000');
         let i = 0;
         let data = []
         if (res.data.sessions !== null) {

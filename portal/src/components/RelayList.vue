@@ -74,7 +74,7 @@ export default {
 
     async update() {
       try {      
-        const res = await axios.get('http://dev.virtualgo.net/portal/relays/0/1000');
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/relays/0/1000');
         res.data.relays.sort(function(a, b){return b.num_sessions-a.num_sessions});
         this.data = []
         let i = 0

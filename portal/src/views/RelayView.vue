@@ -40,7 +40,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/portal/relay/' + this.$route.params.id)
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/relay/' + this.$route.params.id)
         if (res.data.relay_data !== null) {
           this.current_sessions = res.data.relay_data.num_sessions
         }

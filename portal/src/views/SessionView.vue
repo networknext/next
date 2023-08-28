@@ -39,7 +39,7 @@ export default {
     async update() {
       try {
         const session_id = this.$route.params.id
-        const res = await axios.get('http://dev.virtualgo.net/portal/session/' + session_id)
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/session/' + session_id)
         if (res.data.slice_data !== null) {
           this.user_hash = this.parse_uint64(res.data.session_data.user_hash)
           this.buyer_code = res.data.session_data.buyer_code
