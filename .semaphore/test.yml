@@ -84,6 +84,14 @@ blocks:
 
             - cd ~
 
+      epilogue:
+        commands:
+
+            - killall func_client
+            - killall func_server
+            - killall func_backend
+            - killall relay-debug
+
       jobs:
 
         - name: "test_passthrough"
@@ -317,6 +325,14 @@ blocks:
 
             - cd ~
 
+      epilogue:
+        commands:
+
+            - killall func_client
+            - killall func_server
+            - killall func_backend
+            - killall relay-debug
+
       jobs:
 
         - name: "test_flush_session_events_and_match_data"
@@ -392,6 +408,12 @@ blocks:
             - sudo ldconfig
 
             - cd ~
+
+      epilogue:
+        commands:
+
+            - killall func_backend_relay
+            - killall relay-debug
 
       jobs:
 
@@ -624,6 +646,12 @@ blocks:
 
             - cd ~
 
+      epilogue:
+        commands:
+
+            - killall func_backend_relay
+            - killall relay-debug
+
       jobs:
 
         - name: "test_continue_response_packet_already_received"
@@ -845,6 +873,13 @@ blocks:
 
             - cd ~
 
+      epilogue:
+        commands:
+
+            - killall magic_backend
+            - killall relay_gateway
+            - killall relay_backend
+
       jobs:
 
         - name: "test_magic_backend"
@@ -957,6 +992,11 @@ blocks:
 
             - ls -al
 
+      epilogue:
+        commands:
+
+            - killall api
+
       jobs:
 
         - name: "test_local"
@@ -1026,6 +1066,11 @@ blocks:
 
             - chmod +x ./dist/api
             - chmod +x ./dist/func_test_api
+
+      epilogue:
+        commands:
+
+            - killall api
 
       jobs:
 
@@ -1110,6 +1155,11 @@ blocks:
             - chmod +x ./dist/api
             - chmod +x ./dist/func_test_portal
 
+      epilogue:
+        commands:
+
+            - killall api
+
       jobs:
 
         - name: "test_portal"
@@ -1172,6 +1222,11 @@ blocks:
             - chmod +x ./dist/api
             - chmod +x ./dist/func_test_terraform
 
+      epilogue:
+        commands:
+
+            - killall api
+
       jobs:
 
         - name: "test_terraform"
@@ -1209,6 +1264,8 @@ blocks:
             - chmod +x relay-debug
 
             - ./soak_test_relay stop
+
+            - killall relay-debug
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -1309,6 +1366,21 @@ blocks:
             - make rebuild
             - ./next select local
             - ./run happy-path-no-wait
+
+      epilogue:
+        commands:
+
+            - killall api
+            - killall magic_backend
+            - killall relay_gateway
+            - killall relay_backend
+            - killall relay-debug
+            - killall server_backend
+            - killall portal_cruncher
+            - killall map_cruncher
+            - killall analytics
+            - killall client
+            - killall server
 
 # ------------------------------------------------------------------------------------------------------------
 
