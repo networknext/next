@@ -1092,7 +1092,7 @@ func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read relays: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read relay -> %+v", relays)
+		core.Debug("read relays -> %+v", relays)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
