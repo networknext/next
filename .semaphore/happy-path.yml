@@ -33,14 +33,14 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q api
-            - killall -q magic_backend
-            - killall -q relay_gateway
-            - killall -q relay_backend
-            - killall -q relay-debug
-            - killall -q server_backend
-            - killall -q portal_cruncher
-            - killall -q map_cruncher
-            - killall -q analytics
-            - killall -q client
-            - killall -q server
+            - killall api || true
+            - killall magic_backend || true
+            - killall relay_gateway || true
+            - killall relay_backend || true
+            - killall relay-debug || true
+            - killall server_backend || true
+            - killall portal_cruncher || true
+            - killall map_cruncher || true
+            - killall analytics || true
+            - killall client || true
+            - killall server || true

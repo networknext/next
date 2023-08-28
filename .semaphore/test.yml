@@ -87,10 +87,10 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q func_client
-            - killall -q func_server
-            - killall -q func_backend
-            - killall -q relay-debug
+            - killall func_client || true
+            - killall func_server || true
+            - killall func_backend || true
+            - killall relay-debug || true
 
       jobs:
 
@@ -328,10 +328,10 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q func_client
-            - killall -q func_server
-            - killall -q func_backend
-            - killall -q relay-debug
+            - killall func_client || true
+            - killall func_server || true
+            - killall func_backend || true
+            - killall relay-debug || true
 
       jobs:
 
@@ -412,8 +412,8 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q func_backend_relay
-            - killall -q relay-debug
+            - killall func_backend_relay || true
+            - killall relay-debug || true
 
       jobs:
 
@@ -649,8 +649,8 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q func_backend_relay
-            - killall -q relay-debug
+            - killall func_backend_relay || true
+            - killall relay-debug || true
 
       jobs:
 
@@ -876,9 +876,9 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q magic_backend
-            - killall -q relay_gateway
-            - killall -q relay_backend
+            - killall magic_backend || true
+            - killall relay_gateway || true
+            - killall relay_backend || true
 
       jobs:
 
@@ -995,7 +995,7 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q api
+            - killall api || true
 
       jobs:
 
@@ -1070,7 +1070,7 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q api
+            - killall api || true
 
       jobs:
 
@@ -1158,7 +1158,7 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q api
+            - killall api || true
 
       jobs:
 
@@ -1225,7 +1225,7 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q api
+            - killall api || true
 
       jobs:
 
@@ -1265,7 +1265,7 @@ blocks:
 
             - ./soak_test_relay stop
 
-            - killall -q relay-debug
+            - killall relay-debug || true
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -1370,17 +1370,17 @@ blocks:
       epilogue:
         commands:
 
-            - killall -q api
-            - killall -q magic_backend
-            - killall -q relay_gateway
-            - killall -q relay_backend
-            - killall -q relay-debug
-            - killall -q server_backend
-            - killall -q portal_cruncher
-            - killall -q map_cruncher
-            - killall -q analytics
-            - killall -q client
-            - killall -q server
+            - killall api || true
+            - killall magic_backend || true
+            - killall relay_gateway || true
+            - killall relay_backend || true
+            - killall relay-debug || true
+            - killall server_backend || true
+            - killall portal_cruncher || true
+            - killall map_cruncher || true
+            - killall analytics || true
+            - killall client || true
+            - killall server || true
 
 # ------------------------------------------------------------------------------------------------------------
 
