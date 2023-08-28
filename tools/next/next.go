@@ -61,7 +61,6 @@ func runCommand(command string, args []string) bool {
 	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("runCommand error: %v\n", err)
 		return false
 	}
 	return true
@@ -1138,9 +1137,7 @@ func (con SSHConn) commonSSHCommands() []string {
 func (con SSHConn) Connect() {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address)
-	if !runCommandEnv("ssh", args, nil) {
-		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 1)
-	}
+	runCommandEnv("ssh", args, nil)
 }
 
 func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
