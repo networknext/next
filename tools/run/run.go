@@ -14,12 +14,6 @@ import (
 
 var cmd *exec.Cmd
 
-func cleanup() {
-	if cmd != nil {
-		cmd.Process.Kill()
-	}
-}
-
 func bash(command string) {
 
 	cmd = exec.Command("bash", "-c", command)
@@ -35,7 +29,7 @@ func bash(command string) {
 	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.")
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		sig := <-c
 		if cmd.Process != nil {
@@ -84,14 +78,6 @@ func bash_no_wait(command string) {
 }
 
 func main() {
-
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		cleanup()
-		os.Exit(1)
-	}()
 
 	args := os.Args
 
@@ -223,8 +209,6 @@ func main() {
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
-
-	cleanup()
 }
 
 func help() {

@@ -78,7 +78,7 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	cmd.Env = finalEnv
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		sig := <-c
 		fmt.Printf("\n\n")
@@ -1202,8 +1202,8 @@ LimitNOFILE=1024
 WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
-Restart=on-failure
-RestartSec=12
+Restart=on-success
+RestartSec=60
 
 [Install]
 WantedBy=multi-user.target
