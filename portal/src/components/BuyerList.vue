@@ -69,7 +69,8 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get('http://dev.virtualgo.net/database/buyers');
+        // todo: this should become the portal version of this query
+        const res = await axios.get(process.env.API_URL + '/database/buyers');
         let i = 0;
         let data = []
         while (i < res.data.buyers.length) {

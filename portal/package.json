@@ -1,10 +1,16 @@
 {
   "name": "portal",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
+    "serve-local": "vue-cli-service serve --mode local",
+    "serve-dev": "vue-cli-service serve --mode dev",
+    "serve-staging": "vue-cli-service serve --mode staging",
+    "serve-prod": "vue-cli-service serve --mode prod",
+    "build-local": "vue-cli-service build --mode local",
+    "build-dev": "vue-cli-service build --mode dev",
+    "build-staging": "vue-cli-service build --mode staging",
+    "build-prod": "vue-cli-service build --mode prod",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
