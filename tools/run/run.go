@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"path"
+	"encoding/json"
 
 	"github.com/joho/godotenv"
 )
@@ -202,6 +204,8 @@ func main() {
 		config_akamai()
 	} else if command == "config-vultr" {
 		config_vultr()
+	} else if command == "portal" {
+		portal()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -522,4 +526,43 @@ func config_vultr() {
 
 func soak_test_relay() {
 	bash("cd dist && ./soak_test_relay stop")
+}
+
+type Environment struct {
+	Name                     string `json:"name"`
+	AdminURL                 string `json:"admin_url"`
+	PortalURL                string `json:"portal_url"`
+	DatabaseURL              string `json:"database_url"`
+	SSHKeyFile               string `json:"ssh_key_filepath"`
+	APIPrivateKey            string `json:"api_private_key"`
+	APIKey                   string `json:"api_key"`
+	VPNAddress               string `json:"vpn_address"`
+	RelayBackendHostname     string `json:"relay_backend_hostname"`
+	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
+	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
+}
+
+func (e *Environment) Read() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+
+	envFilePath := path.Join(homeDir, ".next")
+
+	f, err := os.Open(envFilePath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(e); err != nil {
+		panic(err)
+	}
+}
+
+func portal() {
+	var env Environment
+	env.Read()
+	bash(fmt.Sprintf("cd portal && yarn serve-%s", env.Name))
 }
