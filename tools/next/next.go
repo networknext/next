@@ -77,33 +77,21 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	}
 	cmd.Env = finalEnv
 
-	// Make a os.Signal channel and attach any incoming os signals
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-
-	// Start a goroutine and block waiting for any os.Signal
 	go func() {
 		sig := <-c
-
-		// If the command still exists send the os.Signal captured by next tool
-		// to the underlying process.
-		// If the signal is interrupt, then try to directly kill the process,
-		// otherwise forward the signal.
+		fmt.Printf("\n\n")
 		if cmd.Process != nil {
-			if sig == syscall.SIGINT {
-				if err := cmd.Process.Kill(); err != nil {
-					fmt.Printf("Error trying to kill a process: %v\n", err)
-				}
-			} else if err := cmd.Process.Signal(sig); err != nil {
-				fmt.Printf("Error trying to interrupt a process: %v\n", err)
-			}
-			os.Exit(1)
+			cmd.Process.Signal(sig)
+			cmd.Wait()
 		}
+		os.Exit(1)
 	}()
 
 	err := cmd.Run()
+
 	if err != nil {
-		fmt.Printf("runCommand error: %v\n", err)
 		return false
 	}
 
@@ -731,6 +719,10 @@ func GetJSON(url string, object interface{}) {
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response.Body == nil {
+		panic("nil response body")
 	}
 
 	body, error := ioutil.ReadAll(response.Body)

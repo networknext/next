@@ -45,6 +45,7 @@ func bash(command string) {
 			}
 			cmd.Wait()
 		}
+		os.Exit(1)
 	}()
 
 	if err := cmd.Run(); err != nil {
