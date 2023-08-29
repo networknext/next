@@ -2,9 +2,11 @@
 import BigNumber from "bignumber.js";
 
 const utils = {
+
   data() {
     return { dummy: 0 }
   },
+
   methods: {
 
     parse_uint64(value) {

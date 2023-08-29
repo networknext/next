@@ -8,12 +8,8 @@ const update = {
     };
   },
 
-  created: function() {
-    this.update()
-  },
-
   mounted: function () {
-    this.timer = setInterval(() => { this.update() }, 10000)
+    this.timer = setInterval(() => { this.update() }, 1000)
   },
 
   beforeUnmount() {

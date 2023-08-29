@@ -129,7 +129,7 @@ export default {
 
     async update() {
       try {
-        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/sessions/0/1000');
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/sessions/0/100');
         let i = 0;
         let data = []
         if (res.data.sessions !== null ) {
@@ -153,9 +153,9 @@ export default {
             data.push(row)
             i++;
           }
+          this.data = data
+          this.updated = true
         }
-        this.data = data
-        this.updated = true
       } catch (error) {
         console.log(error);
       }

@@ -147,9 +147,9 @@ export default {
             data.push(row)
             i++;
           }
+          this.data = data
+          this.updated = true
         }
-        this.data = data
-        this.updated = true
       } catch (error) {
         console.log(error);
       }
