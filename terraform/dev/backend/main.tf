@@ -244,6 +244,16 @@ resource "google_redis_instance" "redis_raspberry" {
   authorized_network = google_compute_network.development.id
 }
 
+resource "google_redis_instance" "redis_analytics" {
+  name               = "redis-analytics"
+  tier               = "BASIC"
+  memory_size_gb     = 1
+  region             = "us-central1"
+  redis_version      = "REDIS_6_X"
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  authorized_network = google_compute_network.development.id
+}
+
 resource "google_redis_instance" "redis_relay_backend" {
   name               = "redis-relay-backend"
   tier               = "BASIC"
@@ -267,7 +277,7 @@ output "redis_portal_address" {
   value       = google_redis_instance.redis_portal.host
 }
 
-output "redis_map_crunther_address" {
+output "redis_map_cruncher_address" {
   description = "The IP address of the map cruncher redis instance"
   value       = google_redis_instance.redis_map_cruncher.host
 }
@@ -275,6 +285,11 @@ output "redis_map_crunther_address" {
 output "redis_raspberry_address" {
   description = "The IP address of the raspberry redis instance"
   value       = google_redis_instance.redis_raspberry.host
+}
+
+output "redis_analytics_address" {
+  description = "The IP address of the analytics redis instance"
+  value       = google_redis_instance.redis_analytics.host
 }
 
 output "redis_relay_backend_address" {
@@ -494,6 +509,7 @@ module "analytics" {
     DATABASE_PATH="/app/database.bin"
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
+    REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
     BIGQUERY_DATASET=dev
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
