@@ -257,7 +257,7 @@ resource "google_redis_instance" "redis_analytics" {
 resource "google_redis_instance" "redis_relay_backend" {
   name               = "redis-relay-backend"
   tier               = "BASIC"
-  memory_size_gb     = 2
+  memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
   authorized_network = google_compute_network.development.id
@@ -266,7 +266,7 @@ resource "google_redis_instance" "redis_relay_backend" {
 resource "google_redis_instance" "redis_server_backend" {
   name               = "redis-server-backend"
   tier               = "BASIC"
-  memory_size_gb     = 2
+  memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
   authorized_network = google_compute_network.development.id
@@ -688,6 +688,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
+  target_size        = 8
 }
 
 output "server_backend_address" {
@@ -767,6 +768,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 8
 }
 
 # ----------------------------------------------------------------------------------------
@@ -804,6 +806,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
+  target_size        = 16
 }
 
 # ----------------------------------------------------------------------------------------
