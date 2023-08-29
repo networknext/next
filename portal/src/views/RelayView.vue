@@ -43,6 +43,7 @@ export default {
         const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/relay/' + this.$route.params.id)
         if (res.data.relay_data !== null) {
           this.current_sessions = res.data.relay_data.num_sessions
+          this.updated = true
         }
       } catch (error) {
         console.log(error)

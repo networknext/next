@@ -39,6 +39,7 @@ export default {
         if (res.data.session_data !== null) {
           this.latitude = res.data.datacenter_data.latitude
           this.longitude = res.data.datacenter_data.longitude
+          this.updated = true
         }
       } catch (error) {
         console.log(error)

@@ -37,6 +37,7 @@ export default {
         const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/server/' + this.$route.params.id)
         if (res.data.server_data !== null) {
           this.sessions = res.data.server_data.num_sessions
+          this.updated = true
         }
       } catch (error) {
         console.log(error);

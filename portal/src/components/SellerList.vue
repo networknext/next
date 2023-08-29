@@ -67,6 +67,7 @@ export default {
           return 0
         })
         this.data = data.sort()
+        this.updated = true
       } catch (error) {
         console.log(error);
       }

@@ -4,13 +4,16 @@ const update = {
   data() {
     return {
       timer: null,
-      updated: false
+      updated: false,
     };
   },
 
-  mounted: function () {
-    this.timer = setInterval(() => { this.update(); this.updated = true }, 1000)
+  created: function() {
     this.update()
+  },
+
+  mounted: function () {
+    this.timer = setInterval(() => { this.update() }, 10000)
   },
 
   beforeUnmount() {

@@ -37,6 +37,7 @@ export default {
         const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/buyer/' + this.$route.params.id)
         if (res.data.buyer_data !== null) {
           this.buyer_name = res.data.buyer_data.name
+          this.updated = true
         }
       } catch (error) {
         console.log(error)

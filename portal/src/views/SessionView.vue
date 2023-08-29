@@ -46,6 +46,7 @@ export default {
           this.datacenter_name = res.data.session_data.datacenter_name
           this.num_slices = res.data.slice_data.length
           this.num_near_relays = res.data.near_relay_data[0].num_near_relays
+          this.updated = true
         }
       } catch (error) {
         console.log(error)

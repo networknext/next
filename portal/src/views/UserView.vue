@@ -149,6 +149,7 @@ export default {
           }
         }
         this.data = data
+        this.updated = true
       } catch (error) {
         console.log(error);
       }

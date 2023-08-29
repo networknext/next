@@ -121,6 +121,7 @@ export default {
   data() {
     return {
       data: [],
+      update_rate: 10000,
     };
   },
 
@@ -154,6 +155,7 @@ export default {
           }
         }
         this.data = data
+        this.updated = true
       } catch (error) {
         console.log(error);
       }

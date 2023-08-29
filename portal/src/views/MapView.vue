@@ -29,6 +29,7 @@ export default {
         })
         .then(response => response.text())
         .then(data => console.log("got map data " + data))
+        this.updated = true
       } catch (error) {
         console.log(error);
       }

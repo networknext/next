@@ -70,7 +70,7 @@ export default {
     async update() {
       try {
         // todo: this should become the portal version of this query
-        const res = await axios.get(process.env.API_URL + '/database/buyers');
+        const res = await axios.get(process.env.VUE_APP_API_URL + '/database/buyers');
         let i = 0;
         let data = []
         while (i < res.data.buyers.length) {
@@ -96,6 +96,7 @@ export default {
         return 0
         })
         this.data = data
+        this.updated = true
       } catch (error) {
         console.log(error);
       }

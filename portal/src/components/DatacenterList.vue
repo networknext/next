@@ -96,6 +96,7 @@ export default {
           i++
         }
         this.data = data
+        this.updated = true
       } catch (error) {
         console.log(error);
       }
