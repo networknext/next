@@ -13,7 +13,7 @@ import (
 )
 
 var redisPortalHostname string
-var redisMessagesHostname string
+var redisServerBackendHostname string
 
 var mapInstance *portal.Map
 
@@ -22,13 +22,13 @@ func main() {
 	numMapUpdateThreads := envvar.GetInt("NUM_MAP_UPDATE_THREADS", 1)
 
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
-	redisMessagesHostname = envvar.GetString("REDIS_MESSAGES_HOSTNAME", "127.0.0.1:6379")
+	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 
 	service := common.CreateService("map_cruncher")
 
 	core.Debug("num map update threads: %d", numMapUpdateThreads)
 	core.Debug("redis portal hostname: %s", redisPortalHostname)
-	core.Debug("redis messages hostname: %s", redisMessagesHostname)
+	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 
 	for i := 0; i < numMapUpdateThreads; i++ {
 		ProcessMessages[*messages.PortalMapUpdateMessage](service, "map update", i, ProcessMapUpdate)
@@ -92,7 +92,7 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 
 	config := common.RedisPubsubConfig{}
 
-	config.RedisHostname = redisMessagesHostname
+	config.RedisHostname = redisServerBackendHostname
 	config.PubsubChannelName = channelName
 
 	consumer, err := common.CreateRedisPubsubConsumer(service.Context, config)

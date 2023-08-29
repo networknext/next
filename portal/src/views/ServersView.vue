@@ -53,6 +53,22 @@
 import axios from "axios";
 import update from "@/update.js"
 
+function nice_uptime(value) {
+  if (isNaN(value)) {
+    return ''
+  }
+  if (value > 86400) {
+    return Math.floor(value/86400) + "d"
+  }
+  if (value > 3600) {
+    return Math.floor(value/3600) + "h"
+  }
+  if (value > 60) {
+    return Math.floor(value/60) + "m"
+  }
+  return value + "s"
+}
+
 async function getData() {
   try {
     const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/servers/0/10');
@@ -69,7 +85,7 @@ async function getData() {
         "Datacenter Link":"datacenter/" + v.datacenter_name,
         "Current Sessions":v.num_sessions,
         "SDK Version":v.sdk_version_major + "." + v.sdk_version_minor + "." + v.sdk_version_patch,
-        "Uptime": this.nice_uptime(v.uptime),
+        "Uptime": nice_uptime(v.uptime),
       }
       data.push(row)
       i++;

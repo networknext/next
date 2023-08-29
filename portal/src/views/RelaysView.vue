@@ -58,6 +58,22 @@ import axios from "axios"
 import utils from "@/utils.js"
 import update from "@/update.js"
 
+function nice_uptime(value) {
+  if (isNaN(value)) {
+    return ''
+  }
+  if (value > 86400) {
+    return Math.floor(value/86400) + "d"
+  }
+  if (value > 3600) {
+    return Math.floor(value/3600) + "h"
+  }
+  if (value > 60) {
+    return Math.floor(value/60) + "m"
+  }
+  return value + "s"
+}
+
 async function getData() {
   try {
     const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/relays/0/100');
@@ -80,7 +96,7 @@ async function getData() {
         "Seller Link":"seller/" + v.seller_code,
         "Current Sessions":v.num_sessions,
         "Status":status,
-        "Uptime":this.nice_uptime(v.uptime),
+        "Uptime":nice_uptime(v.uptime),
         "Relay Version":v.relay_version
       }
       data.push(row)
