@@ -15,8 +15,8 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-var redisHostname string
-var redisPassword string
+var redisPortalHostname string
+var redisMessagesHostname string
 
 var pool *redis.Pool
 
@@ -32,8 +32,8 @@ func main() {
 	numRelayUpdateThreads := envvar.GetInt("NUM_RELAY_UPDATE_THREADS", 1)
 	numNearRelayUpdateThreads := envvar.GetInt("NUM_NEAR_RELAY_UPDATE_THREADS", 1)
 
-	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
+	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	redisMessagesHostname = envvar.GetString("REDIS_MESSAGES_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 
@@ -49,7 +49,8 @@ func main() {
 	core.Debug("num relay update threads: %d", numRelayUpdateThreads)
 	core.Debug("num near relay update threads: %d", numNearRelayUpdateThreads)
 
-	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis portal hostname: %s", redisPortalHostname)
+	core.Debug("redis messages hostname: %s", redisMessagesHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)
 
@@ -58,7 +59,7 @@ func main() {
 	core.Debug("relay insert batch size: %d", relayInsertBatchSize)
 	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
-	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+	pool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
 
 	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
 	serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
@@ -98,8 +99,7 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
-		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
+		RedisHostname: redisMessagesHostname,
 		StreamName:    streamName,
 		ConsumerGroup: consumerGroup,
 	}

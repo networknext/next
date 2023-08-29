@@ -214,18 +214,62 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_redis_instance" "redis" {
-  name               = "redis"
+resource "google_redis_instance" "redis_portal" {
+  name               = "redis-portal"
   tier               = "BASIC"
   memory_size_gb     = 10
+  region             = "us-central1"
+  redis_version      = "REDIS_6_X"
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  authorized_network = google_compute_network.development.id
+}
+
+resource "google_redis_instance" "redis_raspberry" {
+  name               = "redis-raspberry"
+  tier               = "BASIC"
+  memory_size_gb     = 1
+  region             = "us-central1"
+  redis_version      = "REDIS_6_X"
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  authorized_network = google_compute_network.development.id
+}
+
+resource "google_redis_instance" "redis_relay_backend" {
+  name               = "redis-relay-backend"
+  tier               = "BASIC"
+  memory_size_gb     = 2
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
   authorized_network = google_compute_network.development.id
 }
 
-output "redis_address" {
-  description = "The IP address of the redis instance"
-  value       = google_redis_instance.redis.host
+resource "google_redis_instance" "redis_server_backend" {
+  name               = "redis-server-backend"
+  tier               = "BASIC"
+  memory_size_gb     = 2
+  region             = "us-central1"
+  redis_version      = "REDIS_6_X"
+  authorized_network = google_compute_network.development.id
+}
+
+output "redis_portal_address" {
+  description = "The IP address of the portal redis instance"
+  value       = google_redis_instance.redis_portal.host
+}
+
+output "redis_raspberry_address" {
+  description = "The IP address of the raspberry redis instance"
+  value       = google_redis_instance.redis_raspberry.host
+}
+
+output "redis_relay_backend_address" {
+  description = "The IP address of the relay backend redis instance"
+  value       = google_redis_instance.redis_relay_backend.host
+}
+
+output "redis_server_backend_address" {
+  description = "The IP address of the server backend redis instance"
+  value       = google_redis_instance.redis_server_backend.host
 }
 
 # ----------------------------------------------------------------------------------------
@@ -341,7 +385,7 @@ module "relay_gateway" {
     ENV=dev
     DEBUG_LOGS=1
     GOOGLE_PROJECT_ID=${var.google_project}
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -386,7 +430,7 @@ module "relay_backend" {
     ENV=dev
     DEBUG_LOGS=1
     GOOGLE_PROJECT_ID=${var.google_project}
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -435,7 +479,6 @@ module "analytics" {
     DATABASE_PATH="/app/database.bin"
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     BIGQUERY_DATASET=dev
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
@@ -476,7 +519,7 @@ module "api" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -520,7 +563,8 @@ module "portal_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_MESSAGES_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -552,7 +596,8 @@ module "map_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_MESSAGES_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -588,7 +633,7 @@ module "server_backend" {
     UDP_BIND_ADDRESS="##########:40000"
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
@@ -633,7 +678,7 @@ module "raspberry_backend" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
