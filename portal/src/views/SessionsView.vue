@@ -3,7 +3,7 @@
 <template>
 
   <div class="d-md-none">
-    <table v-if="this.updated" id="sessions_table" class="table table-striped table-hover">
+    <table id="sessions_table" class="table table-striped table-hover">
       <thead>
         <tr>
           <th>Session ID</th>
@@ -24,7 +24,7 @@
   </div>
 
   <div class="d-none d-md-block d-lg-block d-xl-none">
-    <table v-if="this.updated" id="sessions_table" class="table table-striped table-hover">
+    <table id="sessions_table" class="table table-striped table-hover">
       <thead>
         <tr>
           <th>Session ID</th>
@@ -47,7 +47,7 @@
   </div>
 
   <div class="d-none d-xl-block d-xxl-none">
-    <table v-if="this.updated" id="sessions_table" class="table table-striped table-hover">
+    <table id="sessions_table" class="table table-striped table-hover">
       <thead>
         <tr>
           <th>Session ID</th>
@@ -72,7 +72,7 @@
   </div>
 
   <div class="d-none d-xxl-block">
-    <table v-if="this.updated" id="sessions_table" class="table table-striped table-hover">
+    <table id="sessions_table" class="table table-striped table-hover">
       <thead>
         <tr>
           <th>Session ID</th>
@@ -170,7 +170,6 @@ export default {
     var data = await getData()
     next(vm => {
       vm.data = data
-      vm.updated = data !== null
     })
   },
 
@@ -178,7 +177,6 @@ export default {
 
     async update() {
       this.data = await getData()
-      this.updated = true
     }
 
   }

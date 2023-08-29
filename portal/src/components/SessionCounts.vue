@@ -32,6 +32,10 @@ export default {
     };
   },
 
+  created: function () {
+    this.update()
+  },
+
   methods: {
 
     async update() {
