@@ -931,7 +931,9 @@ func test_redis_streams() {
 
 	receivedAllMessages := false
 
-	for i := 0; i < 10; i++ {
+	startTime := time.Now()
+
+	for {
 		messageCount := atomic.LoadUint64(&numMessagesReceived)
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
@@ -941,6 +943,9 @@ func test_redis_streams() {
 			break
 		}
 		time.Sleep(time.Millisecond)
+		if time.Since(startTime) > 10 * time.Second {
+			break
+		}
 	}
 
 	if !receivedAllMessages {
