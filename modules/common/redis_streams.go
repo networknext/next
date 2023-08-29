@@ -101,7 +101,8 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 	args := &redis.XAddArgs{
 		Stream:     producer.config.StreamName,
 		NoMkStream: false,
-		Approx:     false,
+		Approx:     true,
+		MaxLen:     1000,
 		Limit:      0,
 		ID:         "",
 		Values:     map[string]interface{}{"type": "message", "data": messageToSend},
