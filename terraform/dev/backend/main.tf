@@ -224,6 +224,16 @@ resource "google_redis_instance" "redis_portal" {
   authorized_network = google_compute_network.development.id
 }
 
+resource "google_redis_instance" "redis_map_cruncher" {
+  name               = "redis-map-cruncher"
+  tier               = "BASIC"
+  memory_size_gb     = 1
+  region             = "us-central1"
+  redis_version      = "REDIS_6_X"
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  authorized_network = google_compute_network.development.id
+}
+
 resource "google_redis_instance" "redis_raspberry" {
   name               = "redis-raspberry"
   tier               = "BASIC"
@@ -255,6 +265,11 @@ resource "google_redis_instance" "redis_server_backend" {
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = google_redis_instance.redis_portal.host
+}
+
+output "redis_map_crunther_address" {
+  description = "The IP address of the map cruncher redis instance"
+  value       = google_redis_instance.redis_map_cruncher.host
 }
 
 output "redis_raspberry_address" {
@@ -597,6 +612,7 @@ module "map_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     EOF
