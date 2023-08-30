@@ -161,7 +161,7 @@ func ProcessCostMatrix(service *common.Service) {
 		config := common.GooglePubsubConfig{
 			ProjectId:          googleProjectId,
 			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024, // todo: env var
+			MessageChannelSize: 10 * 1024,
 		}
 		var err error
 		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)
@@ -265,7 +265,7 @@ func ProcessRouteMatrix(service *common.Service) {
 		config := common.GooglePubsubConfig{
 			ProjectId:          googleProjectId,
 			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024, // todo: env var
+			MessageChannelSize: 10 * 1024,
 		}
 		var err error
 		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)

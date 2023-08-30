@@ -24,6 +24,8 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
+#include "next_config.h"
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -184,7 +186,7 @@ bool next_autodetect_google( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/network_next_sdk_config/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -195,7 +197,7 @@ bool next_autodetect_google( char * output )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network_next_sdk_config/google.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/%s/google.txt?ts=%x\" -TimeoutSec 10", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = _popen( cmd, "r" );
     if ( !file )
     {
@@ -322,7 +324,7 @@ bool next_autodetect_amazon( char * output )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/network_next_sdk_config/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -333,7 +335,7 @@ bool next_autodetect_amazon( char * output )
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/network_next_sdk_config/amazon.txt?ts=%x\" -TimeoutSec 10", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/%s/amazon.txt?ts=%x\" -TimeoutSec 10", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = _popen ( cmd, "r" );
     if ( !file )
     {
@@ -607,7 +609,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/network_next_sdk_config/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/multiplay.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {

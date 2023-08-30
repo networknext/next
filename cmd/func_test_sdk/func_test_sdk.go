@@ -2492,53 +2492,50 @@ func test_server_ready_autodetect_multiplay_success() {
 
 	fmt.Printf("test_server_ready_autodetect_multiplay_success\n")
 
-	// todo: disabling beacuse the multiplay.txt file in gcloud is not accessible currently
-	/*
-		f, err := os.Create("whois.txt")
-		if err != nil {
-			panic(err)
-		}
-		f.WriteString("Internap\n")
-		f.Close()
+	f, err := os.Create("whois.txt")
+	if err != nil {
+		panic(err)
+	}
+	f.WriteString("Internap\n")
+	f.Close()
 
-		serverConfig := &ServerConfig{}
-		serverConfig.datacenter = "multiplay.newyork"
-		serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig := &ServerConfig{}
+	serverConfig.datacenter = "multiplay.newyork"
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
-		server_cmd, server_stdout := server(serverConfig)
+	server_cmd, server_stdout := server(serverConfig)
 
-		backend_cmd, backend_stdout := backend("DEFAULT")
+	backend_cmd, backend_stdout := backend("DEFAULT")
 
-		time.Sleep(time.Second * 15)
+	time.Sleep(time.Second * 15)
 
-		server_cmd.Process.Signal(os.Interrupt)
-		backend_cmd.Process.Signal(os.Interrupt)
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
 
-		server_cmd.Wait()
-		backend_cmd.Wait()
+	server_cmd.Wait()
+	backend_cmd.Wait()
 
-		serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
-		serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
-		serverInputDatacenter := strings.Contains(server_stdout.String(), "info: server input datacenter is 'multiplay.newyork'")
-		serverReadyDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'inap.newyork'")
-		serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
-		serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
-		serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-		serverFoundInap := strings.Contains(server_stdout.String(), "debug: found seller inap")
-		serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'inap.newyork' [323c61af696bff50]")
+	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
+	serverInputDatacenter := strings.Contains(server_stdout.String(), "info: server input datacenter is 'multiplay.newyork'")
+	serverReadyDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'inap.newyork'")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverFoundInap := strings.Contains(server_stdout.String(), "debug: found seller inap")
+	serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'inap.newyork' [323c61af696bff50]")
 
-		os.Remove("whois.txt")
+	os.Remove("whois.txt")
 
-		server_check(server_stdout, backend_stdout, serverInitSuccessful)
-		server_check(server_stdout, backend_stdout, serverReady)
-		server_check(server_stdout, backend_stdout, serverInputDatacenter)
-		server_check(server_stdout, backend_stdout, serverReadyDatacenter)
-		server_check(server_stdout, backend_stdout, serverAutodetecting)
-		server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
-		server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
-		server_check(server_stdout, backend_stdout, serverFoundInap)
-		server_check(server_stdout, backend_stdout, serverAutodetectSucceeded)
-	*/
+	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverReady)
+	server_check(server_stdout, backend_stdout, serverInputDatacenter)
+	server_check(server_stdout, backend_stdout, serverReadyDatacenter)
+	server_check(server_stdout, backend_stdout, serverAutodetecting)
+	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
+	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
+	server_check(server_stdout, backend_stdout, serverFoundInap)
+	server_check(server_stdout, backend_stdout, serverAutodetectSucceeded)
 }
 
 func test_server_ready_autodetect_multiplay_fail() {
