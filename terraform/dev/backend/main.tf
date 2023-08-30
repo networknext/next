@@ -217,7 +217,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "google_redis_instance" "redis_portal" {
   name               = "redis-portal"
   tier               = "BASIC"
-  memory_size_gb     = 10
+  memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
   redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
