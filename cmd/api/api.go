@@ -133,8 +133,12 @@ func main() {
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
+		// todo: portal/buyers
+		// todo: portal/buyer_names
 
 		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
+		// todo: portal/sellers
+		// todo: portal/seller_names
 
 		service.Router.HandleFunc("/portal/datacenters", isAuthorized(portalDatacentersHandler))
 		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
