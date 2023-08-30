@@ -1,0 +1,57 @@
+{
+  "name": "portal",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "serve-local": "vue-cli-service serve --mode local",
+    "serve-dev": "vue-cli-service serve --mode dev",
+    "serve-staging": "vue-cli-service serve --mode staging",
+    "serve-prod": "vue-cli-service serve --mode prod",
+    "build-local": "vue-cli-service build --mode local",
+    "build-dev": "vue-cli-service build --mode dev",
+    "build-staging": "vue-cli-service build --mode staging",
+    "build-prod": "vue-cli-service build --mode prod",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@popperjs/core": "^2.11.8",
+    "axios": "^1.4.0",
+    "bignumber.js": "^9.1.1",
+    "bootstrap": "^5.3.1",
+    "core-js": "^3.8.3",
+    "node-sass": "^9.0.0",
+    "vue": "^3.2.13",
+    "vue-router": "^4.2.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.16",
+    "@babel/eslint-parser": "^7.12.16",
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-plugin-eslint": "~5.0.0",
+    "@vue/cli-plugin-router": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-vue": "^8.0.3",
+    "sass-loader": "^13.3.2"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/vue3-essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "@babel/eslint-parser"
+    },
+    "rules": {}
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}

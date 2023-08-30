@@ -189,6 +189,8 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 		database.BuyerDatacenterSettings[BuyerId][datacenters[i].Id] = &db.BuyerDatacenterSettings{DatacenterId: uint64(i), BuyerId: BuyerId, EnableAcceleration: true}
 	}
 
+	database.Fixup()
+
 	err := database.Validate()
 	if err != nil {
 		panic(fmt.Sprintf("database did not validate: %v\n", err))

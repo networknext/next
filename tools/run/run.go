@@ -6,17 +6,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
+	"path"
+	"encoding/json"
 
 	"github.com/joho/godotenv"
 )
 
 var cmd *exec.Cmd
-
-func cleanup() {
-	if cmd != nil {
-		cmd.Process.Kill()
-	}
-}
 
 func bash(command string) {
 
@@ -31,6 +27,20 @@ func bash(command string) {
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LD_LIBRARY_PATH=.")
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		sig := <-c
+		if cmd.Process != nil {
+			fmt.Printf("\n\n")
+			if err := cmd.Process.Signal(sig); err != nil {
+				fmt.Printf("error trying to signal child process: %v\n", err)
+			}
+			cmd.Wait()
+		}
+		os.Exit(1)
+	}()
 
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("error: failed to run command: %v\n", err)
@@ -68,14 +78,6 @@ func bash_no_wait(command string) {
 }
 
 func main() {
-
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		cleanup()
-		os.Exit(1)
-	}()
 
 	args := os.Args
 
@@ -202,11 +204,11 @@ func main() {
 		config_akamai()
 	} else if command == "config-vultr" {
 		config_vultr()
+	} else if command == "portal" {
+		portal()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
-
-	cleanup()
 }
 
 func help() {
@@ -505,21 +507,60 @@ func load_test_session_update() {
 }
 
 func config_amazon() {
-	bash("go run suppliers/amazon.go")
+	bash("go run sellers/amazon.go")
 }
 
 func config_google() {
-	bash("go run suppliers/google.go")
+	bash("go run sellers/google.go")
 }
 
 func config_akamai() {
-	bash("go run suppliers/akamai.go")
+	bash("go run sellers/akamai.go")
 }
 
 func config_vultr() {
-	bash("go run suppliers/vultr.go")
+	bash("go run sellers/vultr.go")
 }
 
 func soak_test_relay() {
 	bash("cd dist && ./soak_test_relay stop")
+}
+
+type Environment struct {
+	Name                     string `json:"name"`
+	AdminURL                 string `json:"admin_url"`
+	PortalURL                string `json:"portal_url"`
+	DatabaseURL              string `json:"database_url"`
+	SSHKeyFile               string `json:"ssh_key_filepath"`
+	APIPrivateKey            string `json:"api_private_key"`
+	APIKey                   string `json:"api_key"`
+	VPNAddress               string `json:"vpn_address"`
+	RelayBackendHostname     string `json:"relay_backend_hostname"`
+	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
+	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
+}
+
+func (e *Environment) Read() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+
+	envFilePath := path.Join(homeDir, ".next")
+
+	f, err := os.Open(envFilePath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(e); err != nil {
+		panic(err)
+	}
+}
+
+func portal() {
+	var env Environment
+	env.Read()
+	bash(fmt.Sprintf("cd portal && yarn serve-%s", env.Name))
 }

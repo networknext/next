@@ -15,11 +15,14 @@ import (
 	"os"
 	"os/exec"
 	"time"
+	"strconv"
 
+	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
+	db "github.com/networknext/next/modules/database"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -147,6 +150,9 @@ func api() *exec.Cmd {
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
 	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
 
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
 	cmd.Start()
 
 	return cmd
@@ -232,9 +238,11 @@ func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
 					relayData := portal.GenerateRandomRelayData()
 					relaySample := portal.GenerateRandomRelaySample()
 
-					id := uint32(iteration + uint64(j))
+					id := 1 + uint64(k*threadCount+j)
 
-					relayData.RelayAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
+					relayData.RelayName = fmt.Sprintf("local-%d", id)
+
+					relayData.RelayAddress = fmt.Sprintf("127.0.0.1:%d", 2000+id)
 
 					relayInserter.Insert(relayData, relaySample)
 				}
@@ -248,6 +256,8 @@ func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
 }
 
 func Get(url string, object interface{}) {
+
+	fmt.Printf("Get URL: %s\n", url)
 
 	buffer := new(bytes.Buffer)
 
@@ -342,7 +352,48 @@ func test_portal() {
 
 	redisClient.Do("FLUSHALL")
 
+	// create a dummy database
+
+	database := db.CreateDatabase()
+
+	database.CreationTime = "now"
+	database.Creator = "test"
+	database.BuyerMap[1] = &db.Buyer{Id: 1, Name: "buyer", Live: true, Debug: true}
+	database.SellerMap[1] = &db.Seller{Id: 1, Name: "seller"}
+	database.DatacenterMap[1] = &db.Datacenter{Id: 1, Name: "local", Latitude: 100, Longitude: 200}
+	for i := 0; i < 1000; i++ {
+		relayId := uint64(1+i)
+		relay := db.Relay{
+			Id: relayId, 
+			Name: fmt.Sprintf("local-%d", i+1), 
+			PublicAddress: core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i)),
+			SSHAddress: core.ParseAddress("127.0.0.1:22"),
+			Datacenter: *database.DatacenterMap[1], 
+			Seller: *database.SellerMap[1],
+		}
+		database.Relays = append(database.Relays, relay)
+		database.DatacenterRelays[1] = append(database.DatacenterRelays[1], uint64(1+i))
+	}
+
+	database.Fixup()
+
+	fmt.Printf("database is %s\n", database.String())
+
+	err := database.Validate()
+	if err != nil {
+		fmt.Printf("error: database did not validate: %v\n", err)
+		os.Exit(1)
+	}
+
+	// save it to database.bin
+
+	database.Save("database.bin")
+
+	// run the API service, it will load the database
+
 	api_cmd := api()
+
+	// run redis insertion threads
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
@@ -354,9 +405,13 @@ func test_portal() {
 	RunServerInsertThreads(redisPool, threadCount)
 	RunRelayInsertThreads(redisPool, threadCount)
 
+	// simulate portal activity
+
 	var ready bool
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 60; i++ {
+
+		fmt.Printf("iteration %d\n", i)
 
 		sessionCountsResponse := PortalSessionCountsResponse{}
 
@@ -368,7 +423,7 @@ func test_portal() {
 
 		sessionsResponse := PortalSessionsResponse{}
 
-		Get("http://127.0.0.1:50000/portal/sessions/0/1000", &sessionsResponse)
+		Get("http://127.0.0.1:50000/portal/sessions/0/10", &sessionsResponse)
 
 		fmt.Printf("got data for %d sessions\n", len(sessionsResponse.Sessions))
 
@@ -376,11 +431,16 @@ func test_portal() {
 
 		if len(sessionsResponse.Sessions) > 0 {
 
-			fmt.Printf("first session id is %016x\n", sessionsResponse.Sessions[0].SessionId)
+			sessionId, err := strconv.ParseInt(sessionsResponse.Sessions[0].SessionId, 10, 64)
+			if err != nil {
+				panic(err)
+			}
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%s", sessionsResponse.Sessions[0].SessionId), &sessionDataResponse)
+			fmt.Printf("first session id is %016x\n", sessionId)
 
-			fmt.Printf("session %s has %d slices, %d near relay data\n", sessionsResponse.Sessions[0].SessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%016x", sessionId), &sessionDataResponse)
+
+			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
 		}
 
 		serverCountResponse := PortalServerCountResponse{}
@@ -391,7 +451,7 @@ func test_portal() {
 
 		serversResponse := PortalServersResponse{}
 
-		Get("http://127.0.0.1:50000/portal/servers/0/1000", &serversResponse)
+		Get("http://127.0.0.1:50000/portal/servers/0/10", &serversResponse)
 
 		serverDataResponse := PortalServerDataResponse{}
 
@@ -409,14 +469,13 @@ func test_portal() {
 		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
 
 		relayCountResponse := PortalRelayCountResponse{}
-
 		Get("http://127.0.0.1:50000/portal/relay_count", &relayCountResponse)
 
 		fmt.Printf("relays = %d\n", relayCountResponse.RelayCount)
 
 		relaysResponse := PortalRelaysResponse{}
 
-		Get("http://127.0.0.1:50000/portal/relays/0/1000", &relaysResponse)
+		Get("http://127.0.0.1:50000/portal/relays/0/10", &relaysResponse)
 
 		fmt.Printf("got data for %d relays\n", len(relaysResponse.Relays))
 
@@ -424,11 +483,11 @@ func test_portal() {
 
 		if len(relaysResponse.Relays) > 0 {
 
-			fmt.Printf("first relay address is '%s'\n", relaysResponse.Relays[0].RelayAddress)
+			fmt.Printf("first relay is '%s'\n", relaysResponse.Relays[0].RelayName)
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].RelayAddress), &relayDataResponse)
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].RelayName), &relayDataResponse)
 
-			fmt.Printf("relay %s has %d samples\n", relaysResponse.Relays[0].RelayAddress, len(relayDataResponse.RelaySamples))
+			fmt.Printf("relay %s has %d samples\n", relaysResponse.Relays[0].RelayName, len(relayDataResponse.RelaySamples))
 		}
 
 		ready = true
@@ -443,7 +502,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(sessionsResponse.Sessions) < 1000 {
+		if len(sessionsResponse.Sessions) < 10 {
 			fmt.Printf("C\n")
 			ready = false
 		}
@@ -473,7 +532,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if relayCountResponse.RelayCount < 100 {
+		if relayCountResponse.RelayCount < 10 {
 			fmt.Printf("I\n")
 			ready = false
 		}

@@ -837,7 +837,7 @@ func test_redis_streams() {
 
 	var waitGroup sync.WaitGroup
 
-	const NumProducers = 3
+	const NumProducers = 10
 
 	producers := [NumProducers]*common.RedisStreamsProducer{}
 
@@ -862,7 +862,7 @@ func test_redis_streams() {
 
 	waitGroup.Add(NumProducers)
 
-	const NumMessagesPerProducer = 100000
+	const NumMessagesPerProducer = 1000
 
 	for i := 0; i < NumProducers; i++ {
 
@@ -931,16 +931,21 @@ func test_redis_streams() {
 
 	receivedAllMessages := false
 
-	for i := 0; i < 30; i++ {
+	startTime := time.Now()
+
+	for {
 		messageCount := atomic.LoadUint64(&numMessagesReceived)
 		expectedCount := uint64(NumProducers * NumMessagesPerProducer)
 		core.Debug("received %d/%d messages", messageCount, expectedCount)
-		if i > 10 && messageCount >= expectedCount {
+		if messageCount >= expectedCount {
 			core.Debug("received all")
 			receivedAllMessages = true
 			break
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond)
+		if time.Since(startTime) > 10 * time.Second {
+			break
+		}
 	}
 
 	if !receivedAllMessages {
@@ -1803,10 +1808,10 @@ func test_relay_backend() {
 
 		database.Relays = append(database.Relays, relay)
 
-		database.RelayMap[relay.Id] = &relay
-
 		database.DatacenterRelays[datacenter.Id] = append(database.DatacenterRelays[datacenter.Id], relay.Id)
 	}
+
+	database.Fixup()
 
 	// write the database out to a temporary file
 

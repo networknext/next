@@ -35,7 +35,6 @@ const (
 
 	MaxRouteCost = 255
 
-	// todo: convert these to golang style
 	NEXT_MAX_NODES                      = 7
 	NEXT_ADDRESS_BYTES                  = 19
 	NEXT_ADDRESS_IPV4_BYTES             = 6

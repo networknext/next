@@ -53,7 +53,9 @@ func main() {
 	}
 
 	core.Debug("pgsql config: %s", pgsqlConfig)
-	core.Debug("database url: %s", databaseURL)
+	if databaseURL != "" {
+		core.Debug("database url: %s", databaseURL)
+	}
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)
@@ -62,28 +64,6 @@ func main() {
 	core.Debug("enable database: %v", enableDatabase)
 
 	service.Router.HandleFunc("/ping", isAuthorized(pingHandler))
-
-	if enablePortal {
-
-		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
-
-		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
-		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
-		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
-		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
-
-		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
-		service.Router.HandleFunc("/portal/servers/{begin}/{end}", isAuthorized(portalServersHandler))
-		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
-
-		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
-		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
-		service.Router.HandleFunc("/portal/relay/{relay_address}", isAuthorized(portalRelayDataHandler))
-
-		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
-
-		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
-	}
 
 	if enableAdmin {
 
@@ -135,9 +115,40 @@ func main() {
 		service.Router.HandleFunc("/admin/delete_relay_keypair/{relayKeypairId}", isAuthorized(adminDeleteRelayKeypairHandler)).Methods("DELETE")
 	}
 
-	if enableDatabase {
+	if enablePortal {
 
-		service.LoadDatabase()
+		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+
+		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
+		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
+		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
+
+		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
+		service.Router.HandleFunc("/portal/servers/{begin}/{end}", isAuthorized(portalServersHandler))
+		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
+
+		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
+		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
+
+		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
+		// todo: portal/buyers
+		// todo: portal/buyer_names
+
+		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
+		// todo: portal/sellers
+		// todo: portal/seller_names
+
+		service.Router.HandleFunc("/portal/datacenters", isAuthorized(portalDatacentersHandler))
+		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
+
+		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
+
+		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
+	}
+
+	if enableDatabase {
 
 		service.Router.HandleFunc("/database/json", isAuthorized(databaseJSONHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/binary", isAuthorized(databaseBinaryHandler)).Methods("GET")
@@ -147,6 +158,10 @@ func main() {
 		service.Router.HandleFunc("/database/datacenters", isAuthorized(databaseDatacentersHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/relays", isAuthorized(databaseRelaysHandler)).Methods("GET")
 		service.Router.HandleFunc("/database/buyer_datacenter_settings", isAuthorized(databaseBuyerDatacenterSettingsHandler)).Methods("GET")
+	}
+
+	if enablePortal || enableDatabase {
+		service.LoadDatabase()	// needed by both portal and database REST APIs
 	}
 
 	service.StartWebServer()
@@ -236,10 +251,39 @@ type PortalSessionData struct {
 	NextRTT        uint32  `json:"next_rtt"`
 	MatchId        uint64  `json:"match_id,string"`
 	BuyerId        uint64  `json:"buyer_id,string"`
-	DatacenterId   uint64  `json:"datacenter_id,string"`
-	ServerAddress  string  `json:"server_address"`
-	DatacenterName string  `json:"datacenter_name"`
 	BuyerName      string  `json:"buyer_name"`
+	BuyerCode      string  `json:"buyer_code"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
+	DatacenterName string  `json:"datacenter_name"`
+	ServerAddress  string  `json:"server_address"`
+}
+
+func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
+	output.SessionId = input.SessionId
+	output.UserHash = input.UserHash
+	output.StartTime = input.StartTime
+	output.ISP = input.ISP
+	output.ConnectionType = input.ConnectionType
+	output.PlatformType = input.PlatformType
+	output.Latitude = input.Latitude
+	output.Longitude = input.Longitude
+	output.DirectRTT = input.DirectRTT
+	output.NextRTT = input.NextRTT
+	output.MatchId = input.MatchId
+	output.BuyerId = input.BuyerId
+	output.DatacenterId = input.DatacenterId
+	output.ServerAddress = input.ServerAddress
+	if database != nil {
+		buyer := database.GetBuyer(input.BuyerId)
+		if buyer != nil {
+			output.BuyerName = buyer.Name
+			output.BuyerCode = buyer.Code
+		}
+		datacenter := database.GetDatacenter(input.DatacenterId)
+		if datacenter != nil {
+			output.DatacenterName = datacenter.Name
+		}
+	}	
 }
 
 type PortalSessionsResponse struct {
@@ -263,30 +307,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
 	for i := range response.Sessions {
-		response.Sessions[i].SessionId = sessions[i].SessionId
-		response.Sessions[i].UserHash = sessions[i].UserHash
-		response.Sessions[i].StartTime = sessions[i].StartTime
-		response.Sessions[i].ISP = sessions[i].ISP
-		response.Sessions[i].ConnectionType = sessions[i].ConnectionType
-		response.Sessions[i].PlatformType = sessions[i].PlatformType
-		response.Sessions[i].Latitude = sessions[i].Latitude
-		response.Sessions[i].Longitude = sessions[i].Longitude
-		response.Sessions[i].DirectRTT = sessions[i].DirectRTT
-		response.Sessions[i].NextRTT = sessions[i].NextRTT
-		response.Sessions[i].MatchId = sessions[i].MatchId
-		response.Sessions[i].BuyerId = sessions[i].BuyerId
-		response.Sessions[i].DatacenterId = sessions[i].DatacenterId
-		response.Sessions[i].ServerAddress = sessions[i].ServerAddress
-		if database != nil {
-			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
-			if buyer != nil {
-				response.Sessions[i].BuyerName = buyer.Name
-			}
-			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
-			if datacenter != nil {
-				response.Sessions[i].DatacenterName = datacenter.Name
-			}
-		}
+		upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -294,14 +315,12 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalUserSessionsResponse struct {
-	Sessions        []portal.SessionData `json:"sessions"`
-	BuyerNames      []string             `json:"buyer_names"`
-	DatacenterNames []string             `json:"datacenter_names"`
+	Sessions        []PortalSessionData `json:"sessions"`
 }
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userHash, err := strconv.ParseUint(vars["user_hash"], 10, 64)
+	userHash, err := strconv.ParseUint(vars["user_hash"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -317,21 +336,11 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalUserSessionsResponse{}
-	response.Sessions = portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
-	if database != nil {
-		response.BuyerNames = make([]string, len(response.Sessions))
-		response.DatacenterNames = make([]string, len(response.Sessions))
-		for i := range response.Sessions {
-			buyer := database.GetBuyer(response.Sessions[i].BuyerId)
-			if buyer != nil {
-				response.BuyerNames[i] = buyer.Name
-			}
-			datacenter := database.GetDatacenter(response.Sessions[i].DatacenterId)
-			if datacenter != nil {
-				response.DatacenterNames[i] = datacenter.Name
-			}
-		}
+	for i := range response.Sessions {
+		upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -339,20 +348,26 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionDataResponse struct {
-	SessionData   *portal.SessionData    `json:"session_data"`
+	SessionData   PortalSessionData      `json:"session_data"`
 	SliceData     []portal.SliceData     `json:"slice_data"`
 	NearRelayData []portal.NearRelayData `json:"near_relay_data"`
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sessionId, err := strconv.ParseUint(vars["session_id"], 10, 64)
+	sessionId, err := strconv.ParseUint(vars["session_id"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	response := PortalSessionDataResponse{}
-	response.SessionData, response.SliceData, response.NearRelayData = portal.GetSessionData(pool, sessionId)
+	sessionData, sliceData, nearRelayData := portal.GetSessionData(pool, sessionId)
+	if sessionData != nil {
+		database := service.Database()
+		upgradePortalSessionData(database, sessionData, &response.SessionData)
+		response.SliceData = sliceData
+		response.NearRelayData = nearRelayData
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -383,6 +398,9 @@ type PortalServerData struct {
 	NumSessions      uint32 `json:"num_sessions"`
 	StartTime        uint64 `json:"start_time,string"`
 	Uptime           uint64 `json:"uptime,string"`
+	BuyerName        string `json:"buyer_name"`
+	BuyerCode        string `json:"buyer_code"`
+	DatacenterName   string `json:"datacenter_name"`
 }
 
 type PortalServersResponse struct {
@@ -404,6 +422,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	servers := portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
+	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
 	for i := range servers {
 		response.Servers[i].ServerAddress = servers[i].ServerAddress
@@ -416,6 +435,17 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		response.Servers[i].NumSessions = servers[i].NumSessions
 		response.Servers[i].StartTime = servers[i].StartTime
 		response.Servers[i].Uptime = currentTime - servers[i].StartTime
+		if database != nil {
+			buyer := database.GetBuyer(response.Servers[i].BuyerId)
+			if buyer != nil {
+				response.Servers[i].BuyerName = buyer.Name
+				response.Servers[i].BuyerCode = buyer.Code
+			}
+			datacenter := database.GetDatacenter(response.Servers[i].DatacenterId)
+			if datacenter != nil {
+				response.Servers[i].DatacenterName = datacenter.Name
+			}
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -460,11 +490,12 @@ type PortalRelayData struct {
 	StartTime      uint64 `json:"start_time,string"`
 	RelayFlags     uint64 `json:"relay_flags,string"`
 	RelayVersion   string `json:"relay_version"`
-	DatacenterName string `json:"datacenter_name"`
-	SellerName     string `json:"seller_name"`
-	Uptime         uint64 `json:"uptime,string"`
 	SellerId       uint64 `json:"seller_id,string"`
+	SellerName     string `json:"seller_name"`
+	SellerCode     string `json:"seller_code"`
 	DatacenterId   uint64 `json:"datacenter_id,string"`
+	DatacenterName string `json:"datacenter_name"`
+	Uptime         uint64 `json:"uptime,string"`
 }
 
 type PortalRelaysResponse struct {
@@ -502,11 +533,12 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 			if relay == nil {
 				continue
 			}
-			response.Relays[i].DatacenterName = relay.Datacenter.Name
-			response.Relays[i].SellerName = relay.Seller.Name
-			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
-			response.Relays[i].DatacenterId = relay.Datacenter.Id
 			response.Relays[i].SellerId = relay.Seller.Id
+			response.Relays[i].SellerName = relay.Seller.Name
+			response.Relays[i].SellerCode = relay.Seller.Code
+			response.Relays[i].DatacenterId = relay.Datacenter.Id
+			response.Relays[i].DatacenterName = relay.Datacenter.Name
+			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
 		}
 	}
 	w.WriteHeader(http.StatusOK)
@@ -521,9 +553,127 @@ type PortalRelayDataResponse struct {
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	relayAddress := vars["relay_address"]
+	relayName := vars["relay_name"]
+	database := service.Database()
 	response := PortalRelayDataResponse{}
-	response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
+	if database != nil {
+		relay := database.GetRelayByName(relayName)
+		if relay != nil {
+			relayAddress := relay.PublicAddress.String()
+			response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalBuyerDataResponse struct {
+	BuyerData    *db.Buyer    `json:"buyer_data"`
+}
+
+func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	buyerCode := vars["buyer_code"]
+	database := service.Database()
+	response := PortalBuyerDataResponse{}
+	if database != nil {
+		response.BuyerData = database.GetBuyerByCode(buyerCode)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalSellerDataResponse struct {
+	SellerData    *db.Seller    `json:"seller_data"`
+}
+
+func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sellerCode := vars["seller_code"]
+	database := service.Database()
+	response := PortalSellerDataResponse{}
+	if database != nil {
+		response.SellerData = database.GetSellerByCode(sellerCode)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalDatacenterData struct {
+	Id        uint64  `json:"id,string"`
+	Name      string  `json:"name"`
+	Native    string  `json:"native"`
+	Latitude  float32 `json:"latitude"`
+	Longitude float32 `json:"longitude"`
+	SellerId   uint64 `json:"seller_id,string"`
+	SellerCode string `json:"seller_code"`
+	SellerName string `json:"seller_name"`
+}
+
+type PortalDatacentersResponse struct {
+	Datacenters []PortalDatacenterData `json:"datacenters"`
+}
+
+func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	database_response := database.GetDatacenters()
+	response := PortalDatacentersResponse{}
+	response.Datacenters = make([]PortalDatacenterData, len(database_response.Datacenters))
+	for i := range response.Datacenters {
+		response.Datacenters[i].Id = database_response.Datacenters[i].Id
+		response.Datacenters[i].Name = database_response.Datacenters[i].Name
+		response.Datacenters[i].Native = database_response.Datacenters[i].Native
+		response.Datacenters[i].Latitude = database_response.Datacenters[i].Latitude
+		response.Datacenters[i].Longitude = database_response.Datacenters[i].Longitude
+		response.Datacenters[i].SellerId = database_response.Datacenters[i].SellerId
+		seller := database.GetSeller(database_response.Datacenters[i].SellerId)
+		if seller != nil {
+			response.Datacenters[i].SellerName = seller.Name
+			response.Datacenters[i].SellerCode = seller.Code
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+type PortalDatacenterDataResponse struct {
+	DatacenterData    PortalDatacenterData    `json:"datacenter_data"`
+}
+
+func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	datacenterName := vars["datacenter_name"]
+	database := service.Database()
+	response := PortalDatacenterDataResponse{}
+	if database != nil {
+		datacenter := database.GetDatacenterByName(datacenterName)
+		if datacenter != nil {
+			response.DatacenterData.Id = datacenter.Id
+			response.DatacenterData.Name = datacenter.Name
+			response.DatacenterData.Native = datacenter.Native
+			response.DatacenterData.Latitude = datacenter.Latitude
+			response.DatacenterData.Longitude = datacenter.Longitude
+			response.DatacenterData.SellerId = datacenter.SellerId
+			seller := database.GetSeller(datacenter.SellerId)
+			if seller != nil {
+				response.DatacenterData.SellerName = seller.Name
+				response.DatacenterData.SellerCode = seller.Code
+			}
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -1066,7 +1216,7 @@ func adminReadRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		core.Error("failed to read relays: %v", err)
 		response.Error = err.Error()
 	} else {
-		core.Debug("read relay -> %+v", relays)
+		core.Debug("read relays -> %+v", relays)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

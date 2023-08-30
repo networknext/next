@@ -4732,13 +4732,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
                 while ( iter != relay->sessions->end() )
                 {
-                    if ( iter->second && iter->second->expire_timestamp < relay_timestamp( relay ) )
+                    relay_session_t * session = iter->second;
+                    if ( session && session->expire_timestamp < relay_timestamp( relay ) )
                     {
                         printf( "Session %" PRIx64 ".%d destroyed on relay thread %d\n", iter->second->session_id, iter->second->session_version, relay->thread_index );
                         relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
                         relay->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
                         relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
                         iter = relay->sessions->erase( iter );
+                        free( session );
                     }
                     else
                     {
@@ -5201,6 +5203,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                 relay->sessions->erase(key);
+                free( session );
                 continue;
             }
 
@@ -5409,6 +5412,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                 relay->sessions->erase(key);
+                free( session );
                 continue;
             }
 
@@ -5522,6 +5526,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                 relay->sessions->erase(key);
+                free( session );
                 continue;
             }
 
@@ -5640,6 +5645,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                 relay->sessions->erase(key);
+                free( session );
                 continue;
             }
 
@@ -5753,6 +5759,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                 relay->sessions->erase(key);
+                free( session );
                 continue;
             }
 
@@ -5864,6 +5871,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_EXPIRED]++;
                 relay->sessions->erase(key);
+                free( session );
                 continue;
             }
 

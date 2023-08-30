@@ -1,4 +1,3 @@
-
 # ========================================================================================
 #                                       DEV RELAYS
 # ========================================================================================
@@ -46,13 +45,7 @@ locals {
 
     # IOWA
 
-    "google.iowa.1.a" = {
-      datacenter_name = "google.iowa.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.b" = {
+    "google.iowa.1" = {
       datacenter_name = "google.iowa.1"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
@@ -84,6 +77,14 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    # LOS ANGELES
+
+    "google.losangeles.1" = {
+      datacenter_name = "google.losangeles.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
     # SALT LAKE CITY
 
     "google.saltlakecity.1" = {
@@ -97,6 +98,39 @@ locals {
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+
+    # SOUTH CAROLINA
+
+    "google.southcarolina.2" = {
+      datacenter_name = "google.southcarolina.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # VIRGINIA
+
+    "google.virginia.1" = {
+      datacenter_name = "google.virginia.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # DALLAS
+
+    "google.dallas.1" = {
+      datacenter_name = "google.dallas.1"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    # OHIO
+
+    "google.ohio.1" = {
+      datacenter_name = "google.ohio.1"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
   }
 }
 
@@ -104,7 +138,7 @@ module "google_relays" {
   relays              = local.google_relays
   project             = local.google_project
   credentials         = local.google_credentials
-  source              = "../../suppliers/google"
+  source              = "../../sellers/google"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
@@ -160,17 +194,18 @@ locals {
       image           = "linode/ubuntu22.04"
     }
     
-    "akamai.frankfurt" = {
-      datacenter_name = "akamai.frankfurt"
+    "akamai.dallas" = {
+      datacenter_name = "akamai.dallas"
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
-    },
+    }
+
   }
 }
 
 module "akamai_relays" {
   relays              = local.akamai_relays
-  source              = "../../suppliers/akamai"
+  source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
@@ -185,14 +220,44 @@ locals {
 
   vultr_relays = {
 
-    "vultr.seattle" = {
-      datacenter_name = "vultr.seattle"
+    "vultr.chicago" = {
+      datacenter_name = "vultr.chicago"
       plan            = "vc2-1c-1gb"
       os              = "Ubuntu 22.04 LTS x64"
     },
 
-    "vultr.chicago" = {
-      datacenter_name = "vultr.chicago"
+    "vultr.atlanta" = {
+      datacenter_name = "vultr.atlanta"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.losangeles" = {
+      datacenter_name = "vultr.losangeles"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.miami" = {
+      datacenter_name = "vultr.miami"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.dallas" = {
+      datacenter_name = "vultr.dallas"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.newyork" = {
+      datacenter_name = "vultr.newyork"
+      plan            = "vc2-1c-1gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.siliconvalley" = {
+      datacenter_name = "vultr.siliconvalley"
       plan            = "vc2-1c-1gb"
       os              = "Ubuntu 22.04 LTS x64"
     },
@@ -202,7 +267,7 @@ locals {
 
 module "vultr_relays" {
   relays              = local.vultr_relays
-  source              = "../../suppliers/vultr"
+  source              = "../../sellers/vultr"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
@@ -259,7 +324,7 @@ locals {
 resource "networknext_datacenter" datacenters {
   for_each = local.datacenters
   name = each.key
-  seller_id = local.seller_map[each.value.seller_name].id
+  seller_id = local.seller_map[each.value.seller_code].id
   latitude = each.value.latitude
   longitude = each.value.longitude
   native_name = each.value.native_name

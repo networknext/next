@@ -15,8 +15,9 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-var redisHostname string
-var redisPassword string
+var redisPortalHostname string
+var redisRelayBackendHostname string
+var redisServerBackendHostname string
 
 var pool *redis.Pool
 
@@ -32,8 +33,9 @@ func main() {
 	numRelayUpdateThreads := envvar.GetInt("NUM_RELAY_UPDATE_THREADS", 1)
 	numNearRelayUpdateThreads := envvar.GetInt("NUM_NEAR_RELAY_UPDATE_THREADS", 1)
 
-	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
+	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
+	redisRelayBackendHostname = envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 
@@ -49,7 +51,9 @@ func main() {
 	core.Debug("num relay update threads: %d", numRelayUpdateThreads)
 	core.Debug("num near relay update threads: %d", numNearRelayUpdateThreads)
 
-	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis portal hostname: %s", redisPortalHostname)
+	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
+	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)
 
@@ -58,7 +62,7 @@ func main() {
 	core.Debug("relay insert batch size: %d", relayInsertBatchSize)
 	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
-	pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+	pool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
 
 	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
 	serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
@@ -67,22 +71,22 @@ func main() {
 
 	for i := 0; i < numSessionUpdateThreads; i++ {
 		sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
-		ProcessMessages[*messages.PortalSessionUpdateMessage](service, "session update", i, ProcessSessionUpdate)
+		ProcessMessages[*messages.PortalSessionUpdateMessage](service, redisServerBackendHostname, "session update", i, ProcessSessionUpdate)
 	}
 
 	for i := 0; i < numServerUpdateThreads; i++ {
 		serverInserter[i] = portal.CreateServerInserter(pool, serverInsertBatchSize)
-		ProcessMessages[*messages.PortalServerUpdateMessage](service, "server update", i, ProcessServerUpdate)
-	}
-
-	for i := 0; i < numRelayUpdateThreads; i++ {
-		relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
-		ProcessMessages[*messages.PortalRelayUpdateMessage](service, "relay update", i, ProcessRelayUpdate)
+		ProcessMessages[*messages.PortalServerUpdateMessage](service, redisServerBackendHostname, "server update", i, ProcessServerUpdate)
 	}
 
 	for i := 0; i < numNearRelayUpdateThreads; i++ {
 		nearRelayInserter[i] = portal.CreateNearRelayInserter(pool, nearRelayInsertBatchSize)
-		ProcessMessages[*messages.PortalNearRelayUpdateMessage](service, "near relay update", i, ProcessNearRelayUpdate)
+		ProcessMessages[*messages.PortalNearRelayUpdateMessage](service, redisServerBackendHostname, "near relay update", i, ProcessNearRelayUpdate)
+	}
+
+	for i := 0; i < numRelayUpdateThreads; i++ {
+		relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
+		ProcessMessages[*messages.PortalRelayUpdateMessage](service, redisRelayBackendHostname, "relay update", i, ProcessRelayUpdate)
 	}
 
 	service.StartWebServer()
@@ -92,14 +96,13 @@ func main() {
 
 // -------------------------------------------------------------------------------
 
-func ProcessMessages[T messages.Message](service *common.Service, name string, threadNumber int, process func([]byte, int)) {
+func ProcessMessages[T messages.Message](service *common.Service, redisHostname string, name string, threadNumber int, process func([]byte, int)) {
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
 		StreamName:    streamName,
 		ConsumerGroup: consumerGroup,
 	}

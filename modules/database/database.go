@@ -50,7 +50,7 @@ type Relay struct {
 type Buyer struct {
 	Id          uint64           `json:"id,string"`
 	Name        string           `json:"name"`
-	Code        string           `jnon:"code"`
+	Code        string           `json:"code"`
 	Live        bool             `json:"live"`
 	Debug       bool             `json:"debug"`
 	PublicKey   []byte           `json:"public_key"`
@@ -69,6 +69,7 @@ type Datacenter struct {
 	Native    string  `json:"native"`
 	Latitude  float32 `json:"latitude"`
 	Longitude float32 `json:"longitude"`
+	SellerId  uint64  `json:"seller_id,string"`
 }
 
 type BuyerDatacenterSettings struct {
@@ -81,12 +82,16 @@ type Database struct {
 	CreationTime            string                                         `json:"creation_time"`
 	Creator                 string                                         `json:"creator"`
 	Relays                  []Relay                                        `json:"relays"`
-	RelayMap                map[uint64]*Relay                              `json:"relay_map"`
 	BuyerMap                map[uint64]*Buyer                              `json:"buyer_map"`
 	SellerMap               map[uint64]*Seller                             `json:"seller_map"`
 	DatacenterMap           map[uint64]*Datacenter                         `json:"datacenter"`
 	DatacenterRelays        map[uint64][]uint64                            `json:"datacenter_relays"`
 	BuyerDatacenterSettings map[uint64]map[uint64]*BuyerDatacenterSettings `json:"buyer_datacenter_settings"`
+	RelayMap                map[uint64]*Relay
+	RelayNameMap            map[string]*Relay
+	BuyerCodeMap            map[string]*Buyer
+	SellerCodeMap           map[string]*Seller
+	DatacenterNameMap       map[string]*Datacenter
 }
 
 func CreateDatabase() *Database {
@@ -95,12 +100,16 @@ func CreateDatabase() *Database {
 		CreationTime:            "",
 		Creator:                 "",
 		Relays:                  []Relay{},
-		RelayMap:                make(map[uint64]*Relay),
 		BuyerMap:                make(map[uint64]*Buyer),
 		SellerMap:               make(map[uint64]*Seller),
 		DatacenterMap:           make(map[uint64]*Datacenter),
 		DatacenterRelays:        make(map[uint64][]uint64),
 		BuyerDatacenterSettings: make(map[uint64]map[uint64]*BuyerDatacenterSettings),
+		RelayMap:                make(map[uint64]*Relay),
+		RelayNameMap:            make(map[string]*Relay),
+		BuyerCodeMap:            make(map[string]*Buyer),
+		SellerCodeMap:           make(map[string]*Seller),
+		DatacenterNameMap:       make(map[string]*Datacenter),
 	}
 
 	return database
@@ -119,7 +128,49 @@ func LoadDatabase(filename string) (*Database, error) {
 
 	err = gob.NewDecoder(databaseFile).Decode(database)
 
+	if err == nil {
+		database.Fixup()
+	}
+
 	return database, err
+}
+
+func (database *Database) Fixup() {
+
+	if len(database.RelayMap) != len(database.Relays) {
+		database.RelayMap = make(map[uint64]*Relay, len(database.Relays))
+		for i := range database.Relays {
+			database.RelayMap[database.Relays[i].Id] = &database.Relays[i]
+		}
+	}
+
+	if len(database.RelayNameMap) != len(database.Relays) {
+		database.RelayNameMap = make(map[string]*Relay, len(database.Relays))
+		for i := range database.Relays {
+			database.RelayNameMap[database.Relays[i].Name] = &database.Relays[i]
+		}
+	}
+
+	if len(database.BuyerCodeMap) != len(database.BuyerMap) {
+		database.BuyerCodeMap = make(map[string]*Buyer, len(database.BuyerMap))
+		for _,v := range database.BuyerMap {
+			database.BuyerCodeMap[v.Code] = v
+		}
+	}
+
+	if len(database.SellerCodeMap) != len(database.SellerMap) {
+		database.SellerCodeMap = make(map[string]*Seller, len(database.SellerMap))
+		for _,v := range database.SellerMap {
+			database.SellerCodeMap[v.Code] = v
+		}
+	}
+
+	if len(database.DatacenterNameMap) != len(database.DatacenterMap) {
+		database.DatacenterNameMap = make(map[string]*Datacenter, len(database.DatacenterMap))
+		for _,v := range database.DatacenterMap {
+			database.DatacenterNameMap[v.Name] = v
+		}
+	}
 }
 
 func (database *Database) Save(filename string) error {
@@ -144,9 +195,37 @@ func (database *Database) Validate() error {
 		return fmt.Errorf("database is empty")
 	}
 
+	if len(database.Relays) != len(database.RelayMap) {
+		return fmt.Errorf("mismatch between number of relays in relay list vs. relay map (%d vs. %d)", len(database.Relays), len(database.RelayMap))
+	}
+
+	if len(database.Relays) != len(database.RelayNameMap) {
+		return fmt.Errorf("mismatch between number of relays in relay list vs. relay name map (%d vs. %d)", len(database.Relays), len(database.RelayNameMap))
+	}
+
+	if len(database.BuyerMap) != len(database.BuyerCodeMap) {
+		return fmt.Errorf("mismatch between number of buyers in buyer map vs. buyer code map (%d vs. %d)", len(database.BuyerMap), len(database.BuyerCodeMap))
+	}
+
+	if len(database.SellerMap) != len(database.SellerCodeMap) {
+		return fmt.Errorf("mismatch between number of sellers in seller map vs. seller code map (%d vs. %d)", len(database.SellerMap), len(database.SellerCodeMap))
+	}
+
+	for k,v := range database.RelayNameMap {
+		if v.Name != k {
+			return fmt.Errorf("relay %s has wrong key %s in relay name map", v.Name, k)
+		}
+	}
+
 	for id, datacenter := range database.DatacenterMap {
 		if id != datacenter.Id {
 			return fmt.Errorf("datacenter %s has mismatched id (%d vs. %d)", datacenter.Name, datacenter.Id, id)
+		}
+	}
+
+	for k,v := range database.DatacenterNameMap {
+		if v.Name != k {
+			return fmt.Errorf("datacenter %s has wrong key %s in datacenter name map", v.Name, k)
 		}
 	}
 
@@ -156,9 +235,21 @@ func (database *Database) Validate() error {
 		}
 	}
 
+	for code, seller := range database.SellerCodeMap {
+		if code != seller.Code {
+			return fmt.Errorf("seller %s has mismatched code ('%s' vs. '%s')", seller.Name, seller.Code, code)
+		}
+	}
+
 	for id, buyer := range database.BuyerMap {
 		if id != buyer.Id {
 			return fmt.Errorf("buyer %s has mismatched id (%d vs. %d)", buyer.Name, buyer.Id, id)
+		}
+	}
+
+	for code, buyer := range database.BuyerCodeMap {
+		if code != buyer.Code {
+			return fmt.Errorf("buyer %s has mismatched code ('%s' vs. '%s')", buyer.Name, buyer.Code, code)
 		}
 	}
 
@@ -294,16 +385,32 @@ func (database *Database) GetRelay(relayId uint64) *Relay {
 	return database.RelayMap[relayId]
 }
 
+func (database *Database) GetRelayByName(relayName string) *Relay {
+	return database.RelayNameMap[relayName]
+}
+
 func (database *Database) GetBuyer(buyerId uint64) *Buyer {
 	return database.BuyerMap[buyerId]
+}
+
+func (database *Database) GetBuyerByCode(buyerCode string) *Buyer {
+	return database.BuyerCodeMap[buyerCode]
 }
 
 func (database *Database) GetSeller(sellerId uint64) *Seller {
 	return database.SellerMap[sellerId]
 }
 
+func (database *Database) GetSellerByCode(sellerCode string) *Seller {
+	return database.SellerCodeMap[sellerCode]
+}
+
 func (database *Database) GetDatacenter(datacenterId uint64) *Datacenter {
 	return database.DatacenterMap[datacenterId]
+}
+
+func (database *Database) GetDatacenterByName(datacenterName string) *Datacenter {
+	return database.DatacenterNameMap[datacenterName]
 }
 
 func (database *Database) GetDatacenterRelays(datacenterId uint64) []uint64 {
@@ -348,7 +455,7 @@ func (database *Database) String() string {
 		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
-			Id:              fmt.Sprintf("%0x", v.Id),
+			Id:              fmt.Sprintf("%016x", v.Id),
 			Name:            v.Name,
 			Live:            fmt.Sprintf("%v", v.Live),
 			Debug:           fmt.Sprintf("%v", v.Debug),
@@ -392,11 +499,12 @@ func (database *Database) String() string {
 	output += "\n\nDatacenters:\n\n"
 
 	type DatacenterRow struct {
-		Name      string
-		Native    string
-		Id        string
-		Latitude  string
-		Longitude string
+		Id              string
+		Name      		string
+		Native    		string
+		Seller          string
+		Latitude        string
+		Longitude       string
 	}
 
 	datacenters := []DatacenterRow{}
@@ -404,11 +512,12 @@ func (database *Database) String() string {
 	for _, v := range database.DatacenterMap {
 
 		row := DatacenterRow{
-			Id:        fmt.Sprintf("%0x", v.Id),
-			Name:      v.Name,
-			Native:    v.Native,
-			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
-			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
+			Id:         fmt.Sprintf("%016x", v.Id),
+			Name:       v.Name,
+			Native:     v.Native,
+			Latitude:   fmt.Sprintf("%+3.2f", v.Latitude),
+			Longitude:  fmt.Sprintf("%+3.2f", v.Longitude),
+			Seller:     fmt.Sprintf("%d", v.SellerId),
 		}
 
 		datacenters = append(datacenters, row)
@@ -437,7 +546,7 @@ func (database *Database) String() string {
 	for _, v := range database.RelayMap {
 
 		row := RelayRow{
-			Id:            fmt.Sprintf("%0x", v.Id),
+			Id:            fmt.Sprintf("%016x", v.Id),
 			Name:          v.Name,
 			PublicAddress: v.PublicAddress.String(),
 			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
@@ -592,7 +701,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 		copy(data[8:], v.PublicKey)
 
 		row := BuyerRow{
-			Id:              fmt.Sprintf("%0x", v.Id),
+			Id:              fmt.Sprintf("%016x", v.Id),
 			Name:            v.Name,
 			Live:            fmt.Sprintf("%v", v.Live),
 			Debug:           fmt.Sprintf("%v", v.Debug),
@@ -624,7 +733,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 	for _, v := range database.SellerMap {
 
 		row := SellerRow{
-			Id:   fmt.Sprintf("%0x", v.Id),
+			Id:   fmt.Sprintf("%016x", v.Id),
 			Name: v.Name,
 		}
 
@@ -655,7 +764,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 	for _, v := range database.DatacenterMap {
 
 		row := DatacenterRow{
-			Id:        fmt.Sprintf("%0x", v.Id),
+			Id:        fmt.Sprintf("%016x", v.Id),
 			Name:      v.Name,
 			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
 			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
@@ -691,7 +800,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 	for _, v := range database.RelayMap {
 
 		row := RelayRow{
-			Id:            fmt.Sprintf("%0x", v.Id),
+			Id:            fmt.Sprintf("%016x", v.Id),
 			Name:          v.Name,
 			PublicAddress: v.PublicAddress.String(),
 			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
@@ -1169,6 +1278,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenter.Native = row.native_name
 		datacenter.Latitude = row.latitude
 		datacenter.Longitude = row.longitude
+		datacenter.SellerId = row.seller_id
 
 		seller_row, seller_exists := sellerIndex[row.seller_id]
 		if !seller_exists {
@@ -1265,6 +1375,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.datacenter_name, relay.DatacenterId)
 
 		database.RelayMap[relay.Id] = relay
+		database.RelayNameMap[relay.Name] = relay
 	}
 
 	for i, row := range buyerDatacenterSettingsRows {
@@ -1313,6 +1424,8 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenterRelays = append(datacenterRelays, relayId)
 		database.DatacenterRelays[datacenterId] = datacenterRelays
 	}
+
+	database.Fixup()
 
 	return database, nil
 }

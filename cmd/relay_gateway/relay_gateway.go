@@ -276,7 +276,6 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		copy(responsePacket.ExpectedRelayPublicKey[:], relay.PublicKey)
 		copy(responsePacket.ExpectedRelayBackendPublicKey[:], relayBackendPublicKey)
 
-		// todo: it's probably a good idea to cache this. calculating this on every relay update processed is unnecessary
 		token := core.RouteToken{}
 		token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 10000}
 		token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 20000}

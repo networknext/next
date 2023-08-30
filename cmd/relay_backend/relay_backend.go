@@ -52,12 +52,6 @@ var costMatrixData []byte
 var routeMatrixMutex sync.RWMutex
 var routeMatrixData []byte
 
-var costMatrixInternalMutex sync.RWMutex
-var costMatrixInternalData []byte
-
-var routeMatrixInternalMutex sync.RWMutex
-var routeMatrixInternalData []byte
-
 var delayMutex sync.RWMutex
 var delayCompleted bool
 
@@ -125,8 +119,6 @@ func main() {
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
-	service.Router.HandleFunc("/cost_matrix_internal", costMatrixInternalHandler)
-	service.Router.HandleFunc("/route_matrix_internal", routeMatrixInternalHandler)
 	service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
 	service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
 	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
@@ -459,7 +451,6 @@ func sendTrafficToMe(service *common.Service) func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
-		fmt.Printf("relay backend: initial delay completed = %v, has route matrix = %v\n", initialDelayCompleted(), hasRouteMatrix)
 		return initialDelayCompleted() && hasRouteMatrix
 	}
 }
@@ -555,6 +546,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 
 func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	costMatrixMutex.RLock()
+	core.Debug("cost matrix handler (%d bytes)", len(costMatrixData))
 	responseData := costMatrixData
 	costMatrixMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -567,32 +559,9 @@ func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	routeMatrixMutex.RLock()
+	core.Debug("route matrix handler (%d bytes)", len(routeMatrixData))
 	responseData := routeMatrixData
 	routeMatrixMutex.RUnlock()
-	w.Header().Set("Content-Type", "application/octet-stream")
-	buffer := bytes.NewBuffer(responseData)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-func costMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
-	costMatrixInternalMutex.RLock()
-	responseData := costMatrixInternalData
-	costMatrixInternalMutex.RUnlock()
-	w.Header().Set("Content-Type", "application/octet-stream")
-	buffer := bytes.NewBuffer(responseData)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-func routeMatrixInternalHandler(w http.ResponseWriter, r *http.Request) {
-	routeMatrixInternalMutex.RLock()
-	responseData := routeMatrixInternalData
-	routeMatrixInternalMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	buffer := bytes.NewBuffer(responseData)
 	_, err := buffer.WriteTo(w)
@@ -871,17 +840,13 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					Costs:              costs,
 				}
 
-				// serve up as internal cost matrix
+				// write cost matrix data
 
 				costMatrixDataNew, err := costMatrixNew.Write()
 				if err != nil {
 					core.Error("could not write cost matrix: %v", err)
 					continue
 				}
-
-				costMatrixInternalMutex.Lock()
-				costMatrixInternalData = costMatrixDataNew
-				costMatrixInternalMutex.Unlock()
 
 				// optimize cost matrix -> route matrix
 
@@ -910,17 +875,13 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					BinFileData:        relayData.DatabaseBinFile,
 				}
 
-				// serve up as internal route matrix
+				// write route matrix data
 
 				routeMatrixDataNew, err := routeMatrixNew.Write()
 				if err != nil {
 					core.Error("could not write route matrix: %v", err)
 					continue
 				}
-
-				routeMatrixInternalMutex.Lock()
-				routeMatrixInternalData = routeMatrixDataNew
-				routeMatrixInternalMutex.Unlock()
 
 				// if we are the leader, store our data in redis
 

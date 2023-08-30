@@ -21,7 +21,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -83,6 +83,14 @@ blocks:
             - sudo ldconfig
 
             - cd ~
+
+      epilogue:
+        commands:
+
+            - killall func_client || true
+            - killall func_server || true
+            - killall func_backend || true
+            - killall relay-debug || true
 
       jobs:
 
@@ -317,6 +325,14 @@ blocks:
 
             - cd ~
 
+      epilogue:
+        commands:
+
+            - killall func_client || true
+            - killall func_server || true
+            - killall func_backend || true
+            - killall relay-debug || true
+
       jobs:
 
         - name: "test_flush_session_events_and_match_data"
@@ -339,7 +355,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -392,6 +408,12 @@ blocks:
             - sudo ldconfig
 
             - cd ~
+
+      epilogue:
+        commands:
+
+            - killall func_backend_relay || true
+            - killall relay-debug || true
 
       jobs:
 
@@ -624,6 +646,12 @@ blocks:
 
             - cd ~
 
+      epilogue:
+        commands:
+
+            - killall func_backend_relay || true
+            - killall relay-debug || true
+
       jobs:
 
         - name: "test_continue_response_packet_already_received"
@@ -790,7 +818,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -844,6 +872,13 @@ blocks:
             - chmod +x relay_backend
 
             - cd ~
+
+      epilogue:
+        commands:
+
+            - killall magic_backend || true
+            - killall relay_gateway || true
+            - killall relay_backend || true
 
       jobs:
 
@@ -909,7 +944,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -957,6 +992,11 @@ blocks:
 
             - ls -al
 
+      epilogue:
+        commands:
+
+            - killall api || true
+
       jobs:
 
         - name: "test_local"
@@ -979,7 +1019,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1027,11 +1067,12 @@ blocks:
             - chmod +x ./dist/api
             - chmod +x ./dist/func_test_api
 
-      jobs:
+      epilogue:
+        commands:
 
-        - name: "test_customer"
-          commands:
-            - cd ./dist && ./func_test_api test_customer
+            - killall api || true
+
+      jobs:
 
         - name: "test_buyer"
           commands:
@@ -1069,7 +1110,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1114,6 +1155,11 @@ blocks:
             - chmod +x ./dist/api
             - chmod +x ./dist/func_test_portal
 
+      epilogue:
+        commands:
+
+            - killall api || true
+
       jobs:
 
         - name: "test_portal"
@@ -1128,7 +1174,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1176,6 +1222,11 @@ blocks:
             - chmod +x ./dist/api
             - chmod +x ./dist/func_test_terraform
 
+      epilogue:
+        commands:
+
+            - killall api || true
+
       jobs:
 
         - name: "test_terraform"
@@ -1191,7 +1242,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1214,6 +1265,8 @@ blocks:
 
             - ./soak_test_relay stop
 
+            - killall relay-debug || true
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Load Tests"
@@ -1222,7 +1275,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       prologue:
@@ -1295,7 +1348,7 @@ blocks:
 
       agent:
         machine:
-          type: e1-standard-8
+          type: f1-standard-4
           os_image: ubuntu2004
 
       jobs:
@@ -1313,6 +1366,21 @@ blocks:
             - make rebuild
             - ./next select local
             - ./run happy-path-no-wait
+
+      epilogue:
+        commands:
+
+            - killall api || true
+            - killall magic_backend || true
+            - killall relay_gateway || true
+            - killall relay_backend || true
+            - killall relay-debug || true
+            - killall server_backend || true
+            - killall portal_cruncher || true
+            - killall map_cruncher || true
+            - killall analytics || true
+            - killall client || true
+            - killall server || true
 
 # ------------------------------------------------------------------------------------------------------------
 

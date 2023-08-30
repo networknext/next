@@ -1517,7 +1517,7 @@ func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearR
 
 	key := fmt.Sprintf("nr-%016x", sessionId)
 	inserter.redisClient.Send("RPUSH", key, nearRelayData.Value())
-	inserter.redisClient.Send("EXPIRE", key, 3600)
+	inserter.redisClient.Send("EXPIRE", key, 600)
 
 	inserter.numPending++
 
@@ -1628,8 +1628,8 @@ func (inserter *RelayInserter) Insert(relayData *RelayData, relaySample *RelaySa
 
 	key = fmt.Sprintf("rs-%s", relayData.RelayAddress)
 	inserter.redisClient.Send("RPUSH", key, relaySample.Value())
-	inserter.redisClient.Send("LTRIM", key, "-3600", "-1")
-	inserter.redisClient.Send("EXPIRE", key, "3600")
+	inserter.redisClient.Send("LTRIM", key, "-600", "-1")
+	inserter.redisClient.Send("EXPIRE", key, "600")
 
 	inserter.numPending++
 

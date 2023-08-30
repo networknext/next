@@ -48,21 +48,15 @@ DONE
 
 	Get raspberry clients sending traffic over relays in dev
 
+	Rebuild portal (50%)
+
 TODO
 
-	Rebuild portal
-
-	------------
-
-	Optimize the setup process by automating creation of projects, service accounts and permissions
-
-	------------
+	IP2Location
 
 	HTTPS for api service
 
 	HTTPS for relay gateway
-
-	------------
 
 	Setup pubsub in dev with terraform.
 
@@ -70,13 +64,27 @@ TODO
 
 	Analytics service inserts data into bigquery in dev.
 
-	------------	
-
-	Document *everything*.
+	Setup staging environment
 
 	------------
 
-	Multithreaded relay with eBPF
+	Load test backend systems in staging environment up to 1M sessions
+
+	Almost certainly requires a load testing harness to simulate servers and clients...
+
+	------------
+
+	Setup prod environment
+
+	------------
+
+	Add as many sellers as possible (terraform + config scripts...)
+
+	Optimize the setup process by automating creation of projects, service accounts and permissions
+
+	------------
+
+	Fix multithreaded relay.
 	
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
 
@@ -89,5 +97,17 @@ TODO
 	------------
 
 	Raspberry pi testing
+
+	------------
+
+	Test SDK on all console platforms.
+
+	------------
+
+	Update UE4/UE5 plugin and test on all platforms.
+
+	------------
+
+	Document *everything*.
 
 	------------

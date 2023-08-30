@@ -8,12 +8,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"golang.org/x/crypto/nacl/box"
 	"io"
 	"io/ioutil"
 	"math"
@@ -35,10 +33,8 @@ import (
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
-	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
@@ -61,7 +57,6 @@ func runCommand(command string, args []string) bool {
 	cmd.Stdin = os.Stdin
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("runCommand error: %v\n", err)
 		return false
 	}
 	return true
@@ -78,33 +73,21 @@ func runCommandEnv(command string, args []string, env map[string]string) bool {
 	}
 	cmd.Env = finalEnv
 
-	// Make a os.Signal channel and attach any incoming os signals
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
-	// Start a goroutine and block waiting for any os.Signal
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		sig := <-c
-
-		// If the command still exists send the os.Signal captured by next tool
-		// to the underlying process.
-		// If the signal is interrupt, then try to directly kill the process,
-		// otherwise forward the signal.
+		fmt.Printf("\n\n")
 		if cmd.Process != nil {
-			if sig == syscall.SIGINT {
-				if err := cmd.Process.Kill(); err != nil {
-					fmt.Printf("Error trying to kill a process: %v\n", err)
-				}
-			} else if err := cmd.Process.Signal(sig); err != nil {
-				fmt.Printf("Error trying to interrupt a process: %v\n", err)
-			}
-			os.Exit(1)
+			cmd.Process.Signal(sig)
+			cmd.Wait()
 		}
+		os.Exit(1)
 	}()
 
 	err := cmd.Run()
+
 	if err != nil {
-		fmt.Printf("runCommand error: %v\n", err)
 		return false
 	}
 
@@ -373,47 +356,6 @@ func main() {
 		},
 	}
 
-	var apiKeyCommand = &ffcli.Command{
-		Name:       "api-key",
-		ShortUsage: "next api-key",
-		ShortHelp:  "Generates an API key for use with the REST API in the current env",
-		Exec: func(_ context.Context, args []string) error {
-			token := jwt.New(jwt.SigningMethodHS256)
-			claims := token.Claims.(jwt.MapClaims)
-			claims["database"] = true
-			claims["admin"] = true
-			claims["portal"] = true
-			privateKey := env.APIPrivateKey
-			tokenString, err := token.SignedString([]byte(privateKey))
-			if err != nil {
-				fmt.Printf("error: could not generate API_KEY: %s", err.Error())
-				os.Exit(1)
-			}
-			fmt.Printf("API_KEY = %s\n\n", tokenString)
-			return nil
-		},
-	}
-
-	var hashCommand = &ffcli.Command{
-		Name:       "hash",
-		ShortUsage: "next hash (string)",
-		ShortHelp:  "Provide the 64-bit FNV-1a hash for the provided string",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) != 1 {
-				handleRunTimeError(fmt.Sprintf("Please provide a string"), 0)
-			}
-
-			hashValue := common.HashString(args[0])
-			hexStr := fmt.Sprintf("%016x\n", hashValue)
-
-			fmt.Printf("unsigned: %d\n", hashValue)
-			fmt.Printf("signed  : %d\n", int64(hashValue))
-			fmt.Printf("hex     : 0x%s\n", strings.ToUpper(hexStr))
-
-			return nil
-		},
-	}
-
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
@@ -564,29 +506,6 @@ func main() {
 		},
 	}
 
-	var keygenCommand = &ffcli.Command{
-		Name:       "keygen",
-		ShortUsage: "next keygen",
-		ShortHelp:  "Generate keys",
-		Exec: func(_ context.Context, args []string) error {
-			keygen()
-			return nil
-		},
-	}
-
-	var keysCommand = &ffcli.Command{
-		Name:       "keys",
-		ShortUsage: "next keys <relay name>",
-		ShortHelp:  "Print out relay keys",
-		Exec: func(ctx context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("You need to supply a relay name"), 0)
-			}
-			keys(env, args)
-			return nil
-		},
-	}
-
 	var configCommand = &ffcli.Command{
 		Name:       "config",
 		ShortUsage: "next config [regex...]",
@@ -677,14 +596,10 @@ func main() {
 		loadCommand,
 		upgradeCommand,
 		rebootCommand,
-		keygenCommand,
-		keysCommand,
 		configCommand,
 		costCommand,
 		optimizeCommand,
 		analyzeCommand,
-		apiKeyCommand,
-		hashCommand,
 	}
 
 	root := &ffcli.Command{
@@ -732,6 +647,10 @@ func GetJSON(url string, object interface{}) {
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response.Body == nil {
+		panic("nil response body")
 	}
 
 	body, error := ioutil.ReadAll(response.Body)
@@ -1138,9 +1057,7 @@ func (con SSHConn) commonSSHCommands() []string {
 func (con SSHConn) Connect() {
 	args := con.commonSSHCommands()
 	args = append(args, "-tt", con.user+"@"+con.address)
-	if !runCommandEnv("ssh", args, nil) {
-		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 1)
-	}
+	runCommandEnv("ssh", args, nil)
 }
 
 func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
@@ -1213,8 +1130,8 @@ LimitNOFILE=1024
 WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
-Restart=on-failure
-RestartSec=12
+Restart=on-success
+RestartSec=60
 
 [Install]
 WantedBy=multi-user.target
@@ -1256,7 +1173,7 @@ echo setup completed
 
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 
-	LoadRelayScript = `sudo systemctl stop relay && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	LoadRelayScript = `( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
 
@@ -1512,29 +1429,6 @@ func keys(env Environment, regexes []string) {
 			break
 		}
 	}
-}
-
-// --------------------------------------------------------------------------------------------
-
-func keygen() {
-
-	pingKey := crypto.Auth_Key()
-
-	publicKey, privateKey, err := box.GenerateKey(rand.Reader)
-	if err != nil {
-		fmt.Printf("error: could not generate relay keypair\n")
-		os.Exit(1)
-	}
-
-	pingKeyBase64 := base64.StdEncoding.EncodeToString(pingKey[:])
-	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey[:])
-	privateKeyBase64 := base64.StdEncoding.EncodeToString(privateKey[:])
-
-	fmt.Printf("export PING_KEY=%s\n", pingKeyBase64)
-	fmt.Printf("export RELAY_PUBLIC_KEY=%s\n", publicKeyBase64)
-	fmt.Printf("export RELAY_PRIVATE_KEY=%s\n", privateKeyBase64)
-
-	fmt.Printf("\n")
 }
 
 // --------------------------------------------------------------------------------------------

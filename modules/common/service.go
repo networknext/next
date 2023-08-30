@@ -125,6 +125,10 @@ func CreateService(serviceName string) *Service {
 
 	service.Env = env
 
+	if service.Tag != "" {
+		core.Log("tag: %s", service.Tag)
+	}
+
 	if service.CommitMessage != "" {
 		core.Log("commit message: %s", service.CommitMessage)
 	}
@@ -532,6 +536,7 @@ func (service *Service) LeaderElection() {
 }
 
 func (service *Service) Store(name string, data []byte) {
+	core.Debug("store %s (%d bytes)", name, len(data))
 	if service.leaderElection == nil {
 		panic("leader election must be enabled to call store")
 	}
@@ -542,7 +547,9 @@ func (service *Service) Load(name string) []byte {
 	if service.leaderElection == nil {
 		panic("leader election must be enabled to call load")
 	}
-	return service.leaderElection.Load(service.Context, name)
+	data := service.leaderElection.Load(service.Context, name)
+	core.Debug("loaded %s (%d bytes)", name, len(data))
+	return data
 }
 
 func (service *Service) UpdateRouteMatrix() {

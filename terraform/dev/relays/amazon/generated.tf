@@ -478,7 +478,8 @@ locals {
       native_name = "afs1-az1 (af-south-1a)"
       latitude    = -33.92
       longitude   = 18.42
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.johannesburg.2" = {
@@ -488,7 +489,8 @@ locals {
       native_name = "afs1-az2 (af-south-1b)"
       latitude    = -33.92
       longitude   = 18.42
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.johannesburg.3" = {
@@ -498,7 +500,8 @@ locals {
       native_name = "afs1-az3 (af-south-1c)"
       latitude    = -33.92
       longitude   = 18.42
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.nigeria.1" = {
@@ -508,7 +511,8 @@ locals {
       native_name = "afs1-los1-az1 (af-south-1-los-1a)"
       latitude    = 6.52
       longitude   = 3.38
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hongkong.1" = {
@@ -518,7 +522,8 @@ locals {
       native_name = "ape1-az1 (ap-east-1a)"
       latitude    = 22.32
       longitude   = 114.17
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hongkong.2" = {
@@ -528,7 +533,8 @@ locals {
       native_name = "ape1-az2 (ap-east-1b)"
       latitude    = 22.32
       longitude   = 114.17
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hongkong.3" = {
@@ -538,7 +544,8 @@ locals {
       native_name = "ape1-az3 (ap-east-1c)"
       latitude    = 22.32
       longitude   = 114.17
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.tokyo.1" = {
@@ -548,7 +555,8 @@ locals {
       native_name = "apne1-az1 (ap-northeast-1c)"
       latitude    = 35.68
       longitude   = 139.65
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.tokyo.2" = {
@@ -558,7 +566,8 @@ locals {
       native_name = "apne1-az2 (ap-northeast-1d)"
       latitude    = 35.68
       longitude   = 139.65
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.tokyo.4" = {
@@ -568,7 +577,8 @@ locals {
       native_name = "apne1-az4 (ap-northeast-1a)"
       latitude    = 35.68
       longitude   = 139.65
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.taipei.1" = {
@@ -578,7 +588,8 @@ locals {
       native_name = "apne1-tpe1-az1 (ap-northeast-1-tpe-1a)"
       latitude    = 25.03
       longitude   = 121.57
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.seoul.1" = {
@@ -588,7 +599,8 @@ locals {
       native_name = "apne2-az1 (ap-northeast-2a)"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.seoul.2" = {
@@ -598,7 +610,8 @@ locals {
       native_name = "apne2-az2 (ap-northeast-2b)"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.seoul.3" = {
@@ -608,7 +621,8 @@ locals {
       native_name = "apne2-az3 (ap-northeast-2c)"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.seoul.4" = {
@@ -618,7 +632,8 @@ locals {
       native_name = "apne2-az4 (ap-northeast-2d)"
       latitude    = 37.57
       longitude   = 126.98
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.osaka.1" = {
@@ -628,7 +643,8 @@ locals {
       native_name = "apne3-az1 (ap-northeast-3b)"
       latitude    = 34.69
       longitude   = 135.50
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.osaka.2" = {
@@ -638,7 +654,8 @@ locals {
       native_name = "apne3-az2 (ap-northeast-3c)"
       latitude    = 34.69
       longitude   = 135.50
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.osaka.3" = {
@@ -648,7 +665,8 @@ locals {
       native_name = "apne3-az3 (ap-northeast-3a)"
       latitude    = 34.69
       longitude   = 135.50
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.mumbai.1" = {
@@ -658,7 +676,8 @@ locals {
       native_name = "aps1-az1 (ap-south-1a)"
       latitude    = 19.08
       longitude   = 72.88
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.mumbai.2" = {
@@ -668,7 +687,8 @@ locals {
       native_name = "aps1-az2 (ap-south-1c)"
       latitude    = 19.08
       longitude   = 72.88
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.mumbai.3" = {
@@ -678,7 +698,8 @@ locals {
       native_name = "aps1-az3 (ap-south-1b)"
       latitude    = 19.08
       longitude   = 72.88
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.kolkata.1" = {
@@ -688,7 +709,8 @@ locals {
       native_name = "aps1-ccu1-az1 (ap-south-1-ccu-1a)"
       latitude    = 22.57
       longitude   = 88.36
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.delhi.1" = {
@@ -698,7 +720,8 @@ locals {
       native_name = "aps1-del1-az1 (ap-south-1-del-1a)"
       latitude    = 28.70
       longitude   = 77.10
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hyderabad.1" = {
@@ -708,7 +731,8 @@ locals {
       native_name = "aps2-az1 (ap-south-2a)"
       latitude    = 17.39
       longitude   = 78.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hyderabad.2" = {
@@ -718,7 +742,8 @@ locals {
       native_name = "aps2-az2 (ap-south-2b)"
       latitude    = 17.39
       longitude   = 78.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hyderabad.3" = {
@@ -728,7 +753,8 @@ locals {
       native_name = "aps2-az3 (ap-south-2c)"
       latitude    = 17.39
       longitude   = 78.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.singapore.1" = {
@@ -738,7 +764,8 @@ locals {
       native_name = "apse1-az1 (ap-southeast-1a)"
       latitude    = 1.35
       longitude   = 103.82
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.singapore.2" = {
@@ -748,7 +775,8 @@ locals {
       native_name = "apse1-az2 (ap-southeast-1b)"
       latitude    = 1.35
       longitude   = 103.82
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.singapore.3" = {
@@ -758,7 +786,8 @@ locals {
       native_name = "apse1-az3 (ap-southeast-1c)"
       latitude    = 1.35
       longitude   = 103.82
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.bangkok.1" = {
@@ -768,7 +797,8 @@ locals {
       native_name = "apse1-bkk1-az1 (ap-southeast-1-bkk-1a)"
       latitude    = 13.76
       longitude   = 100.50
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.sydney.1" = {
@@ -778,7 +808,8 @@ locals {
       native_name = "apse2-az1 (ap-southeast-2b)"
       latitude    = -33.87
       longitude   = 151.21
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.sydney.2" = {
@@ -788,7 +819,8 @@ locals {
       native_name = "apse2-az2 (ap-southeast-2c)"
       latitude    = -33.87
       longitude   = 151.21
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.sydney.3" = {
@@ -798,7 +830,8 @@ locals {
       native_name = "apse2-az3 (ap-southeast-2a)"
       latitude    = -33.87
       longitude   = 151.21
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.perth.1" = {
@@ -808,7 +841,8 @@ locals {
       native_name = "apse2-per1-az1 (ap-southeast-2-per-1a)"
       latitude    = -31.95
       longitude   = 115.86
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.jakarta.1" = {
@@ -818,7 +852,8 @@ locals {
       native_name = "apse3-az1 (ap-southeast-3a)"
       latitude    = -6.21
       longitude   = 106.85
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.jakarta.2" = {
@@ -828,7 +863,8 @@ locals {
       native_name = "apse3-az2 (ap-southeast-3b)"
       latitude    = -6.21
       longitude   = 106.85
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.jakarta.3" = {
@@ -838,7 +874,8 @@ locals {
       native_name = "apse3-az3 (ap-southeast-3c)"
       latitude    = -6.21
       longitude   = 106.85
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.melbourne.1" = {
@@ -848,7 +885,8 @@ locals {
       native_name = "apse4-az1 (ap-southeast-4a)"
       latitude    = -37.81
       longitude   = 144.96
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.melbourne.2" = {
@@ -858,7 +896,8 @@ locals {
       native_name = "apse4-az2 (ap-southeast-4b)"
       latitude    = -37.81
       longitude   = 144.96
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.melbourne.3" = {
@@ -868,7 +907,8 @@ locals {
       native_name = "apse4-az3 (ap-southeast-4c)"
       latitude    = -37.81
       longitude   = 144.96
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.montreal.1" = {
@@ -878,7 +918,8 @@ locals {
       native_name = "cac1-az1 (ca-central-1a)"
       latitude    = 45.50
       longitude   = -73.57
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.montreal.2" = {
@@ -888,7 +929,8 @@ locals {
       native_name = "cac1-az2 (ca-central-1b)"
       latitude    = 45.50
       longitude   = -73.57
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.montreal.4" = {
@@ -898,7 +940,8 @@ locals {
       native_name = "cac1-az4 (ca-central-1d)"
       latitude    = 45.50
       longitude   = -73.57
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.frankfurt.1" = {
@@ -908,7 +951,8 @@ locals {
       native_name = "euc1-az1 (eu-central-1c)"
       latitude    = 50.11
       longitude   = 8.68
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.frankfurt.2" = {
@@ -918,7 +962,8 @@ locals {
       native_name = "euc1-az2 (eu-central-1a)"
       latitude    = 50.11
       longitude   = 8.68
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.frankfurt.3" = {
@@ -928,7 +973,8 @@ locals {
       native_name = "euc1-az3 (eu-central-1b)"
       latitude    = 50.11
       longitude   = 8.68
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.hamburg.1" = {
@@ -938,7 +984,8 @@ locals {
       native_name = "euc1-ham1-az1 (eu-central-1-ham-1a)"
       latitude    = 53.55
       longitude   = 9.99
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.warsaw.1" = {
@@ -948,7 +995,8 @@ locals {
       native_name = "euc1-waw1-az1 (eu-central-1-waw-1a)"
       latitude    = 52.23
       longitude   = 21.01
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.zurich.1" = {
@@ -958,7 +1006,8 @@ locals {
       native_name = "euc2-az1 (eu-central-2a)"
       latitude    = 47.38
       longitude   = 8.54
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.zurich.2" = {
@@ -968,7 +1017,8 @@ locals {
       native_name = "euc2-az2 (eu-central-2b)"
       latitude    = 47.38
       longitude   = 8.54
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.zurich.3" = {
@@ -978,7 +1028,8 @@ locals {
       native_name = "euc2-az3 (eu-central-2c)"
       latitude    = 47.38
       longitude   = 8.54
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.stockholm.1" = {
@@ -988,7 +1039,8 @@ locals {
       native_name = "eun1-az1 (eu-north-1a)"
       latitude    = 59.33
       longitude   = 18.07
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.stockholm.2" = {
@@ -998,7 +1050,8 @@ locals {
       native_name = "eun1-az2 (eu-north-1b)"
       latitude    = 59.33
       longitude   = 18.07
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.stockholm.3" = {
@@ -1008,7 +1061,8 @@ locals {
       native_name = "eun1-az3 (eu-north-1c)"
       latitude    = 59.33
       longitude   = 18.07
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.copenhagen.1" = {
@@ -1018,7 +1072,8 @@ locals {
       native_name = "eun1-cph1-az1 (eu-north-1-cph-1a)"
       latitude    = 55.68
       longitude   = 12.57
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.finland.1" = {
@@ -1028,7 +1083,8 @@ locals {
       native_name = "eun1-hel1-az1 (eu-north-1-hel-1a)"
       latitude    = 60.17
       longitude   = 24.94
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.milan.1" = {
@@ -1038,7 +1094,8 @@ locals {
       native_name = "eus1-az1 (eu-south-1a)"
       latitude    = 45.46
       longitude   = 9.19
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.milan.2" = {
@@ -1048,7 +1105,8 @@ locals {
       native_name = "eus1-az2 (eu-south-1b)"
       latitude    = 45.46
       longitude   = 9.19
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.milan.3" = {
@@ -1058,7 +1116,8 @@ locals {
       native_name = "eus1-az3 (eu-south-1c)"
       latitude    = 45.46
       longitude   = 9.19
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.spain.1" = {
@@ -1068,7 +1127,8 @@ locals {
       native_name = "eus2-az1 (eu-south-2a)"
       latitude    = 41.60
       longitude   = -0.91
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.spain.2" = {
@@ -1078,7 +1138,8 @@ locals {
       native_name = "eus2-az2 (eu-south-2b)"
       latitude    = 41.60
       longitude   = -0.91
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.spain.3" = {
@@ -1088,7 +1149,8 @@ locals {
       native_name = "eus2-az3 (eu-south-2c)"
       latitude    = 41.60
       longitude   = -0.91
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.ireland.1" = {
@@ -1098,7 +1160,8 @@ locals {
       native_name = "euw1-az1 (eu-west-1a)"
       latitude    = 53.78
       longitude   = -7.31
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.ireland.2" = {
@@ -1108,7 +1171,8 @@ locals {
       native_name = "euw1-az2 (eu-west-1b)"
       latitude    = 53.78
       longitude   = -7.31
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.ireland.3" = {
@@ -1118,7 +1182,8 @@ locals {
       native_name = "euw1-az3 (eu-west-1c)"
       latitude    = 53.78
       longitude   = -7.31
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.london.1" = {
@@ -1128,7 +1193,8 @@ locals {
       native_name = "euw2-az1 (eu-west-2c)"
       latitude    = 51.51
       longitude   = -0.13
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.london.2" = {
@@ -1138,7 +1204,8 @@ locals {
       native_name = "euw2-az2 (eu-west-2a)"
       latitude    = 51.51
       longitude   = -0.13
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.london.3" = {
@@ -1148,7 +1215,8 @@ locals {
       native_name = "euw2-az3 (eu-west-2b)"
       latitude    = 51.51
       longitude   = -0.13
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.paris.1" = {
@@ -1158,7 +1226,8 @@ locals {
       native_name = "euw3-az1 (eu-west-3a)"
       latitude    = 48.86
       longitude   = 2.35
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.paris.2" = {
@@ -1168,7 +1237,8 @@ locals {
       native_name = "euw3-az2 (eu-west-3b)"
       latitude    = 48.86
       longitude   = 2.35
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.paris.3" = {
@@ -1178,7 +1248,8 @@ locals {
       native_name = "euw3-az3 (eu-west-3c)"
       latitude    = 48.86
       longitude   = 2.35
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.uae.1" = {
@@ -1188,7 +1259,8 @@ locals {
       native_name = "mec1-az1 (me-central-1a)"
       latitude    = 23.42
       longitude   = 53.85
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.uae.2" = {
@@ -1198,7 +1270,8 @@ locals {
       native_name = "mec1-az2 (me-central-1b)"
       latitude    = 23.42
       longitude   = 53.85
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.uae.3" = {
@@ -1208,7 +1281,8 @@ locals {
       native_name = "mec1-az3 (me-central-1c)"
       latitude    = 23.42
       longitude   = 53.85
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.bahrain.1" = {
@@ -1218,7 +1292,8 @@ locals {
       native_name = "mes1-az1 (me-south-1a)"
       latitude    = 26.07
       longitude   = 50.56
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.bahrain.2" = {
@@ -1228,7 +1303,8 @@ locals {
       native_name = "mes1-az2 (me-south-1b)"
       latitude    = 26.07
       longitude   = 50.56
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.bahrain.3" = {
@@ -1238,7 +1314,8 @@ locals {
       native_name = "mes1-az3 (me-south-1c)"
       latitude    = 26.07
       longitude   = 50.56
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.oman.1" = {
@@ -1248,7 +1325,8 @@ locals {
       native_name = "mes1-mct1-az1 (me-south-1-mct-1a)"
       latitude    = 23.59
       longitude   = 58.38
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.saopaulo.1" = {
@@ -1258,7 +1336,8 @@ locals {
       native_name = "sae1-az1 (sa-east-1a)"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.saopaulo.2" = {
@@ -1268,7 +1347,8 @@ locals {
       native_name = "sae1-az2 (sa-east-1b)"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.saopaulo.3" = {
@@ -1278,7 +1358,8 @@ locals {
       native_name = "sae1-az3 (sa-east-1c)"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.atlanta.1" = {
@@ -1288,7 +1369,8 @@ locals {
       native_name = "use1-atl1-az1 (us-east-1-atl-1a)"
       latitude    = 33.75
       longitude   = -84.39
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.virginia.1" = {
@@ -1298,7 +1380,8 @@ locals {
       native_name = "use1-az1 (us-east-1c)"
       latitude    = 39.04
       longitude   = -77.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.virginia.2" = {
@@ -1308,7 +1391,8 @@ locals {
       native_name = "use1-az2 (us-east-1d)"
       latitude    = 39.04
       longitude   = -77.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.virginia.3" = {
@@ -1318,7 +1402,8 @@ locals {
       native_name = "use1-az3 (us-east-1e)"
       latitude    = 39.04
       longitude   = -77.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.virginia.4" = {
@@ -1328,7 +1413,8 @@ locals {
       native_name = "use1-az4 (us-east-1a)"
       latitude    = 39.04
       longitude   = -77.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.virginia.5" = {
@@ -1338,7 +1424,8 @@ locals {
       native_name = "use1-az5 (us-east-1f)"
       latitude    = 39.04
       longitude   = -77.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.virginia.6" = {
@@ -1348,7 +1435,8 @@ locals {
       native_name = "use1-az6 (us-east-1b)"
       latitude    = 39.04
       longitude   = -77.49
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.boston.1" = {
@@ -1358,7 +1446,8 @@ locals {
       native_name = "use1-bos1-az1 (us-east-1-bos-1a)"
       latitude    = 42.36
       longitude   = -71.06
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.buenosaires.1" = {
@@ -1368,7 +1457,8 @@ locals {
       native_name = "use1-bue1-az1 (us-east-1-bue-1a)"
       latitude    = -34.60
       longitude   = -58.38
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.chicago.1" = {
@@ -1378,7 +1468,8 @@ locals {
       native_name = "use1-chi1-az1 (us-east-1-chi-1a)"
       latitude    = 41.88
       longitude   = -87.63
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.dallas.1" = {
@@ -1388,7 +1479,8 @@ locals {
       native_name = "use1-dfw1-az1 (us-east-1-dfw-1a)"
       latitude    = 32.78
       longitude   = -96.80
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.houston.1" = {
@@ -1398,7 +1490,8 @@ locals {
       native_name = "use1-iah1-az1 (us-east-1-iah-1a)"
       latitude    = 29.76
       longitude   = -95.37
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.lima.1" = {
@@ -1408,7 +1501,8 @@ locals {
       native_name = "use1-lim1-az1 (us-east-1-lim-1a)"
       latitude    = -12.05
       longitude   = -77.04
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.kansas.1" = {
@@ -1418,7 +1512,8 @@ locals {
       native_name = "use1-mci1-az1 (us-east-1-mci-1a)"
       latitude    = 39.10
       longitude   = -94.58
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.miami.1" = {
@@ -1428,7 +1523,8 @@ locals {
       native_name = "use1-mia1-az1 (us-east-1-mia-1a)"
       latitude    = 25.76
       longitude   = -80.19
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.minneapolis.1" = {
@@ -1438,7 +1534,8 @@ locals {
       native_name = "use1-msp1-az1 (us-east-1-msp-1a)"
       latitude    = 44.98
       longitude   = -93.26
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.newyork.1" = {
@@ -1448,7 +1545,8 @@ locals {
       native_name = "use1-nyc1-az1 (us-east-1-nyc-1a)"
       latitude    = 40.71
       longitude   = -74.01
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.philadelphia.1" = {
@@ -1458,7 +1556,8 @@ locals {
       native_name = "use1-phl1-az1 (us-east-1-phl-1a)"
       latitude    = 39.95
       longitude   = -75.17
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.mexico.1" = {
@@ -1468,7 +1567,8 @@ locals {
       native_name = "use1-qro1-az1 (us-east-1-qro-1a)"
       latitude    = 23.63
       longitude   = -102.55
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.santiago.1" = {
@@ -1478,7 +1578,8 @@ locals {
       native_name = "use1-scl1-az1 (us-east-1-scl-1a)"
       latitude    = -33.45
       longitude   = -70.67
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.ohio.1" = {
@@ -1488,7 +1589,8 @@ locals {
       native_name = "use2-az1 (us-east-2a)"
       latitude    = 40.42
       longitude   = -82.91
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.ohio.2" = {
@@ -1498,7 +1600,8 @@ locals {
       native_name = "use2-az2 (us-east-2b)"
       latitude    = 40.42
       longitude   = -82.91
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.ohio.3" = {
@@ -1508,7 +1611,8 @@ locals {
       native_name = "use2-az3 (us-east-2c)"
       latitude    = 40.42
       longitude   = -82.91
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.sanjose.1" = {
@@ -1518,7 +1622,8 @@ locals {
       native_name = "usw1-az1 (us-west-1b)"
       latitude    = 37.34
       longitude   = -121.89
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.sanjose.3" = {
@@ -1528,7 +1633,8 @@ locals {
       native_name = "usw1-az3 (us-west-1a)"
       latitude    = 37.34
       longitude   = -121.89
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.oregon.1" = {
@@ -1538,7 +1644,8 @@ locals {
       native_name = "usw2-az1 (us-west-2b)"
       latitude    = 45.84
       longitude   = -119.70
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.oregon.2" = {
@@ -1548,7 +1655,8 @@ locals {
       native_name = "usw2-az2 (us-west-2a)"
       latitude    = 45.84
       longitude   = -119.70
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.oregon.3" = {
@@ -1558,7 +1666,8 @@ locals {
       native_name = "usw2-az3 (us-west-2c)"
       latitude    = 45.84
       longitude   = -119.70
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.oregon.4" = {
@@ -1568,7 +1677,8 @@ locals {
       native_name = "usw2-az4 (us-west-2d)"
       latitude    = 45.84
       longitude   = -119.70
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.denver.1" = {
@@ -1578,7 +1688,8 @@ locals {
       native_name = "usw2-den1-az1 (us-west-2-den-1a)"
       latitude    = 39.74
       longitude   = -104.99
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.lasvegas.1" = {
@@ -1588,7 +1699,8 @@ locals {
       native_name = "usw2-las1-az1 (us-west-2-las-1a)"
       latitude    = 36.17
       longitude   = -115.14
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.losangeles.1" = {
@@ -1598,7 +1710,8 @@ locals {
       native_name = "usw2-lax1-az1 (us-west-2-lax-1a)"
       latitude    = 34.05
       longitude   = -118.24
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.losangeles.2" = {
@@ -1608,7 +1721,8 @@ locals {
       native_name = "usw2-lax1-az2 (us-west-2-lax-1b)"
       latitude    = 34.05
       longitude   = -118.24
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.portland.1" = {
@@ -1618,7 +1732,8 @@ locals {
       native_name = "usw2-pdx1-az1 (us-west-2-pdx-1a)"
       latitude    = 45.52
       longitude   = -122.68
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.phoenix.1" = {
@@ -1628,7 +1743,8 @@ locals {
       native_name = "usw2-phx1-az1 (us-west-2-phx-1a)"
       latitude    = 33.45
       longitude   = -112.07
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
     "amazon.seattle.1" = {
@@ -1638,7 +1754,8 @@ locals {
       native_name = "usw2-sea1-az1 (us-west-2-sea-1a)"
       latitude    = 47.61
       longitude   = -122.33
-      seller_name = "amazon"
+      seller_name = "Amazon"
+      seller_code = "amazon"
     }
 
   }
@@ -1678,9 +1795,10 @@ locals {
 
   relays = {
 
+    "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
+    "amazon.oregon.1" = { datacenter_name = "amazon.oregon.1" },
+    "amazon.sanjose.1" = { datacenter_name = "amazon.sanjose.1" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
-    "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
-    "amazon.tokyo.1" = { datacenter_name = "amazon.tokyo.1" },
     "amazon.seattle.1" = { datacenter_name = "amazon.seattle.1" },
   }
 
@@ -1700,34 +1818,6 @@ module "relay_amazon_virginia_1" {
   }
 }
 
-module "relay_amazon_virginia_2" {
-  source            = "./relay"
-  name              = "amazon.virginia.2"
-  zone              = local.datacenter_map["amazon.virginia.2"].zone
-  region            = local.datacenter_map["amazon.virginia.2"].region
-  type              = "m5a.large"
-  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-  security_group_id = module.region_us_east_1.security_group_id
-  vpn_address       = var.vpn_address
-  providers = {
-    aws = aws.us-east-1
-  }
-}
-
-module "relay_amazon_tokyo_1" {
-  source            = "./relay"
-  name              = "amazon.tokyo.1"
-  zone              = local.datacenter_map["amazon.tokyo.1"].zone
-  region            = local.datacenter_map["amazon.tokyo.1"].region
-  type              = "m5a.large"
-  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-  security_group_id = module.region_ap_northeast_1.security_group_id
-  vpn_address       = var.vpn_address
-  providers = {
-    aws = aws.ap-northeast-1
-  }
-}
-
 module "relay_amazon_seattle_1" {
   source            = "./relay"
   name              = "amazon.seattle.1"
@@ -1742,16 +1832,89 @@ module "relay_amazon_seattle_1" {
   }
 }
 
+module "relay_amazon_ohio_1" {
+  source            = "./relay"
+  name              = "amazon.ohio.1"
+  zone              = local.datacenter_map["amazon.ohio.1"].zone
+  region            = local.datacenter_map["amazon.ohio.1"].region
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_east_2.security_group_id
+  vpn_address       = var.vpn_address
+  providers = {
+    aws = aws.us-east-2
+  }
+}
+
+module "relay_amazon_oregon_1" {
+  source            = "./relay"
+  name              = "amazon.oregon.1"
+  zone              = local.datacenter_map["amazon.oregon.1"].zone
+  region            = local.datacenter_map["amazon.oregon.1"].region
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_west_2.security_group_id
+  vpn_address       = var.vpn_address
+  providers = {
+    aws = aws.us-west-2
+  }
+}
+
+module "relay_amazon_sanjose_1" {
+  source            = "./relay"
+  name              = "amazon.sanjose.1"
+  zone              = local.datacenter_map["amazon.sanjose.1"].zone
+  region            = local.datacenter_map["amazon.sanjose.1"].region
+  type              = "m5a.large"
+  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  security_group_id = module.region_us_west_1.security_group_id
+  vpn_address       = var.vpn_address
+  providers = {
+    aws = aws.us-west-1
+  }
+}
+
 output "relays" {
 
   description = "Data for each amazon relay setup by Terraform"
 
   value = {
 
+    "amazon.oregon.1" = {
+      "relay_name"       = "amazon.oregon.1"
+      "datacenter_name"  = "amazon.oregon.1"
+      "seller_name"      = "Amazon"
+      "seller_code"      = "amazon"
+      "public_ip"        = module.relay_amazon_oregon_1.public_address
+      "public_port"      = 40000
+      "internal_ip"      = module.relay_amazon_oregon_1.internal_address
+      "internal_port"    = 40000
+      "internal_group"   = "us-west-2"
+      "ssh_ip"           = module.relay_amazon_oregon_1.public_address
+      "ssh_port"         = 22
+      "ssh_user"         = "ubuntu"
+    }
+
+    "amazon.sanjose.1" = {
+      "relay_name"       = "amazon.sanjose.1"
+      "datacenter_name"  = "amazon.sanjose.1"
+      "seller_name"      = "Amazon"
+      "seller_code"      = "amazon"
+      "public_ip"        = module.relay_amazon_sanjose_1.public_address
+      "public_port"      = 40000
+      "internal_ip"      = module.relay_amazon_sanjose_1.internal_address
+      "internal_port"    = 40000
+      "internal_group"   = "us-west-1"
+      "ssh_ip"           = module.relay_amazon_sanjose_1.public_address
+      "ssh_port"         = 22
+      "ssh_user"         = "ubuntu"
+    }
+
     "amazon.virginia.1" = {
       "relay_name"       = "amazon.virginia.1"
       "datacenter_name"  = "amazon.virginia.1"
-      "supplier_name"    = "amazon"
+      "seller_name"      = "Amazon"
+      "seller_code"      = "amazon"
       "public_ip"        = module.relay_amazon_virginia_1.public_address
       "public_port"      = 40000
       "internal_ip"      = module.relay_amazon_virginia_1.internal_address
@@ -1762,44 +1925,32 @@ output "relays" {
       "ssh_user"         = "ubuntu"
     }
 
-    "amazon.virginia.2" = {
-      "relay_name"       = "amazon.virginia.2"
-      "datacenter_name"  = "amazon.virginia.2"
-      "supplier_name"    = "amazon"
-      "public_ip"        = module.relay_amazon_virginia_2.public_address
-      "public_port"      = 40000
-      "internal_ip"      = module.relay_amazon_virginia_2.internal_address
-      "internal_port"    = 40000
-      "internal_group"   = "us-east-1"
-      "ssh_ip"           = module.relay_amazon_virginia_2.public_address
-      "ssh_port"         = 22
-      "ssh_user"         = "ubuntu"
-    }
-
-    "amazon.tokyo.1" = {
-      "relay_name"       = "amazon.tokyo.1"
-      "datacenter_name"  = "amazon.tokyo.1"
-      "supplier_name"    = "amazon"
-      "public_ip"        = module.relay_amazon_tokyo_1.public_address
-      "public_port"      = 40000
-      "internal_ip"      = module.relay_amazon_tokyo_1.internal_address
-      "internal_port"    = 40000
-      "internal_group"   = "ap-northeast-1"
-      "ssh_ip"           = module.relay_amazon_tokyo_1.public_address
-      "ssh_port"         = 22
-      "ssh_user"         = "ubuntu"
-    }
-
     "amazon.seattle.1" = {
       "relay_name"       = "amazon.seattle.1"
       "datacenter_name"  = "amazon.seattle.1"
-      "supplier_name"    = "amazon"
+      "seller_name"      = "Amazon"
+      "seller_code"      = "amazon"
       "public_ip"        = module.relay_amazon_seattle_1.public_address
       "public_port"      = 40000
       "internal_ip"      = module.relay_amazon_seattle_1.internal_address
       "internal_port"    = 40000
       "internal_group"   = "amazon.seattle.1"
       "ssh_ip"           = module.relay_amazon_seattle_1.public_address
+      "ssh_port"         = 22
+      "ssh_user"         = "ubuntu"
+    }
+
+    "amazon.ohio.1" = {
+      "relay_name"       = "amazon.ohio.1"
+      "datacenter_name"  = "amazon.ohio.1"
+      "seller_name"      = "Amazon"
+      "seller_code"      = "amazon"
+      "public_ip"        = module.relay_amazon_ohio_1.public_address
+      "public_port"      = 40000
+      "internal_ip"      = module.relay_amazon_ohio_1.internal_address
+      "internal_port"    = 40000
+      "internal_group"   = "us-east-2"
+      "ssh_ip"           = module.relay_amazon_ohio_1.public_address
       "ssh_port"         = 22
       "ssh_user"         = "ubuntu"
     }

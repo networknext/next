@@ -22,6 +22,10 @@ variable "default_network" { type = string }
 variable "default_subnetwork" { type = string }
 variable "service_account" { type = string }
 variable "tags" { type = list }
+variable "target_size" {
+  type = number
+  default = 2
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -65,7 +69,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     name              = "primary"
   }
   base_instance_name = var.service_name
-  target_size        = 2
+  target_size        = var.target_size
   update_policy {
     type                           = "PROACTIVE"
     minimal_action                 = "REPLACE"
