@@ -602,7 +602,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
            }
     }
 
-    // check against multiplay supplier mappings
+    // check against multiplay seller mappings
 
     bool found = false;
     char multiplay_line[1024];
@@ -631,18 +631,18 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
             continue;
         }
 
-        char * supplier = strtok( NULL, separators );
-        if ( supplier == NULL )
+        char * seller = strtok( NULL, separators );
+        if ( seller == NULL )
         {
             continue;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "checking for supplier \"%s\" with substring \"%s\"", supplier, substring );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "checking for seller \"%s\" with substring \"%s\"", seller, substring );
 
         if ( strstr( whois_buffer, substring ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "found supplier %s", supplier );
-            snprintf( output, output_size, "%s.%s", supplier, city );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "found seller %s", seller );
+            snprintf( output, output_size, "%s.%s", seller, city );
             found = true;
         }
     }
