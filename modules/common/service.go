@@ -630,7 +630,7 @@ func (service *Service) UpdateRouteMatrix() {
 				service.routeMatrixDatabase = &newDatabase
 				service.routeMatrixMutex.Unlock()
 
-				core.Debug("updated route matrix: %d relays (%dms)", len(newRouteMatrix.RelayIds), time.Since(start).Milliseconds())
+				core.Debug("updated route matrix: %d relays, %d bytes, fetched in %dms", len(newRouteMatrix.RelayIds), len(buffer), time.Since(start).Milliseconds())
 			}
 		}
 	}()

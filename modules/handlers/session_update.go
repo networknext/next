@@ -476,6 +476,8 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
+	core.Debug("found %d near relays", numNearRelays)
+
 	state.Response.HasNearRelays = true
 	state.Response.NumNearRelays = int32(numNearRelays)
 
@@ -552,10 +554,14 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	outputSourceRelays := make([]int32, len(sourceRelayIds))
 	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
 
+	core.Debug("filtered %d near relays -> %d", state.Request.NumNearRelays, len(sourceRelayIds))
+
 	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
+
+	core.Debug("reframed %d near relays -> %d", len(sourceRelayIds), len(state.SourceRelays))
 
 	return true
 }
