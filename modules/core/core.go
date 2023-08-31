@@ -830,21 +830,31 @@ type BestRoute struct {
 }
 
 func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, bestRoutes []BestRoute, numBestRoutes *int, routeDiversity *int32) {
+
 	if len(routeMatrix) == 0 {
 		*numBestRoutes = 0
 		return
 	}
+
 	numRoutes := 0
+
 	maxRoutes := len(bestRoutes)
+
 	for i := range sourceRelays {
+
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
 			continue
 		}
+
 		firstRouteFromThisRelay := true
+
+		sourceRelayIndex := sourceRelays[i]
+
 		for j := range destRelays {
-			sourceRelayIndex := sourceRelays[i]
+
 			destRelayIndex := destRelays[j]
+
 			if sourceRelayIndex == destRelayIndex {
 				continue
 			}
@@ -854,22 +864,32 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			entry := &routeMatrix[index]
 
 			for k := 0; k < int(entry.NumRoutes); k++ {
+
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
+
+				// todo: test
+				/*				
 				if cost > maxCost {
 					break
 				}
+				*/
+				
 				bestRoutes[numRoutes].Cost = cost
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
 
 				for l := 0; l < len(entry.RouteRelays[0]); l++ {
 					bestRoutes[numRoutes].Relays[l] = entry.RouteRelays[k][l]
 				}
+
 				bestRoutes[numRoutes].NeedToReverse = sourceRelayIndex < destRelayIndex
+
 				numRoutes++
+				
 				if firstRouteFromThisRelay {
 					*routeDiversity++
 					firstRouteFromThisRelay = false
 				}
+				
 				if numRoutes == maxRoutes {
 					*numBestRoutes = numRoutes
 					return
@@ -877,6 +897,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 		}
 	}
+
 	*numBestRoutes = numRoutes
 }
 
@@ -1026,6 +1047,19 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 			}
 		}
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
+
+		// todo
+		Debug("found %d routes:", numBestRoutes)
+		for i := 0; i < numBestRoutes; i++ {
+			route := ""
+			for j := 0; j < int(bestRoutes[i].NumRelays); j++ {
+				route += fmt.Sprintf("%d", bestRoutes[i].Relays[j])
+				if j != int(bestRoutes[i].NumRelays - 1) {
+					route += " - "
+				}
+			}
+			Debug( " + %d: %s (%d)", i, route, bestRoutes[i].Cost)
+		}
 	}
 
 	randomIndex := math_rand.Intn(numBestRoutes)
@@ -1301,8 +1335,6 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	}
 
 	// should we try to reduce packet loss?
-
-	// Check if the session is seeing sustained packet loss and increment/reset the counter
 
 	if directPacketLoss >= routeShader.AcceptablePacketLossSustained {
 		if routeState.PLSustainedCounter < 3 {
