@@ -213,7 +213,7 @@ func secureShell(user string, address string, port int) {
 // level 1: program error
 func handleRunTimeError(msg string, level int) {
 	fmt.Printf(msg)
-	fmt.Println()
+	fmt.Printf("\n\n")
 	os.Exit(level)
 }
 
@@ -570,13 +570,25 @@ func main() {
 		ShortHelp:  "Analyze route matrix from optimize",
 		Exec: func(ctx context.Context, args []string) error {
 			input := "optimize.bin"
-
 			if len(args) > 0 {
 				input = args[0]
 			}
-
 			analyzeRouteMatrix(input)
+			return nil
+		},
+	}
 
+	var routesCommand = &ffcli.Command{
+		Name:       "routes",
+		ShortUsage: "next routes [src] [dest]",
+		ShortHelp:  "Print list of routes from one relay to another",
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 2 {
+				handleRunTimeError(fmt.Sprintf("Please provide source and destination relay names"), 0)
+			}
+			src := args[0]
+			dest := args[1]
+			routes(src, dest)
 			return nil
 		},
 	}
@@ -600,6 +612,7 @@ func main() {
 		costCommand,
 		optimizeCommand,
 		analyzeCommand,
+		routesCommand,
 	}
 
 	root := &ffcli.Command{
@@ -1716,6 +1729,87 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have only one route\n", analysis.OneRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
+
+	fmt.Printf("\n")
+}
+
+func routes(src string, dest string) {
+
+	routeMatrixFilename := "optimize.bin"
+
+	routeMatrixData, err := ioutil.ReadFile(routeMatrixFilename)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
+	}
+
+	var routeMatrix common.RouteMatrix
+
+	err = routeMatrix.Read(routeMatrixData)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
+	}
+
+	src_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == src {
+			src_index = i
+			break
+		}
+	}
+
+	if src_index == -1 {
+		handleRunTimeError(fmt.Sprintf("could not find source relay: %s\n", src), 1)
+	}
+
+	dest_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == dest {
+			dest_index = i
+			break
+		}
+	}
+
+	if dest_index == -1 {
+		handleRunTimeError(fmt.Sprintf("could not find destination relay: %s\n", src), 1)
+	}
+
+	index := core.TriMatrixIndex(src_index, dest_index)
+
+	entry := routeMatrix.RouteEntries[index]
+
+	fmt.Printf("routes from %s -> %s:\n\n", src, dest)
+
+	hasRoutes := false
+
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		routeRelays := ""
+		numRouteRelays := int(entry.RouteNumRelays[i])
+		if src_index < dest_index {
+			for j := numRouteRelays - 1; j >= 0; j-- {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != 0 {
+					routeRelays += " - "
+				}
+			}
+		} else {
+			for j := 0; j < numRouteRelays; j++ {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != numRouteRelays-1 {
+					routeRelays += " - "
+				}
+			}
+		}
+		fmt.Printf(" + %d: %s\n", entry.RouteCost[i], routeRelays)
+		hasRoutes = true
+	}
+
+	if !hasRoutes {
+		fmt.Printf("(no routes exist)\n")
+	}
 
 	fmt.Printf("\n")
 }

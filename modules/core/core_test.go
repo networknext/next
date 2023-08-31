@@ -1,7 +1,5 @@
 package core_test
 
-// todo: testing something
-/*
 import (
 	"crypto/ed25519"
 	"encoding/binary"
@@ -4959,4 +4957,3 @@ func TestPingTokenSignatures(t *testing.T) {
 		assert.True(t, crypto.Auth_Verify(data[:length], key, pingTokens[i*constants.PingTokenBytes:]))
 	}
 }
-*/

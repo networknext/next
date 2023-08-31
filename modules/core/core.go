@@ -867,12 +867,9 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
 
-				// todo: test
-				/*				
 				if cost > maxCost {
 					break
 				}
-				*/
 				
 				bestRoutes[numRoutes].Cost = cost
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]

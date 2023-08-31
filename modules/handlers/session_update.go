@@ -980,8 +980,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
-	// todo: surely we could push this work to the SDK server?
-
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
 	state.Output.PrevPacketsSentServerToClient = state.Request.PacketsSentServerToClient
 	state.Output.PrevPacketsLostClientToServer = state.Request.PacketsLostClientToServer
@@ -1183,7 +1181,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 
-	// todo: would be nicer to have some data here instead like, "bool HasNearRelayUpdate"
 	if state.Request.SliceNumber != 1 {
 		return
 	}

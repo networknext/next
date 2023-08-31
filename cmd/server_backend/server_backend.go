@@ -222,7 +222,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 }
 
 func locateIP_Local(ip net.IP) (float32, float32) {
-	return 43, -75
+	return 41, -93
 }
 
 func locateIP_Real(ip net.IP) (float32, float32) {
