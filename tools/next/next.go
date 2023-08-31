@@ -1534,8 +1534,89 @@ func (e *Environment) Clean() {
 // -------------------------------------------------------------------------------------------
 
 func getCostMatrix(env Environment, fileName string) {
+
 	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", env.PortalURL))
+
 	os.WriteFile("cost.bin", cost_matrix_binary, 0644)
+
+	w, err := os.Create("cost.html")
+	if err != nil {
+		panic(err)
+	}
+
+	defer w.Close()
+
+	costMatrix := common.CostMatrix{}
+
+	err = costMatrix.Read(cost_matrix_binary)
+	if err != nil {
+		panic(err)
+	}
+
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>Cost Matrix</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		cost{
+      	  color: white;
+   		}
+		*{
+	    font-family:Courier;
+	    }
+	  </style>
+	</head>
+	<body>`
+
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+
+	fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+
+	fmt.Fprintf(w, "<tr><td></td>")
+
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+	}
+
+	fmt.Fprintf(w, "</tr>\n")
+
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+		for j := range costMatrix.RelayNames {
+			if i == j {
+				fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+				continue
+			}
+			nope := false
+			costString := ""
+			index := core.TriMatrixIndex(i, j)
+			cost := costMatrix.Costs[index]
+			if cost >= 0 && cost < 255 {
+				costString = fmt.Sprintf("%d", cost)
+			} else {
+				nope = true
+			}
+			if nope {
+				fmt.Fprintf(w, "<td bgcolor=\"red\"></td>")
+			} else {
+				fmt.Fprintf(w, "<td bgcolor=\"green\"><cost>%s</cost></td>", costString)
+			}
+		}
+		fmt.Fprintf(w, "</tr>\n")
+	}
+
+	fmt.Fprintf(w, "</table>\n")
+
+	const htmlFooter = `</body></html>`
+
+	fmt.Fprintf(w, "%s\n", htmlFooter)
 }
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
