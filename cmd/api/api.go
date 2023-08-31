@@ -23,7 +23,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var pool *redis.Pool
+var redisPortalPool *redis.Pool
+var redisRelayBackendPool *redis.Pool
 
 var controller *admin.Controller
 
@@ -40,7 +41,8 @@ func main() {
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	databaseURL = envvar.GetString("DATABASE_URL", "")
-	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	redisRelayBackendHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
@@ -56,7 +58,8 @@ func main() {
 	if databaseURL != "" {
 		core.Debug("database url: %s", databaseURL)
 	}
-	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis portal hostname: %s", redisPortalHostname)
+	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
 	core.Debug("redis pool active: %d", redisPoolActive)
 	core.Debug("redis pool idle: %d", redisPoolIdle)
 	core.Debug("enable admin: %v", enableAdmin)
@@ -117,7 +120,8 @@ func main() {
 
 	if enablePortal {
 
-		pool = common.CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+		redisPortalPool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
+		redisRelayBackendPool = common.CreateRedisPool(redisRelayBackendHostname, redisPoolActive, redisPoolIdle)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
@@ -232,7 +236,7 @@ type PortalSessionCountsResponse struct {
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	response.TotalSessionCount, response.NextSessionCount = portal.GetSessionCounts(pool, time.Now().Unix()/60)
+	response.TotalSessionCount, response.NextSessionCount = portal.GetSessionCounts(redisPortalPool, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -303,7 +307,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalSessionsResponse{}
-	sessions := portal.GetSessions(pool, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetSessions(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
 	for i := range response.Sessions {
@@ -336,7 +340,7 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalUserSessionsResponse{}
-	sessions := portal.GetUserSessions(pool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetUserSessions(redisPortalPool, userHash, time.Now().Unix()/60, int(begin), int(end))
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
 	for i := range response.Sessions {
@@ -361,7 +365,7 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalSessionDataResponse{}
-	sessionData, sliceData, nearRelayData := portal.GetSessionData(pool, sessionId)
+	sessionData, sliceData, nearRelayData := portal.GetSessionData(redisPortalPool, sessionId)
 	if sessionData != nil {
 		database := service.Database()
 		upgradePortalSessionData(database, sessionData, &response.SessionData)
@@ -381,7 +385,7 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
-	response.ServerCount = portal.GetServerCount(pool, time.Now().Unix()/60)
+	response.ServerCount = portal.GetServerCount(redisPortalPool, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -419,7 +423,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	servers := portal.GetServers(pool, time.Now().Unix()/60, int(begin), int(end))
+	servers := portal.GetServers(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
 	database := service.Database()
@@ -461,7 +465,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serverAddress := vars["server_address"]
 	response := PortalServerDataResponse{}
-	response.ServerData, response.ServerSessionIds = portal.GetServerData(pool, serverAddress, time.Now().Unix()/60)
+	response.ServerData, response.ServerSessionIds = portal.GetServerData(redisPortalPool, serverAddress, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -475,7 +479,7 @@ type PortalRelayCountResponse struct {
 
 func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalRelayCountResponse{}
-	response.RelayCount = portal.GetRelayCount(pool, time.Now().Unix()/60)
+	response.RelayCount = portal.GetRelayCount(redisPortalPool, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -514,7 +518,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	relays := portal.GetRelays(pool, time.Now().Unix()/60, int(begin), int(end))
+	relays := portal.GetRelays(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
 	response := PortalRelaysResponse{}
 	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
@@ -560,7 +564,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 		relay := database.GetRelayByName(relayName)
 		if relay != nil {
 			relayAddress := relay.PublicAddress.String()
-			response.RelayData, response.RelaySamples = portal.GetRelayData(pool, relayAddress)
+			response.RelayData, response.RelaySamples = portal.GetRelayData(redisPortalPool, relayAddress)
 		}
 	}
 	w.WriteHeader(http.StatusOK)
@@ -684,7 +688,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	data := common.LoadMasterServiceData(pool, "map_cruncher", "map_data")
+	data := common.LoadMasterServiceData(redisPortalPool, "map_cruncher", "map_data")
 	w.Write(data)
 }
 
@@ -693,7 +697,7 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	data := common.LoadMasterServiceData(pool, "relay_backend", "cost_matrix")
+	data := common.LoadMasterServiceData(redisRelayBackendPool, "relay_backend", "cost_matrix")
 	w.Write(data)
 }
 
