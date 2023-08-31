@@ -42,7 +42,7 @@ func main() {
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	databaseURL = envvar.GetString("DATABASE_URL", "")
 	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
-	redisRelayBackendHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	redisRelayBackendHostname := envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
 	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
