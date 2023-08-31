@@ -1143,7 +1143,7 @@ LimitNOFILE=1024
 WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
-Restart=on-success
+Restart=always
 RestartSec=60
 
 [Install]
