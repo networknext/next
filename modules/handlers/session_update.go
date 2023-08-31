@@ -516,6 +516,28 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	}
 
 	/*
+		Debug print near relay ping results on slice 1. This is when the SDK tells us the near relay ping results.
+	*/
+
+	if state.Request.SliceNumber == 1 {
+		core.Debug("sdk uploaded near relay ping stats for %d relays:", state.Request.NumNearRelays)
+		for i := 0; i < int(state.Request.NumNearRelays); i++ {
+			relayId := state.Request.NearRelayIds[i]
+			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]
+			var relayName string
+			if exists {
+				relayName = state.RouteMatrix.RelayNames[relayIndex]
+			} else {
+				relayName = "???" // near relay no longer exists in route matrix
+			}
+			rtt := state.Request.NearRelayRTT[i]
+			jitter := state.Request.NearRelayJitter[i]
+			pl := state.Request.NearRelayPacketLoss[i]
+			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
+		}
+	}
+
+	/*
 		Reframe dest relays to get them relative to the current route matrix.
 	*/
 
@@ -1003,7 +1025,12 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	*/
 
 	if state.Response.HasNearRelays {
-		core.Debug("sending %d near relays down to client", state.Response.NumNearRelays)
+		core.Debug("sending %d near relays down to client:", state.Response.NumNearRelays)
+		for i := 0; i < int(state.Response.NumNearRelays); i++ {
+			relayIndex := state.RouteMatrix.RelayIdToIndex[state.Response.NearRelayIds[i]]
+			relayName := state.RouteMatrix.RelayNames[relayIndex]
+			core.Debug(" + %s [%016x]", relayName, state.Response.NearRelayIds[i])
+		}
 	}
 
 	if state.Output.SliceNumber == 1 && state.Response.HasNearRelays == false {
@@ -1011,7 +1038,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	if state.Output.SliceNumber == 1 && state.Response.NumNearRelays == 0 {
-		core.Debug("num near relays is zero fro slice 1?!!!!")
+		core.Debug("num near relays is zero for slice 1?!!!!")
 	}
 
 	/*
