@@ -54,7 +54,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 	nearRelayIds := make([]uint64, numNearRelays)
 	nearRelayAddresses := make([]net.UDPAddr, numNearRelays)
 
-	for i := range nearRelayData {
+	for i := 0; i < numNearRelays; i++ {
 		nearRelayIds[i] = nearRelayData[i].Id
 		nearRelayAddresses[i] = nearRelayData[i].Address
 	}
