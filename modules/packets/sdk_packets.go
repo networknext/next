@@ -482,14 +482,14 @@ type SDK_SessionData struct {
 	RouteRelayIds                       [SDK_MaxRelaysPerRoute]uint64
 	RouteState                          core.RouteState
 	FallbackToDirect                    bool
+	WriteSummary                        bool
+	WroteSummary                        bool
 	PrevPacketsSentClientToServer       uint64
 	PrevPacketsSentServerToClient       uint64
 	PrevPacketsLostClientToServer       uint64
 	PrevPacketsLostServerToClient       uint64
 	PrevPacketsOutOfOrderClientToServer uint64
 	PrevPacketsOutOfOrderServerToClient uint64
-	WriteSummary                        bool
-	WroteSummary                        bool
 	NextEnvelopeBytesUpSum              uint64
 	NextEnvelopeBytesDownSum            uint64
 	DurationOnNext                      uint32

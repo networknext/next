@@ -411,7 +411,7 @@ func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
 func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	/*
-		This function selects up to 32 near relays for the session,
+		This function selects up to constants.MaxNearRelays near relays for the session,
 		according to the players latitude and longitude determined by
 		ip2location.
 
@@ -526,6 +526,8 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
 
+	core.Debug("reframed dest relays %d -> %d", len(state.DestRelayIds), outputNumDestRelays)
+
 	/*
 		Filter source relays and get them in a form relative to the current route matrix
 	*/
@@ -554,14 +556,14 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	outputSourceRelays := make([]int32, len(sourceRelayIds))
 	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
 
-	core.Debug("filtered %d near relays -> %d", state.Request.NumNearRelays, len(sourceRelayIds))
+	core.Debug("filtered near relays %d -> %d", state.Request.NumNearRelays, len(sourceRelayIds))
 
 	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
 
-	core.Debug("reframed %d near relays -> %d", len(sourceRelayIds), len(state.SourceRelays))
+	core.Debug("reframed near relays %d -> %d", len(sourceRelayIds), len(state.SourceRelays))
 
 	return true
 }
@@ -956,6 +958,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This lets us perform a delta each slice to calculate real packet loss in high precision, per-slice.
 	*/
 
+	// todo: surely we could push this work to the SDK server?
+
 	state.Output.PrevPacketsSentClientToServer = state.Request.PacketsSentClientToServer
 	state.Output.PrevPacketsSentServerToClient = state.Request.PacketsSentServerToClient
 	state.Output.PrevPacketsLostClientToServer = state.Request.PacketsLostClientToServer
@@ -995,12 +999,19 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		Don't ping near relays except on slice 1.
+		Take note of when we send near relays down to the client. Useful for debugging.
 	*/
 
-	if state.Output.SliceNumber != 1 {
-		state.Response.HasNearRelays = false
-		state.Response.NumNearRelays = 0
+	if state.Response.HasNearRelays {
+		core.Debug("sending %d near relays down to client", state.Response.NumNearRelays)
+	}
+
+	if state.Output.SliceNumber == 1 && state.Response.HasNearRelays == false {
+		core.Debug("no near relays sent down to client for slice 1?!!!")
+	}
+
+	if state.Output.SliceNumber == 1 && state.Response.NumNearRelays == 0 {
+		core.Debug("num near relays is zero fro slice 1?!!!!")
 	}
 
 	/*

@@ -62,7 +62,7 @@
 #define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                          10.0
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
-#define NEXT_MAX_NEAR_RELAYS                                           32
+#define NEXT_MAX_NEAR_RELAYS                                           16
 #define NEXT_ROUTE_TOKEN_BYTES                                         71
 #define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              111
 #define NEXT_CONTINUE_TOKEN_BYTES                                      17

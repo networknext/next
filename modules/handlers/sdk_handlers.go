@@ -593,7 +593,9 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	   We use near relay latency, jitter and packet loss for route planning.
 	*/
 
-	SessionUpdate_UpdateNearRelays(&state)
+	if state.Request.SliceNumber > 0 {
+		SessionUpdate_UpdateNearRelays(&state)
+	}
 
 	/*
 	   Decide whether we should take network next or not.
