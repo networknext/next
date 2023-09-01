@@ -4790,10 +4790,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         const uint8_t packet_id = packet_data[0];
 
+        // todo
+        printf( "[%s] received packet type %d\n", from_string, packet_id );
+
         // don't process any packets until we have received the first relay update response
 
         if ( relay->control.last_update_response_time == 0 )
         {
+            // todo
+            printf( "[%s] ignoring packet. haven't received first relay update response yet\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_DEBUG, "[%s] ignoring packet. haven't received first relay update response yet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_PACKETS_RECEIVED_BEFORE_INITIALIZE]++;

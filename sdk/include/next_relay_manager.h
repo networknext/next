@@ -30,6 +30,7 @@
 #include "next_packets.h"
 
 #include <memory.h>
+#include <stdio.h>
 
 // todo: should probably move into .h/.cpp split
 
@@ -280,6 +281,10 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 #endif // #if NEXT_SPIKE_TRACKING
 
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
+
+            // todo
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            printf( "sent near relay ping packet to %s (%d bytes)\n", next_address_to_string( &manager->relay_addresses[i], address_buffer ), packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
             double finish_time = next_platform_time();
