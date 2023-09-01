@@ -212,69 +212,6 @@ module "akamai_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ============
-# VULTR RELAYS
-# ============
-
-locals {
-
-  vultr_relays = {
-
-/*
-    "vultr.chicago" = {
-      datacenter_name = "vultr.chicago"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.atlanta" = {
-      datacenter_name = "vultr.atlanta"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.losangeles" = {
-      datacenter_name = "vultr.losangeles"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.miami" = {
-      datacenter_name = "vultr.miami"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.dallas" = {
-      datacenter_name = "vultr.dallas"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.newyork" = {
-      datacenter_name = "vultr.newyork"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.siliconvalley" = {
-      datacenter_name = "vultr.siliconvalley"
-      plan            = "vc2-1c-1gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-*/
-  }
-}
-
-module "vultr_relays" {
-  relays              = local.vultr_relays
-  source              = "../../sellers/vultr"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-}
-
-# ----------------------------------------------------------------------------------------
-
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -288,7 +225,6 @@ locals {
       keys(module.google_relays.relays),
       keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
-      keys(module.vultr_relays.relays),
     )
   )
 
@@ -296,14 +232,12 @@ locals {
     module.google_relays.relays,
     module.amazon_relays.relays,
     module.akamai_relays.relays,
-    module.vultr_relays.relays,
   )
 
   datacenters = merge(
     module.google_relays.datacenters,
     module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
-    module.vultr_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])

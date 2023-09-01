@@ -23,6 +23,7 @@ variable "vpn_address" { type = string }
 
 # --------------------------------------------------------------------------
 
+/*
 resource "vultr_ssh_key" "relay" {
   name    = "relay"
   ssh_key = replace(file(var.ssh_public_key_file), "\n", "")
@@ -49,14 +50,40 @@ data "vultr_os" "relay" {
   }
 }
 
+resource "vultr_firewall_group" "relay" {
+  description = "relay firewall group"
+}
+
+resource "vultr_firewall_rule" "relay_ssh" {
+  firewall_group_id = vultr_firewall_group.relay.id
+  protocol = "tcp"
+  ip_type = "v4"
+  subnet = var.vpn_address
+  subnet_size = 0
+  port = "22"
+  notes = "allow ssh from vpn address only"
+}
+
+resource "vultr_firewall_rule" "relay_udp_40000" {
+  firewall_group_id = vultr_firewall_group.relay.id
+  protocol = "udp"
+  ip_type = "v4"
+  subnet = "0.0.0.0"
+  subnet_size = 0
+  port = "40000"
+  notes = "allow udp traffic on port 40000"
+}
+
 resource "vultr_instance" "relay" {
-  for_each    = var.relays
-  label       = each.key
-  region      = local.datacenter_map[each.value.datacenter_name].zone
-  plan        = data.vultr_plan.relay[each.key].id
-  os_id       = data.vultr_os.relay[each.key].id
-  ssh_key_ids = [vultr_ssh_key.relay.id]
-  script_id   = vultr_startup_script.setup_relay.id
+  for_each          = var.relays
+  label             = each.key
+  region            = local.datacenter_map[each.value.datacenter_name].zone
+  plan              = data.vultr_plan.relay[each.key].id
+  os_id             = data.vultr_os.relay[each.key].id
+  ssh_key_ids       = [vultr_ssh_key.relay.id]
+  script_id         = vultr_startup_script.setup_relay.id
+  firewall_group_id = vultr_firewall_group.relay.id
+  ddos_protection   = false
 }
 
 resource "vultr_reserved_ip" "relay" {
@@ -113,3 +140,4 @@ output "datacenters" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/
