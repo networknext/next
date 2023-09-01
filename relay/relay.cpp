@@ -4925,6 +4925,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
+            // todo
+            printf( "[%s] basic packet filter dropped packet\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] basic packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
@@ -4944,6 +4947,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
+            // todo
+            printf( "[%s] advanced packet filter dropped packet\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
@@ -5945,12 +5951,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_NEAR_PING_PACKET )
         {
+            // todo
+            printf( "[%s] received near relay ping packet\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] received near relay ping packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
+                // todo
+                printf( "[%s] ignored relay near ping packet. wrong packet size (%d)\n", from_string, packet_bytes );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] ignored relay near ping packet. wrong packet size (%d) (thread %d)", from_string, packet_bytes, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_WRONG_SIZE]++;
@@ -5968,7 +5980,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-                relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping expired (thread %d)", from_string, relay->thread_index );
+                // todo
+                printf( "[%s] near ping expired\n", from_string );
+
+                // relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping expired (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED]++;
 
@@ -5979,6 +5994,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
+                // todo
+                printf( "[%s] ping token did not verify\n", from_string );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping token did not verify (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY]++;
@@ -5992,6 +6010,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             {
                 assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
                 assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+
+                // todo
+                printf( "[%s] sent pong\n", from_string );
 
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with near relay pong packet (thread %d)", from_string, relay->thread_index );
 

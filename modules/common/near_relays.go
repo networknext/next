@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	// "sort"
 
-	"github.com/networknext/next/modules/core"
+	// "github.com/networknext/next/modules/core"
 )
 
 // todo: this function is not unit tested. It really should be.
@@ -27,9 +27,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 	type NearRelayData struct {
 		Id        uint64
 		Address   net.UDPAddr
-		Latitude  float64
-		Longitude float64
-		Distance  int
+
 	}
 
 	nearRelayData := make([]NearRelayData, len(relayIds))
@@ -37,9 +35,6 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 	for i, relayId := range relayIds {
 		nearRelayData[i].Id = relayId
 		nearRelayData[i].Address = relayAddresses[i]
-		nearRelayData[i].Latitude = float64(int64(relayLatitudes[i]))
-		nearRelayData[i].Longitude = float64(int64(relayLongitudes[i]))
-		nearRelayData[i].Distance = int(core.HaversineDistance(float64(sourceLatitude), float64(sourceLongitude), float64(nearRelayData[i].Latitude), float64(nearRelayData[i].Longitude)))
 	}
 
 	rand.Shuffle(len(nearRelayData), func(i, j int) {
