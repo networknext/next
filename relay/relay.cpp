@@ -4478,8 +4478,6 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
-    // todo: this is whack. just look up the stuff from the backend, vs. trip wiring it against env
-    /*
     if ( ( expected_has_internal_address != 0 ) != main->has_internal_address )
     {
         printf( "error: relay is misconfigured. it doesn't have an internal address, but it should\n" );
@@ -4495,7 +4493,6 @@ int main_update( main_t * main )
         printf( "error: relay is misconfigured. internal address is set to '%s', but it should be '%s'\n", relay_internal_address_string, expected_internal_address_string );
         return RELAY_ERROR;
     }
-    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
@@ -4877,18 +4874,37 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 crypto_auth( ping_token, ping_data, ping_data_length, relay->control.ping_key );
 
-                uint8_t ping_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port );
-                if ( packet_bytes > 0 )
+                if ( !internal )
                 {
-                    assert( relay_basic_packet_filter( ping_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+                    uint8_t ping_packet[RELAY_MAX_PACKET_BYTES];
+                    packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port );
+                    if ( packet_bytes > 0 )
+                    {
+                        assert( relay_basic_packet_filter( ping_packet, packet_bytes ) );
+                        assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
-                    relay_platform_socket_send_packet( relay->socket, &to_address, ping_packet, packet_bytes );
-        
-                    relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-                    relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
-                    relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
+                        relay_platform_socket_send_packet( relay->socket, &to_address, ping_packet, packet_bytes );
+            
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
+                        relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
+                    }
+                }
+                else
+                {
+                    uint8_t ping_packet[RELAY_MAX_PACKET_BYTES];
+                    packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, to_address_data, to_address_bytes, to_address_port );
+                    if ( packet_bytes > 0 )
+                    {
+                        assert( relay_basic_packet_filter( ping_packet, packet_bytes ) );
+                        assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+
+                        relay_platform_socket_send_packet( relay->socket, &to_address, ping_packet, packet_bytes );
+            
+                        relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
+                        relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
+                        relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
+                    }
                 }
             }
 
@@ -4944,17 +4960,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         if ( ! ( relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
                  relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
                  relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
-                 ( relay->has_internal_address && 
-                   ( relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) ||
-                     relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) ||
-                     relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) 
-                   ) 
-                 ) 
+                 relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) 
                ) 
            )
         {
             // todo
-            printf( "[%s] advanced packet filter dropped packet\n", from_string );
+            char internal_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_address_to_string(&relay->relay_internal_address, internal_string);
+            printf( "[%s] advanced packet filter dropped packet (internal address is %s)\n", from_string, internal_string );
 
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
