@@ -4941,6 +4941,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
+            // todo
+            char internal_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_address_to_string(&relay->relay_internal_address, internal_string);
+            printf( "[%s] advanced packet filter dropped packet (internal address is %s)\n", from_string, internal_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
@@ -4999,20 +5004,38 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             }
 
             uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
-            packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port );
-            if ( packet_bytes > 0 )
+
+            if ( !internal )
             {
-                assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
-                assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port );
+                if ( packet_bytes > 0 )
+                {
+                    assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
-                relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
+                    relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
 
-                relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
-                relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
-                relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
-
-                relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_SENT]++;
+                    relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
+                }
             }
+            else
+            {
+                packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, from_address_data, from_address_bytes, from_address_port );
+                if ( packet_bytes > 0 )
+                {
+                    assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+
+                    relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
+
+                    relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
+                }
+            }
+    
+            relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
+            relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
+
+            relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_SENT]++;
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
@@ -5965,7 +5988,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-                // relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping expired (thread %d)", from_string, relay->thread_index );
+                relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping expired (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED]++;
 
