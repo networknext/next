@@ -8,8 +8,6 @@ import (
 	// "github.com/networknext/next/modules/core"
 )
 
-// todo: this function is not unit tested. It really should be.
-
 func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float32, relayLongitudes []float32, sourceLatitude float32, sourceLongitude float32, destLatitude float32, destLongitude float32) ([]uint64, []net.UDPAddr) {
 
 	// Are there no relays in the route matrix? Return empty set

@@ -69,7 +69,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-/*
     # OREGON
 
     "google.oregon.1" = {
@@ -131,7 +130,6 @@ locals {
       type            = "n2-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-*/
 
   }
 }
@@ -178,7 +176,6 @@ locals {
 
   akamai_relays = {
 
-/*
     "akamai.newyork" = {
       datacenter_name = "akamai.newyork"
       type            = "g6-dedicated-2"
@@ -202,7 +199,6 @@ locals {
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
     }
-*/
 
   }
 }
