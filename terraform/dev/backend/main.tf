@@ -769,7 +769,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 16
+  target_size        = 8
 }
 
 # ----------------------------------------------------------------------------------------
@@ -791,7 +791,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
-    RASPBERRY_NUM_CLIENTS=16
+    RASPBERRY_NUM_CLIENTS=64
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
@@ -807,7 +807,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 64
+  target_size        = 16
 }
 
 # ----------------------------------------------------------------------------------------
