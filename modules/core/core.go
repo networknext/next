@@ -591,7 +591,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKe
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []net.UDPAddr, publicKeys [][]byte, internal []bool, masterPrivateKey []byte) {
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, publicKeys [][]byte, masterPrivateKey []byte) {
 	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
@@ -602,22 +602,24 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		token.KbpsUp = kbpsUp
 		token.KbpsDown = kbpsDown
 		if i != 0 {
-			token.PrevAddress = addresses[i-1]
+			if hasInternalAddress[i] && hasInternalAddress[i-1] && sellers[i] == sellers[i-1] && internalGroups[i] == internalGroups[i-1] {
+				token.PrevAddress = internalAddresses[i-1]
+				token.PrevInternal = 1
+			} else {
+				token.PrevAddress = publicAddresses[i-1]
+			}
 		} else {
 			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
 		if i != numNodes-1 {
-			token.NextAddress = addresses[i+1]
+			if hasInternalAddress[i] && hasInternalAddress[i+1] && sellers[i] == sellers[i+1] && internalGroups[i] == internalGroups[i+1] {
+				token.NextAddress = internalAddresses[i+1]
+				token.NextInternal = 1
+			} else {
+				token.NextAddress = publicAddresses[i+1]
+			}
 		} else {
 			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
-		}
-		if i > 0 && i < numNodes-1 {
-			if internal[i] {
-				token.PrevInternal = 1
-			}
-			if internal[i+1] {
-				token.NextInternal = 1
-			}
 		}
 		copy(token.PrivateKey[:], privateKey[:])
 		WriteEncryptedRouteToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])

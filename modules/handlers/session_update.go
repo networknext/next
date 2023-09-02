@@ -596,51 +596,53 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routeAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routePublicAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routeHasInternalAddresses [constants.NEXT_MAX_NODES]bool
+	var routeInternalAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routeInternalGroups [constants.NEXT_MAX_NODES]uint64
+	var routeSellers [constants.NEXT_MAX_NODES]int
 	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
-	var routeInternal [constants.NEXT_MAX_NODES]bool
 
 	// client node
 
 	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
-	routeAddresses[0] = state.Request.ClientAddress
+	routePublicAddresses[0] = state.Request.ClientAddress
 
 	// relay nodes
 
-	relayAddresses := routeAddresses[1 : numTokens-1]
+	relayPublicAddresses := routePublicAddresses[1 : numTokens-1]
+	relayHasInternalAddresses := routeHasInternalAddresses[1 : numTokens-1]
+	relayInternalAddresses := routeInternalAddresses[1 : numTokens-1]
+	relayInternalGroups := routeInternalGroups[1 : numTokens-1]
+	relaySellers := routeSellers[1 : numTokens-1]
 	relayPublicKeys := routePublicKeys[1 : numTokens-1]
-	relayInternal := routeInternal[1 : numTokens-1]
 
 	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
-		relayIndex := routeRelays[i]
-		relay := &state.Database.Relays[relayIndex]
-		relayAddresses[i] = relay.PublicAddress
-		relayPublicKeys[i] = relay.PublicKey
 
-		if i > 0 {
-			prevRelayIndex := routeRelays[i-1]
-			prevRelay := &state.Database.Relays[prevRelayIndex]
-			if prevRelay.Seller.Id == relay.Seller.Id &&
-				relay.HasInternalAddress && prevRelay.HasInternalAddress &&
-				relay.InternalGroup == prevRelay.InternalGroup {
-				relayAddresses[i] = relay.InternalAddress
-				relayInternal[i] = true
-			}
-		}
+		relayIndex := routeRelays[i]
+
+		relay := &state.Database.Relays[relayIndex]
+
+		relayPublicAddresses[i] = relay.PublicAddress
+		relayHasInternalAddresses[i] = relay.HasInternalAddress
+		relayInternalAddresses[i] = relay.InternalAddress
+		relayInternalGroups[i] = relay.InternalGroup
+		relaySellers[i] = int(relay.Seller.Id)
+		relayPublicKeys[i] = relay.PublicKey
 	}
 
 	// server node
 
-	routeAddresses[numTokens-1] = *state.From
+	routePublicAddresses[numTokens-1] = *state.From
 	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// debug print the route
 
 	core.Debug("----------------------------------------------------")
-	for index, address := range routeAddresses[:numTokens] {
-		core.Debug("route address %d: %s", index, address.String())
+	for i := range routePublicAddresses[:numTokens] {
+		core.Debug("%d: public address = %s, has internal address = %d, internal address = %s, internal group = %016x, seller = %d", i, routePublicAddresses[i].String(), routeHasInternalAddresses[i], routeInternalAddresses[i].String(), routeInternalGroups[i], routeSellers[i])
 	}
 	core.Debug("----------------------------------------------------")
 
@@ -654,7 +656,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], routeInternal[:], state.RelayBackendPrivateKey[:])
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routePublicAddresses[:], routeHasInternalAddresses[:], routeInternalAddresses[:], routeInternalGroups[:], routeSellers[:], routePublicKeys[:], state.RelayBackendPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK_RouteTypeNew
 	state.Response.NumTokens = numTokens
