@@ -220,7 +220,7 @@ resource "google_redis_instance" "redis_portal" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -230,7 +230,7 @@ resource "google_redis_instance" "redis_map_cruncher" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -240,7 +240,7 @@ resource "google_redis_instance" "redis_raspberry" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -250,7 +250,7 @@ resource "google_redis_instance" "redis_analytics" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -550,7 +550,8 @@ module "api" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -610,6 +611,7 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
+  target_size        = 8
 }
 
 // ---------------------------------------------------------------------------------------
@@ -688,7 +690,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  target_size        = 8
+  target_size        = 32
 }
 
 output "server_backend_address" {
@@ -768,7 +770,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 8
+  target_size        = 64
 }
 
 # ----------------------------------------------------------------------------------------
@@ -790,7 +792,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
     RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
-    RASPBERRY_NUM_CLIENTS=64
+    RASPBERRY_NUM_CLIENTS=32
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
@@ -806,7 +808,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 16
+  target_size        = 32
 }
 
 # ----------------------------------------------------------------------------------------

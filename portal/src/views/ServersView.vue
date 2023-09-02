@@ -71,7 +71,7 @@ function nice_uptime(value) {
 
 async function getData() {
   try {
-    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/servers/0/10');
+    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/servers/0/100');
     let i = 0;
     let data = []
     while (i < res.data.servers.length) {

@@ -37,8 +37,8 @@ resource "aws_security_group" "allow_ssh_and_udp" {
 
   ingress {
     protocol    = "udp"
-    from_port   = 45000
-    to_port     = 45000
+    from_port   = 40000
+    to_port     = 40000
     cidr_blocks = ["0.0.0.0/0"]
   }
 

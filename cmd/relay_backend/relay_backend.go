@@ -883,6 +883,12 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					continue
 				}
 
+				timeFinish := time.Now()
+
+				optimizeDuration := timeFinish.Sub(timeStart)
+
+				core.Debug("updated route matrix: %d relays is %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
+
 				// if we are the leader, store our data in redis
 
 				if service.IsLeader() {
@@ -924,14 +930,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				routeMatrixMutex.Lock()
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
-
-				// we are done!
-
-				timeFinish := time.Now()
-
-				optimizeDuration := timeFinish.Sub(timeStart)
-
-				core.Debug("update route matrix: %d relays (%dms)", relayData.NumRelays, optimizeDuration.Milliseconds())
 			}
 		}
 	}()

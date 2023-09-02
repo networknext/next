@@ -1214,7 +1214,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 // enable near relay pings
 
                 next_printf( NEXT_LOG_LEVEL_INFO, "client pinging %d near relays", packet.num_near_relays );
-                
+
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.near_relay_ping_tokens, packet.near_relay_expire_timestamp );
             }
             else

@@ -591,7 +591,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKe
 	return ReadRouteToken(token, tokenData)
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, addresses []net.UDPAddr, publicKeys [][]byte, internal []bool, masterPrivateKey []byte) {
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, publicKeys [][]byte, masterPrivateKey []byte) {
 	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
@@ -602,22 +602,24 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		token.KbpsUp = kbpsUp
 		token.KbpsDown = kbpsDown
 		if i != 0 {
-			token.PrevAddress = addresses[i-1]
+			if hasInternalAddress[i] && hasInternalAddress[i-1] && sellers[i] == sellers[i-1] && internalGroups[i] == internalGroups[i-1] {
+				token.PrevAddress = internalAddresses[i-1]
+				token.PrevInternal = 1
+			} else {
+				token.PrevAddress = publicAddresses[i-1]
+			}
 		} else {
 			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
 		if i != numNodes-1 {
-			token.NextAddress = addresses[i+1]
+			if hasInternalAddress[i] && hasInternalAddress[i+1] && sellers[i] == sellers[i+1] && internalGroups[i] == internalGroups[i+1] {
+				token.NextAddress = internalAddresses[i+1]
+				token.NextInternal = 1
+			} else {
+				token.NextAddress = publicAddresses[i+1]
+			}
 		} else {
 			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
-		}
-		if i > 0 && i < numNodes-1 {
-			if internal[i] {
-				token.PrevInternal = 1
-			}
-			if internal[i+1] {
-				token.NextInternal = 1
-			}
 		}
 		copy(token.PrivateKey[:], privateKey[:])
 		WriteEncryptedRouteToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
@@ -830,21 +832,31 @@ type BestRoute struct {
 }
 
 func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, bestRoutes []BestRoute, numBestRoutes *int, routeDiversity *int32) {
+
 	if len(routeMatrix) == 0 {
 		*numBestRoutes = 0
 		return
 	}
+
 	numRoutes := 0
+
 	maxRoutes := len(bestRoutes)
+
 	for i := range sourceRelays {
+
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
 			continue
 		}
+
 		firstRouteFromThisRelay := true
+
+		sourceRelayIndex := sourceRelays[i]
+
 		for j := range destRelays {
-			sourceRelayIndex := sourceRelays[i]
+
 			destRelayIndex := destRelays[j]
+
 			if sourceRelayIndex == destRelayIndex {
 				continue
 			}
@@ -854,22 +866,29 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			entry := &routeMatrix[index]
 
 			for k := 0; k < int(entry.NumRoutes); k++ {
+
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
+
 				if cost > maxCost {
 					break
 				}
+				
 				bestRoutes[numRoutes].Cost = cost
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
 
 				for l := 0; l < len(entry.RouteRelays[0]); l++ {
 					bestRoutes[numRoutes].Relays[l] = entry.RouteRelays[k][l]
 				}
+
 				bestRoutes[numRoutes].NeedToReverse = sourceRelayIndex < destRelayIndex
+
 				numRoutes++
+				
 				if firstRouteFromThisRelay {
 					*routeDiversity++
 					firstRouteFromThisRelay = false
 				}
+				
 				if numRoutes == maxRoutes {
 					*numBestRoutes = numRoutes
 					return
@@ -877,6 +896,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 		}
 	}
+
 	*numBestRoutes = numRoutes
 }
 
@@ -1026,6 +1046,19 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 			}
 		}
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
+
+		// todo
+		Debug("found %d routes:", numBestRoutes)
+		for i := 0; i < numBestRoutes; i++ {
+			route := ""
+			for j := 0; j < int(bestRoutes[i].NumRelays); j++ {
+				route += fmt.Sprintf("%d", bestRoutes[i].Relays[j])
+				if j != int(bestRoutes[i].NumRelays - 1) {
+					route += " - "
+				}
+			}
+			Debug( " + %d: %s (%d)", i, route, bestRoutes[i].Cost)
+		}
 	}
 
 	randomIndex := math_rand.Intn(numBestRoutes)
@@ -1301,8 +1334,6 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	}
 
 	// should we try to reduce packet loss?
-
-	// Check if the session is seeing sustained packet loss and increment/reset the counter
 
 	if directPacketLoss >= routeShader.AcceptablePacketLossSustained {
 		if routeState.PLSustainedCounter < 3 {

@@ -30,6 +30,7 @@
 #include "next_packets.h"
 
 #include <memory.h>
+#include <stdio.h>
 
 // todo: should probably move into .h/.cpp split
 

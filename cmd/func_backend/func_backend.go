@@ -851,8 +851,8 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		const MaxRouteRelays = packets.SDK_MaxRelaysPerRoute
 
 		var routeRelayIds [MaxRouteRelays]uint64
-		var routeRelayAddresses [MaxRouteRelays]net.UDPAddr
-		var routeRelayPublicKeys [MaxRouteRelays][]byte
+		var routePublicAddresses [MaxRouteRelays]net.UDPAddr
+		var routePublicKeys [MaxRouteRelays][]byte
 
 		numRouteRelays := numRelays
 		if numRouteRelays > MaxRouteRelays {
@@ -861,8 +861,8 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		for i := 0; i < numRouteRelays; i++ {
 			routeRelayIds[i] = relayIds[i]
-			routeRelayAddresses[i] = relayAddresses[i]
-			routeRelayPublicKeys[i] = TestRelayPublicKey
+			routePublicAddresses[i] = relayAddresses[i]
+			routePublicKeys[i] = TestRelayPublicKey
 		}
 
 		// is this a continue route, or a new route?
@@ -878,11 +878,16 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		numTokens := numRouteRelays + 2
 
-		tokenAddresses := make([]net.UDPAddr, numTokens)
-		tokenAddresses[0] = requestPacket.ClientAddress
-		tokenAddresses[len(tokenAddresses)-1] = requestPacket.ServerAddress
+		tokenPublicAddresses := make([]net.UDPAddr, numTokens)
+		tokenHasInternalAddresses := make([]bool, numTokens)
+		tokenInternalAddresses := make([]net.UDPAddr, numTokens)
+		tokenInternalGroups := make([]uint64, numTokens)
+		tokenSellers := make([]int, numTokens)
+
+		tokenPublicAddresses[0] = requestPacket.ClientAddress
+		tokenPublicAddresses[len(tokenPublicAddresses)-1] = requestPacket.ServerAddress
 		for i := 0; i < numRouteRelays; i++ {
-			tokenAddresses[1+i] = relayAddresses[i]
+			tokenPublicAddresses[1+i] = relayAddresses[i]
 		}
 
 		tokenPublicKeys := make([][]byte, numTokens)
@@ -891,8 +896,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		for i := 0; i < numRouteRelays; i++ {
 			tokenPublicKeys[1+i] = TestRelayPublicKey
 		}
-
-		tokenInternal := make([]bool, numTokens)
 
 		var tokenData []byte
 
@@ -904,7 +907,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			sessionData.ExpireTimestamp += packets.SDK_BillingSliceSeconds
 			sessionData.SessionVersion++
 			tokenData = make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenAddresses, tokenPublicKeys, tokenInternal, routerPrivateKey[:])
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenPublicAddresses, tokenHasInternalAddresses, tokenInternalAddresses, tokenInternalGroups, tokenSellers, tokenPublicKeys, routerPrivateKey[:])
 			routeType = packets.SDK_RouteTypeNew
 		}
 

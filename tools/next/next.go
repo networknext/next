@@ -213,7 +213,7 @@ func secureShell(user string, address string, port int) {
 // level 1: program error
 func handleRunTimeError(msg string, level int) {
 	fmt.Printf(msg)
-	fmt.Println()
+	fmt.Printf("\n\n")
 	os.Exit(level)
 }
 
@@ -570,13 +570,25 @@ func main() {
 		ShortHelp:  "Analyze route matrix from optimize",
 		Exec: func(ctx context.Context, args []string) error {
 			input := "optimize.bin"
-
 			if len(args) > 0 {
 				input = args[0]
 			}
-
 			analyzeRouteMatrix(input)
+			return nil
+		},
+	}
 
+	var routesCommand = &ffcli.Command{
+		Name:       "routes",
+		ShortUsage: "next routes [src] [dest]",
+		ShortHelp:  "Print list of routes from one relay to another",
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 2 {
+				handleRunTimeError(fmt.Sprintf("Please provide source and destination relay names"), 0)
+			}
+			src := args[0]
+			dest := args[1]
+			routes(src, dest)
 			return nil
 		},
 	}
@@ -600,6 +612,7 @@ func main() {
 		costCommand,
 		optimizeCommand,
 		analyzeCommand,
+		routesCommand,
 	}
 
 	root := &ffcli.Command{
@@ -1106,6 +1119,7 @@ echo setting up relay environment
 
 sudo cat > relay.env <<- EOM
 RELAY_NAME=$RELAY_NAME
+RELAY_NUM
 RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
 RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
 RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
@@ -1130,7 +1144,7 @@ LimitNOFILE=1024
 WorkingDirectory=/app
 ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
-Restart=on-success
+Restart=always
 RestartSec=60
 
 [Install]
@@ -1534,8 +1548,89 @@ func (e *Environment) Clean() {
 // -------------------------------------------------------------------------------------------
 
 func getCostMatrix(env Environment, fileName string) {
+
 	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", env.PortalURL))
+
 	os.WriteFile("cost.bin", cost_matrix_binary, 0644)
+
+	w, err := os.Create("cost.html")
+	if err != nil {
+		panic(err)
+	}
+
+	defer w.Close()
+
+	costMatrix := common.CostMatrix{}
+
+	err = costMatrix.Read(cost_matrix_binary)
+	if err != nil {
+		panic(err)
+	}
+
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>Cost Matrix</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		cost{
+      	  color: white;
+   		}
+		*{
+	    font-family:Courier;
+	    }
+	  </style>
+	</head>
+	<body>`
+
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+
+	fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+
+	fmt.Fprintf(w, "<tr><td></td>")
+
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+	}
+
+	fmt.Fprintf(w, "</tr>\n")
+
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+		for j := range costMatrix.RelayNames {
+			if i == j {
+				fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+				continue
+			}
+			nope := false
+			costString := ""
+			index := core.TriMatrixIndex(i, j)
+			cost := costMatrix.Costs[index]
+			if cost >= 0 && cost < 255 {
+				costString = fmt.Sprintf("%d", cost)
+			} else {
+				nope = true
+			}
+			if nope {
+				fmt.Fprintf(w, "<td bgcolor=\"red\"></td>")
+			} else {
+				fmt.Fprintf(w, "<td bgcolor=\"green\"><cost>%s</cost></td>", costString)
+			}
+		}
+		fmt.Fprintf(w, "</tr>\n")
+	}
+
+	fmt.Fprintf(w, "</table>\n")
+
+	const htmlFooter = `</body></html>`
+
+	fmt.Fprintf(w, "%s\n", htmlFooter)
 }
 
 func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThreshold int32) {
@@ -1635,6 +1730,87 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have only one route\n", analysis.OneRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no direct route\n", analysis.NoDirectRoutePercent)
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
+
+	fmt.Printf("\n")
+}
+
+func routes(src string, dest string) {
+
+	routeMatrixFilename := "optimize.bin"
+
+	routeMatrixData, err := ioutil.ReadFile(routeMatrixFilename)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
+	}
+
+	var routeMatrix common.RouteMatrix
+
+	err = routeMatrix.Read(routeMatrixData)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("error reading route matrix: %v\n", err), 1)
+	}
+
+	src_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == src {
+			src_index = i
+			break
+		}
+	}
+
+	if src_index == -1 {
+		handleRunTimeError(fmt.Sprintf("could not find source relay: %s\n", src), 1)
+	}
+
+	dest_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == dest {
+			dest_index = i
+			break
+		}
+	}
+
+	if dest_index == -1 {
+		handleRunTimeError(fmt.Sprintf("could not find destination relay: %s\n", src), 1)
+	}
+
+	index := core.TriMatrixIndex(src_index, dest_index)
+
+	entry := routeMatrix.RouteEntries[index]
+
+	fmt.Printf("routes from %s -> %s:\n\n", src, dest)
+
+	hasRoutes := false
+
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		routeRelays := ""
+		numRouteRelays := int(entry.RouteNumRelays[i])
+		if src_index < dest_index {
+			for j := numRouteRelays - 1; j >= 0; j-- {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != 0 {
+					routeRelays += " - "
+				}
+			}
+		} else {
+			for j := 0; j < numRouteRelays; j++ {
+				routeRelayIndex := entry.RouteRelays[i][j]
+				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+				routeRelays += routeRelayName
+				if j != numRouteRelays-1 {
+					routeRelays += " - "
+				}
+			}
+		}
+		fmt.Printf(" + %d: %s\n", entry.RouteCost[i], routeRelays)
+		hasRoutes = true
+	}
+
+	if !hasRoutes {
+		fmt.Printf("(no routes exist)\n")
+	}
 
 	fmt.Printf("\n")
 }

@@ -411,7 +411,7 @@ func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
 func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	/*
-		This function selects up to 32 near relays for the session,
+		This function selects up to constants.MaxNearRelays near relays for the session,
 		according to the players latitude and longitude determined by
 		ip2location.
 
@@ -476,6 +476,8 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
+	core.Debug("found %d near relays", numNearRelays)
+
 	state.Response.HasNearRelays = true
 	state.Response.NumNearRelays = int32(numNearRelays)
 
@@ -514,6 +516,28 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	}
 
 	/*
+		Debug print near relay ping results on slice 1. This is when the SDK tells us the near relay ping results.
+	*/
+
+	if state.Request.SliceNumber == 1 {
+		core.Debug("sdk uploaded near relay ping stats for %d relays:", state.Request.NumNearRelays)
+		for i := 0; i < int(state.Request.NumNearRelays); i++ {
+			relayId := state.Request.NearRelayIds[i]
+			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]
+			var relayName string
+			if exists {
+				relayName = state.RouteMatrix.RelayNames[relayIndex]
+			} else {
+				relayName = "???" // near relay no longer exists in route matrix
+			}
+			rtt := state.Request.NearRelayRTT[i]
+			jitter := state.Request.NearRelayJitter[i]
+			pl := state.Request.NearRelayPacketLoss[i]
+			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
+		}
+	}
+
+	/*
 		Reframe dest relays to get them relative to the current route matrix.
 	*/
 
@@ -523,6 +547,8 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, state.DestRelayIds, &outputNumDestRelays, outputDestRelays)
 
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
+
+	core.Debug("reframed dest relays %d -> %d", len(state.DestRelayIds), outputNumDestRelays)
 
 	/*
 		Filter source relays and get them in a form relative to the current route matrix
@@ -552,10 +578,14 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	outputSourceRelays := make([]int32, len(sourceRelayIds))
 	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
 
+	core.Debug("filtered near relays %d -> %d", state.Request.NumNearRelays, len(sourceRelayIds))
+
 	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
+
+	core.Debug("reframed near relays %d -> %d", len(sourceRelayIds), len(state.SourceRelays))
 
 	return true
 }
@@ -566,51 +596,53 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routeAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routePublicAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routeHasInternalAddresses [constants.NEXT_MAX_NODES]bool
+	var routeInternalAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
+	var routeInternalGroups [constants.NEXT_MAX_NODES]uint64
+	var routeSellers [constants.NEXT_MAX_NODES]int
 	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
-	var routeInternal [constants.NEXT_MAX_NODES]bool
 
 	// client node
 
 	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
-	routeAddresses[0] = state.Request.ClientAddress
+	routePublicAddresses[0] = state.Request.ClientAddress
 
 	// relay nodes
 
-	relayAddresses := routeAddresses[1 : numTokens-1]
+	relayPublicAddresses := routePublicAddresses[1 : numTokens-1]
+	relayHasInternalAddresses := routeHasInternalAddresses[1 : numTokens-1]
+	relayInternalAddresses := routeInternalAddresses[1 : numTokens-1]
+	relayInternalGroups := routeInternalGroups[1 : numTokens-1]
+	relaySellers := routeSellers[1 : numTokens-1]
 	relayPublicKeys := routePublicKeys[1 : numTokens-1]
-	relayInternal := routeInternal[1 : numTokens-1]
 
 	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
-		relayIndex := routeRelays[i]
-		relay := &state.Database.Relays[relayIndex]
-		relayAddresses[i] = relay.PublicAddress
-		relayPublicKeys[i] = relay.PublicKey
 
-		if i > 0 {
-			prevRelayIndex := routeRelays[i-1]
-			prevRelay := &state.Database.Relays[prevRelayIndex]
-			if prevRelay.Seller.Id == relay.Seller.Id &&
-				relay.HasInternalAddress && prevRelay.HasInternalAddress &&
-				relay.InternalGroup == prevRelay.InternalGroup {
-				relayAddresses[i] = relay.InternalAddress
-				relayInternal[i] = true
-			}
-		}
+		relayIndex := routeRelays[i]
+
+		relay := &state.Database.Relays[relayIndex]
+
+		relayPublicAddresses[i] = relay.PublicAddress
+		relayHasInternalAddresses[i] = relay.HasInternalAddress
+		relayInternalAddresses[i] = relay.InternalAddress
+		relayInternalGroups[i] = relay.InternalGroup
+		relaySellers[i] = int(relay.Seller.Id)
+		relayPublicKeys[i] = relay.PublicKey
 	}
 
 	// server node
 
-	routeAddresses[numTokens-1] = *state.From
+	routePublicAddresses[numTokens-1] = *state.From
 	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
 	// debug print the route
 
 	core.Debug("----------------------------------------------------")
-	for index, address := range routeAddresses[:numTokens] {
-		core.Debug("route address %d: %s", index, address.String())
+	for i := range routePublicAddresses[:numTokens] {
+		core.Debug("%d: public address = %s, has internal address = %d, internal address = %s, internal group = %016x, seller = %d", i, routePublicAddresses[i].String(), routeHasInternalAddresses[i], routeInternalAddresses[i].String(), routeInternalGroups[i], routeSellers[i])
 	}
 	core.Debug("----------------------------------------------------")
 
@@ -624,7 +656,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routeAddresses[:], routePublicKeys[:], routeInternal[:], state.RelayBackendPrivateKey[:])
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routePublicAddresses[:], routeHasInternalAddresses[:], routeInternalAddresses[:], routeInternalGroups[:], routeSellers[:], routePublicKeys[:], state.RelayBackendPrivateKey[:])
 
 	state.Response.RouteType = packets.SDK_RouteTypeNew
 	state.Response.NumTokens = numTokens
@@ -989,12 +1021,24 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		Don't ping near relays except on slice 1.
+		Take note of when we send near relays down to the client. Useful for debugging.
 	*/
 
-	if state.Output.SliceNumber != 1 {
-		state.Response.HasNearRelays = false
-		state.Response.NumNearRelays = 0
+	if state.Response.HasNearRelays {
+		core.Debug("sending %d near relays down to client:", state.Response.NumNearRelays)
+		for i := 0; i < int(state.Response.NumNearRelays); i++ {
+			relayIndex := state.RouteMatrix.RelayIdToIndex[state.Response.NearRelayIds[i]]
+			relayName := state.RouteMatrix.RelayNames[relayIndex]
+			core.Debug(" + %s [%016x]", relayName, state.Response.NearRelayIds[i])
+		}
+	}
+
+	if state.Output.SliceNumber == 1 && state.Response.HasNearRelays == false {
+		core.Debug("no near relays sent down to client for slice 1?!!!")
+	}
+
+	if state.Output.SliceNumber == 1 && state.Response.NumNearRelays == 0 {
+		core.Debug("num near relays is zero for slice 1?!!!!")
 	}
 
 	/*
@@ -1139,7 +1183,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 
-	// todo: would be nicer to have some data here instead like, "bool HasNearRelayUpdate"
 	if state.Request.SliceNumber != 1 {
 		return
 	}
