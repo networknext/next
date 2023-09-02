@@ -220,7 +220,7 @@ resource "google_redis_instance" "redis_portal" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -230,7 +230,7 @@ resource "google_redis_instance" "redis_map_cruncher" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -240,7 +240,7 @@ resource "google_redis_instance" "redis_raspberry" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -250,7 +250,7 @@ resource "google_redis_instance" "redis_analytics" {
   memory_size_gb     = 1
   region             = "us-central1"
   redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "volatile-lru" }
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
 }
 
@@ -611,6 +611,7 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
+  target_size        = 8
 }
 
 // ---------------------------------------------------------------------------------------
@@ -689,7 +690,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  target_size        = 16
+  target_size        = 32
 }
 
 output "server_backend_address" {
@@ -769,7 +770,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 32
+  target_size        = 64
 }
 
 # ----------------------------------------------------------------------------------------
