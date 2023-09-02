@@ -689,7 +689,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  target_size        = 4
+  target_size        = 8
 }
 
 output "server_backend_address" {
