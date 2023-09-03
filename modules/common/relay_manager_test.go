@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRelayManager(t *testing.T) {
+func TestRelayManager_Local(t *testing.T) {
 
 	t.Parallel()
 
@@ -130,15 +130,34 @@ func TestRelayManager(t *testing.T) {
 	for i := 0; i < databaseNumRelays; i++ {
 		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
+}
 
-// todo: finish converting this unit test
+func TestRelayManager_Real(t *testing.T) {
 
-/*
+	t.Parallel()
+
+	relayManager := common.CreateRelayManager(false)
+
+	// 5 active relays. A B C D E
+
+	relayNames := []string{"A", "B", "C", "D", "E"}
+
+	numRelays := len(relayNames)
+
+	relayIds := make([]uint64, numRelays)
+
+	relayAddresses := make([]net.UDPAddr, numRelays)
+
+	for i := range relayIds {
+		relayIds[i] = common.RelayId(relayNames[i])
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+	}
+
 	// iterate adding samples from A <-> B. initially, they should remain unroutable until they have both been
 	// alive for at least HistorySize relay updates. this avoids sending traffic to relays when they first start
 	// and we don't necessarily know their routes are stable yet.
 
-	for i := 0; i < common.HistorySize*2; i++ {
+	for i := 0; i < constants.RelayHistorySize*2; i++ {
 
 		// add some samples from relay A -> B
 		{
@@ -158,7 +177,7 @@ func TestRelayManager(t *testing.T) {
 			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", false, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:])
 		}
 
-		if i < common.HistorySize {
+		if i < constants.RelayHistorySize {
 
 			// we should see no routes between A and B until HistorySize relay updates
 
@@ -170,7 +189,7 @@ func TestRelayManager(t *testing.T) {
 
 			// we should see entries between A and B as routable in the cost matrix, but all other entries should be -1
 
-			costs = relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+			costs = relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
 			assert.Equal(t, len(costs), int(common.TriMatrixLength(numRelays)))
 
@@ -192,6 +211,7 @@ func TestRelayManager(t *testing.T) {
 		}
 	}
 
+/*
 	// getting costs 30 seconds in the future should result in routes between A and B being timed out
 
 	costs = relayManager.GetCosts(currentTime+30, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
