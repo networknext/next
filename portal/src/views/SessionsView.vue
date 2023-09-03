@@ -117,7 +117,7 @@ function parse_uint64(value) {
   const bignum = new BigNumber(value);
   var hex = bignum.toString(16);
   while (hex.length<16) {
-    hex = '0' + hex     // todo: this is super lame, need a better solution
+    hex = '0' + hex
   }
   return hex
 }

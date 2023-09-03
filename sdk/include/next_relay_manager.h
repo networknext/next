@@ -32,8 +32,6 @@
 #include <memory.h>
 #include <stdio.h>
 
-// todo: should probably move into .h/.cpp split
-
 // ---------------------------------------------------------------
 
 struct next_relay_stats_t

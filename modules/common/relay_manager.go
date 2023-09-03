@@ -286,7 +286,7 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 		relay.Address = sourceEntry.RelayAddress
 		relay.Sessions = sourceEntry.Sessions
 
-		relay.Status = constants.RelayStatus_Offline
+		relay.Status = constants.RelayStatus_Online
 
 		if sourceEntry.ShuttingDown {
 			relay.Status = constants.RelayStatus_ShuttingDown

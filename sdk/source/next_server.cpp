@@ -1610,7 +1610,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_session_entry_t * entry = NULL;
             {
                 next_platform_mutex_guard( &server->session_mutex );
-                // todo: probably need to bring across internal events
                 entry = next_session_manager_add( server->session_manager, &pending_entry->address, pending_entry->session_id, pending_entry->private_key, pending_entry->upgrade_token );
             }
             if ( entry == NULL )
@@ -3149,7 +3148,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->previous_session_events = session->current_session_events;
             session->current_session_events = 0;
             packet.session_events = session->previous_session_events;
-            // todo: packet.internal_events
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;

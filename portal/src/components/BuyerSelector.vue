@@ -33,7 +33,6 @@ export default {
 
   async created() {
     try {
-      // todo: update to a portal specific method, ideally something that returns just the buyer names and codes (if needed)
       const res = await axios.get('http://dev.virtualgo.net/database/buyers');
       let i = 0;
       while (i < res.data.buyers.length) {

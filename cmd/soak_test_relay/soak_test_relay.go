@@ -120,7 +120,7 @@ func soak_test_relay(run_forever bool) {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1 // todo: just one thread for the moment, until we get multicore fixed with eBPF on linux
+	config.num_threads = 1 		// todo: just one thread for the moment, until we get multicore fixed on linux
 	config.log_level = 1
 
 	relay_cmd := relay("relay", 2000, config)

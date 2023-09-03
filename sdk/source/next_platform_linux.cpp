@@ -180,7 +180,6 @@ void next_platform_socket_destroy( next_platform_socket_t * socket );
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
-    // todo
     (void) enable_packet_tagging;
 
     next_assert( address );

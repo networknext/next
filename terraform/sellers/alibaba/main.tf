@@ -30,6 +30,6 @@ output "relays" {
   ]
 }
 
-// todo: https://registry.terraform.io/providers/aliyun/alicloud/latest/docs
+// https://registry.terraform.io/providers/aliyun/alicloud/latest/docs
 
 # --------------------------------------------------------------------------

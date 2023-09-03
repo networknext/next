@@ -75,9 +75,3 @@ func TestRelaySample(t *testing.T) {
 		assert.Equal(t, *writeData, readData)
 	}
 }
-
-// todo: test that we can handle parsing empty string and fail gracefully
-
-// todo: test that we can handle parsing garbage data and fail gracefully
-
-// todo: test that we can handle parsing correct structure ||||| but garbage strings gracefully (randomly corrupt an entry, post save values)

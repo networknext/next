@@ -1170,9 +1170,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
 		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
-
-		// todo: this appears to be incorrect
-		// message.NearRelayRoutable[i] = state.SourceRelayRTT[i] != 255
+		message.NearRelayRoutable[i] = state.Request.NearRelayRTT[i] != 255
 	}
 
 	if state.PortalSessionUpdateMessageChannel != nil {
@@ -1235,8 +1233,6 @@ func sendAnalyticsNearRelayUpdateMessage(state *SessionUpdateState) {
 	message.Timestamp = uint64(time.Now().Unix())
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId
-	// todo
-	// message.MatchId = state.Request.MatchId
 	message.UserHash = state.Request.UserHash
 	message.Latitude = state.Output.Latitude
 	message.Longitude = state.Output.Longitude
@@ -1313,8 +1309,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.SessionId = state.Input.SessionId
 	message.DatacenterId = state.Request.DatacenterId
 	message.BuyerId = state.Request.BuyerId
-	// todo: match id
-	// message.MatchId = state.Request.MatchId
 	message.UserHash = state.Request.UserHash
 	message.Latitude = state.Output.Latitude
 	message.Longitude = state.Output.Longitude

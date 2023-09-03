@@ -30,6 +30,6 @@ output "relays" {
   ]
 }
 
-// todo: https://support.huaweicloud.com/intl/en-us/qs-terraform/index.html
+// https://support.huaweicloud.com/intl/en-us/qs-terraform/index.html
 
 # --------------------------------------------------------------------------

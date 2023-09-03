@@ -210,8 +210,6 @@ func (service *Service) LoadDatabase() {
 	service.watchDatabase(service.Context, databasePath)
 }
 
-// todo: where the fuck did my optimized mndb code go? It's much faster to query just the lat/long record as I had it, vs. getting the whole city record and pulling the lat/long from that -- where did that code go?!
-
 func (service *Service) LoadIP2Location() {
 
 	filenames := envvar.GetList("IP2LOCATION_FILENAMES", []string{"GeoIP2-City.mmdb", "GeoIP2-ISP.mmdb"})

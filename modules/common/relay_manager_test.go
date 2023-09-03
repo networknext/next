@@ -93,8 +93,6 @@ func TestRelayManager(t *testing.T) {
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
-	// todo: not working below
-	/*
 	numActive := 0
 	for i := 0; i < databaseNumRelays; i++ {
 		if relays[i].Id == activeRelays[0].Id || relays[i].Id == activeRelays[1].Id {
@@ -132,7 +130,6 @@ func TestRelayManager(t *testing.T) {
 	for i := 0; i < databaseNumRelays; i++ {
 		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
-	*/
 
 // todo: finish converting this unit test
 

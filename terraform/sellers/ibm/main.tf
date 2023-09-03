@@ -30,6 +30,6 @@ output "relays" {
   ]
 }
 
-// todo: https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs
+// https://registry.terraform.io/providers/IBM-Cloud/ibm/latest/docs
 
 # --------------------------------------------------------------------------

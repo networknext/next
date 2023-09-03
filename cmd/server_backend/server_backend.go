@@ -152,7 +152,7 @@ func main() {
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy, ready)
 
-	// todo: not ready yet
+	// todo: ip2location is not ready yet
 	/*
 		if !service.Local {
 			service.LoadIP2Location()
@@ -208,12 +208,12 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsSessionSummaryMessageChannel = analyticsSessionSummaryMessageChannel
 	handler.AnalyticsNearRelayUpdateMessageChannel = analyticsNearRelayUpdateMessageChannel
 
-	// todo: not ready yet
 	handler.LocateIP = locateIP_Local
 	if service.Env == "dev" {
 		handler.LocateIP = locateIP_Dev
 	}
 
+	// todo: ip2location is not ready yet
 	/*
 		if service.Local {
 			handler.LocateIP = locateIP_Local

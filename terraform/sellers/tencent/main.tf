@@ -30,6 +30,6 @@ output "relays" {
   ]
 }
 
-// todo: https://registry.terraform.io/providers/tencentcloudstack/tencentcloud/latest/docs
+// https://registry.terraform.io/providers/tencentcloudstack/tencentcloud/latest/docs
 
 # --------------------------------------------------------------------------

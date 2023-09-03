@@ -1226,19 +1226,6 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 			}
 		}
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
-
-		// todo
-		Debug("found %d routes:", numBestRoutes)
-		for i := 0; i < numBestRoutes; i++ {
-			route := ""
-			for j := 0; j < int(bestRoutes[i].NumRelays); j++ {
-				route += fmt.Sprintf("%d", bestRoutes[i].Relays[j])
-				if j != int(bestRoutes[i].NumRelays - 1) {
-					route += " - "
-				}
-			}
-			Debug( " + %d: %s (%d)", i, route, bestRoutes[i].Cost)
-		}
 	}
 
 	randomIndex := math_rand.Intn(numBestRoutes)

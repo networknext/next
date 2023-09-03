@@ -473,10 +473,6 @@ NEXT_EXPORT_FUNC bool next_server_ready( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC const char * next_server_datacenter( struct next_server_t * server );
 
-// todo: next_server_set_match_id
-
-// todo: next_server_match_event
-
 NEXT_EXPORT_FUNC void next_server_session_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
 NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );

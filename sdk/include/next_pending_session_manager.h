@@ -33,7 +33,6 @@ struct next_pending_session_entry_t
     next_address_t address;
     uint64_t session_id;
     uint64_t user_hash;
-    // todo: internal_events
     double upgrade_time;
     double last_packet_send_time;
     uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];

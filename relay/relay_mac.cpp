@@ -300,11 +300,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
                                          ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
         socket_address.sin_port = relay_platform_htons( to->port );
         int result = sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof(sockaddr_in) );
-        // todo
-        if ( result <= 0 )
-        {
-            printf( "sendto error: %d\n", result );
-        }
+        (void) result;
     }
 }
 

@@ -361,12 +361,11 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 		MaxSessions:               rand.Uint32(),
 		EnvelopeBandwidthUpKbps:   rand.Uint32(),
 		EnvelopeBandwidthDownKbps: rand.Uint32(),
-		// todo: add new stats here
-		RelayFlags:   rand.Uint64(),
-		RelayAddress: common.RandomAddress(),
-		RelayVersion: common.RandomString(constants.MaxRelayVersionLength),
-		StartTime:    rand.Uint64(),
-		CurrentTime:  rand.Uint64(),
+		RelayFlags:                rand.Uint64(),
+		RelayAddress:              common.RandomAddress(),
+		RelayVersion:              common.RandomString(constants.MaxRelayVersionLength),
+		StartTime:                 rand.Uint64(),
+		CurrentTime:               rand.Uint64(),
 	}
 
 	if message.Version >= 2 {
