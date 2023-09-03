@@ -121,9 +121,9 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.DestEntries[destRelayId] = destEntry
 			for j := 0; j < constants.RelayHistorySize; j++ {
-				destEntry.HistoryRTT[j] = 10000.0
-				destEntry.HistoryJitter[j] = 10000.0
-				destEntry.HistoryPacketLoss[j] = 10000.0
+				destEntry.HistoryRTT[j] = 1000000000.0
+				destEntry.HistoryJitter[j] = 1000000000.0
+				destEntry.HistoryPacketLoss[j] = 1000000000.0
 			}
 		}
 
