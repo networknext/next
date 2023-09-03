@@ -281,9 +281,7 @@ func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bo
 	return valid
 }
 
-// todo: why double up these functions?!
 func locateIP(reader *geoip2.Reader, ip net.IP) (float32, float32) {
-	// my fast code has been removed and replaced with this?! why?
 	city, err := reader.City(ip)
 	if err != nil {
 		core.Error("city look up failed: %v", err)
@@ -677,8 +675,6 @@ func (service *Service) WaitForShutdown() {
 		service.ip2location_isp_reader = nil
 	}
 	service.ip2location_isp_mutex.Unlock()
-
-	// todo: we need some system to wait for registered (named) subsystems to complete before we shut down
 
 	core.Log("successfully shutdown")
 }
