@@ -58,7 +58,7 @@ export default {
 
 button {
   font-weight: bold;
-  font-size: 20px;
+  font-size: 15px;
 }
 
 .total, .total:hover, .total:active, .total:visited {

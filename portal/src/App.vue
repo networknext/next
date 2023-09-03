@@ -8,11 +8,11 @@
 
       <div style="height=60px">
         <div class="d-xxl-none">
-          <router-link class="navbar-brand" to="/"><img src="@/assets/n_black.png" style="width: 35.2; height:40px;"/></router-link>
+          <router-link class="navbar-brand" to="/"><img src="@/assets/n_black.png" style="width: 26.4; height:30px;"/></router-link>
           <SessionCounts/>
         </div>
         <div class="d-none d-xxl-block">
-          <router-link class="navbar-brand" to="/"><img src="@/assets/logo_black.png" style="width: 342.035928143712575px; height:40px;"/></router-link>
+          <router-link class="navbar-brand" to="/"><img src="@/assets/logo_black.png" style="width: 256.526946075px; height:30px;"/></router-link>
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default {
   .navbar a{
     font-family: "Montserrat" !important;
     font-weight: 10;
-    font-size: 20px;
+    font-size: 18px;
     -webkit-user-drag: none;
   }
 
@@ -107,6 +107,7 @@ export default {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-user-drag: none;
+    font-size: 85%;
   }
 
   #app {
