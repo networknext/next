@@ -45,49 +45,25 @@ locals {
 
     # IOWA
 
-    "google.iowa.1.a" = {
+    "google.iowa.1" = {
       datacenter_name = "google.iowa.1"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.iowa.1.b" = {
-      datacenter_name = "google.iowa.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.2.a" = {
+    "google.iowa.2" = {
       datacenter_name = "google.iowa.2"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.iowa.2.b" = {
-      datacenter_name = "google.iowa.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.3.a" = {
+    "google.iowa.3" = {
       datacenter_name = "google.iowa.3"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.iowa.3.b" = {
-      datacenter_name = "google.iowa.3"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.6.a" = {
-      datacenter_name = "google.iowa.6"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.6.b" = {
+    "google.iowa.6" = {
       datacenter_name = "google.iowa.6"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
@@ -174,8 +150,10 @@ locals {
 }
 
 module "amazon_relays" {
+
   # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
   # So for AWS, see tools/amazon_config/amazon_config.go for the set of dev relays -> amazon/generated.tf
+
   config              = local.amazon_config
   credentials         = local.amazon_credentials
   profile             = local.amazon_profile
