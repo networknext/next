@@ -36,7 +36,24 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
+	"github.com/oschwald/geoip2-golang"
 )
+
+func bash(command string) {
+
+	cmd := exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("error: failed to run command: %v\n", err)
+		os.Exit(1)
+	}
+
+	cmd.Wait()
+}
 
 func Base64String(value string) []byte {
 	data, err := base64.StdEncoding.DecodeString(value)
@@ -1732,6 +1749,62 @@ func test_relay_backend() {
 	}
 }
 
+func test_ip2location() {
+
+	fmt.Printf("test_ip2location\n")
+
+	fmt.Printf("cleaning up before starting\n")
+
+	bash("rm -rf GeoIP2*")
+
+	fmt.Printf("downloading isp database\n")
+
+	bash("curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-ISP&license_key=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&suffix=tar.gz' --output GeoIP2-ISP.tar.gz")
+
+	fmt.Printf("downloading city database\n")
+
+	bash("rm -f GeoIP2-City.tar.gz && curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-City&license_key=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&suffix=tar.gz' --output GeoIP2-City.tar.gz")
+
+	fmt.Printf("decompressing databases\n")
+
+	bash("tar -zxf GeoIP2-ISP.tar.gz")
+	bash("tar -zxf GeoIP2-City.tar.gz")
+
+	bash("mv GeoIP2-ISP_*/GeoIP2-ISP.mmdb .")
+	bash("mv GeoIP2-City_*/GeoIP2-City.mmdb .")
+
+	isp_db, err := geoip2.Open("GeoIP2-ISP.mmdb")
+	if err != nil {
+		panic(fmt.Sprintf("failed to load isp database: %v", err))
+	}
+
+	fmt.Printf("loaded ip2location isp file\n")
+
+	city_db, err := geoip2.Open("GeoIP2-City.mmdb")
+	if err != nil {
+		panic(fmt.Sprintf("failed to load city database: %v", err))
+	}
+
+	fmt.Printf("loaded ip2location city file\n")
+
+	ip := core.ParseAddress("104.228.29.134").IP
+
+	city, err := city_db.City(ip)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("latitude = %.2f\n", float32(city.Location.Latitude))
+	fmt.Printf("longitude = %.2f\n", float32(city.Location.Longitude))
+
+	isp, err := isp_db.ISP(ip)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("isp = %s\n", isp.ISP)
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1752,6 +1825,7 @@ func main() {
 		test_relay_manager,
 		test_optimize,
 		test_relay_backend,
+		test_ip2location,
 	}
 
 	var tests []test_function
