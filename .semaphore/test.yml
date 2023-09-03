@@ -11,6 +11,10 @@ fail_fast:
   stop:
     when: "true"
 
+global_job_config:
+  secrets:
+    - name: maxmind-license-key
+
 blocks:
 
 # ------------------------------------------------------------------------------------------------------------
