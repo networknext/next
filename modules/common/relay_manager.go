@@ -85,7 +85,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 	relayManager.mutex.Lock()
 
 	sourceEntry, exists := relayManager.SourceEntries[relayId]
-	if !exists {
+	if !exists || sourceEntry.LastUpdateTime < currentTime-constants.RelayTimeout {
 		sourceEntry = &RelayManagerSourceEntry{}
 		sourceEntry.DestEntries = make(map[uint64]*RelayManagerDestEntry)
 		relayManager.SourceEntries[relayId] = sourceEntry
@@ -117,6 +117,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destRelayId := sampleRelayId[i]
 
 		destEntry, exists := sourceEntry.DestEntries[destRelayId]
+
 		if !exists {
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.DestEntries[destRelayId] = destEntry

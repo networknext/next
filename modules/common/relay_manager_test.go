@@ -205,9 +205,6 @@ func TestRelayManager_Real(t *testing.T) {
 
 			// we should see no routes between A and B until HistorySize relay updates
 
-			// todo-
-			fmt.Printf("%d\n", i)
-
 			for j := range costs {
 				assert.Equal(t, uint8(255), costs[j])
 			}
@@ -314,10 +311,8 @@ func TestRelayManager_Real(t *testing.T) {
 		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
 
-	// now restart relay A. we should need to wait another HistorySize number of updates before we see routes between A and B
+	// now restart relay A 30 seconds in the future. we should need to wait another HistorySize number of updates before we see routes between A and B
 
-// todo: this test is no longer passing
-/*
 	for i := 0; i < constants.RelayHistorySize*2; i++ {
 
 		// add some samples from relay A -> B
@@ -326,7 +321,7 @@ func TestRelayManager_Real(t *testing.T) {
 			sampleRTT := [1]uint8{10}
 			sampleJitter := [1]uint8{0}
 			samplePacketLoss := [1]uint16{0}
-			relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
+			relayManager.ProcessRelayUpdate(currentTime + 30, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		// add some samples from relay B -> A
@@ -335,7 +330,7 @@ func TestRelayManager_Real(t *testing.T) {
 			sampleRTT := [1]uint8{1}
 			sampleJitter := [1]uint8{0}
 			samplePacketLoss := [1]uint16{0}
-			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
+			relayManager.ProcessRelayUpdate(currentTime + 30, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
@@ -396,5 +391,4 @@ func TestRelayManager_Real(t *testing.T) {
 
 		assert.Equal(t, numActive, 2)
 	}
-*/
 }
