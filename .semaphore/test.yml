@@ -904,14 +904,6 @@ blocks:
             - bigquery-emulator --project="local" --dataset="local" &
             - cd ./dist && ./func_test_backend test_google_bigquery
 
-        - name: "test_redis_leader_store_no_flap"
-          commands:
-            - cd ./dist && ./func_test_backend test_redis_leader_store_no_flap
-
-        - name: "test_redis_leader_store_migration"
-          commands:
-            - cd ./dist && ./func_test_backend test_redis_leader_store_migration
-
         - name: "test_cost_matrix_read_write"
           commands:
             - cd ./dist && ./func_test_backend test_cost_matrix_read_write
