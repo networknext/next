@@ -33,6 +33,8 @@ variable "api_private_key" { type = string }
 variable "customer_public_key" { type = string }
 variable "customer_private_key" { type = string }
 
+variable "maxmind_license_key" { type = string }
+
 # ----------------------------------------------------------------------------------------
 
 terraform {
@@ -809,6 +811,38 @@ module "raspberry_client" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
   target_size        = 16
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "ip2location" {
+
+  source = "../../modules/external_mig_without_health_check"
+
+  service_name = "ip2location"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a ip2location.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    MAXMIND_LICENSE_KEY=${var.maxmind_license_key}
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 1
 }
 
 # ----------------------------------------------------------------------------------------

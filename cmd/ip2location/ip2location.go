@@ -30,7 +30,12 @@ func main() {
 
 func downloadDatabases() {
 	for {
-		ip2location.DownloadDatabases(licenseKey)
+		core.Log("---------------------------------------------------")
+		err := ip2location.DownloadDatabases(licenseKey)
+		if err != nil {
+			core.Error("failed to download databases: %v", err)
+		}
+		core.Log("---------------------------------------------------")
 		time.Sleep(time.Hour)
 	}
 }
