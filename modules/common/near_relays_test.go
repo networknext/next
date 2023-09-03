@@ -1,7 +1,5 @@
 package common_test
 
-// todo: disable for now
-/*
 import (
 	"fmt"
 	"net"
@@ -159,4 +157,3 @@ func TestGetNearRelays_OutOfWay(t *testing.T) {
 		assert.Equal(t, nearRelayAddresses[i].String(), relayAddresses[nearRelayIds[i]].String())
 	}
 }
-*/
