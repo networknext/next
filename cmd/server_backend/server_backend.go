@@ -302,7 +302,7 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 		config := common.GooglePubsubConfig{
 			ProjectId:          service.GoogleProjectId,
 			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024, // todo: env var
+			MessageChannelSize: 10 * 1024,
 		}
 
 		var err error

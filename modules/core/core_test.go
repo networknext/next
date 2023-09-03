@@ -3,7 +3,7 @@ package core_test
 import (
 	"crypto/ed25519"
 	"encoding/binary"
-	// "fmt"
+	"fmt"
 	"hash/fnv"
 	"math"
 	"math/rand"
@@ -119,7 +119,6 @@ func TestRouteManager(t *testing.T) {
 
 	t.Parallel()
 
-	// todo: merge entry and route manager. same thing
 	routeManager := core.RouteManager{}
 	routeManager.RelayDatacenter = make([]uint64, 256)
 	for i := range routeManager.RelayDatacenter {
@@ -1071,8 +1070,6 @@ func TestRouteToken(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// todo: need to fix this up
-/*
 func TestRouteTokens(t *testing.T) {
 
 	t.Parallel()
@@ -1083,18 +1080,21 @@ func TestRouteTokens(t *testing.T) {
 
 	// write a bunch of tokens to a buffer
 
-	addresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
-	for i := range addresses {
-		addresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
+	publicAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
+	for i := range publicAddresses {
+		publicAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
+
+	hasInternalAddresses := make([]bool, constants.NEXT_MAX_NODES)
+	internalAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
+	internalGroups := make([]uint64, constants.NEXT_MAX_NODES)
+	sellers := make([]int, constants.NEXT_MAX_NODES)
 
 	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
 	for i := range publicKeys {
 		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
 	}
-
-	internal := make([]bool, constants.NEXT_MAX_NODES)
 
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
@@ -1104,7 +1104,7 @@ func TestRouteTokens(t *testing.T) {
 
 	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, addresses, publicKeys, internal, masterPrivateKey)
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, publicKeys, masterPrivateKey)
 
 	// read each token back individually and verify the token data matches what was written
 
@@ -1118,17 +1118,22 @@ func TestRouteTokens(t *testing.T) {
 		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
 		if i != 0 {
-			assert.Equal(t, addresses[i-1].String(), routeToken.PrevAddress.String())
+			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
 		}
 		if i != constants.NEXT_MAX_NODES-1 {
-			assert.Equal(t, addresses[i+1].String(), routeToken.NextAddress.String())
+			assert.Equal(t, publicAddresses[i+1].String(), routeToken.NextAddress.String())
 		}
 		assert.Equal(t, routeToken.NextInternal, uint8(0))
 		assert.Equal(t, routeToken.PrevInternal, uint8(0))
 		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
-*/
+
+// todo: there needs to be something here that verifies that internal addresses and internal groups work
+
+// todo: make sure internal addresses aren't used across sellers
+
+// todo: make sure internal addresses aren't used across different groups
 
 func TestContinueToken(t *testing.T) {
 
