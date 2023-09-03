@@ -33,6 +33,7 @@ import (
 	"github.com/networknext/next/modules/encoding"
 	"github.com/networknext/next/modules/packets"
 	"github.com/networknext/next/modules/ip2location"
+	"github.com/networknext/next/modules/envvar"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -1764,7 +1765,7 @@ func test_ip2location() {
 
 	fmt.Printf("test_ip2location\n")
 
-	licenseKey := "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"
+	licenseKey := envvar.GetString("MAXMIND_LICENSE_KEY", "")
 
 	err := ip2location.DownloadDatabases(licenseKey)
 	if err != nil {
