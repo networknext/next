@@ -153,21 +153,21 @@ func (database *Database) Fixup() {
 
 	if len(database.BuyerCodeMap) != len(database.BuyerMap) {
 		database.BuyerCodeMap = make(map[string]*Buyer, len(database.BuyerMap))
-		for _,v := range database.BuyerMap {
+		for _, v := range database.BuyerMap {
 			database.BuyerCodeMap[v.Code] = v
 		}
 	}
 
 	if len(database.SellerCodeMap) != len(database.SellerMap) {
 		database.SellerCodeMap = make(map[string]*Seller, len(database.SellerMap))
-		for _,v := range database.SellerMap {
+		for _, v := range database.SellerMap {
 			database.SellerCodeMap[v.Code] = v
 		}
 	}
 
 	if len(database.DatacenterNameMap) != len(database.DatacenterMap) {
 		database.DatacenterNameMap = make(map[string]*Datacenter, len(database.DatacenterMap))
-		for _,v := range database.DatacenterMap {
+		for _, v := range database.DatacenterMap {
 			database.DatacenterNameMap[v.Name] = v
 		}
 	}
@@ -211,7 +211,7 @@ func (database *Database) Validate() error {
 		return fmt.Errorf("mismatch between number of sellers in seller map vs. seller code map (%d vs. %d)", len(database.SellerMap), len(database.SellerCodeMap))
 	}
 
-	for k,v := range database.RelayNameMap {
+	for k, v := range database.RelayNameMap {
 		if v.Name != k {
 			return fmt.Errorf("relay %s has wrong key %s in relay name map", v.Name, k)
 		}
@@ -223,7 +223,7 @@ func (database *Database) Validate() error {
 		}
 	}
 
-	for k,v := range database.DatacenterNameMap {
+	for k, v := range database.DatacenterNameMap {
 		if v.Name != k {
 			return fmt.Errorf("datacenter %s has wrong key %s in datacenter name map", v.Name, k)
 		}
@@ -499,12 +499,12 @@ func (database *Database) String() string {
 	output += "\n\nDatacenters:\n\n"
 
 	type DatacenterRow struct {
-		Id              string
-		Name      		string
-		Native    		string
-		Seller          string
-		Latitude        string
-		Longitude       string
+		Id        string
+		Name      string
+		Native    string
+		Seller    string
+		Latitude  string
+		Longitude string
 	}
 
 	datacenters := []DatacenterRow{}
@@ -512,12 +512,12 @@ func (database *Database) String() string {
 	for _, v := range database.DatacenterMap {
 
 		row := DatacenterRow{
-			Id:         fmt.Sprintf("%016x", v.Id),
-			Name:       v.Name,
-			Native:     v.Native,
-			Latitude:   fmt.Sprintf("%+3.2f", v.Latitude),
-			Longitude:  fmt.Sprintf("%+3.2f", v.Longitude),
-			Seller:     fmt.Sprintf("%d", v.SellerId),
+			Id:        fmt.Sprintf("%016x", v.Id),
+			Name:      v.Name,
+			Native:    v.Native,
+			Latitude:  fmt.Sprintf("%+3.2f", v.Latitude),
+			Longitude: fmt.Sprintf("%+3.2f", v.Longitude),
+			Seller:    fmt.Sprintf("%d", v.SellerId),
 		}
 
 		datacenters = append(datacenters, row)

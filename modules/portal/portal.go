@@ -1400,14 +1400,14 @@ func GetRelayData(pool *redis.Pool, relayAddress string) (*RelayData, []RelaySam
 // ----------------------------------------------------------------------------------------------------
 
 type SessionInserter struct {
-	redisPool          *redis.Pool
-	redisClient        redis.Conn
-	lastFlushTime      time.Time
-	batchSize          int
-	numPending         int
-	allSessions        redis.Args
-	nextSessions       redis.Args
-	userSessions       redis.Args
+	redisPool     *redis.Pool
+	redisClient   redis.Conn
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	allSessions   redis.Args
+	nextSessions  redis.Args
+	userSessions  redis.Args
 }
 
 func CreateSessionInserter(pool *redis.Pool, batchSize int) *SessionInserter {

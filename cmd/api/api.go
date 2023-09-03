@@ -161,7 +161,7 @@ func main() {
 	}
 
 	if enablePortal || enableDatabase {
-		service.LoadDatabase()	// needed by both portal and database REST APIs
+		service.LoadDatabase() // needed by both portal and database REST APIs
 	}
 
 	service.StartWebServer()
@@ -283,7 +283,7 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 		if datacenter != nil {
 			output.DatacenterName = datacenter.Name
 		}
-	}	
+	}
 }
 
 type PortalSessionsResponse struct {
@@ -315,7 +315,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalUserSessionsResponse struct {
-	Sessions        []PortalSessionData `json:"sessions"`
+	Sessions []PortalSessionData `json:"sessions"`
 }
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -571,7 +571,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalBuyerDataResponse struct {
-	BuyerData    *db.Buyer    `json:"buyer_data"`
+	BuyerData *db.Buyer `json:"buyer_data"`
 }
 
 func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -590,7 +590,7 @@ func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalSellerDataResponse struct {
-	SellerData    *db.Seller    `json:"seller_data"`
+	SellerData *db.Seller `json:"seller_data"`
 }
 
 func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -609,14 +609,14 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalDatacenterData struct {
-	Id        uint64  `json:"id,string"`
-	Name      string  `json:"name"`
-	Native    string  `json:"native"`
-	Latitude  float32 `json:"latitude"`
-	Longitude float32 `json:"longitude"`
-	SellerId   uint64 `json:"seller_id,string"`
-	SellerCode string `json:"seller_code"`
-	SellerName string `json:"seller_name"`
+	Id         uint64  `json:"id,string"`
+	Name       string  `json:"name"`
+	Native     string  `json:"native"`
+	Latitude   float32 `json:"latitude"`
+	Longitude  float32 `json:"longitude"`
+	SellerId   uint64  `json:"seller_id,string"`
+	SellerCode string  `json:"seller_code"`
+	SellerName string  `json:"seller_name"`
 }
 
 type PortalDatacentersResponse struct {
@@ -650,7 +650,7 @@ func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalDatacenterDataResponse struct {
-	DatacenterData    PortalDatacenterData    `json:"datacenter_data"`
+	DatacenterData PortalDatacenterData `json:"datacenter_data"`
 }
 
 func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {

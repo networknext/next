@@ -1052,7 +1052,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 				if cost > maxCost {
 					break
 				}
-				
+
 				bestRoutes[numRoutes].Cost = cost
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
 
@@ -1063,12 +1063,12 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 				bestRoutes[numRoutes].NeedToReverse = sourceRelayIndex < destRelayIndex
 
 				numRoutes++
-				
+
 				if firstRouteFromThisRelay {
 					*routeDiversity++
 					firstRouteFromThisRelay = false
 				}
-				
+
 				if numRoutes == maxRoutes {
 					*numBestRoutes = numRoutes
 					return

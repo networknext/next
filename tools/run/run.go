@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
-	"syscall"
 	"path"
-	"encoding/json"
+	"syscall"
 
 	"github.com/joho/godotenv"
 )

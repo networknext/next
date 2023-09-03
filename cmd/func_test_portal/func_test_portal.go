@@ -14,15 +14,15 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"time"
 	"strconv"
+	"time"
 
-	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/core"
+	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
-	db "github.com/networknext/next/modules/database"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -362,14 +362,14 @@ func test_portal() {
 	database.SellerMap[1] = &db.Seller{Id: 1, Name: "seller"}
 	database.DatacenterMap[1] = &db.Datacenter{Id: 1, Name: "local", Latitude: 100, Longitude: 200}
 	for i := 0; i < 1000; i++ {
-		relayId := uint64(1+i)
+		relayId := uint64(1 + i)
 		relay := db.Relay{
-			Id: relayId, 
-			Name: fmt.Sprintf("local-%d", i+1), 
+			Id:            relayId,
+			Name:          fmt.Sprintf("local-%d", i+1),
 			PublicAddress: core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i)),
-			SSHAddress: core.ParseAddress("127.0.0.1:22"),
-			Datacenter: *database.DatacenterMap[1], 
-			Seller: *database.SellerMap[1],
+			SSHAddress:    core.ParseAddress("127.0.0.1:22"),
+			Datacenter:    *database.DatacenterMap[1],
+			Seller:        *database.SellerMap[1],
 		}
 		database.Relays = append(database.Relays, relay)
 		database.DatacenterRelays[1] = append(database.DatacenterRelays[1], uint64(1+i))
