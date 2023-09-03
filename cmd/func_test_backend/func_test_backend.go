@@ -32,10 +32,10 @@ import (
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/encoding"
 	"github.com/networknext/next/modules/packets"
+	"github.com/networknext/next/modules/ip2location"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
-	"github.com/oschwald/maxminddb-golang"
 	"google.golang.org/api/option"
 )
 
@@ -1764,58 +1764,27 @@ func test_ip2location() {
 
 	fmt.Printf("test_ip2location\n")
 
-	fmt.Printf("cleaning up before starting\n")
+	licenseKey := "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"
 
-	bash("rm -rf GeoIP2*")
-
-	fmt.Printf("downloading isp database\n")
-
-	bash("curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-ISP&license_key=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&suffix=tar.gz' --output GeoIP2-ISP.tar.gz")
-
-	fmt.Printf("downloading city database\n")
-
-	bash("rm -f GeoIP2-City.tar.gz && curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-City&license_key=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&suffix=tar.gz' --output GeoIP2-City.tar.gz")
-
-	fmt.Printf("decompressing databases\n")
-
-	bash("tar -zxf GeoIP2-ISP.tar.gz")
-	bash("tar -zxf GeoIP2-City.tar.gz")
-
-	bash("mv GeoIP2-ISP_*/GeoIP2-ISP.mmdb .")
-	bash("mv GeoIP2-City_*/GeoIP2-City.mmdb .")
-
-	isp_db, err := maxminddb.Open("GeoIP2-ISP.mmdb")
+	err := ip2location.DownloadDatabases(licenseKey)
 	if err != nil {
-		panic(fmt.Sprintf("failed to load isp database: %v", err))
+		panic(err)
 	}
 
-	fmt.Printf("loaded ip2location isp file\n")
-
-	city_db, err := maxminddb.Open("GeoIP2-City.mmdb")
+	isp_db, city_db, err := ip2location.LoadDatabases()
 	if err != nil {
-		panic(fmt.Sprintf("failed to load city database: %v", err))
+		panic(err)
 	}
-
-	fmt.Printf("loaded ip2location city file\n")
 
 	ip := core.ParseAddress("104.228.29.134").IP
 
-	var city City
-	err = city_db.Lookup(ip, &city)
-	if err != nil {
-		panic(err)
-	}
+	isp := ip2location.GetISP(isp_db, ip)
 
-	fmt.Printf("latitude = %.2f\n", float32(city.Location.Latitude))
-	fmt.Printf("longitude = %.2f\n", float32(city.Location.Longitude))
+	latitude, longitude := ip2location.GetLocation(city_db, ip)
 
-	var isp ISP
-	err = isp_db.Lookup(ip, &isp)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("isp = %s\n", isp.ISP)
+	fmt.Printf("isp = %s\n", isp)
+	fmt.Printf("latitude = %.2f\n", latitude)
+	fmt.Printf("longitude = %.2f\n", longitude)
 }
 
 type test_function func()
