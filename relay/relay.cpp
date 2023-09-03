@@ -6696,7 +6696,7 @@ int main( int argc, const char ** argv )
     }
 
     signal( SIGINT, interrupt_handler );
-    signal( SIGTERM, interrupt_handler );
+    signal( SIGTERM, clean_shutdown_handler );
     signal( SIGHUP, clean_shutdown_handler );
 
     uint8_t * update_response_memory = (uint8_t*) malloc( RESPONSE_MAX_BYTES );
