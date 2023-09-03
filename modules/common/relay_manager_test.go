@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRelayManager(t *testing.T) {
+func TestRelayManager_Local(t *testing.T) {
 
 	t.Parallel()
 
@@ -93,8 +93,6 @@ func TestRelayManager(t *testing.T) {
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
-	// todo: not working below
-	/*
 	numActive := 0
 	for i := 0; i < databaseNumRelays; i++ {
 		if relays[i].Id == activeRelays[0].Id || relays[i].Id == activeRelays[1].Id {
@@ -132,48 +130,90 @@ func TestRelayManager(t *testing.T) {
 	for i := 0; i < databaseNumRelays; i++ {
 		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
-	*/
+}
 
-// todo: finish converting this unit test
+func TestRelayManager_Real(t *testing.T) {
 
-/*
+	t.Parallel()
+
+	relayManager := common.CreateRelayManager(false)
+
+	// 10 database relays. A B C D E F G H I J
+
+	databaseRelayNames := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
+
+	databaseNumRelays := len(databaseRelayNames)
+
+	databaseRelayIds := make([]uint64, databaseNumRelays)
+
+	databaseRelayAddresses := make([]net.UDPAddr, databaseNumRelays)
+
+	for i := range databaseRelayIds {
+		databaseRelayIds[i] = common.RelayId(databaseRelayNames[i])
+		databaseRelayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+	}
+
+	// 5 active relays. A B C D E
+
+	relayNames := []string{"A", "B", "C", "D", "E"}
+
+	numRelays := len(relayNames)
+
+	relayIds := make([]uint64, numRelays)
+
+	relayAddresses := make([]net.UDPAddr, numRelays)
+
+	for i := range relayIds {
+		relayIds[i] = common.RelayId(relayNames[i])
+		relayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
+	}
+
 	// iterate adding samples from A <-> B. initially, they should remain unroutable until they have both been
 	// alive for at least HistorySize relay updates. this avoids sending traffic to relays when they first start
 	// and we don't necessarily know their routes are stable yet.
 
-	for i := 0; i < common.HistorySize*2; i++ {
+	const MaxJitter = 100
+	const MaxPacketLoss = 1
+
+	counters := [constants.NumRelayCounters]uint64{}
+
+	currentTime := time.Now().Unix()
+
+	for i := 0; i < constants.RelayHistorySize*2; i++ {
 
 		// add some samples from relay A -> B
 		{
 			sampleRelayId := [1]uint64{relayIds[1]}
-			sampleRTT := [1]float32{10.0}
-			sampleJitter := [1]float32{0.0}
-			samplePacketLoss := [1]float32{0.0}
+			sampleRTT := [1]uint8{10}
+			sampleJitter := [1]uint8{0}
+			samplePacketLoss := [1]uint16{0}
 			relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		// add some samples from relay B -> A
 		{
 			sampleRelayId := [1]uint64{relayIds[0]}
-			sampleRTT := [1]float32{10.0}
-			sampleJitter := [1]float32{0.0}
-			samplePacketLoss := [1]float32{0.0}
-			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", false, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:])
+			sampleRTT := [1]uint8{10}
+			sampleJitter := [1]uint8{0}
+			samplePacketLoss := [1]uint16{0}
+			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
-		if i < common.HistorySize {
+		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
+
+		if i < constants.RelayHistorySize - 1 {
 
 			// we should see no routes between A and B until HistorySize relay updates
 
-			for i := range costs {
-				assert.Equal(t, int32(-1), costs[i])
+			for j := range costs {
+				assert.Equal(t, uint8(255), costs[j])
 			}
 
 		} else {
 
-			// we should see entries between A and B as routable in the cost matrix, but all other entries should be -1
+			// we should see entries between A and B as routable in the cost matrix, but all other entries should be unroutable
 
-			costs = relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+			costs = relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
 			assert.Equal(t, len(costs), int(common.TriMatrixLength(numRelays)))
 
@@ -185,10 +225,10 @@ func TestRelayManager(t *testing.T) {
 					}
 					if i < 2 && j < 2 {
 						// expect valid entry
-						assert.Equal(t, int32(10), costs[index])
+						assert.Equal(t, uint8(10), costs[index])
 					} else {
-						// expect -1 entry
-						assert.Equal(t, int32(-1), costs[index])
+						// expect 255 entry (unroutable)
+						assert.Equal(t, uint8(255), costs[index])
 					}
 				}
 			}
@@ -197,40 +237,40 @@ func TestRelayManager(t *testing.T) {
 
 	// getting costs 30 seconds in the future should result in routes between A and B being timed out
 
-	costs = relayManager.GetCosts(currentTime+30, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+	costs := relayManager.GetCosts(currentTime+30, relayIds, MaxJitter, MaxPacketLoss)
 
 	assert.Equal(t, len(costs), int(common.TriMatrixLength(numRelays)))
 
 	for i := range costs {
-		assert.Equal(t, int32(-1), costs[i])
+		assert.Equal(t, uint8(255), costs[i])
 	}
 
 	// getting active relays 30 seconds in the future should result in no active relays (A and B timed out)
 
-	activeRelays = relayManager.GetActiveRelays(currentTime + 30)
+	activeRelays := relayManager.GetActiveRelays(currentTime + 30)
 
 	assert.Equal(t, 0, len(activeRelays))
 
 	// relays should be in the offline state 30 seconds in the future
 
-	relays = relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+	relays := relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
 	for i := 0; i < databaseNumRelays; i++ {
-		assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
 
 	// apply a relay update that says relay A is shutting down. routes between relay A and B should instantly go away.
 
-	relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", true, 0, nil, nil, nil, nil)
+	relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", constants.RelayFlags_ShuttingDown, 0, nil, nil, nil, nil, counters[:])
 
-	costs = relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+	costs = relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
 	assert.Equal(t, len(costs), int(common.TriMatrixLength(numRelays)))
 
 	for i := range costs {
-		assert.Equal(t, int32(-1), costs[i])
+		assert.Equal(t, uint8(255), costs[i])
 	}
 
 	// active relays should not include relays that are shutting down
@@ -249,11 +289,11 @@ func TestRelayManager(t *testing.T) {
 
 	for i := 0; i < databaseNumRelays; i++ {
 		if relays[i].Id == relayIds[0] {
-			assert.Equal(t, relays[i].Status, common.RELAY_STATUS_SHUTTING_DOWN)
+			assert.Equal(t, relays[i].Status, constants.RelayStatus_ShuttingDown)
 		} else if relays[i].Id == relayIds[1] {
-			assert.Equal(t, relays[i].Status, common.RELAY_STATUS_ONLINE)
+			assert.Equal(t, relays[i].Status, constants.RelayStatus_Online)
 		} else {
-			assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+			assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 		}
 	}
 
@@ -268,44 +308,44 @@ func TestRelayManager(t *testing.T) {
 	assert.Equal(t, len(relays), databaseNumRelays)
 
 	for i := 0; i < databaseNumRelays; i++ {
-		assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
 
-	// now restart relay A. we should need to wait another HistorySize number of updates before we see routes between A and B
+	// now restart relay A 30 seconds in the future. we should need to wait another HistorySize number of updates before we see routes between A and B
 
-	for i := 0; i < common.HistorySize*2; i++ {
+	for i := 0; i < constants.RelayHistorySize*2; i++ {
 
 		// add some samples from relay A -> B
 		{
 			sampleRelayId := [1]uint64{relayIds[1]}
-			sampleRTT := [1]float32{10.0}
-			sampleJitter := [1]float32{0.0}
-			samplePacketLoss := [1]float32{0.0}
-			relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", false, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:])
+			sampleRTT := [1]uint8{10}
+			sampleJitter := [1]uint8{0}
+			samplePacketLoss := [1]uint16{0}
+			relayManager.ProcessRelayUpdate(currentTime + 30, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		// add some samples from relay B -> A
 		{
 			sampleRelayId := [1]uint64{relayIds[0]}
-			sampleRTT := [1]float32{10.0}
-			sampleJitter := [1]float32{0.0}
-			samplePacketLoss := [1]float32{0.0}
-			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", false, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:])
+			sampleRTT := [1]uint8{1}
+			sampleJitter := [1]uint8{0}
+			samplePacketLoss := [1]uint16{0}
+			relayManager.ProcessRelayUpdate(currentTime + 30, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
-		if i < common.HistorySize {
+		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
+
+		if i < constants.RelayHistorySize - 1 {
 
 			// we should see no routes between A and B until HistorySize relay updates
 
 			for i := range costs {
-				assert.Equal(t, int32(-1), costs[i])
+				assert.Equal(t, uint8(255), costs[i])
 			}
 
 		} else {
 
-			// we should see entries between A and B as routable in the cost matrix, but all other entries should be -1
-
-			costs = relayManager.GetCosts(currentTime, relayIds, MaxRTT, MaxJitter, MaxPacketLoss, false)
+			// we should see entries between A and B as routable in the cost matrix, but all other entries should be unroutable
 
 			assert.Equal(t, len(costs), int(common.TriMatrixLength(numRelays)))
 
@@ -317,10 +357,10 @@ func TestRelayManager(t *testing.T) {
 					}
 					if i < 2 && j < 2 {
 						// expect valid entry
-						assert.Equal(t, int32(10), costs[index])
+						assert.Equal(t, uint8(10), costs[index])
 					} else {
-						// expect -1 entry
-						assert.Equal(t, int32(-1), costs[index])
+						// expect 255 entry (unroutable)
+						assert.Equal(t, uint8(255), costs[index])
 					}
 				}
 			}
@@ -342,14 +382,13 @@ func TestRelayManager(t *testing.T) {
 		numActive := 0
 		for i := 0; i < databaseNumRelays; i++ {
 			if relays[i].Id == activeRelays[0].Id || relays[i].Id == activeRelays[1].Id {
-				assert.Equal(t, relays[i].Status, common.RELAY_STATUS_ONLINE)
+				assert.Equal(t, relays[i].Status, constants.RelayStatus_Online)
 				numActive++
 			} else {
-				assert.Equal(t, relays[i].Status, common.RELAY_STATUS_OFFLINE)
+				assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 			}
 		}
 
 		assert.Equal(t, numActive, 2)
 	}
-*/
 }

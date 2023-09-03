@@ -137,12 +137,8 @@ func main() {
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
-		// todo: portal/buyers
-		// todo: portal/buyer_names
 
 		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
-		// todo: portal/sellers
-		// todo: portal/seller_names
 
 		service.Router.HandleFunc("/portal/datacenters", isAuthorized(portalDatacentersHandler))
 		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
@@ -181,7 +177,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 		endpoint(w, r)
 
-		// todo: temporarily disabled
+		// todo: API tokens are temporarily disabled
 		/*
 			auth := r.Header.Get("Authorization")
 

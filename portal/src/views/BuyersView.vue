@@ -55,7 +55,6 @@ import update from "@/update.js"
 
 async function getData() {
   try {
-    // todo: this should become the portal version of this query
     const res = await axios.get(process.env.VUE_APP_API_URL + '/database/buyers');
     let i = 0;
     let data = []

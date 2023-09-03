@@ -30,6 +30,6 @@ output "relays" {
   ]
 }
 
-// todo: https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs
+// https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs
 
 # --------------------------------------------------------------------------

@@ -16,7 +16,6 @@ const (
 	RouteMatrixVersion_Max   = 1
 	RouteMatrixVersion_Write = 1
 
-	// todo: constants -- or remove
 	MaxDatabaseBinWrapperSize = 100 * 1024
 )
 

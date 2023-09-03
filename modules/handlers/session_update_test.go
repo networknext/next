@@ -980,142 +980,11 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 		assert.Equal(t, token.KbpsUp, uint32(256))
 		assert.Equal(t, token.KbpsDown, uint32(1024))
 
-		if i == 4 {
-			assert.Nil(t, nil)
-		} else {
-			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
+		if i > 1 {
+			assert.Equal(t, token.PrevAddress.String(), addresses[i-1].String())
 		}
 
-		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
-				found = true
-				break
-			}
-		}
-		assert.True(t, found)
-	}
-}
-
-func Test_SessionUpdate_BuildNextTokens_OnlyUseInternalAddressWithSameSupplier(t *testing.T) {
-
-	t.Parallel()
-
-	// initialize state
-
-	state := CreateState()
-
-	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
-
-	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
-
-	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
-
-	state.RelayBackendPrivateKey = routingPrivateKey
-	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
-	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
-
-	serverAddress := core.ParseAddress("127.0.0.1:50000")
-
-	state.From = &serverAddress
-
-	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
-	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
-
-	state.Output.SessionId = 0x123457
-	state.Output.SessionVersion = 100
-
-	// initialize database
-
-	seller := &db.Seller{Id: 1, Name: "seller"}
-
-	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
-
-	relay_address_a := core.ParseAddress("127.0.0.1:40000")
-	relay_address_b := core.ParseAddress("127.0.0.1:40001")
-	relay_address_c := core.ParseAddress("127.0.0.1:40002")
-
-	relay_address_c_internal := core.ParseAddress("35.0.0.1:40002")
-
-	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
-	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
-	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
-
-	state.Database.Relays = make([]db.Relay, 3)
-	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: *seller, PublicKey: relay_public_key_a}
-	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: *seller, PublicKey: relay_public_key_b}
-	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, InternalAddress: relay_address_c_internal, HasInternalAddress: true, Seller: *seller, PublicKey: relay_public_key_c}
-
-	state.Database.SellerMap[1] = seller
-
-	state.Database.DatacenterMap[1] = datacenter_a
-	state.Database.DatacenterMap[2] = datacenter_b
-	state.Database.DatacenterMap[3] = datacenter_c
-
-	state.Database.RelayMap[1] = &state.Database.Relays[0]
-	state.Database.RelayMap[2] = &state.Database.Relays[1]
-	state.Database.RelayMap[3] = &state.Database.Relays[2]
-
-	// initialize route matrix
-
-	state.RouteMatrix.RelayIds = make([]uint64, 3)
-	state.RouteMatrix.RelayIds[0] = 1
-	state.RouteMatrix.RelayIds[1] = 2
-	state.RouteMatrix.RelayIds[2] = 3
-
-	// initialize route relays
-
-	routeNumRelays := int32(3)
-	routeRelays := []int32{0, 1, 2}
-
-	// build next tokens
-
-	handlers.SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays)
-
-	// validate
-
-	const NumTokens = 5
-
-	assert.Equal(t, state.Response.RouteType, int32(packets.SDK_RouteTypeNew))
-	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
-	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedNextRouteTokenSize)
-
-	addresses := make([]net.UDPAddr, NumTokens)
-	addresses[1] = relay_address_a
-	addresses[2] = relay_address_b
-	addresses[3] = relay_address_c
-	addresses[4] = serverAddress
-
-	privateKeys := make([][]byte, NumTokens)
-
-	privateKeys[0] = clientPrivateKey
-	privateKeys[1] = relay_private_key_a
-	privateKeys[2] = relay_private_key_b
-	privateKeys[3] = relay_private_key_c
-	privateKeys[4] = serverPrivateKey
-
-	for i := 0; i < NumTokens; i++ {
-
-		index := packets.SDK_EncryptedNextRouteTokenSize * i
-
-		token := core.RouteToken{}
-
-		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
-
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
-
-		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
-		assert.Equal(t, token.SessionId, state.Output.SessionId)
-		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
-
-		if i == 4 {
-			assert.Nil(t, nil)
-		} else {
+		if i != 4 {
 			assert.Equal(t, token.NextAddress.String(), addresses[i+1].String())
 		}
 
@@ -1284,8 +1153,6 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 		assert.True(t, found)
 	}
 }
-
-// todo: unit test internal groups
 
 // --------------------------------------------------------------
 
@@ -3759,5 +3626,3 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 }
 
 // --------------------------------------------------------------
-
-// todo: we need to test that 			state.SessionFlags |= constants.SessionFlags_Next is set when expected --- it wasn't, and we totally missed it because it is not tested anywhere here

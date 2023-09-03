@@ -4941,11 +4941,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
-            // todo
-            char internal_string[RELAY_MAX_ADDRESS_STRING_LENGTH];
-            relay_address_to_string(&relay->relay_internal_address, internal_string);
-            printf( "[%s] advanced packet filter dropped packet (internal address is %s)\n", from_string, internal_string );
-
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;

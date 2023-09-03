@@ -85,7 +85,7 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 	relayManager.mutex.Lock()
 
 	sourceEntry, exists := relayManager.SourceEntries[relayId]
-	if !exists {
+	if !exists || sourceEntry.LastUpdateTime < currentTime-constants.RelayTimeout {
 		sourceEntry = &RelayManagerSourceEntry{}
 		sourceEntry.DestEntries = make(map[uint64]*RelayManagerDestEntry)
 		relayManager.SourceEntries[relayId] = sourceEntry
@@ -117,13 +117,14 @@ func (relayManager *RelayManager) ProcessRelayUpdate(currentTime int64, relayId 
 		destRelayId := sampleRelayId[i]
 
 		destEntry, exists := sourceEntry.DestEntries[destRelayId]
+
 		if !exists {
 			destEntry = &RelayManagerDestEntry{}
 			sourceEntry.DestEntries[destRelayId] = destEntry
 			for j := 0; j < constants.RelayHistorySize; j++ {
-				destEntry.HistoryRTT[j] = 10000.0
-				destEntry.HistoryJitter[j] = 10000.0
-				destEntry.HistoryPacketLoss[j] = 10000.0
+				destEntry.HistoryRTT[j] = 1000000000.0
+				destEntry.HistoryJitter[j] = 1000000000.0
+				destEntry.HistoryPacketLoss[j] = 1000000000.0
 			}
 		}
 
@@ -286,7 +287,7 @@ func (relayManager *RelayManager) GetRelays(currentTime int64, relayIds []uint64
 		relay.Address = sourceEntry.RelayAddress
 		relay.Sessions = sourceEntry.Sessions
 
-		relay.Status = constants.RelayStatus_Offline
+		relay.Status = constants.RelayStatus_Online
 
 		if sourceEntry.ShuttingDown {
 			relay.Status = constants.RelayStatus_ShuttingDown

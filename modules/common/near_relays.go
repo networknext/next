@@ -2,10 +2,9 @@ package common
 
 import (
 	"net"
-	"math/rand"
-	// "sort"
+	"sort"
 
-	// "github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/core"
 )
 
 func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float32, relayLongitudes []float32, sourceLatitude float32, sourceLongitude float32, destLatitude float32, destLongitude float32) ([]uint64, []net.UDPAddr) {
@@ -17,47 +16,6 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 		nearRelayAddresses := make([]net.UDPAddr, 0)
 		return nearRelayIds, nearRelayAddresses
 	}
-
-	// todo: temporary experiment below
-
-	// Randomly pick near relays
-
-	type NearRelayData struct {
-		Id        uint64
-		Address   net.UDPAddr
-
-	}
-
-	nearRelayData := make([]NearRelayData, len(relayIds))
-
-	for i, relayId := range relayIds {
-		nearRelayData[i].Id = relayId
-		nearRelayData[i].Address = relayAddresses[i]
-	}
-
-	rand.Shuffle(len(nearRelayData), func(i, j int) {
-        nearRelayData[i], nearRelayData[j] = nearRelayData[j], nearRelayData[i]
-    })
-
-    numNearRelays := len(nearRelayData)
-    if numNearRelays > maxNearRelays {
-    	numNearRelays = maxNearRelays
-    }
-
-	nearRelayIds := make([]uint64, numNearRelays)
-	nearRelayAddresses := make([]net.UDPAddr, numNearRelays)
-
-	for i := 0; i < numNearRelays; i++ {
-		nearRelayIds[i] = nearRelayData[i].Id
-		nearRelayAddresses[i] = nearRelayData[i].Address
-	}
-
-	return nearRelayIds, nearRelayAddresses
-
-	/*
-	// Estimate direct latency
-
-	directLatency := float32(3.0 / 2.0 * core.SpeedOfLightTimeMilliseconds_AB(float64(sourceLatitude), float64(sourceLongitude), float64(destLatitude), float64(destLongitude)))
 
 	// Work with the near relays as an array of structs first for easier sorting
 
@@ -83,7 +41,11 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
-	// Select near relays
+	// Estimate direct latency
+
+	directLatency := float32(3.0 / 2.0 * core.SpeedOfLightTimeMilliseconds_AB(float64(sourceLatitude), float64(sourceLongitude), float64(destLatitude), float64(destLongitude)))
+
+	// Select near relays within distance threshold, provided estimated latency through near relay does not exceed direct latency (avoids out of way relays)
 
 	relayMap := make(map[uint64]NearRelayData)
 
@@ -144,7 +106,7 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 		relayMap[nearRelayData[i].Id] = nearRelayData[i]
 	}
 
-	// Return results, including -- potentially -- some relays around the destination datacenter
+	// Return results
 
 	numNearRelays := len(relayMap)
 
@@ -158,5 +120,4 @@ func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold fl
 	}
 
 	return nearRelayIds, nearRelayAddresses
-	*/
 }

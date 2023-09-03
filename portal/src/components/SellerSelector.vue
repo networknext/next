@@ -36,7 +36,6 @@ export default {
 
   async created() {
     try {
-      // todo: needs to be updated to portal version, ideally a reduced complexity "portal/seller_names" API or whatever
       const res = await axios.get(process.env.VUE_APP_API_URL + '/database/sellers');
       let i = 0;
       while (i < res.data.sellers.length) {
