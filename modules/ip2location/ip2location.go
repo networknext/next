@@ -50,10 +50,6 @@ func DownloadDatabases(licenseKey string) error {
 
 	core.Log("%s", dir)
 
-	core.Log("cleaning up before starting")
-
-	bash("rm -rf GeoIP2*")
-
 	core.Log("downloading isp database")
 
 	err = bash(fmt.Sprintf("curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-ISP&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-ISP.tar.gz", licenseKey, dir))
