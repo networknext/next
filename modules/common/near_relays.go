@@ -7,42 +7,6 @@ import (
 	"github.com/networknext/next/modules/core"
 )
 
-/*
-	// Randomly pick near relays
-
-	type NearRelayData struct {
-		Id        uint64
-		Address   net.UDPAddr
-
-	}
-
-	nearRelayData := make([]NearRelayData, len(relayIds))
-
-	for i, relayId := range relayIds {
-		nearRelayData[i].Id = relayId
-		nearRelayData[i].Address = relayAddresses[i]
-	}
-
-	rand.Shuffle(len(nearRelayData), func(i, j int) {
-        nearRelayData[i], nearRelayData[j] = nearRelayData[j], nearRelayData[i]
-    })
-
-    numNearRelays := len(nearRelayData)
-    if numNearRelays > maxNearRelays {
-    	numNearRelays = maxNearRelays
-    }
-
-	nearRelayIds := make([]uint64, numNearRelays)
-	nearRelayAddresses := make([]net.UDPAddr, numNearRelays)
-
-	for i := 0; i < numNearRelays; i++ {
-		nearRelayIds[i] = nearRelayData[i].Id
-		nearRelayAddresses[i] = nearRelayData[i].Address
-	}
-
-	return nearRelayIds, nearRelayAddresses
-*/
-
 func GetNearRelays(maxNearRelays int, distanceThreshold int, latencyThreshold float32, relayIds []uint64, relayAddresses []net.UDPAddr, relayLatitudes []float32, relayLongitudes []float32, sourceLatitude float32, sourceLongitude float32, destLatitude float32, destLongitude float32) ([]uint64, []net.UDPAddr) {
 
 	// Are there no relays in the route matrix? Return empty set

@@ -808,7 +808,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 32
+  target_size        = 256
 }
 
 # ----------------------------------------------------------------------------------------
