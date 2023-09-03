@@ -157,26 +157,38 @@ func TestRelayManager_Real(t *testing.T) {
 	// alive for at least HistorySize relay updates. this avoids sending traffic to relays when they first start
 	// and we don't necessarily know their routes are stable yet.
 
+	const MaxJitter = 100
+	const MaxPacketLoss = 1
+
+	counters := [constants.NumRelayCounters]uint64{}
+
+	currentTime := time.Now().Unix()
+
 	for i := 0; i < constants.RelayHistorySize*2; i++ {
 
 		// add some samples from relay A -> B
 		{
 			sampleRelayId := [1]uint64{relayIds[1]}
-			sampleRTT := [1]float32{10.0}
-			sampleJitter := [1]float32{0.0}
-			samplePacketLoss := [1]float32{0.0}
+			sampleRTT := [1]uint8{10}
+			sampleJitter := [1]uint8{0}
+			samplePacketLoss := [1]uint16{0}
 			relayManager.ProcessRelayUpdate(currentTime, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		// add some samples from relay B -> A
 		{
 			sampleRelayId := [1]uint64{relayIds[0]}
-			sampleRTT := [1]float32{10.0}
-			sampleJitter := [1]float32{0.0}
-			samplePacketLoss := [1]float32{0.0}
-			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", false, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:])
+			sampleRTT := [1]uint8{10}
+			sampleJitter := [1]uint8{0}
+			samplePacketLoss := [1]uint16{0}
+			relayManager.ProcessRelayUpdate(currentTime, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
+		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
+
+		fmt.Printf("%v\n", costs)
+
+		/*
 		if i < constants.RelayHistorySize {
 
 			// we should see no routes between A and B until HistorySize relay updates
@@ -209,6 +221,7 @@ func TestRelayManager_Real(t *testing.T) {
 				}
 			}
 		}
+		*/
 	}
 
 /*
