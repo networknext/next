@@ -206,6 +206,8 @@ func main() {
 		config_vultr()
 	} else if command == "portal" {
 		portal()
+	} else if command == "ip2location" {
+		ip2location()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -563,4 +565,8 @@ func portal() {
 	var env Environment
 	env.Read()
 	bash(fmt.Sprintf("cd portal && yarn serve-%s", env.Name))
+}
+
+func ip2location() {
+	bash("cd dist && ./ip2location")	
 }
