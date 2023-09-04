@@ -476,7 +476,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"      # needs just a bit more oomf than f1-micro can provide...
+  machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
   default_network            = google_compute_network.development.id
