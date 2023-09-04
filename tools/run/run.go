@@ -160,6 +160,8 @@ func main() {
 		sql_local()
 	} else if command == "sql-docker" {
 		sql_docker()
+	} else if command == "sql-staging" {
+		sql_staging()
 	} else if command == "extract-database" {
 		extract_database()
 	} else if command == "func-server" {
@@ -438,6 +440,10 @@ func sql_local() {
 
 func sql_docker() {
 	bash("psql -U developer postgres -f ./schemas/sql/docker.sql -v ON_ERROR_STOP=1")
+}
+
+func sql_staging() {
+	bash("psql -U developer postgres -f ./schemas/sql/staging.sql -v ON_ERROR_STOP=1")
 }
 
 func extract_database() {

@@ -37,4 +37,6 @@ func main() {
 	}
 
 	fmt.Println(loaded.String())
+
+	fmt.Printf("\n")
 }

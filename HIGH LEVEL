@@ -60,6 +60,8 @@ TODO
 
 	Verify that I can load staging.sql
 
+	Verify that all staging migs work
+
 	-----------
 
 	Implement load test program that acts like x servers, and y sessions.
@@ -110,6 +112,8 @@ TODO
 		Cloud Resource Manager API
 		Google Cloud Memorystore for Redis API
 		Service Networking API
+
+	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
 
 	------------
 
