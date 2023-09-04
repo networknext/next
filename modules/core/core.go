@@ -1052,7 +1052,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 				if cost > maxCost {
 					break
 				}
-				
+
 				bestRoutes[numRoutes].Cost = cost
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
 
@@ -1063,12 +1063,12 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 				bestRoutes[numRoutes].NeedToReverse = sourceRelayIndex < destRelayIndex
 
 				numRoutes++
-				
+
 				if firstRouteFromThisRelay {
 					*routeDiversity++
 					firstRouteFromThisRelay = false
 				}
-				
+
 				if numRoutes == maxRoutes {
 					*numBestRoutes = numRoutes
 					return
@@ -1475,7 +1475,12 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 				numRoutableSourceRelays++
 			}
 		}
-		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		if sliceNumber != 0 {
+			*debug += fmt.Sprintf("take network next: %d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		} else {
+			*debug += "first slice: sending down near relays to ping\n"
+			return false
+		}
 		numDestRelays := len(destRelays)
 		if numDestRelays == 1 {
 			*debug += fmt.Sprintf("1 dest relay\n")
@@ -1623,7 +1628,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 				numRoutableSourceRelays++
 			}
 		}
-		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		*debug += fmt.Sprintf("stay on network next: %d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
 		numDestRelays := len(destRelays)
 		if numDestRelays == 1 {
 			*debug += fmt.Sprintf("1 dest relay\n")

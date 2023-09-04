@@ -7,13 +7,13 @@
       <thead>
         <tr>
           <th>Server Address</th>
-          <th>Datacenter</th>
+          <th>Current Sessions</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in data" :key='item'>
           <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+          <td> {{ item["Current Sessions"] }} </td>
         </tr>
       </tbody>
     </table>
@@ -24,21 +24,21 @@
       <thead>
         <tr>
           <th>Server Address</th>
-          <th>Buyer</th>
-          <th>Datacenter</th>
           <th>Current Sessions</th>
           <th>Uptime</th>
           <th>SDK Version</th>
+          <th>Buyer</th>
+          <th>Datacenter</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in data" :key='item'>
           <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
           <td> {{ item["Current Sessions"] }} </td>
           <td> {{ item["Uptime"] }} </td>
           <td> {{ item["SDK Version"] }} </td>
+          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
+          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
         </tr>
       </tbody>
     </table>

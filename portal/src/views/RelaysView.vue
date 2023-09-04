@@ -24,25 +24,25 @@
       <thead>
         <tr>
           <th>Relay Name</th>
-          <th>Public Address</th>
-          <th>Datacenter</th>
-          <th>Seller</th>
           <th>Current Sessions</th>
           <th>Status</th>
           <th>Uptime</th>
           <th>Relay Version</th>
+          <th>Public Address</th>
+          <th>Datacenter</th>
+          <th>Seller</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in data" :key='item'>
           <td> <router-link :to='item["Relay Link"]'> {{ item["Relay Name"] }} </router-link> </td>
-          <td> {{ item["Public Address"] }} </td>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller"] }} </router-link> </td>
           <td> {{ item["Current Sessions"] }} </td>
           <td> {{ item["Status"] }} </td>
           <td> {{ item["Uptime"] }} </td>
           <td> {{ item["Relay Version"] }} </td>
+          <td> {{ item["Public Address"] }} </td>
+          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller"] }} </router-link> </td>
         </tr>
       </tbody>
     </table>

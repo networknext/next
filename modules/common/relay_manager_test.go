@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
-	"github.com/networknext/next/modules/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -201,7 +201,7 @@ func TestRelayManager_Real(t *testing.T) {
 
 		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
-		if i < constants.RelayHistorySize - 1 {
+		if i < constants.RelayHistorySize-1 {
 
 			// we should see no routes between A and B until HistorySize relay updates
 
@@ -321,7 +321,7 @@ func TestRelayManager_Real(t *testing.T) {
 			sampleRTT := [1]uint8{10}
 			sampleJitter := [1]uint8{0}
 			samplePacketLoss := [1]uint16{0}
-			relayManager.ProcessRelayUpdate(currentTime + 30, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
+			relayManager.ProcessRelayUpdate(currentTime+30, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		// add some samples from relay B -> A
@@ -330,12 +330,12 @@ func TestRelayManager_Real(t *testing.T) {
 			sampleRTT := [1]uint8{1}
 			sampleJitter := [1]uint8{0}
 			samplePacketLoss := [1]uint16{0}
-			relayManager.ProcessRelayUpdate(currentTime + 30, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
+			relayManager.ProcessRelayUpdate(currentTime+30, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
-		if i < constants.RelayHistorySize - 1 {
+		if i < constants.RelayHistorySize-1 {
 
 			// we should see no routes between A and B until HistorySize relay updates
 

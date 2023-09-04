@@ -608,7 +608,7 @@ func test_cost_matrix() {
 	relay_2_cmd, relay_2_stdout := relay("relay", 2001, config)
 	relay_3_cmd, relay_3_stdout := relay("relay", 2002, config)
 
-	time.Sleep(15 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	costMatrix := getCostMatrix()
 

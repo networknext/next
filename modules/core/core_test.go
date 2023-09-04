@@ -2854,6 +2854,8 @@ func TestTakeNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	test.routeShader.Multipath = false
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
+	test.sliceNumber = 1
+
 	test.destRelays = []int32{1}
 
 	result := test.TakeNetworkNext()
@@ -2896,6 +2898,8 @@ func TestTakeNetworkNext_ReduceLatency_RouteDiversity(t *testing.T) {
 
 	test.destRelays = []int32{5}
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.True(t, result)
@@ -2930,6 +2934,8 @@ func TestTakeNetworkNext_ReduceLatency_LackOfDiversity(t *testing.T) {
 	test.destRelays = []int32{1}
 
 	test.routeShader.RouteDiversity = 5
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -2971,6 +2977,8 @@ func TestTakeNetworkNext_ReduceLatency_LatencyIsAcceptable(t *testing.T) {
 
 	test.routeShader.AcceptableLatency = 50
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
@@ -3009,6 +3017,8 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 
 	test.routeShader.LatencyReductionThreshold = 20
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
@@ -3038,6 +3048,8 @@ func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	test.sourceRelayCosts = []int32{1}
 
 	test.destRelays = []int32{1}
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3074,6 +3086,8 @@ func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
 	test.routeShader.AcceptableLatency = 100
 	test.routeShader.Multipath = false
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3112,6 +3126,8 @@ func TestTakeNetworkNext_ReducePacketLoss_TradeLatency(t *testing.T) {
 	test.routeShader.Multipath = false
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.True(t, result)
@@ -3148,6 +3164,8 @@ func TestTakeNetworkNext_ReducePacketLoss_DontTradeTooMuchLatency(t *testing.T) 
 	test.routeShader.Multipath = false
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
@@ -3181,6 +3199,8 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 
 	test.routeShader.Multipath = false
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3220,6 +3240,8 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
@@ -3258,6 +3280,8 @@ func TestTakeNetworkNext_ReducePacketLoss_PLBelowSustained(t *testing.T) {
 	test.sourceRelayCosts = []int32{10}
 
 	test.destRelays = []int32{1}
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3304,6 +3328,8 @@ func TestTakeNetworkNext_ReducePacketLoss_PLEqualSustained(t *testing.T) {
 
 	test.destRelays = []int32{1}
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
@@ -3349,6 +3375,8 @@ func TestTakeNetworkNext_ReducePacketLoss_PLAboveSustained(t *testing.T) {
 
 	test.destRelays = []int32{1}
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.False(t, result)
@@ -3393,6 +3421,8 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T
 	test.sourceRelayCosts = []int32{10}
 
 	test.destRelays = []int32{1}
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3440,6 +3470,8 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) 
 	test.sourceRelayCosts = []int32{10}
 
 	test.destRelays = []int32{1}
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3514,6 +3546,8 @@ func TestTakeNetworkNext_ReduceLatency_Multipath(t *testing.T) {
 
 	test.routeShader.Multipath = true
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.True(t, result)
@@ -3554,6 +3588,8 @@ func TestTakeNetworkNext_ReducePacketLoss_Multipath(t *testing.T) {
 
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.True(t, result)
@@ -3590,6 +3626,8 @@ func TestTakeNetworkNext_ReducePacketLossAndLatency_Multipath(t *testing.T) {
 
 	test.routeShader.Multipath = true
 	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -3635,6 +3673,8 @@ func TestStayOnNetworkNext_EarlyOut_Veto(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
@@ -3684,6 +3724,8 @@ func TestStayOnNetworkNext_ReduceLatency_Simple(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
@@ -3729,6 +3771,8 @@ func TestStayOnNetworkNext_ReduceLatency_SlightlyWorse(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
@@ -3780,6 +3824,8 @@ func TestStayOnNetworkNext_ReduceLatency_RTTVeto(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
@@ -3825,6 +3871,8 @@ func TestStayOnNetworkNext_ReduceLatency_NoRoute(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
@@ -3874,6 +3922,8 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	// first slice mispredicting is fine
 
@@ -3954,6 +4004,8 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictRecover(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	// first slice mispredicting is fine
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
@@ -4022,6 +4074,8 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToNewRoute(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
@@ -4073,6 +4127,8 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToBetterRoute(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
@@ -4121,6 +4177,8 @@ func TestStayOnNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.False(t, result)
@@ -4165,6 +4223,8 @@ func TestStayOnNetworkNext_ReducePacketLoss_LatencyTradeOff(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
@@ -4211,6 +4271,8 @@ func TestStayOnNetworkNext_ReducePacketLoss_RTTVeto(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
@@ -4260,6 +4322,8 @@ func TestStayOnNetworkNext_ReducePacketLoss_NoRoute(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
@@ -4305,6 +4369,8 @@ func TestStayOnNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
@@ -4357,6 +4423,8 @@ func TestStayOnNetworkNext_Multipath_LatencyTradeOff(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, nextRouteSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
@@ -4404,6 +4472,8 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
+
+	test.sliceNumber = 1
 
 	// first latency worse is fine
 
@@ -4488,6 +4558,8 @@ func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	// first latency worse is fine
 
 	result, nextRouteSwitched := test.StayOnNetworkNext()
@@ -4549,6 +4621,8 @@ func TestTakeNetworkNext_ForceNext(t *testing.T) {
 
 	test.routeState.Next = false
 
+	test.sliceNumber = 1
+
 	result := test.TakeNetworkNext()
 
 	assert.True(t, result)
@@ -4577,6 +4651,8 @@ func TestTakeNetworkNext_ForceNext_NoRoute(t *testing.T) {
 	test.routeShader.ForceNext = true
 
 	test.routeState.Next = false
+
+	test.sliceNumber = 1
 
 	result := test.TakeNetworkNext()
 
@@ -4622,6 +4698,8 @@ func TestStayOnNetworkNext_ForceNext(t *testing.T) {
 	test.currentRouteNumRelays = int32(2)
 	test.currentRouteRelays = [constants.MaxRouteRelays]int32{0, 1}
 
+	test.sliceNumber = 1
+
 	result, routeSwitched := test.StayOnNetworkNext()
 
 	assert.True(t, result)
@@ -4662,6 +4740,8 @@ func TestStayOnNetworkNext_ForceNext_NoRoute(t *testing.T) {
 
 	test.routeState.Next = true
 	test.routeState.ForcedNext = true
+
+	test.sliceNumber = 1
 
 	result, routeSwitched := test.StayOnNetworkNext()
 
@@ -4709,6 +4789,8 @@ func TestStayOnNetworkNext_ForceNext_RouteSwitched(t *testing.T) {
 
 	test.routeState.Next = true
 	test.routeState.ForcedNext = true
+
+	test.sliceNumber = 1
 
 	result, routeSwitched := test.StayOnNetworkNext()
 

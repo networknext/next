@@ -31,12 +31,30 @@ import (
 	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/encoding"
+	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/ip2location"
 	"github.com/networknext/next/modules/packets"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/option"
 )
+
+func bash(command string) {
+
+	cmd := exec.Command("bash", "-c", command)
+	if cmd == nil {
+		fmt.Printf("error: could not run bash!\n")
+		os.Exit(1)
+	}
+
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("error: failed to run command: %v\n", err)
+		os.Exit(1)
+	}
+
+	cmd.Wait()
+}
 
 func Base64String(value string) []byte {
 	data, err := base64.StdEncoding.DecodeString(value)
@@ -943,7 +961,7 @@ func test_redis_streams() {
 			break
 		}
 		time.Sleep(time.Millisecond)
-		if time.Since(startTime) > 10 * time.Second {
+		if time.Since(startTime) > 10*time.Second {
 			break
 		}
 	}
@@ -1732,6 +1750,44 @@ func test_relay_backend() {
 	}
 }
 
+type City struct {
+	Location struct {
+		Latitude  float64 `maxminddb:"latitude"`
+		Longitude float64 `maxminddb:"longitude"`
+	} `maxminddb:"location"`
+}
+
+type ISP struct {
+	ISP string `maxminddb:"isp"`
+}
+
+func test_ip2location() {
+
+	fmt.Printf("test_ip2location\n")
+
+	licenseKey := envvar.GetString("MAXMIND_LICENSE_KEY", "")
+
+	err := ip2location.DownloadDatabases_MaxMind(licenseKey)
+	if err != nil {
+		panic(err)
+	}
+
+	isp_db, city_db, err := ip2location.LoadDatabases()
+	if err != nil {
+		panic(err)
+	}
+
+	ip := core.ParseAddress("104.228.29.134").IP
+
+	isp := ip2location.GetISP(isp_db, ip)
+
+	latitude, longitude := ip2location.GetLocation(city_db, ip)
+
+	fmt.Printf("isp = %s\n", isp)
+	fmt.Printf("latitude = %.2f\n", latitude)
+	fmt.Printf("longitude = %.2f\n", longitude)
+}
+
 type test_function func()
 
 var googleProjectID string
@@ -1752,6 +1808,7 @@ func main() {
 		test_relay_manager,
 		test_optimize,
 		test_relay_backend,
+		test_ip2location,
 	}
 
 	var tests []test_function

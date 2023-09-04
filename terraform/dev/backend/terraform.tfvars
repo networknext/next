@@ -26,3 +26,7 @@ ping_key 					= "56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64="
 api_private_key             = "this is the private key that generates API keys. make sure you change this value in production"
 customer_public_key         = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 customer_private_key        = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+
+maxmind_license_key = "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"
+
+ip2location_bucket_name = "test_network_next_dev"

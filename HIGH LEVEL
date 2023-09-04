@@ -50,19 +50,29 @@ DONE
 
 	Rebuild portal (first half)
 
+	IP2Location
+
 TODO
 
-	IP2Location
+	-----------
 
 	HTTPS for api service
 
 	HTTPS for relay gateway
 
+	-----------
+
 	Setup google pubsub in dev with terraform
+
+	Verify that analytics service gets expected messages through pubsub
+
+	-----------
 
 	Setup google bigquery in dev with terraform
 
-	Analytics service inserts data into bigquery in dev
+	Verify analytics service inserts data into bigquery.
+
+	-----------
 
 	Rebuild portal (second half)
 

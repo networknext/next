@@ -7,17 +7,13 @@
       <thead>
         <tr>
           <th>Session ID</th>
-          <th class="right">Direct</th>
-          <th class="right">Next</th>
-          <th class="right">Improvement</th>
+          <th>Improvement</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in data" :key='item'>
           <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="right"> {{ item["Improvement"] }} </td>
+          <td> {{ item["Improvement"] }} </td>
         </tr>
       </tbody>
     </table>

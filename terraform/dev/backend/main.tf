@@ -33,6 +33,10 @@ variable "api_private_key" { type = string }
 variable "customer_public_key" { type = string }
 variable "customer_private_key" { type = string }
 
+variable "maxmind_license_key" { type = string }
+
+variable "ip2location_bucket_name" { type = string }
+
 # ----------------------------------------------------------------------------------------
 
 terraform {
@@ -598,6 +602,7 @@ module "portal_cruncher" {
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
   EOF1
@@ -676,6 +681,7 @@ module "server_backend" {
     SERVER_BACKEND_PRIVATE_KEY=${var.server_backend_private_key}
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=${var.ping_key}
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
   EOF1
@@ -809,6 +815,39 @@ module "raspberry_client" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
   target_size        = 16
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "ip2location" {
+
+  source = "../../modules/external_mig_without_health_check"
+
+  service_name = "ip2location"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a ip2location.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    MAXMIND_LICENSE_KEY=${var.maxmind_license_key}
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 1
 }
 
 # ----------------------------------------------------------------------------------------
