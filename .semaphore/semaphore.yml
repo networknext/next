@@ -137,6 +137,11 @@ blocks:
             - make dist/raspberry_backend.tar.gz
             - artifact push workflow dist/raspberry_backend.tar.gz --force
 
+        - name: "IP2Location"
+          commands:
+            - make dist/ip2location.tar.gz
+            - artifact push workflow dist/ip2location.tar.gz --force
+
   - name: "Build Artifacts (Native)"
 
     dependencies: []
