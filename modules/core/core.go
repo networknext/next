@@ -1475,7 +1475,12 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 				numRoutableSourceRelays++
 			}
 		}
-		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		if sliceNumber != 0 {
+			*debug += fmt.Sprintf("take network next: %d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		} else {
+			*debug += "first slice: sending down near relays to ping\n"
+			return false
+		}
 		numDestRelays := len(destRelays)
 		if numDestRelays == 1 {
 			*debug += fmt.Sprintf("1 dest relay\n")
@@ -1623,7 +1628,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 				numRoutableSourceRelays++
 			}
 		}
-		*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+		*debug += fmt.Sprintf("stay on network next: %d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
 		numDestRelays := len(destRelays)
 		if numDestRelays == 1 {
 			*debug += fmt.Sprintf("1 dest relay\n")
