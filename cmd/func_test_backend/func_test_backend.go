@@ -31,9 +31,9 @@ import (
 	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/encoding"
-	"github.com/networknext/next/modules/packets"
-	"github.com/networknext/next/modules/ip2location"
 	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/ip2location"
+	"github.com/networknext/next/modules/packets"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/pubsub"
@@ -1767,7 +1767,7 @@ func test_ip2location() {
 
 	licenseKey := envvar.GetString("MAXMIND_LICENSE_KEY", "")
 
-	err := ip2location.DownloadDatabases(licenseKey)
+	err := ip2location.DownloadDatabases_MaxMind(licenseKey)
 	if err != nil {
 		panic(err)
 	}

@@ -208,19 +208,14 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsSessionSummaryMessageChannel = analyticsSessionSummaryMessageChannel
 	handler.AnalyticsNearRelayUpdateMessageChannel = analyticsNearRelayUpdateMessageChannel
 
+	// todo: this could be setup at initialization time
 	handler.LocateIP = locateIP_Local
 	if service.Env == "dev" {
 		handler.LocateIP = locateIP_Dev
+	} else if service.Env != "local" {
+		// todo
+		//		handler.LocateIP = locateIP_Real
 	}
-
-	// todo: ip2location is not ready yet
-	/*
-		if service.Local {
-			handler.LocateIP = locateIP_Local
-		} else {
-			handler.LocateIP = locateIP_Real
-		}
-	*/
 
 	handlers.SDK_PacketHandler(&handler, conn, from, packetData)
 }
@@ -282,9 +277,12 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 	return 0, 0
 }
 
+// todo
+/*
 func locateIP_Real(ip net.IP) (float32, float32) {
 	return service.LocateIP(ip)
 }
+*/
 
 func processPortalMessages_RedisStreams[T messages.Message](service *common.Service, name string, inputChannel chan T) {
 

@@ -568,5 +568,5 @@ func portal() {
 }
 
 func ip2location() {
-	bash("cd dist && ./ip2location")	
+	bash("cd dist && ./ip2location")
 }

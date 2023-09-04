@@ -23,10 +23,11 @@ import (
 	"github.com/networknext/next/modules/core"
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/ip2location"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
-	"github.com/oschwald/geoip2-golang"
+	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/cors"
 )
 
@@ -100,10 +101,9 @@ type Service struct {
 
 	google *GoogleCloudHandler
 
-	ip2location_isp_mutex   sync.RWMutex
-	ip2location_isp_reader  *geoip2.Reader
-	ip2location_city_mutex  sync.RWMutex
-	ip2location_city_reader *geoip2.Reader
+	ip2location_mutex   sync.RWMutex
+	ip2location_isp_db  *maxminddb.Reader
+	ip2location_city_db *maxminddb.Reader
 }
 
 func CreateService(serviceName string) *Service {
@@ -212,103 +212,74 @@ func (service *Service) LoadDatabase() {
 
 func (service *Service) LoadIP2Location() {
 
-	filenames := envvar.GetList("IP2LOCATION_FILENAMES", []string{"GeoIP2-City.mmdb", "GeoIP2-ISP.mmdb"})
+	bucketName := envvar.GetString("IP2LOCATION_BUCKET_NAME", "")
 
-	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
-
-	if !validateIP2Location(cityReader, ispReader) {
-		core.Error("ip2location failed validation")
+	if bucketName == "" {
+		core.Error("you must specify ip2location bucket name")
 		os.Exit(1)
 	}
 
-	service.ip2location_city_mutex.Lock()
-	service.ip2location_city_reader = cityReader
-	service.ip2location_city_mutex.Unlock()
-
-	core.Log("loaded ip2location city file: %s", filenames[0])
-
-	service.ip2location_isp_mutex.Lock()
-	service.ip2location_isp_reader = ispReader
-	service.ip2location_isp_mutex.Unlock()
-
-	core.Log("loaded ip2location isp file: %s", filenames[1])
-
-	service.watchIP2Location(service.Context, filenames)
-}
-
-func (service *Service) ValidateIP2Location(filenames []string) bool {
-
-	cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
-
-	return validateIP2Location(cityReader, ispReader)
-}
-
-func validateIP2Location(cityReader *geoip2.Reader, ispReader *geoip2.Reader) bool {
-
-	valid := true
-
-	ip := net.ParseIP("98.11.247.166")
-
-	if cityReader == nil {
-		core.Error("city reader is nil")
-		valid = false
-	} else {
-		lat, long := locateIP(cityReader, ip)
-		if lat == 0.0 && long == 0.0 {
-			core.Error("failed to validate city")
-			valid = false
-		}
-	}
-
-	if ispReader == nil {
-		core.Error("isp reader is nil")
-		valid = false
-	} else {
-		asn, isp := locateISP(ispReader, ip)
-		if asn == -1 {
-			core.Error("failed to validate asn")
-			valid = false
-		}
-
-		if isp == "" {
-			core.Error("failed to validate isp")
-			valid = false
-		}
-	}
-
-	return valid
-}
-
-func locateIP(reader *geoip2.Reader, ip net.IP) (float32, float32) {
-	city, err := reader.City(ip)
+	err := ip2location.DownloadDatabases_CloudStorage(bucketName)
 	if err != nil {
-		core.Error("city look up failed: %v", err)
-		return 0, 0
+		core.Error("could not download ip2location databases from cloud storage: %v")
+		os.Exit(1)
 	}
-	return float32(city.Location.Latitude), float32(city.Location.Longitude)
-}
 
-func locateISP(reader *geoip2.Reader, ip net.IP) (int, string) {
-	isp, err := reader.ISP(ip)
+	isp_db, city_db, err := ip2location.LoadDatabases()
+
 	if err != nil {
-		core.Error("isp look up failed: %v", err)
-		return -1, ""
+		core.Error("failed to load ip2location databases: %v", err)
+		os.Exit(1)
 	}
-	return int(isp.AutonomousSystemNumber), isp.ISP
+
+	service.ip2location_mutex.Lock()
+	service.ip2location_isp_db = isp_db
+	service.ip2location_city_db = city_db
+	service.ip2location_mutex.Unlock()
+
+	if bucketName != "" {
+
+		go func() {
+
+			core.Log("updating ip2location databases")
+
+			var isp_db, city_db *maxminddb.Reader
+
+			err := ip2location.DownloadDatabases_CloudStorage(bucketName)
+			if err != nil {
+				core.Warn("failed to download ip2location databases from cloud storage: %v")
+				goto sleep
+			}
+
+			isp_db, city_db, err = ip2location.LoadDatabases()
+			if err != nil {
+				core.Warn("failed to load ip2location databases: %v", err)
+				goto sleep
+			}
+
+			service.ip2location_mutex.Lock()
+			service.ip2location_isp_db = isp_db
+			service.ip2location_city_db = city_db
+			service.ip2location_mutex.Unlock()
+
+		sleep:
+			time.Sleep(time.Hour)
+		}()
+	}
 }
 
-func (service *Service) LocateIP(ip net.IP) (float32, float32) {
-	service.ip2location_city_mutex.RLock()
-	reader := service.ip2location_city_reader
-	service.ip2location_city_mutex.RUnlock()
-	return locateIP(reader, ip)
+func (service *Service) GetLocation(ip net.IP) (float32, float32) {
+	service.ip2location_mutex.RLock()
+	city_db := service.ip2location_city_db
+	service.ip2location_mutex.RUnlock()
+	return ip2location.GetLocation(city_db, ip)
 }
 
-func (service *Service) LocateISP(ip net.IP) (int, string) {
-	service.ip2location_isp_mutex.RLock()
-	reader := service.ip2location_isp_reader
-	service.ip2location_isp_mutex.RUnlock()
-	return locateISP(reader, ip)
+func (service *Service) GetISP(ip net.IP) string {
+	service.ip2location_mutex.RLock()
+	isp_db := service.ip2location_isp_db
+	service.ip2location_mutex.RUnlock()
+	return ip2location.GetISP(isp_db, ip)
 }
 
 func (service *Service) Database() *db.Database {
@@ -660,107 +631,18 @@ func (service *Service) WaitForShutdown() {
 	<-termChan
 	core.Log("received shutdown signal")
 
-	service.ip2location_city_mutex.Lock()
-	if service.ip2location_city_reader != nil {
-		service.ip2location_city_reader.Close()
-		service.ip2location_city_reader = nil
+	service.ip2location_mutex.Lock()
+	if service.ip2location_city_db != nil {
+		service.ip2location_city_db.Close()
+		service.ip2location_city_db = nil
 	}
-	service.ip2location_city_mutex.Unlock()
-
-	service.ip2location_isp_mutex.Lock()
-	if service.ip2location_isp_reader != nil {
-		service.ip2location_isp_reader.Close()
-		service.ip2location_isp_reader = nil
+	if service.ip2location_isp_db != nil {
+		service.ip2location_isp_db.Close()
+		service.ip2location_isp_db = nil
 	}
-	service.ip2location_isp_mutex.Unlock()
+	service.ip2location_mutex.Unlock()
 
 	core.Log("successfully shutdown")
-}
-
-// -----------------------------------------------------------------------
-
-func loadIP2Location(cityPath string, ispPath string) (*geoip2.Reader, *geoip2.Reader) {
-	if _, err := os.Stat(cityPath); err != nil {
-		core.Error("failed to find city file at path: %s", cityPath)
-		return nil, nil
-	}
-
-	cityBytes, err := ioutil.ReadFile(cityPath)
-	if err != nil {
-		core.Error("failed to read city file: %v", err)
-		return nil, nil
-	}
-
-	cityReader, err := geoip2.FromBytes(cityBytes)
-	if err != nil {
-		core.Error("failed to create city reader: %v", err)
-		return nil, nil
-	}
-
-	core.Debug("loaded ip2location city file: '%s'", cityPath)
-
-	if _, err := os.Stat(ispPath); err != nil {
-		core.Error("failed to find isp file at path: %s", ispPath)
-		return nil, nil
-	}
-
-	ispBytes, err := ioutil.ReadFile(ispPath)
-	if err != nil {
-		core.Error("failed to read isp file: %v", err)
-		return nil, nil
-	}
-
-	ispReader, err := geoip2.FromBytes(ispBytes)
-	if err != nil {
-		core.Error("failed to create isp reader: %v", err)
-		return nil, nil
-	}
-
-	core.Debug("loaded ip2location isp file: '%s'", ispPath)
-
-	return cityReader, ispReader
-}
-
-func (service *Service) watchIP2Location(ctx context.Context, filenames []string) {
-
-	syncInterval := envvar.GetDuration("IP2LOCATION_SYNC_INTERVAL", time.Minute)
-
-	go func() {
-
-		ticker := time.NewTicker(syncInterval)
-
-		for {
-			select {
-
-			case <-ctx.Done():
-				return
-
-			case <-ticker.C:
-
-				cityReader, ispReader := loadIP2Location(filenames[0], filenames[1])
-				if !validateIP2Location(cityReader, ispReader) {
-					core.Error("ip2location files not valid")
-					continue
-				}
-
-				service.ip2location_city_mutex.Lock()
-				oldCityReader := service.ip2location_city_reader
-				service.ip2location_city_reader = oldCityReader
-				service.ip2location_city_mutex.Unlock()
-
-				oldCityReader.Close()
-
-				service.ip2location_isp_mutex.Lock()
-				oldISPReader := service.ip2location_isp_reader
-				service.ip2location_isp_reader = oldISPReader
-				service.ip2location_isp_mutex.Unlock()
-
-				oldISPReader.Close()
-
-				core.Debug("reloaded ip2location file")
-			}
-		}
-	}()
 }
 
 // -----------------------------------------------------------------------

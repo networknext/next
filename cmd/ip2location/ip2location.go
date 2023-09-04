@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/networknext/next/modules/common"
@@ -34,17 +34,17 @@ func main() {
 func downloadDatabases() {
 	for {
 		core.Log("---------------------------------------------------")
-		err := ip2location.DownloadDatabases(licenseKey)
+		err := ip2location.DownloadDatabases_MaxMind(licenseKey)
 		if err != nil {
 			core.Error("failed to download databases: %v", err)
-			goto sleep;
+			goto sleep
 		}
 		if bucketName != "" {
 			core.Log("uploading database files to google cloud bucket")
 			err := ip2location.Bash(fmt.Sprintf("gsutil cp GeoIP2-*.mmdb gs://%s", bucketName))
 			if err != nil {
 				core.Error("failed to upload database files: %v", err)
-				goto sleep;
+				goto sleep
 			}
 			core.Log("success!")
 		}

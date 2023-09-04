@@ -2,14 +2,14 @@ package ip2location
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
-	"io/ioutil"
 
 	"github.com/networknext/next/modules/core"
 
-	"github.com/oschwald/maxminddb-golang"	
+	"github.com/oschwald/maxminddb-golang"
 )
 
 type City struct {
@@ -40,7 +40,7 @@ func Bash(command string) error {
 	return nil
 }
 
-func DownloadDatabases(licenseKey string) error {
+func DownloadDatabases_MaxMind(licenseKey string) error {
 
 	dir, err := ioutil.TempDir("/tmp", "database-")
 	if err != nil {
@@ -100,6 +100,51 @@ func DownloadDatabases(licenseKey string) error {
 
 	_ = isp_db
 	_ = city_db
+
+	return nil
+}
+
+func DownloadDatabases_CloudStorage(bucketName string) error {
+
+	/*
+		dir, err := ioutil.TempDir("/tmp", "database-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(dir)
+
+		core.Log("downloading isp database")
+
+		// ..
+
+		core.Log("downloading city database")
+
+		// ...
+
+		core.Log("validating isp database")
+
+		isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
+		if err != nil {
+			return fmt.Errorf("failed to load isp database: %v", err)
+		}
+
+		core.Log("validating city database")
+
+		city_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
+		if err != nil {
+			return fmt.Errorf("failed to load city database: %v", err)
+		}
+
+		core.Log("copying database files to app dir")
+
+		err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
+		if err != nil {
+			return fmt.Errorf("failed to copy databases: %v", err)
+		}
+
+		_ = isp_db
+		_ = city_db
+	*/
 
 	return nil
 }

@@ -16,7 +16,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
 	github.com/modood/table v0.0.0-20220527013332-8d47e76dad33
-	github.com/oschwald/geoip2-golang v1.8.0
+	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/peterbourgon/ff/v3 v3.3.0
 	github.com/rs/cors v1.9.0
 	github.com/stretchr/testify v1.8.4
@@ -52,7 +52,6 @@ require (
 	github.com/kr/text v0.1.0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
-	github.com/oschwald/maxminddb-golang v1.12.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
