@@ -111,4 +111,9 @@ promotions:
     auto_promote:
       when: "result = 'passed' and tag =~ '^dev.*'"
 
+  - name: "Deploy to Staging"
+    pipeline_file: deploy-staging.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ '^staging.*'"
+
 # ------------------------------------------------------------------------------------------------------------

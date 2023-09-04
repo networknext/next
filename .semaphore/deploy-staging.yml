@@ -1,0 +1,34 @@
+version: v1.0
+
+name: "Deploy to Staging"
+
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+global_job_config:
+  secrets:
+    - name: company-name
+    - name: google-cloud-platform
+    - name: terraform-staging
+    - name: terraform-cloudflare
+
+blocks:
+
+  - name: "Deploy to Staging"
+
+    task:
+
+      jobs:
+        - name: "Deploy"
+          commands:
+            - export GOOGLE_APPLICATION_CREDENTIALS=~/secrets/terraform-staging.json
+            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+            - echo $SEMAPHORE_GIT_TAG_NAME
+            - echo $SEMAPHORE_GIT_BRANCH
+            - echo $SEMAPHORE_WORKFLOW_NUMBER
+            - checkout
+            - cd terraform/staging
+            - terraform init
+            - terraform apply -var="tag=${SEMAPHORE_GIT_TAG_NAME}" -var="extra=-${SEMAPHORE_WORKFLOW_NUMBER}" -auto-approve -lock=false
