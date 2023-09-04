@@ -602,6 +602,7 @@ module "portal_cruncher" {
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
   EOF1
@@ -680,6 +681,7 @@ module "server_backend" {
     SERVER_BACKEND_PRIVATE_KEY=${var.server_backend_private_key}
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=${var.ping_key}
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
   EOF1

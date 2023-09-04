@@ -62,6 +62,10 @@ func main() {
 	core.Debug("relay insert batch size: %d", relayInsertBatchSize)
 	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
+  	if !service.Local {
+		service.LoadIP2Location()
+	}
+
 	pool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
 
 	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)

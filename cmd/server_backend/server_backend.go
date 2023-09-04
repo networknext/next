@@ -152,12 +152,9 @@ func main() {
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy, ready)
 
-	// todo: ip2location is not ready yet
-	/*
-		if !service.Local {
-			service.LoadIP2Location()
-		}
-	*/
+	if !service.Local {
+		service.LoadIP2Location()
+	}
 
 	service.UpdateMagic()
 
