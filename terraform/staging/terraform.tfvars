@@ -4,14 +4,14 @@ extra = ""
 vpn_address = "45.79.157.168"
 
 google_service_account      = "terraform@development-394617.iam.gserviceaccount.com"
-google_credentials          = "~/secrets/terraform-development.json"
-google_project              = "development-394617"
+google_credentials          = "~/secrets/terraform-staging.json"
+google_project              = "staging-398017"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_artifacts_bucket     = "gs://test_network_next_backend_artifacts"
 google_database_bucket      = "gs://test_network_next_database_files"
-google_machine_type         = "f1-micro"
+google_machine_type         = "n1-standard-8"
 
 cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id_api            = "eba5d882ea2aa23f92dfb50fbf7e3cf4" # -> virtualgo.net
@@ -29,4 +29,4 @@ customer_private_key        = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkE
 
 maxmind_license_key = "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"
 
-ip2location_bucket_name = "test_network_next_dev"
+ip2location_bucket_name = "test_network_next_staging"

@@ -71,7 +71,7 @@ provider "cloudflare" {
 
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id_api
-  name    = "dev"
+  name    = "staging"
   value   = module.api.address
   type    = "A"
   proxied = false
@@ -79,7 +79,7 @@ resource "cloudflare_record" "api_domain" {
 
 resource "cloudflare_record" "server_backend_domain" {
   zone_id = var.cloudflare_zone_id_server_backend
-  name    = "dev"
+  name    = "staging"
   value   = module.server_backend.address
   type    = "A"
   proxied = false
@@ -87,7 +87,7 @@ resource "cloudflare_record" "server_backend_domain" {
 
 resource "cloudflare_record" "relay_backend_domain" {
   zone_id = var.cloudflare_zone_id_relay_backend
-  name    = "dev"
+  name    = "staging"
   value   = module.relay_gateway.address
   type    = "A"
   proxied = false
@@ -95,18 +95,18 @@ resource "cloudflare_record" "relay_backend_domain" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_network" "development" {
-  name                    = "development"
+resource "google_compute_network" "staging" {
+  name                    = "staging"
   project                 = var.google_project
   auto_create_subnetworks = false
 }
 
-resource "google_compute_subnetwork" "development" {
-  name                     = "development"
+resource "google_compute_subnetwork" "staging" {
+  name                     = "staging"
   project                  = var.google_project
   ip_cidr_range            = "10.0.0.0/16"
   region                   = var.google_region
-  network                  = google_compute_network.development.id
+  network                  = google_compute_network.staging.id
   private_ip_google_access = true
 }
 
@@ -116,7 +116,7 @@ resource "google_compute_subnetwork" "internal_http_load_balancer" {
   region        = var.google_region
   purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
   role          = "ACTIVE"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   ip_cidr_range = "10.1.0.0/16"
 }
 
@@ -126,7 +126,7 @@ resource "google_compute_firewall" "allow_ssh" {
   name          = "allow-ssh"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
   allow {
     protocol = "tcp"
@@ -139,7 +139,7 @@ resource "google_compute_firewall" "allow_health_checks" {
   name          = "allow-health-checks"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
 
   allow {
@@ -154,7 +154,7 @@ resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
   name          = "allow-network-load-balancer-traffic"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20", "209.85.152.0/22", "209.85.204.0/22"]
 
   allow {
@@ -169,7 +169,7 @@ resource "google_compute_firewall" "allow_http" {
   name          = "allow-http"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "tcp"
@@ -182,7 +182,7 @@ resource "google_compute_firewall" "allow_http_vpn_only" {
   name          = "allow-http-vpn-only"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["${var.vpn_address}/32"]
   allow {
     protocol = "tcp"
@@ -195,7 +195,7 @@ resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "udp"
@@ -208,7 +208,7 @@ resource "google_compute_firewall" "allow_udp_all" {
   name          = "allow-udp-all"
   project       = var.google_project
   direction     = "INGRESS"
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
   source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "udp"
@@ -219,61 +219,73 @@ resource "google_compute_firewall" "allow_udp_all" {
 # ----------------------------------------------------------------------------------------
 
 resource "google_redis_instance" "redis_portal" {
-  name               = "redis-portal"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
+  name                    = "redis-portal"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 10
+  region                  = "us-central1"
+  redis_version           = "REDIS_6_X"
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network      = google_compute_network.staging.id
+  replica_count           = 2
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_map_cruncher" {
-  name               = "redis-map-cruncher"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
+  name                    = "redis-map-cruncher"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_6_X"
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network      = google_compute_network.staging.id
+  replica_count           = 1
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_raspberry" {
-  name               = "redis-raspberry"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
+  name                    = "redis-raspberry"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_6_X"
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network      = google_compute_network.staging.id
+  replica_count           = 1
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_analytics" {
-  name               = "redis-analytics"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
+  name                    = "redis-analytics"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_6_X"
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network      = google_compute_network.staging.id
+  replica_count           = 1
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
-  name               = "redis-relay-backend"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  authorized_network = google_compute_network.development.id
+  name                    = "redis-relay-backend"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_6_X"
+  authorized_network      = google_compute_network.staging.id
+  replica_count           = 1
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_server_backend" {
-  name               = "redis-server-backend"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  authorized_network = google_compute_network.development.id
+  name                    = "redis-server-backend"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_6_X"
+  authorized_network      = google_compute_network.staging.id
+  replica_count           = 1
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 output "redis_portal_address" {
@@ -313,11 +325,11 @@ resource "google_compute_global_address" "postgres_private_address" {
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = google_compute_network.development.id
+  network       = google_compute_network.staging.id
 }
 
 resource "google_service_networking_connection" "postgres" {
-  network                 = google_compute_network.development.id
+  network                 = google_compute_network.staging.id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.postgres_private_address.name]
 }
@@ -331,7 +343,7 @@ resource "google_sql_database_instance" "postgres" {
     tier = "db-f1-micro"
     ip_configuration {
       ipv4_enabled    = "false"
-      private_network = google_compute_network.development.id
+      private_network = google_compute_network.staging.id
     }
     database_flags {
       name  = "max_connections"
@@ -354,7 +366,7 @@ resource "google_sql_user" "users" {
 
 resource "google_compute_network_peering_routes_config" "postgres" {
   peering              = google_service_networking_connection.postgres.peering
-  network              = google_compute_network.development.name
+  network              = google_compute_network.staging.name
   import_custom_routes = true
   export_custom_routes = true
 }
@@ -368,7 +380,7 @@ output "postgres_address" {
 
 module "magic_backend" {
 
-  source = "../../modules/internal_http_service"
+  source = "../modules/internal_http_service"
 
   service_name = "magic-backend"
 
@@ -378,19 +390,18 @@ module "magic_backend" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a magic_backend.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     EOF
     sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = var.google_machine_type
+  machine_type               = "f1-micro"
   project                    = var.google_project
   region                     = var.google_region
-  default_network            = google_compute_network.development.id
-  default_subnetwork         = google_compute_subnetwork.development.id
+  default_network            = google_compute_network.staging.id
+  default_subnetwork         = google_compute_subnetwork.staging.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
@@ -406,7 +417,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "../../modules/external_http_service"
+  source = "../modules/external_http_service"
 
   service_name = "relay-gateway"
 
@@ -416,18 +427,17 @@ module "relay_gateway" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh  -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     PING_KEY=${var.ping_key}
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -436,8 +446,8 @@ module "relay_gateway" {
   machine_type             = var.google_machine_type
   project                  = var.google_project
   zone                     = var.google_zone
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
+  default_network          = google_compute_network.staging.id
+  default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
@@ -451,7 +461,7 @@ output "relay_gateway_address" {
 
 module "relay_backend" {
 
-  source = "../../modules/internal_http_service"
+  source = "../modules/internal_http_service"
 
   service_name = "relay-backend"
 
@@ -461,26 +471,25 @@ module "relay_backend" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"      # needs just a bit more oomf than f1-micro can provide...
+  machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
-  default_network            = google_compute_network.development.id
-  default_subnetwork         = google_compute_subnetwork.development.id
+  default_network            = google_compute_network.staging.id
+  default_subnetwork         = google_compute_subnetwork.staging.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
@@ -496,7 +505,7 @@ output "relay_backend_address" {
 
 module "analytics" {
 
-  source = "../../modules/internal_http_service"
+  source = "../modules/internal_http_service"
 
   service_name = "analytics"
 
@@ -506,17 +515,16 @@ module "analytics" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a analytics.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
-    BIGQUERY_DATASET=dev
+    BIGQUERY_DATASET=staging
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -525,8 +533,8 @@ module "analytics" {
   machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
-  default_network            = google_compute_network.development.id
-  default_subnetwork         = google_compute_subnetwork.development.id
+  default_network            = google_compute_network.staging.id
+  default_subnetwork         = google_compute_subnetwork.staging.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
@@ -542,7 +550,7 @@ output "analytics_address" {
 
 module "api" {
 
-  source = "../../modules/external_http_service"
+  source = "../modules/external_http_service"
 
   service_name = "api"
 
@@ -552,18 +560,17 @@ module "api" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY=${var.api_private_key}
     ALLOWED_ORIGIN="*"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
@@ -572,8 +579,8 @@ module "api" {
   machine_type             = var.google_machine_type
   project                  = var.google_project
   zone                     = var.google_zone
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
+  default_network          = google_compute_network.staging.id
+  default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http-vpn-only"]
 }
@@ -587,7 +594,7 @@ output "api_address" {
 
 module "portal_cruncher" {
 
-  source = "../../modules/internal_mig_with_health_check"
+  source = "../modules/internal_mig_with_health_check"
 
   service_name = "portal-cruncher"
 
@@ -597,8 +604,7 @@ module "portal_cruncher" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
@@ -612,8 +618,8 @@ module "portal_cruncher" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size        = 2
@@ -623,7 +629,7 @@ module "portal_cruncher" {
 
 module "map_cruncher" {
 
-  source = "../../modules/internal_mig_with_health_check"
+  source = "../modules/internal_mig_with_health_check"
 
   service_name = "map-cruncher"
 
@@ -633,8 +639,7 @@ module "map_cruncher" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
@@ -647,8 +652,8 @@ module "map_cruncher" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
@@ -657,7 +662,7 @@ module "map_cruncher" {
 
 module "server_backend" {
 
-  source = "../../modules/external_udp_service"
+  source = "../modules/external_udp_service"
 
   service_name = "server-backend"
 
@@ -667,8 +672,7 @@ module "server_backend" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
+    ENV=staging
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     GOOGLE_PROJECT_ID=${var.google_project}
@@ -692,8 +696,8 @@ module "server_backend" {
   project            = var.google_project
   region             = var.google_region
   port               = 40000
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   target_size        = 2
@@ -706,122 +710,9 @@ output "server_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-module "raspberry_backend" {
-
-  source = "../../modules/external_http_service"
-
-  service_name = "raspberry-backend"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
-    EOF
-    sudo systemctl start app.service
-  EOF1
-
-  tag                      = var.tag
-  extra                    = var.extra
-  machine_type             = var.google_machine_type
-  project                  = var.google_project
-  zone                     = var.google_zone
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-}
-
-output "raspberry_backend_address" {
-  description = "The IP address of the raspberry backend load balancer"
-  value       = module.raspberry_backend.address
-}
-
-# ----------------------------------------------------------------------------------------
-
-module "raspberry_server" {
-
-  source = "../../modules/external_mig_without_health_check"
-
-  service_name = "raspberry-server"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    NEXT_LOG_LEVEL=4
-    NEXT_DATACENTER=cloud
-    NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
-    RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
-    EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
-    sudo ldconfig
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = var.google_machine_type
-  project            = var.google_project
-  region             = var.google_region
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 8
-}
-
-# ----------------------------------------------------------------------------------------
-
-module "raspberry_client" {
-
-  source = "../../modules/external_mig_without_health_check"
-
-  service_name = "raspberry-client"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    NEXT_LOG_LEVEL=4
-    NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
-    RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
-    RASPBERRY_NUM_CLIENTS=64
-    EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
-    sudo ldconfig
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = var.google_machine_type
-  project            = var.google_project
-  region             = var.google_region
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh"]
-  target_size        = 16
-}
-
-# ----------------------------------------------------------------------------------------
-
 module "ip2location" {
 
-  source = "../../modules/external_mig_without_health_check"
+  source = "../modules/external_mig_without_health_check"
 
   service_name = "ip2location"
 
@@ -831,7 +722,7 @@ module "ip2location" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a ip2location.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
+    ENV=staging
     MAXMIND_LICENSE_KEY=${var.maxmind_license_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
@@ -840,11 +731,11 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "f1-micro"
   project            = var.google_project
   region             = var.google_region
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 1

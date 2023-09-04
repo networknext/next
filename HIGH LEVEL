@@ -54,11 +54,11 @@ DONE
 
 TODO
 
+	Setup staging environment
+
 	-----------
 
-	HTTPS for api service
-
-	HTTPS for relay gateway
+	Setup prod environment
 
 	-----------
 
@@ -74,13 +74,13 @@ TODO
 
 	-----------
 
+	HTTPS for api service
+
+	HTTPS for relay gateway
+
+	-----------
+
 	Rebuild portal (second half)
-
-	------------
-
-	Setup staging environment
-
-	Setup prod environment
 
 	------------
 
@@ -90,7 +90,7 @@ TODO
 
 	------------
 
-	Add as many sellers as possible (terraform + config scripts...)
+	Add support for as many sellers as possible (terraform + config scripts...)
 
 	------------
 
