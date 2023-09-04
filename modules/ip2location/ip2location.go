@@ -111,11 +111,16 @@ func DownloadDatabases_CloudStorage(bucketName string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	core.Log("downloading databases")
+	core.Log("downloading isp database")
 
-	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-*.mmdb .", bucketName))
+	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-ISP.mmdb %s", bucketName, dir))
 	if err != nil {
-		return fmt.Errorf("failed to download database files: %v", err)
+		return fmt.Errorf("failed to download isp database: %v", err)
+	}
+
+	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-City.mmdb %s", bucketName, dir))
+	if err != nil {
+		return fmt.Errorf("failed to download isp database: %v", err)
 	}
 
 	core.Log("validating isp database")

@@ -221,7 +221,7 @@ func (service *Service) LoadIP2Location() {
 
 	err := ip2location.DownloadDatabases_CloudStorage(bucketName)
 	if err != nil {
-		core.Error("could not download ip2location databases from cloud storage: %v")
+		core.Error("could not download ip2location databases from cloud storage: %v", err)
 		os.Exit(1)
 	}
 
