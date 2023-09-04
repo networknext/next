@@ -47,7 +47,7 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	core.Log("downloading isp database")
+	core.Debug("downloading isp database")
 
 	err = Bash(fmt.Sprintf("curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-ISP&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-ISP.tar.gz", licenseKey, dir))
 	if err != nil {
@@ -61,7 +61,7 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 		return err
 	}
 
-	core.Log("decompressing databases")
+	core.Debug("decompressing databases")
 
 	Bash(fmt.Sprintf("cd %s && tar -zxf GeoIP2-ISP.tar.gz", dir))
 	Bash(fmt.Sprintf("cd %s && tar -zxf GeoIP2-City.tar.gz", dir))
@@ -76,21 +76,21 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 		return err
 	}
 
-	core.Log("validating isp database")
+	core.Debug("validating isp database")
 
 	isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
 	if err != nil {
 		return fmt.Errorf("failed to load isp database: %v", err)
 	}
 
-	core.Log("validating city database")
+	core.Debug("validating city database")
 
 	city_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
 	if err != nil {
 		return fmt.Errorf("failed to load city database: %v", err)
 	}
 
-	core.Log("copying database files to app dir")
+	core.Debug("copying database files to app dir")
 
 	err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
 	if err != nil {
@@ -111,7 +111,7 @@ func DownloadDatabases_CloudStorage(bucketName string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	core.Log("downloading isp database")
+	core.Debug("downloading isp database")
 
 	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-ISP.mmdb %s", bucketName, dir))
 	if err != nil {
@@ -123,21 +123,21 @@ func DownloadDatabases_CloudStorage(bucketName string) error {
 		return fmt.Errorf("failed to download isp database: %v", err)
 	}
 
-	core.Log("validating isp database")
+	core.Debug("validating isp database")
 
 	isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
 	if err != nil {
 		return fmt.Errorf("failed to load isp database: %v", err)
 	}
 
-	core.Log("validating city database")
+	core.Debug("validating city database")
 
 	city_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
 	if err != nil {
 		return fmt.Errorf("failed to load city database: %v", err)
 	}
 
-	core.Log("copying database files to app dir")
+	core.Debug("copying database files to app dir")
 
 	err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
 	if err != nil {
@@ -157,14 +157,14 @@ func LoadDatabases() (*maxminddb.Reader, *maxminddb.Reader, error) {
 		return nil, nil, fmt.Errorf("failed to load isp database: %v", err)
 	}
 
-	core.Log("loaded ip2location isp file")
+	core.Debug("loaded ip2location isp file")
 
 	city_db, err := maxminddb.Open("GeoIP2-City.mmdb")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load city database: %v", err)
 	}
 
-	core.Log("loaded ip2location city file")
+	core.Debug("loaded ip2location city file")
 
 	return isp_db, city_db, nil
 }
