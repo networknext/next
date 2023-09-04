@@ -32,7 +32,6 @@ func Bash(command string) error {
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error: failed to run command: %v", err)
-		os.Exit(1)
 	}
 
 	cmd.Wait()
@@ -106,45 +105,42 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 
 func DownloadDatabases_CloudStorage(bucketName string) error {
 
-	/*
-		dir, err := ioutil.TempDir("/tmp", "database-")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(dir)
+	dir, err := ioutil.TempDir("/tmp", "database-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
 
-		core.Log("downloading isp database")
+	core.Log("downloading databases")
 
-		// ..
+	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-*.mmdb .", bucketName))
+	if err != nil {
+		return fmt.Errorf("failed to download database files: %v", err)
+	}
 
-		core.Log("downloading city database")
+	core.Log("validating isp database")
 
-		// ...
+	isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
+	if err != nil {
+		return fmt.Errorf("failed to load isp database: %v", err)
+	}
 
-		core.Log("validating isp database")
+	core.Log("validating city database")
 
-		isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
-		if err != nil {
-			return fmt.Errorf("failed to load isp database: %v", err)
-		}
+	city_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
+	if err != nil {
+		return fmt.Errorf("failed to load city database: %v", err)
+	}
 
-		core.Log("validating city database")
+	core.Log("copying database files to app dir")
 
-		city_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
-		if err != nil {
-			return fmt.Errorf("failed to load city database: %v", err)
-		}
+	err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
+	if err != nil {
+		return fmt.Errorf("failed to copy databases: %v", err)
+	}
 
-		core.Log("copying database files to app dir")
-
-		err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
-		if err != nil {
-			return fmt.Errorf("failed to copy databases: %v", err)
-		}
-
-		_ = isp_db
-		_ = city_db
-	*/
+	_ = isp_db
+	_ = city_db
 
 	return nil
 }
