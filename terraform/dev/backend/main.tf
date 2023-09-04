@@ -35,6 +35,8 @@ variable "customer_private_key" { type = string }
 
 variable "maxmind_license_key" { type = string }
 
+variable "ip2location_bucket_name" { type = string }
+
 # ----------------------------------------------------------------------------------------
 
 terraform {
@@ -829,6 +831,7 @@ module "ip2location" {
     cat <<EOF > /app/app.env
     ENV=dev
     MAXMIND_LICENSE_KEY=${var.maxmind_license_key}
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
   EOF1

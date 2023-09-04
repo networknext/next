@@ -23,7 +23,7 @@ type ISP struct {
 	ISP string `maxminddb:"isp"`
 }
 
-func bash(command string) error {
+func Bash(command string) error {
 
 	cmd := exec.Command("bash", "-c", command)
 	if cmd == nil {
@@ -48,33 +48,31 @@ func DownloadDatabases(licenseKey string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	core.Log("%s", dir)
-
 	core.Log("downloading isp database")
 
-	err = bash(fmt.Sprintf("curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-ISP&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-ISP.tar.gz", licenseKey, dir))
+	err = Bash(fmt.Sprintf("curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-ISP&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-ISP.tar.gz", licenseKey, dir))
 	if err != nil {
 		return err
 	}
 
 	core.Log("downloading city database")
 
-	err = bash(fmt.Sprintf("rm -f GeoIP2-City.tar.gz && curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-City&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-City.tar.gz", licenseKey, dir))
+	err = Bash(fmt.Sprintf("rm -f GeoIP2-City.tar.gz && curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-City&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-City.tar.gz", licenseKey, dir))
 	if err != nil {
 		return err
 	}
 
 	core.Log("decompressing databases")
 
-	bash(fmt.Sprintf("cd %s && tar -zxf GeoIP2-ISP.tar.gz", dir))
-	bash(fmt.Sprintf("cd %s && tar -zxf GeoIP2-City.tar.gz", dir))
+	Bash(fmt.Sprintf("cd %s && tar -zxf GeoIP2-ISP.tar.gz", dir))
+	Bash(fmt.Sprintf("cd %s && tar -zxf GeoIP2-City.tar.gz", dir))
 
-	err = bash(fmt.Sprintf("mv %s/GeoIP2-ISP_*/GeoIP2-ISP.mmdb %s", dir, dir))
+	err = Bash(fmt.Sprintf("mv %s/GeoIP2-ISP_*/GeoIP2-ISP.mmdb %s", dir, dir))
 	if err != nil {
 		return err
 	}
 
-	err = bash(fmt.Sprintf("mv %s/GeoIP2-City_*/GeoIP2-City.mmdb %s", dir, dir))
+	err = Bash(fmt.Sprintf("mv %s/GeoIP2-City_*/GeoIP2-City.mmdb %s", dir, dir))
 	if err != nil {
 		return err
 	}
@@ -95,7 +93,7 @@ func DownloadDatabases(licenseKey string) error {
 
 	core.Log("copying database files to app dir")
 
-	err = bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
+	err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
 	if err != nil {
 		return fmt.Errorf("failed to copy databases: %v", err)
 	}
