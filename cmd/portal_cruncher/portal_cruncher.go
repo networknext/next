@@ -15,6 +15,8 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+var service *common.Service
+
 var redisPortalHostname string
 var redisRelayBackendHostname string
 var redisServerBackendHostname string
@@ -44,7 +46,7 @@ func main() {
 	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 1000)
 	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 1000)
 
-	service := common.CreateService("portal_cruncher")
+	service = common.CreateService("portal_cruncher")
 
 	core.Debug("num session update threads: %d", numSessionUpdateThreads)
 	core.Debug("num server update threads: %d", numServerUpdateThreads)
@@ -155,8 +157,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		score = 10000 - uint32(message.DirectRTT)
 	}
 
-	// todo: look up ISP name from message.ClientAddress
-	isp := "Comcast Internet Company, LLC"
+	isp := service.GetISP(message.ClientAddress.IP)
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
