@@ -52,9 +52,17 @@ DONE
 
 	IP2Location
 
+	Setup staging environment
+
 TODO
 
-	Setup staging environment
+	Setup staging.sql and staging database
+
+	Verify that I can load staging.sql
+
+	-----------
+
+	Implement load test program that acts like x servers, and y sessions.
 
 	-----------
 
@@ -95,6 +103,13 @@ TODO
 	------------
 
 	Optimize the setup process by automating creation of projects, service accounts and permissions
+
+	Enable:
+
+		Compute Engine API
+		Cloud Resource Manager API
+		Google Cloud Memorystore for Redis API
+		Service Networking API
 
 	------------
 
