@@ -57,8 +57,8 @@ func bash_quiet(command string) {
 }
 
 func clearDatabase() {
-	bash_quiet("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash_quiet("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
+	bash_quiet("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash_quiet("psql -U developer -h localhost postgres -f ../sql/create.sql")
 }
 
 func api() (*exec.Cmd, *bytes.Buffer) {
