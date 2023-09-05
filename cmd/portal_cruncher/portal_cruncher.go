@@ -157,7 +157,12 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		score = 10000 - uint32(message.DirectRTT)
 	}
 
-	isp := service.GetISP(message.ClientAddress.IP)
+	var isp string
+	if !service.Local {
+		isp = service.GetISP(message.ClientAddress.IP)
+	} else {
+		isp = "Local"
+	}
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
