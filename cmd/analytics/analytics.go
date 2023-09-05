@@ -51,20 +51,20 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
-	if enableGooglePubsub && enableGoogleBigquery {
+	if enableGooglePubsub {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", true)
 
-		Process[*messages.AnalyticsCostMatrixUpdateMessage](service, "cost_matrix_update", &messages.AnalyticsCostMatrixUpdateMessage{}, important)
-		Process[*messages.AnalyticsRouteMatrixUpdateMessage](service, "route_matrix_update", &messages.AnalyticsRouteMatrixUpdateMessage{}, important)
-		Process[*messages.AnalyticsRelayToRelayPingMessage](service, "relay_to_relay_ping", &messages.AnalyticsRelayToRelayPingMessage{}, important)
-		Process[*messages.AnalyticsRelayUpdateMessage](service, "relay_update", &messages.AnalyticsRelayUpdateMessage{}, important)
-		Process[*messages.AnalyticsServerInitMessage](service, "server_init", &messages.AnalyticsServerInitMessage{}, important)
-		Process[*messages.AnalyticsServerUpdateMessage](service, "server_update", &messages.AnalyticsServerUpdateMessage{}, important)
-		Process[*messages.AnalyticsSessionUpdateMessage](service, "session_update", &messages.AnalyticsSessionUpdateMessage{}, important)
-		Process[*messages.AnalyticsSessionSummaryMessage](service, "session_summary", &messages.AnalyticsSessionSummaryMessage{}, important)
-		Process[*messages.AnalyticsNearRelayUpdateMessage](service, "near_relay_update", &messages.AnalyticsNearRelayUpdateMessage{}, important)
-		Process[*messages.AnalyticsMatchDataMessage](service, "match_data", &messages.AnalyticsMatchDataMessage{}, important)
+		Process[*messages.AnalyticsCostMatrixUpdateMessage](service, "cost matrix update", &messages.AnalyticsCostMatrixUpdateMessage{}, important)
+		Process[*messages.AnalyticsRouteMatrixUpdateMessage](service, "route matrix update", &messages.AnalyticsRouteMatrixUpdateMessage{}, important)
+		Process[*messages.AnalyticsRelayToRelayPingMessage](service, "relay to relay ping", &messages.AnalyticsRelayToRelayPingMessage{}, important)
+		Process[*messages.AnalyticsRelayUpdateMessage](service, "relay update", &messages.AnalyticsRelayUpdateMessage{}, important)
+		Process[*messages.AnalyticsServerInitMessage](service, "server init", &messages.AnalyticsServerInitMessage{}, important)
+		Process[*messages.AnalyticsServerUpdateMessage](service, "server update", &messages.AnalyticsServerUpdateMessage{}, important)
+		Process[*messages.AnalyticsSessionUpdateMessage](service, "session update", &messages.AnalyticsSessionUpdateMessage{}, important)
+		Process[*messages.AnalyticsSessionSummaryMessage](service, "session summary", &messages.AnalyticsSessionSummaryMessage{}, important)
+		Process[*messages.AnalyticsNearRelayUpdateMessage](service, "near relay update", &messages.AnalyticsNearRelayUpdateMessage{}, important)
+		Process[*messages.AnalyticsMatchDataMessage](service, "match data", &messages.AnalyticsMatchDataMessage{}, important)
 	}
 
 	service.StartWebServer()
@@ -78,11 +78,13 @@ func main() {
 
 func Process[T messages.BigQueryMessage](service *common.Service, name string, message T, important bool) {
 
-	namePrefix := strings.ToUpper(name) + "_"
+	messageName := strings.ReplaceAll(name, " ", "_")
 
-	pubsubTopic := envvar.GetString(namePrefix+"PUBSUB_TOPIC", name)
-	pubsubSubscription := envvar.GetString(namePrefix+"PUBSUB_SUBSCRIPTION", name)
-	bigqueryTable := envvar.GetString(namePrefix+"BIGQUERY_TABLE", name)
+	namePrefix := strings.ToUpper(messageName) + "_"
+
+	pubsubTopic := envvar.GetString(namePrefix+"PUBSUB_TOPIC", messageName)
+	pubsubSubscription := envvar.GetString(namePrefix+"PUBSUB_SUBSCRIPTION", messageName)
+	bigqueryTable := envvar.GetString(namePrefix+"BIGQUERY_TABLE", messageName)
 
 	core.Debug("processing %s messages: topic = '%s', subscription = '%s', bigquery table = '%s'", name, pubsubTopic, pubsubSubscription, bigqueryTable)
 
@@ -90,16 +92,18 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 		ProjectId:     googleProjectId,
 		Subscription:  pubsubSubscription,
 		Topic:         pubsubTopic,
-		BatchDuration: 10 * time.Second,
+		BatchDuration: time.Second,
 	}
 
+	/*
 	publisherConfig := common.GoogleBigQueryConfig{
 		ProjectId:     googleProjectId,
 		Dataset:       bigqueryDataset,
 		TableName:     bigqueryTable,
 		BatchSize:     100,
-		BatchDuration: 10 * time.Second,
+		BatchDuration: time.Second,
 	}
+	*/
 
 	consumer, err := common.CreateGooglePubsubConsumer(service.Context, consumerConfig)
 	if err != nil {
@@ -107,10 +111,13 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 		os.Exit(1)
 	}
 
+	// todo: disable until ready
+	/*
 	publisher, err := common.CreateGoogleBigQueryPublisher(service.Context, publisherConfig)
 	if err != nil {
 		core.Error("could not create google bigquery publisher for %s: %v", name, err)
 	}
+	*/
 
 	go func() {
 		for {
@@ -138,7 +145,8 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 					break
 				}
 
-				publisher.PublishChannel <- message
+				// todo: disable until bigquery is ready
+				// publisher.PublishChannel <- message
 
 				pubsubMessage.Ack()
 			}

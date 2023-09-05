@@ -308,28 +308,38 @@ output "redis_server_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-data "google_pubsub_topic" "server_init" {
-  name = "server_init"
+locals {
+
+  pubsub_channels = [
+    "cost_matrix_update",
+    "route_matrix_update",
+    "relay_to_relay_ping",
+    "relay_update",
+    "server_init",
+    "server_update",
+    "near_relay_update",
+    "session_update",
+    "session_summary",
+    "match_data",
+  ]
+  
+}
+
+resource "google_pubsub_topic" "pubsub_topic" {
+  count = length(local.pubsub_channels)
+  name  = local.pubsub_channels[count.index]
 } 
 
-data "google_pubsub_topic" "server_update" {
-  name = "server_update"
-} 
-
-data "google_pubsub_topic" "near_relay_update" {
-  name = "near_relay_update"
-}
-
-data "google_pubsub_topic" "session_update" {
-  name = "session_update"
-}
-
-data "google_pubsub_topic" "session_summary" {
-  name = "session_summary"
-}
-
-data "google_pubsub_topic" "match_data" {
-  name = "match_data"
+resource "google_pubsub_subscription" "pubsub_subscription" {
+  count                       = length(local.pubsub_channels)
+  name                        = local.pubsub_channels[count.index]
+  topic                       = google_pubsub_topic.pubsub_topic[count.index].name
+  message_retention_duration  = "7d"
+  retain_acked_messages       = true
+  ack_deadline_seconds        = 60
+  expiration_policy {
+    ttl = ""
+  }
 }
 
 # ----------------------------------------------------------------------------------------
@@ -511,6 +521,8 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "relay_backend_address" {
@@ -557,6 +569,8 @@ module "analytics" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks"]
+
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "analytics_address" {
@@ -707,6 +721,7 @@ module "server_backend" {
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
+    ENABLE_GOOGLE_PUBSUB=true
     EOF
     sudo systemctl start app.service
   EOF1
@@ -722,6 +737,8 @@ module "server_backend" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   target_size        = 2
+
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "server_backend_address" {
