@@ -350,7 +350,7 @@ resource "google_bigquery_dataset" "test" {
   friendly_name               = "test"
   description                 = "This is a test description"
   location                    = "US"
-  default_table_expiration_ms = 7,776,000,000   # 90 days
+  default_table_expiration_ms = 7776000000 # 90 days
 }
 
 resource "google_bigquery_table" "test" {
