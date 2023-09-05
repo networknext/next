@@ -2611,12 +2611,15 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname timed out" );
         return;
     }
 
     next_platform_mutex_guard( &server->resolve_hostname_mutex );
     server->resolve_hostname_finished = true;
     server->resolve_hostname_result = address;
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname finished" );
 }
 
 static bool next_server_internal_update_resolve_hostname( next_server_internal_t * server )
