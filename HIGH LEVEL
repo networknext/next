@@ -55,58 +55,21 @@ DONE
 	Setup staging environment
 
 TODO
+	-----------
 
-	------------
-
-	Test SDK on all console platforms and lock it down.
-
-		- remove packet tagging
-
-		- make sure all platforms have connection detection working properly
-
-		- high priority thread on platforms that are missing it
-
-		- fix .h/cpp split where appropriate
-
-		- test on ps4
-
-		- test on ps5
-
-		- test on nintendo switch
-
-		- test on xbox one
-
-		- test on series x (gdk)
-
-		- automate console build and link via semaphore custom agents
-
-		- sort out match data so it can be sent multiple times in a match (no artificial limit), ideally with type id (uint64)
-
-	------------
-
-	Update UE5 plugin and lock it down.
+	Setup google pubsub in dev
 
 	-----------
 
-	Get multithreaded relay support back.
-	
-	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
-
-	-----------
-
-	Setup google pubsub in dev with terraform
-
-	Verify that analytics service gets expected messages through pubsub
-
-	-----------
-
-	Setup google bigquery in dev with terraform
-
-	Verify analytics service inserts data into bigquery.
+	Setup google bigquery in dev
 
 	-----------
 
 	api and relay gateway services *must* use HTTPS
+
+	-----------
+
+	Update staging so it uses bigquery and pubsub
 
 	-----------
 
