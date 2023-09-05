@@ -60,9 +60,37 @@ TODO
 
 	Test SDK on all console platforms and lock it down.
 
+		- remove packet tagging
+
+		- make sure all platforms have connection detection working properly
+
+		- high priority thread on platforms that are missing it
+
+		- fix .h/cpp split where appropriate
+
+		- test on ps4
+
+		- test on ps5
+
+		- test on nintendo switch
+
+		- test on xbox one
+
+		- test on series x (gdk)
+
+		- automate console build and link via semaphore custom agents
+
+		- sort out match data so it can be sent multiple times in a match (no artificial limit), ideally with type id (uint64)
+
 	------------
 
 	Update UE5 plugin and lock it down.
+
+	-----------
+
+	Get multithreaded relay support back.
+	
+	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
 
 	-----------
 
@@ -78,9 +106,11 @@ TODO
 
 	-----------
 
-	HTTPS for api service
+	api and relay gateway services *must* use HTTPS
 
-	HTTPS for relay gateway
+	-----------
+
+	Make sure that key services in staging are multi-zone and have external load balancers
 
 	-----------
 
@@ -88,7 +118,7 @@ TODO
 
 	-----------
 
-	Load test staging to 1000 simulated relays, and 1M concurrent sessions, with 10% taking network next.
+	Load test staging to 1000 relays, and 1M concurrent sessions, with 10% taking network next.
 
 	-----------
 
@@ -97,6 +127,18 @@ TODO
 	-----------
 
 	Rebuild portal (second half)
+
+	-----------
+
+	Upgrade to secure JWT replacement
+
+	-----------
+
+	Deploy portal to service
+
+	-----------
+
+	Test portal across iphones, ipads, mac laptops, desktops and PCs
 
 	------------
 
@@ -118,12 +160,6 @@ TODO
 	------------
 
 	Add support for as many sellers as possible (terraform + config scripts...)
-
-	------------
-
-	Fix multithreaded relay.
-	
-	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
 
 	------------
 
