@@ -36,7 +36,7 @@
 
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         30.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_ADDRESS_IPV4_BYTES                                         6
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
