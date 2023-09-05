@@ -2591,15 +2591,6 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
         }
     }
 
-    if ( !success )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
-        next_platform_mutex_guard( &server->resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-        return;
-    }
-
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_RESOLVE_HOSTNAME_TIMEOUT" ) )
     {
@@ -2611,7 +2602,16 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname timed out" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname thread aborted" );
+        return;
+    }
+
+    if ( !success )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
+        next_platform_mutex_guard( &server->resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         return;
     }
 
@@ -2619,7 +2619,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
     server->resolve_hostname_finished = true;
     server->resolve_hostname_result = address;
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname finished" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname thread finished" );
 }
 
 static bool next_server_internal_update_resolve_hostname( next_server_internal_t * server )
@@ -2656,7 +2656,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         else
         {
             // but don't wait forever...
-            next_printf( NEXT_LOG_LEVEL_INFO, "server resolve hostname timed out" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
         }
     }
     
