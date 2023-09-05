@@ -334,7 +334,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
   count                       = length(local.pubsub_channels)
   name                        = local.pubsub_channels[count.index]
   topic                       = google_pubsub_topic.pubsub_topic[count.index].name
-  message_retention_duration  = "7d"
+  message_retention_duration  = "604800s"
   retain_acked_messages       = true
   ack_deadline_seconds        = 60
   expiration_policy {
