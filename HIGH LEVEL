@@ -52,13 +52,17 @@ DONE
 
 	IP2Location
 
-TODO
-
 	Setup staging environment
 
-	-----------
+TODO
 
-	Setup prod environment
+	------------
+
+	Test SDK on all console platforms and lock it down.
+
+	------------
+
+	Update UE5 plugin and lock it down.
 
 	-----------
 
@@ -80,13 +84,36 @@ TODO
 
 	-----------
 
+	Implement load test program that acts like x servers, and y sessions.
+
+	-----------
+
+	Load test staging to 1000 simulated relays, and 1M concurrent sessions, with 10% taking network next.
+
+	-----------
+
+	Setup prod environment
+
+	-----------
+
 	Rebuild portal (second half)
 
 	------------
 
-	Load test backend systems in staging environment up to 1M sessions
+	Optimize the setup process by automating creation of projects, service accounts and permissions
 
-	Almost certainly requires a load testing harness to simulate servers and clients...
+	Enable:
+
+		Compute Engine API
+		Cloud Resource Manager API
+		Google Cloud Memorystore for Redis API
+		Service Networking API
+
+	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
+
+	Pain point around SQL, we should try to create the database inside terrafrom ideally. It has problems destroying:
+
+		 Error: Error when reading or editing Database: googleapi: Error 400: Invalid request: failed to delete database "database". Detail: pq: database "database" is being accessed by other users. (Please use psql client to delete database that is not owned by "cloudsqlsuperuser")., invalid
 
 	------------
 
@@ -94,21 +121,9 @@ TODO
 
 	------------
 
-	Optimize the setup process by automating creation of projects, service accounts and permissions
-
-	------------
-
 	Fix multithreaded relay.
 	
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
-
-	------------
-
-	Test SDK on all console platforms.
-
-	------------
-
-	Update UE4/UE5 plugin and test on all platforms.
 
 	------------
 
