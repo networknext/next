@@ -1194,7 +1194,7 @@ locals {
     "route_matrix_update" = []
     "cost_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
-    "near_relay_pings" = [ "near_relay_id", "user_hash" ]
+    "near_relay_ping" = [ "near_relay_id", "user_hash" ]
   }
 }
 
