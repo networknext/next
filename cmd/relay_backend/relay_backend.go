@@ -703,13 +703,13 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					sampleRelayId := relayUpdateRequest.SampleRelayId[i]
 
 					pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
-						Version:    messages.AnalyticsRelayToRelayPingMessageVersion_Write,
-						Timestamp:  uint64(time.Now().Unix()),
-						RelayA:     relayId,
-						RelayB:     sampleRelayId,
-						RTT:        rtt,
-						Jitter:     jitter,
-						PacketLoss: pl,
+						Version:            messages.AnalyticsRelayToRelayPingMessageVersion_Write,
+						Timestamp:          uint64(time.Now().Unix()),
+						SourceRelayId:      relayId,
+						DestinationRelayId: sampleRelayId,
+						RTT:                rtt,
+						Jitter:             jitter,
+						PacketLoss:         pl,
 					}
 				}
 

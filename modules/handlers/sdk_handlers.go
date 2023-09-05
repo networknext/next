@@ -69,12 +69,12 @@ type SDK_Handler struct {
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
 	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
-	AnalyticsServerInitMessageChannel      chan<- *messages.AnalyticsServerInitMessage
-	AnalyticsServerUpdateMessageChannel    chan<- *messages.AnalyticsServerUpdateMessage
-	AnalyticsNearRelayPingMessageChannel   chan<- *messages.AnalyticsNearRelayPingMessage
-	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsMatchDataMessageChannel       chan<- *messages.AnalyticsMatchDataMessage
+	AnalyticsServerInitMessageChannel     chan<- *messages.AnalyticsServerInitMessage
+	AnalyticsServerUpdateMessageChannel   chan<- *messages.AnalyticsServerUpdateMessage
+	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
+	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsMatchDataMessageChannel      chan<- *messages.AnalyticsMatchDataMessage
 }
 
 func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {

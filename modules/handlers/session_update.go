@@ -89,9 +89,9 @@ type SessionUpdateState struct {
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
 	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
-	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsNearRelayPingMessageChannel   chan<- *messages.AnalyticsNearRelayPingMessage
+	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {

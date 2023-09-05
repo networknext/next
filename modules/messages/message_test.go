@@ -74,13 +74,13 @@ func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMa
 func GenerateRandomAnalyticsRelayToRelayPingMessage() messages.AnalyticsRelayToRelayPingMessage {
 
 	message := messages.AnalyticsRelayToRelayPingMessage{
-		Version:    byte(common.RandomInt(messages.AnalyticsRelayToRelayPingMessageVersion_Min, messages.AnalyticsRelayToRelayPingMessageVersion_Max)),
-		Timestamp:  uint64(time.Now().Unix()),
-		RelayA:     rand.Uint64(),
-		RelayB:     rand.Uint64(),
-		RTT:        uint8(common.RandomInt(0, 255)),
-		Jitter:     uint8(common.RandomInt(0, 255)),
-		PacketLoss: rand.Float32(),
+		Version:            byte(common.RandomInt(messages.AnalyticsRelayToRelayPingMessageVersion_Min, messages.AnalyticsRelayToRelayPingMessageVersion_Max)),
+		Timestamp:          uint64(time.Now().Unix()),
+		SourceRelayId:      rand.Uint64(),
+		DestinationRelayId: rand.Uint64(),
+		RTT:                uint8(common.RandomInt(0, 255)),
+		Jitter:             uint8(common.RandomInt(0, 255)),
+		PacketLoss:         rand.Float32(),
 	}
 
 	return message
@@ -411,20 +411,20 @@ func GenerateRandomPortalMapUpdateMessage() messages.PortalMapUpdateMessage {
 func GenerateRandomAnalyticsNearRelayPingMessage() messages.AnalyticsNearRelayPingMessage {
 
 	message := messages.AnalyticsNearRelayPingMessage{
-		Version:         byte(common.RandomInt(messages.AnalyticsNearRelayPingMessageVersion_Min, messages.AnalyticsNearRelayPingMessageVersion_Max)),
-		Timestamp:       rand.Uint64(),
-		BuyerId:         rand.Uint64(),
-		SessionId:       rand.Uint64(),
-		MatchId:         rand.Uint64(),
-		UserHash:        rand.Uint64(),
-		Latitude:        float32(common.RandomInt(-90, +90)),
-		Longitude:       float32(common.RandomInt(-180, +180)),
-		ClientAddress:   common.RandomAddress(),
-		ConnectionType:  byte(common.RandomInt(0, 255)),
-		PlatformType:    byte(common.RandomInt(0, 255)),
-		NearRelayId:     rand.Uint64(),
-		NearRelayRTT:    byte(common.RandomInt(0, 255)),
-		NearRelayJitter: byte(common.RandomInt(0, 255)),
+		Version:             byte(common.RandomInt(messages.AnalyticsNearRelayPingMessageVersion_Min, messages.AnalyticsNearRelayPingMessageVersion_Max)),
+		Timestamp:           rand.Uint64(),
+		BuyerId:             rand.Uint64(),
+		SessionId:           rand.Uint64(),
+		MatchId:             rand.Uint64(),
+		UserHash:            rand.Uint64(),
+		Latitude:            float32(common.RandomInt(-90, +90)),
+		Longitude:           float32(common.RandomInt(-180, +180)),
+		ClientAddress:       common.RandomAddress(),
+		ConnectionType:      byte(common.RandomInt(0, 255)),
+		PlatformType:        byte(common.RandomInt(0, 255)),
+		NearRelayId:         rand.Uint64(),
+		NearRelayRTT:        byte(common.RandomInt(0, 255)),
+		NearRelayJitter:     byte(common.RandomInt(0, 255)),
 		NearRelayPacketLoss: float32(common.RandomInt(0, 100)),
 	}
 

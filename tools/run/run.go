@@ -128,8 +128,6 @@ func main() {
 		pubsub_emulator()
 	} else if command == "bigquery-emulator" {
 		bigquery_emulator()
-	} else if command == "setup-emulators" {
-		setup_emulators()
 	} else if command == "func-test-sdk" {
 		func_test_sdk(args[2:])
 	} else if command == "func-test-relay" {
@@ -327,10 +325,6 @@ func pubsub_emulator() {
 func bigquery_emulator() {
 	bash_ignore_result("pkill -f bigquery-emulator")
 	bash("bigquery-emulator --project=local --dataset=local")
-}
-
-func setup_emulators() {
-	bash("go run ./tools/setup_emulators/setup_emulators.go")
 }
 
 func func_test_sdk(tests []string) {

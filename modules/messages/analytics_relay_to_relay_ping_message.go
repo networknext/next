@@ -17,13 +17,13 @@ const (
 )
 
 type AnalyticsRelayToRelayPingMessage struct {
-	Version    uint8
-	Timestamp  uint64
-	RelayA     uint64
-	RelayB     uint64
-	RTT        uint8
-	Jitter     uint8
-	PacketLoss float32
+	Version            uint8
+	Timestamp          uint64
+	SourceRelayId      uint64
+	DestinationRelayId uint64
+	RTT                uint8
+	Jitter             uint8
+	PacketLoss         float32
 }
 
 func (message *AnalyticsRelayToRelayPingMessage) GetMaxSize() int {
@@ -46,12 +46,12 @@ func (message *AnalyticsRelayToRelayPingMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read timestamp")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.RelayA) {
-		return fmt.Errorf("failed to read relay a")
+	if !encoding.ReadUint64(buffer, &index, &message.SourceRelayId) {
+		return fmt.Errorf("failed to read source relay id")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.RelayB) {
-		return fmt.Errorf("failed to read relay b")
+	if !encoding.ReadUint64(buffer, &index, &message.DestinationRelayId) {
+		return fmt.Errorf("failed to read destination relay id")
 	}
 
 	if !encoding.ReadUint8(buffer, &index, &message.RTT) {
@@ -79,8 +79,8 @@ func (message *AnalyticsRelayToRelayPingMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
-	encoding.WriteUint64(buffer, &index, message.RelayA)
-	encoding.WriteUint64(buffer, &index, message.RelayB)
+	encoding.WriteUint64(buffer, &index, message.SourceRelayId)
+	encoding.WriteUint64(buffer, &index, message.DestinationRelayId)
 	encoding.WriteUint8(buffer, &index, message.RTT)
 	encoding.WriteUint8(buffer, &index, message.Jitter)
 	encoding.WriteFloat32(buffer, &index, message.PacketLoss)
@@ -93,8 +93,8 @@ func (message *AnalyticsRelayToRelayPingMessage) Save() (map[string]bigquery.Val
 	bigquery_message := make(map[string]bigquery.Value)
 
 	bigquery_message["timestamp"] = int(message.Timestamp)
-	bigquery_message["relay_a"] = int(message.RelayA)
-	bigquery_message["relay_b"] = int(message.RelayB)
+	bigquery_message["source_relay_id"] = int(message.SourceRelayId)
+	bigquery_message["destination_relay_id"] = int(message.DestinationRelayId)
 	bigquery_message["rtt"] = int(message.RTT)
 	bigquery_message["jitter"] = int(message.Jitter)
 	bigquery_message["packet_loss"] = float64(message.PacketLoss)
