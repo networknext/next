@@ -345,6 +345,43 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_bigquery_dataset" "test" {
+  dataset_id                  = "foo"
+  friendly_name               = "test"
+  description                 = "This is a test description"
+  location                    = "US"
+  default_table_expiration_ms = 7,776,000,000   # 90 days
+}
+
+resource "google_bigquery_table" "test" {
+  dataset_id          = google_bigquery_dataset.test.dataset_id
+  table_id            = "test"
+  deletion_protection = false
+
+  time_partitioning {
+    type = "DAY"
+  }
+
+  schema = <<EOF
+[
+  {
+    "name": "permalink",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The Permalink"
+  },
+  {
+    "name": "state",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "State where the head office is located"
+  }
+]
+EOF
+}
+
+# ----------------------------------------------------------------------------------------
+
 resource "google_compute_global_address" "postgres_private_address" {
   name          = "postgres-private-address"
   purpose       = "VPC_PEERING"
