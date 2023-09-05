@@ -1429,7 +1429,6 @@ module "analytics" {
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
-    BIGQUERY_DATASET=dev
     ENABLE_GOOGLE_PUBSUB=true
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
