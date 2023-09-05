@@ -308,6 +308,32 @@ output "redis_server_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
+data "google_pubsub_topic" "server_init" {
+  name = "server_init"
+} 
+
+data "google_pubsub_topic" "server_update" {
+  name = "server_update"
+} 
+
+data "google_pubsub_topic" "near_relay_update" {
+  name = "near_relay_update"
+}
+
+data "google_pubsub_topic" "session_update" {
+  name = "session_update"
+}
+
+data "google_pubsub_topic" "session_summary" {
+  name = "session_summary"
+}
+
+data "google_pubsub_topic" "match_data" {
+  name = "match_data"
+}
+
+# ----------------------------------------------------------------------------------------
+
 resource "google_compute_global_address" "postgres_private_address" {
   name          = "postgres-private-address"
   purpose       = "VPC_PEERING"
