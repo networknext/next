@@ -408,10 +408,10 @@ func GenerateRandomPortalMapUpdateMessage() messages.PortalMapUpdateMessage {
 	return message
 }
 
-func GenerateRandomAnalyticsNearRelayUpdateMessage() messages.AnalyticsNearRelayUpdateMessage {
+func GenerateRandomAnalyticsNearRelayPingMessage() messages.AnalyticsNearRelayPingMessage {
 
-	message := messages.AnalyticsNearRelayUpdateMessage{
-		Version:         byte(common.RandomInt(messages.AnalyticsNearRelayUpdateMessageVersion_Min, messages.AnalyticsNearRelayUpdateMessageVersion_Max)),
+	message := messages.AnalyticsNearRelayPingMessage{
+		Version:         byte(common.RandomInt(messages.AnalyticsNearRelayPingMessageVersion_Min, messages.AnalyticsNearRelayPingMessageVersion_Max)),
 		Timestamp:       rand.Uint64(),
 		BuyerId:         rand.Uint64(),
 		SessionId:       rand.Uint64(),
@@ -563,11 +563,11 @@ func TestAnalyticsSessionUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestAnalyticsNearRelayUpdateMessage(t *testing.T) {
+func TestAnalyticsNearRelayPingMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsNearRelayUpdateMessage()
-		readMessage := messages.AnalyticsNearRelayUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsNearRelayUpdateMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsNearRelayPingMessage()
+		readMessage := messages.AnalyticsNearRelayPingMessage{}
+		MessageReadWriteTest[*messages.AnalyticsNearRelayPingMessage](&writeMessage, &readMessage, t)
 	}
 }

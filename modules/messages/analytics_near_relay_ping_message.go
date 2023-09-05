@@ -6,17 +6,16 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/encoding"
 )
 
 const (
-	AnalyticsNearRelayUpdateMessageVersion_Min   = 1
-	AnalyticsNearRelayUpdateMessageVersion_Max   = 2
-	AnalyticsNearRelayUpdateMessageVersion_Write = 1
+	AnalyticsNearRelayPingMessageVersion_Min   = 1
+	AnalyticsNearRelayPingMessageVersion_Max   = 1
+	AnalyticsNearRelayPingMessageVersion_Write = 1
 )
 
-type AnalyticsNearRelayUpdateMessage struct {
+type AnalyticsNearRelayPingMessage struct {
 	Version             byte
 	Timestamp           uint64
 	BuyerId             uint64
@@ -34,16 +33,16 @@ type AnalyticsNearRelayUpdateMessage struct {
 	NearRelayPacketLoss float32
 }
 
-func (message *AnalyticsNearRelayUpdateMessage) GetMaxSize() int {
-	return 128 + (8+1+1+4)*constants.MaxNearRelays
+func (message *AnalyticsNearRelayPingMessage) GetMaxSize() int {
+	return 128
 }
 
-func (message *AnalyticsNearRelayUpdateMessage) Write(buffer []byte) []byte {
+func (message *AnalyticsNearRelayPingMessage) Write(buffer []byte) []byte {
 
 	index := 0
 
-	if message.Version < AnalyticsNearRelayUpdateMessageVersion_Min || message.Version > AnalyticsNearRelayUpdateMessageVersion_Max {
-		panic(fmt.Sprintf("invalid analytics near relay pings message version %d", message.Version))
+	if message.Version < AnalyticsNearRelayPingMessageVersion_Min || message.Version > AnalyticsNearRelayPingMessageVersion_Max {
+		panic(fmt.Sprintf("invalid analytics near relay ping message version %d", message.Version))
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
@@ -59,27 +58,15 @@ func (message *AnalyticsNearRelayUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteAddress(buffer, &index, &message.ClientAddress)
 	encoding.WriteUint8(buffer, &index, message.ConnectionType)
 	encoding.WriteUint8(buffer, &index, message.PlatformType)
-
-	if message.Version == 1 {
-		numNearRelays := uint32(1)
-		encoding.WriteUint32(buffer, &index, numNearRelays)
-		encoding.WriteUint64(buffer, &index, message.NearRelayId)
-		encoding.WriteUint8(buffer, &index, message.NearRelayRTT)
-		encoding.WriteUint8(buffer, &index, message.NearRelayJitter)
-		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss)
-	}
-
-	if message.Version >= 2 {
-		encoding.WriteUint64(buffer, &index, message.NearRelayId)
-		encoding.WriteUint8(buffer, &index, message.NearRelayRTT)
-		encoding.WriteUint8(buffer, &index, message.NearRelayJitter)
-		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss)
-	}
+	encoding.WriteUint64(buffer, &index, message.NearRelayId)
+	encoding.WriteUint8(buffer, &index, message.NearRelayRTT)
+	encoding.WriteUint8(buffer, &index, message.NearRelayJitter)
+	encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss)
 
 	return buffer[:index]
 }
 
-func (message *AnalyticsNearRelayUpdateMessage) Read(buffer []byte) error {
+func (message *AnalyticsNearRelayPingMessage) Read(buffer []byte) error {
 
 	index := 0
 
@@ -87,7 +74,7 @@ func (message *AnalyticsNearRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read analytics near relay pings message version")
 	}
 
-	if message.Version < AnalyticsNearRelayUpdateMessageVersion_Min || message.Version > AnalyticsNearRelayUpdateMessageVersion_Max {
+	if message.Version < AnalyticsNearRelayPingMessageVersion_Min || message.Version > AnalyticsNearRelayPingMessageVersion_Max {
 		return fmt.Errorf("invalid analytics near relay pings message version %d", message.Version)
 	}
 
@@ -131,57 +118,26 @@ func (message *AnalyticsNearRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read platform type")
 	}
 
-	if message.Version == 1 {
-
-		var numNearRelays uint32
-		if !encoding.ReadUint32(buffer, &index, &numNearRelays) {
-			return fmt.Errorf("failed to read num near relays")
-		}
-
-		for i := 0; i < int(numNearRelays); i++ {
-
-			if !encoding.ReadUint64(buffer, &index, &message.NearRelayId) {
-				return fmt.Errorf("failed to read near relay id")
-			}
-
-			if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT) {
-				return fmt.Errorf("failed to read near relay rtt")
-			}
-
-			if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter) {
-				return fmt.Errorf("failed to read near relay jitter")
-			}
-
-			if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss) {
-				return fmt.Errorf("failed to read near relay packet loss")
-			}
-		}
+	if !encoding.ReadUint64(buffer, &index, &message.NearRelayId) {
+		return fmt.Errorf("failed to read near relay id")
 	}
 
-	if message.Version >= 2 {
+	if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT) {
+		return fmt.Errorf("failed to read near relay rtt")
+	}
 
-		if !encoding.ReadUint64(buffer, &index, &message.NearRelayId) {
-			return fmt.Errorf("failed to read near relay id")
-		}
+	if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter) {
+		return fmt.Errorf("failed to read near relay jitter")
+	}
 
-		if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT) {
-			return fmt.Errorf("failed to read near relay rtt")
-		}
-
-		if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter) {
-			return fmt.Errorf("failed to read near relay jitter")
-		}
-
-		if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss) {
-			return fmt.Errorf("failed to read near relay packet loss")
-		}
-
+	if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss) {
+		return fmt.Errorf("failed to read near relay packet loss")
 	}
 
 	return nil
 }
 
-func (message *AnalyticsNearRelayUpdateMessage) Save() (map[string]bigquery.Value, string, error) {
+func (message *AnalyticsNearRelayPingMessage) Save() (map[string]bigquery.Value, string, error) {
 
 	bigquery_entry := make(map[string]bigquery.Value)
 

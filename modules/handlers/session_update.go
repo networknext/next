@@ -79,7 +79,7 @@ type SessionUpdateState struct {
 	SentPortalSessionUpdateMessage            bool
 	SentPortalNearRelayUpdateMessage          bool
 	SentPortalMapUpdateMessage                bool
-	SentAnalyticsNearRelayUpdateMessage       bool
+	SentAnalyticsNearRelayPingMessage         bool
 	SentAnalyticsSessionUpdateMessage         bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
@@ -91,7 +91,7 @@ type SessionUpdateState struct {
 
 	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
 	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsNearRelayUpdateMessageChannel chan<- *messages.AnalyticsNearRelayUpdateMessage
+	AnalyticsNearRelayPingMessageChannel   chan<- *messages.AnalyticsNearRelayPingMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -1099,7 +1099,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendAnalyticsSessionSummaryMessage(state)
 
-		sendAnalyticsNearRelayUpdateMessage(state)
+		sendAnalyticsNearRelayPingMessages(state)
 	}
 }
 
@@ -1221,39 +1221,37 @@ func sendPortalMapUpdateMessage(state *SessionUpdateState) {
 	}
 }
 
-func sendAnalyticsNearRelayUpdateMessage(state *SessionUpdateState) {
+func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
 		return
 	}
 
-	// todo: this needs to be updated to send one message per-near relay
-	/*
-	message := messages.AnalyticsNearRelayUpdateMessage{}
-
-	message.Version = messages.AnalyticsNearRelayUpdateMessageVersion_Write
-	message.Timestamp = uint64(time.Now().Unix())
-	message.BuyerId = state.Request.BuyerId
-	message.SessionId = state.Output.SessionId
-	message.UserHash = state.Request.UserHash
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
-	message.ClientAddress = state.Request.ClientAddress
-	message.ConnectionType = byte(state.Request.ConnectionType)
-	message.PlatformType = byte(state.Request.PlatformType)
-	message.NumNearRelays = uint32(state.Request.NumNearRelays)
 	for i := 0; i < int(state.Request.NumNearRelays); i++ {
-		message.NearRelayId[i] = state.Request.NearRelayIds[i]
-		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
-		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
-		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
-	}
 
-	if state.AnalyticsNearRelayUpdateMessageChannel != nil {
-		state.AnalyticsNearRelayUpdateMessageChannel <- &message
-		state.SentAnalyticsNearRelayUpdateMessage = true
+		message := messages.AnalyticsNearRelayPingMessage{}
+
+		message.Version = messages.AnalyticsNearRelayPingMessageVersion_Write
+		message.Timestamp = uint64(time.Now().Unix())
+		message.BuyerId = state.Request.BuyerId
+		message.SessionId = state.Output.SessionId
+		message.UserHash = state.Request.UserHash
+		message.Latitude = state.Output.Latitude
+		message.Longitude = state.Output.Longitude
+		message.ClientAddress = state.Request.ClientAddress
+		message.ConnectionType = byte(state.Request.ConnectionType)
+		message.PlatformType = byte(state.Request.PlatformType)
+		message.NearRelayId = state.Request.NearRelayIds[i]
+		message.NearRelayRTT = byte(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter = byte(state.Request.NearRelayJitter[i])
+		message.NearRelayPacketLoss = state.Request.NearRelayPacketLoss[i]
+
+		if state.AnalyticsNearRelayPingMessageChannel != nil {
+			state.AnalyticsNearRelayPingMessageChannel <- &message
+			state.SentAnalyticsNearRelayPingMessage = true
+		}
+
 	}
-	*/
 }
 
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {

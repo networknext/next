@@ -317,7 +317,7 @@ locals {
     "relay_update",
     "server_init",
     "server_update",
-    "near_relay_update",
+    "near_relay_ping",
     "session_update",
     "session_summary",
     "match_data",

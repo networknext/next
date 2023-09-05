@@ -63,7 +63,7 @@ func main() {
 		Process[*messages.AnalyticsServerUpdateMessage](service, "server update", &messages.AnalyticsServerUpdateMessage{}, important)
 		Process[*messages.AnalyticsSessionUpdateMessage](service, "session update", &messages.AnalyticsSessionUpdateMessage{}, important)
 		Process[*messages.AnalyticsSessionSummaryMessage](service, "session summary", &messages.AnalyticsSessionSummaryMessage{}, important)
-		Process[*messages.AnalyticsNearRelayUpdateMessage](service, "near relay update", &messages.AnalyticsNearRelayUpdateMessage{}, important)
+		Process[*messages.AnalyticsNearRelayPingMessage](service, "near relay ping", &messages.AnalyticsNearRelayPingMessage{}, important)
 		Process[*messages.AnalyticsMatchDataMessage](service, "match data", &messages.AnalyticsMatchDataMessage{}, important)
 	}
 
