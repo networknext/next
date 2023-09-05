@@ -484,6 +484,10 @@ locals {
         "mode": "REPEATED",
         "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next",
       },
+
+      "clustering": [
+        "session_id",
+      ],
     ]
     EOF
 
@@ -645,6 +649,12 @@ locals {
         "mode": "REQUIRED",
         "description": "The time when this session started",
       },
+
+      "clustering": [
+        "session_id",
+        "buyer_id",
+        "user_hash",
+      ],
     ]
     EOF
 
@@ -704,6 +714,11 @@ locals {
         "mode": "REQUIRED",
         "description": "The address and port of the server, for example: '123.254.10.5:40000'",
       },
+
+      "clustering": [
+        "buyer_id",
+        "datacenter_id",
+      ],
     ]
     EOF
 
@@ -757,6 +772,11 @@ locals {
         "mode": "REQUIRED",
         "description": "The address and port of the server, for example: '123.254.10.5:40000'",
       },
+
+      "clustering": [
+        "buyer_id",
+        "datacenter_id",
+      ],
     ]
     EOF
 
@@ -828,6 +848,10 @@ locals {
         "mode": "REPEATED",
         "description": "Array of counters used to diagnose what is going on with a relay. Search for RELAY_COUNTER_ in the codebase for counter names",
       },
+
+      "clustering": [
+        "relay_id",
+      ],
     ]
     EOF
 
@@ -1095,6 +1119,11 @@ locals {
         "mode": "REQUIRED",
         "description": "The packet loss between the two relays (%)",
       },
+
+      "clustering": [
+        "relay_a",
+        "relay_b",
+      ],
     ]
     EOF
 
@@ -1184,6 +1213,10 @@ locals {
         "mode": "REPEATED",
         "description": "Array of near relay packet loss values (%)",
       },
+
+      "clustering": [
+        "user_hash",
+      ],
     ]
     EOF
 
