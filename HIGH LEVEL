@@ -56,19 +56,13 @@ DONE
 
 TODO
 
-	Setup staging.sql and staging database
+	------------
 
-	Verify that I can load staging.sql
+	Test SDK on all console platforms and lock it down.
 
-	Verify that all staging migs work
+	------------
 
-	-----------
-
-	Implement load test program that acts like x servers, and y sessions.
-
-	-----------
-
-	Setup prod environment
+	Update UE5 plugin and lock it down.
 
 	-----------
 
@@ -90,17 +84,19 @@ TODO
 
 	-----------
 
+	Implement load test program that acts like x servers, and y sessions.
+
+	-----------
+
+	Load test staging to 1000 simulated relays, and 1M concurrent sessions, with 10% taking network next.
+
+	-----------
+
+	Setup prod environment
+
+	-----------
+
 	Rebuild portal (second half)
-
-	------------
-
-	Load test backend systems in staging environment up to 1M sessions
-
-	Almost certainly requires a load testing harness to simulate servers and clients...
-
-	------------
-
-	Add support for as many sellers as possible (terraform + config scripts...)
 
 	------------
 
@@ -121,17 +117,13 @@ TODO
 
 	------------
 
+	Add support for as many sellers as possible (terraform + config scripts...)
+
+	------------
+
 	Fix multithreaded relay.
 	
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
-
-	------------
-
-	Test SDK on all console platforms.
-
-	------------
-
-	Update UE4/UE5 plugin and test on all platforms.
 
 	------------
 
