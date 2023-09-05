@@ -55,6 +55,7 @@ DONE
 	Setup staging environment
 
 TODO
+
 	-----------
 
 	Setup google pubsub in dev
@@ -69,19 +70,7 @@ TODO
 
 	-----------
 
-	Update staging so it uses bigquery and pubsub
-
-	-----------
-
-	Make sure that key services in staging are multi-zone and have external load balancers
-
-	-----------
-
-	Implement load test program that acts like x servers, and y sessions.
-
-	-----------
-
-	Load test staging to 1000 relays, and 1M concurrent sessions, with 10% taking network next.
+	Load test staging to 1000 relays aand 1M sessions with ~10% taking network next
 
 	-----------
 
@@ -93,39 +82,18 @@ TODO
 
 	-----------
 
-	Upgrade to secure JWT replacement
-
-	-----------
-
-	Deploy portal to service
-
-	-----------
-
-	Test portal across iphones, ipads, mac laptops, desktops and PCs
+	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
 
 	------------
 
 	Optimize the setup process by automating creation of projects, service accounts and permissions
 
-	Enable:
+	------------
 
-		Compute Engine API
-		Cloud Resource Manager API
-		Google Cloud Memorystore for Redis API
-		Service Networking API
-
-	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
-
-	Pain point around SQL, we should try to create the database inside terrafrom ideally. It has problems destroying:
-
-		 Error: Error when reading or editing Database: googleapi: Error 400: Invalid request: failed to delete database "database". Detail: pq: database "database" is being accessed by other users. (Please use psql client to delete database that is not owned by "cloudsqlsuperuser")., invalid
+	Document *everything*.
 
 	------------
 
 	Add support for as many sellers as possible (terraform + config scripts...)
-
-	------------
-
-	Document *everything*.
 
 	------------
