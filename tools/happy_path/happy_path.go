@@ -83,9 +83,9 @@ func happy_path(wait bool) int {
 
 	// initialize postgres
 
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/local.sql")
 
 	// nuke redis
 

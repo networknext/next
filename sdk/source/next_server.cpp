@@ -2656,7 +2656,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         else
         {
             // but don't wait forever...
-            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server resolve hostname timed out" );
         }
     }
     
