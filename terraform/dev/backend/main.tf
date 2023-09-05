@@ -473,12 +473,6 @@ locals {
         "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next"
       },
       {
-        "name": "next_predicted_rtt",
-        "type": "FLOAT64",
-        "mode": "NULLABLE",
-        "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next"
-      },
-      {
         "name": "next_route_relays",
         "type": "INT64",
         "mode": "REPEATED",
@@ -610,7 +604,7 @@ locals {
         "description": "The total number of game packets received out of order from client to server in this session"
       },
       {
-        "name": "server_to_client_packets_lost",
+        "name": "server_to_client_packets_out_of_order",
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "The total number of game packets received out of order from server to client in this session"
