@@ -350,37 +350,840 @@ locals {
   
   bigquery_tables = {
 
-    "test" = <<EOF
+    "session_update" = <<EOF
     [
       {
-        "name": "permalink",
-        "type": "STRING",
-        "mode": "NULLABLE",
-        "description": "The Permalink"
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the session update occurred",
       },
       {
-        "name": "state",
-        "type": "STRING",
+        "name": "session_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Unique identifier for this session",
+      },
+      {
+        "name": "slice_number",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Slices are 10 second periods starting from slice number 0 at the start of the session",
+      },
+      {
+        "name": "real_packet_loss",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Packet loss between the client and the server measured from game packets (%)",
+      },
+      {
+        "name": "real_jitter",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Jitter between the client and the server measured from game packets (milliseconds)",
+      },
+      {
+        "name": "real_out_of_order",
+      "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Percentage of packets that arrive out of order between the client and the server (%)",
+      },
+      {
+        "name": "session_flags",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Session flags are used to diagnose what's happening with a session. Look up SessionFlags_ in the codebase for a list of flags",
+      },
+      {
+        "name": "session_events",
+        "type": "INT64",
         "mode": "NULLABLE",
-        "description": "State where the head office is located"
-      }
+        "description": "Customer specified set of 64bit event flags. Optional. NULL if no flags are set",
+      },
+      {
+        "name": "internal_events",
+        "type": "INT64",
+        "mode": "NULLABLE",
+        "description": "Internal SDK event flags. Optional. NULL if no flags are set",
+      },
+      {
+        "name": "direct_rtt",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always. Ignore. Not known yet",
+      },
+      {
+        "name": "direct_jitter",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Jitter between client and server as measured by direct pings (unaccelerated path). Milliseconds",
+      },
+      {
+        "name": "direct_packet_loss",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Packet loss between client and server as measured by direct pings (unaccelerated path). Percent",
+      },
+      {
+        "name": "direct_kbps_up",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second",
+      },
+      {
+        "name": "direct_kbps_down",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second",
+      },
+      {
+        "name": "next_rtt",
+        "type": "FLOAT64",
+        "mode": "NULLABLE",
+        "description": "Latency between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next",
+      },
+      {
+        "name": "next_jitter",
+        "type": "FLOAT64",
+        "mode": "NULLABLE",
+        "description": "Jitter between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next",
+      },
+      {
+        "name": "next_packet_loss",
+        "type": "FLOAT64",
+        "mode": "NULLABLE",
+        "description": "Packet loss between client and server as measured by next pings (accelerated path). Percent. NULL if not on network next",
+      },
+      {
+        "name": "next_kbps_up",
+        "type": "INT64",
+        "mode": "NULLABLE",
+        "description": "Bandwidth in the client to server direction along the next path (accelerated). Kilobits per-second",
+      },
+      {
+        "name": "next_kbps_down",
+        "type": "INT64",
+        "mode": "NULLABLE",
+        "description": "Bandwidth in the server to client direction along the next path (accelerated). Kilobits per-second",
+      },
+      {
+        "name": "next_predicted_rtt",
+        "type": "FLOAT64",
+        "mode": "NULLABLE",
+        "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next",
+      },
+      {
+        "name": "next_predicted_rtt",
+        "type": "FLOAT64",
+        "mode": "NULLABLE",
+        "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next",
+      },
+      {
+        "name": "next_route_relays",
+        "type": "INT64",
+        "mode": "REPEATED",
+        "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next",
+      },
     ]
     EOF
 
-    "test2" = <<EOF
+    "session_summary" = <<EOF
     [
       {
-        "name": "permalink",
-        "type": "STRING",
-        "mode": "NULLABLE",
-        "description": "The Permalink"
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the server update occurred",
       },
       {
-        "name": "state",
-        "type": "STRING",
+        "name": "session_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Unique identifier for this session",
+      },
+      {
+        "name": "match_id",
+        "type": "INT64",
         "mode": "NULLABLE",
-        "description": "State where the head office is located"
-      }
+        "description": "Match id if set on the server for this session. NULL if not specified.",
+      },
+      {
+        "name": "datacenter_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The datacenter the server is in",
+      },
+      {
+        "name": "buyer_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The buyer this session belongs to",
+      },
+      {
+        "name": "user_hash",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Pseudonymized hash of a unique user id passed up from the SDK. IMPORTANT: This is personal data according to the GDPR",
+      },
+      {
+        "name": "latitude",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Approximate latitude of the player from ip2location",
+      },
+      {
+        "name": "longitude",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Approximate longitude of the player from ip2location",
+      },
+      {
+        "name": "client_address",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "Anonymized client address. The last tuple is cleared to zero, and the port number is cleared to zero",
+      },
+      {
+        "name": "server_address",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "Server address and port",
+      },
+      {
+        "name": "connection_type",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular",
+      },
+      {
+        "name": "platform_type",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5",
+      },
+      {
+        "name": "sdk_version_major",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The major SDK version on the server",
+      },
+      {
+        "name": "sdk_version_minor",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The minor SDK version on the server",
+      },
+      {
+        "name": "sdk_version_patch",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The patch SDK version on the server",
+      },
+      {
+        "name": "client_to_server_packets_sent",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of game packets sent from client to server in this session",
+      },
+      {
+        "name": "server_to_client_packets_sent",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of game packets sent from server to client in this session",
+      },
+      {
+        "name": "client_to_server_packets_lost",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of game packets lost from client to server in this session",
+      },
+      {
+        "name": "server_to_client_packets_lost",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of game packets lost from server to client in this session",
+      },
+      {
+        "name": "client_to_server_packets_out_of_order",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of game packets received out of order from client to server in this session",
+      },
+      {
+        "name": "server_to_client_packets_lost",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of game packets received out of order from server to client in this session",
+      },
+      {
+        "name": "total_envelope_bytes_up",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of envelope bytes sent in the client to server direction in this session",
+      },
+      {
+        "name": "total_envelope_bytes_down",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of envelope bytes sent in the server to client direction in this session",
+      },
+      {
+        "name": "duration_on_next",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Total time spent on network next in this session (time accelerated). Seconds",
+      },
+      {
+        "name": "session_duration",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Length of this session in seconds",
+      },
+      {
+        "name": "start_timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The time when this session started",
+      },
+    ]
+    EOF
+
+    "server_update" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the server update occurred",
+      },
+      {
+        "name": "sdk_version_major",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The major SDK version number on the server",
+      },
+      {
+        "name": "sdk_version_minor",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The minor SDK version number on the server",
+      },
+      {
+        "name": "sdk_version_patch",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The patch SDK version number on the server",
+      },
+      {
+        "name": "buyer_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The buyer this server belongs to",
+      },
+      {
+        "name": "datacenter_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The datacenter this server is in",
+      },
+      {
+        "name": "match_id",
+        "type": "INT64",
+        "mode": "NULLABLE",
+        "description": "The current match id on the server (optional: NULL if not specified)",
+      },
+      {
+        "name": "num_sessions",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of client sessions currently connected to the server",
+      },
+      {
+        "name": "server_address",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "The address and port of the server, for example: '123.254.10.5:40000'",
+      },
+    ]
+    EOF
+
+    "server_init" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the server init occurred",
+      },
+      {
+        "name": "sdk_version_major",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The major SDK version number on the server",
+      },
+      {
+        "name": "sdk_version_minor",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The minor SDK version number on the server",
+      },
+      {
+        "name": "sdk_version_patch",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The patch SDK version number on the server",
+      },
+      {
+        "name": "buyer_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The buyer this server belongs to",
+      },
+      {
+        "name": "datacenter_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The datacenter this server is in",
+      },
+      {
+        "name": "datacenter_name",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "The name of the datacenter, for example: 'google.iowa.1'",
+      },
+      {
+        "name": "server_address",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "The address and port of the server, for example: '123.254.10.5:40000'",
+      },
+    ]
+    EOF
+
+    "relay_update" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the relay update occurred",
+      },
+      {
+        "name": "relay_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Unique relay id. The fnv1a hash of the relay address + port as a string",
+      },
+      {
+        "name": "session_count",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of sessions currently going through this relay",
+      },
+      {
+        "name": "max_sessions",
+        "type": "INT64",
+        "mode": "NULLABLE",
+        "description": "The maximum number of sessions allowed through this relay (optional: NULL if not specified)",
+      },
+      {
+        "name": "envelope_bandwidth_up_kbps",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The current amount of envelope bandwidth in the client to server direction through this relay",
+      },
+      {
+        "name": "envelope_bandwidth_down_kbps",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The current amount of envelope bandwidth in the server to client direction through this relay",
+      },
+      {
+        "name": "actual_bandwidth_up_kbps",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The current amount of actual bandwidth in the client to server direction through this relay",
+      },
+      {
+        "name": "actual_bandwidth_down_kbps",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The current amount of actual bandwidth in the server to client direction through this relay",
+      },
+      {
+        "name": "num_routable",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of other relays this relay can route to",
+      },
+      {
+        "name": "num_unroutable",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of other relays this relay cannot route to",
+      },
+      {
+        "name": "relay_counters",
+        "type": "INT64",
+        "mode": "REPEATED",
+        "description": "Array of counters used to diagnose what is going on with a relay. Search for RELAY_COUNTER_ in the codebase for counter names",
+      },
+    ]
+    EOF
+
+    "database_update" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the cost matrix update occurred",
+      },
+      {
+        "name": "database_size",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The size of the database in bytes",
+      },
+      {
+        "name": "num_relays",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of relays in the database",
+      },
+      {
+        "name": "num_datacenters",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of datacenters in the database",
+      },
+      {
+        "name": "num_sellers",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of sellers in the database",
+      },
+      {
+        "name": "num_buyers",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of buyers in the database",
+      },
+    ]
+    EOF
+
+    "route_matrix_update" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the route matrix update occurred",
+      },
+      {
+        "name": "route_matrix_size",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The size of the route matrix in bytes",
+      },
+      {
+        "name": "num_relays",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of relays in the route matrix",
+      },
+      {
+        "name": "num_dest_relays",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of destination relays in the route matrix",
+      },
+      {
+        "name": "num_full_relays",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of full relays in the route matrix",
+      },
+      {
+        "name": "num_datacenters",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of datacenters in the route matrix",
+      },
+      {
+        "name": "total_routes",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The total number of routes in the route matrix",
+      },
+      {
+        "name": "average_num_routes",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The average number of routes between any two relays",
+      },
+      {
+        "name": "average_route_length",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The average number of relays per-route",
+      },
+      {
+        "name": "no_route_percent",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs that have no route between them",
+      },
+      {
+        "name": "one_route_percent",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with only one route between them",
+      },
+      {
+        "name": "no_direct_route_percent",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with no direct route between them",
+      },
+      {
+        "name": "rtt_bucket_no_improvement",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with no improvement",
+      },
+      {
+        "name": "rtt_bucket_0_5ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 0-5ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_5_10ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 5-10ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_10_15ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 10-15ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_15_20ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 15-20ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_20_25ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 20-25ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_25_30ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 25-30ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_30_35ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 30-35ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_35_40ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 35-40ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_40_45ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 40-45ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_45_50ms",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 45-50ms reduction in latency",
+      },
+      {
+        "name": "rtt_bucket_50ms_plus",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The percent of relay pairs with 50ms+ reduction in latency",
+      },
+    ]
+    EOF
+
+    "cost_matrix_update" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the cost matrix update occurred",
+      },
+      {
+        "name": "cost_matrix_size",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The size of the cost matrix in bytes",
+      },
+      {
+        "name": "num_relays",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of relays in the cost matrix",
+      },
+      {
+        "name": "num_dest_relays",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of destination relays in the cost matrix",
+      },
+      {
+        "name": "num_datacenters",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The number of datacenters in the cost matrix",
+      },
+    ]
+    EOF
+
+    "relay_to_relay_ping" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the relay ping occurred",
+      },
+      {
+        "name": "relay_a",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The id of the first relay",
+      },
+      {
+        "name": "relay_a",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The id of the second relay",
+      },
+      {
+        "name": "rtt",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Round trip latency between the two relays (milliseconds)",
+      },
+      {
+        "name": "jitter",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Time variance in latency between the two relays (milliseconds)",
+      },
+
+      {
+        "name": "packet_loss",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The packet loss between the two relays (%)",
+      },
+    ]
+    EOF
+
+    "near_relay_pings" = <<EOF
+    [
+      {
+        "name": "timestamp",
+        "type": "TIMESTAMP",
+        "mode": "REQUIRED",
+        "description": "The timestamp when the relay update occurred",
+      },
+      {
+        "name": "buyer_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The buyer this player belongs to",
+      },
+      {
+        "name": "session_id",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Unique id for the session",
+      },
+      {
+        "name": "match_id",
+        "type": "INT64",
+        "mode": "NULLABLE",
+        "description": "Match id if currently set on the server. Optional. NULL if not specified",
+      },
+      {
+        "name": "user_hash",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Pseudonymized hash of a user id passed up from the SDK. IMPORTANT: This is personal data according to the GDPR",
+      },
+      {
+        "name": "latitude",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Approximate latitude of the player from ip2location",
+      },
+      {
+        "name": "longitude",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "Approximate longitude of the player from ip2location",
+      },
+      {
+        "name": "client_address",
+        "type": "STRING",
+        "mode": "REQUIRED",
+        "description": "Anonymized client address. The lowest tuple of the IPv4 address and the port number are cleared",
+      },
+      {
+        "name": "connection_type",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular",
+      },
+      {
+        "name": "platform_type",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5",
+      },
+      {
+        "name": "near_relay_id",
+        "type": "INT64",
+        "mode": "REPEATED",
+        "description": "Array of near relay ids",
+      },
+      {
+        "name": "near_relay_rtt",
+        "type": "INT64",
+        "mode": "REPEATED",
+        "description": "Array of near relay rtt values (milliseconds)",
+      },
+      {
+        "name": "near_relay_jitter",
+        "type": "INT64",
+        "mode": "REPEATED",
+        "description": "Array of near relay jitter values (milliseconds)",
+      },
+      {
+        "name": "near_relay_packet_loss",
+        "type": "FLOAT64",
+        "mode": "REPEATED",
+        "description": "Array of near relay packet loss values (%)",
+      },
     ]
     EOF
 
