@@ -1489,7 +1489,7 @@ module "analytics" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks"]
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription, google_bigquery_table.table]
 }
 
 output "analytics_address" {
