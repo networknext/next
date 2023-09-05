@@ -1227,6 +1227,8 @@ func sendAnalyticsNearRelayUpdateMessage(state *SessionUpdateState) {
 		return
 	}
 
+	// todo: this needs to be updated to send one message per-near relay
+	/*
 	message := messages.AnalyticsNearRelayUpdateMessage{}
 
 	message.Version = messages.AnalyticsNearRelayUpdateMessageVersion_Write
@@ -1251,6 +1253,7 @@ func sendAnalyticsNearRelayUpdateMessage(state *SessionUpdateState) {
 		state.AnalyticsNearRelayUpdateMessageChannel <- &message
 		state.SentAnalyticsNearRelayUpdateMessage = true
 	}
+	*/
 }
 
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {

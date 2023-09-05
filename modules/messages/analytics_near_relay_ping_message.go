@@ -12,7 +12,7 @@ import (
 
 const (
 	AnalyticsNearRelayUpdateMessageVersion_Min   = 1
-	AnalyticsNearRelayUpdateMessageVersion_Max   = 1
+	AnalyticsNearRelayUpdateMessageVersion_Max   = 2
 	AnalyticsNearRelayUpdateMessageVersion_Write = 1
 )
 
@@ -28,11 +28,10 @@ type AnalyticsNearRelayUpdateMessage struct {
 	ClientAddress       net.UDPAddr
 	ConnectionType      byte
 	PlatformType        byte
-	NumNearRelays       uint32
-	NearRelayId         [constants.MaxNearRelays]uint64
-	NearRelayRTT        [constants.MaxNearRelays]byte
-	NearRelayJitter     [constants.MaxNearRelays]byte
-	NearRelayPacketLoss [constants.MaxNearRelays]float32
+	NearRelayId         uint64
+	NearRelayRTT        byte
+	NearRelayJitter     byte
+	NearRelayPacketLoss float32
 }
 
 func (message *AnalyticsNearRelayUpdateMessage) GetMaxSize() int {
@@ -61,12 +60,20 @@ func (message *AnalyticsNearRelayUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.ConnectionType)
 	encoding.WriteUint8(buffer, &index, message.PlatformType)
 
-	encoding.WriteUint32(buffer, &index, message.NumNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		encoding.WriteUint64(buffer, &index, message.NearRelayId[i])
-		encoding.WriteUint8(buffer, &index, message.NearRelayRTT[i])
-		encoding.WriteUint8(buffer, &index, message.NearRelayJitter[i])
-		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss[i])
+	if message.Version == 1 {
+		numNearRelays := uint32(1)
+		encoding.WriteUint32(buffer, &index, numNearRelays)
+		encoding.WriteUint64(buffer, &index, message.NearRelayId)
+		encoding.WriteUint8(buffer, &index, message.NearRelayRTT)
+		encoding.WriteUint8(buffer, &index, message.NearRelayJitter)
+		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss)
+	}
+
+	if message.Version >= 2 {
+		encoding.WriteUint64(buffer, &index, message.NearRelayId)
+		encoding.WriteUint8(buffer, &index, message.NearRelayRTT)
+		encoding.WriteUint8(buffer, &index, message.NearRelayJitter)
+		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss)
 	}
 
 	return buffer[:index]
@@ -124,27 +131,51 @@ func (message *AnalyticsNearRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read platform type")
 	}
 
-	if !encoding.ReadUint32(buffer, &index, &message.NumNearRelays) {
-		return fmt.Errorf("failed to read num near relays")
+	if message.Version == 1 {
+
+		var numNearRelays uint32
+		if !encoding.ReadUint32(buffer, &index, &numNearRelays) {
+			return fmt.Errorf("failed to read num near relays")
+		}
+
+		for i := 0; i < int(numNearRelays); i++ {
+
+			if !encoding.ReadUint64(buffer, &index, &message.NearRelayId) {
+				return fmt.Errorf("failed to read near relay id")
+			}
+
+			if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT) {
+				return fmt.Errorf("failed to read near relay rtt")
+			}
+
+			if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter) {
+				return fmt.Errorf("failed to read near relay jitter")
+			}
+
+			if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss) {
+				return fmt.Errorf("failed to read near relay packet loss")
+			}
+		}
 	}
 
-	for i := 0; i < int(message.NumNearRelays); i++ {
+	if message.Version >= 2 {
 
-		if !encoding.ReadUint64(buffer, &index, &message.NearRelayId[i]) {
+		if !encoding.ReadUint64(buffer, &index, &message.NearRelayId) {
 			return fmt.Errorf("failed to read near relay id")
 		}
 
-		if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT[i]) {
+		if !encoding.ReadUint8(buffer, &index, &message.NearRelayRTT) {
 			return fmt.Errorf("failed to read near relay rtt")
 		}
 
-		if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter[i]) {
+		if !encoding.ReadUint8(buffer, &index, &message.NearRelayJitter) {
 			return fmt.Errorf("failed to read near relay jitter")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss[i]) {
+		if !encoding.ReadFloat32(buffer, &index, &message.NearRelayPacketLoss) {
 			return fmt.Errorf("failed to read near relay packet loss")
 		}
+
 	}
 
 	return nil
@@ -164,30 +195,10 @@ func (message *AnalyticsNearRelayUpdateMessage) Save() (map[string]bigquery.Valu
 	bigquery_entry["client_address"] = message.ClientAddress.String()
 	bigquery_entry["connection_type"] = int(message.ConnectionType)
 	bigquery_entry["platform_type"] = int(message.PlatformType)
-
-	near_relay_id := make([]bigquery.Value, message.NumNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		near_relay_id[i] = int(message.NearRelayId[i])
-	}
-	bigquery_entry["near_relay_id"] = near_relay_id
-
-	near_relay_rtt := make([]bigquery.Value, message.NumNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		near_relay_rtt[i] = int(message.NearRelayRTT[i])
-	}
-	bigquery_entry["near_relay_rtt"] = near_relay_rtt
-
-	near_relay_jitter := make([]bigquery.Value, message.NumNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		near_relay_jitter[i] = int(message.NearRelayJitter[i])
-	}
-	bigquery_entry["near_relay_jitter"] = near_relay_jitter
-
-	near_relay_packet_loss := make([]bigquery.Value, message.NumNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		near_relay_packet_loss[i] = float64(message.NearRelayPacketLoss[i])
-	}
-	bigquery_entry["near_relay_packet_loss"] = near_relay_packet_loss
+	bigquery_entry["near_relay_id"] = int(message.NearRelayId)
+	bigquery_entry["near_relay_rtt"] = int(message.NearRelayRTT)
+	bigquery_entry["near_relay_jitter"] = int(message.NearRelayJitter)
+	bigquery_entry["near_relay_packet_loss"] = float64(message.NearRelayPacketLoss)
 
 	return bigquery_entry, "", nil
 }

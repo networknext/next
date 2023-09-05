@@ -411,25 +411,21 @@ func GenerateRandomPortalMapUpdateMessage() messages.PortalMapUpdateMessage {
 func GenerateRandomAnalyticsNearRelayUpdateMessage() messages.AnalyticsNearRelayUpdateMessage {
 
 	message := messages.AnalyticsNearRelayUpdateMessage{
-		Version:        byte(common.RandomInt(messages.AnalyticsNearRelayUpdateMessageVersion_Min, messages.AnalyticsNearRelayUpdateMessageVersion_Max)),
-		Timestamp:      rand.Uint64(),
-		BuyerId:        rand.Uint64(),
-		SessionId:      rand.Uint64(),
-		MatchId:        rand.Uint64(),
-		UserHash:       rand.Uint64(),
-		Latitude:       float32(common.RandomInt(-90, +90)),
-		Longitude:      float32(common.RandomInt(-180, +180)),
-		ClientAddress:  common.RandomAddress(),
-		ConnectionType: byte(common.RandomInt(0, 255)),
-		PlatformType:   byte(common.RandomInt(0, 255)),
-		NumNearRelays:  uint32(common.RandomInt(0, constants.MaxNearRelays)),
-	}
-
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		message.NearRelayId[i] = rand.Uint64()
-		message.NearRelayRTT[i] = byte(common.RandomInt(0, 255))
-		message.NearRelayJitter[i] = byte(common.RandomInt(0, 255))
-		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 100))
+		Version:         byte(common.RandomInt(messages.AnalyticsNearRelayUpdateMessageVersion_Min, messages.AnalyticsNearRelayUpdateMessageVersion_Max)),
+		Timestamp:       rand.Uint64(),
+		BuyerId:         rand.Uint64(),
+		SessionId:       rand.Uint64(),
+		MatchId:         rand.Uint64(),
+		UserHash:        rand.Uint64(),
+		Latitude:        float32(common.RandomInt(-90, +90)),
+		Longitude:       float32(common.RandomInt(-180, +180)),
+		ClientAddress:   common.RandomAddress(),
+		ConnectionType:  byte(common.RandomInt(0, 255)),
+		PlatformType:    byte(common.RandomInt(0, 255)),
+		NearRelayId:     rand.Uint64(),
+		NearRelayRTT:    byte(common.RandomInt(0, 255)),
+		NearRelayJitter: byte(common.RandomInt(0, 255)),
+		NearRelayPacketLoss: float32(common.RandomInt(0, 100)),
 	}
 
 	return message
