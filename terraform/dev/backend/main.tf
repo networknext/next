@@ -345,43 +345,65 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 
 # ----------------------------------------------------------------------------------------
 
+
 locals {
-  // todo: define schemas here!
+  
+  bigquery_tables = {
+
+    "test" = <<EOF
+    [
+      {
+        "name": "permalink",
+        "type": "STRING",
+        "mode": "NULLABLE",
+        "description": "The Permalink"
+      },
+      {
+        "name": "state",
+        "type": "STRING",
+        "mode": "NULLABLE",
+        "description": "State where the head office is located"
+      }
+    ]
+    EOF
+
+    "test2" = <<EOF
+    [
+      {
+        "name": "permalink",
+        "type": "STRING",
+        "mode": "NULLABLE",
+        "description": "The Permalink"
+      },
+      {
+        "name": "state",
+        "type": "STRING",
+        "mode": "NULLABLE",
+        "description": "State where the head office is located"
+      }
+    ]
+    EOF
+
+  }
 }
 
 resource "google_bigquery_dataset" "dataset" {
-  dataset_id                  = "dev"
-  friendly_name               = "Development"
-  description                 = "This dataset contains Network Next dev analytics data"
+  dataset_id                  = "analytics"
+  friendly_name               = "Analytics"
+  description                 = "This dataset contains Network Next raw analytics data. It is retained for 90 days."
   location                    = "US"
   default_table_expiration_ms = 7776000000 # 90 days
 }
 
 resource "google_bigquery_table" "table" {
+  for_each            = local.bigquery_tables
   dataset_id          = google_bigquery_dataset.dataset.dataset_id
-  table_id            = "test"
+  table_id            = each.key
+  schema              = each.value
   deletion_protection = false
-
   time_partitioning {
     type = "DAY"
   }
-
-  schema = <<EOF
-[
-  {
-    "name": "permalink",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "The Permalink"
-  },
-  {
-    "name": "state",
-    "type": "STRING",
-    "mode": "NULLABLE",
-    "description": "State where the head office is located"
-  }
-]
-EOF
 }
 
 # ----------------------------------------------------------------------------------------
