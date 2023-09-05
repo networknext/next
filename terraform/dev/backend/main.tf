@@ -859,6 +859,18 @@ locals {
         "description": "The number of other relays this relay cannot route to"
       },
       {
+        "name": "start_time",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The start time of the relay as a unix timestamp according to the clock on the relay"
+      },
+      {
+        "name": "current_time",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The start time of the relay as a unix timestamp according to the clock on the relay. Together with start_time and timestamp this can be used to determine relay uptime, and clock desynchronization between the relay and the backend."
+      },
+      {
         "name": "relay_counters",
         "type": "INT64",
         "mode": "REPEATED",
