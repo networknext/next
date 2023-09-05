@@ -321,6 +321,7 @@ locals {
     "session_update",
     "session_summary",
     "match_data",
+    "cost_matrix_stats",
   ]
   
 }
