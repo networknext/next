@@ -95,7 +95,6 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 		BatchDuration: time.Second,
 	}
 
-	/*
 	publisherConfig := common.GoogleBigQueryConfig{
 		ProjectId:     googleProjectId,
 		Dataset:       bigqueryDataset,
@@ -103,7 +102,6 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 		BatchSize:     100,
 		BatchDuration: time.Second,
 	}
-	*/
 
 	consumer, err := common.CreateGooglePubsubConsumer(service.Context, consumerConfig)
 	if err != nil {
@@ -111,13 +109,10 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 		os.Exit(1)
 	}
 
-	// todo: disable until ready
-	/*
 	publisher, err := common.CreateGoogleBigQueryPublisher(service.Context, publisherConfig)
 	if err != nil {
 		core.Error("could not create google bigquery publisher for %s: %v", name, err)
 	}
-	*/
 
 	go func() {
 		for {
@@ -145,8 +140,7 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 					break
 				}
 
-				// todo: disable until bigquery is ready
-				// publisher.PublishChannel <- message
+				publisher.PublishChannel <- message
 
 				pubsubMessage.Ack()
 			}
