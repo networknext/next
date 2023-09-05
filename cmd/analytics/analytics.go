@@ -34,7 +34,7 @@ func main() {
 	costMatrixInterval = envvar.GetDuration("COST_MATRIX_INTERVAL", time.Second)
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 	googleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
-	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", service.Env)
+	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", "analytics")
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
 
