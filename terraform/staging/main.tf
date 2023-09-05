@@ -223,43 +223,7 @@ resource "google_redis_instance" "redis_portal" {
   tier                    = "STANDARD_HA"
   memory_size_gb          = 10
   region                  = "us-central1"
-  redis_version           = "REDIS_6_X"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network      = google_compute_network.staging.id
-  replica_count           = 5
-  read_replicas_mode      = "READ_REPLICAS_ENABLED"
-}
-
-resource "google_redis_instance" "redis_map_cruncher" {
-  name                    = "redis-map-cruncher"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 5
-  region                  = "us-central1"
-  redis_version           = "REDIS_6_X"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network      = google_compute_network.staging.id
-  replica_count           = 5
-  read_replicas_mode      = "READ_REPLICAS_ENABLED"
-}
-
-resource "google_redis_instance" "redis_raspberry" {
-  name                    = "redis-raspberry"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 5
-  region                  = "us-central1"
-  redis_version           = "REDIS_6_X"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network      = google_compute_network.staging.id
-  replica_count           = 5
-  read_replicas_mode      = "READ_REPLICAS_ENABLED"
-}
-
-resource "google_redis_instance" "redis_analytics" {
-  name                    = "redis-analytics"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 5
-  region                  = "us-central1"
-  redis_version           = "REDIS_6_X"
+  redis_version           = "REDIS_7_0"
   redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.staging.id
   replica_count           = 5
@@ -271,7 +235,7 @@ resource "google_redis_instance" "redis_relay_backend" {
   tier                    = "STANDARD_HA"
   memory_size_gb          = 5
   region                  = "us-central1"
-  redis_version           = "REDIS_6_X"
+  redis_version           = "REDIS_7_0"
   authorized_network      = google_compute_network.staging.id
   replica_count           = 5
   read_replicas_mode      = "READ_REPLICAS_ENABLED"
@@ -282,30 +246,40 @@ resource "google_redis_instance" "redis_server_backend" {
   tier                    = "STANDARD_HA"
   memory_size_gb          = 5
   region                  = "us-central1"
-  redis_version           = "REDIS_6_X"
+  redis_version           = "REDIS_7_0"
   authorized_network      = google_compute_network.staging.id
   replica_count           = 5
   read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
-output "redis_portal_address" {
-  description = "The IP address of the portal redis instance"
+resource "google_redis_instance" "redis_map_cruncher" {
+  name                    = "redis-map-cruncher"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_7_0"
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network      = google_compute_network.staging.id
+}
+
+resource "google_redis_instance" "redis_analytics" {
+  name                    = "redis-analytics"
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = 1
+  region                  = "us-central1"
+  redis_version           = "REDIS_7_0"
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network      = google_compute_network.staging.id
+}
+
+output "redis_portal_address_read_write" {
+  description = "The IP address of the portal redis instance (read/write)"
   value       = google_redis_instance.redis_portal.host
 }
 
-output "redis_map_cruncher_address" {
-  description = "The IP address of the map cruncher redis instance"
-  value       = google_redis_instance.redis_map_cruncher.host
-}
-
-output "redis_raspberry_address" {
-  description = "The IP address of the raspberry redis instance"
-  value       = google_redis_instance.redis_raspberry.host
-}
-
-output "redis_analytics_address" {
-  description = "The IP address of the analytics redis instance"
-  value       = google_redis_instance.redis_analytics.host
+output "redis_portal_address_read_only" {
+  description = "The IP address of the portal redis instance (read only)"
+  value       = google_redis_instance.redis_portal.read_endpoint
 }
 
 output "redis_relay_backend_address" {
@@ -316,6 +290,16 @@ output "redis_relay_backend_address" {
 output "redis_server_backend_address" {
   description = "The IP address of the server backend redis instance"
   value       = google_redis_instance.redis_server_backend.host
+}
+
+output "redis_map_cruncher_address" {
+  description = "The IP address of the map cruncher redis instance"
+  value       = google_redis_instance.redis_map_cruncher.host
+}
+
+output "redis_analytics_address" {
+  description = "The IP address of the analytics redis instance"
+  value       = google_redis_instance.redis_analytics.host
 }
 
 # ----------------------------------------------------------------------------------------
@@ -561,8 +545,8 @@ module "api" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.read_endpoint}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.read_endpoint}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
@@ -641,7 +625,6 @@ module "map_cruncher" {
     cat <<EOF > /app/app.env
     ENV=staging
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     EOF
     sudo systemctl start app.service

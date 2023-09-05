@@ -115,6 +115,10 @@ TODO
 
 	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
 
+	Pain point around SQL, we should try to create the database inside terrafrom ideally. It has problems destroying:
+
+		 Error: Error when reading or editing Database: googleapi: Error 400: Invalid request: failed to delete database "database". Detail: pq: database "database" is being accessed by other users. (Please use psql client to delete database that is not owned by "cloudsqlsuperuser")., invalid
+
 	------------
 
 	Fix multithreaded relay.
