@@ -793,18 +793,6 @@ locals {
         "description": "The current amount of envelope bandwidth in the server to client direction through this relay"
       },
       {
-        "name": "actual_bandwidth_up_kbps",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The current amount of actual bandwidth in the client to server direction through this relay"
-      },
-      {
-        "name": "actual_bandwidth_down_kbps",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The current amount of actual bandwidth in the server to client direction through this relay"
-      },
-      {
         "name": "packets_sent_per_second",
         "type": "FLOAT64",
         "mode": "REQUIRED",
@@ -843,7 +831,7 @@ locals {
       {
         "name": "relay_flags",
         "type": "INT64",
-        "mode": "REQUIRED",
+        "mode": "NULLABLE",
         "description": "The current value of the relay flags. See RelayFlags_* in the source code"
       },
       {

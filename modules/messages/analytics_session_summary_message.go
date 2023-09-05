@@ -213,7 +213,9 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 
 	bigquery_message["timestamp"] = int(message.Timestamp)
 	bigquery_message["session_id"] = int(message.SessionId)
-	bigquery_message["match_id"] = int(message.MatchId)
+	if message.MatchId != 0 {
+		bigquery_message["match_id"] = int(message.MatchId)
+	}
 	bigquery_message["datacenter_id"] = int(message.DatacenterId)
 	bigquery_message["buyer_id"] = int(message.BuyerId)
 	bigquery_message["user_hash"] = int(message.UserHash)
