@@ -345,16 +345,20 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_bigquery_dataset" "test" {
-  dataset_id                  = "foo"
-  friendly_name               = "test"
-  description                 = "This is a test description"
+locals {
+  // todo: define schemas here!
+}
+
+resource "google_bigquery_dataset" "dataset" {
+  dataset_id                  = "dev"
+  friendly_name               = "Development"
+  description                 = "This dataset contains Network Next dev analytics data"
   location                    = "US"
   default_table_expiration_ms = 7776000000 # 90 days
 }
 
-resource "google_bigquery_table" "test" {
-  dataset_id          = google_bigquery_dataset.test.dataset_id
+resource "google_bigquery_table" "table" {
+  dataset_id          = google_bigquery_dataset.dataset.dataset_id
   table_id            = "test"
   deletion_protection = false
 
