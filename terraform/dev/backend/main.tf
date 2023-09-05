@@ -805,6 +805,48 @@ locals {
         "description": "The current amount of actual bandwidth in the server to client direction through this relay"
       },
       {
+        "name": "packets_sent_per_second",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The number of packets sent per-second by this relay"
+      },
+      {
+        "name": "packets_received_per_second",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The number of packets received per-second by this relay"
+      },
+      {
+        "name": "bandwidth_sent_kbps",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The amount of bandwidth sent by this relay in kilobits per-second"
+      },
+      {
+        "name": "bandwidth_received_kbps",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The amount of bandwidth received by this relay in kilobits per-second"
+      },
+      {
+        "name": "near_pings_per_second",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The number of near relay pings received by this relay per-second"
+      },
+      {
+        "name": "relay_pings_per_second",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
+        "description": "The number of relay pings sent from other relays received by this relay per-second"
+      },
+      {
+        "name": "relay_flags",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The current value of the relay flags. See RelayFlags_* in the source code"
+      },
+      {
         "name": "num_routable",
         "type": "INT64",
         "mode": "REQUIRED",
