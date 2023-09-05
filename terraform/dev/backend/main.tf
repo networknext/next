@@ -535,7 +535,7 @@ locals {
         "name": "client_address",
         "type": "STRING",
         "mode": "REQUIRED",
-        "description": "Anonymized client address. The last tuple is cleared to zero, and the port number is cleared to zero"
+        "description": "Client address and port number"
       },
       {
         "name": "server_address",
@@ -1059,16 +1059,16 @@ locals {
         "description": "The timestamp when the relay ping occurred"
       },
       {
-        "name": "relay_a",
+        "name": "source_relay_id",
         "type": "INT64",
         "mode": "REQUIRED",
-        "description": "The id of the first relay"
+        "description": "The id of the source relay"
       },
       {
-        "name": "relay_a",
+        "name": "destination_relay_id",
         "type": "INT64",
         "mode": "REQUIRED",
-        "description": "The id of the second relay"
+        "description": "The id of the destination relay"
       },
       {
         "name": "rtt",
@@ -1092,7 +1092,7 @@ locals {
     ]
     EOF
 
-    "near_relay_pings" = <<EOF
+    "near_relay_ping" = <<EOF
     [
       {
         "name": "timestamp",
@@ -1140,7 +1140,7 @@ locals {
         "name": "client_address",
         "type": "STRING",
         "mode": "REQUIRED",
-        "description": "Anonymized client address. The lowest tuple of the IPv4 address and the port number are cleared"
+        "description": "Client address and port number"
       },
       {
         "name": "connection_type",
@@ -1157,26 +1157,26 @@ locals {
       {
         "name": "near_relay_id",
         "type": "INT64",
-        "mode": "REPEATED",
-        "description": "Array of near relay ids"
+        "mode": "REQUIRED",
+        "description": "Relay id being pinged by the client"
       },
       {
         "name": "near_relay_rtt",
         "type": "INT64",
-        "mode": "REPEATED",
-        "description": "Array of near relay rtt values (milliseconds)"
+        "mode": "REQUIRED",
+        "description": "Round trip time ping between the client and the relay (milliseconds)"
       },
       {
         "name": "near_relay_jitter",
         "type": "INT64",
-        "mode": "REPEATED",
-        "description": "Array of near relay jitter values (milliseconds)"
+        "mode": "REQUIRED",
+        "description": "Jitter between the client and the relay (milliseconds)"
       },
       {
         "name": "near_relay_packet_loss",
         "type": "FLOAT64",
-        "mode": "REPEATED",
-        "description": "Array of near relay packet loss values (%)"
+        "mode": "REQUIRED",
+        "description": "Packet loss between the client and the relay (%)"
       }
     ]
     EOF
@@ -1193,11 +1193,8 @@ locals {
     "database_update" = []
     "route_matrix_update" = []
     "cost_matrix_update" = []
-    "relay_to_relay_ping" = [ "relay_a", "relay_b" ]
-
-    # todo: near relay pings would be WAY better to be broken up into a row per-ping, that way we can cluster on the relay id
-    "near_relay_pings" = [ "user_hash" ]
-
+    "relay_to_relay_ping" = [ "source_relay_id" ]
+    "near_relay_pings" = [ "near_relay_id", "user_hash" ]
   }
 }
 
