@@ -349,7 +349,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 locals {
   
   bigquery_tables = {
-/*
+
     "session_update" = <<EOF
     [
       {
@@ -1158,7 +1158,7 @@ locals {
       }
     ]
     EOF
-*/
+
   }
 
   bigquery_table_clustering = {
