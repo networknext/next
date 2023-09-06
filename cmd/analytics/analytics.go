@@ -55,6 +55,7 @@ func main() {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", true)
 
+		ProcessAnalyticsDatabaseUpdateMessage(service, "database update", important)
 		ProcessAnalyticsCostMatrixUpdateMessage(service, "cost matrix update", important)
 		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
 		ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
@@ -496,7 +497,7 @@ func ProcessCostMatrix(service *common.Service) {
 
 	var googlePubsubProducer *common.GooglePubsubProducer
 	if enableGooglePubsub {
-		pubsubTopic := envvar.GetString("COST_MATRIX_STATS_PUBSUB_TOPIC", "cost_matrix_stats")
+		pubsubTopic := envvar.GetString("COST_MATRIX_UPDATE_PUBSUB_TOPIC", "cost_matrix_update")
 		core.Debug("cost matrix stats google pubsub topic: %s", pubsubTopic)
 		config := common.GooglePubsubConfig{
 			ProjectId:          googleProjectId,
