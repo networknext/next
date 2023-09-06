@@ -1348,7 +1348,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-	message.SessionDuration = state.Request.SliceNumber * packets.SDK_SliceSeconds
+	message.SessionDuration = (state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds
 	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
 	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Input.DurationOnNext
