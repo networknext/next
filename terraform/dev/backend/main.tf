@@ -889,8 +889,9 @@ locals {
       },
       {
         "name": "optimize_time",
-        "type": "FLOAT64",
+        "type": "INT64",
         "mode": "REQUIRED",
+        "description": "Time it took produce this route matrix from the cost matrix (milliseconds)"
       },
       {
         "name": "num_relays",

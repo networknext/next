@@ -41,7 +41,7 @@ type AnalyticsRouteMatrixUpdateMessage struct {
 	RTTBucket_45_50ms       float32
 	RTTBucket_50ms_Plus     float32
 	CostMatrixSize          uint32
-	OptimizeTime            float32
+	OptimizeTime            uint32
 }
 
 func (message *AnalyticsRouteMatrixUpdateMessage) GetMaxSize() int {
@@ -80,7 +80,7 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RTTBucket_50ms_Plus)
 	if message.Version >= 2 {
 		encoding.WriteUint32(buffer, &index, message.CostMatrixSize)
-		encoding.WriteFloat32(buffer, &index, message.OptimizeTime)
+		encoding.WriteUint32(buffer, &index, message.OptimizeTime)
 	}
 	return buffer[:index]
 }
@@ -199,7 +199,7 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Read(buffer []byte) error {
 			return fmt.Errorf("failed to read cost matrix size")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.OptimizeTime) {
+		if !encoding.ReadUint32(buffer, &index, &message.OptimizeTime) {
 			return fmt.Errorf("failed to read optimize time")
 		}
 	}
@@ -235,6 +235,6 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Save() (map[string]bigquery.Va
 	bigquery_message["rtt_bucket_45_50ms"] = float64(message.RTTBucket_45_50ms)
 	bigquery_message["rtt_bucket_50ms_plus"] = float64(message.RTTBucket_50ms_Plus)
 	bigquery_message["cost_matrix_size"] = int(message.CostMatrixSize)
-	bigquery_message["optimize_time"] = float64(message.OptimizeTime)
+	bigquery_message["optimize_time"] = int(message.OptimizeTime)
 	return bigquery_message, "", nil
 }

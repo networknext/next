@@ -37,7 +37,7 @@ type RouteMatrix struct {
 	RouteEntries []core.RouteEntry
 
 	CostMatrixSize uint32
-	OptimizeTime float32
+	OptimizeTime uint32
 }
 
 func (m *RouteMatrix) GetMaxSize() int {
@@ -133,7 +133,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	if m.Version >= 2 {
 		stream.SerializeUint32(&m.CostMatrixSize)
-		stream.SerializeFloat32(&m.OptimizeTime)
+		stream.SerializeUint32(&m.OptimizeTime)
 	}
 
 	return stream.Error()

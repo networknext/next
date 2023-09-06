@@ -70,7 +70,7 @@ func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMa
 
 	if message.Version >= 2 {
 		message.CostMatrixSize = rand.Uint32()
-		message.OptimizeTime = rand.Float32()
+		message.OptimizeTime = rand.Uint32()
 	}
 
 	return message

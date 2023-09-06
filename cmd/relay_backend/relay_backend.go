@@ -873,6 +873,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
+					CostMatrixSize:     uint32(len(costMatrixDataNew)),
 				}
 
 				// write route matrix data
@@ -888,6 +889,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				optimizeDuration := timeFinish.Sub(timeStart)
 
 				core.Debug("updated route matrix: %d relays is %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
+
+				routeMatrixNew.OptimizeTime = uint32(optimizeDuration.Milliseconds())
 
 				// if we are the leader, store our data in redis
 
