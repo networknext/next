@@ -517,7 +517,7 @@ locals {
         "name": "user_hash",
         "type": "INT64",
         "mode": "REQUIRED",
-        "description": "Pseudonymized hash of a unique user id passed up from the SDK. IMPORTANT: This is personal data according to the GDPR"
+        "description": "Pseudonymized hash of a unique user id passed up from the SDK"
       },
       {
         "name": "latitude",
@@ -1164,7 +1164,7 @@ locals {
         "name": "user_hash",
         "type": "INT64",
         "mode": "REQUIRED",
-        "description": "Pseudonymized hash of a user id passed up from the SDK. IMPORTANT: This is personal data according to the GDPR"
+        "description": "Pseudonymized hash of a user id passed up from the SDK"
       },
       {
         "name": "latitude",
