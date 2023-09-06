@@ -1144,14 +1144,14 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.SessionId = state.Request.SessionId
 	message.UserHash = state.Request.UserHash
-	message.StartTime = state.Output.StartTimestamp
+	message.StartTime = state.Input.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
+	message.Latitude = state.Input.Latitude
+	message.Longitude = state.Input.Longitude
 	message.SliceNumber = state.Input.SliceNumber
 	message.SessionFlags = state.SessionFlags
-	if state.Output.RouteState.Next {
+	if state.Input.RouteState.Next {
 		state.SessionFlags |= constants.SessionFlags_Next
 	}
 	message.SessionEvents = state.Request.SessionEvents
@@ -1298,7 +1298,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// next only
 
-	if (state.SessionFlags & constants.SessionFlags_Next) != 0 {
+	if state.Input.RouteState.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1333,8 +1333,8 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DatacenterId = state.Request.DatacenterId
 	message.BuyerId = state.Request.BuyerId
 	message.UserHash = state.Request.UserHash
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
+	message.Latitude = state.Input.Latitude
+	message.Longitude = state.Input.Longitude
 	message.ClientAddress = state.Request.ClientAddress
 	message.ServerAddress = state.Request.ServerAddress
 	message.ConnectionType = byte(state.Request.ConnectionType)
@@ -1349,10 +1349,10 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
 	message.SessionDuration = state.Request.SliceNumber * packets.SDK_SliceSeconds
-	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
-	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
-	message.DurationOnNext = state.Output.DurationOnNext
-	message.StartTimestamp = state.Output.StartTimestamp
+	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
+	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesDownSum
+	message.DurationOnNext = state.Input.DurationOnNext
+	message.StartTimestamp = state.Input.StartTimestamp
 
 	if state.AnalyticsSessionSummaryMessageChannel != nil {
 		state.AnalyticsSessionSummaryMessageChannel <- &message
