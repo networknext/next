@@ -641,9 +641,10 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	// debug print the route
 
+	// todo
 	core.Debug("----------------------------------------------------")
 	for i := range routePublicAddresses[:numTokens] {
-		core.Debug("%d: public address = %s, has internal address = %d, internal address = %s, internal group = %016x, seller = %d", i, routePublicAddresses[i].String(), routeHasInternalAddresses[i], routeInternalAddresses[i].String(), routeInternalGroups[i], routeSellers[i])
+		core.Debug("%d: public address = %s, has internal address = %v, internal address = %s, internal group = %016x, seller = %d", i, routePublicAddresses[i].String(), routeHasInternalAddresses[i], routeInternalAddresses[i].String(), routeInternalGroups[i], routeSellers[i])
 	}
 	core.Debug("----------------------------------------------------")
 
