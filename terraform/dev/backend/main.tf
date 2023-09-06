@@ -1028,35 +1028,6 @@ locals {
     ]
     EOF
 
-    "cost_matrix_update" = <<EOF
-    [
-      {
-        "name": "timestamp",
-        "type": "TIMESTAMP",
-        "mode": "REQUIRED",
-        "description": "The timestamp when the cost matrix update occurred"
-      },
-      {
-        "name": "num_relays",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of relays in the cost matrix"
-      },
-      {
-        "name": "num_dest_relays",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of destination relays in the cost matrix"
-      },
-      {
-        "name": "num_datacenters",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of datacenters in the cost matrix"
-      }
-    ]
-    EOF
-
     "relay_to_relay_ping" = <<EOF
     [
       {

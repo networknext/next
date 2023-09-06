@@ -14,7 +14,7 @@ import (
 const (
 	RouteMatrixVersion_Min   = 1
 	RouteMatrixVersion_Max   = 2
-	RouteMatrixVersion_Write = 1
+	RouteMatrixVersion_Write = 2
 
 	MaxDatabaseBinWrapperSize = 100 * 1024
 )
