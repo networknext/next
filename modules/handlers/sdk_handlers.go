@@ -311,6 +311,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		message.BuyerId = requestPacket.BuyerId
 		message.DatacenterId = requestPacket.DatacenterId
 		message.DatacenterName = requestPacket.DatacenterName
+		message.ServerAddress = *from
 
 		handler.AnalyticsServerInitMessageChannel <- &message
 

@@ -13,7 +13,7 @@ import (
 const (
 	AnalyticsServerInitMessageVersion_Min   = 1
 	AnalyticsServerInitMessageVersion_Max   = 2
-	AnalyticsServerInitMessageVersion_Write = 1
+	AnalyticsServerInitMessageVersion_Write = 2
 )
 
 type AnalyticsServerInitMessage struct {
