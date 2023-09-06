@@ -1107,6 +1107,10 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
+	if state.Input.SessionId == 0 {
+		return
+	}
+
 	if state.Input.SliceNumber == 0 {
 		return		
 	}
@@ -1259,6 +1263,10 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 }
 
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
+
+	if state.Input.SessionId == 0 {
+		return
+	}
 
 	if state.Input.SliceNumber == 0 {
 		return		
