@@ -55,16 +55,15 @@ func main() {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", true)
 
-		Process[*messages.AnalyticsCostMatrixUpdateMessage](service, "cost matrix update", &messages.AnalyticsCostMatrixUpdateMessage{}, important)
-		Process[*messages.AnalyticsRouteMatrixUpdateMessage](service, "route matrix update", &messages.AnalyticsRouteMatrixUpdateMessage{}, important)
-		Process[*messages.AnalyticsRelayToRelayPingMessage](service, "relay to relay ping", &messages.AnalyticsRelayToRelayPingMessage{}, important)
-		Process[*messages.AnalyticsRelayUpdateMessage](service, "relay update", &messages.AnalyticsRelayUpdateMessage{}, important)
-		Process[*messages.AnalyticsServerInitMessage](service, "server init", &messages.AnalyticsServerInitMessage{}, important)
-		Process[*messages.AnalyticsServerUpdateMessage](service, "server update", &messages.AnalyticsServerUpdateMessage{}, important)
-		Process[*messages.AnalyticsSessionUpdateMessage](service, "session update", &messages.AnalyticsSessionUpdateMessage{}, important)
-		Process[*messages.AnalyticsSessionSummaryMessage](service, "session summary", &messages.AnalyticsSessionSummaryMessage{}, important)
-		Process[*messages.AnalyticsNearRelayPingMessage](service, "near relay ping", &messages.AnalyticsNearRelayPingMessage{}, important)
-		Process[*messages.AnalyticsMatchDataMessage](service, "match data", &messages.AnalyticsMatchDataMessage{}, important)
+		ProcessAnalyticsCostMatrixUpdateMessage(service, "cost matrix update", important)
+		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
+		ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
+		ProcessAnalyticsNearRelayPingMessage(service, "near relay ping", important)
+		ProcessAnalyticsRelayUpdateMessage(service, "relay update", important)
+		ProcessAnalyticsServerInitMessage(service, "server init", important)
+		ProcessAnalyticsServerUpdateMessage(service, "server update", important)
+		ProcessAnalyticsSessionUpdateMessage(service, "session update", important)
+		ProcessAnalyticsSessionSummaryMessage(service, "session summary", important)
 	}
 
 	service.StartWebServer()
@@ -76,7 +75,7 @@ func main() {
 
 // --------------------------------------------------------------------
 
-func Process[T messages.BigQueryMessage](service *common.Service, name string, message T, important bool) {
+func Setup(service *common.Service, name string) (*common.GooglePubsubConsumer, *common.GoogleBigQueryPublisher) {
 
 	messageName := strings.ReplaceAll(name, " ", "_")
 
@@ -112,7 +111,17 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 	publisher, err := common.CreateGoogleBigQueryPublisher(service.Context, publisherConfig)
 	if err != nil {
 		core.Error("could not create google bigquery publisher for %s: %v", name, err)
+		os.Exit(1)
 	}
+
+	return consumer, publisher
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsRelayToRelayPingMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
 
 	go func() {
 		for {
@@ -127,6 +136,7 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 
 				messageData := pubsubMessage.Data
 
+				var message messages.AnalyticsRelayToRelayPingMessage
 				err := message.Read(messageData)
 				if err != nil {
 					if !important {
@@ -140,7 +150,335 @@ func Process[T messages.BigQueryMessage](service *common.Service, name string, m
 					break
 				}
 
-				publisher.PublishChannel <- message
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsNearRelayPingMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsNearRelayPingMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsCostMatrixUpdateMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsCostMatrixUpdateMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsRouteMatrixUpdateMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsRouteMatrixUpdateMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsRelayUpdateMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsRelayUpdateMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsServerInitMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsServerInitMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsServerUpdateMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsServerUpdateMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsSessionUpdateMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsSessionUpdateMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
+func ProcessAnalyticsSessionSummaryMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsSessionSummaryMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
