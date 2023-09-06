@@ -38,8 +38,8 @@ type AnalyticsSessionSummaryMessage struct {
 	ServerToClientPacketsLost       uint64
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
-	TotalEnvelopeBytesUp            uint64
-	TotalEnvelopeBytesDown          uint64
+	TotalNextEnvelopeBytesUp        uint64
+	TotalNextEnvelopeBytesDown      uint64
 	DurationOnNext                  uint32
 	SessionDuration                 uint32
 	StartTimestamp                  uint64
@@ -80,8 +80,8 @@ func (message *AnalyticsSessionSummaryMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.ClientToServerPacketsOutOfOrder)
 	encoding.WriteUint64(buffer, &index, message.ServerToClientPacketsOutOfOrder)
 	encoding.WriteUint32(buffer, &index, message.SessionDuration)
-	encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesUp)
-	encoding.WriteUint64(buffer, &index, message.TotalEnvelopeBytesDown)
+	encoding.WriteUint64(buffer, &index, message.TotalNextEnvelopeBytesUp)
+	encoding.WriteUint64(buffer, &index, message.TotalNextEnvelopeBytesDown)
 	encoding.WriteUint32(buffer, &index, message.DurationOnNext)
 	encoding.WriteUint64(buffer, &index, message.StartTimestamp)
 
@@ -188,12 +188,12 @@ func (message *AnalyticsSessionSummaryMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read session duration")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesUp) {
-		return fmt.Errorf("failed to read total envelope bytes up sum")
+	if !encoding.ReadUint64(buffer, &index, &message.TotalNextEnvelopeBytesUp) {
+		return fmt.Errorf("failed to read total next envelope bytes up sum")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.TotalEnvelopeBytesDown) {
-		return fmt.Errorf("failed to read total envelope bytes down sum")
+	if !encoding.ReadUint64(buffer, &index, &message.TotalNextEnvelopeBytesDown) {
+		return fmt.Errorf("failed to read total next envelope bytes down sum")
 	}
 
 	if !encoding.ReadUint32(buffer, &index, &message.DurationOnNext) {
@@ -234,8 +234,8 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 	bigquery_message["server_to_client_packets_lost"] = int(message.ServerToClientPacketsLost)
 	bigquery_message["client_to_server_packets_out_of_order"] = int(message.ClientToServerPacketsOutOfOrder)
 	bigquery_message["server_to_client_packets_out_of_order"] = int(message.ServerToClientPacketsOutOfOrder)
-	bigquery_message["total_envelope_bytes_up"] = int(message.TotalEnvelopeBytesUp)
-	bigquery_message["total_envelope_bytes_down"] = int(message.TotalEnvelopeBytesDown)
+	bigquery_message["total_next_envelope_bytes_up"] = int(message.TotalNextEnvelopeBytesUp)
+	bigquery_message["total_next_envelope_bytes_down"] = int(message.TotalNextEnvelopeBytesDown)
 	bigquery_message["duration_on_next"] = int(message.DurationOnNext)
 	bigquery_message["session_duration"] = int(message.SessionDuration)
 	bigquery_message["start_timestamp"] = int(message.StartTimestamp)

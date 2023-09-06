@@ -298,9 +298,6 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	if handler.AnalyticsServerInitMessageChannel != nil {
 
-		// todo
-		core.Debug("sent analytics server init message")
-
 		message := messages.AnalyticsServerInitMessage{}
 
 		message.Version = messages.AnalyticsServerInitMessageVersion_Write

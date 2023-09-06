@@ -252,8 +252,8 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 		ClientToServerPacketsOutOfOrder: rand.Uint64(),
 		ServerToClientPacketsOutOfOrder: rand.Uint64(),
 		SessionDuration:                 rand.Uint32(),
-		TotalEnvelopeBytesUp:            rand.Uint64(),
-		TotalEnvelopeBytesDown:          rand.Uint64(),
+		TotalNextEnvelopeBytesUp:        rand.Uint64(),
+		TotalNextEnvelopeBytesDown:      rand.Uint64(),
 		DurationOnNext:                  rand.Uint32(),
 		StartTimestamp:                  rand.Uint64(),
 	}

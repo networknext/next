@@ -644,15 +644,6 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	routePublicAddresses[numTokens-1] = *state.From
 	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
-	// debug print the route
-
-	// todo
-	core.Debug("----------------------------------------------------")
-	for i := range routePublicAddresses[:numTokens] {
-		core.Debug("%d: public address = %s, has internal address = %v, internal address = %s, internal group = %016x, seller = %d", i, routePublicAddresses[i].String(), routeHasInternalAddresses[i], routeInternalAddresses[i].String(), routeInternalGroups[i], routeSellers[i])
-	}
-	core.Debug("----------------------------------------------------")
-
 	// write the tokens
 
 	tokenData := make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
@@ -1349,9 +1340,8 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
 	message.SessionDuration = (state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds
-	// todo: we need "TotalNext" and "TotalDirect" ?
-	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
-	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesDownSum
+	message.TotalNextEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
+	message.TotalNextEnvelopeBytesDown = state.Input.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Input.DurationOnNext
 	message.StartTimestamp = state.Input.StartTimestamp
 

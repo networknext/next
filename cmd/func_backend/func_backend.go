@@ -767,9 +767,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
 		sessionData.ExpireTimestamp += packets.SDK_SliceSeconds
-
-		// todo
-		core.Debug("read session data: %+v", sessionData)
 	}
 
 	// get data about all active relays on the relay backend
@@ -950,9 +947,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	}
 
 	responsePacket.SessionDataBytes = int32(len(packetSessionData))
-
-	// todo
-	core.Debug("wrote session state: %+v", sessionData)
 
 	SendResponsePacket(conn, from, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
 }

@@ -610,16 +610,16 @@ locals {
         "description": "The total number of game packets received out of order from server to client in this session"
       },
       {
-        "name": "total_envelope_bytes_up",
+        "name": "total_next_envelope_bytes_up",
         "type": "INT64",
         "mode": "REQUIRED",
-        "description": "The total number of envelope bytes sent in the client to server direction in this session"
+        "description": "The total number of envelope bytes sent across network next in the client to server direction for this session"
       },
       {
         "name": "total_envelope_bytes_down",
         "type": "INT64",
         "mode": "REQUIRED",
-        "description": "The total number of envelope bytes sent in the server to client direction in this session"
+        "description": "The total number of envelope bytes sent across netwnork next in the server to client direction for this session"
       },
       {
         "name": "duration_on_next",
