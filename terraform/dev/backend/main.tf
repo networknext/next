@@ -876,10 +876,21 @@ locals {
         "description": "The timestamp when the route matrix update occurred"
       },
       {
+        "name": "cost_matrix_size",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The size of the cost matrix in bytes"
+      },
+      {
         "name": "route_matrix_size",
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "The size of the route matrix in bytes"
+      },
+      {
+        "name": "optimize_time",
+        "type": "FLOAT64",
+        "mode": "REQUIRED",
       },
       {
         "name": "num_relays",
@@ -1023,12 +1034,6 @@ locals {
         "type": "TIMESTAMP",
         "mode": "REQUIRED",
         "description": "The timestamp when the cost matrix update occurred"
-      },
-      {
-        "name": "cost_matrix_size",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The size of the cost matrix in bytes"
       },
       {
         "name": "num_relays",

@@ -1349,6 +1349,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
 	message.SessionDuration = (state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds
+	// todo: we need "TotalNext" and "TotalDirect" ?
 	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
 	message.TotalEnvelopeBytesUp = state.Input.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Input.DurationOnNext

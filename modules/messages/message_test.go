@@ -68,6 +68,11 @@ func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMa
 		RTTBucket_50ms_Plus:     rand.Float32(),
 	}
 
+	if message.Version >= 2 {
+		message.CostMatrixSize = rand.Uint32()
+		message.OptimizeTime = rand.Float32()
+	}
+
 	return message
 }
 

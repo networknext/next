@@ -47,15 +47,12 @@ func main() {
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 	core.Debug("enable google bigquery: %v", enableGoogleBigquery)
 
-	ProcessCostMatrix(service)
-
 	ProcessRouteMatrix(service)
 
 	if enableGooglePubsub {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", false)
 
-		ProcessAnalyticsCostMatrixUpdateMessage(service, "cost matrix update", important)
 		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
 		ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
 		ProcessAnalyticsNearRelayPingMessage(service, "near relay ping", important)
@@ -178,47 +175,6 @@ func ProcessAnalyticsNearRelayPingMessage(service *common.Service, name string, 
 				messageData := pubsubMessage.Data
 
 				var message messages.AnalyticsNearRelayPingMessage
-				err := message.Read(messageData)
-				if err != nil {
-					if !important {
-						core.Error("could not read %s message. not important, so dropping", name)
-						pubsubMessage.Ack()
-						break
-					}
-
-					core.Error("could not read %s message, important, so not acking it.", name)
-					pubsubMessage.Nack()
-					break
-				}
-
-				publisher.PublishChannel <- &message
-
-				pubsubMessage.Ack()
-			}
-		}
-	}()
-}
-
-// --------------------------------------------------------------------
-
-func ProcessAnalyticsCostMatrixUpdateMessage(service *common.Service, name string, important bool) {
-
-	consumer, publisher := Setup(service, name)
-
-	go func() {
-		for {
-			select {
-
-			case <-service.Context.Done():
-				return
-
-			case pubsubMessage := <-consumer.MessageChannel:
-
-				core.Debug("received %s message", name)
-
-				messageData := pubsubMessage.Data
-
-				var message messages.AnalyticsCostMatrixUpdateMessage
 				err := message.Read(messageData)
 				if err != nil {
 					if !important {
@@ -488,114 +444,6 @@ func ProcessAnalyticsSessionSummaryMessage(service *common.Service, name string,
 
 // --------------------------------------------------------------------
 
-func ProcessCostMatrix(service *common.Service) {
-
-	httpClient := &http.Client{
-		Timeout: costMatrixInterval,
-	}
-
-	var googlePubsubProducer *common.GooglePubsubProducer
-	if enableGooglePubsub {
-		pubsubTopic := envvar.GetString("COST_MATRIX_UPDATE_PUBSUB_TOPIC", "cost_matrix_update")
-		core.Debug("cost matrix stats google pubsub topic: %s", pubsubTopic)
-		config := common.GooglePubsubConfig{
-			ProjectId:          googleProjectId,
-			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024,
-		}
-		var err error
-		googlePubsubProducer, err = common.CreateGooglePubsubProducer(service.Context, config)
-		if err != nil {
-			core.Error("could not create google pubsub producer for cost matrix update: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	ticker := time.NewTicker(costMatrixInterval)
-
-	go func() {
-		for {
-			select {
-
-			case <-service.Context.Done():
-				return
-
-			case <-ticker.C:
-
-				if !service.IsLeader() {
-					break
-				}
-
-				response, err := httpClient.Get(costMatrixURL)
-				if err != nil {
-					core.Error("failed to http get cost matrix: %v", err)
-					continue
-				}
-
-				buffer, err := ioutil.ReadAll(response.Body)
-				if err != nil {
-					core.Error("failed to read cost matrix data: %v", err)
-					continue
-				}
-
-				response.Body.Close()
-
-				costMatrix := common.CostMatrix{}
-
-				err = costMatrix.Read(buffer)
-				if err != nil {
-					core.Error("failed to read cost matrix: %v", err)
-					continue
-				}
-
-				costMatrixSize := len(buffer)
-				costMatrixNumRelays := len(costMatrix.RelayIds)
-
-				costMatrixNumDestRelays := 0
-				for i := range costMatrix.DestRelays {
-					if costMatrix.DestRelays[i] {
-						costMatrixNumDestRelays++
-					}
-				}
-
-				datacenterMap := make(map[uint64]bool)
-				for i := range costMatrix.RelayDatacenterIds {
-					datacenterMap[costMatrix.RelayDatacenterIds[i]] = true
-				}
-				costMatrixNumDatacenters := len(datacenterMap)
-
-				logMutex.Lock()
-
-				core.Debug("---------------------------------------------")
-				core.Debug("cost matrix size: %d", costMatrixSize)
-				core.Debug("cost matrix num relays: %d", costMatrixNumRelays)
-				core.Debug("cost matrix num dest relays: %d", costMatrixNumDestRelays)
-				core.Debug("cost matrix num datacenters: %d", costMatrixNumDatacenters)
-				core.Debug("---------------------------------------------")
-
-				logMutex.Unlock()
-
-				// send cost matrix update message via google pubsub
-
-				message := messages.AnalyticsCostMatrixUpdateMessage{}
-
-				message.Version = messages.AnalyticsCostMatrixUpdateMessageVersion_Write
-				message.Timestamp = uint64(time.Now().Unix())
-				message.CostMatrixSize = costMatrixSize
-				message.NumRelays = costMatrixNumRelays
-				message.NumDestRelays = costMatrixNumDestRelays
-				message.NumDatacenters = costMatrixNumDatacenters
-
-				messageData := message.Write(make([]byte, message.GetMaxSize()))
-
-				if enableGooglePubsub {
-					googlePubsubProducer.MessageChannel <- messageData
-				}
-			}
-		}
-	}()
-}
-
 func ProcessRouteMatrix(service *common.Service) {
 
 	var googlePubsubProducer *common.GooglePubsubProducer
@@ -658,6 +506,9 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				logMutex.Lock()
 
+				costMatrixSize := routeMatrix.CostMatrixSize
+				optimizeTime := routeMatrix.OptimizeTime
+
 				routeMatrixSize := len(buffer)
 				routeMatrixNumRelays := len(routeMatrix.RelayIds)
 
@@ -680,7 +531,9 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				core.Debug("---------------------------------------------")
 
+				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("route matrix size: %d", routeMatrixSize)
+				core.Debug("optimize time: %.2fms", optimizeTime)
 
 				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
 				core.Debug("route matrix num dest relays: %d", routeMatrixNumDestRelays)
@@ -732,7 +585,9 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				message.Version = messages.AnalyticsRouteMatrixUpdateMessageVersion_Write
 				message.Timestamp = uint64(time.Now().Unix())
+				message.CostMatrixSize = costMatrixSize
 				message.RouteMatrixSize = routeMatrixSize
+				message.OptimizeTime = optimizeTime
 				message.NumRelays = routeMatrixNumRelays
 				message.NumDestRelays = routeMatrixNumDestRelays
 				message.NumDatacenters = routeMatrixNumDatacenters
