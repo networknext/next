@@ -53,7 +53,7 @@ func main() {
 
 	if enableGooglePubsub {
 
-		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", true)
+		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", false)
 
 		ProcessAnalyticsCostMatrixUpdateMessage(service, "cost matrix update", important)
 		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
