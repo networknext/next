@@ -161,6 +161,10 @@ func GenerateRandomAnalyticsServerInitMessage() messages.AnalyticsServerInitMess
 		DatacenterName:   common.RandomString(constants.MaxDatacenterNameLength),
 	}
 
+	if message.Version >= 2 {
+		message.ServerAddress = common.RandomAddress()
+	}
+
 	return message
 }
 

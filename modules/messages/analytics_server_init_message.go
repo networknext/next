@@ -2,6 +2,7 @@ package messages
 
 import (
 	"fmt"
+	"net"
 
 	"cloud.google.com/go/bigquery"
 
@@ -11,7 +12,7 @@ import (
 
 const (
 	AnalyticsServerInitMessageVersion_Min   = 1
-	AnalyticsServerInitMessageVersion_Max   = 1
+	AnalyticsServerInitMessageVersion_Max   = 2
 	AnalyticsServerInitMessageVersion_Write = 1
 )
 
@@ -24,6 +25,7 @@ type AnalyticsServerInitMessage struct {
 	BuyerId          uint64
 	DatacenterId     uint64
 	DatacenterName   string
+	ServerAddress    net.UDPAddr
 }
 
 func (message *AnalyticsServerInitMessage) GetMaxSize() int {
@@ -70,6 +72,14 @@ func (message *AnalyticsServerInitMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read datacenter name")
 	}
 
+	if message.Version >= 2 {
+
+		if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
+			return fmt.Errorf("failed to read server address")
+		}
+
+	}
+
 	return nil
 }
 
@@ -90,6 +100,10 @@ func (message *AnalyticsServerInitMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteString(buffer, &index, message.DatacenterName, constants.MaxDatacenterNameLength)
 
+	if message.Version >= 2 {
+		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
+	}
+
 	return buffer[:index]
 }
 
@@ -102,5 +116,6 @@ func (message *AnalyticsServerInitMessage) Save() (map[string]bigquery.Value, st
 	bigquery_entry["buyer_id"] = int(message.BuyerId)
 	bigquery_entry["datacenter_id"] = int(message.DatacenterId)
 	bigquery_entry["datacenter_name"] = message.DatacenterName
+	bigquery_entry["server_address"] = message.ServerAddress.String()
 	return bigquery_entry, "", nil
 }
