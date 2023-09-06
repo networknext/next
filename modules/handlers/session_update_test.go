@@ -107,7 +107,7 @@ func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 
 	result := handlers.SessionUpdate_Pre(state)
 
-	assert.True(t, result)
+	assert.False(t, result)
 	assert.True(t, (state.SessionFlags&constants.SessionFlags_ClientPingTimedOut) != 0)
 }
 

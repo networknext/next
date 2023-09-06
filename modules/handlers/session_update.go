@@ -142,7 +142,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	if state.Request.ClientPingTimedOut {
 		core.Debug("client ping timed out")
 		state.SessionFlags |= constants.SessionFlags_ClientPingTimedOut
-		return true
 	}
 
 	/*
@@ -709,6 +708,15 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 }
 
 func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
+
+	/*
+		If the client has timed out (finished session), then we don't need to make any route decision.
+	*/
+
+	if (state.SessionFlags & constants.SessionFlags_ClientPingTimedOut) != 0 {
+		core.Debug("session has finished. no route decision to make")
+		return
+	}
 
 	/*
 		If we are on on network next but don't have any relays in our route, something is WRONG.
