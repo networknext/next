@@ -122,8 +122,8 @@ func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 	assert.False(t, result)
 	assert.True(t, state.LocatedIP)
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_LocationVeto) != 0)
-	assert.Equal(t, state.Output.Latitude, float32(43))
-	assert.Equal(t, state.Output.Longitude, float32(-75))
+	assert.Equal(t, state.Latitude, float32(43))
+	assert.Equal(t, state.Longitude, float32(-75))
 }
 
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {

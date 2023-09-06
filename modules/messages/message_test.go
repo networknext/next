@@ -119,21 +119,6 @@ func GenerateRandomAnalyticsRelayUpdateMessage() messages.AnalyticsRelayUpdateMe
 	return message
 }
 
-func GenerateRandomAnalyticsDatabaseUpdateMessage() messages.AnalyticsDatabaseUpdateMessage {
-
-	message := messages.AnalyticsDatabaseUpdateMessage{
-		Version:        byte(common.RandomInt(messages.AnalyticsDatabaseUpdateMessageVersion_Min, messages.AnalyticsDatabaseUpdateMessageVersion_Max)),
-		Timestamp:      uint64(time.Now().Unix()),
-		DatabaseSize:   rand.Uint32(),
-		NumRelays:      rand.Uint32(),
-		NumDatacenters: rand.Uint32(),
-		NumSellers:     rand.Uint32(),
-		NumBuyers:      rand.Uint32(),
-	}
-
-	return message
-}
-
 func GenerateRandomAnalyticsMatchDataMessage() messages.AnalyticsMatchDataMessage {
 
 	numMatchValues := rand.Intn(65)
@@ -515,15 +500,6 @@ func TestAnalyticsRelayUpdateMessage(t *testing.T) {
 		writeMessage := GenerateRandomAnalyticsRelayUpdateMessage()
 		readMessage := messages.AnalyticsRelayUpdateMessage{}
 		MessageReadWriteTest[*messages.AnalyticsRelayUpdateMessage](&writeMessage, &readMessage, t)
-	}
-}
-
-func TestAnalyticsDatabaseUpdateMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsDatabaseUpdateMessage()
-		readMessage := messages.AnalyticsDatabaseUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsDatabaseUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 

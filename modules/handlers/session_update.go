@@ -68,6 +68,10 @@ type SessionUpdateState struct {
 	// session flags
 	SessionFlags uint64
 
+	// lat/long if we looked it up this update
+	Latitude float32
+	Longitude float32
+
 	// codepath flags (for unit testing etc...)
 	FirstUpdate                               bool
 	ReadSessionData                           bool
@@ -168,9 +172,9 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		state.FirstUpdate = true
 
-		state.Output.Latitude, state.Output.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
+		state.Latitude, state.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
-		if state.Output.Latitude == 0.0 && state.Output.Longitude == 0.0 {
+		if state.Latitude == 0.0 && state.Longitude == 0.0 {
 			core.Error("location veto")
 			state.Output.RouteState.LocationVeto = true
 			state.SessionFlags |= constants.SessionFlags_LocationVeto
@@ -714,7 +718,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 	*/
 
 	if (state.SessionFlags & constants.SessionFlags_ClientPingTimedOut) != 0 {
-		core.Debug("session has finished. no route decision to make")
+		core.Debug("session is over. no route decision to make")
 		return
 	}
 
@@ -957,6 +961,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	*/
 
 	if state.Request.SliceNumber == 0 {
+		state.Output.Latitude = state.Latitude
+		state.Output.Longitude = state.Longitude
 		SessionUpdate_GetNearRelays(state)
 		core.Debug("first slice always goes direct")
 	}

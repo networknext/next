@@ -55,7 +55,6 @@ func main() {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", true)
 
-		ProcessAnalyticsDatabaseUpdateMessage(service, "database update", important)
 		ProcessAnalyticsCostMatrixUpdateMessage(service, "cost matrix update", important)
 		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
 		ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
@@ -116,47 +115,6 @@ func Setup(service *common.Service, name string) (*common.GooglePubsubConsumer, 
 	}
 
 	return consumer, publisher
-}
-
-// --------------------------------------------------------------------
-
-func ProcessAnalyticsDatabaseUpdateMessage(service *common.Service, name string, important bool) {
-
-	consumer, publisher := Setup(service, name)
-
-	go func() {
-		for {
-			select {
-
-			case <-service.Context.Done():
-				return
-
-			case pubsubMessage := <-consumer.MessageChannel:
-
-				core.Debug("received %s message", name)
-
-				messageData := pubsubMessage.Data
-
-				var message messages.AnalyticsDatabaseUpdateMessage
-				err := message.Read(messageData)
-				if err != nil {
-					if !important {
-						core.Error("could not read %s message. not important, so dropping", name)
-						pubsubMessage.Ack()
-						break
-					}
-
-					core.Error("could not read %s message, important, so not acking it.", name)
-					pubsubMessage.Nack()
-					break
-				}
-
-				publisher.PublishChannel <- &message
-
-				pubsubMessage.Ack()
-			}
-		}
-	}()
 }
 
 // --------------------------------------------------------------------

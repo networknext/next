@@ -867,47 +867,6 @@ locals {
     ]
     EOF
 
-    "database_update" = <<EOF
-    [
-      {
-        "name": "timestamp",
-        "type": "TIMESTAMP",
-        "mode": "REQUIRED",
-        "description": "The timestamp when the cost matrix update occurred"
-      },
-      {
-        "name": "database_size",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The size of the database in bytes"
-      },
-      {
-        "name": "num_relays",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of relays in the database"
-      },
-      {
-        "name": "num_datacenters",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of datacenters in the database"
-      },
-      {
-        "name": "num_sellers",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of sellers in the database"
-      },
-      {
-        "name": "num_buyers",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "The number of buyers in the database"
-      }
-    ]
-    EOF
-
     "route_matrix_update" = <<EOF
     [
       {
@@ -1231,7 +1190,6 @@ locals {
     "server_update" = [ "datacenter_id", "buyer_id" ]
     "server_init" = [ "datacenter_id", "buyer_id" ]
     "relay_update" = [ "relay_id" ]
-    "database_update" = []
     "route_matrix_update" = []
     "cost_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
