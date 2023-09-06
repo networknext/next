@@ -378,8 +378,6 @@ func Test_SessionUpdate_NewSession(t *testing.T) {
 	assert.Equal(t, state.Output.SliceNumber, uint32(1))
 	assert.Equal(t, state.Output.RouteState.ABTest, abTest)
 	assert.True(t, state.Output.ExpireTimestamp > uint64(time.Now().Unix()))
-
-	assert.Equal(t, state.Input, state.Output)
 }
 
 // --------------------------------------------------------------

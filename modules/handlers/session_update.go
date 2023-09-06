@@ -249,14 +249,16 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 
 	core.Debug("new session")
 
-	state.Output.Version = packets.SDK_SessionDataVersion_Write
-	state.Output.SessionId = state.Request.SessionId
-	state.Output.SliceNumber = 1
-	state.Output.StartTimestamp = uint64(time.Now().Unix())
-	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK_SliceSeconds*2 + 1
-	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
+	state.Input.Version = packets.SDK_SessionDataVersion_Write
+	state.Input.SessionId = state.Request.SessionId
+	state.Input.SliceNumber = 0
+	state.Input.StartTimestamp = uint64(time.Now().Unix())
+	state.Input.ExpireTimestamp = state.Input.StartTimestamp
+	state.Input.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
-	state.Input = state.Output
+	state.Output = state.Input
+	state.Output.SliceNumber += 1
+	state.Output.ExpireTimestamp = state.Input.ExpireTimestamp + packets.SDK_SliceSeconds * 2 + 1
 }
 
 func SessionUpdate_ExistingSession(state *SessionUpdateState) {
@@ -1126,7 +1128,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
 	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
 
-	message.SessionId = state.Input.SessionId
+	message.SessionId = state.Request.SessionId
 	message.UserHash = state.Request.UserHash
 	message.StartTime = state.Output.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
@@ -1260,22 +1262,14 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
-	if state.Input.SessionId == 0 {
-		return
-	}
-
-	if state.Input.SliceNumber == 0 {
-		return		
-	}
-
 	message := messages.AnalyticsSessionUpdateMessage{}
 
 	// always
 
 	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
-	message.SessionId = state.Input.SessionId
-	message.SliceNumber = state.Input.SliceNumber
+	message.SessionId = state.Request.SessionId
+	message.SliceNumber = state.Request.SliceNumber
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealJitter = state.RealJitter
 	message.RealOutOfOrder = state.RealOutOfOrder
@@ -1315,13 +1309,13 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 		return
 	}
 
-	core.Debug("sent session summary message: session id = %016x, slice number = %d", state.Input.SessionId, state.Request.SliceNumber)
+	core.Debug("sent session summary message: session id = %016x, slice number = %d", state.Request.SessionId, state.Request.SliceNumber)
 
 	message := messages.AnalyticsSessionSummaryMessage{}
 
 	message.Version = messages.AnalyticsSessionSummaryMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
-	message.SessionId = state.Input.SessionId
+	message.SessionId = state.Request.SessionId
 	message.DatacenterId = state.Request.DatacenterId
 	message.BuyerId = state.Request.BuyerId
 	message.UserHash = state.Request.UserHash
@@ -1340,7 +1334,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-	message.SessionDuration = state.Input.SliceNumber * packets.SDK_SliceSeconds
+	message.SessionDuration = state.Request.SliceNumber * packets.SDK_SliceSeconds
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Output.DurationOnNext
