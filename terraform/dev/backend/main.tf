@@ -349,7 +349,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 locals {
   
   bigquery_tables = {
-
+/*
     "session_update" = <<EOF
     [
       {
@@ -616,7 +616,7 @@ locals {
         "description": "The total number of envelope bytes sent across network next in the client to server direction for this session"
       },
       {
-        "name": "total_envelope_bytes_down",
+        "name": "total_next_envelope_bytes_down",
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "The total number of envelope bytes sent across netwnork next in the server to client direction for this session"
@@ -1158,7 +1158,7 @@ locals {
       }
     ]
     EOF
-
+*/
   }
 
   bigquery_table_clustering = {
