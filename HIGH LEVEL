@@ -60,6 +60,10 @@ DONE
 
 TODO
 
+	Verify all analytics tables have correct data written in dev
+
+	-----------
+
 	api and relay gateway services *must* use HTTPS
 
 	-----------

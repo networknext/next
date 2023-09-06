@@ -81,6 +81,7 @@ type SessionUpdateState struct {
 	SentPortalMapUpdateMessage                bool
 	SentAnalyticsNearRelayPingMessage         bool
 	SentAnalyticsSessionUpdateMessage         bool
+	SentAnalyticsSessionSummaryMessage        bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
 	WroteResponsePacket                       bool
@@ -1319,6 +1320,8 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 		return
 	}
 
+	core.Debug("sent session summary message: session id = %016x, slice number = %d", state.Input.SessionId, state.Request.SliceNumber)
+
 	message := messages.AnalyticsSessionSummaryMessage{}
 
 	message.Version = messages.AnalyticsSessionSummaryMessageVersion_Write
@@ -1350,7 +1353,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
 	if state.AnalyticsSessionSummaryMessageChannel != nil {
 		state.AnalyticsSessionSummaryMessageChannel <- &message
-		state.SentAnalyticsSessionUpdateMessage = true
+		state.SentAnalyticsSessionSummaryMessage = true
 	}
 }
 
