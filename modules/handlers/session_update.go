@@ -1119,11 +1119,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
-	if state.Input.SessionId == 0 {
-		return
-	}
-
-	if state.Input.SliceNumber == 0 {
+	if state.Input.SliceNumber < 1 {
 		return		
 	}
 
@@ -1149,7 +1145,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DatacenterId = state.Request.DatacenterId
 	message.Latitude = state.Input.Latitude
 	message.Longitude = state.Input.Longitude
-	message.SliceNumber = state.Input.SliceNumber
+	message.SliceNumber = state.Input.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.SessionFlags = state.SessionFlags
 	if state.Input.RouteState.Next {
 		state.SessionFlags |= constants.SessionFlags_Next
@@ -1276,6 +1272,10 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
+	if state.Request.SliceNumber < 1 {
+		return
+	}
+
 	message := messages.AnalyticsSessionUpdateMessage{}
 
 	// always
@@ -1283,7 +1283,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
 	message.SessionId = state.Request.SessionId
-	message.SliceNumber = state.Request.SliceNumber
+	message.SliceNumber = state.Request.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealJitter = state.RealJitter
 	message.RealOutOfOrder = state.RealOutOfOrder
