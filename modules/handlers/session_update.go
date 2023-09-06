@@ -253,7 +253,7 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 	state.Output.SessionId = state.Request.SessionId
 	state.Output.SliceNumber = 1
 	state.Output.StartTimestamp = uint64(time.Now().Unix())
-	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK_BillingSliceSeconds*2 + 1
+	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK_SliceSeconds*2 + 1
 	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
 	state.Input = state.Output
@@ -303,15 +303,15 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	state.Output = state.Input
 	state.Output.SliceNumber += 1
-	state.Output.ExpireTimestamp += packets.SDK_BillingSliceSeconds
+	state.Output.ExpireTimestamp += packets.SDK_SliceSeconds
 
 	/*
 		Track total next envelope bandwidth sent up and down
 	*/
 
 	if state.Input.RouteState.Next {
-		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK_BillingSliceSeconds / 8
-		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK_BillingSliceSeconds / 8
+		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK_SliceSeconds / 8
+		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK_SliceSeconds / 8
 	}
 
 	/*
@@ -967,7 +967,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Input.RouteState.Next {
 		state.SessionFlags |= constants.SessionFlags_EverOnNext
-		state.Output.DurationOnNext += packets.SDK_BillingSliceSeconds
+		state.Output.DurationOnNext += packets.SDK_SliceSeconds
 		core.Debug("session has been on network next for %d seconds", state.Output.DurationOnNext)
 	}
 
@@ -1339,7 +1339,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-	message.SessionDuration = state.Input.SliceNumber * packets.SDK_BillingSliceSeconds
+	message.SessionDuration = state.Input.SliceNumber * packets.SDK_SliceSeconds
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Output.DurationOnNext

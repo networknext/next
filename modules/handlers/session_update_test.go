@@ -586,7 +586,7 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 }
 
 func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
@@ -633,7 +633,7 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 
 	assert.Equal(t, state.RealPacketLoss, float32(10.0))
 }
@@ -682,7 +682,7 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 
 	assert.Equal(t, state.RealOutOfOrder, float32(10.0))
 }
@@ -724,7 +724,7 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 
 	assert.Equal(t, state.RealJitter, float32(100.0))
 }
@@ -3378,7 +3378,7 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	assert.False(t, state.GetNearRelays)
 	assert.True(t, (state.SessionFlags&constants.SessionFlags_EverOnNext) != 0)
-	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK_BillingSliceSeconds))
+	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK_SliceSeconds))
 }
 
 func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
