@@ -120,6 +120,47 @@ func Setup(service *common.Service, name string) (*common.GooglePubsubConsumer, 
 
 // --------------------------------------------------------------------
 
+func ProcessAnalyticsDatabaseUpdateMessage(service *common.Service, name string, important bool) {
+
+	consumer, publisher := Setup(service, name)
+
+	go func() {
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case pubsubMessage := <-consumer.MessageChannel:
+
+				core.Debug("received %s message", name)
+
+				messageData := pubsubMessage.Data
+
+				var message messages.AnalyticsDatabaseUpdateMessage
+				err := message.Read(messageData)
+				if err != nil {
+					if !important {
+						core.Error("could not read %s message. not important, so dropping", name)
+						pubsubMessage.Ack()
+						break
+					}
+
+					core.Error("could not read %s message, important, so not acking it.", name)
+					pubsubMessage.Nack()
+					break
+				}
+
+				publisher.PublishChannel <- &message
+
+				pubsubMessage.Ack()
+			}
+		}
+	}()
+}
+
+// --------------------------------------------------------------------
+
 func ProcessAnalyticsRelayToRelayPingMessage(service *common.Service, name string, important bool) {
 
 	consumer, publisher := Setup(service, name)
