@@ -350,6 +350,7 @@ locals {
   
   bigquery_tables = {
 
+/*
     "session_update" = <<EOF
     [
       {
@@ -1222,7 +1223,7 @@ locals {
       }
     ]
     EOF
-
+*/
   }
 
   bigquery_table_clustering = {
