@@ -356,7 +356,6 @@ func GenerateRandomSessionData() SDK_SessionData {
 		WroteSummary:                  common.RandomBool(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
-		SessionDuration:               rand.Uint32(),
 		StartTimestamp:                rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
 	}
@@ -493,7 +492,6 @@ type SDK_SessionData struct {
 	NextEnvelopeBytesUpSum              uint64
 	NextEnvelopeBytesDownSum            uint64
 	DurationOnNext                      uint32
-	SessionDuration                     uint32
 	StartTimestamp                      uint64
 }
 
@@ -569,7 +567,6 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.WroteSummary)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
-	stream.SerializeUint32(&sessionData.SessionDuration)
 	stream.SerializeUint32(&sessionData.DurationOnNext)
 	stream.SerializeUint64(&sessionData.StartTimestamp)
 

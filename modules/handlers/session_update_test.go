@@ -3351,34 +3351,6 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	assert.False(t, state.Response.HasNearRelays)
 }
 
-func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	_, routingPrivateKey := crypto.Box_KeyPair()
-
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
-
-	state.RelayBackendPrivateKey = routingPrivateKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
-
-	from := core.ParseAddress("127.0.0.1:40000")
-	state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
-	state.ServerBackendAddress = &serverBackendAddress
-
-	state.Request.SliceNumber = 1
-
-	handlers.SessionUpdate_Post(state)
-
-	assert.False(t, state.GetNearRelays)
-	assert.Equal(t, state.Output.SessionDuration, uint32(packets.SDK_BillingSliceSeconds))
-}
-
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	t.Parallel()

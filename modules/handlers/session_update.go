@@ -962,12 +962,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		Track session duration
-	*/
-
-	state.Output.SessionDuration += packets.SDK_BillingSliceSeconds
-
-	/*
 		Track duration of time spent on network next, and if the session has ever been on network next.
 	*/
 
@@ -1345,7 +1339,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-	message.SessionDuration = state.Output.SessionDuration
+	message.SessionDuration = state.Input.SliceNumber * packets.SDK_BillingSliceSeconds
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
 	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Output.DurationOnNext
