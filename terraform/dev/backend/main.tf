@@ -1187,6 +1187,7 @@ locals {
       }
     ]
     EOF
+
   }
 
   bigquery_table_clustering = {
