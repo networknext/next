@@ -3335,6 +3335,7 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3358,11 +3359,10 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3370,8 +3370,14 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
 	state.ServerBackendAddress = &serverBackendAddress
 
-	state.Input.RouteState.Next = true
 	state.Request.SliceNumber = 1
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.RouteState.Next = true
+	writeSessionData := writeSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 
@@ -3388,11 +3394,10 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3406,6 +3411,13 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	state.Request.PacketsSentServerToClient = 10002
 	state.Request.PacketsLostClientToServer = 10003
 	state.Request.PacketsLostServerToClient = 10004
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.RouteState.Next = true
+	writeSessionData := writeSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 
@@ -3423,11 +3435,10 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3436,6 +3447,12 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 2
+
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := writeSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	debugString := "it's debug time"
 
@@ -3456,11 +3473,10 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3470,6 +3486,12 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
+
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := writeSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 
@@ -3486,11 +3508,10 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3501,6 +3522,12 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
 	state.Output.WriteSummary = true
+
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := writeSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 

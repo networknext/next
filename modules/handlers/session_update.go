@@ -944,6 +944,14 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
+		Read the session data if it hasn't been read already (except for slice 0, because there is no session data yet...)
+	*/
+
+	if state.Request.SliceNumber != 0 && !SessionUpdate_ReadSessionData(state) {		
+		return
+	}
+
+	/*
 		Build the set of near relays for the SDK to ping.
 
 		The SDK pings these near relays and reports up the results in the next session update.
