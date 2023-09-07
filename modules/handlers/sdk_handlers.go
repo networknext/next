@@ -513,7 +513,8 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	defer func() {
 		milliseconds := float64(time.Since(timeStart).Milliseconds())
 		if milliseconds > 100 {
-			state.SessionFlags |= constants.SessionFlags_LongDuration
+			// todo: need alternative
+			//state.SessionFlags |= constants.SessionFlags_LongDuration
 		}
 		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
 	}()

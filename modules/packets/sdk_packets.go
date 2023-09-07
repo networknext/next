@@ -347,17 +347,24 @@ func GenerateRandomSessionData() SDK_SessionData {
 		RouteChanged:                  common.RandomBool(),
 		RouteNumRelays:                int32(common.RandomInt(0, SDK_MaxRelaysPerRoute)),
 		RouteCost:                     int32(common.RandomInt(0, SDK_InvalidRouteValue)),
-		FallbackToDirect:              common.RandomBool(),
+
+		// todo: really? we don't need these...
 		PrevPacketsSentClientToServer: rand.Uint64(),
 		PrevPacketsSentServerToClient: rand.Uint64(),
 		PrevPacketsLostClientToServer: rand.Uint64(),
 		PrevPacketsLostServerToClient: rand.Uint64(),
+
 		WriteSummary:                  common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
+
+		// todo: these could be just passed up from the sdk server
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
+
+		// todo: this could just be passed up in the request instead of going back and forth
 		StartTimestamp:                rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
+		Error:                         rand.Uint64(),
 	}
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
@@ -480,7 +487,6 @@ type SDK_SessionData struct {
 	RouteCost                           int32
 	RouteRelayIds                       [SDK_MaxRelaysPerRoute]uint64
 	RouteState                          core.RouteState
-	FallbackToDirect                    bool
 	WriteSummary                        bool
 	WroteSummary                        bool
 	PrevPacketsSentClientToServer       uint64
@@ -493,6 +499,7 @@ type SDK_SessionData struct {
 	NextEnvelopeBytesDownSum            uint64
 	DurationOnNext                      uint32
 	StartTimestamp                      uint64
+	Error                               uint64
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -551,7 +558,6 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
-	stream.SerializeBool(&sessionData.FallbackToDirect)
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
 	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
 	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
@@ -569,6 +575,7 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 	stream.SerializeUint32(&sessionData.DurationOnNext)
 	stream.SerializeUint64(&sessionData.StartTimestamp)
+	stream.SerializeUint64(&sessionData.Error)
 
 	return stream.Error()
 }

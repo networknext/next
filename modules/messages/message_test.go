@@ -197,7 +197,6 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 		RealPacketLoss:   float32(common.RandomInt(0, 100)),
 		RealJitter:       float32(common.RandomInt(0, 1000)),
 		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
-		SessionFlags:     rand.Uint64(),
 		SessionEvents:    rand.Uint64(),
 		InternalEvents:   rand.Uint64(),
 		DirectRTT:        float32(common.RandomInt(0, 1000)),
@@ -207,43 +206,19 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 		DirectKbpsDown:   rand.Uint32(),
 	}
 
-	if message.Version >= 2 {
+	message.Next = common.RandomBool()
 
-		message.Next = common.RandomBool()
-
-		if message.Next {
-			message.NextRTT = float32(common.RandomInt(0, 1000))
-			message.NextJitter = float32(common.RandomInt(0, 1000))
-			message.NextPacketLoss = float32(common.RandomInt(0, 100))
-			message.NextKbpsUp = rand.Uint32()
-			message.NextKbpsDown = rand.Uint32()
-			message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-			message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				message.NextRouteRelayId[i] = rand.Uint64()
-			}
+	if message.Next {
+		message.NextRTT = float32(common.RandomInt(0, 1000))
+		message.NextJitter = float32(common.RandomInt(0, 1000))
+		message.NextPacketLoss = float32(common.RandomInt(0, 100))
+		message.NextKbpsUp = rand.Uint32()
+		message.NextKbpsDown = rand.Uint32()
+		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = rand.Uint64()
 		}
-
-	} else {
-
-		// next only
-
-		if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
-			message.NextRTT = float32(common.RandomInt(0, 1000))
-			message.NextJitter = float32(common.RandomInt(0, 1000))
-			message.NextPacketLoss = float32(common.RandomInt(0, 100))
-			message.NextKbpsUp = rand.Uint32()
-			message.NextKbpsDown = rand.Uint32()
-			message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-			message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				message.NextRouteRelayId[i] = rand.Uint64()
-			}
-		}
-	}
-
-	if message.Version >= 3 {
-		message.FallbackToDirect = common.RandomBool()
 	}
 
 	return message
@@ -280,10 +255,7 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 		TotalNextEnvelopeBytesDown:      rand.Uint64(),
 		DurationOnNext:                  rand.Uint32(),
 		StartTimestamp:                  rand.Uint64(),
-	}
-
-	if message.Version >= 2 {
-		message.FallbackToDirect = common.RandomBool()
+		Error:                           rand.Uint64(),
 	}
 
 	return message
@@ -341,38 +313,19 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		NumNearRelays: uint32(common.RandomInt(0, constants.MaxNearRelays)),
 	}
 
-	if message.Version >= 4 {
+	message.Next = common.RandomBool()
 
-		message.Next = common.RandomBool()
-
-		if message.Next {
-			message.NextRTT = float32(common.RandomInt(0, 1000))
-			message.NextJitter = float32(common.RandomInt(0, 1000))
-			message.NextPacketLoss = float32(common.RandomInt(0, 100))
-			message.NextKbpsUp = rand.Uint32()
-			message.NextKbpsDown = rand.Uint32()
-			message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-			message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				message.NextRouteRelayId[i] = rand.Uint64()
-			}
+	if message.Next {
+		message.NextRTT = float32(common.RandomInt(0, 1000))
+		message.NextJitter = float32(common.RandomInt(0, 1000))
+		message.NextPacketLoss = float32(common.RandomInt(0, 100))
+		message.NextKbpsUp = rand.Uint32()
+		message.NextKbpsDown = rand.Uint32()
+		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
+		message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			message.NextRouteRelayId[i] = rand.Uint64()
 		}
-
-	} else {
-
-		if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
-			message.NextRTT = float32(common.RandomInt(0, 1000))
-			message.NextJitter = float32(common.RandomInt(0, 1000))
-			message.NextPacketLoss = float32(common.RandomInt(0, 100))
-			message.NextKbpsUp = rand.Uint32()
-			message.NextKbpsDown = rand.Uint32()
-			message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-			message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				message.NextRouteRelayId[i] = rand.Uint64()
-			}
-		}
-
 	}
 
 	for i := 0; i < int(message.NumNearRelays); i++ {
@@ -383,17 +336,8 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		message.NearRelayRoutable[i] = common.RandomBool()
 	}
 
-	if message.Version >= 2 {
-		message.UserHash = rand.Uint64()
-	}
-
-	if message.Version >= 3 {
-		message.StartTime = rand.Uint64()
-	}
-
-	if message.Version >= 4 {
-		message.FallbackToDirect = common.RandomBool()
-	}
+	message.UserHash = rand.Uint64()
+	message.StartTime = rand.Uint64()
 
 	return message
 }

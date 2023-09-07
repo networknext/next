@@ -37,7 +37,7 @@ type RouteMatrix struct {
 	RouteEntries []core.RouteEntry
 
 	CostMatrixSize uint32
-	OptimizeTime uint32
+	OptimizeTime   uint32
 }
 
 func (m *RouteMatrix) GetMaxSize() int {

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	AnalyticsSessionUpdateMessageVersion_Min   = 1
+	AnalyticsSessionUpdateMessageVersion_Min   = 3
 	AnalyticsSessionUpdateMessageVersion_Max   = 3
 	AnalyticsSessionUpdateMessageVersion_Write = 3
 )
@@ -26,7 +26,6 @@ type AnalyticsSessionUpdateMessage struct {
 	RealPacketLoss   float32
 	RealJitter       float32
 	RealOutOfOrder   float32
-	SessionFlags     uint64
 	SessionEvents    uint64
 	InternalEvents   uint64
 	DirectRTT        float32
@@ -37,7 +36,6 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// next only
 
-	Next               bool
 	NextRTT            float32
 	NextJitter         float32
 	NextPacketLoss     float32
@@ -49,7 +47,7 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// flags
 
-	FallbackToDirect   bool
+	Next             bool
 }
 
 func (message *AnalyticsSessionUpdateMessage) GetMaxSize() int {
@@ -74,7 +72,6 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RealPacketLoss)
 	encoding.WriteFloat32(buffer, &index, message.RealJitter)
 	encoding.WriteFloat32(buffer, &index, message.RealOutOfOrder)
-	encoding.WriteUint64(buffer, &index, message.SessionFlags)
 	encoding.WriteUint64(buffer, &index, message.SessionEvents)
 	encoding.WriteUint64(buffer, &index, message.InternalEvents)
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
@@ -85,46 +82,23 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// next only
 
-	if message.Version >= 2 {
-
-		encoding.WriteBool(buffer, &index, message.Next)
-		if message.Next {
-			encoding.WriteFloat32(buffer, &index, message.NextRTT)
-			encoding.WriteFloat32(buffer, &index, message.NextJitter)
-			encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
-			encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
-			encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
-			encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
-			encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
-			}
+	encoding.WriteBool(buffer, &index, message.Next)
+	if message.Next {
+		encoding.WriteFloat32(buffer, &index, message.NextRTT)
+		encoding.WriteFloat32(buffer, &index, message.NextJitter)
+		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
+		encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
+		encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
+		encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
+		encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
 		}
-
-	} else {
-	
-		if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
-			encoding.WriteFloat32(buffer, &index, message.NextRTT)
-			encoding.WriteFloat32(buffer, &index, message.NextJitter)
-			encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
-			encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
-			encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
-			encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
-			encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
-			}
-		}
-
 	}
 
 	// flags
 
-	if message.Version >= 3 {
-
-		encoding.WriteBool(buffer, &index, message.FallbackToDirect)
-
-	}
+	// ...
 
 	return buffer[:index]
 }
@@ -167,10 +141,6 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read real out of order")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.SessionFlags) {
-		return fmt.Errorf("failed to read session flags")
-	}
-
 	if !encoding.ReadUint64(buffer, &index, &message.SessionEvents) {
 		return fmt.Errorf("failed to read session events")
 	}
@@ -199,98 +169,52 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct kbps down")
 	}
 
-	if message.Version >= 2 {
+	// next only
 
-		// next only
+	if !encoding.ReadBool(buffer, &index, &message.Next) {
+		return fmt.Errorf("failed to read next flag")
+	}
 
-		if !encoding.ReadBool(buffer, &index, &message.Next) {
-			return fmt.Errorf("failed to read next flag")
+	if message.Next {
+
+		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
+			return fmt.Errorf("failed to read next rtt")
 		}
 
-		if message.Next {
-
-			if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
-				return fmt.Errorf("failed to read next rtt")
-			}
-
-			if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
-				return fmt.Errorf("failed to read next jitter")
-			}
-
-			if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
-				return fmt.Errorf("failed to read next packet loss")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
-				return fmt.Errorf("failed to read next kbps up")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
-				return fmt.Errorf("failed to read next kbps down")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
-				return fmt.Errorf("failed to read next predicted rtt")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
-				return fmt.Errorf("failed to read next num route relays")
-			}
-
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
-					return fmt.Errorf("failed to read next route relay id")
-				}
-			}
+		if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
+			return fmt.Errorf("failed to read next jitter")
 		}
 
-	} else {
+		if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
+			return fmt.Errorf("failed to read next packet loss")
+		}
 
-		// next only
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
+			return fmt.Errorf("failed to read next kbps up")
+		}
 
-		if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
+			return fmt.Errorf("failed to read next kbps down")
+		}
 
-			if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
-				return fmt.Errorf("failed to read next rtt")
-			}
+		if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
+			return fmt.Errorf("failed to read next predicted rtt")
+		}
 
-			if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
-				return fmt.Errorf("failed to read next jitter")
-			}
+		if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
+			return fmt.Errorf("failed to read next num route relays")
+		}
 
-			if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
-				return fmt.Errorf("failed to read next packet loss")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
-				return fmt.Errorf("failed to read next kbps up")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
-				return fmt.Errorf("failed to read next kbps down")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
-				return fmt.Errorf("failed to read next predicted rtt")
-			}
-
-			if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
-				return fmt.Errorf("failed to read next num route relays")
-			}
-
-			for i := 0; i < int(message.NextNumRouteRelays); i++ {
-				if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
-					return fmt.Errorf("failed to read next route relay id")
-				}
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
+				return fmt.Errorf("failed to read next route relay id")
 			}
 		}
 	}
 
-	if message.Version >= 3 {
-		if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
-			return fmt.Errorf("failed to read fallback to direct")
-		}
-	}
+	// flags
+
+	// ...
 
 	return nil
 }
@@ -305,7 +229,6 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 	bigquery_message["real_packet_loss"] = float64(message.RealPacketLoss)
 	bigquery_message["real_jitter"] = float64(message.RealJitter)
 	bigquery_message["real_out_of_order"] = float64(message.RealOutOfOrder)
-	bigquery_message["session_flags"] = int(message.SessionFlags)
 	bigquery_message["session_events"] = int(message.SessionEvents)
 	bigquery_message["internal_events"] = int(message.InternalEvents)
 	bigquery_message["direct_rtt"] = float64(message.DirectRTT)
@@ -313,8 +236,6 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 	bigquery_message["direct_packet_loss"] = float64(message.DirectPacketLoss)
 	bigquery_message["direct_kbps_up"] = int(message.DirectKbpsUp)
 	bigquery_message["direct_kbps_down"] = int(message.DirectKbpsDown)
-
-	bigquery_message["next"] = bool(message.Next)
 
 	if message.Next {
 
@@ -332,7 +253,9 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 		bigquery_message["next_route_relays"] = next_route_relays
 	}
 
-	bigquery_message["fallback_to_direct"] = bool(message.FallbackToDirect)
+	bigquery_message["next"] = bool(message.Next)
+
+	// todo: more flags here
 
 	return bigquery_message, "", nil
 }

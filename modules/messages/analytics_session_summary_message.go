@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	AnalyticsSessionSummaryMessageVersion_Min   = 1
-	AnalyticsSessionSummaryMessageVersion_Max   = 2
-	AnalyticsSessionSummaryMessageVersion_Write = 2
+	AnalyticsSessionSummaryMessageVersion_Min   = 0
+	AnalyticsSessionSummaryMessageVersion_Max   = 0
+	AnalyticsSessionSummaryMessageVersion_Write = 0
 )
 
 type AnalyticsSessionSummaryMessage struct {
@@ -43,7 +43,7 @@ type AnalyticsSessionSummaryMessage struct {
 	DurationOnNext                  uint32
 	SessionDuration                 uint32
 	StartTimestamp                  uint64
-	FallbackToDirect                bool
+	Error                           uint64
 }
 
 func (message *AnalyticsSessionSummaryMessage) GetMaxSize() int {
@@ -85,10 +85,7 @@ func (message *AnalyticsSessionSummaryMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.TotalNextEnvelopeBytesDown)
 	encoding.WriteUint32(buffer, &index, message.DurationOnNext)
 	encoding.WriteUint64(buffer, &index, message.StartTimestamp)
-
-	if message.Version >= 2 {
-		encoding.WriteBool(buffer, &index, message.FallbackToDirect)
-	}
+	encoding.WriteUint64(buffer, &index, message.Error)
 
 	return buffer[:index]
 }
@@ -209,10 +206,8 @@ func (message *AnalyticsSessionSummaryMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read start timestamp")
 	}
 
-	if message.Version >= 2 {
-		if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
-			return fmt.Errorf("failed to read fallback to direct")
-		}
+	if !encoding.ReadUint64(buffer, &index, &message.Error) {
+		return fmt.Errorf("failed to read error")
 	}
 
 	return nil
@@ -250,7 +245,7 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 	bigquery_message["duration_on_next"] = int(message.DurationOnNext)
 	bigquery_message["session_duration"] = int(message.SessionDuration)
 	bigquery_message["start_timestamp"] = int(message.StartTimestamp)
-	bigquery_message["fallback_to_direct"] = message.FallbackToDirect
+	bigquery_message["error"] = message.Error
 
 	return bigquery_message, "", nil
 }

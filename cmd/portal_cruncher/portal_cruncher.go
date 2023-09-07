@@ -200,7 +200,6 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		NextKbpsUp:       message.NextKbpsUp,
 		NextKbpsDown:     message.NextKbpsDown,
 		Next:             message.Next,
-		FallbackToDirect: message.FallbackToDirect,
 	}
 
 	sessionInserter[threadNumber].Insert(sessionId, userHash, score, next, &sessionData, &sliceData)

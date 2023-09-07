@@ -37,11 +37,10 @@ type SliceData struct {
 	NextKbpsUp       uint32  `json:"next_kbps_up"`
 	NextKbpsDown     uint32  `json:"next_kbps_down"`
 	Next             bool    `json:"next"`
-	FallbackToDirect bool    `json:"fallback_to_direct"`
 }
 
 func (data *SliceData) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v|%v",
+	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v",
 		data.Timestamp,
 		data.SliceNumber,
 		data.DirectRTT,
@@ -61,13 +60,12 @@ func (data *SliceData) Value() string {
 		data.NextKbpsUp,
 		data.NextKbpsDown,
 		data.Next,
-		data.FallbackToDirect,
 	)
 }
 
 func (data *SliceData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 20 {
+	if len(values) != 19 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -143,7 +141,6 @@ func (data *SliceData) Parse(value string) {
 		return
 	}
 	next := values[18] == "true"
-	fallback_to_direct := values[19] == "true"
 	data.Timestamp = timestamp
 	data.SliceNumber = uint32(sliceNumber)
 	data.DirectRTT = uint32(directRTT)
@@ -163,7 +160,6 @@ func (data *SliceData) Parse(value string) {
 	data.NextKbpsUp = uint32(nextKbpsUp)
 	data.NextKbpsDown = uint32(nextKbpsDown)
 	data.Next = next
-	data.FallbackToDirect = fallback_to_direct
 }
 
 func GenerateRandomSliceData() *SliceData {
@@ -187,7 +183,6 @@ func GenerateRandomSliceData() *SliceData {
 	data.NextKbpsUp = rand.Uint32()
 	data.NextKbpsDown = rand.Uint32()
 	data.Next = common.RandomBool()
-	data.FallbackToDirect = common.RandomBool()
 	return &data
 }
 

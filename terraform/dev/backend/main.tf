@@ -389,12 +389,6 @@ locals {
         "description": "Percentage of packets that arrive out of order between the client and the server (%)"
       },
       {
-        "name": "session_flags",
-        "type": "INT64",
-        "mode": "REQUIRED",
-        "description": "Session flags are used to diagnose what's happening with a session. Look up SessionFlags_ in the codebase for a list of flags"
-      },
-      {
         "name": "session_events",
         "type": "INT64",
         "mode": "NULLABLE",
@@ -437,18 +431,6 @@ locals {
         "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
       },
       {
-        "name": "fallback_to_direct",
-        "type": "BOOL",
-        "mode": "REQUIRED",
-        "description": "True if this session fell back to direct. This indicates an error condition where the client stopped being accelerated. Generally, if the system is not working correctly, or is overloaded, fallback to directs will start occurring."
-      },
-      {
-        "name": "next",
-        "type": "BOOL",
-        "mode": "REQUIRED",
-        "description": "True if this slice is being accelerated over network next"
-      },
-      {
         "name": "next_rtt",
         "type": "FLOAT64",
         "mode": "NULLABLE",
@@ -489,7 +471,13 @@ locals {
         "type": "INT64",
         "mode": "REPEATED",
         "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
-      }
+      },
+      {
+        "name": "next",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this slice is being accelerated over network next"
+      },
     ]
     EOF
 
@@ -652,11 +640,11 @@ locals {
         "description": "The time when this session started"
       },
       {
-        "name": "fallback_to_direct",
-        "type": "BOOL",
+        "name": "error",
+        "type": "INT64",
         "mode": "REQUIRED",
-        "description": "True if this session fell back to direct. This indicates an error condition where the client stopped being accelerated. Generally, if the system is not working correctly, or is overloaded, fallback to directs will start occurring."
-      }
+        "description": "Error flags to diagnose what's happening with a session. Look up SessionError_* in the codebase for a list of errors. 0 if no error has occurred."
+      },
 
     ]
     EOF
