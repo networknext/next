@@ -1004,14 +1004,14 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		The session ends when the client ping times out.
+		The session ends when the client ping times out or the client falls back to direct.
 
 		At this point we write a summary slice to bigquery, with more information than regular slices.
 
 		This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
 	*/
 
-	if state.Request.ClientPingTimedOut {
+	if state.Request.ClientPingTimedOut || state.Request.FallbackToDirect {
 
 		if state.Output.WriteSummary {
 			state.Output.WroteSummary = true
@@ -1301,6 +1301,10 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 			message.NextRouteRelayId[i] = state.Input.RouteRelayIds[i]
 		}
 	}
+
+	// flags
+
+	message.FallbackToDirect = state.Request.FallbackToDirect
 
 	if state.AnalyticsSessionUpdateMessageChannel != nil {
 		state.AnalyticsSessionUpdateMessageChannel <- &message
