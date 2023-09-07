@@ -11,8 +11,8 @@ import (
 
 const (
 	AnalyticsSessionUpdateMessageVersion_Min   = 1
-	AnalyticsSessionUpdateMessageVersion_Max   = 2
-	AnalyticsSessionUpdateMessageVersion_Write = 1
+	AnalyticsSessionUpdateMessageVersion_Max   = 3
+	AnalyticsSessionUpdateMessageVersion_Write = 2
 )
 
 type AnalyticsSessionUpdateMessage struct {
@@ -46,6 +46,10 @@ type AnalyticsSessionUpdateMessage struct {
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
 	NextRouteRelayId   [constants.MaxRouteRelays]uint64
+
+	// flags
+
+	FallbackToDirect   bool
 }
 
 func (message *AnalyticsSessionUpdateMessage) GetMaxSize() int {
@@ -111,6 +115,14 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 				encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
 			}
 		}
+
+	}
+
+	// flags
+
+	if message.Version >= 3 {
+
+		encoding.WriteBool(buffer, &index, message.FallbackToDirect)
 
 	}
 
@@ -274,6 +286,12 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
+	if message.Version >= 3 {
+		if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+			return fmt.Errorf("failed to read fallback to direct")
+		}
+	}
+
 	return nil
 }
 
@@ -313,6 +331,8 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 		}
 		bigquery_message["next_route_relays"] = next_route_relays
 	}
+
+	bigquery_message["fallback_to_direct"] = message.FallbackToDirect
 
 	return bigquery_message, "", nil
 }

@@ -446,7 +446,7 @@ locals {
         "name": "next",
         "type": "BOOL",
         "mode": "REQUIRED",
-        "description": "True if this slice went over network next"
+        "description": "True if this slice is being accelerated over network next"
       },
       {
         "name": "next_rtt",
@@ -650,7 +650,14 @@ locals {
         "type": "TIMESTAMP",
         "mode": "REQUIRED",
         "description": "The time when this session started"
+      },
+      {
+        "name": "fallback_to_direct",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session fell back to direct. This indicates an error condition where the client stopped being accelerated. Generally, if the system is not working correctly, or is overloaded, fallback to directs will start occurring."
       }
+      
     ]
     EOF
 

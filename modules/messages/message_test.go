@@ -242,6 +242,10 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 		}
 	}
 
+	if message.Version >= 3 {
+		message.FallbackToDirect = common.RandomBool()
+	}
+
 	return message
 }
 
@@ -278,7 +282,7 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 		StartTimestamp:                  rand.Uint64(),
 	}
 
-	if message.Version >=2 {
+	if message.Version >= 2 {
 		message.FallbackToDirect = common.RandomBool()
 	}
 
