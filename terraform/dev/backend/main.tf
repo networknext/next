@@ -437,6 +437,12 @@ locals {
         "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
       },
       {
+        "name": "next",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this slice went over network next"
+      },
+      {
         "name": "next_rtt",
         "type": "FLOAT64",
         "mode": "NULLABLE",
