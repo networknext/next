@@ -314,7 +314,7 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 		Track total next envelope bandwidth sent up and down
 	*/
 
-	if state.Input.RouteState.Next {
+	if state.Request.Next {
 		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK_SliceSeconds / 8
 		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK_SliceSeconds / 8
 	}
@@ -1149,9 +1149,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectKbpsUp = state.Request.DirectKbpsUp
 	message.DirectKbpsDown = state.Request.DirectKbpsDown
 
-	// todo: message.Next = state.Input.RouteState.Next
+	message.Next = state.Request.Next
 
-	if state.Input.RouteState.Next {
+	if message.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1183,6 +1183,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		state.PortalSessionUpdateMessageChannel <- &message
 		state.SentPortalSessionUpdateMessage = true
 	}
+
+	message.FallbackToDirect = state.Request.FallbackToDirect
 }
 
 func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
@@ -1288,7 +1290,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// next only
 
-	message.Next = state.Input.RouteState.Next
+	message.Next = state.Request.Next
 	if message.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter

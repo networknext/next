@@ -10,8 +10,8 @@ import (
 
 const (
 	PortalSessionUpdateMessageVersion_Min   = 1
-	PortalSessionUpdateMessageVersion_Max   = 3
-	PortalSessionUpdateMessageVersion_Write = 3
+	PortalSessionUpdateMessageVersion_Max   = 4
+	PortalSessionUpdateMessageVersion_Write = 4
 )
 
 type PortalSessionUpdateMessage struct {
@@ -44,6 +44,7 @@ type PortalSessionUpdateMessage struct {
 	DirectKbpsUp     uint32
 	DirectKbpsDown   uint32
 
+	Next               bool
 	NextRTT            float32
 	NextJitter         float32
 	NextPacketLoss     float32
@@ -63,6 +64,8 @@ type PortalSessionUpdateMessage struct {
 	NearRelayJitter     [constants.MaxNearRelays]byte
 	NearRelayPacketLoss [constants.MaxNearRelays]float32
 	NearRelayRoutable   [constants.MaxNearRelays]bool
+
+	FallbackToDirect bool
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {
@@ -110,17 +113,37 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsUp)
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsDown)
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
-		encoding.WriteFloat32(buffer, &index, message.NextRTT)
-		encoding.WriteFloat32(buffer, &index, message.NextJitter)
-		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
-		encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
-		encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
-		encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
-		encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
-		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
+	if message.Version >= 4 {
+	
+		encoding.WriteBool(buffer, &index, message.Next)
+		if message.Next {
+			encoding.WriteFloat32(buffer, &index, message.NextRTT)
+			encoding.WriteFloat32(buffer, &index, message.NextJitter)
+			encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
+			encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
+			encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
+			encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
+			encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
+			for i := 0; i < int(message.NextNumRouteRelays); i++ {
+				encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
+			}
 		}
+	
+	} else {
+
+		if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+			encoding.WriteFloat32(buffer, &index, message.NextRTT)
+			encoding.WriteFloat32(buffer, &index, message.NextJitter)
+			encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
+			encoding.WriteUint32(buffer, &index, message.NextKbpsUp)
+			encoding.WriteUint32(buffer, &index, message.NextKbpsDown)
+			encoding.WriteUint32(buffer, &index, message.NextPredictedRTT)
+			encoding.WriteUint32(buffer, &index, message.NextNumRouteRelays)
+			for i := 0; i < int(message.NextNumRouteRelays); i++ {
+				encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
+			}
+		}
+
 	}
 
 	encoding.WriteFloat32(buffer, &index, message.RealJitter)
@@ -134,6 +157,10 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteUint8(buffer, &index, message.NearRelayJitter[i])
 		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss[i])
 		encoding.WriteBool(buffer, &index, message.NearRelayRoutable[i])
+	}
+
+	if message.Version >= 4 {
+		encoding.WriteBool(buffer, &index, message.FallbackToDirect)
 	}
 
 	return buffer[:index]
@@ -251,42 +278,90 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct kbps down")
 	}
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	if message.Version >= 4 {
 
-		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
-			return fmt.Errorf("failed to read next rtt")
+		if !encoding.ReadBool(buffer, &index, &message.Next) {
+			return fmt.Errorf("failed to read next bool")
 		}
 
-		if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
-			return fmt.Errorf("failed to read next jitter")
-		}
+		if message.Next {
 
-		if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
-			return fmt.Errorf("failed to read next packet loss")
-		}
+			if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
+				return fmt.Errorf("failed to read next rtt")
+			}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
-			return fmt.Errorf("failed to read next kbps up")
-		}
+			if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
+				return fmt.Errorf("failed to read next jitter")
+			}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
-			return fmt.Errorf("failed to read next kbps down")
-		}
+			if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
+				return fmt.Errorf("failed to read next packet loss")
+			}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
-			return fmt.Errorf("failed to read next predicted rtt")
-		}
+			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
+				return fmt.Errorf("failed to read next kbps up")
+			}
 
-		if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
-			return fmt.Errorf("failed to read next num route relays")
-		}
+			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
+				return fmt.Errorf("failed to read next kbps down")
+			}
 
-		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
+				return fmt.Errorf("failed to read next predicted rtt")
+			}
 
-			if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
-				return fmt.Errorf("failed to read next route relay id")
+			if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
+				return fmt.Errorf("failed to read next num route relays")
+			}
+
+			for i := 0; i < int(message.NextNumRouteRelays); i++ {
+
+				if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
+					return fmt.Errorf("failed to read next route relay id")
+				}
 			}
 		}
+
+	} else {
+
+		if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+
+			if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
+				return fmt.Errorf("failed to read next rtt")
+			}
+
+			if !encoding.ReadFloat32(buffer, &index, &message.NextJitter) {
+				return fmt.Errorf("failed to read next jitter")
+			}
+
+			if !encoding.ReadFloat32(buffer, &index, &message.NextPacketLoss) {
+				return fmt.Errorf("failed to read next packet loss")
+			}
+
+			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsUp) {
+				return fmt.Errorf("failed to read next kbps up")
+			}
+
+			if !encoding.ReadUint32(buffer, &index, &message.NextKbpsDown) {
+				return fmt.Errorf("failed to read next kbps down")
+			}
+
+			if !encoding.ReadUint32(buffer, &index, &message.NextPredictedRTT) {
+				return fmt.Errorf("failed to read next predicted rtt")
+			}
+
+			if !encoding.ReadUint32(buffer, &index, &message.NextNumRouteRelays) {
+				return fmt.Errorf("failed to read next num route relays")
+			}
+
+			for i := 0; i < int(message.NextNumRouteRelays); i++ {
+
+				if !encoding.ReadUint64(buffer, &index, &message.NextRouteRelayId[i]) {
+					return fmt.Errorf("failed to read next route relay id")
+				}
+			}
+		}
+
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &message.RealJitter) {
@@ -326,6 +401,14 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 		if !encoding.ReadBool(buffer, &index, &message.NearRelayRoutable[i]) {
 			return fmt.Errorf("failed to read near relay packet routable")
 		}
+	}
+
+	if message.Version >= 4 {
+
+		if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+			return fmt.Errorf("failed to read fallback to direct")
+		}
+
 	}
 
 	return nil

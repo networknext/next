@@ -332,7 +332,7 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 		bigquery_message["next_route_relays"] = next_route_relays
 	}
 
-	bigquery_message["fallback_to_direct"] = message.FallbackToDirect
+	bigquery_message["fallback_to_direct"] = bool(message.FallbackToDirect)
 
 	return bigquery_message, "", nil
 }

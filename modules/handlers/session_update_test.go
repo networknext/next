@@ -757,6 +757,7 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidth(t *testing.T) {
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
+	state.Request.Next = true
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
 	state.Request.JitterClientToServer = 50.0
