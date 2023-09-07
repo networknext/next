@@ -657,7 +657,7 @@ locals {
         "mode": "REQUIRED",
         "description": "True if this session fell back to direct. This indicates an error condition where the client stopped being accelerated. Generally, if the system is not working correctly, or is overloaded, fallback to directs will start occurring."
       }
-      
+
     ]
     EOF
 
@@ -1177,6 +1177,7 @@ locals {
       }
     ]
     EOF
+
   }
 
   bigquery_table_clustering = {
