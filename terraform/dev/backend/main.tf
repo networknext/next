@@ -437,6 +437,12 @@ locals {
         "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
       },
       {
+        "name": "fallback_to_direct",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session fell back to direct. This indicates an error condition where the client stopped being accelerated. Generally, if the system is not working correctly, or is overloaded, fallback to directs will start occurring."
+      },
+      {
         "name": "next",
         "type": "BOOL",
         "mode": "REQUIRED",
@@ -1164,7 +1170,6 @@ locals {
       }
     ]
     EOF
-
   }
 
   bigquery_table_clustering = {
@@ -1430,7 +1435,7 @@ module "analytics" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks"]
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription, google_bigquery_table.table]
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "analytics_address" {
