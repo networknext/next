@@ -1138,9 +1138,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.Longitude = state.Input.Longitude
 	message.SliceNumber = state.Input.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.SessionFlags = state.SessionFlags
-	if state.Input.RouteState.Next {
-		state.SessionFlags |= constants.SessionFlags_Next
-	}
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
 	message.ConnectionType = uint8(state.Request.ConnectionType)
@@ -1152,7 +1149,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectKbpsUp = state.Request.DirectKbpsUp
 	message.DirectKbpsDown = state.Request.DirectKbpsDown
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	// todo: message.Next = state.Input.RouteState.Next
+
+	if state.Input.RouteState.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1289,7 +1288,8 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// next only
 
-	if state.Input.RouteState.Next {
+	message.Next = state.Input.RouteState.Next
+	if message.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
