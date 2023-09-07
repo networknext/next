@@ -278,6 +278,10 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 		StartTimestamp:                  rand.Uint64(),
 	}
 
+	if message.Version >=2 {
+		message.FallbackToDirect = common.RandomBool()
+	}
+
 	return message
 }
 

@@ -12,7 +12,7 @@ import (
 const (
 	AnalyticsSessionSummaryMessageVersion_Min   = 1
 	AnalyticsSessionSummaryMessageVersion_Max   = 2
-	AnalyticsSessionSummaryMessageVersion_Write = 1
+	AnalyticsSessionSummaryMessageVersion_Write = 2
 )
 
 type AnalyticsSessionSummaryMessage struct {

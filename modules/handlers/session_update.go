@@ -1344,6 +1344,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.TotalNextEnvelopeBytesDown = state.Input.NextEnvelopeBytesDownSum
 	message.DurationOnNext = state.Input.DurationOnNext
 	message.StartTimestamp = state.Input.StartTimestamp
+	message.FallbackToDirect = state.Request.FallbackToDirect
 
 	if state.AnalyticsSessionSummaryMessageChannel != nil {
 		state.AnalyticsSessionSummaryMessageChannel <- &message
