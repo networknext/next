@@ -73,6 +73,8 @@ type SessionUpdateState struct {
 	Longitude float32
 
 	// codepath flags (for unit testing etc...)
+	ClientPingTimedOut                        bool
+	AnalysisOnly                              bool
 	RouteChanged                              bool
 	RouteContinued                            bool
 	TakeNetworkNext                           bool
@@ -139,6 +141,18 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only")
+		state.AnalysisOnly = true
+		return true
+	}
+
+	/*
+		If the client ping has timed out, don't do any further processing.
+	*/
+
+	if state.Request.ClientPingTimedOut {
+		core.Debug("client ping timed out")
+		state.ClientPingTimedOut = true
+		return true
 	}
 
 	/*

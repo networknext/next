@@ -1,20 +1,18 @@
 package handlers_test
 
-// todo: everything in here will be broken for the moment
-/*
 import (
-	"encoding/binary"
+	// "encoding/binary"
 	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/constants"
+	// "github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
-	"github.com/networknext/next/modules/encoding"
+	// "github.com/networknext/next/modules/encoding"
 	"github.com/networknext/next/modules/handlers"
 	"github.com/networknext/next/modules/packets"
 
@@ -95,8 +93,8 @@ func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	result := handlers.SessionUpdate_Pre(state)
 
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_AnalysisOnly) != 0)
+	assert.True(t, result)
+	assert.True(t, state.AnalysisOnly)
 }
 
 func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
@@ -109,8 +107,8 @@ func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 
 	result := handlers.SessionUpdate_Pre(state)
 
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_ClientPingTimedOut) != 0)
+	assert.True(t, result)
+	assert.True(t, state.ClientPingTimedOut)
 }
 
 func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
@@ -123,11 +121,11 @@ func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.LocatedIP)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_LocationVeto) != 0)
 	assert.Equal(t, state.Latitude, float32(43))
 	assert.Equal(t, state.Longitude, float32(-75))
 }
 
+/*
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 
 	t.Parallel()
@@ -3624,6 +3622,5 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 
 	assert.Equal(t, state.Output, sessionData)
 }
-
-// --------------------------------------------------------------
 */
+// --------------------------------------------------------------
