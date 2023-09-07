@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/messages"
@@ -148,7 +147,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 	userHash := message.UserHash
 
-	next := (message.SessionFlags & constants.SessionFlags_Next) != 0
+	next := message.Next
 
 	score := uint32(0)
 	if next {
@@ -200,6 +199,8 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		DirectKbpsDown:   message.DirectKbpsUp,
 		NextKbpsUp:       message.NextKbpsUp,
 		NextKbpsDown:     message.NextKbpsDown,
+		Next:             message.Next,
+		FallbackToDirect: message.FallbackToDirect,
 	}
 
 	sessionInserter[threadNumber].Insert(sessionId, userHash, score, next, &sessionData, &sliceData)
