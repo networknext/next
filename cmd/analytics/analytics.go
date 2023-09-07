@@ -533,7 +533,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("route matrix size: %d", routeMatrixSize)
-				core.Debug("optimize time: %.2fms", optimizeTime)
+				core.Debug("optimize time: %dms", optimizeTime)
 
 				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
 				core.Debug("route matrix num dest relays: %d", routeMatrixNumDestRelays)

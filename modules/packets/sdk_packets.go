@@ -347,21 +347,14 @@ func GenerateRandomSessionData() SDK_SessionData {
 		RouteChanged:                  common.RandomBool(),
 		RouteNumRelays:                int32(common.RandomInt(0, SDK_MaxRelaysPerRoute)),
 		RouteCost:                     int32(common.RandomInt(0, SDK_InvalidRouteValue)),
-
-		// todo: really? we don't need these...
 		PrevPacketsSentClientToServer: rand.Uint64(),
 		PrevPacketsSentServerToClient: rand.Uint64(),
 		PrevPacketsLostClientToServer: rand.Uint64(),
 		PrevPacketsLostServerToClient: rand.Uint64(),
-
 		WriteSummary:                  common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
-
-		// todo: these could be just passed up from the sdk server
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
-
-		// todo: this could just be passed up in the request instead of going back and forth
 		StartTimestamp:                rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
 		Error:                         rand.Uint64(),

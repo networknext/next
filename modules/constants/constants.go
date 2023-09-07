@@ -49,8 +49,6 @@ const (
 		SessionFlags_LatencyReduction                = (1 << 13)
 		SessionFlags_PacketLossReduction             = (1 << 14)
 		SessionFlags_LongDuration                    = (1 << 18)
-		SessionFlags_ClientNextBandwidthOverLimit    = (1 << 36)
-		SessionFlags_ServerNextBandwidthOverLimit    = (1 << 37)
 	*/
 
 	SessionError_FallbackToDirect                = (1 << 1)

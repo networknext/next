@@ -255,7 +255,9 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 
 	bigquery_message["next"] = bool(message.Next)
 
-	// todo: more flags here
+	// flags
+
+	// ...
 
 	return bigquery_message, "", nil
 }
