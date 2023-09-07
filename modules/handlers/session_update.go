@@ -171,7 +171,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		if state.Latitude == 0.0 && state.Longitude == 0.0 {
 			core.Error("location veto")
-			state.Output.RouteState.LocationVeto = true
+			state.Input.RouteState.LocationVeto = true
 			return true
 		}
 	}
@@ -696,15 +696,6 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 }
 
 func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
-
-	/*
-		If the client has timed out (finished session), then we don't need to make any route decision.
-	*/
-
-	if state.Request.ClientPingTimedOut {
-		core.Debug("session is over. no route decision to make")
-		return
-	}
 
 	/*
 		If we are on on network next but don't have any relays in our route, something is WRONG.

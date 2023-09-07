@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
-	// "github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
@@ -125,7 +125,6 @@ func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 	assert.Equal(t, state.Longitude, float32(-75))
 }
 
-/*
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 
 	t.Parallel()
@@ -142,7 +141,7 @@ func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_LocationVeto) != 0)
+	assert.True(t, state.Input.RouteState.LocationVeto)
 }
 
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
@@ -161,7 +160,7 @@ func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_StaleRouteMatrix) != 0)
+	assert.True(t, (state.Error & constants.SessionError_StaleRouteMatrix) != 0)
 }
 
 func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
@@ -182,7 +181,7 @@ func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
@@ -202,7 +201,7 @@ func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
+	assert.True(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
@@ -224,8 +223,8 @@ func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_DatacenterNotEnabled) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.True(t, (state.Error&constants.SessionError_DatacenterNotEnabled) != 0)
 }
 
 func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
@@ -249,8 +248,8 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_DatacenterNotEnabled) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_DatacenterNotEnabled) != 0)
 }
 
 func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
@@ -271,8 +270,8 @@ func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_NoRelaysInDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.True(t, (state.Error&constants.SessionError_NoRelaysInDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
@@ -294,8 +293,8 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_NoRelaysInDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_NoRelaysInDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_Debug(t *testing.T) {
@@ -315,44 +314,6 @@ func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 
 	assert.False(t, result)
 	assert.NotNil(t, state.Debug)
-}
-
-func Test_SessionUpdate_Pre_ClientNextBandwidthOverLimit(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.ClientNextBandwidthOverLimit = true
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_ClientNextBandwidthOverLimit) != 0)
-}
-
-func Test_SessionUpdate_Pre_ServerNextBandwidthOverLimit(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.ServerNextBandwidthOverLimit = true
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_ServerNextBandwidthOverLimit) != 0)
 }
 
 // --------------------------------------------------------------
@@ -382,6 +343,7 @@ func Test_SessionUpdate_NewSession(t *testing.T) {
 
 // --------------------------------------------------------------
 
+/*
 func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 
 	t.Parallel()
