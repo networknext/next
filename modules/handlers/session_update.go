@@ -73,6 +73,10 @@ type SessionUpdateState struct {
 	Longitude float32
 
 	// codepath flags (for unit testing etc...)
+	RouteChanged                              bool
+	RouteContinued                            bool
+	TakeNetworkNext                           bool
+	StayDirect                                bool
 	FirstUpdate                               bool
 	ReadSessionData                           bool
 	NotGettingNearRelaysDatacenterIsNil       bool
@@ -151,7 +155,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		state.Latitude, state.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
-		// todo: do we really still need location veto? if we get lat/long of (0,0) we can simply get near relays around dest
 		if state.Latitude == 0.0 && state.Longitude == 0.0 {
 			core.Error("location veto")
 			state.Output.RouteState.LocationVeto = true
@@ -684,13 +687,10 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		If the client has timed out (finished session), then we don't need to make any route decision.
 	*/
 
-	// todo: state bool?
-	/*
-	if (state.SessionFlags & constants.SessionFlags_ClientPingTimedOut) != 0 {
+	if state.Request.ClientPingTimedOut {
 		core.Debug("session is over. no route decision to make")
 		return
 	}
-	*/
 
 	/*
 		If we are on on network next but don't have any relays in our route, something is WRONG.
@@ -737,8 +737,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.Debug,
 			sliceNumber) {
 
-// todo: state flag?
-//			state.SessionFlags |= constants.SessionFlags_TakeNetworkNext
+			state.TakeNetworkNext = true
 
 			SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
@@ -757,8 +756,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		} else {
 
-// todo: state flag?
-//			state.SessionFlags |= constants.SessionFlags_StayDirect
+			state.StayDirect = true
 
 			if state.Debug != nil {
 				*state.Debug += "staying direct\n"
@@ -828,8 +826,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			if routeChanged {
 
 				core.Debug("route changed")
-				// todo: state flag?
-				// state.SessionFlags |= constants.SessionFlags_RouteChanged
+
+				state.RouteChanged = true
+				
 				SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 				if state.Debug != nil {
@@ -848,8 +847,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			} else {
 
 				core.Debug("route continued")
-				// todo: state flag?
-				// state.SessionFlags |= constants.SessionFlags_RouteContinued
+				
+				state.RouteContinued = true
+
 				SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 				if state.Debug != nil {
 					*state.Debug += "route continued\n"
