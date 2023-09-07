@@ -1011,15 +1011,15 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
 	*/
 
-	if state.Request.ClientPingTimedOut || state.Request.FallbackToDirect {
+	if state.Request.ClientPingTimedOut || state.Request.FallbackToDirect {   // IMPORTANT: once set, these values will each remain true thereafter
 
-		if state.Output.WriteSummary {
+		// write summary only once
+
+		if !state.Output.WroteSummary && !state.Output.WriteSummary {
+			state.Output.WriteSummary = true
+		} else if state.Output.WriteSummary && !state.Output.WroteSummary{
 			state.Output.WroteSummary = true
 			state.Output.WriteSummary = false
-		}
-
-		if !state.Output.WroteSummary {
-			state.Output.WriteSummary = true
 		}
 	}
 
