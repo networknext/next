@@ -47,7 +47,14 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// flags
 
-	Next             bool
+	Next                         bool
+	Reported                     bool
+	LatencyReduction             bool
+	PacketLossReduction          bool
+	ForceNext                    bool
+	LongSessionUpdate            bool
+	ClientNextBandwidthOverLimit bool
+	ServerNextBandwidthOverLimit bool
 }
 
 func (message *AnalyticsSessionUpdateMessage) GetMaxSize() int {
@@ -98,7 +105,13 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// flags
 
-	// ...
+	encoding.WriteBool(buffer, &index, message.Reported)
+	encoding.WriteBool(buffer, &index, message.LatencyReduction)
+	encoding.WriteBool(buffer, &index, message.PacketLossReduction)
+	encoding.WriteBool(buffer, &index, message.ForceNext)
+	encoding.WriteBool(buffer, &index, message.LongSessionUpdate)
+	encoding.WriteBool(buffer, &index, message.ClientNextBandwidthOverLimit)
+	encoding.WriteBool(buffer, &index, message.ServerNextBandwidthOverLimit)
 
 	return buffer[:index]
 }
@@ -214,8 +227,34 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 
 	// flags
 
-	// ...
+	if !encoding.ReadBool(buffer, &index, &message.Reported) {
+		return fmt.Errorf("failed to read reported flag")
+	}
 
+	if !encoding.ReadBool(buffer, &index, &message.LatencyReduction) {
+		return fmt.Errorf("failed to read latency reduction flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.PacketLossReduction) {
+		return fmt.Errorf("failed to read latency packet loss reduction flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ForceNext) {
+		return fmt.Errorf("failed to read force next flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LongSessionUpdate) {
+		return fmt.Errorf("failed to read long session update flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ClientNextBandwidthOverLimit) {
+		return fmt.Errorf("failed to read client next bandwidth over limit flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ServerNextBandwidthOverLimit) {
+		return fmt.Errorf("failed to read server next bandwidth over limit flag")
+	}
+	
 	return nil
 }
 
@@ -253,11 +292,16 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 		bigquery_message["next_route_relays"] = next_route_relays
 	}
 
-	bigquery_message["next"] = bool(message.Next)
-
 	// flags
 
-	// ...
+	bigquery_message["next"] = bool(message.Next)
+	bigquery_message["reported"] = bool(message.Reported)
+	bigquery_message["latency_reduction"] = bool(message.LatencyReduction)
+	bigquery_message["packet_loss_reduction"] = bool(message.PacketLossReduction)
+	bigquery_message["force_next"] = bool(message.ForceNext)
+	bigquery_message["long_session_update"] = bool(message.LongSessionUpdate)
+	bigquery_message["client_next_bandwidth_over_limit"] = bool(message.ClientNextBandwidthOverLimit)
+	bigquery_message["server_next_bandwidth_over_limit"] = bool(message.ClientNextBandwidthOverLimit)
 
 	return bigquery_message, "", nil
 }

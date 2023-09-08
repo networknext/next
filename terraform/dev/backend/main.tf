@@ -431,6 +431,12 @@ locals {
         "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
       },
       {
+        "name": "next",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this slice is being accelerated over network next"
+      },
+      {
         "name": "next_rtt",
         "type": "FLOAT64",
         "mode": "NULLABLE",
@@ -471,13 +477,7 @@ locals {
         "type": "INT64",
         "mode": "REPEATED",
         "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
-      },
-      {
-        "name": "next",
-        "type": "BOOL",
-        "mode": "REQUIRED",
-        "description": "True if this slice is being accelerated over network next"
-      },
+      }
     ]
     EOF
 
@@ -644,7 +644,7 @@ locals {
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "Error flags to diagnose what's happening with a session. Look up SessionError_* in the codebase for a list of errors. 0 if no error has occurred."
-      },
+      }
 
     ]
     EOF

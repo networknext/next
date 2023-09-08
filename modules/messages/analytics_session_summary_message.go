@@ -44,6 +44,13 @@ type AnalyticsSessionSummaryMessage struct {
 	SessionDuration                 uint32
 	StartTimestamp                  uint64
 	Error                           uint64
+	Reported                        bool
+	LatencyReduction                bool
+	PacketLossReduction             bool
+	ForceNext                       bool
+	LongSessionUpdate               bool
+	ClientNextBandwidthOverLimit    bool
+	ServerNextBandwidthOverLimit    bool
 }
 
 func (message *AnalyticsSessionSummaryMessage) GetMaxSize() int {

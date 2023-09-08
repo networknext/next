@@ -207,6 +207,13 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 	}
 
 	message.Next = common.RandomBool()
+	message.Reported = common.RandomBool()
+	message.LatencyReduction = common.RandomBool()
+	message.PacketLossReduction = common.RandomBool()
+	message.ForceNext = common.RandomBool()
+	message.LongSessionUpdate = common.RandomBool()
+	message.ClientNextBandwidthOverLimit = common.RandomBool()
+	message.ServerNextBandwidthOverLimit = common.RandomBool()
 
 	if message.Next {
 		message.NextRTT = float32(common.RandomInt(0, 1000))

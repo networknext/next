@@ -43,14 +43,6 @@ const (
 	NEXT_CONTINUE_TOKEN_BYTES           = 17
 	NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
-	// todo: these need to go somewhere. they are useful and I want to see them in slice data, and in aggregate in the summary
-	/*
-		SessionFlags_Reported                        = (1 << 1)
-		SessionFlags_LatencyReduction                = (1 << 13)
-		SessionFlags_PacketLossReduction             = (1 << 14)
-		SessionFlags_LongDuration                    = (1 << 18)
-	*/
-
 	SessionError_FallbackToDirect                = (1 << 1)
 	SessionError_NoRoute                         = (1 << 2)
 	SessionError_UnknownDatacenter               = (1 << 3)

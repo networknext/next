@@ -160,7 +160,7 @@ func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
-	assert.True(t, (state.Error & constants.SessionError_StaleRouteMatrix) != 0)
+	assert.True(t, (state.Error&constants.SessionError_StaleRouteMatrix) != 0)
 }
 
 func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
@@ -3469,4 +3469,5 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	assert.True(t, state.Output.WroteSummary)
 	assert.False(t, state.Response.HasNearRelays)
 }
+
 // --------------------------------------------------------------

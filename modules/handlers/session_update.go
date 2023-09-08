@@ -833,7 +833,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 				core.Debug("route changed")
 
 				state.RouteChanged = true
-				
+
 				SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 				if state.Debug != nil {
@@ -852,7 +852,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			} else {
 
 				core.Debug("route continued")
-				
+
 				state.RouteContinued = true
 
 				SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
