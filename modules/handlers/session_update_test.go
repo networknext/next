@@ -83,6 +83,20 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters
 	return routeMatrix
 }
 
+func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	state.Request.FallbackToDirect = true
+
+	result := handlers.SessionUpdate_Pre(state)
+
+	assert.True(t, result)
+	assert.True(t, (state.Error&constants.SessionError_FallbackToDirect) != 0)
+}
+
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -761,36 +775,6 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 
 	assert.Equal(t, state.Output.NextEnvelopeBytesUpSum, uint64(0))
 	assert.Equal(t, state.Output.NextEnvelopeBytesDownSum, uint64(0))
-}
-
-// --------------------------------------------------------------
-
-func Test_SessionUpdate_HandleFallbackToDirect_FallbackToDirect(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.FallbackToDirect = true
-
-	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
-
-	assert.True(t, result)
-	assert.True(t, (state.Error&constants.SessionError_FallbackToDirect) != 0)
-}
-
-func Test_SessionUpdate_HandleFallbackToDirect_DoNotFallbackToDirect(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.FallbackToDirect = false
-
-	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
-
-	assert.False(t, result)
-	assert.True(t, state.Error == 0)
 }
 
 // --------------------------------------------------------------

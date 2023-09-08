@@ -68,7 +68,7 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
-	// lat/long if we looked it up this update
+// lat/long if we looked it up this update
 	Latitude  float32
 	Longitude float32
 
@@ -132,6 +132,18 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 }
 
 func SessionUpdate_Pre(state *SessionUpdateState) bool {
+
+	/*
+		Fallback to direct is a state where the SDK has met some fatal error condition.
+
+		When this happens, the session will go direct from this point forward.
+	*/
+
+	if state.Request.FallbackToDirect {
+		core.Error("fallback to direct")
+		state.Error |= constants.SessionError_FallbackToDirect
+		return true
+	}
 
 	/*
 		If the route shader is in analysis only mode, set the analysis only flag in the state
@@ -388,23 +400,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	if state.Request.JitterServerToClient > state.Request.JitterClientToServer {
 		state.RealJitter = state.Request.JitterServerToClient
 	}
-}
-
-func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
-
-	/*
-		Fallback to direct is a state where the SDK has met some fatal error condition.
-
-		When this happens, the session will go direct from that point forward.
-	*/
-
-	if state.Request.FallbackToDirect {
-		core.Error("fallback to direct")
-		state.Error |= constants.SessionError_FallbackToDirect
-		return true
-	}
-
-	return false
 }
 
 func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {

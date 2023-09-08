@@ -477,6 +477,48 @@ locals {
         "type": "INT64",
         "mode": "REPEATED",
         "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
+      },
+      {
+        "name": "reported",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session was reported by the player"
+      },
+      {
+        "name": "latency_reduction",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session took network next this slice to reduce latency"
+      },
+      {
+        "name": "packet_loss_reduction",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session took network next this slice to reduce packet loss"
+      },
+      {
+        "name": "force_next",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session took network next this slice because it was forced to"
+      },
+      {
+        "name": "long_session_update",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded."
+      },
+      {
+        "name": "client_next_bandwidth_over_limit",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct."
+      },
+      {
+        "name": "server_next_bandwidth_over_limit",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the server to client next bandwidth went over the envelope limit this slice and was sent over direct."
       }
     ]
     EOF
@@ -644,8 +686,49 @@ locals {
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "Error flags to diagnose what's happening with a session. Look up SessionError_* in the codebase for a list of errors. 0 if no error has occurred."
+      },
+      {
+        "name": "reported",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session was reported by the player"
+      },
+      {
+        "name": "latency_reduction",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session took network next to reduce latency"
+      },
+      {
+        "name": "packet_loss_reduction",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session took network next to reduce packet loss"
+      },
+      {
+        "name": "force_next",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if this session took network next because it was forced to"
+      },
+      {
+        "name": "long_session_update",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded."
+      },
+      {
+        "name": "client_next_bandwidth_over_limit",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct."
+      },
+      {
+        "name": "server_next_bandwidth_over_limit",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct."
       }
-
     ]
     EOF
 

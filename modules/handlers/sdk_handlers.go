@@ -576,20 +576,6 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	}
 
 	/*
-	   Handle fallback to direct.
-
-	   Fallback to direct is a condition where the SDK indicates that it has seen
-	   some fatal error, like not getting a session response from the backend,
-	   and has decided to go direct for the rest of the session.
-
-	   When this happens, we early out to save processing time.
-	*/
-
-	if SessionUpdate_HandleFallbackToDirect(&state) {
-		return
-	}
-
-	/*
 	   Process near relay ping statistics after the first slice.
 
 	   We use near relay latency, jitter and packet loss for route planning.
