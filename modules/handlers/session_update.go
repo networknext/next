@@ -68,7 +68,7 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
-// lat/long if we looked it up this update
+	// lat/long if we looked it up this update
 	Latitude  float32
 	Longitude float32
 
@@ -95,6 +95,7 @@ type SessionUpdateState struct {
 	LocatedIP                                 bool
 	GetNearRelays                             bool
 	WroteResponsePacket                       bool
+	LongSessionUpdate                         bool
 
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
@@ -1304,7 +1305,13 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// flags
 
-	// ...
+	message.Reported = state.Request.Reported
+	message.LatencyReduction = state.Input.RouteState.ReduceLatency
+	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
+	message.ForceNext = state.Input.RouteState.ForcedNext
+	message.LongSessionUpdate = state.LongSessionUpdate
+	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
+	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
 
 	// send message
 
