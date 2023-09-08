@@ -1312,6 +1312,15 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.LongSessionUpdate = state.LongSessionUpdate
 	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
 	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
+	message.Veto = state.Input.RouteState.Veto
+	message.Disabled = state.Input.RouteState.Disabled
+	message.NotSelected = state.Input.RouteState.NotSelected
+	message.A = state.Input.RouteState.A
+	message.B = state.Input.RouteState.B
+	message.LatencyWorse = state.Input.RouteState.LatencyWorse
+	message.LocationVeto = state.Input.RouteState.LocationVeto
+	message.Mispredict = state.Input.RouteState.Mispredict
+	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 
 	// send message
 

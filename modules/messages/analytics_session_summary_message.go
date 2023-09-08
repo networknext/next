@@ -46,15 +46,15 @@ type AnalyticsSessionSummaryMessage struct {
 
 	// flags
 
-	Error                           uint64
-	Next                            bool
-	Reported                        bool
-	LatencyReduction                bool
-	PacketLossReduction             bool
-	ForceNext                       bool
-	LongSessionUpdate               bool
-	ClientNextBandwidthOverLimit    bool
-	ServerNextBandwidthOverLimit    bool
+	Error                        uint64
+	Next                         bool
+	Reported                     bool
+	LatencyReduction             bool
+	PacketLossReduction          bool
+	ForceNext                    bool
+	LongSessionUpdate            bool
+	ClientNextBandwidthOverLimit bool
+	ServerNextBandwidthOverLimit bool
 }
 
 func (message *AnalyticsSessionSummaryMessage) GetMaxSize() int {
@@ -268,7 +268,7 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 	bigquery_message["start_timestamp"] = int(message.StartTimestamp)
 
 	// flags
-	
+
 	bigquery_message["error"] = message.Error
 	bigquery_message["reported"] = bool(message.Reported)
 	bigquery_message["latency_reduction"] = bool(message.LatencyReduction)
