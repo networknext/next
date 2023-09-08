@@ -1588,8 +1588,8 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	// take the network next route
 
 	routeState.Next = true
-	routeState.ReduceLatency = reduceLatency
-	routeState.ReducePacketLoss = reducePacketLoss
+	routeState.ReduceLatency = routeState.ReduceLatency || reduceLatency
+	routeState.ReducePacketLoss = routeState.ReducePacketLoss || reducePacketLoss
 	routeState.Multipath = routeShader.Multipath
 
 	return true

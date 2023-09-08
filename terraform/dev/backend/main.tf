@@ -782,7 +782,62 @@ locals {
         "type": "BOOL",
         "mode": "REQUIRED",
         "description": "True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct."
+      },
+      {
+        "name": "veto",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the routing logic decided that this session should no longer be accelerated for some reason."
+      },
+      {
+        "name": "disabled",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next."
+      },
+      {
+        "name": "not_selected",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration."
+      },
+      {
+        "name": "a",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "This session was part of an AB test, and is in the A group."
+      },
+      {
+        "name": "b",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "This session was part of an AB test, and is in the B group."
+      },
+      {
+        "name": "latency_worse",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if we made latency worse."
+      },
+      {
+        "name": "location_veto",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if we could not locate the player, eg. lat long is at null island (0,0)."
+      },
+      {
+        "name": "mispredict",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
+      },
+      {
+        "name": "lack_of_diversity",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
       }
+      
     ]
     EOF
 

@@ -55,6 +55,15 @@ type AnalyticsSessionSummaryMessage struct {
 	LongSessionUpdate            bool
 	ClientNextBandwidthOverLimit bool
 	ServerNextBandwidthOverLimit bool
+	Veto                         bool
+	Disabled                     bool
+	NotSelected                  bool
+	A                            bool
+	B                            bool
+	LatencyWorse                 bool
+	LocationVeto                 bool
+	Mispredict                   bool
+	LackOfDiversity              bool
 }
 
 func (message *AnalyticsSessionSummaryMessage) GetMaxSize() int {
@@ -107,6 +116,15 @@ func (message *AnalyticsSessionSummaryMessage) Write(buffer []byte) []byte {
 	encoding.WriteBool(buffer, &index, message.LongSessionUpdate)
 	encoding.WriteBool(buffer, &index, message.ClientNextBandwidthOverLimit)
 	encoding.WriteBool(buffer, &index, message.ServerNextBandwidthOverLimit)
+	encoding.WriteBool(buffer, &index, message.Veto)
+	encoding.WriteBool(buffer, &index, message.Disabled)
+	encoding.WriteBool(buffer, &index, message.NotSelected)
+	encoding.WriteBool(buffer, &index, message.A)
+	encoding.WriteBool(buffer, &index, message.B)
+	encoding.WriteBool(buffer, &index, message.LatencyWorse)
+	encoding.WriteBool(buffer, &index, message.LocationVeto)
+	encoding.WriteBool(buffer, &index, message.Mispredict)
+	encoding.WriteBool(buffer, &index, message.LackOfDiversity)
 
 	return buffer[:index]
 }
@@ -231,6 +249,42 @@ func (message *AnalyticsSessionSummaryMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read error")
 	}
 
+	if !encoding.ReadBool(buffer, &index, &message.Veto) {
+		return fmt.Errorf("failed to read veto flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Disabled) {
+		return fmt.Errorf("failed to read disabled flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.NotSelected) {
+		return fmt.Errorf("failed to read not selected flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.A) {
+		return fmt.Errorf("failed to read A flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.B) {
+		return fmt.Errorf("failed to read B flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LatencyWorse) {
+		return fmt.Errorf("failed to read latency worse flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LocationVeto) {
+		return fmt.Errorf("failed to read location veto flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Mispredict) {
+		return fmt.Errorf("failed to read mispredict flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LackOfDiversity) {
+		return fmt.Errorf("failed to read lack of diversity flag")
+	}
+
 	return nil
 }
 
@@ -277,6 +331,15 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 	bigquery_message["long_session_update"] = bool(message.LongSessionUpdate)
 	bigquery_message["client_next_bandwidth_over_limit"] = bool(message.ClientNextBandwidthOverLimit)
 	bigquery_message["server_next_bandwidth_over_limit"] = bool(message.ClientNextBandwidthOverLimit)
+	bigquery_message["veto"] = bool(message.Veto)
+	bigquery_message["disabled"] = bool(message.Disabled)
+	bigquery_message["not_selected"] = bool(message.NotSelected)
+	bigquery_message["a"] = bool(message.A)
+	bigquery_message["b"] = bool(message.B)
+	bigquery_message["latency_worse"] = bool(message.LatencyWorse)
+	bigquery_message["location_veto"] = bool(message.LocationVeto)
+	bigquery_message["mispredict"] = bool(message.Mispredict)
+	bigquery_message["lack_of_diversity"] = bool(message.LackOfDiversity)
 
 	return bigquery_message, "", nil
 }
