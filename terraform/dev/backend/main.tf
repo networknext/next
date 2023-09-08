@@ -479,6 +479,12 @@ locals {
         "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
       },
       {
+        "name": "fallback_to_direct",
+        "type": "BOOL",
+        "mode": "REQUIRED",
+        "description": "True if the SDK has encountered a fatal error and cannot continue acceleration. Typically this only happens when the system is misconfigured or extremely overloaded."
+      },
+      {
         "name": "reported",
         "type": "BOOL",
         "mode": "REQUIRED",
@@ -837,7 +843,7 @@ locals {
         "mode": "REQUIRED",
         "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
       }
-      
+
     ]
     EOF
 

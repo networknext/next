@@ -48,6 +48,7 @@ type AnalyticsSessionUpdateMessage struct {
 	// flags
 
 	Next                         bool
+	FallbackToDirect             bool
 	Reported                     bool
 	LatencyReduction             bool
 	PacketLossReduction          bool
@@ -114,6 +115,7 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// flags
 
+	encoding.WriteBool(buffer, &index, message.FallbackToDirect)
 	encoding.WriteBool(buffer, &index, message.Reported)
 	encoding.WriteBool(buffer, &index, message.LatencyReduction)
 	encoding.WriteBool(buffer, &index, message.PacketLossReduction)
@@ -245,6 +247,10 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 
 	// flags
 
+	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+		return fmt.Errorf("failed to read fallback to direct flag")
+	}
+
 	if !encoding.ReadBool(buffer, &index, &message.Reported) {
 		return fmt.Errorf("failed to read reported flag")
 	}
@@ -349,6 +355,7 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 	// flags
 
 	bigquery_message["next"] = bool(message.Next)
+	bigquery_message["fallback_to_direct"] = bool(message.FallbackToDirect)
 	bigquery_message["reported"] = bool(message.Reported)
 	bigquery_message["latency_reduction"] = bool(message.LatencyReduction)
 	bigquery_message["packet_loss_reduction"] = bool(message.PacketLossReduction)

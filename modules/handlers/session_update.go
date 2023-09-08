@@ -141,8 +141,10 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.FallbackToDirect {
-		core.Error("fallback to direct")
-		state.Error |= constants.SessionError_FallbackToDirect
+		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
+			core.Error("fallback to direct")
+			state.Error |= constants.SessionError_FallbackToDirect
+		}
 		return true
 	}
 
@@ -1305,6 +1307,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// flags
 
+	message.FallbackToDirect = state.Request.FallbackToDirect
 	message.Reported = state.Request.Reported
 	message.LatencyReduction = state.Input.RouteState.ReduceLatency
 	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
