@@ -2062,6 +2062,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 session->stats_client_bandwidth_over_limit = true;
             }
 
+            // todo
+            printf("------------------------------------------------\n");
+            printf("direct_kbps_up = %.1f\n", packet.direct_kbps_up);
+            printf("direct_kbps_down = %.1f\n", packet.direct_kbps_down);
+            printf("next_kbps_up = %.1f\n", packet.next_kbps_up);
+            printf("next_kbps_down = %.1f\n", packet.next_kbps_down);
+            printf("------------------------------------------------\n");
+
             session->stats_platform_id = packet.platform_id;
             session->stats_connection_type = packet.connection_type;
             session->stats_direct_kbps_up = packet.direct_kbps_up;

@@ -161,7 +161,7 @@ void client_thread_function( void * data )
 
         next_client_open_session( client, connect_address );
 
-        uint8_t packet_data[8];
+        uint8_t packet_data[256];
         memcpy( packet_data, &user_id, 8 );
 
         double connect_time = next_platform_time();

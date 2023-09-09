@@ -1001,6 +1001,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         next_printf( NEXT_LOG_LEVEL_SPAM, "client processing server to client packet" );
 
+        // todo
+        printf("received server to client packet\n");
+
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -1020,14 +1023,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
 
-        if ( already_received && !client->multipath )
+        if ( already_received )
         {
-            return;
-        }
-
-        if ( already_received && client->multipath )
-        {
-            client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
+            if ( client->multipath )
+            {
+                // todo
+                printf("direct got there faster\n");
+                client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
+            }
             return;
         }
 
@@ -1721,6 +1724,14 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
+
+        // todo
+        printf("=============================================\n");
+        printf("direct_bandwidth_kbps_up = %.1f\n", client->client_stats.direct_kbps_up);
+        printf("direct_bandwidth_kbps_down = %.1f\n", client->client_stats.direct_kbps_down);
+        printf("next_bandwidth_kbps_up = %.1f\n", client->client_stats.next_kbps_up);
+        printf("next_bandwidth_kbps_down = %.1f\n", client->client_stats.next_kbps_down);
+        printf("=============================================\n");
 
         client->last_stats_update_time = current_time;
     }
@@ -2449,20 +2460,26 @@ void next_client_update( next_client_t * client )
                 next_printf( NEXT_LOG_LEVEL_SPAM, "client calling packet received callback: from = %s, payload = %d bytes", next_address_to_string( &client->server_address, address_buffer ), packet_received->payload_bytes );
 #endif // #if NEXT_SPIKE_TRACKING
 
+                const bool direct = packet_received->direct;
+
+                printf("received packet. direct = %s\n", packet_received->direct ? "true" : "false");
+
                 client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
 
                 const int wire_packet_bits = next_wire_packet_bits( packet_received->payload_bytes );
 
-                next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
-
-                double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_platform_time() );
-
+                if ( direct )
                 {
-                    next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
-                    client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
-                }
+                    next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-                if ( !packet_received->direct )
+                    double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_platform_time() );
+
+                    {
+                        next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
+                        client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
+                    }
+                }
+                else
                 {
                     int envelope_kbps_down;
                     {
@@ -2606,7 +2623,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             client->internal->direct_bandwidth_usage_kbps_up = direct_usage_kbps_up;
         }
 
-        // track next send backend and don't send over network next if we're over the bandwidth budget
+        // track next send bandwidth and don't send over network next if we're over the bandwidth budget
 
         if ( send_over_network_next )
         {
