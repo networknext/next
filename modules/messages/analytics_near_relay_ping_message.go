@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	AnalyticsNearRelayPingMessageVersion_Min   = 1
-	AnalyticsNearRelayPingMessageVersion_Max   = 1
-	AnalyticsNearRelayPingMessageVersion_Write = 1
+	AnalyticsNearRelayPingMessageVersion_Min   = 0
+	AnalyticsNearRelayPingMessageVersion_Max   = 0
+	AnalyticsNearRelayPingMessageVersion_Write = 0
 )
 
 type AnalyticsNearRelayPingMessage struct {

@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	AnalyticsRelayToRelayPingMessageVersion_Min   = 4
-	AnalyticsRelayToRelayPingMessageVersion_Max   = 4
-	AnalyticsRelayToRelayPingMessageVersion_Write = 4
+	AnalyticsRelayToRelayPingMessageVersion_Min   = 0
+	AnalyticsRelayToRelayPingMessageVersion_Max   = 0
+	AnalyticsRelayToRelayPingMessageVersion_Write = 0
 
 	MaxAnalyticsRelayToRelayPingMessageSize = 128
 )

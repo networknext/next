@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	AnalyticsSessionUpdateMessageVersion_Min   = 3
-	AnalyticsSessionUpdateMessageVersion_Max   = 3
-	AnalyticsSessionUpdateMessageVersion_Write = 3
+	AnalyticsSessionUpdateMessageVersion_Min   = 0
+	AnalyticsSessionUpdateMessageVersion_Max   = 0
+	AnalyticsSessionUpdateMessageVersion_Write = 0
 )
 
 type AnalyticsSessionUpdateMessage struct {

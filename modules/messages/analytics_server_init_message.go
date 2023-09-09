@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	AnalyticsServerInitMessageVersion_Min   = 1
-	AnalyticsServerInitMessageVersion_Max   = 2
-	AnalyticsServerInitMessageVersion_Write = 2
+	AnalyticsServerInitMessageVersion_Min   = 0
+	AnalyticsServerInitMessageVersion_Max   = 0
+	AnalyticsServerInitMessageVersion_Write = 0
 )
 
 type AnalyticsServerInitMessage struct {
@@ -72,12 +72,8 @@ func (message *AnalyticsServerInitMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read datacenter name")
 	}
 
-	if message.Version >= 2 {
-
-		if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
-			return fmt.Errorf("failed to read server address")
-		}
-
+	if !encoding.ReadAddress(buffer, &index, &message.ServerAddress) {
+		return fmt.Errorf("failed to read server address")
 	}
 
 	return nil
@@ -99,10 +95,7 @@ func (message *AnalyticsServerInitMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteString(buffer, &index, message.DatacenterName, constants.MaxDatacenterNameLength)
-
-	if message.Version >= 2 {
-		encoding.WriteAddress(buffer, &index, &message.ServerAddress)
-	}
+	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 
 	return buffer[:index]
 }

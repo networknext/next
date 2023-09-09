@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	AnalyticsRouteMatrixUpdateMessageVersion_Min   = 1
-	AnalyticsRouteMatrixUpdateMessageVersion_Max   = 2
-	AnalyticsRouteMatrixUpdateMessageVersion_Write = 2
+	AnalyticsRouteMatrixUpdateMessageVersion_Min   = 0
+	AnalyticsRouteMatrixUpdateMessageVersion_Max   = 0
+	AnalyticsRouteMatrixUpdateMessageVersion_Write = 0
 )
 
 type AnalyticsRouteMatrixUpdateMessage struct {
@@ -78,10 +78,8 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RTTBucket_40_45ms)
 	encoding.WriteFloat32(buffer, &index, message.RTTBucket_45_50ms)
 	encoding.WriteFloat32(buffer, &index, message.RTTBucket_50ms_Plus)
-	if message.Version >= 2 {
-		encoding.WriteUint32(buffer, &index, message.CostMatrixSize)
-		encoding.WriteUint32(buffer, &index, message.OptimizeTime)
-	}
+	encoding.WriteUint32(buffer, &index, message.CostMatrixSize)
+	encoding.WriteUint32(buffer, &index, message.OptimizeTime)
 	return buffer[:index]
 }
 
@@ -193,15 +191,12 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read rtt bucket 50ms+ improvement")
 	}
 
-	if message.Version >= 2 {
+	if !encoding.ReadUint32(buffer, &index, &message.CostMatrixSize) {
+		return fmt.Errorf("failed to read cost matrix size")
+	}
 
-		if !encoding.ReadUint32(buffer, &index, &message.CostMatrixSize) {
-			return fmt.Errorf("failed to read cost matrix size")
-		}
-
-		if !encoding.ReadUint32(buffer, &index, &message.OptimizeTime) {
-			return fmt.Errorf("failed to read optimize time")
-		}
+	if !encoding.ReadUint32(buffer, &index, &message.OptimizeTime) {
+		return fmt.Errorf("failed to read optimize time")
 	}
 
 	return nil

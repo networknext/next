@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	AnalyticsMatchDataMessageVersion_Min   = 1
-	AnalyticsMatchDataMessageVersion_Max   = 1
-	AnalyticsMatchDataMessageVersion_Write = 1
+	AnalyticsMatchDataMessageVersion_Min   = 0
+	AnalyticsMatchDataMessageVersion_Max   = 0
+	AnalyticsMatchDataMessageVersion_Write = 0
 
 	MaxAnalyticsMatchDataMessageBytes = 2048
 )
