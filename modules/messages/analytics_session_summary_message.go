@@ -47,7 +47,6 @@ type AnalyticsSessionSummaryMessage struct {
 	// flags
 
 	Error                        uint64
-	Next                         bool
 	Reported                     bool
 	LatencyReduction             bool
 	PacketLossReduction          bool
@@ -247,6 +246,34 @@ func (message *AnalyticsSessionSummaryMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.Error) {
 		return fmt.Errorf("failed to read error")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Reported) {
+		return fmt.Errorf("failed to read reported flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LatencyReduction) {
+		return fmt.Errorf("failed to read latency reduction flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.PacketLossReduction) {
+		return fmt.Errorf("failed to read latency packet loss reduction flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ForceNext) {
+		return fmt.Errorf("failed to read force next flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LongSessionUpdate) {
+		return fmt.Errorf("failed to read long session update flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ClientNextBandwidthOverLimit) {
+		return fmt.Errorf("failed to read client next bandwidth over limit flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ServerNextBandwidthOverLimit) {
+		return fmt.Errorf("failed to read server next bandwidth over limit flag")
 	}
 
 	if !encoding.ReadBool(buffer, &index, &message.Veto) {
