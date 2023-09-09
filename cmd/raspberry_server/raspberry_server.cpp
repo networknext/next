@@ -41,7 +41,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 {
     (void) context;
 
-    if ( packet_bytes != 8 )
+    if ( packet_bytes != 256 )
         return;
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
