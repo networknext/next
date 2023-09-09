@@ -35,6 +35,7 @@
 #include "next_platform.h"
 
 #include <atomic>
+#include <stdio.h>
 
 // ---------------------------------------------------------------
 

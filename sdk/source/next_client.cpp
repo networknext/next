@@ -37,6 +37,7 @@
 #include "next_internal_config.h"
 
 #include <atomic>
+#include <stdio.h>
 
 // ---------------------------------------------------------------
 
