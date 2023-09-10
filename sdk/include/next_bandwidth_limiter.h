@@ -27,11 +27,7 @@
 
 inline int next_wire_packet_bits( int payload_bytes )
 {
-    const int bits = ( NEXT_IPV4_HEADER_BYTES + NEXT_UDP_HEADER_BYTES + 1 + 15 + NEXT_HEADER_BYTES + payload_bytes + 2 ) * 8;
-
-    printf("%d -> %d\n", payload_bytes * 8, bits);
-
-    return bits;
+    return ( NEXT_IPV4_HEADER_BYTES + NEXT_UDP_HEADER_BYTES + 1 + 15 + NEXT_HEADER_BYTES + payload_bytes + 2 ) * 8;
 }
 
 struct next_bandwidth_limiter_t

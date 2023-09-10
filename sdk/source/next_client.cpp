@@ -785,23 +785,23 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = next_read_uint64( &p );
 
-        if ( next_replay_protection_already_received( &client->payload_replay_protection, packet_sequence ) )
+        const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, packet_sequence );
+
+        if ( !already_received )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. already received" );
-            return;
+            next_replay_protection_advance_sequence( &client->payload_replay_protection, packet_sequence );
+
+            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, packet_sequence );
+
+            next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, packet_sequence );
+
+            next_jitter_tracker_packet_received( &client->jitter_tracker, packet_sequence, packet_receive_time );
         }
-
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, packet_sequence );
-
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, packet_sequence );
-
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, packet_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, packet_sequence, packet_receive_time );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
+        notify->already_received = already_received;
         notify->payload_bytes = packet_bytes - 9;
         next_assert( notify->payload_bytes > 0 );
         memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
@@ -1002,9 +1002,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         next_printf( NEXT_LOG_LEVEL_SPAM, "client processing server to client packet" );
 
-        // todo
-        printf("received server to client packet\n");
-
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -1024,28 +1021,21 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
 
-        if ( already_received )
+        if ( !already_received )
         {
-            if ( client->multipath )
-            {
-                // todo
-                printf("direct got there faster\n");
-                client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-            }
-            return;
+            next_replay_protection_advance_sequence( &client->payload_replay_protection, payload_sequence );
+
+            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, payload_sequence );
+
+            next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, payload_sequence );
+
+            next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_platform_time() );
         }
-
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, payload_sequence );
-
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, payload_sequence );
-
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, payload_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_platform_time() );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
+        notify->already_received = already_received;
         notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
         memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
         {
@@ -1725,14 +1715,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
-
-        // todo
-        printf("=============================================\n");
-        printf("direct_bandwidth_kbps_up = %.1f\n", client->client_stats.direct_kbps_up);
-        printf("direct_bandwidth_kbps_down = %.1f\n", client->client_stats.direct_kbps_down);
-        printf("next_bandwidth_kbps_up = %.1f\n", client->client_stats.next_kbps_up);
-        printf("next_bandwidth_kbps_down = %.1f\n", client->client_stats.next_kbps_down);
-        printf("=============================================\n");
 
         client->last_stats_update_time = current_time;
     }
@@ -2462,10 +2444,12 @@ void next_client_update( next_client_t * client )
 #endif // #if NEXT_SPIKE_TRACKING
 
                 const bool direct = packet_received->direct;
+                const bool already_received = packet_received->already_received;
 
-                printf("received packet. direct = %s\n", packet_received->direct ? "true" : "false");
-
-                client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
+                if ( !already_received )
+                {
+                    client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
+                }
 
                 const int wire_packet_bits = next_wire_packet_bits( packet_received->payload_bytes );
 
