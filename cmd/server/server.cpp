@@ -52,7 +52,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 {
     (void) context;
 
-    verify_packet( packet_data, packet_bytes );
+    // verify_packet( packet_data, packet_bytes );
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
@@ -85,7 +85,7 @@ int main()
     {
         next_server_update( server );
 
-        next_platform_sleep( 1.0 / 1000.0 );
+        next_platform_sleep( 0.001 );
 
         fflush( stdout );
     }

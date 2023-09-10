@@ -2473,7 +2473,7 @@ void next_client_update( next_client_t * client )
                 {
                     next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-                    double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_platform_time() );
+                    double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth );
 
                     {
                         next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
@@ -2490,7 +2490,7 @@ void next_client_update( next_client_t * client )
 
                     next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_platform_time(), envelope_kbps_down, wire_packet_bits );
 
-                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth, next_platform_time() );
+                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth );
 
                     {
                         next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
@@ -2617,7 +2617,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         next_bandwidth_limiter_add_packet( &client->direct_send_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth, next_platform_time() );
+        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth );
 
         {
             next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
@@ -2636,7 +2636,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_platform_time(), next_envelope_kbps_up, wire_packet_bits );
 
-            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_platform_time() );
+            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth );
 
             {
                 next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );

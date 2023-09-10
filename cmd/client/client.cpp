@@ -98,13 +98,21 @@ int main()
 
         if ( next_client_ready( client ) ) 
         {
+            /*
             int packet_bytes = 0;
             uint8_t packet_data[NEXT_MTU];
             generate_packet( packet_data, packet_bytes );
             next_client_send_packet( client, packet_data, packet_bytes );
+            */
+
+            uint8_t packet_data[256];
+            memset( packet_data, 0, sizeof(packet_data) );
+            next_client_send_packet( client, packet_data, sizeof(packet_data) );
         }
 
-        next_platform_sleep( 1.0 / 60.0 );
+        next_platform_sleep( 1.0 );
+
+        // next_platform_sleep( 1.0 / 60.0 );
 
         fflush( stdout );
     }
