@@ -52,7 +52,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 {
     (void) context;
 
-    // verify_packet( packet_data, packet_bytes );
+    verify_packet( packet_data, packet_bytes );
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
