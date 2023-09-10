@@ -64,6 +64,10 @@ TODO
 
 	Implement load testing harness
 
+		-- load test relays
+		-- load test servers
+		-- load test sessions
+
 	-----------
 
 	api and relay gateway services *must* use HTTPS
@@ -87,7 +91,7 @@ TODO
 	https://github.com/leandromoreira/linux-network-performance-parameters
 
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
-	
+
 	-----------
 
 	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
