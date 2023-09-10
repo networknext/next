@@ -6,7 +6,6 @@ import (
 	"github.com/networknext/next/modules/envvar"
 )
 
-var magicUpdateSeconds int
 
 func main() {
 
@@ -23,7 +22,7 @@ func main() {
 
 func SimulateServers(numServers int) {
 	for i := 0; i < numServers; i++ {
-		// ...
+		go RunServer()
 	}
 }
 
