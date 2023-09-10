@@ -173,7 +173,6 @@
 
 #define NEXT_PING_RATE                                                 10
 
-#define NEXT_ETHERNET_HEADER_BYTES                                     18
 #define NEXT_IPV4_HEADER_BYTES                                         20
 #define NEXT_UDP_HEADER_BYTES                                           8
 #define NEXT_HEADER_BYTES                                              33

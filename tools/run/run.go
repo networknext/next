@@ -128,8 +128,6 @@ func main() {
 		pubsub_emulator()
 	} else if command == "bigquery-emulator" {
 		bigquery_emulator()
-	} else if command == "setup-emulators" {
-		setup_emulators()
 	} else if command == "func-test-sdk" {
 		func_test_sdk(args[2:])
 	} else if command == "func-test-relay" {
@@ -160,6 +158,8 @@ func main() {
 		sql_local()
 	} else if command == "sql-docker" {
 		sql_docker()
+	} else if command == "sql-staging" {
+		sql_staging()
 	} else if command == "extract-database" {
 		extract_database()
 	} else if command == "func-server" {
@@ -327,10 +327,6 @@ func bigquery_emulator() {
 	bash("bigquery-emulator --project=local --dataset=local")
 }
 
-func setup_emulators() {
-	bash("go run ./tools/setup_emulators/setup_emulators.go")
-}
-
 func func_test_sdk(tests []string) {
 	command := "cd dist && ./func_test_sdk"
 	if len(tests) > 0 {
@@ -425,19 +421,23 @@ func relay_keygen() {
 }
 
 func sql_create() {
-	bash("psql -U developer postgres -f ./schemas/sql/create.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/create.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_destroy() {
-	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/destroy.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_local() {
-	bash("psql -U developer postgres -f ./schemas/sql/local.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/local.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_docker() {
-	bash("psql -U developer postgres -f ./schemas/sql/docker.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/docker.sql -v ON_ERROR_STOP=1")
+}
+
+func sql_staging() {
+	bash("psql -U developer postgres -f ./sql/staging.sql -v ON_ERROR_STOP=1")
 }
 
 func extract_database() {

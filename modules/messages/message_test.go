@@ -68,19 +68,22 @@ func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMa
 		RTTBucket_50ms_Plus:     rand.Float32(),
 	}
 
+	message.CostMatrixSize = rand.Uint32()
+	message.OptimizeTime = rand.Uint32()
+
 	return message
 }
 
 func GenerateRandomAnalyticsRelayToRelayPingMessage() messages.AnalyticsRelayToRelayPingMessage {
 
 	message := messages.AnalyticsRelayToRelayPingMessage{
-		Version:    byte(common.RandomInt(messages.AnalyticsRelayToRelayPingMessageVersion_Min, messages.AnalyticsRelayToRelayPingMessageVersion_Max)),
-		Timestamp:  uint64(time.Now().Unix()),
-		RelayA:     rand.Uint64(),
-		RelayB:     rand.Uint64(),
-		RTT:        uint8(common.RandomInt(0, 255)),
-		Jitter:     uint8(common.RandomInt(0, 255)),
-		PacketLoss: rand.Float32(),
+		Version:            byte(common.RandomInt(messages.AnalyticsRelayToRelayPingMessageVersion_Min, messages.AnalyticsRelayToRelayPingMessageVersion_Max)),
+		Timestamp:          uint64(time.Now().Unix()),
+		SourceRelayId:      rand.Uint64(),
+		DestinationRelayId: rand.Uint64(),
+		RTT:                uint8(common.RandomInt(0, 255)),
+		Jitter:             uint8(common.RandomInt(0, 255)),
+		PacketLoss:         rand.Float32(),
 	}
 
 	return message
@@ -114,21 +117,6 @@ func GenerateRandomAnalyticsRelayUpdateMessage() messages.AnalyticsRelayUpdateMe
 
 	for i := 0; i < constants.NumRelayCounters; i++ {
 		message.RelayCounters[i] = rand.Uint64()
-	}
-
-	return message
-}
-
-func GenerateRandomAnalyticsDatabaseUpdateMessage() messages.AnalyticsDatabaseUpdateMessage {
-
-	message := messages.AnalyticsDatabaseUpdateMessage{
-		Version:        byte(common.RandomInt(messages.AnalyticsDatabaseUpdateMessageVersion_Min, messages.AnalyticsDatabaseUpdateMessageVersion_Max)),
-		Timestamp:      uint64(time.Now().Unix()),
-		DatabaseSize:   rand.Uint32(),
-		NumRelays:      rand.Uint32(),
-		NumDatacenters: rand.Uint32(),
-		NumSellers:     rand.Uint32(),
-		NumBuyers:      rand.Uint32(),
 	}
 
 	return message
@@ -171,6 +159,8 @@ func GenerateRandomAnalyticsServerInitMessage() messages.AnalyticsServerInitMess
 		DatacenterName:   common.RandomString(constants.MaxDatacenterNameLength),
 	}
 
+	message.ServerAddress = common.RandomAddress()
+
 	return message
 }
 
@@ -203,7 +193,6 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 		RealPacketLoss:   float32(common.RandomInt(0, 100)),
 		RealJitter:       float32(common.RandomInt(0, 1000)),
 		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
-		SessionFlags:     rand.Uint64(),
 		SessionEvents:    rand.Uint64(),
 		InternalEvents:   rand.Uint64(),
 		DirectRTT:        float32(common.RandomInt(0, 1000)),
@@ -211,11 +200,29 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 		DirectPacketLoss: float32(common.RandomInt(0, 100)),
 		DirectKbpsUp:     rand.Uint32(),
 		DirectKbpsDown:   rand.Uint32(),
+
+		// flags
+
+		Next:                            common.RandomBool(),
+		Reported:                        common.RandomBool(),
+		LatencyReduction:                common.RandomBool(),
+		PacketLossReduction:             common.RandomBool(),
+		ForceNext:                       common.RandomBool(),
+		LongSessionUpdate:               common.RandomBool(),
+		ClientNextBandwidthOverLimit:    common.RandomBool(),
+		ServerNextBandwidthOverLimit:    common.RandomBool(),
+		Veto:                            common.RandomBool(),
+		Disabled:                        common.RandomBool(),
+		NotSelected:                     common.RandomBool(),
+		A:                               common.RandomBool(),
+		B:                               common.RandomBool(),
+		LatencyWorse:                    common.RandomBool(),
+		LocationVeto:                    common.RandomBool(),
+		Mispredict:                      common.RandomBool(),
+		LackOfDiversity:                 common.RandomBool(),
 	}
 
-	// next only
-
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	if message.Next {
 		message.NextRTT = float32(common.RandomInt(0, 1000))
 		message.NextJitter = float32(common.RandomInt(0, 1000))
 		message.NextPacketLoss = float32(common.RandomInt(0, 100))
@@ -258,10 +265,27 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 		ClientToServerPacketsOutOfOrder: rand.Uint64(),
 		ServerToClientPacketsOutOfOrder: rand.Uint64(),
 		SessionDuration:                 rand.Uint32(),
-		TotalEnvelopeBytesUp:            rand.Uint64(),
-		TotalEnvelopeBytesDown:          rand.Uint64(),
+		TotalNextEnvelopeBytesUp:        rand.Uint64(),
+		TotalNextEnvelopeBytesDown:      rand.Uint64(),
 		DurationOnNext:                  rand.Uint32(),
 		StartTimestamp:                  rand.Uint64(),
+		Error:                           rand.Uint64(),
+		Reported:                        common.RandomBool(),
+		LatencyReduction:                common.RandomBool(),
+		PacketLossReduction:             common.RandomBool(),
+		ForceNext:                       common.RandomBool(),
+		LongSessionUpdate:               common.RandomBool(),
+		ClientNextBandwidthOverLimit:    common.RandomBool(),
+		ServerNextBandwidthOverLimit:    common.RandomBool(),
+		Veto:                            common.RandomBool(),
+		Disabled:                        common.RandomBool(),
+		NotSelected:                     common.RandomBool(),
+		A:                               common.RandomBool(),
+		B:                               common.RandomBool(),
+		LatencyWorse:                    common.RandomBool(),
+		LocationVeto:                    common.RandomBool(),
+		Mispredict:                      common.RandomBool(),
+		LackOfDiversity:                 common.RandomBool(),
 	}
 
 	return message
@@ -300,26 +324,24 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		Longitude:        float32(common.RandomInt(-180, +180)),
 		ClientAddress:    common.RandomAddress(),
 		ServerAddress:    common.RandomAddress(),
-
 		SliceNumber:      rand.Uint32(),
 		DirectRTT:        float32(common.RandomInt(0, 1000)),
 		DirectJitter:     float32(common.RandomInt(0, 1000)),
 		DirectPacketLoss: float32(common.RandomInt(0, 100)),
 		DirectKbpsUp:     rand.Uint32(),
 		DirectKbpsDown:   rand.Uint32(),
-
-		SessionFlags:   rand.Uint64(),
-		SessionEvents:  rand.Uint64(),
-		InternalEvents: rand.Uint64(),
-
-		RealPacketLoss: float32(common.RandomInt(0, 100)),
-		RealJitter:     float32(common.RandomInt(0, 1000)),
-		RealOutOfOrder: float32(common.RandomInt(0, 100)),
-
-		NumNearRelays: uint32(common.RandomInt(0, constants.MaxNearRelays)),
+		SessionFlags:     rand.Uint64(),
+		SessionEvents:    rand.Uint64(),
+		InternalEvents:   rand.Uint64(),
+		RealPacketLoss:   float32(common.RandomInt(0, 100)),
+		RealJitter:       float32(common.RandomInt(0, 1000)),
+		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
+		NumNearRelays:    uint32(common.RandomInt(0, constants.MaxNearRelays)),
 	}
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	message.Next = common.RandomBool()
+
+	if message.Next {
 		message.NextRTT = float32(common.RandomInt(0, 1000))
 		message.NextJitter = float32(common.RandomInt(0, 1000))
 		message.NextPacketLoss = float32(common.RandomInt(0, 100))
@@ -340,13 +362,8 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		message.NearRelayRoutable[i] = common.RandomBool()
 	}
 
-	if message.Version >= 2 {
-		message.UserHash = rand.Uint64()
-	}
-
-	if message.Version >= 3 {
-		message.StartTime = rand.Uint64()
-	}
+	message.UserHash = rand.Uint64()
+	message.StartTime = rand.Uint64()
 
 	return message
 }
@@ -368,9 +385,7 @@ func GenerateRandomPortalRelayUpdateMessage() messages.PortalRelayUpdateMessage 
 		CurrentTime:               rand.Uint64(),
 	}
 
-	if message.Version >= 2 {
-		message.RelayName = common.RandomString(constants.MaxRelayNameLength)
-	}
+	message.RelayName = common.RandomString(constants.MaxRelayNameLength)
 
 	return message
 }
@@ -408,28 +423,24 @@ func GenerateRandomPortalMapUpdateMessage() messages.PortalMapUpdateMessage {
 	return message
 }
 
-func GenerateRandomAnalyticsNearRelayUpdateMessage() messages.AnalyticsNearRelayUpdateMessage {
+func GenerateRandomAnalyticsNearRelayPingMessage() messages.AnalyticsNearRelayPingMessage {
 
-	message := messages.AnalyticsNearRelayUpdateMessage{
-		Version:        byte(common.RandomInt(messages.AnalyticsNearRelayUpdateMessageVersion_Min, messages.AnalyticsNearRelayUpdateMessageVersion_Max)),
-		Timestamp:      rand.Uint64(),
-		BuyerId:        rand.Uint64(),
-		SessionId:      rand.Uint64(),
-		MatchId:        rand.Uint64(),
-		UserHash:       rand.Uint64(),
-		Latitude:       float32(common.RandomInt(-90, +90)),
-		Longitude:      float32(common.RandomInt(-180, +180)),
-		ClientAddress:  common.RandomAddress(),
-		ConnectionType: byte(common.RandomInt(0, 255)),
-		PlatformType:   byte(common.RandomInt(0, 255)),
-		NumNearRelays:  uint32(common.RandomInt(0, constants.MaxNearRelays)),
-	}
-
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		message.NearRelayId[i] = rand.Uint64()
-		message.NearRelayRTT[i] = byte(common.RandomInt(0, 255))
-		message.NearRelayJitter[i] = byte(common.RandomInt(0, 255))
-		message.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 100))
+	message := messages.AnalyticsNearRelayPingMessage{
+		Version:             byte(common.RandomInt(messages.AnalyticsNearRelayPingMessageVersion_Min, messages.AnalyticsNearRelayPingMessageVersion_Max)),
+		Timestamp:           rand.Uint64(),
+		BuyerId:             rand.Uint64(),
+		SessionId:           rand.Uint64(),
+		MatchId:             rand.Uint64(),
+		UserHash:            rand.Uint64(),
+		Latitude:            float32(common.RandomInt(-90, +90)),
+		Longitude:           float32(common.RandomInt(-180, +180)),
+		ClientAddress:       common.RandomAddress(),
+		ConnectionType:      byte(common.RandomInt(0, 255)),
+		PlatformType:        byte(common.RandomInt(0, 255)),
+		NearRelayId:         rand.Uint64(),
+		NearRelayRTT:        byte(common.RandomInt(0, 255)),
+		NearRelayJitter:     byte(common.RandomInt(0, 255)),
+		NearRelayPacketLoss: float32(common.RandomInt(0, 100)),
 	}
 
 	return message
@@ -522,15 +533,6 @@ func TestAnalyticsRelayUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestAnalyticsDatabaseUpdateMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsDatabaseUpdateMessage()
-		readMessage := messages.AnalyticsDatabaseUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsDatabaseUpdateMessage](&writeMessage, &readMessage, t)
-	}
-}
-
 func TestAnalyticsServerInitMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
@@ -567,11 +569,11 @@ func TestAnalyticsSessionUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestAnalyticsNearRelayUpdateMessage(t *testing.T) {
+func TestAnalyticsNearRelayPingMessage(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsNearRelayUpdateMessage()
-		readMessage := messages.AnalyticsNearRelayUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsNearRelayUpdateMessage](&writeMessage, &readMessage, t)
+		writeMessage := GenerateRandomAnalyticsNearRelayPingMessage()
+		readMessage := messages.AnalyticsNearRelayPingMessage{}
+		MessageReadWriteTest[*messages.AnalyticsNearRelayPingMessage](&writeMessage, &readMessage, t)
 	}
 }

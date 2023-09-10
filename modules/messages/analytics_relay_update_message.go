@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	AnalyticsRelayUpdateMessageVersion_Min   = 3
-	AnalyticsRelayUpdateMessageVersion_Max   = 3
-	AnalyticsRelayUpdateMessageVersion_Write = 3
+	AnalyticsRelayUpdateMessageVersion_Min   = 0
+	AnalyticsRelayUpdateMessageVersion_Max   = 0
+	AnalyticsRelayUpdateMessageVersion_Write = 0
 )
 
 type AnalyticsRelayUpdateMessage struct {

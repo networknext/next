@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	PortalSessionUpdateMessageVersion_Min   = 1
-	PortalSessionUpdateMessageVersion_Max   = 3
-	PortalSessionUpdateMessageVersion_Write = 3
+	PortalSessionUpdateMessageVersion_Min   = 0
+	PortalSessionUpdateMessageVersion_Max   = 0
+	PortalSessionUpdateMessageVersion_Write = 0
 )
 
 type PortalSessionUpdateMessage struct {
@@ -44,6 +44,7 @@ type PortalSessionUpdateMessage struct {
 	DirectKbpsUp     uint32
 	DirectKbpsDown   uint32
 
+	Next               bool
 	NextRTT            float32
 	NextJitter         float32
 	NextPacketLoss     float32
@@ -84,12 +85,8 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
 
 	encoding.WriteUint64(buffer, &index, message.SessionId)
-	if message.Version >= 2 {
-		encoding.WriteUint64(buffer, &index, message.UserHash)
-	}
-	if message.Version >= 3 {
-		encoding.WriteUint64(buffer, &index, message.StartTime)
-	}
+	encoding.WriteUint64(buffer, &index, message.UserHash)
+	encoding.WriteUint64(buffer, &index, message.StartTime)
 	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
@@ -110,7 +107,8 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsUp)
 	encoding.WriteUint32(buffer, &index, message.DirectKbpsDown)
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	encoding.WriteBool(buffer, &index, message.Next)
+	if message.Next {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
@@ -167,16 +165,12 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read session id")
 	}
 
-	if message.Version >= 2 {
-		if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
-			return fmt.Errorf("failed to read user hash")
-		}
+	if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
+		return fmt.Errorf("failed to read user hash")
 	}
 
-	if message.Version >= 3 {
-		if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
-			return fmt.Errorf("failed to read start time")
-		}
+	if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
+		return fmt.Errorf("failed to read start time")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
@@ -251,7 +245,11 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read direct kbps down")
 	}
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	if !encoding.ReadBool(buffer, &index, &message.Next) {
+		return fmt.Errorf("failed to read next bool")
+	}
+
+	if message.Next {
 
 		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
 			return fmt.Errorf("failed to read next rtt")

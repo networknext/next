@@ -85,7 +85,7 @@ int main()
     {
         next_server_update( server );
 
-        next_platform_sleep( 1.0 / 1000.0 );
+        next_platform_sleep( 0.001 );
 
         fflush( stdout );
     }

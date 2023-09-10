@@ -54,51 +54,35 @@ DONE
 
 	Setup staging environment
 
+	Setup google pubsub in dev
+
+	Setup google bigquery in dev
+
+	Verify all analytics tables have correct data written in dev
+
 TODO
 
-	------------
+	Implement load testing harness
 
-	Test SDK on all console platforms and lock it down.
-
-	------------
-
-	Update UE5 plugin and lock it down.
+		-- load test relays
+		-- load test servers
+		-- load test sessions
 
 	-----------
+
+	api and relay gateway services *must* use HTTPS
+
+	-----------
+
+	Load test staging to 1000 relays and 1M sessions with ~10% taking network next
 
 	Setup google pubsub in dev with terraform
 
 	Verify that analytics service gets expected messages through pubsub
 
-	-----------
-
-	Setup google bigquery in dev with terraform
-
-	Verify analytics service inserts data into bigquery.
-
-	-----------
-
-	HTTPS for api service
-
-	HTTPS for relay gateway
-
-	-----------
-
-	Implement load test program that acts like x servers, and y sessions.
-
-	-----------
-
-	Load test staging to 1000 simulated relays, and 1M concurrent sessions, with 10% taking network next.
-
-	-----------
-
-	Setup prod environment
-
-	-----------
-
 	Rebuild portal (second half)
 
-	------------
+	-----------
 
 	Optimize the setup process by automating creation of projects, service accounts and permissions
 
@@ -115,18 +99,28 @@ TODO
 
 		 Error: Error when reading or editing Database: googleapi: Error 400: Invalid request: failed to delete database "database". Detail: pq: database "database" is being accessed by other users. (Please use psql client to delete database that is not owned by "cloudsqlsuperuser")., invalid
 
-	------------
+	-----------
 
-	Add support for as many sellers as possible (terraform + config scripts...)
+	Multithreaded relay fix and load testing.
 
-	------------
+	https://github.com/leandromoreira/linux-network-performance-parameters
 
-	Fix multithreaded relay.
-	
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
+
+	-----------
+
+	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
+
+	------------
+
+	Optimize the setup process by automating creation of projects, service accounts and permissions
 
 	------------
 
 	Document *everything*.
+
+	------------
+
+	Add support for as many sellers as possible (terraform + config scripts...)
 
 	------------

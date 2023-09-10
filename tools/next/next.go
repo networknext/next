@@ -256,9 +256,9 @@ func main() {
 
 			if args[0] == "local" {
 				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
-				bashQuiet("psql -U developer postgres -f ../schemas/sql/destroy.sql")
-				bashQuiet("psql -U developer postgres -f ../schemas/sql/create.sql")
-				bashQuiet("psql -U developer postgres -f ../schemas/sql/local.sql")
+				bashQuiet("psql -U developer postgres -f ../sql/destroy.sql")
+				bashQuiet("psql -U developer postgres -f ../sql/create.sql")
+				bashQuiet("psql -U developer postgres -f ../sql/local.sql")
 			}
 
 			envFilePath := fmt.Sprintf("envs/%s.env", args[0])

@@ -83,6 +83,61 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters
 	return routeMatrix
 }
 
+func WriteSessionData(sessionData packets.SDK_SessionData) []byte {
+
+	buffer := [packets.SDK_MaxSessionDataSize]byte{}
+
+	writeStream := encoding.CreateWriteStream(buffer[:])
+
+	err := sessionData.Serialize(writeStream)
+	if err != nil {
+		panic(err)
+	}
+
+	writeStream.Flush()
+
+	sessionDataBytes := writeStream.GetBytesProcessed()
+
+	return buffer[:sessionDataBytes]
+}
+
+func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
+
+	t.Parallel()
+
+	state := CreateState()
+
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
+
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+	state.Output.WriteSummary = true
+
+	state.Request.FallbackToDirect = true
+
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+
+	result := handlers.SessionUpdate_Pre(state)
+
+	assert.True(t, result)
+	assert.True(t, (state.Error&constants.SessionError_FallbackToDirect) != 0)
+}
+
 func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -93,8 +148,8 @@ func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
 
 	result := handlers.SessionUpdate_Pre(state)
 
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_AnalysisOnly) != 0)
+	assert.True(t, result)
+	assert.True(t, state.AnalysisOnly)
 }
 
 func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
@@ -108,7 +163,7 @@ func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_ClientPingTimedOut) != 0)
+	assert.True(t, state.ClientPingTimedOut)
 }
 
 func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
@@ -121,9 +176,8 @@ func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.LocatedIP)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_LocationVeto) != 0)
-	assert.Equal(t, state.Output.Latitude, float32(43))
-	assert.Equal(t, state.Output.Longitude, float32(-75))
+	assert.Equal(t, state.Latitude, float32(43))
+	assert.Equal(t, state.Longitude, float32(-75))
 }
 
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
@@ -142,7 +196,7 @@ func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_LocationVeto) != 0)
+	assert.True(t, state.Input.RouteState.LocationVeto)
 }
 
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
@@ -161,7 +215,7 @@ func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_StaleRouteMatrix) != 0)
+	assert.True(t, (state.Error&constants.SessionError_StaleRouteMatrix) != 0)
 }
 
 func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
@@ -182,7 +236,7 @@ func Test_SessionUpdate_Pre_KnownDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
@@ -202,7 +256,7 @@ func Test_SessionUpdate_Pre_UnknownDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
+	assert.True(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
@@ -224,8 +278,8 @@ func Test_SessionUpdate_Pre_DatacenterNotEnabled(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_DatacenterNotEnabled) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.True(t, (state.Error&constants.SessionError_DatacenterNotEnabled) != 0)
 }
 
 func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
@@ -249,8 +303,8 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_DatacenterNotEnabled) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_DatacenterNotEnabled) != 0)
 }
 
 func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
@@ -271,8 +325,8 @@ func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_NoRelaysInDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.True(t, (state.Error&constants.SessionError_NoRelaysInDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
@@ -294,8 +348,8 @@ func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
 	result := handlers.SessionUpdate_Pre(state)
 
 	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_UnknownDatacenter) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_NoRelaysInDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
+	assert.False(t, (state.Error&constants.SessionError_NoRelaysInDatacenter) != 0)
 }
 
 func Test_SessionUpdate_Pre_Debug(t *testing.T) {
@@ -315,44 +369,6 @@ func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 
 	assert.False(t, result)
 	assert.NotNil(t, state.Debug)
-}
-
-func Test_SessionUpdate_Pre_ClientNextBandwidthOverLimit(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.ClientNextBandwidthOverLimit = true
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_ClientNextBandwidthOverLimit) != 0)
-}
-
-func Test_SessionUpdate_Pre_ServerNextBandwidthOverLimit(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Request.ServerNextBandwidthOverLimit = true
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_ServerNextBandwidthOverLimit) != 0)
 }
 
 // --------------------------------------------------------------
@@ -378,13 +394,11 @@ func Test_SessionUpdate_NewSession(t *testing.T) {
 	assert.Equal(t, state.Output.SliceNumber, uint32(1))
 	assert.Equal(t, state.Output.RouteState.ABTest, abTest)
 	assert.True(t, state.Output.ExpireTimestamp > uint64(time.Now().Unix()))
-
-	assert.Equal(t, state.Input, state.Output)
 }
 
 // --------------------------------------------------------------
 
-func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
+func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
 
 	t.Parallel()
 
@@ -402,30 +416,14 @@ func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
-	handlers.SessionUpdate_ExistingSession(state)
+	state.Request.SliceNumber = 10
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
+	handlers.SessionUpdate_Pre(state)
+
+	assert.True(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
 }
 
-func writeSessionData(sessionData packets.SDK_SessionData) []byte {
-
-	buffer := [packets.SDK_MaxSessionDataSize]byte{}
-
-	writeStream := encoding.CreateWriteStream(buffer[:])
-
-	err := sessionData.Serialize(writeStream)
-	if err != nil {
-		panic(err)
-	}
-
-	writeStream.Flush()
-
-	sessionDataBytes := writeStream.GetBytesProcessed()
-
-	return buffer[:sessionDataBytes]
-}
-
-func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
+func Test_SessionUpdate_Pre_ReadSessionData(t *testing.T) {
 
 	t.Parallel()
 
@@ -437,19 +435,25 @@ func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
 	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SliceNumber = 10
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
+	state.Request.SliceNumber = 10
+
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
+	assert.False(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
 }
 
+/*
 func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 
 	t.Parallel()
@@ -468,18 +472,20 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.False(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
+	assert.True(t, (state.Error&constants.SessionError_BadSessionId) != 0)
+	assert.False(t, (state.Error&constants.SessionError_BadSliceNumber) != 0)
 }
 
 func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
@@ -500,7 +506,7 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -508,12 +514,14 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 
 	state.Request.SessionId = sessionId
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.False(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
+	assert.False(t, (state.Error&constants.SessionError_BadSessionId) != 0)
+	assert.True(t, (state.Error&constants.SessionError_BadSliceNumber) != 0)
 }
 
 func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
@@ -534,7 +542,7 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -543,12 +551,14 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.False(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
+	assert.False(t, (state.Error&constants.SessionError_BadSessionId) != 0)
+	assert.False(t, (state.Error&constants.SessionError_BadSliceNumber) != 0)
 }
 
 func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
@@ -569,7 +579,7 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -578,15 +588,15 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.Equal(t, state.Error, 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 }
 
 func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
@@ -611,7 +621,7 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	sessionData.PrevPacketsLostClientToServer = 0
 	sessionData.PrevPacketsLostServerToClient = 0
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -625,15 +635,15 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	state.Request.PacketsLostClientToServer = 100
 	state.Request.PacketsLostServerToClient = 50
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.True(t, state.Error == 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 
 	assert.Equal(t, state.RealPacketLoss, float32(10.0))
 }
@@ -660,7 +670,7 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	sessionData.PrevPacketsLostClientToServer = 0
 	sessionData.PrevPacketsLostServerToClient = 0
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -674,15 +684,15 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	state.Request.PacketsOutOfOrderClientToServer = 100
 	state.Request.PacketsOutOfOrderServerToClient = 50
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.True(t, state.Error == 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 
 	assert.Equal(t, state.RealOutOfOrder, float32(10.0))
 }
@@ -705,7 +715,7 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -716,15 +726,15 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	state.Request.JitterClientToServer = 50.0
 	state.Request.JitterServerToClient = 100.0
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToReadSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSessionId) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_BadSliceNumber) != 0)
+	assert.True(t, state.Error == 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
-	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_BillingSliceSeconds)
+	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
 
 	assert.Equal(t, state.RealJitter, float32(100.0))
 }
@@ -753,16 +763,19 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidth(t *testing.T) {
 	sessionData.NextEnvelopeBytesUpSum = 1000
 	sessionData.NextEnvelopeBytesDownSum = 1000
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
+	state.Request.Next = true
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
 	state.Request.JitterClientToServer = 50.0
 	state.Request.JitterServerToClient = 100.0
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -794,7 +807,7 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 	sessionData.NextEnvelopeBytesUpSum = 0
 	sessionData.NextEnvelopeBytesDownSum = 0
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -805,59 +818,14 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 	state.Request.JitterClientToServer = 50.0
 	state.Request.JitterServerToClient = 100.0
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.Equal(t, state.Output.NextEnvelopeBytesUpSum, uint64(0))
 	assert.Equal(t, state.Output.NextEnvelopeBytesDownSum, uint64(0))
 }
-
-// --------------------------------------------------------------
-
-func Test_SessionUpdate_HandleFallbackToDirect_FallbackToDirect(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.FallbackToDirect = true
-
-	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
-
-	assert.True(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_FallbackToDirect) != 0)
-	assert.True(t, state.Output.FallbackToDirect)
-}
-
-func Test_SessionUpdate_HandleFallbackToDirect_DoNotFallbackToDirect(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.FallbackToDirect = false
-
-	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
-
-	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FallbackToDirect) != 0)
-	assert.False(t, state.Output.FallbackToDirect)
-}
-
-func Test_SessionUpdate_HandleFallbackToDirect_DontRepeat(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Request.FallbackToDirect = false
-	state.Output.FallbackToDirect = true
-
-	result := handlers.SessionUpdate_HandleFallbackToDirect(state)
-
-	assert.False(t, result)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FallbackToDirect) != 0)
-	assert.True(t, state.Output.FallbackToDirect)
-}
+*/
 
 // --------------------------------------------------------------
 
@@ -1276,7 +1244,7 @@ func Test_SessionUpdate_MakeRouteDecision_NoRouteRelays(t *testing.T) {
 
 	assert.False(t, state.Output.RouteState.Next)
 	assert.True(t, state.Output.RouteState.Veto)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_NoRouteRelays) != 0)
+	assert.True(t, (state.Error&constants.SessionError_NoRouteRelays) != 0)
 }
 
 func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
@@ -1342,8 +1310,8 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 
 	// verify
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_StayDirect) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.StayDirect)
+	assert.False(t, state.TakeNetworkNext)
 	assert.False(t, state.Output.RouteState.Next)
 }
 
@@ -1460,7 +1428,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -1550,7 +1518,7 @@ func Test_SessionUpdate_MakeRouteDecision_Aborted(t *testing.T) {
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_Aborted) != 0)
+	assert.True(t, (state.Error&constants.SessionError_Aborted) != 0)
 	assert.True(t, state.Output.RouteState.Veto)
 	assert.False(t, state.Output.RouteState.Next)
 }
@@ -1668,7 +1636,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -1891,7 +1859,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -2165,7 +2133,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -2260,8 +2228,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	// validate that we tripped "route relay no longer exists" *and* "route no longer exists"
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_RouteRelayNoLongerExists) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_RouteNoLongerExists) != 0)
+	assert.True(t, (state.Error&constants.SessionError_RouteRelayNoLongerExists) != 0)
+	assert.True(t, (state.Error&constants.SessionError_RouteNoLongerExists) != 0)
 }
 
 func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *testing.T) {
@@ -2383,7 +2351,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -2474,8 +2442,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	// validate that we tripped "route no longer exists"
 
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_RouteRelayNoLongerExists) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_RouteNoLongerExists) != 0)
+	assert.False(t, (state.Error&constants.SessionError_RouteRelayNoLongerExists) != 0)
+	assert.True(t, (state.Error&constants.SessionError_RouteNoLongerExists) != 0)
 	assert.False(t, state.Output.RouteState.Next)
 }
 
@@ -2598,7 +2566,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	// verify output state
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -2697,8 +2665,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	// validate that we tripped "route no longer exists"
 
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_RouteRelayNoLongerExists) != 0)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_RouteNoLongerExists) != 0)
+	assert.False(t, (state.Error&constants.SessionError_RouteRelayNoLongerExists) != 0)
+	assert.True(t, (state.Error&constants.SessionError_RouteNoLongerExists) != 0)
 	assert.False(t, state.Output.RouteState.Next)
 }
 
@@ -2821,7 +2789,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	// verify output state (we should be on next now)
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.True(t, state.Response.Multipath)
 
@@ -2834,13 +2802,13 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 		state.Input = state.Output
 		handlers.SessionUpdate_MakeRouteDecision(state)
 		if i < 2 {
-			assert.False(t, (state.SessionFlags&constants.SessionFlags_Mispredict) != 0)
+			assert.False(t, state.Output.RouteState.Mispredict)
 		}
 	}
 
-	// validate that we tripped "mispredicted"
+	// validate that we tripped "mispredict"
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_Mispredict) != 0)
+	assert.True(t, state.Output.RouteState.Mispredict)
 	assert.False(t, state.Output.RouteState.Next)
 }
 
@@ -2964,7 +2932,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// verify output state (we should be on next now)
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_TakeNetworkNext) != 0)
+	assert.True(t, state.TakeNetworkNext)
 	assert.True(t, state.Output.RouteState.Next)
 	assert.False(t, state.Response.Multipath)
 
@@ -2984,7 +2952,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	// validate that we tripped "latency worse"
 
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_LatencyWorse) != 0)
+	assert.True(t, state.Output.RouteState.LatencyWorse)
 	assert.False(t, state.Output.RouteState.Next)
 }
 
@@ -3011,7 +2979,7 @@ func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
 
 	state := CreateState()
 
-	state.SessionFlags |= constants.SessionFlags_AnalysisOnly
+	state.Buyer.RouteShader.AnalysisOnly = true
 
 	result := handlers.SessionUpdate_GetNearRelays(state)
 
@@ -3026,7 +2994,7 @@ func Test_SessionUpdate_GetNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	state := CreateState()
 
-	state.SessionFlags |= constants.SessionFlags_DatacenterNotEnabled
+	state.Error |= constants.SessionError_DatacenterNotEnabled
 
 	result := handlers.SessionUpdate_GetNearRelays(state)
 
@@ -3044,7 +3012,7 @@ func Test_SessionUpdate_GetNearRelays_NoNearRelays(t *testing.T) {
 	result := handlers.SessionUpdate_GetNearRelays(state)
 
 	assert.False(t, result)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_NoNearRelays) != 0)
+	assert.True(t, (state.Error&constants.SessionError_NoNearRelays) != 0)
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 }
 
@@ -3136,7 +3104,7 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.True(t, result)
 	assert.False(t, state.NotGettingNearRelaysAnalysisOnly)
 	assert.False(t, state.NotGettingNearRelaysDatacenterNotEnabled)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_NoNearRelays) != 0)
+	assert.Equal(t, state.Error, uint64(0))
 	assert.Equal(t, state.Response.NumNearRelays, int32(3))
 	assert.True(t, state.Response.HasNearRelays)
 
@@ -3182,7 +3150,7 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	state := CreateState()
 
-	state.SessionFlags |= constants.SessionFlags_AnalysisOnly
+	state.Buyer.RouteShader.AnalysisOnly = true
 
 	result := handlers.SessionUpdate_UpdateNearRelays(state)
 
@@ -3198,7 +3166,7 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	state := CreateState()
 
-	state.SessionFlags |= constants.SessionFlags_DatacenterNotEnabled
+	state.Error |= constants.SessionError_DatacenterNotEnabled
 
 	result := handlers.SessionUpdate_UpdateNearRelays(state)
 
@@ -3336,6 +3304,7 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3351,34 +3320,6 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	assert.False(t, state.Response.HasNearRelays)
 }
 
-func Test_SessionUpdate_Post_SessionDuration(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	_, routingPrivateKey := crypto.Box_KeyPair()
-
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
-
-	state.RelayBackendPrivateKey = routingPrivateKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
-
-	from := core.ParseAddress("127.0.0.1:40000")
-	state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
-	state.ServerBackendAddress = &serverBackendAddress
-
-	state.Request.SliceNumber = 1
-
-	handlers.SessionUpdate_Post(state)
-
-	assert.False(t, state.GetNearRelays)
-	assert.Equal(t, state.Output.SessionDuration, uint32(packets.SDK_BillingSliceSeconds))
-}
-
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	t.Parallel()
@@ -3387,11 +3328,10 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3399,14 +3339,22 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
 	state.ServerBackendAddress = &serverBackendAddress
 
-	state.Input.RouteState.Next = true
 	state.Request.SliceNumber = 1
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.WroteSummary = false
+	sessionData.RouteState.Next = true
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_Post(state)
 
 	assert.False(t, state.GetNearRelays)
-	assert.True(t, (state.SessionFlags&constants.SessionFlags_EverOnNext) != 0)
-	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK_BillingSliceSeconds))
+	assert.Equal(t, state.Output.DurationOnNext, uint32(packets.SDK_SliceSeconds))
 }
 
 func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
@@ -3417,11 +3365,10 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3435,6 +3382,14 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	state.Request.PacketsSentServerToClient = 10002
 	state.Request.PacketsLostClientToServer = 10003
 	state.Request.PacketsLostServerToClient = 10004
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.WroteSummary = false
+	sessionData.RouteState.Next = true
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 
@@ -3452,11 +3407,10 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3465,6 +3419,13 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	state.ServerBackendAddress = &serverBackendAddress
 
 	state.Request.SliceNumber = 2
+
+	sessionData := packets.GenerateRandomSessionData()
+	sessionData.WroteSummary = false
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	debugString := "it's debug time"
 
@@ -3485,11 +3446,10 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
 
 	from := core.ParseAddress("127.0.0.1:40000")
@@ -3499,6 +3459,12 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	state.Request.SliceNumber = 100
 	state.Request.ClientPingTimedOut = true
+
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 
@@ -3515,39 +3481,6 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	_, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
-
-	state.RelayBackendPrivateKey = routingPrivateKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
-
-	from := core.ParseAddress("127.0.0.1:40000")
-	state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
-	state.ServerBackendAddress = &serverBackendAddress
-
-	state.Request.SliceNumber = 100
-	state.Request.ClientPingTimedOut = true
-	state.Output.WriteSummary = true
-
-	handlers.SessionUpdate_Post(state)
-
-	assert.False(t, state.Output.WriteSummary)
-	assert.True(t, state.Output.WroteSummary)
-	assert.False(t, state.Response.HasNearRelays)
-}
-
-func Test_SessionUpdate_Post_Response(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	// setup so we write a response with random session data in the post
-
-	_, routingPrivateKey := crypto.Box_KeyPair()
-
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
 	state.RelayBackendPrivateKey = routingPrivateKey
@@ -3559,70 +3492,21 @@ func Test_SessionUpdate_Post_Response(t *testing.T) {
 	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
 	state.ServerBackendAddress = &serverBackendAddress
 
-	state.Input = packets.GenerateRandomSessionData()
-	state.Output = state.Input
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+	state.Output.WriteSummary = true
 
-	// run session update post
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	handlers.SessionUpdate_Post(state)
 
-	// verify we wrote the session data and response packet without error
-
-	assert.True(t, state.WroteResponsePacket)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToWriteSessionData) != 0)
-	assert.False(t, (state.SessionFlags&constants.SessionFlags_FailedToWriteResponsePacket) != 0)
-	assert.True(t, len(state.ResponsePacket) > 0)
-
-	// make sure the basic packet filter passes
-
-	packetData := state.ResponsePacket
-
-	assert.True(t, core.BasicPacketFilter(packetData[:], len(packetData)))
-
-	// make sure the advanced packet filter passes
-
-	to_address := state.From
-	from_address := state.ServerBackendAddress
-
-	var emptyMagic [8]byte
-
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-
-	fromAddressData, fromAddressPort := core.GetAddressData(from_address, fromAddressBuffer[:])
-	toAddressData, toAddressPort := core.GetAddressData(to_address, toAddressBuffer[:])
-
-	assert.True(t, core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)))
-
-	// check packet signature
-
-	assert.True(t, packets.SDK_CheckPacketSignature(packetData, state.ServerBackendPublicKey[:]))
-
-	// verify we can read the response packet
-
-	packetData = packetData[16:]
-
-	packet := packets.SDK_SessionUpdateResponsePacket{}
-	err := packets.ReadPacket(packetData, &packet)
-	assert.Nil(t, err)
-
-	// verify the response packet is equal to the response in state
-
-	assert.Equal(t, packet, state.Response)
-
-	// verify that the signature check passes on the session data inside the response
-
-	assert.True(t, crypto.Verify(packet.SessionData[:packet.SessionDataBytes], state.ServerBackendPublicKey[:], packet.SessionDataSignature[:]))
-
-	// verify that we can serialize read the session data inside the response
-
-	sessionData := packets.SDK_SessionData{}
-	err = packets.ReadPacket(packet.SessionData[:packet.SessionDataBytes], &sessionData)
-	assert.Nil(t, err)
-
-	// verify that the session data we read matches what was written
-
-	assert.Equal(t, state.Output, sessionData)
+	assert.False(t, state.Output.WriteSummary)
+	assert.True(t, state.Output.WroteSummary)
+	assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------

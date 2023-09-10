@@ -65,10 +65,20 @@ type SessionUpdateState struct {
 	SourceRelays   []int32
 	SourceRelayRTT []int32
 
-	// session flags
-	SessionFlags uint64
+	// error flags for this update
+	Error uint64
+
+	// lat/long if we looked it up this update
+	Latitude  float32
+	Longitude float32
 
 	// codepath flags (for unit testing etc...)
+	ClientPingTimedOut                        bool
+	AnalysisOnly                              bool
+	RouteChanged                              bool
+	RouteContinued                            bool
+	TakeNetworkNext                           bool
+	StayDirect                                bool
 	FirstUpdate                               bool
 	ReadSessionData                           bool
 	NotGettingNearRelaysDatacenterIsNil       bool
@@ -79,19 +89,21 @@ type SessionUpdateState struct {
 	SentPortalSessionUpdateMessage            bool
 	SentPortalNearRelayUpdateMessage          bool
 	SentPortalMapUpdateMessage                bool
-	SentAnalyticsNearRelayUpdateMessage       bool
+	SentAnalyticsNearRelayPingMessage         bool
 	SentAnalyticsSessionUpdateMessage         bool
+	SentAnalyticsSessionSummaryMessage        bool
 	LocatedIP                                 bool
 	GetNearRelays                             bool
 	WroteResponsePacket                       bool
+	LongSessionUpdate                         bool
 
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
 	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
-	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsNearRelayUpdateMessageChannel chan<- *messages.AnalyticsNearRelayUpdateMessage
+	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -102,7 +114,7 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 
 	if !crypto.Verify(state.Request.SessionData[:state.Request.SessionDataBytes], state.ServerBackendPublicKey[:], state.Request.SessionDataSignature[:]) {
 		core.Error("session data signature check failed")
-		state.SessionFlags |= constants.SessionFlags_SessionDataSignatureCheckFailed
+		state.Error |= constants.SessionError_SessionDataSignatureCheckFailed
 		return false
 	}
 
@@ -111,7 +123,7 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 	err := state.Input.Serialize(readStream)
 	if err != nil {
 		core.Debug("failed to read session data: %v", err)
-		state.SessionFlags |= constants.SessionFlags_FailedToReadSessionData
+		state.Error |= constants.SessionError_FailedToReadSessionData
 		return false
 	}
 
@@ -123,6 +135,30 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	/*
+		Read session data first
+
+		We always need to read this, because we have to process and return it in the output.
+	*/
+
+	if state.Request.SliceNumber != 0 && !SessionUpdate_ReadSessionData(state) {
+		return true
+	}
+
+	/*
+		Fallback to direct is a state where the SDK has met some fatal error condition.
+
+		When this happens, the session will go direct from this point forward.
+	*/
+
+	if state.Request.FallbackToDirect {
+		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
+			core.Error("fallback to direct")
+			state.Error |= constants.SessionError_FallbackToDirect
+		}
+		return true
+	}
+
+	/*
 		If the route shader is in analysis only mode, set the analysis only flag in the state
 
 		We don't acceleration sessions in analysis only mode.
@@ -130,30 +166,18 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only")
-		state.SessionFlags |= constants.SessionFlags_AnalysisOnly
-	}
-
-	/*
-		When a client disconnects from the server, the server reports this up to us via the "ClientPingTimedOut" flag
-		When this happens we don't need to do any complicated route logic, just exit early.
-	*/
-
-	if state.Request.ClientPingTimedOut {
-		core.Debug("client ping timed out")
-		state.SessionFlags |= constants.SessionFlags_ClientPingTimedOut
+		state.AnalysisOnly = true
 		return true
 	}
 
 	/*
-		Catch the over bandwidth flags and stash them as session flags so they are sent to the portal and analytics
+		If the client ping has timed out, don't do any further processing.
 	*/
 
-	if state.Request.ClientNextBandwidthOverLimit {
-		state.SessionFlags |= constants.SessionFlags_ClientNextBandwidthOverLimit
-	}
-
-	if state.Request.ServerNextBandwidthOverLimit {
-		state.SessionFlags |= constants.SessionFlags_ServerNextBandwidthOverLimit
+	if state.Request.ClientPingTimedOut {
+		core.Debug("client ping timed out")
+		state.ClientPingTimedOut = true
+		return true
 	}
 
 	/*
@@ -168,12 +192,11 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 		state.FirstUpdate = true
 
-		state.Output.Latitude, state.Output.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
+		state.Latitude, state.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
-		if state.Output.Latitude == 0.0 && state.Output.Longitude == 0.0 {
+		if state.Latitude == 0.0 && state.Longitude == 0.0 {
 			core.Error("location veto")
-			state.Output.RouteState.LocationVeto = true
-			state.SessionFlags |= constants.SessionFlags_LocationVeto
+			state.Input.RouteState.LocationVeto = true
 			return true
 		}
 	}
@@ -185,7 +208,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.RouteMatrix.CreatedAt+uint64(state.StaleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		core.Debug("stale route matrix")
-		state.SessionFlags |= constants.SessionFlags_StaleRouteMatrix
+		state.Error |= constants.SessionError_StaleRouteMatrix
 		return true
 	}
 
@@ -197,7 +220,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if !state.Database.DatacenterExists(state.Request.DatacenterId) {
 		core.Debug("unknown datacenter")
-		state.SessionFlags |= constants.SessionFlags_UnknownDatacenter
+		state.Error |= constants.SessionError_UnknownDatacenter
 	}
 
 	/*
@@ -208,7 +231,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if !state.Database.DatacenterEnabled(state.Request.BuyerId, state.Request.DatacenterId) {
 		core.Debug("datacenter not enabled: %x, %x", state.Request.BuyerId, state.Request.DatacenterId)
-		state.SessionFlags |= constants.SessionFlags_DatacenterNotEnabled
+		state.Error |= constants.SessionError_DatacenterNotEnabled
 	}
 
 	/*
@@ -226,7 +249,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	destRelayIds := state.Database.GetDatacenterRelays(state.Request.DatacenterId)
 	if len(destRelayIds) == 0 {
 		core.Debug("no relays in datacenter %x", state.Request.DatacenterId)
-		state.SessionFlags |= constants.SessionFlags_NoRelaysInDatacenter
+		state.Error |= constants.SessionError_NoRelaysInDatacenter
 	}
 
 	state.DestRelayIds = destRelayIds
@@ -248,33 +271,21 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 
 	core.Debug("new session")
 
-	state.Output.Version = packets.SDK_SessionDataVersion_Write
-	state.Output.SessionId = state.Request.SessionId
-	state.Output.SliceNumber = 1
-	state.Output.StartTimestamp = uint64(time.Now().Unix())
-	state.Output.ExpireTimestamp = state.Output.StartTimestamp + packets.SDK_BillingSliceSeconds*2 + 1
-	state.Output.RouteState.ABTest = state.Buyer.RouteShader.ABTest
+	state.Input.Version = packets.SDK_SessionDataVersion_Write
+	state.Input.SessionId = state.Request.SessionId
+	state.Input.SliceNumber = 0
+	state.Input.StartTimestamp = uint64(time.Now().Unix())
+	state.Input.ExpireTimestamp = state.Input.StartTimestamp
+	state.Input.RouteState.ABTest = state.Buyer.RouteShader.ABTest
 
-	state.Input = state.Output
+	state.Output = state.Input
+	state.Output.SliceNumber += 1
+	state.Output.ExpireTimestamp = state.Input.ExpireTimestamp + packets.SDK_SliceSeconds*2 + 1
 }
 
 func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	core.Debug("existing session")
-
-	/*
-		Read the session data, if it has not already been read.
-
-		This data contains state that persists across the session, it is sent up from the SDK,
-		we transform it, and then send it back down -- and it gets sent up by the SDK in the next
-		update.
-
-		This way we don't have to store state per-session in the backend.
-	*/
-
-	if !SessionUpdate_ReadSessionData(state) {
-		return
-	}
 
 	/*
 		Check for some obviously divergent data between the session request packet
@@ -283,13 +294,13 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	if state.Input.SessionId != state.Request.SessionId {
 		core.Debug("bad session id")
-		state.SessionFlags |= constants.SessionFlags_BadSessionId
+		state.Error |= constants.SessionError_BadSessionId
 		return
 	}
 
 	if state.Input.SliceNumber != state.Request.SliceNumber {
 		core.Debug("bad slice number")
-		state.SessionFlags |= constants.SessionFlags_BadSliceNumber
+		state.Error |= constants.SessionError_BadSliceNumber
 		return
 	}
 
@@ -302,15 +313,15 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	state.Output = state.Input
 	state.Output.SliceNumber += 1
-	state.Output.ExpireTimestamp += packets.SDK_BillingSliceSeconds
+	state.Output.ExpireTimestamp += packets.SDK_SliceSeconds
 
 	/*
 		Track total next envelope bandwidth sent up and down
 	*/
 
-	if state.Input.RouteState.Next {
-		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK_BillingSliceSeconds / 8
-		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK_BillingSliceSeconds / 8
+	if state.Request.Next {
+		state.Output.NextEnvelopeBytesUpSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps) * 1000 * packets.SDK_SliceSeconds / 8
+		state.Output.NextEnvelopeBytesDownSum += uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps) * 1000 * packets.SDK_SliceSeconds / 8
 	}
 
 	/*
@@ -390,24 +401,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	}
 }
 
-func SessionUpdate_HandleFallbackToDirect(state *SessionUpdateState) bool {
-
-	/*
-		Fallback to direct is a state where the SDK has met some fatal error condition.
-
-		When this happens, the session will go direct from that point forward.
-	*/
-
-	if state.Request.FallbackToDirect && !state.Output.FallbackToDirect {
-		core.Debug("fallback to direct")
-		state.Output.FallbackToDirect = true
-		state.SessionFlags |= constants.SessionFlags_FallbackToDirect
-		return true
-	}
-
-	return false
-}
-
 func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	/*
@@ -434,13 +427,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 		return false
 	}
 
-	if (state.SessionFlags & constants.SessionFlags_AnalysisOnly) != 0 {
+	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only, not getting near relays")
 		state.NotGettingNearRelaysAnalysisOnly = true
 		return false
 	}
 
-	if (state.SessionFlags & constants.SessionFlags_DatacenterNotEnabled) != 0 {
+	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not getting near relays")
 		state.NotGettingNearRelaysDatacenterNotEnabled = true
 		return false
@@ -472,7 +465,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	if numNearRelays == 0 {
 		core.Debug("no near relays :(")
-		state.SessionFlags |= constants.SessionFlags_NoNearRelays
+		state.Error |= constants.SessionError_NoNearRelays
 		return false
 	}
 
@@ -503,13 +496,13 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
-	if (state.SessionFlags & constants.SessionFlags_AnalysisOnly) != 0 {
+	if state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("analysis only, not updating near relay stats")
 		state.NotUpdatingNearRelaysAnalysisOnly = true
 		return false
 	}
 
-	if (state.SessionFlags & constants.SessionFlags_DatacenterNotEnabled) != 0 {
+	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not updating near relay stats")
 		state.NotUpdatingNearRelaysDatacenterNotEnabled = true
 		return false
@@ -638,14 +631,6 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	routePublicAddresses[numTokens-1] = *state.From
 	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
-	// debug print the route
-
-	core.Debug("----------------------------------------------------")
-	for i := range routePublicAddresses[:numTokens] {
-		core.Debug("%d: public address = %s, has internal address = %d, internal address = %s, internal group = %016x, seller = %d", i, routePublicAddresses[i].String(), routeHasInternalAddresses[i], routeInternalAddresses[i].String(), routeInternalGroups[i], routeSellers[i])
-	}
-	core.Debug("----------------------------------------------------")
-
 	// write the tokens
 
 	tokenData := make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
@@ -715,7 +700,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		core.Debug("on network next, but no route relays?")
 		state.Output.RouteState.Next = false
 		state.Output.RouteState.Veto = true
-		state.SessionFlags |= constants.SessionFlags_NoRouteRelays
+		state.Error |= constants.SessionError_NoRouteRelays
 		if state.Debug != nil {
 			*state.Debug += "no route relays?!\n"
 		}
@@ -751,7 +736,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			state.Debug,
 			sliceNumber) {
 
-			state.SessionFlags |= constants.SessionFlags_TakeNetworkNext
+			state.TakeNetworkNext = true
 
 			SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
@@ -770,7 +755,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 		} else {
 
-			state.SessionFlags |= constants.SessionFlags_StayDirect
+			state.StayDirect = true
 
 			if state.Debug != nil {
 				*state.Debug += "staying direct\n"
@@ -789,7 +774,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			core.Debug("aborted")
 			state.Output.RouteState.Next = false
 			state.Output.RouteState.Veto = true
-			state.SessionFlags |= constants.SessionFlags_Aborted
+			state.Error |= constants.SessionError_Aborted
 			if state.Debug != nil {
 				*state.Debug += "aborted\n"
 			}
@@ -801,7 +786,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		if !core.ReframeRoute(state.RouteMatrix.RelayIdToIndex, state.Output.RouteRelayIds[:state.Output.RouteNumRelays], &routeRelays) {
 			routeRelays = [constants.MaxRouteRelays]int32{}
 			core.Debug("one or more relays in the route no longer exist")
-			state.SessionFlags |= constants.SessionFlags_RouteRelayNoLongerExists
+			state.Error |= constants.SessionError_RouteRelayNoLongerExists
 			if state.Debug != nil {
 				*state.Debug += "route relay no longer exists\n"
 			}
@@ -840,7 +825,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			if routeChanged {
 
 				core.Debug("route changed")
-				state.SessionFlags |= constants.SessionFlags_RouteChanged
+
+				state.RouteChanged = true
+
 				SessionUpdate_BuildNextTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 
 				if state.Debug != nil {
@@ -859,7 +846,9 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			} else {
 
 				core.Debug("route continued")
-				state.SessionFlags |= constants.SessionFlags_RouteContinued
+
+				state.RouteContinued = true
+
 				SessionUpdate_BuildContinueTokens(state, routeNumRelays, routeRelays[:routeNumRelays])
 				if state.Debug != nil {
 					*state.Debug += "route continued\n"
@@ -873,7 +862,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Output.RouteState.NoRoute {
 				core.Debug("route no longer exists")
-				state.SessionFlags |= constants.SessionFlags_RouteNoLongerExists
+				state.Error |= constants.SessionError_RouteNoLongerExists
 				if state.Debug != nil {
 					*state.Debug += "route no longer exists\n"
 				}
@@ -881,7 +870,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Output.RouteState.Mispredict {
 				core.Debug("mispredict")
-				state.SessionFlags |= constants.SessionFlags_Mispredict
 				if state.Debug != nil {
 					*state.Debug += "mispredict\n"
 				}
@@ -889,7 +877,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 
 			if state.Output.RouteState.LatencyWorse {
 				core.Debug("latency worse")
-				state.SessionFlags |= constants.SessionFlags_LatencyWorse
 				if state.Debug != nil {
 					*state.Debug += "latency worse\n"
 				}
@@ -937,6 +924,22 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
+		If we have already wrote the session summary, there is nothing more to do...
+	*/
+
+	if state.Input.WroteSummary {
+		return
+	}
+
+	/*
+		Accumulate error flags from input state, and from this session update, then write it to output.
+
+		This lets us write error flags in the session summary only, and we capture all errors that occurred for a session.
+	*/
+
+	state.Output.Error = state.Input.Error | state.Error
+
+	/*
 		Build the set of near relays for the SDK to ping.
 
 		The SDK pings these near relays and reports up the results in the next session update.
@@ -945,6 +948,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	*/
 
 	if state.Request.SliceNumber == 0 {
+		state.Output.Latitude = state.Latitude
+		state.Output.Longitude = state.Longitude
 		SessionUpdate_GetNearRelays(state)
 		core.Debug("first slice always goes direct")
 	}
@@ -961,18 +966,11 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		Track session duration
-	*/
-
-	state.Output.SessionDuration += packets.SDK_BillingSliceSeconds
-
-	/*
 		Track duration of time spent on network next, and if the session has ever been on network next.
 	*/
 
 	if state.Input.RouteState.Next {
-		state.SessionFlags |= constants.SessionFlags_EverOnNext
-		state.Output.DurationOnNext += packets.SDK_BillingSliceSeconds
+		state.Output.DurationOnNext += packets.SDK_SliceSeconds
 		core.Debug("session has been on network next for %d seconds", state.Output.DurationOnNext)
 	}
 
@@ -1001,22 +999,22 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		The session ends when the client ping times out.
+		The session ends when the client ping times out or the client falls back to direct.
 
 		At this point we write a summary slice to bigquery, with more information than regular slices.
 
 		This saves a lot of bandwidth and bigquery cost, by only writing this information once per-session.
 	*/
 
-	if state.Request.ClientPingTimedOut {
+	if state.Request.ClientPingTimedOut || state.Request.FallbackToDirect { // IMPORTANT: once set, these values will each remain true thereafter
 
-		if state.Output.WriteSummary {
+		// write summary only once
+
+		if !state.Output.WroteSummary && !state.Output.WriteSummary {
+			state.Output.WriteSummary = true
+		} else if state.Output.WriteSummary && !state.Output.WroteSummary {
 			state.Output.WroteSummary = true
 			state.Output.WriteSummary = false
-		}
-
-		if !state.Output.WroteSummary {
-			state.Output.WriteSummary = true
 		}
 	}
 
@@ -1052,7 +1050,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	err := state.Output.Serialize(writeStream)
 	if err != nil {
 		core.Error("failed to write session data: %v", err)
-		state.SessionFlags |= constants.SessionFlags_FailedToWriteSessionData
+		state.Error |= constants.SessionError_FailedToWriteSessionData
 		return
 	}
 
@@ -1075,7 +1073,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.ResponsePacket, err = packets.SDK_WritePacket(&state.Response, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write session update response packet: %v", err)
-		state.SessionFlags |= constants.SessionFlags_FailedToWriteResponsePacket
+		state.Error |= constants.SessionError_FailedToWriteResponsePacket
 		return
 	}
 
@@ -1099,13 +1097,17 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendAnalyticsSessionSummaryMessage(state)
 
-		sendAnalyticsNearRelayUpdateMessage(state)
+		sendAnalyticsNearRelayPingMessages(state)
 	}
 }
 
 // -----------------------------------------
 
 func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
+
+	if state.Input.SliceNumber < 1 {
+		return
+	}
 
 	if state.Request.ClientPingTimedOut {
 		return
@@ -1122,18 +1124,14 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
 	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
 
-	message.SessionId = state.Input.SessionId
+	message.SessionId = state.Request.SessionId
 	message.UserHash = state.Request.UserHash
-	message.StartTime = state.Output.StartTimestamp
+	message.StartTime = state.Input.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
-	message.SliceNumber = state.Input.SliceNumber
-	message.SessionFlags = state.SessionFlags
-	if state.Output.RouteState.Next {
-		state.SessionFlags |= constants.SessionFlags_Next
-	}
+	message.Latitude = state.Input.Latitude
+	message.Longitude = state.Input.Longitude
+	message.SliceNumber = state.Input.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
 	message.ConnectionType = uint8(state.Request.ConnectionType)
@@ -1145,7 +1143,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectKbpsUp = state.Request.DirectKbpsUp
 	message.DirectKbpsDown = state.Request.DirectKbpsDown
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	message.Next = state.Request.Next
+
+	if message.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1161,8 +1161,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.RealJitter = state.RealJitter
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealOutOfOrder = state.RealOutOfOrder
-
-	message.SessionFlags = state.SessionFlags
 
 	message.NumNearRelays = uint32(state.Request.NumNearRelays)
 	for i := 0; i < int(message.NumNearRelays); i++ {
@@ -1221,39 +1219,44 @@ func sendPortalMapUpdateMessage(state *SessionUpdateState) {
 	}
 }
 
-func sendAnalyticsNearRelayUpdateMessage(state *SessionUpdateState) {
+func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
 		return
 	}
 
-	message := messages.AnalyticsNearRelayUpdateMessage{}
-
-	message.Version = messages.AnalyticsNearRelayUpdateMessageVersion_Write
-	message.Timestamp = uint64(time.Now().Unix())
-	message.BuyerId = state.Request.BuyerId
-	message.SessionId = state.Output.SessionId
-	message.UserHash = state.Request.UserHash
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
-	message.ClientAddress = state.Request.ClientAddress
-	message.ConnectionType = byte(state.Request.ConnectionType)
-	message.PlatformType = byte(state.Request.PlatformType)
-	message.NumNearRelays = uint32(state.Request.NumNearRelays)
 	for i := 0; i < int(state.Request.NumNearRelays); i++ {
-		message.NearRelayId[i] = state.Request.NearRelayIds[i]
-		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
-		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
-		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
-	}
 
-	if state.AnalyticsNearRelayUpdateMessageChannel != nil {
-		state.AnalyticsNearRelayUpdateMessageChannel <- &message
-		state.SentAnalyticsNearRelayUpdateMessage = true
+		message := messages.AnalyticsNearRelayPingMessage{}
+
+		message.Version = messages.AnalyticsNearRelayPingMessageVersion_Write
+		message.Timestamp = uint64(time.Now().Unix())
+		message.BuyerId = state.Request.BuyerId
+		message.SessionId = state.Output.SessionId
+		message.UserHash = state.Request.UserHash
+		message.Latitude = state.Output.Latitude
+		message.Longitude = state.Output.Longitude
+		message.ClientAddress = state.Request.ClientAddress
+		message.ConnectionType = byte(state.Request.ConnectionType)
+		message.PlatformType = byte(state.Request.PlatformType)
+		message.NearRelayId = state.Request.NearRelayIds[i]
+		message.NearRelayRTT = byte(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter = byte(state.Request.NearRelayJitter[i])
+		message.NearRelayPacketLoss = state.Request.NearRelayPacketLoss[i]
+
+		if state.AnalyticsNearRelayPingMessageChannel != nil {
+			state.AnalyticsNearRelayPingMessageChannel <- &message
+			state.SentAnalyticsNearRelayPingMessage = true
+		}
+
 	}
 }
 
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
+
+	if state.Request.SliceNumber < 1 {
+		return
+	}
 
 	message := messages.AnalyticsSessionUpdateMessage{}
 
@@ -1261,12 +1264,11 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
-	message.SessionId = state.Input.SessionId
-	message.SliceNumber = state.Input.SliceNumber
+	message.SessionId = state.Request.SessionId
+	message.SliceNumber = state.Request.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealJitter = state.RealJitter
 	message.RealOutOfOrder = state.RealOutOfOrder
-	message.SessionFlags = state.SessionFlags
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
 	message.DirectRTT = state.Request.DirectRTT
@@ -1277,7 +1279,8 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// next only
 
-	if (state.SessionFlags & constants.SessionFlags_Next) != 0 {
+	message.Next = state.Request.Next
+	if message.Next {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
@@ -1289,6 +1292,28 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 			message.NextRouteRelayId[i] = state.Input.RouteRelayIds[i]
 		}
 	}
+
+	// flags
+
+	message.FallbackToDirect = state.Request.FallbackToDirect
+	message.Reported = state.Request.Reported
+	message.LatencyReduction = state.Input.RouteState.ReduceLatency
+	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
+	message.ForceNext = state.Input.RouteState.ForcedNext
+	message.LongSessionUpdate = state.LongSessionUpdate
+	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
+	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
+	message.Veto = state.Input.RouteState.Veto
+	message.Disabled = state.Input.RouteState.Disabled
+	message.NotSelected = state.Input.RouteState.NotSelected
+	message.A = state.Input.RouteState.A
+	message.B = state.Input.RouteState.B
+	message.LatencyWorse = state.Input.RouteState.LatencyWorse
+	message.LocationVeto = state.Input.RouteState.LocationVeto
+	message.Mispredict = state.Input.RouteState.Mispredict
+	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
+
+	// send message
 
 	if state.AnalyticsSessionUpdateMessageChannel != nil {
 		state.AnalyticsSessionUpdateMessageChannel <- &message
@@ -1306,12 +1331,12 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
 	message.Version = messages.AnalyticsSessionSummaryMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
-	message.SessionId = state.Input.SessionId
+	message.SessionId = state.Request.SessionId
 	message.DatacenterId = state.Request.DatacenterId
 	message.BuyerId = state.Request.BuyerId
 	message.UserHash = state.Request.UserHash
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
+	message.Latitude = state.Input.Latitude
+	message.Longitude = state.Input.Longitude
 	message.ClientAddress = state.Request.ClientAddress
 	message.ServerAddress = state.Request.ServerAddress
 	message.ConnectionType = byte(state.Request.ConnectionType)
@@ -1325,15 +1350,37 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
 	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
 	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-	message.SessionDuration = state.Output.SessionDuration
-	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesUpSum
-	message.TotalEnvelopeBytesUp = state.Output.NextEnvelopeBytesDownSum
-	message.DurationOnNext = state.Output.DurationOnNext
-	message.StartTimestamp = state.Output.StartTimestamp
+	message.SessionDuration = (state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds
+	message.TotalNextEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
+	message.TotalNextEnvelopeBytesDown = state.Input.NextEnvelopeBytesDownSum
+	message.DurationOnNext = state.Input.DurationOnNext
+	message.StartTimestamp = state.Input.StartTimestamp
+
+	// flags
+
+	message.Error = state.Input.Error
+	message.Reported = state.Request.Reported
+	message.LatencyReduction = state.Input.RouteState.ReduceLatency
+	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
+	message.ForceNext = state.Input.RouteState.ForcedNext
+	message.LongSessionUpdate = state.LongSessionUpdate
+	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
+	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
+	message.Veto = state.Input.RouteState.Veto
+	message.Disabled = state.Input.RouteState.Disabled
+	message.NotSelected = state.Input.RouteState.NotSelected
+	message.A = state.Input.RouteState.A
+	message.B = state.Input.RouteState.B
+	message.LatencyWorse = state.Input.RouteState.LatencyWorse
+	message.LocationVeto = state.Input.RouteState.LocationVeto
+	message.Mispredict = state.Input.RouteState.Mispredict
+	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
+
+	// send it
 
 	if state.AnalyticsSessionSummaryMessageChannel != nil {
 		state.AnalyticsSessionSummaryMessageChannel <- &message
-		state.SentAnalyticsSessionUpdateMessage = true
+		state.SentAnalyticsSessionSummaryMessage = true
 	}
 }
 

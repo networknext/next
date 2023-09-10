@@ -1782,7 +1782,7 @@ void test_bandwidth_limiter()
 
     next_bandwidth_limiter_reset( &bandwidth_limiter );
 
-    next_check( next_bandwidth_limiter_usage_kbps( &bandwidth_limiter, 0.0 ) == 0.0 );
+    next_check( next_bandwidth_limiter_usage_kbps( &bandwidth_limiter ) == 0.0 );
 
     // come in way under
     {

@@ -58,10 +58,8 @@ func (message *PortalRelayUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read timestamp")
 	}
 
-	if message.Version >= 2 {
-		if !encoding.ReadString(buffer, &index, &message.RelayName, constants.MaxRelayNameLength) {
-			return fmt.Errorf("failed to read relay name")
-		}
+	if !encoding.ReadString(buffer, &index, &message.RelayName, constants.MaxRelayNameLength) {
+		return fmt.Errorf("failed to read relay name")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.RelayId) {
@@ -149,9 +147,7 @@ func (message *PortalRelayUpdateMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
-	if message.Version >= 2 {
-		encoding.WriteString(buffer, &index, message.RelayName, constants.MaxRelayNameLength)
-	}
+	encoding.WriteString(buffer, &index, message.RelayName, constants.MaxRelayNameLength)
 	encoding.WriteUint64(buffer, &index, message.RelayId)
 	encoding.WriteUint32(buffer, &index, message.SessionCount)
 	encoding.WriteUint32(buffer, &index, message.MaxSessions)

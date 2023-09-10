@@ -12,7 +12,6 @@ import (
 	"github.com/networknext/next/modules/portal"
 )
 
-var redisPortalHostname string
 var redisServerBackendHostname string
 
 var mapInstance *portal.Map
@@ -21,13 +20,11 @@ func main() {
 
 	numMapUpdateThreads := envvar.GetInt("NUM_MAP_UPDATE_THREADS", 1)
 
-	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 
 	service := common.CreateService("map_cruncher")
 
 	core.Debug("num map update threads: %d", numMapUpdateThreads)
-	core.Debug("redis portal hostname: %s", redisPortalHostname)
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 
 	for i := 0; i < numMapUpdateThreads; i++ {

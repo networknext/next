@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	AnalyticsCostMatrixUpdateMessageVersion_Min   = 1
-	AnalyticsCostMatrixUpdateMessageVersion_Max   = 1
-	AnalyticsCostMatrixUpdateMessageVersion_Write = 1
+	AnalyticsCostMatrixUpdateMessageVersion_Min   = 0
+	AnalyticsCostMatrixUpdateMessageVersion_Max   = 0
+	AnalyticsCostMatrixUpdateMessageVersion_Write = 0
 )
 
 type AnalyticsCostMatrixUpdateMessage struct {

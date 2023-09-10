@@ -35,6 +35,7 @@
 #include "next_platform.h"
 
 #include <atomic>
+#include <stdio.h>
 
 // ---------------------------------------------------------------
 
@@ -773,6 +774,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
         next_session_entry_t * entry = &server->session_manager->entries[i];
 
+        // todo: here we stop doing something when ping times out or fallback to direct. related?
+
         if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
@@ -914,6 +917,8 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
         }
 
         next_session_entry_t * entry = &server->session_manager->entries[index];
+
+        // detect client ping timeout. this is not an error condition, it's just the client ending the session
 
         if ( !entry->client_ping_timed_out &&
              entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time &&
@@ -2088,6 +2093,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_jitter_server_to_client = packet.jitter_server_to_client;
+
+            // todo
+            printf("-----------------------------------------------------\n");
+            printf("stats_packets_sent_client_to_server = %d\n", (int) session->stats_packets_sent_client_to_server );
+            printf("stats_packets_sent_lost_server_to_client = %d\n", (int) session->stats_packets_lost_server_to_client );
+            printf("-----------------------------------------------------\n");
+
             session->last_client_stats_update = next_platform_time();
         }
 
@@ -2591,15 +2603,6 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
         }
     }
 
-    if ( !success )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
-        next_platform_mutex_guard( &server->resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-        return;
-    }
-
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_RESOLVE_HOSTNAME_TIMEOUT" ) )
     {
@@ -2611,12 +2614,24 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
     {
         // IMPORTANT: if we have timed out, don't grab the mutex or write results. 
         // our thread has been destroyed and if we are unlucky, the next_server_internal_t instance has as well.
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname thread aborted" );
+        return;
+    }
+
+    if ( !success )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
+        next_platform_mutex_guard( &server->resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         return;
     }
 
     next_platform_mutex_guard( &server->resolve_hostname_mutex );
     server->resolve_hostname_finished = true;
     server->resolve_hostname_result = address;
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server resolve hostname thread finished" );
 }
 
 static bool next_server_internal_update_resolve_hostname( next_server_internal_t * server )
@@ -3160,6 +3175,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
             {
+                // todo: session mutex usage is a bit weird
                 next_platform_mutex_guard( &server->session_mutex );
                 packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             }
@@ -3181,6 +3197,17 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
             packet.packets_out_of_order_server_to_client = session->stats_packets_out_of_order_server_to_client;
+
+            // todo
+            printf("-------------------------------------------------\n");
+            printf("packets sent client to server = %d\n", (int) packet.packets_sent_client_to_server);
+            printf("packets sent server to client = %d\n", (int) packet.packets_sent_server_to_client);
+            printf("packets lost client to server = %d\n", (int) packet.packets_lost_client_to_server);
+            printf("packets lost server to client = %d\n", (int) packet.packets_lost_server_to_client);
+            printf("packets out of order client to server = %d\n", (int) packet.packets_out_of_order_client_to_server);
+            printf("packets out of order server to client = %d\n", (int) packet.packets_out_of_order_server_to_client);
+            printf("-------------------------------------------------\n");
+
             packet.jitter_client_to_server = session->stats_jitter_client_to_server;
             packet.jitter_server_to_client = session->stats_jitter_server_to_client;
             packet.next = session->stats_next;

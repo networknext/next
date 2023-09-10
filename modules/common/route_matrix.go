@@ -13,8 +13,8 @@ import (
 
 const (
 	RouteMatrixVersion_Min   = 1
-	RouteMatrixVersion_Max   = 1
-	RouteMatrixVersion_Write = 1
+	RouteMatrixVersion_Max   = 2
+	RouteMatrixVersion_Write = 2
 
 	MaxDatabaseBinWrapperSize = 100 * 1024
 )
@@ -35,6 +35,9 @@ type RouteMatrix struct {
 
 	DestRelays   []bool
 	RouteEntries []core.RouteEntry
+
+	CostMatrixSize uint32
+	OptimizeTime   uint32
 }
 
 func (m *RouteMatrix) GetMaxSize() int {
@@ -126,6 +129,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
 			}
 		}
+	}
+
+	if m.Version >= 2 {
+		stream.SerializeUint32(&m.CostMatrixSize)
+		stream.SerializeUint32(&m.OptimizeTime)
 	}
 
 	return stream.Error()

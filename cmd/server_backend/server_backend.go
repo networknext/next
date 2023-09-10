@@ -34,7 +34,7 @@ var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMess
 var analyticsSessionUpdateMessageChannel chan *messages.AnalyticsSessionUpdateMessage
 var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummaryMessage
 var analyticsMatchDataMessageChannel chan *messages.AnalyticsMatchDataMessage
-var analyticsNearRelayUpdateMessageChannel chan *messages.AnalyticsNearRelayUpdateMessage
+var analyticsNearRelayPingMessageChannel chan *messages.AnalyticsNearRelayPingMessage
 
 var enableGooglePubsub bool
 var enableRedisStreams bool
@@ -137,11 +137,11 @@ func main() {
 	analyticsSessionUpdateMessageChannel = make(chan *messages.AnalyticsSessionUpdateMessage, channelSize)
 	analyticsSessionSummaryMessageChannel = make(chan *messages.AnalyticsSessionSummaryMessage, channelSize)
 	analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, channelSize)
-	analyticsNearRelayUpdateMessageChannel = make(chan *messages.AnalyticsNearRelayUpdateMessage, channelSize)
+	analyticsNearRelayPingMessageChannel = make(chan *messages.AnalyticsNearRelayPingMessage, channelSize)
 
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
-	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayUpdateMessage]("near relay update", analyticsNearRelayUpdateMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsMatchDataMessage]("match data", analyticsMatchDataMessageChannel)
@@ -203,7 +203,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
 	handler.AnalyticsSessionUpdateMessageChannel = analyticsSessionUpdateMessageChannel
 	handler.AnalyticsSessionSummaryMessageChannel = analyticsSessionSummaryMessageChannel
-	handler.AnalyticsNearRelayUpdateMessageChannel = analyticsNearRelayUpdateMessageChannel
+	handler.AnalyticsNearRelayPingMessageChannel = analyticsNearRelayPingMessageChannel
 
 	handler.LocateIP = locateIP_Local
 	if service.Env == "dev" {

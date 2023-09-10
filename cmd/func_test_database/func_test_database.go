@@ -86,9 +86,9 @@ func test_local() {
 
 	fmt.Printf("test_local\n")
 
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/local.sql")
 
 	ValidateDatabase()
 }
@@ -97,9 +97,9 @@ func test_dev() {
 
 	fmt.Printf("test_dev\n")
 
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/dev.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/dev.sql")
 
 	ValidateDatabase()
 }

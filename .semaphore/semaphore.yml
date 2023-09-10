@@ -142,6 +142,21 @@ blocks:
             - make dist/ip2location.tar.gz
             - artifact push workflow dist/ip2location.tar.gz --force
 
+        - name: "Load Test Relays"
+          commands:
+            - make dist/load_test_relays.tar.gz
+            - artifact push workflow dist/load_test_relays.tar.gz --force
+
+        - name: "Load Test Servers"
+          commands:
+            - make dist/load_test_servers.tar.gz
+            - artifact push workflow dist/load_test_servers.tar.gz --force
+
+        - name: "Load Test Sessions"
+          commands:
+            - make dist/load_test_sessions.tar.gz
+            - artifact push workflow dist/load_test_sessions.tar.gz --force
+
   - name: "Build Artifacts (Native)"
 
     dependencies: []

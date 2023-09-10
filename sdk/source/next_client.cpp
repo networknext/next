@@ -37,6 +37,7 @@
 #include "next_internal_config.h"
 
 #include <atomic>
+#include <stdio.h>
 
 // ---------------------------------------------------------------
 
@@ -784,23 +785,23 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint64_t packet_sequence = next_read_uint64( &p );
 
-        if ( next_replay_protection_already_received( &client->payload_replay_protection, packet_sequence ) )
+        const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, packet_sequence );
+
+        if ( !already_received )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. already received" );
-            return;
+            next_replay_protection_advance_sequence( &client->payload_replay_protection, packet_sequence );
+
+            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, packet_sequence );
+
+            next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, packet_sequence );
+
+            next_jitter_tracker_packet_received( &client->jitter_tracker, packet_sequence, packet_receive_time );
         }
-
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, packet_sequence );
-
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, packet_sequence );
-
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, packet_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, packet_sequence, packet_receive_time );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
+        notify->already_received = already_received;
         notify->payload_bytes = packet_bytes - 9;
         next_assert( notify->payload_bytes > 0 );
         memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
@@ -1020,28 +1021,21 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         const bool already_received = next_replay_protection_already_received( &client->payload_replay_protection, payload_sequence ) != 0;
 
-        if ( already_received && !client->multipath )
+        if ( !already_received )
         {
-            return;
+            next_replay_protection_advance_sequence( &client->payload_replay_protection, payload_sequence );
+
+            next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, payload_sequence );
+
+            next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, payload_sequence );
+
+            next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_platform_time() );
         }
-
-        if ( already_received && client->multipath )
-        {
-            client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]++;
-            return;
-        }
-
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, payload_sequence );
-
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, payload_sequence );
-
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, payload_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, payload_sequence, next_platform_time() );
 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
+        notify->already_received = already_received;
         notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
         memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
         {
@@ -2449,20 +2443,28 @@ void next_client_update( next_client_t * client )
                 next_printf( NEXT_LOG_LEVEL_SPAM, "client calling packet received callback: from = %s, payload = %d bytes", next_address_to_string( &client->server_address, address_buffer ), packet_received->payload_bytes );
 #endif // #if NEXT_SPIKE_TRACKING
 
-                client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
+                const bool direct = packet_received->direct;
+                const bool already_received = packet_received->already_received;
+
+                if ( !already_received )
+                {
+                    client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
+                }
 
                 const int wire_packet_bits = next_wire_packet_bits( packet_received->payload_bytes );
 
-                next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
-
-                double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth, next_platform_time() );
-
+                if ( direct )
                 {
-                    next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
-                    client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
-                }
+                    next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-                if ( !packet_received->direct )
+                    double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth );
+
+                    {
+                        next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
+                        client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
+                    }
+                }
+                else
                 {
                     int envelope_kbps_down;
                     {
@@ -2472,7 +2474,7 @@ void next_client_update( next_client_t * client )
 
                     next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_platform_time(), envelope_kbps_down, wire_packet_bits );
 
-                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth, next_platform_time() );
+                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth );
 
                     {
                         next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
@@ -2599,14 +2601,14 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
         next_bandwidth_limiter_add_packet( &client->direct_send_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth, next_platform_time() );
+        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth );
 
         {
             next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
             client->internal->direct_bandwidth_usage_kbps_up = direct_usage_kbps_up;
         }
 
-        // track next send backend and don't send over network next if we're over the bandwidth budget
+        // track next send bandwidth and don't send over network next if we're over the bandwidth budget
 
         if ( send_over_network_next )
         {
@@ -2618,7 +2620,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_platform_time(), next_envelope_kbps_up, wire_packet_bits );
 
-            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth, next_platform_time() );
+            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth );
 
             {
                 next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );

@@ -102,6 +102,21 @@ blocks:
             - artifact pull workflow ip2location.tar.gz
             - gsutil cp ip2location.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/ip2location.tar.gz
 
+        - name: "Load Test Relays"
+          commands:
+            - artifact pull workflow load_test_relays.tar.gz
+            - gsutil cp load_test_relays.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/load_test_relays.tar.gz
+
+        - name: "Load Test Servers"
+          commands:
+            - artifact pull workflow load_test_servers.tar.gz
+            - gsutil cp load_test_servers.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/load_test_servers.tar.gz
+
+        - name: "Load Test Sessions"
+          commands:
+            - artifact pull workflow load_test_sessions.tar.gz
+            - gsutil cp load_test_sessions.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/load_test_sessions.tar.gz
+
 # ------------------------------------------------------------------------------------------------------------
 
 promotions:
@@ -115,5 +130,10 @@ promotions:
     pipeline_file: deploy-staging.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '^staging.*'"
+
+  - name: "Deploy to Production"
+    pipeline_file: deploy-production.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ '^prod.*'"
 
 # ------------------------------------------------------------------------------------------------------------
