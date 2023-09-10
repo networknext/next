@@ -337,7 +337,7 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 	bigquery_message["sdk_version_minor"] = int(message.SDKVersion_Minor)
 	bigquery_message["sdk_version_patch"] = int(message.SDKVersion_Patch)
 	bigquery_message["client_to_server_packets_sent"] = int(message.ClientToServerPacketsSent)
-	bigquery_message["server_to_client_packets_sent"] = int(message.ServerToClientPacketsLost)
+	bigquery_message["server_to_client_packets_sent"] = int(message.ServerToClientPacketsSent)
 	bigquery_message["client_to_server_packets_lost"] = int(message.ClientToServerPacketsLost)
 	bigquery_message["server_to_client_packets_lost"] = int(message.ServerToClientPacketsLost)
 	bigquery_message["client_to_server_packets_out_of_order"] = int(message.ClientToServerPacketsOutOfOrder)

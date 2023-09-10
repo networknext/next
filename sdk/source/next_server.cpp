@@ -774,6 +774,8 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
         next_session_entry_t * entry = &server->session_manager->entries[i];
 
+        // todo: here we stop doing something when ping times out or fallback to direct. related?
+
         if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
@@ -915,6 +917,8 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
         }
 
         next_session_entry_t * entry = &server->session_manager->entries[index];
+
+        // detect client ping timeout. this is not an error condition, it's just the client ending the session
 
         if ( !entry->client_ping_timed_out &&
              entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time &&
@@ -2089,6 +2093,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_jitter_server_to_client = packet.jitter_server_to_client;
+
+            // todo
+            printf("-----------------------------------------------------\n");
+            printf("stats_packets_sent_client_to_server = %d\n", (int) session->stats_packets_sent_client_to_server );
+            printf("stats_packets_sent_lost_server_to_client = %d\n", (int) session->stats_packets_lost_server_to_client );
+            printf("-----------------------------------------------------\n");
+
             session->last_client_stats_update = next_platform_time();
         }
 
@@ -3164,6 +3175,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
             {
+                // todo: session mutex usage is a bit weird
                 next_platform_mutex_guard( &server->session_mutex );
                 packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             }
