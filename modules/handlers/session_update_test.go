@@ -1,6 +1,5 @@
 package handlers_test
 
-/*
 import (
 	"encoding/binary"
 	"fmt"
@@ -84,13 +83,54 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters
 	return routeMatrix
 }
 
+func WriteSessionData(sessionData packets.SDK_SessionData) []byte {
+
+	buffer := [packets.SDK_MaxSessionDataSize]byte{}
+
+	writeStream := encoding.CreateWriteStream(buffer[:])
+
+	err := sessionData.Serialize(writeStream)
+	if err != nil {
+		panic(err)
+	}
+
+	writeStream.Flush()
+
+	sessionDataBytes := writeStream.GetBytesProcessed()
+
+	return buffer[:sessionDataBytes]
+}
+
 func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
 
 	t.Parallel()
 
 	state := CreateState()
 
+	_, routingPrivateKey := crypto.Box_KeyPair()
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+	state.RelayBackendPrivateKey = routingPrivateKey
+	state.ServerBackendPublicKey = serverBackendPublicKey[:]
+	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
+
+	from := core.ParseAddress("127.0.0.1:40000")
+	state.From = &from
+	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
+	state.ServerBackendAddress = &serverBackendAddress
+
+	state.Request.SliceNumber = 100
+	state.Request.ClientPingTimedOut = true
+	state.Output.WriteSummary = true
+
 	state.Request.FallbackToDirect = true
+
+	sessionData := packets.GenerateRandomSessionData()
+	writeSessionData := WriteSessionData(sessionData)
+	copy(state.Request.SessionData[:], writeSessionData)
+	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+	state.Request.SessionDataBytes = int32(len(writeSessionData))
 
 	result := handlers.SessionUpdate_Pre(state)
 
@@ -358,7 +398,7 @@ func Test_SessionUpdate_NewSession(t *testing.T) {
 
 // --------------------------------------------------------------
 
-func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
+func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
 
 	t.Parallel()
 
@@ -376,30 +416,14 @@ func Test_SessionUpdate_ExistingSession_FailedToReadSessionData(t *testing.T) {
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
-	handlers.SessionUpdate_ExistingSession(state)
+	state.Request.SliceNumber = 10
+
+	handlers.SessionUpdate_Pre(state)
 
 	assert.True(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
 }
 
-func writeSessionData(sessionData packets.SDK_SessionData) []byte {
-
-	buffer := [packets.SDK_MaxSessionDataSize]byte{}
-
-	writeStream := encoding.CreateWriteStream(buffer[:])
-
-	err := sessionData.Serialize(writeStream)
-	if err != nil {
-		panic(err)
-	}
-
-	writeStream.Flush()
-
-	sessionDataBytes := writeStream.GetBytesProcessed()
-
-	return buffer[:sessionDataBytes]
-}
-
-func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
+func Test_SessionUpdate_Pre_ReadSessionData(t *testing.T) {
 
 	t.Parallel()
 
@@ -411,12 +435,17 @@ func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
 	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
 	sessionData := packets.GenerateRandomSessionData()
+	sessionData.SliceNumber = 10
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+
+	state.Request.SliceNumber = 10
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -424,6 +453,7 @@ func Test_SessionUpdate_ExistingSession_ReadSessionData(t *testing.T) {
 	assert.False(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
 }
 
+/*
 func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 
 	t.Parallel()
@@ -442,11 +472,13 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -474,13 +506,15 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
 	state.Request.SessionId = sessionId
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -508,7 +542,7 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -516,6 +550,8 @@ func Test_SessionUpdate_ExistingSession_PassConsistencyChecks(t *testing.T) {
 
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -543,7 +579,7 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -552,10 +588,12 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	state.Request.SessionId = sessionId
 	state.Request.SliceNumber = sliceNumber
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.True(t, state.Error == 0)
+	assert.Equal(t, state.Error, 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
@@ -583,7 +621,7 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	sessionData.PrevPacketsLostClientToServer = 0
 	sessionData.PrevPacketsLostServerToClient = 0
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -596,6 +634,8 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	state.Request.PacketsSentServerToClient = 2000
 	state.Request.PacketsLostClientToServer = 100
 	state.Request.PacketsLostServerToClient = 50
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -630,7 +670,7 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	sessionData.PrevPacketsLostClientToServer = 0
 	sessionData.PrevPacketsLostServerToClient = 0
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -643,6 +683,8 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	state.Request.PacketsSentServerToClient = 2000
 	state.Request.PacketsOutOfOrderClientToServer = 100
 	state.Request.PacketsOutOfOrderServerToClient = 50
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -673,7 +715,7 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	sessionData.SessionId = sessionId
 	sessionData.SliceNumber = sliceNumber
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -683,6 +725,8 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	state.Request.SliceNumber = sliceNumber
 	state.Request.JitterClientToServer = 50.0
 	state.Request.JitterServerToClient = 100.0
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -719,7 +763,7 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidth(t *testing.T) {
 	sessionData.NextEnvelopeBytesUpSum = 1000
 	sessionData.NextEnvelopeBytesDownSum = 1000
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -730,6 +774,8 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidth(t *testing.T) {
 	state.Request.SliceNumber = sliceNumber
 	state.Request.JitterClientToServer = 50.0
 	state.Request.JitterServerToClient = 100.0
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -761,7 +807,7 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 	sessionData.NextEnvelopeBytesUpSum = 0
 	sessionData.NextEnvelopeBytesDownSum = 0
 
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)
@@ -772,11 +818,14 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 	state.Request.JitterClientToServer = 50.0
 	state.Request.JitterServerToClient = 100.0
 
+	handlers.SessionUpdate_Pre(state)
+
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.Equal(t, state.Output.NextEnvelopeBytesUpSum, uint64(0))
 	assert.Equal(t, state.Output.NextEnvelopeBytesDownSum, uint64(0))
 }
+*/
 
 // --------------------------------------------------------------
 
@@ -3293,11 +3342,14 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 	state.Request.SliceNumber = 1
 
 	sessionData := packets.GenerateRandomSessionData()
+	sessionData.WroteSummary = false
 	sessionData.RouteState.Next = true
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
+
+	handlers.SessionUpdate_Pre(state)
 
 	handlers.SessionUpdate_Post(state)
 
@@ -3332,8 +3384,9 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	state.Request.PacketsLostServerToClient = 10004
 
 	sessionData := packets.GenerateRandomSessionData()
+	sessionData.WroteSummary = false
 	sessionData.RouteState.Next = true
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
@@ -3368,7 +3421,8 @@ func Test_SessionUpdate_Post_Debug(t *testing.T) {
 	state.Request.SliceNumber = 2
 
 	sessionData := packets.GenerateRandomSessionData()
-	writeSessionData := writeSessionData(sessionData)
+	sessionData.WroteSummary = false
+	writeSessionData := WriteSessionData(sessionData)
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
@@ -3407,7 +3461,7 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 	state.Request.ClientPingTimedOut = true
 
 	sessionData := packets.GenerateRandomSessionData()
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
@@ -3443,7 +3497,7 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	state.Output.WriteSummary = true
 
 	sessionData := packets.GenerateRandomSessionData()
-	writeSessionData := writeSessionData(sessionData)
+	writeSessionData := WriteSessionData(sessionData)
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
@@ -3456,4 +3510,3 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 }
 
 // --------------------------------------------------------------
-*/

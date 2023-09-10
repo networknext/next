@@ -200,18 +200,27 @@ func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpda
 		DirectPacketLoss: float32(common.RandomInt(0, 100)),
 		DirectKbpsUp:     rand.Uint32(),
 		DirectKbpsDown:   rand.Uint32(),
+
+		// flags
+
+		Next:                            common.RandomBool(),
+		Reported:                        common.RandomBool(),
+		LatencyReduction:                common.RandomBool(),
+		PacketLossReduction:             common.RandomBool(),
+		ForceNext:                       common.RandomBool(),
+		LongSessionUpdate:               common.RandomBool(),
+		ClientNextBandwidthOverLimit:    common.RandomBool(),
+		ServerNextBandwidthOverLimit:    common.RandomBool(),
+		Veto:                            common.RandomBool(),
+		Disabled:                        common.RandomBool(),
+		NotSelected:                     common.RandomBool(),
+		A:                               common.RandomBool(),
+		B:                               common.RandomBool(),
+		LatencyWorse:                    common.RandomBool(),
+		LocationVeto:                    common.RandomBool(),
+		Mispredict:                      common.RandomBool(),
+		LackOfDiversity:                 common.RandomBool(),
 	}
-
-	message.Next = common.RandomBool()
-	message.Reported = common.RandomBool()
-	message.LatencyReduction = common.RandomBool()
-	message.PacketLossReduction = common.RandomBool()
-	message.ForceNext = common.RandomBool()
-	message.LongSessionUpdate = common.RandomBool()
-	message.ClientNextBandwidthOverLimit = common.RandomBool()
-	message.ServerNextBandwidthOverLimit = common.RandomBool()
-
-	// todo: rest of flags
 
 	if message.Next {
 		message.NextRTT = float32(common.RandomInt(0, 1000))
