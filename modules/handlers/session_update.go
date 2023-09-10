@@ -135,6 +135,16 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	/*
+		Read session data first
+
+		We always need to read this, because we have to process and return it in the output.
+	*/
+
+	if state.Request.SliceNumber != 0 && !SessionUpdate_ReadSessionData(state) {
+		return true
+	}
+
+	/*
 		Fallback to direct is a state where the SDK has met some fatal error condition.
 
 		When this happens, the session will go direct from this point forward.
@@ -276,20 +286,6 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 	core.Debug("existing session")
-
-	/*
-		Read the session data, if it has not already been read.
-
-		This data contains state that persists across the session, it is sent up from the SDK,
-		we transform it, and then send it back down -- and it gets sent up by the SDK in the next
-		update.
-
-		This way we don't have to store state per-session in the backend.
-	*/
-
-	if !SessionUpdate_ReadSessionData(state) {
-		return
-	}
 
 	/*
 		Check for some obviously divergent data between the session request packet
@@ -932,14 +928,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	*/
 
 	if state.Input.WroteSummary {
-		return
-	}
-
-	/*
-		Read the session data if it hasn't been read already (except for slice 0, because there is no session data yet...)
-	*/
-
-	if state.Request.SliceNumber != 0 && !SessionUpdate_ReadSessionData(state) {
 		return
 	}
 

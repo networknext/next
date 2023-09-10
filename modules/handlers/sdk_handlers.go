@@ -552,6 +552,7 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	*/
 
 	if SessionUpdate_Pre(&state) {
+		state.Output = state.Input
 		return
 	}
 

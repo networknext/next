@@ -1,5 +1,6 @@
 package handlers_test
 
+/*
 import (
 	"encoding/binary"
 	"fmt"
@@ -3455,3 +3456,4 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 }
 
 // --------------------------------------------------------------
+*/

@@ -3185,6 +3185,17 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
             packet.packets_out_of_order_server_to_client = session->stats_packets_out_of_order_server_to_client;
+
+            // todo
+            printf("-------------------------------------------------\n");
+            printf("packets sent client to server = %d\n", (int) packet.packets_sent_client_to_server);
+            printf("packets sent server to client = %d\n", (int) packet.packets_sent_server_to_client);
+            printf("packets lost client to server = %d\n", (int) packet.packets_lost_client_to_server);
+            printf("packets lost server to client = %d\n", (int) packet.packets_lost_server_to_client);
+            printf("packets out of order client to server = %d\n", (int) packet.packets_out_of_order_client_to_server);
+            printf("packets out of order server to client = %d\n", (int) packet.packets_out_of_order_server_to_client);
+            printf("-------------------------------------------------\n");
+
             packet.jitter_client_to_server = session->stats_jitter_client_to_server;
             packet.jitter_server_to_client = session->stats_jitter_server_to_client;
             packet.next = session->stats_next;
