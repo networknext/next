@@ -208,6 +208,8 @@ func main() {
 		portal()
 	} else if command == "ip2location" {
 		ip2location()
+	} else if command == "generate-staging-sql" {
+		generate_staging_sql()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -569,4 +571,8 @@ func portal() {
 
 func ip2location() {
 	bash("cd dist && ./ip2location")
+}
+
+func generate_staging_sql() {
+	bash("go run tools/generate_staging_sql/generate_staging_sql.go")
 }
