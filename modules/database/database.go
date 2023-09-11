@@ -15,7 +15,8 @@ import (
 	"sort"
 	"strings"
 	"time"
-
+ 	"compress/gzip"
+ 
 	"github.com/networknext/next/modules/core"
 
 	_ "github.com/lib/pq"
@@ -43,8 +44,8 @@ type Relay struct {
 	MaxSessions        int         `json:"max_sessions"`
 	PortSpeed          int         `json:"port_speed"`
 	Version            string      `json:"version"`
-	Seller             Seller      `json:"seller"`
-	Datacenter         Datacenter  `json:"datacenter"`
+	Seller             *Seller     `json:"seller"`
+	Datacenter         *Datacenter `json:"datacenter"`
 }
 
 type Buyer struct {
@@ -117,16 +118,21 @@ func CreateDatabase() *Database {
 
 func LoadDatabase(filename string) (*Database, error) {
 
-	databaseFile, err := os.Open(filename)
+	compressed_database, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	defer databaseFile.Close()
+	compressed_buffer := bytes.NewReader(compressed_database)
+
+	gz_reader, err := gzip.NewReader(compressed_buffer);
+	if err != nil {
+		return nil, err
+	}
 
 	database := &Database{}
 
-	err = gob.NewDecoder(databaseFile).Decode(database)
+	err = gob.NewDecoder(gz_reader).Decode(database)
 
 	if err == nil {
 		database.Fixup()
@@ -182,7 +188,21 @@ func (database *Database) Save(filename string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(filename, buffer.Bytes(), 0644); err != nil {
+	var compressed_buffer bytes.Buffer
+    gz, err := gzip.NewWriterLevel(&compressed_buffer, gzip.BestCompression)
+    if err != nil {
+    	return err
+    }
+
+    if _, err := gz.Write(buffer.Bytes()); err != nil {
+        return err
+    }
+
+    if err := gz.Close(); err != nil {
+        return err;
+    }
+
+	if err := ioutil.WriteFile(filename, compressed_buffer.Bytes(), 0644); err != nil {
 		return err
 	}
 
@@ -1360,7 +1380,7 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.datacenter_name)
 		}
 
-		relay.Datacenter = *database.DatacenterMap[relay.DatacenterId]
+		relay.Datacenter = database.DatacenterMap[relay.DatacenterId]
 		if relay.Datacenter.Id != relay.DatacenterId {
 			return nil, fmt.Errorf("relay '%s' has a bad datacenter?!\n", relay.Name)
 		}
@@ -1370,7 +1390,7 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("relay %s doesn't have a seller?!\n", relay.Name)
 		}
 
-		relay.Seller = *database.SellerMap[seller_row.seller_id]
+		relay.Seller = database.SellerMap[seller_row.seller_id]
 
 		fmt.Printf("relay %d: %s -> %s [%x]\n", i, relay.Name, datacenter_row.datacenter_name, relay.DatacenterId)
 

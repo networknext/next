@@ -1390,8 +1390,8 @@ func test_relay_backend() {
 		relay.PublicAddress = relayAddresses[i]
 		relay.SSHAddress = relayAddresses[i]
 		relay.Version = "test"
-		relay.Seller = seller
-		relay.Datacenter = datacenter
+		relay.Seller = &seller
+		relay.Datacenter = &datacenter
 		relay.PublicKey = Base64String(TestRelayPublicKey)
 
 		database.Relays = append(database.Relays, relay)

@@ -15,8 +15,6 @@ const (
 	RouteMatrixVersion_Min   = 1
 	RouteMatrixVersion_Max   = 2
 	RouteMatrixVersion_Write = 2
-
-	MaxDatabaseBinWrapperSize = 1024 * 1024
 )
 
 type RouteMatrix struct {
@@ -65,7 +63,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&m.CreatedAt)
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
+	stream.SerializeInteger(&m.BinFileBytes, 0, constants.MaxDatabaseSize)
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
 			m.BinFileData = make([]byte, m.BinFileBytes)

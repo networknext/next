@@ -68,4 +68,6 @@ const (
 	RelayStatus_ShuttingDown = 2
 
 	PingTokenBytes = 32
+
+	MaxDatabaseSize = 256 * 1024
 )
