@@ -210,6 +210,8 @@ func main() {
 		ip2location()
 	} else if command == "generate-staging-sql" {
 		generate_staging_sql()
+	} else if command == "load-test-relays" {
+		load_test_relays()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -575,4 +577,8 @@ func ip2location() {
 
 func generate_staging_sql() {
 	bash("go run tools/generate_staging_sql/generate_staging_sql.go")
+}
+
+func load_test_relays() {
+	bash("cd dist && ./load_test_relays")
 }

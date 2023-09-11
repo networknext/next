@@ -94,7 +94,7 @@ INSERT INTO buyer_datacenter_settings VALUES(
 );
 `
 
-	for i := 0; i < NumRelays; i += (NumRelays/10) {
+	for i := 0; i < NumRelays; i += 10 {
 		fmt.Fprintf(file, settings_format, i)
 	}
 
