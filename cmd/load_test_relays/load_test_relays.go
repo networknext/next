@@ -63,6 +63,8 @@ func RunRelay(service *common.Service, index int) {
 
 			case <-ticker.C:
 
+				fmt.Printf("update relay %d\n", index)
+
 				packet := packets.RelayUpdateRequestPacket{
 					Version:     uint8(packets.RelayUpdateRequestPacket_VersionMax),
 					CurrentTime: uint64(time.Now().Unix()),
@@ -91,9 +93,15 @@ func RunRelay(service *common.Service, index int) {
 					packet.SamplePacketLoss[i] = uint16(common.RandomInt(0, 500))
 				}
 
-				fmt.Printf("update relay %d\n", index)
+				const BufferSize = 16 * 1024
 
-				// todo: send request to RELAY_BACKEND0
+				var buffer [BufferSize]byte
+
+				packetData := packet.Write(buffer[:])
+
+				// todo: send relay update to relay backend
+
+				_ = packetData
 			}
 		}
 	}()
