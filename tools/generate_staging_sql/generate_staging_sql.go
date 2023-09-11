@@ -78,12 +78,12 @@ VALUES(
 	%d,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
 	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
-	(select datacenter_id from datacenters where datacenter_name = 'test')
+	(select datacenter_id from datacenters where datacenter_name = 'test.%d')
 );
 `
 
 	for i := 0; i < NumRelays; i++ {
-		fmt.Fprintf(file, relay_format, i, 10000 + i)
+		fmt.Fprintf(file, relay_format, i, 10000 + i, i)
 	}
 
 	settings_format := `
