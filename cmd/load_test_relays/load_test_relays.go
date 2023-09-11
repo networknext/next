@@ -13,11 +13,14 @@ import (
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/packets"
+	"github.com/networknext/next/modules/crypto"
 )
 
 var service *common.Service
 var relayAddress string
 var relayBackendHostname string
+var relayBackendPublicKey []byte
+var relayPrivateKey []byte
 var numRelays int
 
 func main() {
@@ -29,6 +32,18 @@ func main() {
 	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
 
 	relayBackendHostname = envvar.GetString("RELAY_BACKEND_HOSTNAME", "http://127.0.0.1:30000")
+
+	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
+
+	if len(relayBackendPublicKey) == 0 {
+		panic("you must supply the relay backend public key")
+	}
+
+	relayPrivateKey = envvar.GetBase64("RELAY_PRIVATE_KEY", []byte{})
+
+	if len(relayPrivateKey) == 0 {
+		panic("you must supply the relay private key")
+	}
 
 	core.Log("simulating %d relays", numRelays)
 
@@ -109,28 +124,17 @@ func RunRelay(service *common.Service, index int) {
 
 				// encrypt relay update
 
-/*
-    // encrypt data after relay address
+				nonce := make([]byte, crypto.Box_NonceSize)
 
-    const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
+				common.RandomBytes(nonce)
 
-    uint8_t nonce[crypto_box_NONCEBYTES];
-    relay_random_bytes( nonce, crypto_box_NONCEBYTES );
+				encryptedData := buffer[8:len(packetData)]
 
-    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, main->relay_backend_public_key, main->relay_private_key ) != 0 )
-    {
-        printf( "error: failed to encrypt relay update\n" );
-        return RELAY_ERROR;
-    }
-    
-    p += crypto_box_MACBYTES;
+				encryptedBytes := crypto.Box_Encrypt(relayPrivateKey[:], relayBackendPublicKey[:], nonce, encryptedData, len(encryptedData))
 
-    memcpy( p, nonce, crypto_box_NONCEBYTES );
+				packetData = buffer[:8+encryptedBytes+crypto.Box_NonceSize]
 
-    p += crypto_box_NONCEBYTES;
-
-    const int update_data_length = p - update_data;
-*/
+				copy(packetData[8+encryptedBytes:], nonce)
 
 				// post to relay backend
 
@@ -145,8 +149,6 @@ func RunRelay(service *common.Service, index int) {
 }
 
 func PostBinary(url string, data []byte) error {
-
-	fmt.Printf("post binary to %s\n", url)
 
 	buffer := bytes.NewBuffer(data)
 
