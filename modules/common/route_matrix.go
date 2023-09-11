@@ -16,7 +16,7 @@ const (
 	RouteMatrixVersion_Max   = 2
 	RouteMatrixVersion_Write = 2
 
-	MaxDatabaseBinWrapperSize = 100 * 1024
+	MaxDatabaseBinWrapperSize = 1024 * 1024
 )
 
 type RouteMatrix struct {

@@ -69,6 +69,8 @@ func RunRelay(service *common.Service, index int) {
 
 				fmt.Printf("update relay %d\n", index)
 
+				// construct relay update. it has random samples for all the other relays which should result in a worse case route matrix optimize
+
 				packet := packets.RelayUpdateRequestPacket{
 					Version:                   uint8(packets.RelayUpdateRequestPacket_VersionMax),
 					CurrentTime:               uint64(time.Now().Unix()),
@@ -97,11 +99,40 @@ func RunRelay(service *common.Service, index int) {
 					packet.SamplePacketLoss[i] = uint16(common.RandomInt(0, 500))
 				}
 
+				// write relay update packet
+
 				const BufferSize = 16 * 1024
 
 				var buffer [BufferSize]byte
 
 				packetData := packet.Write(buffer[:])
+
+				// encrypt relay update
+
+/*
+    // encrypt data after relay address
+
+    const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
+
+    uint8_t nonce[crypto_box_NONCEBYTES];
+    relay_random_bytes( nonce, crypto_box_NONCEBYTES );
+
+    if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, main->relay_backend_public_key, main->relay_private_key ) != 0 )
+    {
+        printf( "error: failed to encrypt relay update\n" );
+        return RELAY_ERROR;
+    }
+    
+    p += crypto_box_MACBYTES;
+
+    memcpy( p, nonce, crypto_box_NONCEBYTES );
+
+    p += crypto_box_NONCEBYTES;
+
+    const int update_data_length = p - update_data;
+*/
+
+				// post to relay backend
 
 				err := PostBinary(fmt.Sprintf("%s/relay_update", relayBackendHostname), packetData)
 				if err != nil {
@@ -115,15 +146,22 @@ func RunRelay(service *common.Service, index int) {
 
 func PostBinary(url string, data []byte) error {
 
+	fmt.Printf("post binary to %s\n", url)
+
 	buffer := bytes.NewBuffer(data)
 
-	request, _ := http.NewRequest("PUT", url, buffer)
+	request, _ := http.NewRequest("POST", url, buffer)
+
+	request.Header.Add("Content-Type", "application/octet-stream")
 
 	httpClient := &http.Client{}
-
 	response, err := httpClient.Do(request)
 	if err != nil {
 		return err
+	}
+
+	if response.StatusCode != 200 {
+		return fmt.Errorf("got response %d", response.StatusCode)
 	}
 
 	body, error := ioutil.ReadAll(response.Body)

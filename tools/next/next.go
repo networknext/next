@@ -755,7 +755,7 @@ func GetBinary(url string) []byte {
 	return body
 }
 
-func PostJSON(url string, requestData interface{}, responseData interface{}) error {
+func PutJSON(url string, requestData interface{}, responseData interface{}) error {
 
 	buffer := new(bytes.Buffer)
 
@@ -883,7 +883,7 @@ func commitDatabase() {
 	request.User = fmt.Sprintf("%s <%s>", gitUser, gitEmail)
 	request.Database = database_base64
 
-	err = PostJSON(fmt.Sprintf("%s/admin/commit", env.AdminURL), &request, &response)
+	err = PutJSON(fmt.Sprintf("%s/admin/commit", env.AdminURL), &request, &response)
 	if err != nil {
 		fmt.Printf("error: could not post JSON to commit database endpoint: %v", err)
 		os.Exit(1)

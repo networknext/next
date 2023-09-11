@@ -888,7 +888,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				optimizeDuration := timeFinish.Sub(timeStart)
 
-				core.Debug("updated route matrix: %d relays is %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
+				core.Debug("updated route matrix: %d relays in %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
 
 				routeMatrixNew.OptimizeTime = uint32(optimizeDuration.Milliseconds())
 
