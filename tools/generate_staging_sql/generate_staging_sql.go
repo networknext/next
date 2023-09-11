@@ -83,7 +83,7 @@ VALUES(
 `
 
 	for i := 0; i < NumRelays; i++ {
-		fmt.Fprintf(file, relay_format, i, 10000 + i, i)
+		fmt.Fprintf(file, relay_format, i, 10000+i, i)
 	}
 
 	settings_format := `
@@ -104,9 +104,9 @@ INSERT INTO buyer_datacenter_settings VALUES(
 }
 
 func randomLatitude() float32 {
-	return float32(common.RandomInt(-90,+90))
+	return float32(common.RandomInt(-90, +90))
 }
 
 func randomLongitude() float32 {
-	return float32(common.RandomInt(-180,+180))
+	return float32(common.RandomInt(-180, +180))
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/networknext/next/modules/envvar"
 )
 
-
 func main() {
 
 	service := common.CreateService("load_test_sessions")

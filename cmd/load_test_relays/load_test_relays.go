@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
 	"time"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/packets"
@@ -41,19 +45,19 @@ func SimulateRelays(service *common.Service) {
 
 func RunRelay(service *common.Service, index int) {
 
-	time.Sleep(time.Duration(common.RandomInt(0,1000))*time.Millisecond)
-	
+	time.Sleep(time.Duration(common.RandomInt(0, 1000)) * time.Millisecond)
+
 	startTime := time.Now().Unix()
-	
+
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", relayAddress, 10000+index))
 
 	sampleRelayIds := make([]uint64, numRelays)
 	for i := 0; i < numRelays; i++ {
 		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 1000+i))
 	}
-	
+
 	ticker := time.NewTicker(time.Second)
-	
+
 	go func() {
 		for {
 			select {
@@ -66,23 +70,23 @@ func RunRelay(service *common.Service, index int) {
 				fmt.Printf("update relay %d\n", index)
 
 				packet := packets.RelayUpdateRequestPacket{
-					Version:     uint8(packets.RelayUpdateRequestPacket_VersionMax),
-					CurrentTime: uint64(time.Now().Unix()),
-					StartTime:   uint64(startTime),
-					Address:     address,
-					NumSamples:  uint32(numRelays),
-					SessionCount: 100,
-					EnvelopeBandwidthUpKbps: uint32(common.RandomInt(10000,20000)),
-					EnvelopeBandwidthDownKbps: uint32(common.RandomInt(10000,20000)),
-					PacketsSentPerSecond: float32(common.RandomInt(1000,2000)),
-					PacketsReceivedPerSecond: float32(common.RandomInt(1000,2000)),
-					BandwidthSentKbps: float32(common.RandomInt(10000,20000)),
-					BandwidthReceivedKbps: float32(common.RandomInt(10000,20000)),
-					NearPingsPerSecond: float32(common.RandomInt(10000, 20000)),
-					RelayPingsPerSecond: float32(common.RandomInt(10000, 20000)),
-					RelayFlags: 0,
-					RelayVersion: "load test",
-					NumRelayCounters: constants.NumRelayCounters,
+					Version:                   uint8(packets.RelayUpdateRequestPacket_VersionMax),
+					CurrentTime:               uint64(time.Now().Unix()),
+					StartTime:                 uint64(startTime),
+					Address:                   address,
+					NumSamples:                uint32(numRelays),
+					SessionCount:              100,
+					EnvelopeBandwidthUpKbps:   uint32(common.RandomInt(10000, 20000)),
+					EnvelopeBandwidthDownKbps: uint32(common.RandomInt(10000, 20000)),
+					PacketsSentPerSecond:      float32(common.RandomInt(1000, 2000)),
+					PacketsReceivedPerSecond:  float32(common.RandomInt(1000, 2000)),
+					BandwidthSentKbps:         float32(common.RandomInt(10000, 20000)),
+					BandwidthReceivedKbps:     float32(common.RandomInt(10000, 20000)),
+					NearPingsPerSecond:        float32(common.RandomInt(10000, 20000)),
+					RelayPingsPerSecond:       float32(common.RandomInt(10000, 20000)),
+					RelayFlags:                0,
+					RelayVersion:              "load test",
+					NumRelayCounters:          constants.NumRelayCounters,
 				}
 
 				copy(packet.SampleRelayId[:], sampleRelayIds)
@@ -99,10 +103,37 @@ func RunRelay(service *common.Service, index int) {
 
 				packetData := packet.Write(buffer[:])
 
-				// todo: send relay update to relay backend
-
-				_ = packetData
+				err := PostBinary(fmt.Sprintf("%s/relay_update", relayBackendHostname), packetData)
+				if err != nil {
+					core.Error("failed to post relay update to relay backend: %v", err)
+					os.Exit(1)
+				}
 			}
 		}
 	}()
+}
+
+func PostBinary(url string, data []byte) error {
+
+	buffer := bytes.NewBuffer(data)
+
+	request, _ := http.NewRequest("PUT", url, buffer)
+
+	httpClient := &http.Client{}
+
+	response, err := httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response: %v", err)
+	}
+
+	response.Body.Close()
+
+	_ = body
+
+	return nil
 }
