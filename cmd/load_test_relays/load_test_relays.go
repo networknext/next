@@ -11,37 +11,45 @@ import (
 	"github.com/networknext/next/modules/packets"
 )
 
+var service *common.Service
+var relayAddress string
+var relayBackendHostname string
+var numRelays int
 
 func main() {
 
-	service := common.CreateService("load_test_relays")
+	service = common.CreateService("load_test_relays")
 
-	numRelays := envvar.GetInt("NUM_RELAYS", 1000)
+	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
+
+	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
+
+	relayBackendHostname = envvar.GetString("RELAY_BACKEND_HOSTNAME", "http://127.0.0.1:30000")
 
 	core.Log("simulating %d relays", numRelays)
 
-	go SimulateRelays(service, numRelays)
+	go SimulateRelays(service)
 
 	service.WaitForShutdown()
 }
 
-func SimulateRelays(service *common.Service, numRelays int) {
+func SimulateRelays(service *common.Service) {
 	for i := 0; i < numRelays; i++ {
-		go RunRelay(service, numRelays, i)
+		go RunRelay(service, i)
 	}
 }
 
-func RunRelay(service *common.Service, numRelays int, index int) {
+func RunRelay(service *common.Service, index int) {
 
 	time.Sleep(time.Duration(common.RandomInt(0,1000))*time.Millisecond)
 	
 	startTime := time.Now().Unix()
 	
-	address := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 10000+index))									// todo: need to pass in RELAY_ADDRESS env var
+	address := core.ParseAddress(fmt.Sprintf("%s:%d", relayAddress, 10000+index))
 
 	sampleRelayIds := make([]uint64, numRelays)
 	for i := 0; i < numRelays; i++ {
-		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("127.0.0.1:%d", 1000+i))								// todo: RELAY_ADDRESS
+		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 1000+i))
 	}
 	
 	ticker := time.NewTicker(time.Second)
