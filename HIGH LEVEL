@@ -64,17 +64,13 @@ TODO
 
 	Implement load testing harness
 
-		-- load test relays
-		-- load test servers
-		-- load test sessions
+	-----------
+
+	Load test staging to 1000 relays, 100k servers, and 1M sessions with ~10% taking network next
 
 	-----------
 
 	api and relay gateway services *must* use HTTPS
-
-	-----------
-
-	Load test staging to 1000 relays, 100k servers, and 1M sessions with ~10% taking network next
 
 	-----------
 
