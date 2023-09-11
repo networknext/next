@@ -53,7 +53,7 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.%d',
+	'test.%03d',
 	%.2f,
 	%.2f,
 	(select seller_id from sellers where seller_code = 'test')
@@ -73,12 +73,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'test.%d',
+	'test.%03d',
 	'127.0.0.1',
-	%d,
+	%03d,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
 	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
-	(select datacenter_id from datacenters where datacenter_name = 'test.%d')
+	(select datacenter_id from datacenters where datacenter_name = 'test.%03d')
 );
 `
 
@@ -89,7 +89,7 @@ VALUES(
 	settings_format := `
 INSERT INTO buyer_datacenter_settings VALUES(
 	(select buyer_id from buyers where buyer_code = 'test'),
-	(select datacenter_id from datacenters where datacenter_name = 'test.%d'),
+	(select datacenter_id from datacenters where datacenter_name = 'test.%03d'),
 	true
 );
 `

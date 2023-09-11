@@ -82,7 +82,7 @@ func RunRelay(service *common.Service, index int) {
 
 			case <-ticker.C:
 
-				fmt.Printf("update relay %d\n", index)
+				fmt.Printf("update relay %03d\n", index)
 
 				// construct relay update. it has random samples for all the other relays which should result in a worse case route matrix optimize
 

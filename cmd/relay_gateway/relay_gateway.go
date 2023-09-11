@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -115,9 +114,6 @@ func main() {
 func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)) func(writer http.ResponseWriter, request *http.Request) {
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-
-		// todo
-		fmt.Printf("relay update\n")
 
 		startTime := time.Now()
 
@@ -233,7 +229,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relayName := relay.Name
 
-		core.Debug("[%s] received update for %s [%x]", request.RemoteAddr, relayName, relayId)
+		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
