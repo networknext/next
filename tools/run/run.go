@@ -214,6 +214,8 @@ func main() {
 		load_test_relays()
 	} else if command == "load-test-servers" {
 		load_test_servers()
+	} else if command == "load-test-sessions" {
+		load_test_sessions()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -587,4 +589,8 @@ func load_test_relays() {
 
 func load_test_servers() {
 	bash("cd dist && ./load_test_servers")
+}
+
+func load_test_sessions() {
+	bash("cd dist && ./load_test_sessions")
 }
