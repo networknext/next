@@ -12,6 +12,7 @@ import (
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/packets"
+	"github.com/networknext/next/modules/crypto"
 )
 
 var service *common.Service
@@ -77,6 +78,17 @@ func RunSession(index int) {
 
 	serverAddress := common.RandomAddress()
 
+	clientPublicKey, _ := crypto.Box_KeyPair()
+	serverPublicKey, _ := crypto.Box_KeyPair()
+
+	var next, fallbackToDirect, clientPingTimedOut bool
+
+	var predictedRTT float32
+
+	var sessionDataBytes int32
+	var sessionData [packets.SDK_MaxSessionDataSize]byte
+	var sessionDataSignature [packets.SDK_SignatureBytes]byte
+
 	lc := net.ListenConfig{}
 	lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
 	if err != nil {
@@ -114,9 +126,6 @@ func RunSession(index int) {
 
 				fmt.Printf("update session %03d\n", index)
 
-				// todo
-				_ = address
-
 				packet := packets.SDK_SessionUpdateRequestPacket{
 					Version: packets.SDKVersion{255,255,255},
 					BuyerId: buyerId,
@@ -127,38 +136,41 @@ func RunSession(index int) {
 					ClientAddress: address,
 					ServerAddress: serverAddress,
 					UserHash: userHash,
+					Next: next,
+					FallbackToDirect: fallbackToDirect,
+					ClientPingTimedOut: clientPingTimedOut,
+				}
+
+				copy(packet.ClientRoutePublicKey[:], clientPublicKey[:])
+				copy(packet.ServerRoutePublicKey[:], serverPublicKey[:])
+
+				if sliceNumber != 0 {
+					packet.SessionDataBytes = sessionDataBytes
+					copy(packet.SessionData[:], sessionData[:])
+					copy(packet.SessionDataSignature[:], sessionDataSignature[:])
+				}
+
+				if sliceNumber == 1 {
+					// todo: mock fake relay data matching set of near relays passed down in last response
 					/*
-					ClientRoutePublicKey            [crypto.Box_PublicKeySize]byte
-					ServerRoutePublicKey            [crypto.Box_PublicKeySize]byte
-					*/
-
-					/*
-					SessionDataBytes                int32
-					SessionData                     [SDK_MaxSessionDataSize]byte
-					SessionDataSignature            [SDK_SignatureBytes]byte
-					*/
-
-					/*
-					Next                            bool
-					FallbackToDirect                bool
-					ClientPingTimedOut              bool
-
-					DirectRTT                       float32
-					DirectJitter                    float32
-					DirectPacketLoss                float32
-					DirectMaxPacketLossSeen         float32
-
-					NextRTT                         float32
-					NextJitter                      float32
-					NextPacketLoss                  float32
-					NumNearRelays                   int32
-
 					HasNearRelayPings               bool
+					NumNearRelays                   int32
 					NearRelayIds                    [SDK_MaxNearRelays]uint64
 					NearRelayRTT                    [SDK_MaxNearRelays]int32
-					NearRelayJitter                 [SDK_MaxNearRelays]int32
-					NearRelayPacketLoss             [SDK_MaxNearRelays]float32
 					*/
+				}
+
+				if sliceNumber >= 1 {
+					// give one-in-ten sessions a very high direct RTT, so they tend to go over network next
+					if (sessionId % 10) == 0 {
+						packet.DirectRTT = 254
+					} else {
+						packet.DirectRTT = 1
+					}
+				}
+
+				if next {
+					packet.NextRTT = predictedRTT
 				}
 
 				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
