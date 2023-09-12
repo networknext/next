@@ -212,6 +212,8 @@ func main() {
 		generate_staging_sql()
 	} else if command == "load-test-relays" {
 		load_test_relays()
+	} else if command == "load-test-servers" {
+		load_test_servers()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -581,4 +583,8 @@ func generate_staging_sql() {
 
 func load_test_relays() {
 	bash("cd dist && ./load_test_relays")
+}
+
+func load_test_servers() {
+	bash("cd dist && ./load_test_servers")
 }
