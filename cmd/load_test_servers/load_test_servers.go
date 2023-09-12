@@ -64,7 +64,7 @@ func RunServer(index int) {
 
 	var requestId uint64
 
-	datacenterId := uint64(common.RandomInt(1,numRelays))
+	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03", index))
 
 	startTime := uint64(time.Now().Unix())
 
@@ -83,18 +83,11 @@ func RunServer(index int) {
 		for {
 
 			buffer := make([]byte, 4096)
-
-			packetBytes, from, err := conn.ReadFromUDP(buffer[:])
+			_, _, err := conn.ReadFromUDP(buffer[:])
 			if err != nil {
 				fmt.Printf("udp receive error: %v\n", err)
 				break
 			}
-
-			fmt.Printf("received packet (%d bytes)\n", packetBytes)
-
-			_ = from
-
-			// ...
 		}
 
 		conn.Close()
@@ -132,8 +125,6 @@ func RunServer(index int) {
 					core.Error("failed to write response packet: %v", err)
 					return
 				}
-
-				fmt.Printf("packet data is %d bytes\n", len(packetData))
 
 				if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
 					core.Error("failed to send packet: %v", err)
