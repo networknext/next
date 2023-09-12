@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"encoding/binary"
+	"context"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -67,7 +68,38 @@ func RunServer(index int) {
 
 	startTime := uint64(time.Now().Unix())
 
-	// todo: create udp socket
+	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
+
+	lc := net.ListenConfig{}
+	lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
+	if err != nil {
+		panic(fmt.Sprintf("could not bind socket: %v", err))
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	go func() {
+
+		for {
+
+			buffer := make([]byte, 4096)
+
+			packetBytes, from, err := conn.ReadFromUDP(buffer[:])
+			if err != nil {
+				fmt.Printf("udp receive error: %v\n", err)
+				break
+			}
+
+			fmt.Printf("received packet (%d bytes)\n", packetBytes)
+
+			_ = from
+
+			// ...
+		}
+
+		conn.Close()
+
+	}()
 
 	ticker := time.NewTicker(10*time.Second)
 
@@ -103,12 +135,10 @@ func RunServer(index int) {
 
 				fmt.Printf("packet data is %d bytes\n", len(packetData))
 
-				/*
-				if _, err := conn.WriteToUDP(packetData, to); err != nil {
-					core.Error("failed to send response packet: %v", err)
+				if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
+					core.Error("failed to send packet: %v", err)
 					return
 				}
-				*/
 			}
 		}
 	}()
