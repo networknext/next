@@ -511,11 +511,12 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	timeStart := time.Now()
 	defer func() {
-		milliseconds := float64(time.Since(timeStart).Milliseconds())
+		milliseconds := int(time.Since(timeStart).Milliseconds())
 		if milliseconds > 100 {
 			state.LongSessionUpdate = true
+			core.Warn("long session update: %dms", milliseconds)
 		}
-		core.Warn("long session update: %fms\n-----------------------------------------", milliseconds)
+		core.Debug("---------------------------------------------------------------------------")
 	}()
 
 	// log stuff we want to see with each session update (debug only)
