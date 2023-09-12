@@ -3,15 +3,22 @@ package main
 import (
 	"time"
 	"fmt"
+	"net"
+	"encoding/binary"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/packets"
 )
 
 var service *common.Service
 var numServers int
+var numRelays int
 var serverAddress string
+var serverBackendAddress net.UDPAddr
+var buyerId uint64
+var buyerPrivateKey []byte
 
 func main() {
 
@@ -19,7 +26,21 @@ func main() {
 
 	numServers = envvar.GetInt("NUM_SERVERS", 10000)
 
+	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
+
 	serverAddress = envvar.GetString("SERVER_ADDRESS", "127.0.0.1")
+
+	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
+
+	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
+
+	if customerPrivateKey == nil {
+		panic("you must supply the customer private key")
+	}
+
+	buyerId = binary.LittleEndian.Uint64(customerPrivateKey[0:8])
+
+	buyerPrivateKey = customerPrivateKey[8:]
 
 	core.Log("simulating %d servers", numServers)
 
@@ -36,11 +57,19 @@ func SimulateServers() {
 
 func RunServer(index int) {
 
-	time.Sleep(time.Duration(common.RandomInt(0, 1000)) * time.Millisecond)
+	time.Sleep(time.Duration(common.RandomInt(0, 10000)) * time.Millisecond)
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", serverAddress, 10000+index))
 
-	ticker := time.NewTicker(time.Second)
+	var requestId uint64
+
+	datacenterId := uint64(common.RandomInt(1,numRelays))
+
+	startTime := uint64(time.Now().Unix())
+
+	// todo: create udp socket
+
+	ticker := time.NewTicker(10*time.Second)
 
 	go func() {
 		for {
@@ -53,9 +82,33 @@ func RunServer(index int) {
 
 				fmt.Printf("update server %03d\n", index)
 
-				// ...
+				packet := packets.SDK_ServerUpdateRequestPacket{
+					Version: packets.SDKVersion{255,255,255},
+					BuyerId: buyerId,
+					RequestId: requestId,
+					DatacenterId: datacenterId,
+					MatchId: 0,
+					NumSessions: uint32(common.RandomInt(100,200)),
+					ServerAddress: address,
+					StartTime: startTime,
+				}
 
-				_ = address
+				requestId += 1
+
+				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
+				if err != nil {
+					core.Error("failed to write response packet: %v", err)
+					return
+				}
+
+				fmt.Printf("packet data is %d bytes\n", len(packetData))
+
+				/*
+				if _, err := conn.WriteToUDP(packetData, to); err != nil {
+					core.Error("failed to send response packet: %v", err)
+					return
+				}
+				*/
 			}
 		}
 	}()
