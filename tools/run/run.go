@@ -592,5 +592,5 @@ func load_test_servers() {
 }
 
 func load_test_sessions() {
-	bash("cd dist && ./load_test_sessions")
+	bash("cd dist && ./load_test_sessions`")
 }

@@ -6,14 +6,16 @@ import (
 	"net"
 	"encoding/binary"
 	"context"
+	"math/rand"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
-	// "github.com/networknext/next/modules/packets"
+	"github.com/networknext/next/modules/packets"
 )
 
 var service *common.Service
+var numRelays int
 var numSessions int
 var clientAddress string
 var serverBackendAddress net.UDPAddr
@@ -23,6 +25,8 @@ var buyerPrivateKey []byte
 func main() {
 
 	service = common.CreateService("load_test_sessions")
+
+	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
 
 	numSessions = envvar.GetInt("NUM_SESSIONS", 10000)
 
@@ -59,13 +63,19 @@ func RunSession(index int) {
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, 10000+index))
 
-	var requestId uint64
+	userHash := rand.Uint64()
 
-	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03", index))
+	sessionId := rand.Uint64()
 
-	startTime := uint64(time.Now().Unix())
+	sliceNumber := 0
+
+	retryNumber := 0
+
+	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03", index%numRelays))
 
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
+
+	serverAddress := common.RandomAddress()
 
 	lc := net.ListenConfig{}
 	lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
@@ -106,23 +116,50 @@ func RunSession(index int) {
 
 				// todo
 				_ = address
-				_ = requestId
-				_ = datacenterId
-				_ = startTime
 
-				/*
-				packet := packets.SDK_ServerUpdateRequestPacket{
+				packet := packets.SDK_SessionUpdateRequestPacket{
 					Version: packets.SDKVersion{255,255,255},
 					BuyerId: buyerId,
-					RequestId: requestId,
 					DatacenterId: datacenterId,
-					MatchId: 0,
-					NumSessions: uint32(common.RandomInt(100,200)),
-					ServerAddress: address,
-					StartTime: startTime,
-				}
+					SessionId: sessionId,
+					SliceNumber: uint32(sliceNumber),
+					RetryNumber: int32(retryNumber),
+					ClientAddress: address,
+					ServerAddress: serverAddress,
+					UserHash: userHash,
+					/*
+					ClientRoutePublicKey            [crypto.Box_PublicKeySize]byte
+					ServerRoutePublicKey            [crypto.Box_PublicKeySize]byte
+					*/
 
-				requestId += 1
+					/*
+					SessionDataBytes                int32
+					SessionData                     [SDK_MaxSessionDataSize]byte
+					SessionDataSignature            [SDK_SignatureBytes]byte
+					*/
+
+					/*
+					Next                            bool
+					FallbackToDirect                bool
+					ClientPingTimedOut              bool
+
+					DirectRTT                       float32
+					DirectJitter                    float32
+					DirectPacketLoss                float32
+					DirectMaxPacketLossSeen         float32
+
+					NextRTT                         float32
+					NextJitter                      float32
+					NextPacketLoss                  float32
+					NumNearRelays                   int32
+
+					HasNearRelayPings               bool
+					NearRelayIds                    [SDK_MaxNearRelays]uint64
+					NearRelayRTT                    [SDK_MaxNearRelays]int32
+					NearRelayJitter                 [SDK_MaxNearRelays]int32
+					NearRelayPacketLoss             [SDK_MaxNearRelays]float32
+					*/
+				}
 
 				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
 				if err != nil {
@@ -134,7 +171,10 @@ func RunSession(index int) {
 					core.Error("failed to send packet: %v", err)
 					return
 				}
-				*/
+
+				// todo: retry 5 times, once second apart until session update response is received
+
+				sliceNumber += 1
 			}
 		}
 	}()
