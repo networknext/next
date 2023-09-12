@@ -118,27 +118,14 @@ func CreateDatabase() *Database {
 
 func LoadDatabase(filename string) (*Database, error) {
 
-	compressed_database, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	compressed_buffer := bytes.NewReader(compressed_database)
-
-	gz_reader, err := gzip.NewReader(compressed_buffer);
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	database := &Database{}
 
-	err = gob.NewDecoder(gz_reader).Decode(database)
-
-	if err == nil {
-		database.Fixup()
-	}
-
-	return database, err
+	return database, database.LoadBinary(data)
 }
 
 func (database *Database) Fixup() {
@@ -1451,6 +1438,25 @@ func ExtractDatabase(config string) (*Database, error) {
 }
 
 // -----------------------------------------------------------------------------------------------------------
+
+func (database *Database) LoadBinary(data []byte) error {
+
+	compressed_buffer := bytes.NewReader(data)
+
+	gz_reader, err := gzip.NewReader(compressed_buffer);
+	if err != nil {
+		return err
+	}
+
+
+	err = gob.NewDecoder(gz_reader).Decode(database)
+
+	if err == nil {
+		database.Fixup()
+	}
+
+	return err
+}
 
 func (database *Database) GetBinary() []byte {
 
