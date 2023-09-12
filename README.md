@@ -2,7 +2,7 @@
 
 <br>
 
-Network Next is a network acceleration system for multiplayer games.
+Network Next is a network accelerator for multiplayer games.
 
 # Installation and Setup
 
