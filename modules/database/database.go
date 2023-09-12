@@ -1453,12 +1453,29 @@ func ExtractDatabase(config string) (*Database, error) {
 // -----------------------------------------------------------------------------------------------------------
 
 func (database *Database) GetBinary() []byte {
+
 	var buffer bytes.Buffer
+
 	err := gob.NewEncoder(&buffer).Encode(database)
 	if err != nil {
 		return nil
 	}
-	return buffer.Bytes()
+
+	var compressed_buffer bytes.Buffer
+    gz, err := gzip.NewWriterLevel(&compressed_buffer, gzip.BestCompression)
+    if err != nil {
+    	return nil
+    }
+
+    if _, err := gz.Write(buffer.Bytes()); err != nil {
+        return nil
+    }
+
+    if err := gz.Close(); err != nil {
+        return nil
+    }
+
+    return compressed_buffer.Bytes()
 }
 
 type HeaderResponse struct {
