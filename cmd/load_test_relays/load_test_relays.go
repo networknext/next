@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/networknext/next/modules/common"
@@ -27,7 +26,7 @@ func main() {
 
 	service = common.CreateService("load_test_relays")
 
-	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
+	numRelays = envvar.GetInt("NUM_RELAYS", 10)//00)
 
 	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
 
@@ -109,9 +108,7 @@ func RunRelay(service *common.Service, index int) {
 				copy(packet.SampleRelayId[:], sampleRelayIds)
 
 				for i := 0; i < int(packet.NumSamples); i++ {
-					packet.SampleRTT[i] = uint8(common.RandomInt(0, 100))
-					packet.SampleJitter[i] = uint8(common.RandomInt(0, 10))
-					packet.SamplePacketLoss[i] = uint16(common.RandomInt(0, 500))
+					packet.SampleRTT[i] = uint8(common.RandomInt(1, 10))
 				}
 
 				// write relay update packet
@@ -141,7 +138,6 @@ func RunRelay(service *common.Service, index int) {
 				err := PostBinary(fmt.Sprintf("%s/relay_update", relayBackendHostname), packetData)
 				if err != nil {
 					core.Error("failed to post relay update to relay backend: %v", err)
-					os.Exit(1)
 				}
 			}
 		}

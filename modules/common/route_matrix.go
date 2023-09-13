@@ -195,8 +195,8 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 				abFlatIndex := TriMatrixIndex(i, j)
 				numRelayPairs++
 				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
-					improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
-					if improvement > 0.0 {
+					if m.RouteEntries[abFlatIndex].DirectCost != 255 {
+						improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
 						if improvement <= 5 {
 							buckets[0]++
 						} else if improvement <= 10 {

@@ -30,7 +30,7 @@ func main() {
 
 	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
 
-	numSessions = envvar.GetInt("NUM_SESSIONS", 10000)
+	numSessions = envvar.GetInt("NUM_SESSIONS", 1)
 
 	clientAddress = envvar.GetString("CLIENT_ADDRESS", "127.0.0.1")
 
@@ -85,8 +85,6 @@ func RunSession(index int) {
 	var mutex sync.Mutex
 
 	var next, fallbackToDirect, clientPingTimedOut bool
-
-	var predictedRTT float32
 
 	var sessionDataBytes int32
 	var sessionData [packets.SDK_MaxSessionDataSize]byte
@@ -153,8 +151,6 @@ func RunSession(index int) {
 					copy(nearRelayIds[:], packet.NearRelayIds[:])
 				}
 
-				sliceNumber = int(packet.SliceNumber)
-
 				mutex.Unlock()
 
 			}
@@ -215,15 +211,15 @@ func RunSession(index int) {
 
 				if sliceNumber >= 1 {
 					// give one-in-ten sessions a very high direct RTT, so they tend to go over network next
-					if (sessionId % 10) == 0 {
-						packet.DirectRTT = 254
-					} else {
-						packet.DirectRTT = 1
-					}
+					// if (sessionId % 10) == 0 {
+						packet.DirectRTT = 250
+					// } else {
+						// packet.DirectRTT = 1
+					// }
 				}
 
 				if next {
-					packet.NextRTT = predictedRTT
+					packet.NextRTT = 1
 				}
 
 				mutex.Unlock()
@@ -238,6 +234,10 @@ func RunSession(index int) {
 					core.Error("failed to send packet: %v", err)
 					return
 				}
+
+				mutex.Lock()
+				sliceNumber += 1
+				mutex.Unlock()
 
 				// todo: retry 5 times, once second apart until session update response is received
 			}
