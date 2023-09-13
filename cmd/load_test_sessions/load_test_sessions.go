@@ -8,6 +8,7 @@ import (
 	"context"
 	"math/rand"
 	"sync"
+	"os"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -30,7 +31,7 @@ func main() {
 
 	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
 
-	numSessions = envvar.GetInt("NUM_SESSIONS", 1)
+	numSessions = envvar.GetInt("NUM_SESSIONS", 1000)
 
 	clientAddress = envvar.GetString("CLIENT_ADDRESS", "127.0.0.1")
 
@@ -84,6 +85,8 @@ func RunSession(index int) {
 
 	var mutex sync.Mutex
 
+	var receivedResponse bool
+
 	var next, fallbackToDirect, clientPingTimedOut bool
 
 	var sessionDataBytes int32
@@ -134,21 +137,23 @@ func RunSession(index int) {
 					continue
 				}
 
-				fmt.Printf("received response\n")
-
 				mutex.Lock()
 
-				sessionDataBytes = packet.SessionDataBytes
-				copy(sessionData[:], packet.SessionData[:])
-				copy(sessionDataSignature[:], packet.SessionDataSignature[:])
+				if packet.SessionId == sessionId && packet.SliceNumber == uint32(sliceNumber) {
 
-				fmt.Printf("session data is %d bytes\n", sessionDataBytes)
+					sessionDataBytes = packet.SessionDataBytes
+					copy(sessionData[:], packet.SessionData[:])
+					copy(sessionDataSignature[:], packet.SessionDataSignature[:])
 
-				next = packet.RouteType != packets.SDK_RouteTypeDirect
+					next = packet.RouteType != packets.SDK_RouteTypeDirect
 
-				if packet.HasNearRelays {
-					numNearRelays = packet.NumNearRelays
-					copy(nearRelayIds[:], packet.NearRelayIds[:])
+					if packet.HasNearRelays {
+						numNearRelays = packet.NumNearRelays
+						copy(nearRelayIds[:], packet.NearRelayIds[:])
+					}
+
+					receivedResponse = true
+
 				}
 
 				mutex.Unlock()
@@ -172,74 +177,104 @@ func RunSession(index int) {
 
 			case <-ticker.C:
 
-				fmt.Printf("update session %03d\n", index)
+				for i := 0; i < 5; i++ {
 
-				mutex.Lock()
-
-				packet := packets.SDK_SessionUpdateRequestPacket{
-					Version: packets.SDKVersion{255,255,255},
-					BuyerId: buyerId,
-					DatacenterId: datacenterId,
-					SessionId: sessionId,
-					SliceNumber: uint32(sliceNumber),
-					RetryNumber: int32(retryNumber),
-					ClientAddress: address,
-					ServerAddress: serverAddress,
-					UserHash: userHash,
-					Next: next,
-					FallbackToDirect: fallbackToDirect,
-					ClientPingTimedOut: clientPingTimedOut,
-				}
-
-				copy(packet.ClientRoutePublicKey[:], clientPublicKey[:])
-				copy(packet.ServerRoutePublicKey[:], serverPublicKey[:])
-
-				if sliceNumber != 0 {
-					packet.SessionDataBytes = sessionDataBytes
-					copy(packet.SessionData[:], sessionData[:])
-					copy(packet.SessionDataSignature[:], sessionDataSignature[:])
-				}
-
-				if sliceNumber >= 1 {
-					packet.HasNearRelayPings = true
-					packet.NumNearRelays = numNearRelays
-					copy(packet.NearRelayIds[:], nearRelayIds[:])
-					for i := range packet.NearRelayRTT {
-						packet.NearRelayRTT[i] = int32((sessionId^nearRelayIds[i])%10)
+					if retryNumber == 0 {
+						fmt.Printf("update session %03d\n", index)
+					} else {
+						fmt.Printf("update session %03d (retry %d)\n", index, retryNumber)
 					}
-				}
 
-				if sliceNumber >= 1 {
-					// give one-in-ten sessions a very high direct RTT, so they tend to go over network next
-					// if (sessionId % 10) == 0 {
-						packet.DirectRTT = 250
-					// } else {
-						// packet.DirectRTT = 1
-					// }
-				}
+					mutex.Lock()
 
-				if next {
-					packet.NextRTT = 1
-				}
+					receivedResponse = false
 
-				mutex.Unlock()
+					packet := packets.SDK_SessionUpdateRequestPacket{
+						Version: packets.SDKVersion{255,255,255},
+						BuyerId: buyerId,
+						DatacenterId: datacenterId,
+						SessionId: sessionId,
+						SliceNumber: uint32(sliceNumber),
+						RetryNumber: int32(retryNumber),
+						ClientAddress: address,
+						ServerAddress: serverAddress,
+						UserHash: userHash,
+						Next: next,
+						FallbackToDirect: fallbackToDirect,
+						ClientPingTimedOut: clientPingTimedOut,
+					}
 
-				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
-				if err != nil {
-					core.Error("failed to write response packet: %v", err)
-					return
-				}
+					copy(packet.ClientRoutePublicKey[:], clientPublicKey[:])
+					copy(packet.ServerRoutePublicKey[:], serverPublicKey[:])
 
-				if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
-					core.Error("failed to send packet: %v", err)
-					return
+					if sliceNumber != 0 {
+						packet.SessionDataBytes = sessionDataBytes
+						copy(packet.SessionData[:], sessionData[:])
+						copy(packet.SessionDataSignature[:], sessionDataSignature[:])
+					}
+
+					if sliceNumber >= 1 {
+						packet.HasNearRelayPings = true
+						packet.NumNearRelays = numNearRelays
+						copy(packet.NearRelayIds[:], nearRelayIds[:])
+						for i := range packet.NearRelayRTT {
+							packet.NearRelayRTT[i] = int32((sessionId^nearRelayIds[i])%10)
+						}
+					}
+
+					if sliceNumber >= 1 {
+						// give one-in-ten sessions a very high direct RTT, so they tend to go over network next
+						if (sessionId % 10) == 0 {
+							packet.DirectRTT = 250
+						} else {
+							packet.DirectRTT = 1
+						}
+					}
+
+					if next {
+						packet.NextRTT = 1
+					}
+
+					mutex.Unlock()
+
+					packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
+					if err != nil {
+						core.Error("failed to write response packet: %v", err)
+						return
+					}
+
+					if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
+						core.Error("failed to send packet: %v", err)
+						return
+					}
+
+					time.Sleep(time.Second)
+
+					mutex.Lock()
+					done := receivedResponse
+					mutex.Unlock()
+					if done {
+						break
+					}
+
+					mutex.Lock()
+					retryNumber += 1
+					mutex.Unlock()
 				}
 
 				mutex.Lock()
-				sliceNumber += 1
-				mutex.Unlock()
 
-				// todo: retry 5 times, once second apart until session update response is received
+				if !receivedResponse {
+					core.Error("did not receive response")
+					fallbackToDirect = true
+					os.Exit(1)
+				}
+
+				sliceNumber += 1
+				retryNumber = 0
+				receivedResponse = false
+
+				mutex.Unlock()
 			}
 		}
 	}()

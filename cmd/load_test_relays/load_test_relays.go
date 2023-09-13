@@ -26,8 +26,8 @@ func main() {
 
 	service = common.CreateService("load_test_relays")
 
-	numRelays = envvar.GetInt("NUM_RELAYS", 10)//00)
-
+	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
+	
 	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
 
 	relayBackendHostname = envvar.GetString("RELAY_BACKEND_HOSTNAME", "http://127.0.0.1:30000")
