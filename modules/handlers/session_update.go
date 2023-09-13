@@ -513,7 +513,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.SliceNumber == 1 {
-		core.Debug("sdk uploaded near relay ping stats for %d relays:", state.Request.NumNearRelays)
+		core.Debug("sdk uploaded near relay stats for %d relays:", state.Request.NumNearRelays)
 		for i := 0; i < int(state.Request.NumNearRelays); i++ {
 			relayId := state.Request.NearRelayIds[i]
 			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]

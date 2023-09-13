@@ -73,7 +73,7 @@ func RunSession(index int) {
 
 	retryNumber := 0
 
-	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03d", index%numRelays))
+	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03d", (index%numRelays)/10*10))
 
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
 
@@ -91,6 +91,9 @@ func RunSession(index int) {
 	var sessionDataBytes int32
 	var sessionData [packets.SDK_MaxSessionDataSize]byte
 	var sessionDataSignature [packets.SDK_SignatureBytes]byte
+
+	var numNearRelays int32
+	var nearRelayIds [packets.SDK_MaxNearRelays]uint64
 
 	lc := net.ListenConfig{}
 	lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
@@ -112,6 +115,10 @@ func RunSession(index int) {
 			}
 
 			if packetBytes < 1 {
+				continue
+			}
+
+			if from.String() != serverBackendAddress.String() {
 				continue
 			}
 
@@ -139,10 +146,16 @@ func RunSession(index int) {
 
 				fmt.Printf("session data is %d bytes\n", sessionDataBytes)
 
-				mutex.Unlock()
+				next = packet.RouteType != packets.SDK_RouteTypeDirect
 
-				_ = packet
-				_ = from
+				if packet.HasNearRelays {
+					numNearRelays = packet.NumNearRelays
+					copy(nearRelayIds[:], packet.NearRelayIds[:])
+				}
+
+				sliceNumber = int(packet.SliceNumber)
+
+				mutex.Unlock()
 
 			}
 
@@ -191,14 +204,13 @@ func RunSession(index int) {
 					copy(packet.SessionDataSignature[:], sessionDataSignature[:])
 				}
 
-				if sliceNumber == 1 {
-					// todo: mock fake relay data matching set of near relays passed down in last response
-					/*
-					HasNearRelayPings               bool
-					NumNearRelays                   int32
-					NearRelayIds                    [SDK_MaxNearRelays]uint64
-					NearRelayRTT                    [SDK_MaxNearRelays]int32
-					*/
+				if sliceNumber >= 1 {
+					packet.HasNearRelayPings = true
+					packet.NumNearRelays = numNearRelays
+					copy(packet.NearRelayIds[:], nearRelayIds[:])
+					for i := range packet.NearRelayRTT {
+						packet.NearRelayRTT[i] = int32((sessionId^nearRelayIds[i])%10)
+					}
 				}
 
 				if sliceNumber >= 1 {
@@ -228,10 +240,6 @@ func RunSession(index int) {
 				}
 
 				// todo: retry 5 times, once second apart until session update response is received
-
-				mutex.Lock()
-				sliceNumber += 1
-				mutex.Unlock()
 			}
 		}
 	}()
