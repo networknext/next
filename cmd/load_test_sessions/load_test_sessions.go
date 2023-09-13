@@ -83,6 +83,10 @@ func RunSession(index int) {
 	clientPublicKey, _ := crypto.Box_KeyPair()
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
+	sessionDuration := 0
+
+	sessionTimeout := common.RandomInt(240,300)
+
 	var mutex sync.Mutex
 
 	var receivedResponse bool
@@ -177,7 +181,11 @@ func RunSession(index int) {
 
 			case <-ticker.C:
 
-				for i := 0; i < 5; i++ {
+				mutex.Lock()
+				receivedResponse = false
+				mutex.Unlock()
+
+				for i := 0; i < 9; i++ {
 
 					if retryNumber == 0 {
 						fmt.Printf("update session %03d\n", index)
@@ -186,8 +194,6 @@ func RunSession(index int) {
 					}
 
 					mutex.Lock()
-
-					receivedResponse = false
 
 					packet := packets.SDK_SessionUpdateRequestPacket{
 						Version: packets.SDKVersion{255,255,255},
@@ -223,8 +229,8 @@ func RunSession(index int) {
 					}
 
 					if sliceNumber >= 1 {
-						// give one-in-ten sessions a very high direct RTT, so they tend to go over network next
-						if (sessionId % 10) == 0 {
+						// give 50% of sessions a very high direct RTT, so they tend to go over network next
+						if (sessionId % 2) == 0 {
 							packet.DirectRTT = 250
 						} else {
 							packet.DirectRTT = 1
@@ -265,7 +271,7 @@ func RunSession(index int) {
 				mutex.Lock()
 
 				if !receivedResponse {
-					core.Error("did not receive response")
+					core.Error("fallback to direct")
 					fallbackToDirect = true
 					os.Exit(1)
 				}
@@ -275,6 +281,30 @@ func RunSession(index int) {
 				receivedResponse = false
 
 				mutex.Unlock()
+
+				sessionDuration += 10
+
+				if sessionDuration > sessionTimeout {
+					if !clientPingTimedOut {
+						fmt.Printf("client ping timed out\n")
+						clientPingTimedOut = true
+					}
+				}
+
+				if sessionDuration > sessionTimeout + 60 {
+					mutex.Lock()
+					fmt.Printf("new session %03d\n", index)
+					sessionId = rand.Uint64()
+					sliceNumber = 0
+					retryNumber = 0
+					sessionDuration = 0
+					next = false
+					fallbackToDirect = false
+					clientPingTimedOut = false
+					sessionDataBytes = 0
+					numNearRelays = 0								
+					mutex.Unlock()
+				}
 			}
 		}
 	}()
