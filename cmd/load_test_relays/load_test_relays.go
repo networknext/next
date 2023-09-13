@@ -67,7 +67,7 @@ func RunRelay(service *common.Service, index int) {
 
 	sampleRelayIds := make([]uint64, numRelays)
 	for i := 0; i < numRelays; i++ {
-		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 1000+i))
+		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+i))
 	}
 
 	ticker := time.NewTicker(time.Second)
