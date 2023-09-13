@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"context"
 	"math/rand"
+	"sync"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -72,7 +73,7 @@ func RunSession(index int) {
 
 	retryNumber := 0
 
-	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03", index%numRelays))
+	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03d", index%numRelays))
 
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
 
@@ -80,6 +81,8 @@ func RunSession(index int) {
 
 	clientPublicKey, _ := crypto.Box_KeyPair()
 	serverPublicKey, _ := crypto.Box_KeyPair()
+
+	var mutex sync.Mutex
 
 	var next, fallbackToDirect, clientPingTimedOut bool
 
@@ -102,11 +105,47 @@ func RunSession(index int) {
 		for {
 
 			buffer := make([]byte, 4096)
-			_, _, err := conn.ReadFromUDP(buffer[:])
+			packetBytes, from, err := conn.ReadFromUDP(buffer[:])
 			if err != nil {
 				fmt.Printf("udp receive error: %v\n", err)
 				break
 			}
+
+			if packetBytes < 1 {
+				continue
+			}
+
+			packetData := buffer[:packetBytes]
+
+			packetType := packetData[0]
+			
+			if packetType == packets.SDK_SESSION_UPDATE_RESPONSE_PACKET {
+
+				packetData = packetData[16:len(packetData)-2]
+
+				packet := packets.SDK_SessionUpdateResponsePacket{}
+				if err := packets.ReadPacket(packetData, &packet); err != nil {
+					core.Error("failed to read packet: %v", err)
+					continue
+				}
+
+				fmt.Printf("received response\n")
+
+				mutex.Lock()
+
+				sessionDataBytes = packet.SessionDataBytes
+				copy(sessionData[:], packet.SessionData[:])
+				copy(sessionDataSignature[:], packet.SessionDataSignature[:])
+
+				fmt.Printf("session data is %d bytes\n", sessionDataBytes)
+
+				mutex.Unlock()
+
+				_ = packet
+				_ = from
+
+			}
+
 		}
 
 		conn.Close()
@@ -125,6 +164,8 @@ func RunSession(index int) {
 			case <-ticker.C:
 
 				fmt.Printf("update session %03d\n", index)
+
+				mutex.Lock()
 
 				packet := packets.SDK_SessionUpdateRequestPacket{
 					Version: packets.SDKVersion{255,255,255},
@@ -173,7 +214,9 @@ func RunSession(index int) {
 					packet.NextRTT = predictedRTT
 				}
 
-				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
+				mutex.Unlock()
+
+				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
 				if err != nil {
 					core.Error("failed to write response packet: %v", err)
 					return
@@ -186,7 +229,9 @@ func RunSession(index int) {
 
 				// todo: retry 5 times, once second apart until session update response is received
 
+				mutex.Lock()
 				sliceNumber += 1
+				mutex.Unlock()
 			}
 		}
 	}()

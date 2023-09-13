@@ -380,11 +380,14 @@ func (database *Database) DatacenterExists(datacenterId uint64) bool {
 }
 
 func (database *Database) DatacenterEnabled(buyerId uint64, datacenterId uint64) bool {
-	buyerEntry, ok := database.BuyerDatacenterSettings[buyerId]
-	if !ok {
+	buyerEntry := database.BuyerDatacenterSettings[buyerId]
+	if buyerEntry == nil {
 		return false
 	}
 	settings := buyerEntry[datacenterId]
+	if settings == nil {
+		return false
+	}
 	return settings.EnableAcceleration
 }
 
