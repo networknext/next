@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	AnalyticsServerUpdateMessageVersion_Min   = 1
-	AnalyticsServerUpdateMessageVersion_Max   = 1
-	AnalyticsServerUpdateMessageVersion_Write = 1
+	AnalyticsServerUpdateMessageVersion_Min   = 0
+	AnalyticsServerUpdateMessageVersion_Max   = 0
+	AnalyticsServerUpdateMessageVersion_Write = 0
 
 	MaxAnalyticsServerUpdateMessageSize = 128
 )

@@ -41,7 +41,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 {
     (void) context;
 
-    if ( packet_bytes != 8 )
+    if ( packet_bytes != 256 )
         return;
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
@@ -53,24 +53,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
         memcpy( user_id_bytes, packet_data, 8 );
         char buffer[256];
         next_server_upgrade_session( server, from, next_user_id_string( user_id, buffer, sizeof(buffer) ) );
-    }
-    else
-    {
-        next_server_stats_t stats;
-        bool session_exists = next_server_stats( server, from, &stats );
-
-        if ( rand() % 2500 == 0 && next_server_session_upgraded( server, from ) && session_exists )
-        {
-            int num_session_events = rand() % 64;
-            uint64_t session_events = 0;
-
-            for ( int i = 0; i < num_session_events; ++i )
-            {
-                session_events |= 1 << (rand() % 64);
-            }
-
-            next_server_session_event( server, from, session_events );
-        }
     }
 }
 

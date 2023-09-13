@@ -262,7 +262,7 @@ func main() {
 
 	fmt.Printf("\nGenerating google.sql\n")
 
-	file, err = os.Create("schemas/sql/sellers/google.sql")
+	file, err = os.Create("sql/sellers/google.sql")
 	if err != nil {
 		panic(err)
 	}

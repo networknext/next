@@ -105,7 +105,7 @@ func (publisher *GoogleBigQueryPublisher) publishBatch(ctx context.Context) {
 
 	err := publisher.tableInserter.Put(ctx, publisher.messageBatch)
 	if err != nil {
-		core.Error("failed to publish bigquery entry: %v", err)
+		core.Error("failed to publish bigquery entry to table '%s': %v", publisher.config.TableName, err)
 		return
 	}
 

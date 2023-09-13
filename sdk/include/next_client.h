@@ -73,6 +73,7 @@ struct next_client_notify_t
 struct next_client_notify_packet_received_t : public next_client_notify_t
 {
     bool direct;
+    bool already_received;
     int payload_bytes;
     uint8_t payload_data[NEXT_MAX_PACKET_BYTES-1];
 };

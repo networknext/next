@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	AnalyticsSessionUpdateMessageVersion_Min   = 1
-	AnalyticsSessionUpdateMessageVersion_Max   = 1
-	AnalyticsSessionUpdateMessageVersion_Write = 1
+	AnalyticsSessionUpdateMessageVersion_Min   = 0
+	AnalyticsSessionUpdateMessageVersion_Max   = 0
+	AnalyticsSessionUpdateMessageVersion_Write = 0
 )
 
 type AnalyticsSessionUpdateMessage struct {
@@ -26,7 +26,6 @@ type AnalyticsSessionUpdateMessage struct {
 	RealPacketLoss   float32
 	RealJitter       float32
 	RealOutOfOrder   float32
-	SessionFlags     uint64
 	SessionEvents    uint64
 	InternalEvents   uint64
 	DirectRTT        float32
@@ -45,6 +44,27 @@ type AnalyticsSessionUpdateMessage struct {
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
 	NextRouteRelayId   [constants.MaxRouteRelays]uint64
+
+	// flags
+
+	Next                         bool
+	FallbackToDirect             bool
+	Reported                     bool
+	LatencyReduction             bool
+	PacketLossReduction          bool
+	ForceNext                    bool
+	LongSessionUpdate            bool
+	ClientNextBandwidthOverLimit bool
+	ServerNextBandwidthOverLimit bool
+	Veto                         bool
+	Disabled                     bool
+	NotSelected                  bool
+	A                            bool
+	B                            bool
+	LatencyWorse                 bool
+	LocationVeto                 bool
+	Mispredict                   bool
+	LackOfDiversity              bool
 }
 
 func (message *AnalyticsSessionUpdateMessage) GetMaxSize() int {
@@ -69,7 +89,6 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RealPacketLoss)
 	encoding.WriteFloat32(buffer, &index, message.RealJitter)
 	encoding.WriteFloat32(buffer, &index, message.RealOutOfOrder)
-	encoding.WriteUint64(buffer, &index, message.SessionFlags)
 	encoding.WriteUint64(buffer, &index, message.SessionEvents)
 	encoding.WriteUint64(buffer, &index, message.InternalEvents)
 	encoding.WriteFloat32(buffer, &index, message.DirectRTT)
@@ -80,7 +99,8 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	// next only
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	encoding.WriteBool(buffer, &index, message.Next)
+	if message.Next {
 		encoding.WriteFloat32(buffer, &index, message.NextRTT)
 		encoding.WriteFloat32(buffer, &index, message.NextJitter)
 		encoding.WriteFloat32(buffer, &index, message.NextPacketLoss)
@@ -92,6 +112,26 @@ func (message *AnalyticsSessionUpdateMessage) Write(buffer []byte) []byte {
 			encoding.WriteUint64(buffer, &index, message.NextRouteRelayId[i])
 		}
 	}
+
+	// flags
+
+	encoding.WriteBool(buffer, &index, message.FallbackToDirect)
+	encoding.WriteBool(buffer, &index, message.Reported)
+	encoding.WriteBool(buffer, &index, message.LatencyReduction)
+	encoding.WriteBool(buffer, &index, message.PacketLossReduction)
+	encoding.WriteBool(buffer, &index, message.ForceNext)
+	encoding.WriteBool(buffer, &index, message.LongSessionUpdate)
+	encoding.WriteBool(buffer, &index, message.ClientNextBandwidthOverLimit)
+	encoding.WriteBool(buffer, &index, message.ServerNextBandwidthOverLimit)
+	encoding.WriteBool(buffer, &index, message.Veto)
+	encoding.WriteBool(buffer, &index, message.Disabled)
+	encoding.WriteBool(buffer, &index, message.NotSelected)
+	encoding.WriteBool(buffer, &index, message.A)
+	encoding.WriteBool(buffer, &index, message.B)
+	encoding.WriteBool(buffer, &index, message.LatencyWorse)
+	encoding.WriteBool(buffer, &index, message.LocationVeto)
+	encoding.WriteBool(buffer, &index, message.Mispredict)
+	encoding.WriteBool(buffer, &index, message.LackOfDiversity)
 
 	return buffer[:index]
 }
@@ -134,10 +174,6 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read real out of order")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.SessionFlags) {
-		return fmt.Errorf("failed to read session flags")
-	}
-
 	if !encoding.ReadUint64(buffer, &index, &message.SessionEvents) {
 		return fmt.Errorf("failed to read session events")
 	}
@@ -168,7 +204,11 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 
 	// next only
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	if !encoding.ReadBool(buffer, &index, &message.Next) {
+		return fmt.Errorf("failed to read next flag")
+	}
+
+	if message.Next {
 
 		if !encoding.ReadFloat32(buffer, &index, &message.NextRTT) {
 			return fmt.Errorf("failed to read next rtt")
@@ -205,6 +245,76 @@ func (message *AnalyticsSessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
+	// flags
+
+	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+		return fmt.Errorf("failed to read fallback to direct flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Reported) {
+		return fmt.Errorf("failed to read reported flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LatencyReduction) {
+		return fmt.Errorf("failed to read latency reduction flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.PacketLossReduction) {
+		return fmt.Errorf("failed to read latency packet loss reduction flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ForceNext) {
+		return fmt.Errorf("failed to read force next flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LongSessionUpdate) {
+		return fmt.Errorf("failed to read long session update flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ClientNextBandwidthOverLimit) {
+		return fmt.Errorf("failed to read client next bandwidth over limit flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.ServerNextBandwidthOverLimit) {
+		return fmt.Errorf("failed to read server next bandwidth over limit flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Veto) {
+		return fmt.Errorf("failed to read veto flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Disabled) {
+		return fmt.Errorf("failed to read disabled flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.NotSelected) {
+		return fmt.Errorf("failed to read not selected flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.A) {
+		return fmt.Errorf("failed to read A flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.B) {
+		return fmt.Errorf("failed to read B flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LatencyWorse) {
+		return fmt.Errorf("failed to read latency worse flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LocationVeto) {
+		return fmt.Errorf("failed to read location veto flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Mispredict) {
+		return fmt.Errorf("failed to read mispredict flag")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.LackOfDiversity) {
+		return fmt.Errorf("failed to read lack of diversity flag")
+	}
+
 	return nil
 }
 
@@ -218,7 +328,6 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 	bigquery_message["real_packet_loss"] = float64(message.RealPacketLoss)
 	bigquery_message["real_jitter"] = float64(message.RealJitter)
 	bigquery_message["real_out_of_order"] = float64(message.RealOutOfOrder)
-	bigquery_message["session_flags"] = int(message.SessionFlags)
 	bigquery_message["session_events"] = int(message.SessionEvents)
 	bigquery_message["internal_events"] = int(message.InternalEvents)
 	bigquery_message["direct_rtt"] = float64(message.DirectRTT)
@@ -227,7 +336,7 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 	bigquery_message["direct_kbps_up"] = int(message.DirectKbpsUp)
 	bigquery_message["direct_kbps_down"] = int(message.DirectKbpsDown)
 
-	if (message.SessionFlags & constants.SessionFlags_Next) != 0 {
+	if message.Next {
 
 		bigquery_message["next_rtt"] = float64(message.NextRTT)
 		bigquery_message["next_jitter"] = float64(message.NextJitter)
@@ -242,6 +351,27 @@ func (message *AnalyticsSessionUpdateMessage) Save() (map[string]bigquery.Value,
 		}
 		bigquery_message["next_route_relays"] = next_route_relays
 	}
+
+	// flags
+
+	bigquery_message["next"] = bool(message.Next)
+	bigquery_message["fallback_to_direct"] = bool(message.FallbackToDirect)
+	bigquery_message["reported"] = bool(message.Reported)
+	bigquery_message["latency_reduction"] = bool(message.LatencyReduction)
+	bigquery_message["packet_loss_reduction"] = bool(message.PacketLossReduction)
+	bigquery_message["force_next"] = bool(message.ForceNext)
+	bigquery_message["long_session_update"] = bool(message.LongSessionUpdate)
+	bigquery_message["client_next_bandwidth_over_limit"] = bool(message.ClientNextBandwidthOverLimit)
+	bigquery_message["server_next_bandwidth_over_limit"] = bool(message.ClientNextBandwidthOverLimit)
+	bigquery_message["veto"] = bool(message.Veto)
+	bigquery_message["disabled"] = bool(message.Disabled)
+	bigquery_message["not_selected"] = bool(message.NotSelected)
+	bigquery_message["a"] = bool(message.A)
+	bigquery_message["b"] = bool(message.B)
+	bigquery_message["latency_worse"] = bool(message.LatencyWorse)
+	bigquery_message["location_veto"] = bool(message.LocationVeto)
+	bigquery_message["mispredict"] = bool(message.Mispredict)
+	bigquery_message["lack_of_diversity"] = bool(message.LackOfDiversity)
 
 	return bigquery_message, "", nil
 }

@@ -86,9 +86,9 @@ func test_local() {
 
 	fmt.Printf("test_local\n")
 
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/local.sql")
 
 	ValidateDatabase()
 }
@@ -97,9 +97,9 @@ func test_dev() {
 
 	fmt.Printf("test_dev\n")
 
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/dev.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/dev.sql")
 
 	ValidateDatabase()
 }
@@ -193,8 +193,8 @@ func test_api() {
 			Name:          fmt.Sprintf("local-%d", i+1),
 			PublicAddress: core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i)),
 			SSHAddress:    core.ParseAddress("127.0.0.1:22"),
-			Datacenter:    *database.DatacenterMap[1],
-			Seller:        *database.SellerMap[1],
+			Datacenter:    database.DatacenterMap[1],
+			Seller:        database.SellerMap[1],
 		}
 		database.Relays = append(database.Relays, relay)
 		database.DatacenterRelays[1] = append(database.DatacenterRelays[1], uint64(1+i))

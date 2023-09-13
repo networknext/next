@@ -168,8 +168,8 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 		relays[i].PublicAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i))
 		relays[i].PublicKey = RelayPublicKey
 		relays[i].PrivateKey = RelayPrivateKey
-		relays[i].Seller = seller
-		relays[i].Datacenter = datacenters[i]
+		relays[i].Seller = &seller
+		relays[i].Datacenter = &datacenters[i]
 		relays[i].SSHUser = "ubuntu"
 		relays[i].SSHAddress = core.ParseAddress("127.0.0.1:22")
 	}

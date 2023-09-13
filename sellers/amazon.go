@@ -351,7 +351,7 @@ func main() {
 
 	fmt.Printf("\nGenerating amazon.sql\n")
 
-	file, err = os.Create("schemas/sql/sellers/amazon.sql")
+	file, err = os.Create("sql/sellers/amazon.sql")
 	if err != nil {
 		panic(err)
 	}

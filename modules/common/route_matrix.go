@@ -13,10 +13,8 @@ import (
 
 const (
 	RouteMatrixVersion_Min   = 1
-	RouteMatrixVersion_Max   = 1
-	RouteMatrixVersion_Write = 1
-
-	MaxDatabaseBinWrapperSize = 100 * 1024
+	RouteMatrixVersion_Max   = 2
+	RouteMatrixVersion_Write = 2
 )
 
 type RouteMatrix struct {
@@ -35,6 +33,9 @@ type RouteMatrix struct {
 
 	DestRelays   []bool
 	RouteEntries []core.RouteEntry
+
+	CostMatrixSize uint32
+	OptimizeTime   uint32
 }
 
 func (m *RouteMatrix) GetMaxSize() int {
@@ -62,7 +63,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&m.CreatedAt)
 
-	stream.SerializeInteger(&m.BinFileBytes, 0, MaxDatabaseBinWrapperSize)
+	stream.SerializeInteger(&m.BinFileBytes, 0, constants.MaxDatabaseSize)
 	if m.BinFileBytes > 0 {
 		if stream.IsReading() {
 			m.BinFileData = make([]byte, m.BinFileBytes)
@@ -128,6 +129,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	if m.Version >= 2 {
+		stream.SerializeUint32(&m.CostMatrixSize)
+		stream.SerializeUint32(&m.OptimizeTime)
+	}
+
 	return stream.Error()
 }
 
@@ -188,9 +194,9 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 				}
 				abFlatIndex := TriMatrixIndex(i, j)
 				numRelayPairs++
-				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
-					improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
-					if improvement > 0.0 {
+				if m.RouteEntries[abFlatIndex].DirectCost != 255 {
+	  			    if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
+						improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
 						if improvement <= 5 {
 							buckets[0]++
 						} else if improvement <= 10 {
@@ -226,7 +232,7 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 
 	if numRelayPairs > 0 {
 
-		analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs)
+		analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs) * 100.0
 
 		analysis.RTTBucket_NoImprovement = float32(numRelayPairsWithoutImprovement / numRelayPairs * 100.0)
 		analysis.RTTBucket_0_5ms = float32(float64(buckets[0]) / numRelayPairs * 100.0)
@@ -302,8 +308,8 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	analysis.AverageRouteLength = float32(averageRouteLength)
 
 	if relayPairs > 0 {
-		analysis.NoRoutePercent = float32(relayPairsWithNoRoutes / relayPairs)
-		analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs)
+		analysis.NoRoutePercent = float32(relayPairsWithNoRoutes / relayPairs) * 100.0
+		analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs) * 100.0
 	}
 
 	return analysis

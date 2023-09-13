@@ -69,12 +69,12 @@ type SDK_Handler struct {
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
 	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
-	AnalyticsServerInitMessageChannel      chan<- *messages.AnalyticsServerInitMessage
-	AnalyticsServerUpdateMessageChannel    chan<- *messages.AnalyticsServerUpdateMessage
-	AnalyticsNearRelayUpdateMessageChannel chan<- *messages.AnalyticsNearRelayUpdateMessage
-	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsMatchDataMessageChannel       chan<- *messages.AnalyticsMatchDataMessage
+	AnalyticsServerInitMessageChannel     chan<- *messages.AnalyticsServerInitMessage
+	AnalyticsServerUpdateMessageChannel   chan<- *messages.AnalyticsServerUpdateMessage
+	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
+	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsMatchDataMessageChannel      chan<- *messages.AnalyticsMatchDataMessage
 }
 
 func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -308,6 +308,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		message.BuyerId = requestPacket.BuyerId
 		message.DatacenterId = requestPacket.DatacenterId
 		message.DatacenterName = requestPacket.DatacenterName
+		message.ServerAddress = *from
 
 		handler.AnalyticsServerInitMessageChannel <- &message
 
@@ -502,7 +503,7 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	state.PortalNearRelayUpdateMessageChannel = handler.PortalNearRelayUpdateMessageChannel
 	state.PortalMapUpdateMessageChannel = handler.PortalMapUpdateMessageChannel
 
-	state.AnalyticsNearRelayUpdateMessageChannel = handler.AnalyticsNearRelayUpdateMessageChannel
+	state.AnalyticsNearRelayPingMessageChannel = handler.AnalyticsNearRelayPingMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
 	state.AnalyticsSessionSummaryMessageChannel = handler.AnalyticsSessionSummaryMessageChannel
 
@@ -510,11 +511,12 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	timeStart := time.Now()
 	defer func() {
-		milliseconds := float64(time.Since(timeStart).Milliseconds())
+		milliseconds := int(time.Since(timeStart).Milliseconds())
 		if milliseconds > 100 {
-			state.SessionFlags |= constants.SessionFlags_LongDuration
+			state.LongSessionUpdate = true
+			core.Warn("long session update: %dms", milliseconds)
 		}
-		core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
+		core.Debug("---------------------------------------------------------------------------")
 	}()
 
 	// log stuff we want to see with each session update (debug only)
@@ -551,6 +553,7 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	*/
 
 	if SessionUpdate_Pre(&state) {
+		state.Output = state.Input
 		return
 	}
 
@@ -571,20 +574,6 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 		SessionUpdate_NewSession(&state)
 	} else {
 		SessionUpdate_ExistingSession(&state)
-	}
-
-	/*
-	   Handle fallback to direct.
-
-	   Fallback to direct is a condition where the SDK indicates that it has seen
-	   some fatal error, like not getting a session response from the backend,
-	   and has decided to go direct for the rest of the session.
-
-	   When this happens, we early out to save processing time.
-	*/
-
-	if SessionUpdate_HandleFallbackToDirect(&state) {
-		return
 	}
 
 	/*

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/messages"
@@ -64,7 +63,7 @@ func main() {
 	core.Debug("relay insert batch size: %d", relayInsertBatchSize)
 	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
-  	if !service.Local {
+	if !service.Local {
 		service.LoadIP2Location()
 	}
 
@@ -148,7 +147,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 
 	userHash := message.UserHash
 
-	next := (message.SessionFlags & constants.SessionFlags_Next) != 0
+	next := message.Next
 
 	score := uint32(0)
 	if next {
@@ -157,7 +156,12 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		score = 10000 - uint32(message.DirectRTT)
 	}
 
-	isp := service.GetISP(message.ClientAddress.IP)
+	var isp string
+	if !service.Local {
+		isp = service.GetISP(message.ClientAddress.IP)
+	} else {
+		isp = "Local"
+	}
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
@@ -195,6 +199,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		DirectKbpsDown:   message.DirectKbpsUp,
 		NextKbpsUp:       message.NextKbpsUp,
 		NextKbpsDown:     message.NextKbpsDown,
+		Next:             message.Next,
 	}
 
 	sessionInserter[threadNumber].Insert(sessionId, userHash, score, next, &sessionData, &sliceData)

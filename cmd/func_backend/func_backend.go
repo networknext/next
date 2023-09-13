@@ -753,7 +753,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		sessionData.Version = packets.SDK_SessionDataVersion_Write
 		sessionData.SessionId = requestPacket.SessionId
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
-		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK_BillingSliceSeconds
+		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + packets.SDK_SliceSeconds
 
 	} else {
 
@@ -766,7 +766,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		}
 
 		sessionData.SliceNumber = uint32(requestPacket.SliceNumber + 1)
-		sessionData.ExpireTimestamp += packets.SDK_BillingSliceSeconds
+		sessionData.ExpireTimestamp += packets.SDK_SliceSeconds
 	}
 
 	// get data about all active relays on the relay backend
@@ -904,7 +904,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey[:])
 			routeType = packets.SDK_RouteTypeContinue
 		} else {
-			sessionData.ExpireTimestamp += packets.SDK_BillingSliceSeconds
+			sessionData.ExpireTimestamp += packets.SDK_SliceSeconds
 			sessionData.SessionVersion++
 			tokenData = make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
 			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenPublicAddresses, tokenHasInternalAddresses, tokenInternalAddresses, tokenInternalGroups, tokenSellers, tokenPublicKeys, routerPrivateKey[:])

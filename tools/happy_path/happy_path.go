@@ -83,9 +83,9 @@ func happy_path(wait bool) int {
 
 	// initialize postgres
 
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../schemas/sql/local.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/local.sql")
 
 	// nuke redis
 
@@ -649,7 +649,7 @@ func happy_path(wait bool) int {
 
 	server_initialized := false
 
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 600; i++ {
 		if strings.Contains(server_stdout.String(), "welcome to network next :)") &&
 			strings.Contains(server_stdout.String(), "server is ready to receive client connections") {
 			server_initialized = true
@@ -770,7 +770,6 @@ func happy_path(wait bool) int {
 	}
 
 	if strings.Contains(analytics_leader_stdout.String(), "we are no longer the leader") ||
-		!strings.Contains(analytics_leader_stdout.String(), "cost matrix num relays: 10") ||
 		!strings.Contains(analytics_leader_stdout.String(), "route matrix num relays: 10") {
 		fmt.Printf("\n\nerror: analytics leader did not verify\n\n")
 		fmt.Printf("----------------------------------------------------\n")

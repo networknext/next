@@ -128,8 +128,6 @@ func main() {
 		pubsub_emulator()
 	} else if command == "bigquery-emulator" {
 		bigquery_emulator()
-	} else if command == "setup-emulators" {
-		setup_emulators()
 	} else if command == "func-test-sdk" {
 		func_test_sdk(args[2:])
 	} else if command == "func-test-relay" {
@@ -210,6 +208,14 @@ func main() {
 		portal()
 	} else if command == "ip2location" {
 		ip2location()
+	} else if command == "generate-staging-sql" {
+		generate_staging_sql()
+	} else if command == "load-test-relays" {
+		load_test_relays()
+	} else if command == "load-test-servers" {
+		load_test_servers()
+	} else if command == "load-test-sessions" {
+		load_test_sessions()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -329,10 +335,6 @@ func bigquery_emulator() {
 	bash("bigquery-emulator --project=local --dataset=local")
 }
 
-func setup_emulators() {
-	bash("go run ./tools/setup_emulators/setup_emulators.go")
-}
-
 func func_test_sdk(tests []string) {
 	command := "cd dist && ./func_test_sdk"
 	if len(tests) > 0 {
@@ -427,23 +429,23 @@ func relay_keygen() {
 }
 
 func sql_create() {
-	bash("psql -U developer postgres -f ./schemas/sql/create.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/create.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_destroy() {
-	bash("psql -U developer postgres -f ./schemas/sql/destroy.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/destroy.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_local() {
-	bash("psql -U developer postgres -f ./schemas/sql/local.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/local.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_docker() {
-	bash("psql -U developer postgres -f ./schemas/sql/docker.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/docker.sql -v ON_ERROR_STOP=1")
 }
 
 func sql_staging() {
-	bash("psql -U developer postgres -f ./schemas/sql/staging.sql -v ON_ERROR_STOP=1")
+	bash("psql -U developer postgres -f ./sql/staging.sql -v ON_ERROR_STOP=1")
 }
 
 func extract_database() {
@@ -575,4 +577,20 @@ func portal() {
 
 func ip2location() {
 	bash("cd dist && ./ip2location")
+}
+
+func generate_staging_sql() {
+	bash("go run tools/generate_staging_sql/generate_staging_sql.go")
+}
+
+func load_test_relays() {
+	bash("cd dist && ./load_test_relays")
+}
+
+func load_test_servers() {
+	bash("cd dist && ./load_test_servers")
+}
+
+func load_test_sessions() {
+	bash("cd dist && ./load_test_sessions")
 }

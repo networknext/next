@@ -95,7 +95,7 @@ const (
 
 	SDK_MaxLocationSize = 128
 
-	SDK_BillingSliceSeconds = 10
+	SDK_SliceSeconds = 10
 
 	SDK_MinPacketBytes = 16 + 3 + 8 + SDK_CRYPTO_SIGN_BYTES + 2
 	SDK_MaxPacketBytes = 4096
