@@ -194,8 +194,8 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 				}
 				abFlatIndex := TriMatrixIndex(i, j)
 				numRelayPairs++
-				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
-					if m.RouteEntries[abFlatIndex].DirectCost != 255 {
+				if m.RouteEntries[abFlatIndex].DirectCost != 255 {
+	  			    if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
 						improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
 						if improvement <= 5 {
 							buckets[0]++
@@ -232,7 +232,7 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 
 	if numRelayPairs > 0 {
 
-		analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs)
+		analysis.NoDirectRoutePercent = float32(numRelayPairsNoDirectRoute / numRelayPairs) * 100.0
 
 		analysis.RTTBucket_NoImprovement = float32(numRelayPairsWithoutImprovement / numRelayPairs * 100.0)
 		analysis.RTTBucket_0_5ms = float32(float64(buckets[0]) / numRelayPairs * 100.0)
@@ -308,8 +308,8 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 	analysis.AverageRouteLength = float32(averageRouteLength)
 
 	if relayPairs > 0 {
-		analysis.NoRoutePercent = float32(relayPairsWithNoRoutes / relayPairs)
-		analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs)
+		analysis.NoRoutePercent = float32(relayPairsWithNoRoutes / relayPairs) * 100.0
+		analysis.OneRoutePercent = float32(relayPairsWithOneRoute / relayPairs) * 100.0
 	}
 
 	return analysis
