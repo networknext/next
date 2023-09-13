@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/networknext/next/modules/common"
@@ -28,7 +27,7 @@ func main() {
 	service = common.CreateService("load_test_relays")
 
 	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
-
+	
 	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
 
 	relayBackendHostname = envvar.GetString("RELAY_BACKEND_HOSTNAME", "http://127.0.0.1:30000")
@@ -68,7 +67,7 @@ func RunRelay(service *common.Service, index int) {
 
 	sampleRelayIds := make([]uint64, numRelays)
 	for i := 0; i < numRelays; i++ {
-		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 1000+i))
+		sampleRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+i))
 	}
 
 	ticker := time.NewTicker(time.Second)
@@ -109,9 +108,7 @@ func RunRelay(service *common.Service, index int) {
 				copy(packet.SampleRelayId[:], sampleRelayIds)
 
 				for i := 0; i < int(packet.NumSamples); i++ {
-					packet.SampleRTT[i] = uint8(common.RandomInt(0, 100))
-					packet.SampleJitter[i] = uint8(common.RandomInt(0, 10))
-					packet.SamplePacketLoss[i] = uint16(common.RandomInt(0, 500))
+					packet.SampleRTT[i] = uint8(common.RandomInt(1, 10))
 				}
 
 				// write relay update packet
@@ -141,7 +138,6 @@ func RunRelay(service *common.Service, index int) {
 				err := PostBinary(fmt.Sprintf("%s/relay_update", relayBackendHostname), packetData)
 				if err != nil {
 					core.Error("failed to post relay update to relay backend: %v", err)
-					os.Exit(1)
 				}
 			}
 		}

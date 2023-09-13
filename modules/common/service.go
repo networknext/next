@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -293,10 +292,7 @@ func (service *Service) DatabaseBinFile() []byte {
 	service.databaseMutex.RLock()
 	database := service.database
 	service.databaseMutex.RUnlock()
-	var databaseBuffer bytes.Buffer
-	encoder := gob.NewEncoder(&databaseBuffer)
-	encoder.Encode(database)
-	return databaseBuffer.Bytes()
+	return database.GetBinary()
 }
 
 func (service *Service) RelayData() *RelayData {
@@ -584,9 +580,7 @@ func (service *Service) UpdateRouteMatrix() {
 
 				var newDatabase db.Database
 
-				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
-				decoder := gob.NewDecoder(databaseBuffer)
-				err = decoder.Decode(&newDatabase)
+				err = newDatabase.LoadBinary(newRouteMatrix.BinFileData)
 				if err != nil {
 					core.Error("failed to read database: %v", err)
 					continue
@@ -722,11 +716,7 @@ func generateRelayData(database *db.Database) *RelayData {
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
 
-	var databaseBuffer bytes.Buffer
-	encoder := gob.NewEncoder(&databaseBuffer)
-	encoder.Encode(database)
-
-	relayData.DatabaseBinFile = databaseBuffer.Bytes()
+	relayData.DatabaseBinFile = database.GetBinary()
 
 	return relayData
 }
