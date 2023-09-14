@@ -1873,7 +1873,7 @@ module "load_test_servers" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
     cat <<EOF > /app/app.env
-    SERVER_BACKEND_HOSTNAME=${module.server_backend.address}
+    SERVER_BACKEND_HOSTNAME=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
     sudo systemctl start app.service
@@ -1905,7 +1905,7 @@ module "load_test_sessions" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
     cat <<EOF > /app/app.env
-    SERVER_BACKEND_HOSTNAME=${module.server_backend.address}
+    SERVER_BACKEND_HOSTNAME=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
     sudo systemctl start app.service
