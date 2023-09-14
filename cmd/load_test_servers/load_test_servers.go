@@ -49,7 +49,7 @@ func main() {
 		panic("you must supply the customer private key")
 	}
 
-	DetectGoogleServerAddress(serverAddress)
+	serverAddress = DetectGoogleServerAddress(serverAddress)
 
 	buyerId = binary.LittleEndian.Uint64(customerPrivateKey[0:8])
 
@@ -138,10 +138,6 @@ func RunServer(index int) {
 
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
 
-	// todo
-	core.Debug("address is '%s'", address.String())
-	core.Debug("binding to '%s'", bindAddress)
-
 	lc := net.ListenConfig{}
 	lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
 	if err != nil {
@@ -197,9 +193,6 @@ func RunServer(index int) {
 					core.Error("failed to write response packet: %v", err)
 					return
 				}
-
-				// todo
-				core.Debug("write packet from '%s' -> '%s' (%d bytes)", address.String(), serverBackendAddress.String(), len(packetData))
 
 				if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
 					core.Error("failed to send packet: %v", err)

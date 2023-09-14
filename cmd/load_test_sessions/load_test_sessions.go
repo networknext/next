@@ -243,17 +243,11 @@ func RunSession(index int) {
 
 					mutex.Unlock()
 
-					// todo
-					core.Debug("write packet from %s -> %s", address.String(), serverBackendAddress.String())
-
 					packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
 					if err != nil {
 						core.Error("failed to write response packet: %v", err)
 						return
 					}
-
-					// todo
-					core.Debug("packet is %d bytes", len(packetData))
 
 					if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
 						core.Error("failed to send packet: %v", err)
