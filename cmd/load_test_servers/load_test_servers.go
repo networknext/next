@@ -6,6 +6,10 @@ import (
 	"net"
 	"encoding/binary"
 	"context"
+	"os/exec"
+	"sync"
+	"os"
+	"bufio"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -35,9 +39,16 @@ func main() {
 
 	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
 
+	core.Log("num relays = %d", numRelays)
+	core.Log("num servers = %d", numServers)
+	core.Log("server address = %d", serverAddress)
+	core.Log("server backend address = %s", serverBackendAddress.String())
+
 	if customerPrivateKey == nil {
 		panic("you must supply the customer private key")
 	}
+
+	DetectGoogleServerAddress(serverAddress)
 
 	buyerId = binary.LittleEndian.Uint64(customerPrivateKey[0:8])
 
@@ -48,6 +59,61 @@ func main() {
 	go SimulateServers()
 
 	service.WaitForShutdown()
+}
+
+func RunCommand(command string, args []string) (bool, string) {
+
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func Bash(command string) (bool,string) {
+	return RunCommand("bash", []string{"-c", command})
+}
+
+func DetectGoogleServerAddress(input string) string {
+	result, output := Bash("curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null")
+	if !result {
+		return input
+	}
+	core.Log("google cloud server address is '%s'", output)
+	return output
 }
 
 func SimulateServers() {
