@@ -1889,7 +1889,7 @@ module "load_test_servers" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1
+  target_size        = 2
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1921,7 +1921,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 0
+  target_size        = 20
 }
 
 # ----------------------------------------------------------------------------------------
