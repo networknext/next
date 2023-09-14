@@ -181,6 +181,9 @@ func ready() bool {
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
+	// todo
+	core.Debug("received packet type %d from %s (%d bytes)", packetData[0], from.String(), len(packetData) )
+
 	handler := handlers.SDK_Handler{}
 
 	handler.PingKey = pingKey

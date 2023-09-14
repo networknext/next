@@ -1770,6 +1770,7 @@ module "server_backend" {
     PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
+    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1839,7 +1840,7 @@ module "load_test_relays" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_relays.tar.gz
     cat <<EOF > /app/app.env
     RELAY_BACKEND_HOSTNAME=${module.relay_gateway.address}
     RELAY_BACKEND_PUBLIC_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
@@ -1873,6 +1874,8 @@ module "load_test_servers" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
     cat <<EOF > /app/app.env
+    DEBUG_LOGS=1
+    NUM_SERVERS=1
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
