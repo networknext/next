@@ -114,6 +114,7 @@ func DetectGoogleServerAddress(input string) string {
 		return input
 	}
 	output = strings.TrimSuffix(output, "\n")
+	output += ":40000"
 	core.Log("google cloud server address is '%s'", output)
 	return output
 }
