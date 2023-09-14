@@ -25,7 +25,7 @@ func main() {
 
 	service = common.CreateService("load_test_servers")
 
-	numServers = envvar.GetInt("NUM_SERVERS", 10000)
+	numServers = envvar.GetInt("NUM_SERVERS", 1000)
 
 	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
 

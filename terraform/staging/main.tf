@@ -1828,3 +1828,99 @@ module "ip2location" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+module "load_test_relays" {
+
+  source = "../modules/external_mig_without_health_check"
+
+  service_name = "load_test_relays"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
+    cat <<EOF > /app/app.env
+    RELAY_BACKEND_HOSTNAME=${module.relay_gateway.address}
+    RELAY_BACKEND_PUBLIC_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = "n1-standard-8"
+  project            = var.google_project
+  region             = var.google_region
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 1
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "load_test_servers" {
+
+  source = "../modules/external_mig_without_health_check"
+
+  service_name = "load_test_servers"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
+    cat <<EOF > /app/app.env
+    SERVER_BACKEND_HOSTNAME=${module.server_backend.address}
+    NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = "n1-standard-8"
+  project            = var.google_project
+  region             = var.google_region
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 1
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "load_test_sessions" {
+
+  source = "../modules/external_mig_without_health_check"
+
+  service_name = "load_test_sessions"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
+    cat <<EOF > /app/app.env
+    SERVER_BACKEND_HOSTNAME=${module.server_backend.address}
+    NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = "n1-standard-8"
+  project            = var.google_project
+  region             = var.google_region
+  default_network    = google_compute_network.staging.id
+  default_subnetwork = google_compute_subnetwork.staging.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 1
+}
+
+# ----------------------------------------------------------------------------------------
