@@ -1833,7 +1833,7 @@ module "load_test_relays" {
 
   source = "../modules/external_mig_without_health_check"
 
-  service_name = "load_test_relays"
+  service_name = "load-test-relays"
 
   startup_script = <<-EOF1
     #!/bin/bash
@@ -1865,7 +1865,7 @@ module "load_test_servers" {
 
   source = "../modules/external_mig_without_health_check"
 
-  service_name = "load_test_servers"
+  service_name = "load-test-servers"
 
   startup_script = <<-EOF1
     #!/bin/bash
@@ -1897,7 +1897,7 @@ module "load_test_sessions" {
 
   source = "../modules/external_mig_without_health_check"
 
-  service_name = "load_test_sessions"
+  service_name = "load-test-sessions"
 
   startup_script = <<-EOF1
     #!/bin/bash
