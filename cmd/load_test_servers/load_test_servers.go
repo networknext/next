@@ -42,7 +42,7 @@ func main() {
 
 	core.Log("num relays = %d", numRelays)
 	core.Log("num servers = %d", numServers)
-	core.Log("server address = %d", serverAddress)
+	core.Log("server address = %s", serverAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
 
 	if customerPrivateKey == nil {
