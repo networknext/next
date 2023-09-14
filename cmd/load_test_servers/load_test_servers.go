@@ -10,6 +10,7 @@ import (
 	"sync"
 	"os"
 	"bufio"
+	"strings"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -112,6 +113,7 @@ func DetectGoogleServerAddress(input string) string {
 	if !result {
 		return input
 	}
+	output = strings.TrimSuffix(output, "\n")
 	core.Log("google cloud server address is '%s'", output)
 	return output
 }
