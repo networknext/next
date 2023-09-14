@@ -1873,7 +1873,7 @@ module "load_test_servers" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
     cat <<EOF > /app/app.env
-    NUM_SERVERS=10000
+    NUM_SERVERS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
