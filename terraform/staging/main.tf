@@ -1785,7 +1785,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  target_size        = 2
+  target_size        = 1
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1857,7 +1857,7 @@ module "load_test_relays" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1
+  target_size        = 0
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1923,7 +1923,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1
+  target_size        = 0
 }
 
 # ----------------------------------------------------------------------------------------
