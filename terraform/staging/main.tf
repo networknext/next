@@ -1556,6 +1556,7 @@ module "relay_backend" {
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
+    ENABLE_GOOGLE_PUBSUB=true
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1572,6 +1573,8 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "relay_backend_address" {
@@ -1600,7 +1603,8 @@ module "analytics" {
     COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
-    BIGQUERY_DATASET=staging
+    ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_GOOGLE_BIGQUERY=true
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1617,6 +1621,8 @@ module "analytics" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks"]
+
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "analytics_address" {
@@ -1763,6 +1769,7 @@ module "server_backend" {
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
+    ENABLE_GOOGLE_PUBSUB=true
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1778,6 +1785,8 @@ module "server_backend" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   target_size        = 2
+
+  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
 
 output "server_backend_address" {

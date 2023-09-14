@@ -49,7 +49,7 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
-	if enableGooglePubsub {
+	if enableGooglePubsub && enableGoogleBigquery {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", false)
 
