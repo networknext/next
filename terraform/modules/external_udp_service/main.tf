@@ -79,7 +79,7 @@ resource "google_compute_instance_template" "service" {
     source_image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     auto_delete  = true
     boot         = true
-    type         = "pd-ssd"
+    disk_type    = "pd-ssd"
   }
 
   metadata = {
