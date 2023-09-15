@@ -38,6 +38,8 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
 
+	reps := envvar.GetInt("REPS", 1)
+
 	core.Debug("cost matrix url: %s", costMatrixURL)
 	core.Debug("route matrix url: %s", routeMatrixURL)
 	core.Debug("cost matrix interval: %s", costMatrixInterval)
@@ -53,14 +55,16 @@ func main() {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", false)
 
-		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
-		ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
-		ProcessAnalyticsNearRelayPingMessage(service, "near relay ping", important)
-		ProcessAnalyticsRelayUpdateMessage(service, "relay update", important)
-		ProcessAnalyticsServerInitMessage(service, "server init", important)
-		ProcessAnalyticsServerUpdateMessage(service, "server update", important)
-		ProcessAnalyticsSessionUpdateMessage(service, "session update", important)
-		ProcessAnalyticsSessionSummaryMessage(service, "session summary", important)
+		for i := 0; i < reps; i++ {
+			ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
+			ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
+			ProcessAnalyticsNearRelayPingMessage(service, "near relay ping", important)
+			ProcessAnalyticsRelayUpdateMessage(service, "relay update", important)
+			ProcessAnalyticsServerInitMessage(service, "server init", important)
+			ProcessAnalyticsServerUpdateMessage(service, "server update", important)
+			ProcessAnalyticsSessionUpdateMessage(service, "session update", important)
+			ProcessAnalyticsSessionSummaryMessage(service, "session summary", important)
+		}
 	}
 
 	service.StartWebServer()

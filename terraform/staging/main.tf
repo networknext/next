@@ -1599,6 +1599,7 @@ module "analytics" {
     REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_GOOGLE_BIGQUERY=true
+    REPS=10
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
