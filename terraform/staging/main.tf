@@ -1689,6 +1689,7 @@ module "portal_cruncher" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
+    REPS=10
     EOF
     sudo systemctl start app.service
   EOF1

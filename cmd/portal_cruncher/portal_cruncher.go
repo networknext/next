@@ -45,6 +45,8 @@ func main() {
 	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 1000)
 	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 1000)
 
+	reps := envvar.GetInt("REPS", 1)
+
 	service = common.CreateService("portal_cruncher")
 
 	core.Debug("num session update threads: %d", numSessionUpdateThreads)
@@ -69,29 +71,33 @@ func main() {
 
 	pool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
 
-	sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
-	serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
-	relayInserter = make([]*portal.RelayInserter, numRelayUpdateThreads)
-	nearRelayInserter = make([]*portal.NearRelayInserter, numNearRelayUpdateThreads)
+	for j := 0; j < reps; j++ {
 
-	for i := 0; i < numSessionUpdateThreads; i++ {
-		sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
-		ProcessMessages[*messages.PortalSessionUpdateMessage](service, redisServerBackendHostname, "session update", i, ProcessSessionUpdate)
-	}
+		sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
+		serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
+		relayInserter = make([]*portal.RelayInserter, numRelayUpdateThreads)
+		nearRelayInserter = make([]*portal.NearRelayInserter, numNearRelayUpdateThreads)
 
-	for i := 0; i < numServerUpdateThreads; i++ {
-		serverInserter[i] = portal.CreateServerInserter(pool, serverInsertBatchSize)
-		ProcessMessages[*messages.PortalServerUpdateMessage](service, redisServerBackendHostname, "server update", i, ProcessServerUpdate)
-	}
+		for i := 0; i < numSessionUpdateThreads; i++ {
+			sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
+			ProcessMessages[*messages.PortalSessionUpdateMessage](service, redisServerBackendHostname, "session update", i, ProcessSessionUpdate)
+		}
 
-	for i := 0; i < numNearRelayUpdateThreads; i++ {
-		nearRelayInserter[i] = portal.CreateNearRelayInserter(pool, nearRelayInsertBatchSize)
-		ProcessMessages[*messages.PortalNearRelayUpdateMessage](service, redisServerBackendHostname, "near relay update", i, ProcessNearRelayUpdate)
-	}
+		for i := 0; i < numServerUpdateThreads; i++ {
+			serverInserter[i] = portal.CreateServerInserter(pool, serverInsertBatchSize)
+			ProcessMessages[*messages.PortalServerUpdateMessage](service, redisServerBackendHostname, "server update", i, ProcessServerUpdate)
+		}
 
-	for i := 0; i < numRelayUpdateThreads; i++ {
-		relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
-		ProcessMessages[*messages.PortalRelayUpdateMessage](service, redisRelayBackendHostname, "relay update", i, ProcessRelayUpdate)
+		for i := 0; i < numNearRelayUpdateThreads; i++ {
+			nearRelayInserter[i] = portal.CreateNearRelayInserter(pool, nearRelayInsertBatchSize)
+			ProcessMessages[*messages.PortalNearRelayUpdateMessage](service, redisServerBackendHostname, "near relay update", i, ProcessNearRelayUpdate)
+		}
+
+		for i := 0; i < numRelayUpdateThreads; i++ {
+			relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
+			ProcessMessages[*messages.PortalRelayUpdateMessage](service, redisRelayBackendHostname, "relay update", i, ProcessRelayUpdate)
+		}
+
 	}
 
 	service.StartWebServer()
