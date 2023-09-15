@@ -6,11 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-	"os"
-	"os/exec"
-	"sync"
-	"bufio"
-	"strings"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -50,8 +45,6 @@ func main() {
 	}
 
 	core.Log("simulating %d relays", numRelays)
-
-	relayAddress = DetectGoogleRelayAddress(relayAddress)
 
 	go SimulateRelays(service)
 
@@ -179,60 +172,4 @@ func PostBinary(url string, data []byte) error {
 	_ = body
 
 	return nil
-}
-
-func RunCommand(command string, args []string) (bool, string) {
-
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, ""
-	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func Bash(command string) (bool,string) {
-	return RunCommand("bash", []string{"-c", command})
-}
-
-func DetectGoogleRelayAddress(input string) string {
-	result, output := Bash("curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null")
-	if !result {
-		return input
-	}
-	output = strings.TrimSuffix(output, "\n")
-	core.Log("google cloud relay address is '%s'", output)
-	return output
 }
