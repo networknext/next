@@ -1853,7 +1853,7 @@ module "load_test_relays" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 0
+  target_size        = 1
 }
 
 # ----------------------------------------------------------------------------------------
