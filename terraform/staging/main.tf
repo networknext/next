@@ -1521,7 +1521,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = var.google_machine_type
+  machine_type             = "c3-standard-8"
   project                  = var.google_project
   zone                     = var.google_zone
   default_network          = google_compute_network.staging.id
@@ -1564,7 +1564,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = var.google_machine_type
+  machine_type               = "c3-standard-16"
   project                    = var.google_project
   region                     = var.google_region
   default_network            = google_compute_network.staging.id
@@ -1776,7 +1776,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-16"
+  machine_type       = "c3-standard-8"
   project            = var.google_project
   region             = var.google_region
   port               = 40000
@@ -1922,7 +1922,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 20
+  target_size        = 2
 }
 
 # ----------------------------------------------------------------------------------------
