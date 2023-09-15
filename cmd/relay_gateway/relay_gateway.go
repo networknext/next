@@ -125,7 +125,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Debug("[%s] unsupported content type", request.RemoteAddr)
+			core.Warn("[%s] unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -143,7 +143,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		packetBytes := len(body)
 
 		if packetBytes < 1+1+4+2+crypto.Box_MacSize+crypto.Box_NonceSize {
-			core.Debug("[%s] relay update packet is too small to be valid", request.RemoteAddr)
+			core.Warn("[%s] relay update packet is too small to be valid", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -156,7 +156,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		encoding.ReadUint8(packetData, &index, &packetVersion)
 
 		if packetVersion < packets.RelayUpdateRequestPacket_VersionMin || packetVersion > packets.RelayUpdateRequestPacket_VersionMax {
-			core.Debug("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
+			core.Warn("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -165,7 +165,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		var relayAddress net.UDPAddr
 		if !encoding.ReadAddress(packetData, &index, &relayAddress) {
-			core.Debug("[%s] could not read relay address", request.RemoteAddr)
+			core.Warn("[%s] could not read relay address", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -178,7 +178,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Debug("[%s] unknown relay %x", request.RemoteAddr, relayId)
+			core.Warn("[%s] unknown relay %x", request.RemoteAddr, relayId)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -193,14 +193,14 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		relayPublicKey := relay.PublicKey[:]
 
 		if len(relayPublicKey) == 0 {
-			core.Debug("[%s] relay public key of length 0", request.RemoteAddr)
+			core.Error("[%s] relay public key of length 0", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 		if err != nil {
-			core.Debug("[%s] failed to decrypt relay update", request.RemoteAddr)
+			core.Warn("[%s] failed to decrypt relay update", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -214,13 +214,13 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		currentTimestamp := uint64(startTime.Unix())
 
 		if packetTimestamp < currentTimestamp-10 {
-			core.Debug("[%s] relay update request is too old", request.RemoteAddr)
+			core.Warn("[%s] relay update request is too old", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		if packetTimestamp > currentTimestamp+10 {
-			core.Debug("[%s] relay update request is in the future", request.RemoteAddr)
+			core.Warn("[%s] relay update request is in the future", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
