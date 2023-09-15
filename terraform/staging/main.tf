@@ -267,14 +267,9 @@ resource "google_redis_instance" "redis_analytics" {
   authorized_network      = google_compute_network.staging.id
 }
 
-output "redis_portal_address_read_write" {
+output "redis_portal_address" {
   description = "The IP address of the portal redis instance (read/write)"
   value       = google_redis_instance.redis_portal.host
-}
-
-output "redis_portal_address_read_only" {
-  description = "The IP address of the portal redis instance (read only)"
-  value       = google_redis_instance.redis_portal.read_endpoint
 }
 
 output "redis_relay_backend_address" {
@@ -1643,8 +1638,8 @@ module "api" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.read_endpoint}:6379"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.read_endpoint}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
