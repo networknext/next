@@ -1564,7 +1564,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-standard-16"
+  machine_type               = "c3-standard-8"
   project                    = var.google_project
   region                     = var.google_region
   default_network            = google_compute_network.staging.id
