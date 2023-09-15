@@ -226,8 +226,6 @@ resource "google_redis_instance" "redis_portal" {
   redis_version           = "REDIS_7_0"
   redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.staging.id
-  replica_count           = 5
-  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
@@ -237,8 +235,6 @@ resource "google_redis_instance" "redis_relay_backend" {
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
   authorized_network      = google_compute_network.staging.id
-  replica_count           = 5
-  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_server_backend" {
@@ -248,8 +244,6 @@ resource "google_redis_instance" "redis_server_backend" {
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
   authorized_network      = google_compute_network.staging.id
-  replica_count           = 5
-  read_replicas_mode      = "READ_REPLICAS_ENABLED"
 }
 
 resource "google_redis_instance" "redis_map_cruncher" {
