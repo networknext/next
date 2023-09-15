@@ -1838,7 +1838,7 @@ module "load_test_relays" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_relays.tar.gz
     cat <<EOF > /app/app.env
     RELAY_BACKEND_HOSTNAME=http://${module.relay_gateway.address}
-    RELAY_BACKEND_PUBLIC_KEY=ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
     EOF
     sudo systemctl start app.service
