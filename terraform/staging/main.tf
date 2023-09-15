@@ -14,6 +14,7 @@ variable "google_project" { type = string }
 variable "google_location" { type = string }
 variable "google_region" { type = string }
 variable "google_zone" { type = string }
+variable "google_zones" { type = list(string) }
 variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
 variable "google_database_bucket" { type = string }
@@ -1472,6 +1473,7 @@ module "magic_backend" {
   machine_type               = "f1-micro"
   project                    = var.google_project
   region                     = var.google_region
+  zones                      = var.google_zones
   default_network            = google_compute_network.staging.id
   default_subnetwork         = google_compute_subnetwork.staging.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
@@ -1561,6 +1563,7 @@ module "relay_backend" {
   machine_type               = "c3-standard-8"
   project                    = var.google_project
   region                     = var.google_region
+  zones                      = var.google_zones
   default_network            = google_compute_network.staging.id
   default_subnetwork         = google_compute_subnetwork.staging.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
@@ -1609,6 +1612,7 @@ module "analytics" {
   machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
+  zones                      = var.google_zones
   default_network            = google_compute_network.staging.id
   default_subnetwork         = google_compute_subnetwork.staging.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
@@ -1773,6 +1777,7 @@ module "server_backend" {
   machine_type       = "c3-standard-8"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   port               = 40000
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
