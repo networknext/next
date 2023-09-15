@@ -222,7 +222,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "google_redis_instance" "redis_portal" {
   name                    = "redis-portal"
   tier                    = "STANDARD_HA"
-  memory_size_gb          = 10
+  memory_size_gb          = 40
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
   redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
