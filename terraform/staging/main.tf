@@ -225,7 +225,7 @@ resource "google_redis_instance" "redis_portal" {
   memory_size_gb          = 40
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "20" }
   authorized_network      = google_compute_network.staging.id
 }
 
