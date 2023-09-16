@@ -1959,6 +1959,12 @@ module "agent_policy" {
       enable_autoupgrade = true
     },
   ]
+  os_types = [
+    {
+      short_name = "ubuntu"
+      version    = "jammy"
+    },
+  ]
 }
 
 # ----------------------------------------------------------------------------------------
