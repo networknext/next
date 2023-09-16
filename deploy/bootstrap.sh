@@ -26,6 +26,10 @@ while getopts 't:b:a:h' flag; do
   esac
 done
 
+# Install the Google Cloud OS Agent
+sudo su -c "echo 'deb http://packages.cloud.google.com/apt google-compute-engine-focal-stable main' > /etc/apt/sources.list.d/google-compute-engine.list"
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
 # Create /app dir
 rm -rf /app
 mkdir -p /app
