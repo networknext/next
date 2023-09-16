@@ -718,10 +718,6 @@ func generateRelayData(database *db.Database) *RelayData {
 	// determine which relays are dest relays for at least one buyer
 
 	relayData.DestRelays = make([]bool, numRelays)
-	for i := range relayData.DestRelays {
-		relayData.DestRelays[i] = true
-	}
-
 	for _, buyer := range database.BuyerMap {
 		if buyer.Live {
 			for _, settings := range database.BuyerDatacenterSettings[buyer.Id] {
