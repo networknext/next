@@ -11,7 +11,7 @@ import (
 const (
 	AnalyticsRouteMatrixUpdateMessageVersion_Min   = 1
 	AnalyticsRouteMatrixUpdateMessageVersion_Max   = 1
-	AnalyticsRouteMatrixUpdateMessageVersion_Write = 0
+	AnalyticsRouteMatrixUpdateMessageVersion_Write = 1
 )
 
 type AnalyticsRouteMatrixUpdateMessage struct {
