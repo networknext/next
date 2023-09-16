@@ -18,7 +18,6 @@ variable "google_zones" { type = list(string) }
 variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
 variable "google_database_bucket" { type = string }
-variable "google_machine_type" { type = string }
 
 variable "cloudflare_api_token" { type = string }
 variable "cloudflare_zone_id_api" { type = string }
@@ -1514,7 +1513,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-standard-8"
+  machine_type             = "c3-standard-4"
   project                  = var.google_project
   zone                     = var.google_zone
   default_network          = google_compute_network.staging.id
@@ -1607,7 +1606,7 @@ module "analytics" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = var.google_machine_type
+  machine_type               = "n1-standard-8"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1721,6 +1720,7 @@ module "map_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    REPS=64
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     EOF
@@ -1729,7 +1729,7 @@ module "map_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "c3-standard-8"
   project            = var.google_project
   region             = var.google_region
   default_network    = google_compute_network.staging.id

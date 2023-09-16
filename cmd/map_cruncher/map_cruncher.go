@@ -18,17 +18,16 @@ var mapInstance *portal.Map
 
 func main() {
 
-	numMapUpdateThreads := envvar.GetInt("NUM_MAP_UPDATE_THREADS", 1)
-
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
+
+	reps := envvar.GetInt("REPS", 1)
 
 	service := common.CreateService("map_cruncher")
 
-	core.Debug("num map update threads: %d", numMapUpdateThreads)
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 
-	for i := 0; i < numMapUpdateThreads; i++ {
-		ProcessMessages[*messages.PortalMapUpdateMessage](service, "map update", i, ProcessMapUpdate)
+	for i := 0; i < reps; i++ {
+		ProcessMessages[*messages.PortalMapUpdateMessage](service, "map update", ProcessMapUpdate)
 	}
 
 	mapInstance = portal.CreateMap(service.Context)
@@ -83,7 +82,7 @@ func WriteMapDataToRedis(service *common.Service) {
 
 // -------------------------------------------------------------------------------
 
-func ProcessMessages[T messages.Message](service *common.Service, name string, threadNumber int, process func([]byte, int)) {
+func ProcessMessages[T messages.Message](service *common.Service, name string, process func([]byte)) {
 
 	channelName := strings.ReplaceAll(name, " ", "_")
 
@@ -105,7 +104,7 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				process(messageData, threadNumber)
+				process(messageData)
 			}
 		}
 	}()
@@ -113,7 +112,7 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, t
 
 // -------------------------------------------------------------------------------
 
-func ProcessMapUpdate(messageData []byte, threadNumber int) {
+func ProcessMapUpdate(messageData []byte) {
 
 	message := messages.PortalMapUpdateMessage{}
 	err := message.Read(messageData)
@@ -122,7 +121,7 @@ func ProcessMapUpdate(messageData []byte, threadNumber int) {
 		return
 	}
 
-	core.Debug("received map update message on thread %d", threadNumber)
+	core.Debug("received map update message")
 
 	update := portal.CellUpdate{}
 	update.SessionId = message.SessionId
