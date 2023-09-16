@@ -65,7 +65,7 @@ func main() {
 
 	maxJitter = int32(envvar.GetInt("MAX_JITTER", 1000))
 	maxPacketLoss = float32(envvar.GetFloat("MAX_PACKET_LOSS", 100.0))
-	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")

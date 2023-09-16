@@ -607,7 +607,13 @@ func (service *Service) UpdateRouteMatrix() {
 				service.routeMatrixDatabase = &newDatabase
 				service.routeMatrixMutex.Unlock()
 
-				core.Debug("updated route matrix: %d relays, %d bytes, fetched in %dms", len(newRouteMatrix.RelayIds), len(buffer), time.Since(start).Milliseconds())
+				duration := time.Since(start).Milliseconds()
+
+				core.Debug("updated route matrix: %d relays, %d bytes, fetched in %dms", len(newRouteMatrix.RelayIds), len(buffer), duration)
+
+				if duration > routeMatrixInterval.Milliseconds() {
+					core.Warn("update route matrix can't keep up!")
+				}
 			}
 		}
 	}()
