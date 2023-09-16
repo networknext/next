@@ -1409,7 +1409,7 @@ resource "google_sql_database_instance" "postgres" {
   region = "${var.google_region}"
   depends_on = [google_service_networking_connection.postgres]
   settings {
-    tier = "db-n1-standard-2"
+    tier = "db-custom-1-3840"
     ip_configuration {
       ipv4_enabled    = "false"
       private_network = google_compute_network.staging.id
