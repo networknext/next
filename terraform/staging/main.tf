@@ -1949,7 +1949,7 @@ module "load_test_sessions" {
 module "agent_policy" {
   source     = "terraform-google-modules/cloud-operations/google//modules/agent-policy"
   version    = "~> 0.2.3"
-  project_id = var.google_project_id
+  project_id = var.google_project
   policy_id  = "ops-agents-example-policy"
   agent_rules = [
     {
