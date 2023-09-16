@@ -29,7 +29,6 @@
           <th>SDK Version</th>
           <th>Buyer</th>
           <th>Datacenter</th>
-          <th>Datacenter Id</th>
         </tr>
       </thead>
       <tbody>
@@ -40,7 +39,6 @@
           <td> {{ item["SDK Version"] }} </td>
           <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
           <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-          <td> {{ item["Datacenter Id"] }} </td>
         </tr>
       </tbody>
     </table>
@@ -54,16 +52,6 @@
 
 import axios from "axios";
 import update from "@/update.js"
-import BigNumber from "bignumber.js";
-
-function parse_uint64(value) {
-  const bignum = new BigNumber(value);
-  var hex = bignum.toString(16);
-  while (hex.length<16) {
-    hex = '0' + hex
-  }
-  return hex
-}
 
 function nice_uptime(value) {
   if (isNaN(value)) {
@@ -95,7 +83,6 @@ async function getData() {
         "Buyer":"Raspberry",
         "Buyer Link":"buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
-        "Datacenter Id": parse_uint64(v.datacenter_id),
         "Datacenter Link":datacenterLink,
         "Current Sessions":v.num_sessions,
         "SDK Version":v.sdk_version_major + "." + v.sdk_version_minor + "." + v.sdk_version_patch,

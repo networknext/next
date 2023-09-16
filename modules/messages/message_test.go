@@ -24,20 +24,6 @@ func MessageReadWriteTest[M messages.Message](writeMessage M, readMessage M, t *
 	assert.Equal(t, writeMessage, readMessage)
 }
 
-func GenerateRandomAnalyticsCostMatrixUpdateMessage() messages.AnalyticsCostMatrixUpdateMessage {
-
-	message := messages.AnalyticsCostMatrixUpdateMessage{
-		Version:        byte(common.RandomInt(messages.AnalyticsCostMatrixUpdateMessageVersion_Min, messages.AnalyticsCostMatrixUpdateMessageVersion_Max)),
-		Timestamp:      uint64(time.Now().Unix()),
-		CostMatrixSize: rand.Int(),
-		NumRelays:      rand.Int(),
-		NumDestRelays:  rand.Int(),
-		NumDatacenters: rand.Int(),
-	}
-
-	return message
-}
-
 func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMatrixUpdateMessage {
 
 	message := messages.AnalyticsRouteMatrixUpdateMessage{
@@ -66,10 +52,13 @@ func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMa
 		RTTBucket_40_45ms:       rand.Float32(),
 		RTTBucket_45_50ms:       rand.Float32(),
 		RTTBucket_50ms_Plus:     rand.Float32(),
+		CostMatrixSize:          rand.Uint32(),
+		OptimizeTime: 			 rand.Uint32(),
 	}
 
-	message.CostMatrixSize = rand.Uint32()
-	message.OptimizeTime = rand.Uint32()
+	if message.Version >= 1 {
+		message.DatabaseSize = rand.Uint32()
+	}
 
 	return message
 }
@@ -496,15 +485,6 @@ func TestPortalMapUpdateMessage(t *testing.T) {
 }
 
 // ------------------------------------------------------------------------------------------------------------------
-
-func TestAnalyticsCostMatrixUpdateMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsCostMatrixUpdateMessage()
-		readMessage := messages.AnalyticsCostMatrixUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsCostMatrixUpdateMessage](&writeMessage, &readMessage, t)
-	}
-}
 
 func TestRouteMatrixStatsMessage(t *testing.T) {
 	t.Parallel()

@@ -298,7 +298,6 @@ output "redis_analytics_address" {
 locals {
 
   pubsub_channels = [
-    "cost_matrix_update",
     "route_matrix_update",
     "relay_to_relay_ping",
     "relay_update",
@@ -1080,6 +1079,12 @@ locals {
         "description": "The size of the route matrix in bytes"
       },
       {
+        "name": "database_size",
+        "type": "INT64",
+        "mode": "REQUIRED",
+        "description": "The size of the database.bin in bytes (it is included in the route matrix size)."
+      },
+      {
         "name": "optimize_time",
         "type": "INT64",
         "mode": "REQUIRED",
@@ -1361,7 +1366,6 @@ locals {
     "server_init" = [ "datacenter_id", "buyer_id" ]
     "relay_update" = [ "relay_id" ]
     "route_matrix_update" = []
-    "cost_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
     "near_relay_ping" = [ "near_relay_id", "user_hash" ]
   }

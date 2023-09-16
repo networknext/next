@@ -10,7 +10,7 @@ import (
 
 const (
 	AnalyticsRouteMatrixUpdateMessageVersion_Min   = 0
-	AnalyticsRouteMatrixUpdateMessageVersion_Max   = 0
+	AnalyticsRouteMatrixUpdateMessageVersion_Max   = 1
 	AnalyticsRouteMatrixUpdateMessageVersion_Write = 0
 )
 
@@ -41,6 +41,7 @@ type AnalyticsRouteMatrixUpdateMessage struct {
 	RTTBucket_45_50ms       float32
 	RTTBucket_50ms_Plus     float32
 	CostMatrixSize          uint32
+	DatabaseSize            uint32
 	OptimizeTime            uint32
 }
 
@@ -79,6 +80,9 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, message.RTTBucket_45_50ms)
 	encoding.WriteFloat32(buffer, &index, message.RTTBucket_50ms_Plus)
 	encoding.WriteUint32(buffer, &index, message.CostMatrixSize)
+	if message.Version >= 1 {
+		encoding.WriteUint32(buffer, &index, message.DatabaseSize)
+	}
 	encoding.WriteUint32(buffer, &index, message.OptimizeTime)
 	return buffer[:index]
 }
@@ -195,6 +199,14 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read cost matrix size")
 	}
 
+	if message.Version >= 1 {
+
+		if !encoding.ReadUint32(buffer, &index, &message.DatabaseSize) {
+			return fmt.Errorf("failed to read database size")
+		}
+
+	}
+
 	if !encoding.ReadUint32(buffer, &index, &message.OptimizeTime) {
 		return fmt.Errorf("failed to read optimize time")
 	}
@@ -207,6 +219,9 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Save() (map[string]bigquery.Va
 	bigquery_message := make(map[string]bigquery.Value)
 	bigquery_message["timestamp"] = int(message.Timestamp)
 	bigquery_message["route_matrix_size"] = int(message.RouteMatrixSize)
+	bigquery_message["cost_matrix_size"] = int(message.CostMatrixSize)
+	bigquery_message["database_size"] = int(message.DatabaseSize)
+	bigquery_message["optimize_time"] = int(message.OptimizeTime)
 	bigquery_message["num_relays"] = int(message.NumRelays)
 	bigquery_message["num_dest_relays"] = int(message.NumDestRelays)
 	bigquery_message["num_full_relays"] = int(message.NumFullRelays)
@@ -229,7 +244,5 @@ func (message *AnalyticsRouteMatrixUpdateMessage) Save() (map[string]bigquery.Va
 	bigquery_message["rtt_bucket_40_45ms"] = float64(message.RTTBucket_40_45ms)
 	bigquery_message["rtt_bucket_45_50ms"] = float64(message.RTTBucket_45_50ms)
 	bigquery_message["rtt_bucket_50ms_plus"] = float64(message.RTTBucket_50ms_Plus)
-	bigquery_message["cost_matrix_size"] = int(message.CostMatrixSize)
-	bigquery_message["optimize_time"] = int(message.OptimizeTime)
 	return bigquery_message, "", nil
 }
