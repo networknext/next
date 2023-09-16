@@ -1517,7 +1517,8 @@ module "relay_gateway" {
   extra                    = var.extra
   machine_type             = "c3-standard-4"
   project                  = var.google_project
-  zone                     = var.google_zone
+  zones                    = var.google_zones
+  zone                     = var.google_zone    # todo: want to remove this and go regional
   default_network          = google_compute_network.staging.id
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
@@ -1662,7 +1663,8 @@ module "api" {
   extra                    = var.extra
   machine_type             = "n1-standard-2"
   project                  = var.google_project
-  zone                     = var.google_zone
+  zones                    = var.google_zones
+  zone                     = var.google_zone                        # todo: remove this and go regional
   default_network          = google_compute_network.staging.id
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
@@ -1704,6 +1706,7 @@ module "portal_cruncher" {
   machine_type       = "n1-standard-2"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
@@ -1739,6 +1742,7 @@ module "map_cruncher" {
   machine_type       = "c3-standard-8"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
@@ -1827,6 +1831,7 @@ module "ip2location" {
   machine_type       = "f1-micro"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
@@ -1861,6 +1866,7 @@ module "load_test_relays" {
   machine_type       = "n1-standard-2"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
@@ -1895,6 +1901,7 @@ module "load_test_servers" {
   machine_type       = "n1-standard-2"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
@@ -1929,6 +1936,7 @@ module "load_test_sessions" {
   machine_type       = "n1-standard-8"
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.staging.id
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
