@@ -65,7 +65,7 @@ func main() {
 
 	maxJitter = int32(envvar.GetInt("MAX_JITTER", 1000))
 	maxPacketLoss = float32(envvar.GetFloat("MAX_PACKET_LOSS", 100.0))
-	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
+	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", 1*time.Second)
 
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
@@ -891,6 +891,10 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				core.Debug("updated route matrix: %d relays in %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
 
 				routeMatrixNew.OptimizeTime = uint32(optimizeDuration.Milliseconds())
+
+				if optimizeDuration.Milliseconds() > routeMatrixInterval.Milliseconds() {
+					core.Warn("optimize can't keep up! increase the number of cores or increase ROUTE_MATRIX_INTERVAL to provide more time to complete the optimization!")
+				}
 
 				// if we are the leader, store our data in redis
 
