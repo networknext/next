@@ -28,6 +28,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/cors"
+    "cloud.google.com/go/profiler"
 )
 
 var (
@@ -138,6 +139,21 @@ func CreateService(serviceName string) *Service {
 
 	if service.BuildTime != "" {
 		core.Log("build time: %s", service.BuildTime)
+	}
+
+	if envvar.GetBool("ENABLE_PROFILER", false) {
+
+		core.Log("profiler is enabled")
+
+	    profilerConfig := profiler.Config{
+	    	Service: 		serviceName,
+	        ServiceVersion: tag,
+	    }
+
+	    if err := profiler.Start(profilerConfig); err != nil {
+			core.Error("could not start profiler")
+			os.Exit(1)
+	    }
 	}
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, tag, []string{}))

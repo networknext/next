@@ -1,23 +1,23 @@
 package main
 
 import (
-	"time"
-	"fmt"
-	"net"
-	"encoding/binary"
+	"bufio"
 	"context"
+	"encoding/binary"
+	"fmt"
 	"math/rand"
-	"sync"
+	"net"
 	"os"
 	"os/exec"
-	"bufio"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/packets"
-	"github.com/networknext/next/modules/crypto"
 )
 
 var service *common.Service
@@ -95,7 +95,7 @@ func RunSession(index int) {
 
 	sessionDuration := 0
 
-	sessionTimeout := common.RandomInt(240,300)
+	sessionTimeout := common.RandomInt(240, 300)
 
 	var mutex sync.Mutex
 
@@ -140,10 +140,10 @@ func RunSession(index int) {
 			packetData := buffer[:packetBytes]
 
 			packetType := packetData[0]
-			
+
 			if packetType == packets.SDK_SESSION_UPDATE_RESPONSE_PACKET {
 
-				packetData = packetData[16:len(packetData)-2]
+				packetData = packetData[16 : len(packetData)-2]
 
 				packet := packets.SDK_SessionUpdateResponsePacket{}
 				if err := packets.ReadPacket(packetData, &packet); err != nil {
@@ -180,7 +180,7 @@ func RunSession(index int) {
 
 	}()
 
-	ticker := time.NewTicker(10*time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 
 	go func() {
 		for {
@@ -206,17 +206,17 @@ func RunSession(index int) {
 					mutex.Lock()
 
 					packet := packets.SDK_SessionUpdateRequestPacket{
-						Version: packets.SDKVersion{255,255,255},
-						BuyerId: buyerId,
-						DatacenterId: datacenterId,
-						SessionId: sessionId,
-						SliceNumber: uint32(sliceNumber),
-						RetryNumber: int32(retryNumber),
-						ClientAddress: address,
-						ServerAddress: serverAddress,
-						UserHash: userHash,
-						Next: next,
-						FallbackToDirect: fallbackToDirect,
+						Version:            packets.SDKVersion{255, 255, 255},
+						BuyerId:            buyerId,
+						DatacenterId:       datacenterId,
+						SessionId:          sessionId,
+						SliceNumber:        uint32(sliceNumber),
+						RetryNumber:        int32(retryNumber),
+						ClientAddress:      address,
+						ServerAddress:      serverAddress,
+						UserHash:           userHash,
+						Next:               next,
+						FallbackToDirect:   fallbackToDirect,
 						ClientPingTimedOut: clientPingTimedOut,
 					}
 
@@ -234,7 +234,7 @@ func RunSession(index int) {
 						packet.NumNearRelays = numNearRelays
 						copy(packet.NearRelayIds[:], nearRelayIds[:])
 						for i := range packet.NearRelayRTT {
-							packet.NearRelayRTT[i] = int32((sessionId^nearRelayIds[i])%10)
+							packet.NearRelayRTT[i] = int32((sessionId ^ nearRelayIds[i]) % 10)
 						}
 					}
 
@@ -301,7 +301,7 @@ func RunSession(index int) {
 					}
 				}
 
-				if sessionDuration > sessionTimeout + 60 {
+				if sessionDuration > sessionTimeout+60 {
 					mutex.Lock()
 					fmt.Printf("new session %03d\n", index)
 					sessionId = rand.Uint64()
@@ -312,7 +312,7 @@ func RunSession(index int) {
 					fallbackToDirect = false
 					clientPingTimedOut = false
 					sessionDataBytes = 0
-					numNearRelays = 0								
+					numNearRelays = 0
 					mutex.Unlock()
 				}
 			}
@@ -363,7 +363,7 @@ func RunCommand(command string, args []string) (bool, string) {
 	return true, output
 }
 
-func Bash(command string) (bool,string) {
+func Bash(command string) (bool, string) {
 	return RunCommand("bash", []string{"-c", command})
 }
 

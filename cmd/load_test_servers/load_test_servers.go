@@ -1,16 +1,16 @@
 package main
 
 import (
-	"time"
+	"bufio"
+	"context"
+	"encoding/binary"
 	"fmt"
 	"net"
-	"encoding/binary"
-	"context"
-	"os/exec"
-	"sync"
 	"os"
-	"bufio"
+	"os/exec"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -104,7 +104,7 @@ func RunCommand(command string, args []string) (bool, string) {
 	return true, output
 }
 
-func Bash(command string) (bool,string) {
+func Bash(command string) (bool, string) {
 	return RunCommand("bash", []string{"-c", command})
 }
 
@@ -162,7 +162,7 @@ func RunServer(index int) {
 
 	}()
 
-	ticker := time.NewTicker(10*time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 
 	go func() {
 		for {
@@ -176,14 +176,14 @@ func RunServer(index int) {
 				fmt.Printf("update server %03d\n", index)
 
 				packet := packets.SDK_ServerUpdateRequestPacket{
-					Version: packets.SDKVersion{255,255,255},
-					BuyerId: buyerId,
-					RequestId: requestId,
-					DatacenterId: datacenterId,
-					MatchId: 0,
-					NumSessions: uint32(common.RandomInt(100,200)),
+					Version:       packets.SDKVersion{255, 255, 255},
+					BuyerId:       buyerId,
+					RequestId:     requestId,
+					DatacenterId:  datacenterId,
+					MatchId:       0,
+					NumSessions:   uint32(common.RandomInt(100, 200)),
 					ServerAddress: address,
-					StartTime: startTime,
+					StartTime:     startTime,
 				}
 
 				requestId += 1

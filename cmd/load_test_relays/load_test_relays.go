@@ -10,9 +10,9 @@ import (
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/packets"
-	"github.com/networknext/next/modules/crypto"
 )
 
 var service *common.Service
@@ -27,7 +27,7 @@ func main() {
 	service = common.CreateService("load_test_relays")
 
 	numRelays = envvar.GetInt("NUM_RELAYS", 1000)
-	
+
 	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
 
 	relayBackendHostname = envvar.GetString("RELAY_BACKEND_HOSTNAME", "http://127.0.0.1:30000")
