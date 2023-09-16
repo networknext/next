@@ -76,7 +76,7 @@ async function getData() {
     let data = []
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
-      const datacenterLink = v.datacenter_name != "" ? datacenter/" + v.datacenter_name : ""
+      const datacenterLink = v.datacenter_name != "" ? "datacenter/" + v.datacenter_name : ""
       let row = {
         "Server Address":v.server_address,
         "Server Link":"server/" + v.server_address,
