@@ -512,6 +512,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				costMatrixSize := routeMatrix.CostMatrixSize
 				optimizeTime := routeMatrix.OptimizeTime
+				databaseSize := uint32(routeMatrix.BinFileBytes)
 
 				routeMatrixSize := len(buffer)
 				routeMatrixNumRelays := len(routeMatrix.RelayIds)
@@ -537,6 +538,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("route matrix size: %d", routeMatrixSize)
+				core.Debug("database size: %d", databaseSize)
 				core.Debug("optimize time: %dms", optimizeTime)
 
 				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
@@ -591,6 +593,7 @@ func ProcessRouteMatrix(service *common.Service) {
 				message.Timestamp = uint64(time.Now().Unix())
 				message.CostMatrixSize = costMatrixSize
 				message.RouteMatrixSize = routeMatrixSize
+				message.DatabaseSize = databaseSize
 				message.OptimizeTime = optimizeTime
 				message.NumRelays = routeMatrixNumRelays
 				message.NumDestRelays = routeMatrixNumDestRelays
