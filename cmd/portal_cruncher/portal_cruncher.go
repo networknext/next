@@ -22,17 +22,7 @@ var redisServerBackendHostname string
 
 var pool *redis.Pool
 
-var sessionInserter []*portal.SessionInserter
-var serverInserter []*portal.ServerInserter
-var relayInserter []*portal.RelayInserter
-var nearRelayInserter []*portal.NearRelayInserter
-
 func main() {
-
-	numSessionUpdateThreads := envvar.GetInt("NUM_SESSION_UPDATE_THREADS", 1)
-	numServerUpdateThreads := envvar.GetInt("NUM_SERVER_UPDATE_THREADS", 1)
-	numRelayUpdateThreads := envvar.GetInt("NUM_RELAY_UPDATE_THREADS", 1)
-	numNearRelayUpdateThreads := envvar.GetInt("NUM_NEAR_RELAY_UPDATE_THREADS", 1)
 
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
@@ -48,11 +38,6 @@ func main() {
 	reps := envvar.GetInt("REPS", 1)
 
 	service = common.CreateService("portal_cruncher")
-
-	core.Debug("num session update threads: %d", numSessionUpdateThreads)
-	core.Debug("num server update threads: %d", numServerUpdateThreads)
-	core.Debug("num relay update threads: %d", numRelayUpdateThreads)
-	core.Debug("num near relay update threads: %d", numNearRelayUpdateThreads)
 
 	core.Debug("redis portal hostname: %s", redisPortalHostname)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
@@ -73,30 +58,15 @@ func main() {
 
 	for j := 0; j < reps; j++ {
 
-		sessionInserter = make([]*portal.SessionInserter, numSessionUpdateThreads)
-		serverInserter = make([]*portal.ServerInserter, numServerUpdateThreads)
-		relayInserter = make([]*portal.RelayInserter, numRelayUpdateThreads)
-		nearRelayInserter = make([]*portal.NearRelayInserter, numNearRelayUpdateThreads)
+		sessionInserter := portal.CreateSessionInserter(pool, sessionInsertBatchSize)
+		serverInserter := portal.CreateServerInserter(pool, serverInsertBatchSize)
+		nearRelayInserter := portal.CreateNearRelayInserter(pool, nearRelayInsertBatchSize)
+		relayInserter := portal.CreateRelayInserter(pool, relayInsertBatchSize)
 
-		for i := 0; i < numSessionUpdateThreads; i++ {
-			sessionInserter[i] = portal.CreateSessionInserter(pool, sessionInsertBatchSize)
-			ProcessMessages[*messages.PortalSessionUpdateMessage](service, redisServerBackendHostname, "session update", i, ProcessSessionUpdate)
-		}
-
-		for i := 0; i < numServerUpdateThreads; i++ {
-			serverInserter[i] = portal.CreateServerInserter(pool, serverInsertBatchSize)
-			ProcessMessages[*messages.PortalServerUpdateMessage](service, redisServerBackendHostname, "server update", i, ProcessServerUpdate)
-		}
-
-		for i := 0; i < numNearRelayUpdateThreads; i++ {
-			nearRelayInserter[i] = portal.CreateNearRelayInserter(pool, nearRelayInsertBatchSize)
-			ProcessMessages[*messages.PortalNearRelayUpdateMessage](service, redisServerBackendHostname, "near relay update", i, ProcessNearRelayUpdate)
-		}
-
-		for i := 0; i < numRelayUpdateThreads; i++ {
-			relayInserter[i] = portal.CreateRelayInserter(pool, relayInsertBatchSize)
-			ProcessMessages[*messages.PortalRelayUpdateMessage](service, redisRelayBackendHostname, "relay update", i, ProcessRelayUpdate)
-		}
+		ProcessSessionUpdateMessages(service, redisServerBackendHostname, "session update", sessionInserter)
+		ProcessServerUpdateMessages(service, redisServerBackendHostname, "server update", serverInserter)
+		ProcessNearRelayUpdateMessages(service, redisServerBackendHostname, "near relay update", nearRelayInserter)
+		ProcessRelayUpdateMessages(service, redisRelayBackendHostname, "relay update", relayInserter)
 
 	}
 
@@ -107,7 +77,7 @@ func main() {
 
 // -------------------------------------------------------------------------------
 
-func ProcessMessages[T messages.Message](service *common.Service, redisHostname string, name string, threadNumber int, process func([]byte, int)) {
+func ProcessSessionUpdateMessages(service *common.Service, redisHostname string, name string, sessionInserter *portal.SessionInserter) {
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 	consumerGroup := streamName
@@ -130,15 +100,13 @@ func ProcessMessages[T messages.Message](service *common.Service, redisHostname 
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				process(messageData, threadNumber)
+				ProcessSessionUpdate(messageData, sessionInserter)
 			}
 		}
 	}()
 }
 
-// -------------------------------------------------------------------------------
-
-func ProcessSessionUpdate(messageData []byte, threadNumber int) {
+func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionInserter) {
 
 	message := messages.PortalSessionUpdateMessage{}
 	err := message.Read(messageData)
@@ -147,7 +115,7 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		return
 	}
 
-	core.Debug("received session update message on thread %d", threadNumber)
+	core.Debug("received session update message")
 
 	sessionId := message.SessionId
 
@@ -208,12 +176,41 @@ func ProcessSessionUpdate(messageData []byte, threadNumber int) {
 		Next:             message.Next,
 	}
 
-	sessionInserter[threadNumber].Insert(sessionId, userHash, score, next, &sessionData, &sliceData)
+	sessionInserter.Insert(sessionId, userHash, score, next, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
 
-func ProcessServerUpdate(messageData []byte, threadNumber int) {
+func ProcessServerUpdateMessages(service *common.Service, redisHostname string, name string, serverInserter *portal.ServerInserter) {
+
+	streamName := strings.ReplaceAll(name, " ", "_")
+	consumerGroup := streamName
+
+	config := common.RedisStreamsConfig{
+		RedisHostname: redisHostname,
+		StreamName:    streamName,
+		ConsumerGroup: consumerGroup,
+	}
+
+	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis streams consumer for %s: %v", name, err)
+		os.Exit(1)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case messageData := <-consumer.MessageChannel:
+				ProcessServerUpdate(messageData, serverInserter)
+			}
+		}
+	}()
+}
+
+func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInserter) {
 
 	message := messages.PortalServerUpdateMessage{}
 	err := message.Read(messageData)
@@ -222,7 +219,7 @@ func ProcessServerUpdate(messageData []byte, threadNumber int) {
 		return
 	}
 
-	core.Debug("received server update message on thread %d", threadNumber)
+	core.Debug("received server update message")
 
 	serverData := portal.ServerData{
 		ServerAddress:    message.ServerAddress.String(),
@@ -236,12 +233,97 @@ func ProcessServerUpdate(messageData []byte, threadNumber int) {
 		StartTime:        message.StartTime,
 	}
 
-	serverInserter[threadNumber].Insert(&serverData)
+	serverInserter.Insert(&serverData)
 }
 
 // -------------------------------------------------------------------------------
 
-func ProcessRelayUpdate(messageData []byte, threadNumber int) {
+func ProcessNearRelayUpdateMessages(service *common.Service, redisHostname string, name string, nearRelayInserter *portal.NearRelayInserter) {
+
+	streamName := strings.ReplaceAll(name, " ", "_")
+	consumerGroup := streamName
+
+	config := common.RedisStreamsConfig{
+		RedisHostname: redisHostname,
+		StreamName:    streamName,
+		ConsumerGroup: consumerGroup,
+	}
+
+	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis streams consumer for %s: %v", name, err)
+		os.Exit(1)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case messageData := <-consumer.MessageChannel:
+				ProcessNearRelayUpdate(messageData, nearRelayInserter)
+			}
+		}
+	}()
+}
+
+func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRelayInserter) {
+
+	message := messages.PortalNearRelayUpdateMessage{}
+	err := message.Read(messageData)
+	if err != nil {
+		core.Error("could not read near relay update message: %v", err)
+		return
+	}
+
+	core.Debug("received near relay update message")
+
+	sessionId := message.SessionId
+
+	nearRelayData := portal.NearRelayData{
+		Timestamp:           uint64(time.Now().Unix()),
+		NumNearRelays:       message.NumNearRelays,
+		NearRelayId:         message.NearRelayId,
+		NearRelayRTT:        message.NearRelayRTT,
+		NearRelayJitter:     message.NearRelayJitter,
+		NearRelayPacketLoss: message.NearRelayPacketLoss,
+	}
+
+	nearRelayInserter.Insert(sessionId, &nearRelayData)
+}
+
+// -------------------------------------------------------------------------------
+
+func ProcessRelayUpdateMessages(service *common.Service, redisHostname string, name string, relayInserter *portal.RelayInserter) {
+
+	streamName := strings.ReplaceAll(name, " ", "_")
+	consumerGroup := streamName
+
+	config := common.RedisStreamsConfig{
+		RedisHostname: redisHostname,
+		StreamName:    streamName,
+		ConsumerGroup: consumerGroup,
+	}
+
+	consumer, err := common.CreateRedisStreamsConsumer(service.Context, config)
+	if err != nil {
+		core.Error("could not create redis streams consumer for %s: %v", name, err)
+		os.Exit(1)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-service.Context.Done():
+				return
+			case messageData := <-consumer.MessageChannel:
+				ProcessRelayUpdate(messageData, relayInserter)
+			}
+		}
+	}()
+}
+
+func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter) {
 
 	message := messages.PortalRelayUpdateMessage{}
 	err := message.Read(messageData)
@@ -250,7 +332,7 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 		return
 	}
 
-	core.Debug("received relay update message on thread %d", threadNumber)
+	core.Debug("received relay update message")
 
 	relayData := portal.RelayData{
 		RelayId:      message.RelayId,
@@ -280,34 +362,7 @@ func ProcessRelayUpdate(messageData []byte, threadNumber int) {
 		CurrentTime:               message.CurrentTime,
 	}
 
-	relayInserter[threadNumber].Insert(&relayData, &relaySample)
-}
-
-// -------------------------------------------------------------------------------
-
-func ProcessNearRelayUpdate(messageData []byte, threadNumber int) {
-
-	message := messages.PortalNearRelayUpdateMessage{}
-	err := message.Read(messageData)
-	if err != nil {
-		core.Error("could not read near relay update message: %v", err)
-		return
-	}
-
-	core.Debug("received near relay update message on thread %d", threadNumber)
-
-	sessionId := message.SessionId
-
-	nearRelayData := portal.NearRelayData{
-		Timestamp:           uint64(time.Now().Unix()),
-		NumNearRelays:       message.NumNearRelays,
-		NearRelayId:         message.NearRelayId,
-		NearRelayRTT:        message.NearRelayRTT,
-		NearRelayJitter:     message.NearRelayJitter,
-		NearRelayPacketLoss: message.NearRelayPacketLoss,
-	}
-
-	nearRelayInserter[threadNumber].Insert(sessionId, &nearRelayData)
+	relayInserter.Insert(&relayData, &relaySample)
 }
 
 // -------------------------------------------------------------------------------
