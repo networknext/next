@@ -1467,7 +1467,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "f1-micro"
+  machine_type               = "n1-standard-2"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1515,7 +1515,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-standard-4"
+  machine_type             = "c3-highcpu-4"
   project                  = var.google_project
   zones                    = var.google_zones
   zone                     = var.google_zone    # todo: want to remove this and go regional
@@ -1560,7 +1560,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-standard-44"
+  machine_type               = "c3-highcpu-44"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1611,7 +1611,7 @@ module "analytics" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-8"
+  machine_type               = "n1-highcpu-8"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1661,7 +1661,7 @@ module "api" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-2"
+  machine_type             = "n1-highcpu-2"
   project                  = var.google_project
   zones                    = var.google_zones
   zone                     = var.google_zone                        # todo: remove this and go regional
@@ -1703,7 +1703,7 @@ module "portal_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-2"
+  machine_type       = "n1-highcpu-2"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1739,7 +1739,7 @@ module "map_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-standard-8"
+  machine_type       = "c3-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1785,7 +1785,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-standard-8"
+  machine_type       = "c3-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1828,7 +1828,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "f1-micro"
+  machine_type       = "n1-highcpu-2"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1863,7 +1863,7 @@ module "load_test_relays" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-2"
+  machine_type       = "n1-highcpu-2"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1898,7 +1898,7 @@ module "load_test_servers" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-2"
+  machine_type       = "n1-highcpu-2"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1933,7 +1933,7 @@ module "load_test_sessions" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-8"
+  machine_type       = "n1-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
