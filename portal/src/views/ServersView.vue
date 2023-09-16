@@ -76,13 +76,14 @@ async function getData() {
     let data = []
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
+      const datacenterLink = v.datacenter_name != "" ? datacenter/" + v.datacenter_name : ""
       let row = {
         "Server Address":v.server_address,
         "Server Link":"server/" + v.server_address,
         "Buyer":"Raspberry",
         "Buyer Link":"buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
-        "Datacenter Link":"datacenter/" + v.datacenter_name,
+        "Datacenter Link":datacenterLink,
         "Current Sessions":v.num_sessions,
         "SDK Version":v.sdk_version_major + "." + v.sdk_version_minor + "." + v.sdk_version_patch,
         "Uptime": nice_uptime(v.uptime),

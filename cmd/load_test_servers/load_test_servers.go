@@ -132,7 +132,7 @@ func RunServer(index int) {
 
 	var requestId uint64
 
-	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03", index))
+	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03d", index))
 
 	startTime := uint64(time.Now().Unix())
 
