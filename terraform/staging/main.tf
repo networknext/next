@@ -1696,7 +1696,7 @@ module "portal_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "n1-standard-2"
   project            = var.google_project
   region             = var.google_region
   default_network    = google_compute_network.staging.id
