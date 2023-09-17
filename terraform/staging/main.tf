@@ -1532,7 +1532,7 @@ module "relay_gateway" {
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = 3
   max_size                 = 64
-  target_cpu               = 40
+  target_cpu               = 60
 }
 
 output "relay_gateway_address" {
@@ -1647,7 +1647,7 @@ output "analytics_address" {
 
 module "api" {
 
-  source = "../modules/external_http_service"
+  source = "../modules/external_http_service_autoscale"
 
   service_name = "api"
 
@@ -1682,6 +1682,9 @@ module "api" {
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http-vpn-only"]
+  min_size                 = 3
+  max_size                 = 16
+  target_cpu               = 60
 }
 
 output "api_address" {
@@ -1693,7 +1696,7 @@ output "api_address" {
 
 module "portal_cruncher" {
 
-  source = "../modules/internal_mig_with_health_check"
+  source = "../modules/internal_mig_with_health_check_autoscale"
 
   service_name = "portal-cruncher"
 
@@ -1724,7 +1727,9 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size        = 2
+  min_size           = 3
+  max_size           = 64
+  target_cpu         = 60
 }
 
 // ---------------------------------------------------------------------------------------
