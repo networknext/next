@@ -122,11 +122,10 @@ resource "google_compute_health_check" "service_vm" {
   }
 }
 
-# todo: this instance manager is zonal, but we want it regional
-
 resource "google_compute_region_instance_group_manager" "service" {
   name     = var.service_name
   region   = var.region
+  distribution_policy_zones = var.zones
   named_port {
     name = "http"
     port = 80
