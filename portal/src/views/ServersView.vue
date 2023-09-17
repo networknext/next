@@ -58,13 +58,13 @@ function nice_uptime(value) {
     return ''
   }
   if (value > 86400) {
-    return Math.floor(value/86400) + "d"
+    return Math.floor(value/86400).toLocaleString() + "d"
   }
   if (value > 3600) {
-    return Math.floor(value/3600) + "h"
+    return Math.floor(value/3600).toLocaleString() + "h"
   }
   if (value > 60) {
-    return Math.floor(value/60) + "m"
+    return Math.floor(value/60).toLocaleString() + "m"
   }
   return value + "s"
 }
@@ -84,7 +84,7 @@ async function getData() {
         "Buyer Link":"buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link":datacenterLink,
-        "Current Sessions":v.num_sessions,
+        "Current Sessions":v.num_sessions.toLocaleString(),
         "SDK Version":v.sdk_version_major + "." + v.sdk_version_minor + "." + v.sdk_version_patch,
         "Uptime": nice_uptime(v.uptime),
       }

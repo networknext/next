@@ -63,13 +63,13 @@ function nice_uptime(value) {
     return ''
   }
   if (value > 86400) {
-    return Math.floor(value/86400) + "d"
+    return Math.floor(value/86400).toLocaleString() + "d"
   }
   if (value > 3600) {
-    return Math.floor(value/3600) + "h"
+    return Math.floor(value/3600).toLocaleString() + "h"
   }
   if (value > 60) {
-    return Math.floor(value/60) + "m"
+    return Math.floor(value/60).toLocaleString() + "m"
   }
   return value + "s"
 }
