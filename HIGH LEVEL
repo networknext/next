@@ -60,17 +60,11 @@ DONE
 
 	Verify all analytics tables have correct data written in dev
 
-TODO
-
 	Implement load testing harness
 
-	-----------
+TODO
 
-	Load test staging to 1000 relays, 100k servers, and 1M sessions with ~10% taking network next
-
-	-----------
-
-	api and relay gateway services *must* use HTTPS
+	Load test to 1000 relays, 100k servers, and 1M sessions
 
 	-----------
 
@@ -82,6 +76,10 @@ TODO
 
 	-----------
 
+	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
+
+	-----------
+
 	Multithreaded relay fix and load testing.
 
 	https://github.com/leandromoreira/linux-network-performance-parameters
@@ -90,18 +88,14 @@ TODO
 
 	-----------
 
-	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
-
-	------------
-
 	Optimize the setup process by automating creation of projects, service accounts and permissions
 
-	------------
+	-----------
 
 	Document *everything*.
 
-	------------
+	-----------
 
 	Add support for as many sellers as possible (terraform + config scripts...)
 
-	------------
+	-----------
