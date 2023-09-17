@@ -159,6 +159,7 @@ output "address" {
 
 resource "google_compute_autoscaler" "default" {
   name   = var.service_name
+  zone   = var.zone
   target = google_compute_instance_group_manager.service.id
   autoscaling_policy {
     max_replicas    = var.max_size

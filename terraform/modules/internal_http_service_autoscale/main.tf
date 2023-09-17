@@ -157,7 +157,6 @@ resource "google_compute_region_instance_group_manager" "service" {
     name              = "primary"
   }
   base_instance_name = var.service_name
-  target_size        = 2
   named_port {
     name = "http"
     port = 80
@@ -178,8 +177,9 @@ resource "google_compute_region_instance_group_manager" "service" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_autoscaler" "default" {
+resource "google_compute_region_autoscaler" "default" {
   name   = var.service_name
+  region = var.region
   target = google_compute_region_instance_group_manager.service.id
   autoscaling_policy {
     max_replicas    = var.max_size

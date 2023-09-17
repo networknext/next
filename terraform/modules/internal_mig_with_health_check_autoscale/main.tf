@@ -98,8 +98,9 @@ resource "google_compute_region_instance_group_manager" "service" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_autoscaler" "default" {
+resource "google_compute_region_autoscaler" "default" {
   name   = var.service_name
+  region = var.region
   target = google_compute_region_instance_group_manager.service.id
   autoscaling_policy {
     max_replicas    = var.max_size
