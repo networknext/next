@@ -1453,7 +1453,7 @@ output "postgres_address" {
 
 module "magic_backend" {
 
-  source = "../modules/internal_http_service"
+  source = "../modules/internal_http_service_autoscale"
 
   service_name = "magic-backend"
 
@@ -1481,6 +1481,9 @@ module "magic_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  min_size                   = 3
+  max_size                   = 16
+  target_cpu                 = 60
 }
 
 output "magic_backend_address" {
@@ -1800,7 +1803,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 60
+  target_cpu         = 40
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
