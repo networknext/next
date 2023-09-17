@@ -155,3 +155,18 @@ output "address" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+resource "google_compute_autoscaler" "default" {
+  name   = var.service_name
+  target = google_compute_instance_group_manager.service.id
+  autoscaling_policy {
+    max_replicas    = var.max_replicas
+    min_replicas    = var.min_replicas
+    cooldown_period = 60
+    cpu_utilization {
+      target = var.target_cpu / 100.0
+    }    
+  }
+}
+
+# ----------------------------------------------------------------------------------------
