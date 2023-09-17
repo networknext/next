@@ -840,14 +840,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					Costs:              costs,
 				}
 
-				// write cost matrix data
-
-				costMatrixDataNew, err := costMatrixNew.Write()
-				if err != nil {
-					core.Error("could not write cost matrix: %v", err)
-					continue
-				}
-
 				// optimize cost matrix -> route matrix
 
 				numCPUs := runtime.NumCPU()
@@ -859,6 +851,26 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 						numSegments = 1
 					}
 				}
+
+				timeFinish := time.Now()
+
+				optimizeDuration := timeFinish.Sub(timeStart)
+
+				core.Debug("updated route matrix: %d relays in %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
+
+				if optimizeDuration.Milliseconds() > routeMatrixInterval.Milliseconds() {
+					core.Warn("optimize can't keep up! increase the number of cores or increase ROUTE_MATRIX_INTERVAL to provide more time to complete the optimization!")
+				}
+
+				// write cost matrix data
+
+				costMatrixDataNew, err := costMatrixNew.Write()
+				if err != nil {
+					core.Error("could not write cost matrix: %v", err)
+					continue
+				}
+
+				// create new route matrix
 
 				routeMatrixNew := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
@@ -874,6 +886,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 					CostMatrixSize:     uint32(len(costMatrixDataNew)),
+					OptimizeTime:       uint32(optimizeDuration.Milliseconds()),
 				}
 
 				// write route matrix data
@@ -883,14 +896,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					core.Error("could not write route matrix: %v", err)
 					continue
 				}
-
-				timeFinish := time.Now()
-
-				optimizeDuration := timeFinish.Sub(timeStart)
-
-				core.Debug("updated route matrix: %d relays in %dms", relayData.NumRelays, optimizeDuration.Milliseconds())
-
-				routeMatrixNew.OptimizeTime = uint32(optimizeDuration.Milliseconds())
 
 				// if we are the leader, store our data in redis
 

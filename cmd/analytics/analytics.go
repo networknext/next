@@ -38,6 +38,8 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
 
+	reps := envvar.GetInt("REPS", 1)
+
 	core.Debug("cost matrix url: %s", costMatrixURL)
 	core.Debug("route matrix url: %s", routeMatrixURL)
 	core.Debug("cost matrix interval: %s", costMatrixInterval)
@@ -49,18 +51,20 @@ func main() {
 
 	ProcessRouteMatrix(service)
 
-	if enableGooglePubsub {
+	if enableGooglePubsub && enableGoogleBigquery {
 
 		important := envvar.GetBool("GOOGLE_PUBSUB_IMPORTANT", false)
 
-		ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
-		ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
-		ProcessAnalyticsNearRelayPingMessage(service, "near relay ping", important)
-		ProcessAnalyticsRelayUpdateMessage(service, "relay update", important)
-		ProcessAnalyticsServerInitMessage(service, "server init", important)
-		ProcessAnalyticsServerUpdateMessage(service, "server update", important)
-		ProcessAnalyticsSessionUpdateMessage(service, "session update", important)
-		ProcessAnalyticsSessionSummaryMessage(service, "session summary", important)
+		for i := 0; i < reps; i++ {
+			ProcessAnalyticsRouteMatrixUpdateMessage(service, "route matrix update", important)
+			ProcessAnalyticsRelayToRelayPingMessage(service, "relay to relay ping", important)
+			ProcessAnalyticsNearRelayPingMessage(service, "near relay ping", important)
+			ProcessAnalyticsRelayUpdateMessage(service, "relay update", important)
+			ProcessAnalyticsServerInitMessage(service, "server init", important)
+			ProcessAnalyticsServerUpdateMessage(service, "server update", important)
+			ProcessAnalyticsSessionUpdateMessage(service, "session update", important)
+			ProcessAnalyticsSessionSummaryMessage(service, "session summary", important)
+		}
 	}
 
 	service.StartWebServer()
@@ -147,7 +151,9 @@ func ProcessAnalyticsRelayToRelayPingMessage(service *common.Service, name strin
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -188,7 +194,9 @@ func ProcessAnalyticsNearRelayPingMessage(service *common.Service, name string, 
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -229,7 +237,9 @@ func ProcessAnalyticsRouteMatrixUpdateMessage(service *common.Service, name stri
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -270,7 +280,9 @@ func ProcessAnalyticsRelayUpdateMessage(service *common.Service, name string, im
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -311,7 +323,9 @@ func ProcessAnalyticsServerInitMessage(service *common.Service, name string, imp
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -352,7 +366,9 @@ func ProcessAnalyticsServerUpdateMessage(service *common.Service, name string, i
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -393,7 +409,9 @@ func ProcessAnalyticsSessionUpdateMessage(service *common.Service, name string, 
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -434,7 +452,9 @@ func ProcessAnalyticsSessionSummaryMessage(service *common.Service, name string,
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				// publisher.PublishChannel <- &message
+				_ = publisher
 
 				pubsubMessage.Ack()
 			}
@@ -508,6 +528,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				costMatrixSize := routeMatrix.CostMatrixSize
 				optimizeTime := routeMatrix.OptimizeTime
+				databaseSize := uint32(routeMatrix.BinFileBytes)
 
 				routeMatrixSize := len(buffer)
 				routeMatrixNumRelays := len(routeMatrix.RelayIds)
@@ -533,6 +554,7 @@ func ProcessRouteMatrix(service *common.Service) {
 
 				core.Debug("cost matrix size: %d", costMatrixSize)
 				core.Debug("route matrix size: %d", routeMatrixSize)
+				core.Debug("database size: %d", databaseSize)
 				core.Debug("optimize time: %dms", optimizeTime)
 
 				core.Debug("route matrix num relays: %d", routeMatrixNumRelays)
@@ -587,6 +609,7 @@ func ProcessRouteMatrix(service *common.Service) {
 				message.Timestamp = uint64(time.Now().Unix())
 				message.CostMatrixSize = costMatrixSize
 				message.RouteMatrixSize = routeMatrixSize
+				message.DatabaseSize = databaseSize
 				message.OptimizeTime = optimizeTime
 				message.NumRelays = routeMatrixNumRelays
 				message.NumDestRelays = routeMatrixNumDestRelays

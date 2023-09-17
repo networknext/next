@@ -25,10 +25,9 @@ variable "load_balancer_subnetwork" { type = string }
 variable "load_balancer_network_mask" { type = string }
 variable "service_account" { type = string }
 variable "tags" { type = list }
-variable "target_size" { 
-  type = number
-  default = 2
-}
+variable "min_size" { type = number }
+variable "max_size" { type = number }
+variable "target_cpu" { type = number }
 
 # ----------------------------------------------------------------------------------------
 
@@ -158,7 +157,6 @@ resource "google_compute_region_instance_group_manager" "service" {
     name              = "primary"
   }
   base_instance_name = var.service_name
-  target_size        = var.target_size
   named_port {
     name = "http"
     port = 80
@@ -174,6 +172,22 @@ resource "google_compute_region_instance_group_manager" "service" {
     max_surge_fixed                = 10
     max_unavailable_fixed          = 0
     replacement_method             = "SUBSTITUTE"
+  }
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_region_autoscaler" "default" {
+  name   = var.service_name
+  region = var.region
+  target = google_compute_region_instance_group_manager.service.id
+  autoscaling_policy {
+    max_replicas    = var.max_size
+    min_replicas    = var.min_size
+    cooldown_period = 60
+    cpu_utilization {
+      target = var.target_cpu / 100.0
+    }    
   }
 }
 

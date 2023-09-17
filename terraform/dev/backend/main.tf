@@ -311,7 +311,6 @@ output "redis_server_backend_address" {
 locals {
 
   pubsub_channels = [
-    "cost_matrix_update",
     "route_matrix_update",
     "relay_to_relay_ping",
     "relay_update",
@@ -321,7 +320,6 @@ locals {
     "session_update",
     "session_summary",
     "match_data",
-    "cost_matrix_stats",
   ]
   
 }
@@ -1374,7 +1372,6 @@ locals {
     "server_init" = [ "datacenter_id", "buyer_id" ]
     "relay_update" = [ "relay_id" ]
     "route_matrix_update" = []
-    "cost_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
     "near_relay_ping" = [ "near_relay_id", "user_hash" ]
   }
@@ -1612,6 +1609,7 @@ module "analytics" {
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
     ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_GOOGLE_BIGQUERY=true
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service

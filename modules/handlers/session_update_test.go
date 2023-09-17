@@ -409,8 +409,7 @@ func Test_SessionUpdate_Pre_FailedToReadSessionData(t *testing.T) {
 	state.ServerBackendPublicKey = serverBackendPublicKey
 	state.ServerBackendPrivateKey = serverBackendPrivateKey
 
-	writeSessionData := make([]byte, 256)
-	common.RandomBytes(writeSessionData)
+	writeSessionData := make([]byte, 1)
 
 	state.Request.SessionDataBytes = int32(len(writeSessionData))
 	copy(state.Request.SessionData[:], writeSessionData)

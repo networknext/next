@@ -28,6 +28,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/cors"
+    "cloud.google.com/go/profiler"
 )
 
 var (
@@ -138,6 +139,21 @@ func CreateService(serviceName string) *Service {
 
 	if service.BuildTime != "" {
 		core.Log("build time: %s", service.BuildTime)
+	}
+
+	if envvar.GetBool("ENABLE_PROFILER", false) {
+
+		core.Log("profiler is enabled")
+
+	    profilerConfig := profiler.Config{
+	    	Service: 		serviceName,
+	        ServiceVersion: tag,
+	    }
+
+	    if err := profiler.Start(profilerConfig); err != nil {
+			core.Error("could not start profiler")
+			os.Exit(1)
+	    }
 	}
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, tag, []string{}))
@@ -591,7 +607,13 @@ func (service *Service) UpdateRouteMatrix() {
 				service.routeMatrixDatabase = &newDatabase
 				service.routeMatrixMutex.Unlock()
 
-				core.Debug("updated route matrix: %d relays, %d bytes, fetched in %dms", len(newRouteMatrix.RelayIds), len(buffer), time.Since(start).Milliseconds())
+				duration := time.Since(start).Milliseconds()
+
+				core.Debug("updated route matrix: %d relays, %d bytes, fetched in %dms", len(newRouteMatrix.RelayIds), len(buffer), duration)
+
+				if duration > routeMatrixInterval.Milliseconds() {
+					core.Warn("update route matrix can't keep up!")
+				}
 			}
 		}
 	}()
@@ -696,10 +718,6 @@ func generateRelayData(database *db.Database) *RelayData {
 	// determine which relays are dest relays for at least one buyer
 
 	relayData.DestRelays = make([]bool, numRelays)
-	for i := range relayData.DestRelays {
-		relayData.DestRelays[i] = true
-	}
-
 	for _, buyer := range database.BuyerMap {
 		if buyer.Live {
 			for _, settings := range database.BuyerDatacenterSettings[buyer.Id] {

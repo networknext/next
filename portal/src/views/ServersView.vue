@@ -58,13 +58,13 @@ function nice_uptime(value) {
     return ''
   }
   if (value > 86400) {
-    return Math.floor(value/86400) + "d"
+    return Math.floor(value/86400).toLocaleString() + "d"
   }
   if (value > 3600) {
-    return Math.floor(value/3600) + "h"
+    return Math.floor(value/3600).toLocaleString() + "h"
   }
   if (value > 60) {
-    return Math.floor(value/60) + "m"
+    return Math.floor(value/60).toLocaleString() + "m"
   }
   return value + "s"
 }
@@ -76,14 +76,15 @@ async function getData() {
     let data = []
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
+      const datacenterLink = v.datacenter_name != "" ? "datacenter/" + v.datacenter_name : ""
       let row = {
         "Server Address":v.server_address,
         "Server Link":"server/" + v.server_address,
         "Buyer":"Raspberry",
         "Buyer Link":"buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
-        "Datacenter Link":"datacenter/" + v.datacenter_name,
-        "Current Sessions":v.num_sessions,
+        "Datacenter Link":datacenterLink,
+        "Current Sessions":v.num_sessions.toLocaleString(),
         "SDK Version":v.sdk_version_major + "." + v.sdk_version_minor + "." + v.sdk_version_patch,
         "Uptime": nice_uptime(v.uptime),
       }

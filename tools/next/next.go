@@ -841,7 +841,7 @@ func getDatabase() *db.Database {
 }
 
 func printDatabase() {
-	fmt.Printf("updating database.bin from Postgres SQL instance\n\n")
+	fmt.Printf("downloading database.bin from Postgres SQL instance\n\n")
 	database := getDatabase()
 	fmt.Println(database.String())
 	fmt.Printf("\n")

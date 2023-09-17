@@ -72,8 +72,8 @@ async function getData() {
       let row = {
         "Datacenter Name":v.name,
         "Datacenter Link":"datacenter/" + v.name,
-        "Latitude":v.latitude,
-        "Longitude":v.longitude,
+        "Latitude":v.latitude.toFixed(2),
+        "Longitude":v.longitude.toFixed(2),
         "Seller":v.seller_name,
         "Seller Link":"seller/" + v.seller_code,
         "Native Name":v.native

@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"compress/gzip"
 	"database/sql"
 	"encoding/base64"
 	"encoding/binary"
@@ -15,8 +16,7 @@ import (
 	"sort"
 	"strings"
 	"time"
- 	"compress/gzip"
- 
+
 	"github.com/networknext/next/modules/core"
 
 	_ "github.com/lib/pq"
@@ -176,18 +176,18 @@ func (database *Database) Save(filename string) error {
 	}
 
 	var compressed_buffer bytes.Buffer
-    gz, err := gzip.NewWriterLevel(&compressed_buffer, gzip.BestCompression)
-    if err != nil {
-    	return err
-    }
+	gz, err := gzip.NewWriterLevel(&compressed_buffer, gzip.BestCompression)
+	if err != nil {
+		return err
+	}
 
-    if _, err := gz.Write(buffer.Bytes()); err != nil {
-        return err
-    }
+	if _, err := gz.Write(buffer.Bytes()); err != nil {
+		return err
+	}
 
-    if err := gz.Close(); err != nil {
-        return err;
-    }
+	if err := gz.Close(); err != nil {
+		return err
+	}
 
 	if err := ioutil.WriteFile(filename, compressed_buffer.Bytes(), 0644); err != nil {
 		return err
@@ -1446,11 +1446,10 @@ func (database *Database) LoadBinary(data []byte) error {
 
 	compressed_buffer := bytes.NewReader(data)
 
-	gz_reader, err := gzip.NewReader(compressed_buffer);
+	gz_reader, err := gzip.NewReader(compressed_buffer)
 	if err != nil {
 		return err
 	}
-
 
 	err = gob.NewDecoder(gz_reader).Decode(database)
 
@@ -1471,20 +1470,20 @@ func (database *Database) GetBinary() []byte {
 	}
 
 	var compressed_buffer bytes.Buffer
-    gz, err := gzip.NewWriterLevel(&compressed_buffer, gzip.BestCompression)
-    if err != nil {
-    	return nil
-    }
+	gz, err := gzip.NewWriterLevel(&compressed_buffer, gzip.BestCompression)
+	if err != nil {
+		return nil
+	}
 
-    if _, err := gz.Write(buffer.Bytes()); err != nil {
-        return nil
-    }
+	if _, err := gz.Write(buffer.Bytes()); err != nil {
+		return nil
+	}
 
-    if err := gz.Close(); err != nil {
-        return nil
-    }
+	if err := gz.Close(); err != nil {
+		return nil
+	}
 
-    return compressed_buffer.Bytes()
+	return compressed_buffer.Bytes()
 }
 
 type HeaderResponse struct {
