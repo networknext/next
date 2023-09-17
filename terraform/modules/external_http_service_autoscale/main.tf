@@ -168,6 +168,7 @@ resource "google_compute_region_autoscaler" "default" {
       target = var.target_cpu / 100.0
     }    
   }
+  depends_on = [google_compute_region_instance_group_manager.service]
 }
 
 # ----------------------------------------------------------------------------------------

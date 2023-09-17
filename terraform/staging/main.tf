@@ -1570,7 +1570,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  machine_type               = "c3-highcpu-4"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1580,6 +1580,7 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  target_size                = 3
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1621,7 +1622,7 @@ module "analytics" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-highcpu-8"
+  machine_type               = "n1-highcpu-2"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1757,7 +1758,7 @@ module "map_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-highcpu-8"
+  machine_type       = "c3-highcpu-4"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1803,7 +1804,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-highcpu-8"
+  machine_type       = "c3-highcpu-4"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones

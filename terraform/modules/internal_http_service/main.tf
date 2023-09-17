@@ -25,6 +25,10 @@ variable "load_balancer_subnetwork" { type = string }
 variable "load_balancer_network_mask" { type = string }
 variable "service_account" { type = string }
 variable "tags" { type = list }
+variable "target_size" { 
+  type = number
+  default = 2
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -154,7 +158,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     name              = "primary"
   }
   base_instance_name = var.service_name
-  target_size        = 2
+  target_size        = var.target_size
   named_port {
     name = "http"
     port = 80
