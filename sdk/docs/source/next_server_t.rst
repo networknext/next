@@ -672,44 +672,6 @@ Use this function to input in-game events that may be relevant to analytics.
 
 	next_server_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
 
-next_server_match
------------------
-
-Associates a session with a match id and set of match values for that session.
-
-Match id can be any unique match id you have.
-
-Match values can include any information that you want to feed into analytics.
-
-For example: win/loss ratio, skill, kill/death ratio, skill, time spent in matchmaker, load time in seconds.
-
-Call this function once per-session at the beginning of each match on the server.
-
-.. code-block:: c++
-
-	void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
-
-**Parameters:**
-	
-	- **server** -- The server instance.
-
-	- **address** -- The address of the client to assign match data.
-
-	- **match_id** -- The match id to assign to the session. Pass in any unique per-match identifier you have.
-
-	- **match_values** -- The array of match values for the session.
-
-	- **num_match_values** -- The number of match values in the array.
-
-**Example:**
-
-.. code-block:: c++
-
-	const char * match_id = "this is a unique match id";
-	const double match_values[] = {10.0, 20.0, 30.0};
-	int num_match_values = 3;
-	next_server_match( server, address, match_id, match_values, num_match_values );
-
 next_server_flush
 -----------------
 
@@ -719,7 +681,7 @@ Call this to flush all server data before shutting a server down.
 
 	void next_server_flush( struct next_server_t * server );
 
-This function blocks for up to 10 seconds to ensure that all session data, server events and match data are recorded.
+This function blocks for up to 10 seconds to ensure that all session is recorded.
 
 After calling this function, destroy the server via *next_server_destroy*.
 

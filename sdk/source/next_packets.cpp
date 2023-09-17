@@ -615,22 +615,6 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         }
         break;
 
-        case NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET:
-        {
-            NextBackendMatchDataRequestPacket * packet = (NextBackendMatchDataRequestPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET:
-        {
-            NextBackendMatchDataResponsePacket * packet = (NextBackendMatchDataResponsePacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
         default:
             return NEXT_ERROR;
     }
@@ -739,22 +723,6 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begi
         case NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET:
         {
             NextBackendSessionUpdateResponsePacket * packet = (NextBackendSessionUpdateResponsePacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET:
-        {
-            NextBackendMatchDataRequestPacket * packet = (NextBackendMatchDataRequestPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET:
-        {
-            NextBackendMatchDataResponsePacket * packet = (NextBackendMatchDataResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }

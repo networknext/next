@@ -235,26 +235,11 @@ struct next_session_entry_t
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
 
-    NEXT_DECLARE_SENTINEL(29)
-
-    uint64_t match_id;
-    double match_values[NEXT_MAX_MATCH_VALUES];
-    int num_match_values;
-
-    NextBackendMatchDataRequestPacket match_data_request_packet;
-
-    bool has_match_data;
-    double next_match_data_resend_time;
-    bool waiting_for_match_data_response;
-    bool match_data_response_received;
-
     NEXT_DECLARE_SENTINEL(30)
 
     uint32_t session_flush_update_sequence;
     bool session_update_flush;
     bool session_update_flush_finished;
-    bool match_data_flush;
-    bool match_data_flush_finished;
 
     NEXT_DECLARE_SENTINEL(31)
 
@@ -303,7 +288,6 @@ inline void next_session_entry_initialize_sentinels( next_session_entry_t * entr
     NEXT_INITIALIZE_SENTINEL( entry, 29 )
     NEXT_INITIALIZE_SENTINEL( entry, 30 )
     NEXT_INITIALIZE_SENTINEL( entry, 31 )
-    NEXT_INITIALIZE_SENTINEL( entry, 32 )
     next_replay_protection_initialize_sentinels( &entry->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->special_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->internal_replay_protection );
@@ -348,7 +332,6 @@ inline void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 29 )
     NEXT_VERIFY_SENTINEL( entry, 30 )
     NEXT_VERIFY_SENTINEL( entry, 31 )
-    NEXT_VERIFY_SENTINEL( entry, 32 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
