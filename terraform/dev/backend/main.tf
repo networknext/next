@@ -1552,6 +1552,7 @@ module "relay_backend" {
   machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
+  zones                      = var.google_zones
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
