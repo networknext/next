@@ -69,8 +69,6 @@ provider "cloudflare" {
 
 # ----------------------------------------------------------------------------------------
 
-// todo
-/*
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id_api
   name    = "staging"
@@ -78,7 +76,6 @@ resource "cloudflare_record" "api_domain" {
   type    = "A"
   proxied = false
 }
-*/
 
 resource "cloudflare_record" "server_backend_domain" {
   zone_id = var.cloudflare_zone_id_server_backend
@@ -1648,7 +1645,6 @@ output "analytics_address" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "api" {
 
   source = "../modules/external_http_service_autoscale"
@@ -1695,7 +1691,6 @@ output "api_address" {
   description = "The IP address of the api load balancer"
   value       = module.api.address
 }
-*/
 
 // ---------------------------------------------------------------------------------------
 

@@ -158,7 +158,7 @@ output "address" {
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_autoscaler" "default" {
-  name   = var.service_name
+  name   = "${var.service_name}-workaround" # todo: remove this once I nuke the staging project and start again. there is an orphan "api" autoscaler resource I can't delete
   zone   = var.zone
   target = google_compute_instance_group_manager.service.id
   autoscaling_policy {
