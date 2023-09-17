@@ -1495,7 +1495,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "../modules/external_http_service"
+  source = "../modules/external_http_service_autoscale"
 
   service_name = "relay-gateway"
 
@@ -1530,6 +1530,9 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
+  min_size                 = 3
+  max_size                 = 64
+  target_cpu               = 40
 }
 
 output "relay_gateway_address" {
@@ -1590,7 +1593,7 @@ output "relay_backend_address" {
 
 module "analytics" {
 
-  source = "../modules/internal_http_service"
+  source = "../modules/internal_http_service_autoscale"
 
   service_name = "analytics"
 
@@ -1628,6 +1631,9 @@ module "analytics" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks"]
+  min_size                   = 3
+  max_size                   = 64
+  target_cpu                 = 90
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
