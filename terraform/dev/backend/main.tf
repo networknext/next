@@ -1809,7 +1809,7 @@ module "raspberry_backend" {
   extra                    = var.extra
   machine_type             = var.google_machine_type
   project                  = var.google_project
-  zone                     = var.google_zone
+  region                   = var.google_region
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.google_service_account

@@ -24,9 +24,10 @@ variable "default_subnetwork" { type = string }
 variable "service_account" { type = string }
 variable "port" { type = string }
 variable "tags" { type = list }
-variable "min_size" { type = number }
-variable "max_size" { type = number }
-variable "target_cpu" { type = number }
+variable "target_size" { 
+  type = number
+  default = 2
+}
 
 # ----------------------------------------------------------------------------------------
 
