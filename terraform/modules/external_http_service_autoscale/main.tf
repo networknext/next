@@ -17,7 +17,7 @@ variable "machine_type" { type = string }
 variable "tag" { type = string }
 variable "extra" { type = string }
 variable "project" { type = string }
-variable "zone" { type = string }                   # todo: want to remove this and go regional
+variable "region" { type = string }
 variable "zones" { type = list(string) }
 variable "default_network" { type = string }
 variable "default_subnetwork" { type = string }
@@ -60,7 +60,7 @@ resource "google_compute_backend_service" "service" {
   timeout_sec             = 10
   health_checks           = [google_compute_health_check.service_lb.id]
   backend {
-    group           = google_compute_instance_group_manager.service.instance_group
+    group           = google_compute_region_instance_group_manager.service.instance_group
     balancing_mode  = "UTILIZATION"
     capacity_scaler = 1.0
   }
@@ -124,9 +124,9 @@ resource "google_compute_health_check" "service_vm" {
 
 # todo: this instance manager is zonal, but we want it regional
 
-resource "google_compute_instance_group_manager" "service" {
+resource "google_compute_region_instance_group_manager" "service" {
   name     = var.service_name
-  zone     = var.zone
+  region   = var.region
   named_port {
     name = "http"
     port = 80
@@ -157,10 +157,10 @@ output "address" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_autoscaler" "default" {
+resource "google_compute_region_autoscaler" "default" {
   name   = "${var.service_name}-workaround" # todo: remove this once I nuke the staging project and start again. there is an orphan "api" autoscaler resource I can't delete
-  zone   = var.zone
-  target = google_compute_instance_group_manager.service.id
+  region = var.region
+  target = google_compute_region_instance_group_manager.service.id
   autoscaling_policy {
     max_replicas    = var.max_size
     min_replicas    = var.min_size

@@ -1524,8 +1524,8 @@ module "relay_gateway" {
   extra                    = var.extra
   machine_type             = "c3-highcpu-4"
   project                  = var.google_project
+  region                   = var.google_region
   zones                    = var.google_zones
-  zone                     = var.google_zone    # todo: want to remove this and go regional
   default_network          = google_compute_network.staging.id
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
@@ -1676,8 +1676,8 @@ module "api" {
   extra                    = var.extra
   machine_type             = "n1-highcpu-2"
   project                  = var.google_project
+  region                   = var.google_region
   zones                    = var.google_zones
-  zone                     = var.google_zone                        # todo: remove this and go regional
   default_network          = google_compute_network.staging.id
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
