@@ -139,7 +139,6 @@ type SDK_ServerUpdateRequestPacket struct {
 	BuyerId       uint64
 	RequestId     uint64
 	DatacenterId  uint64
-	MatchId       uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
 	StartTime     uint64
@@ -150,7 +149,6 @@ func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) e
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.DatacenterId)
-	stream.SerializeUint64(&packet.MatchId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
 	stream.SerializeUint64(&packet.StartTime)
@@ -570,58 +568,6 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.StartTimestamp)
 	stream.SerializeUint64(&sessionData.Error)
 
-	return stream.Error()
-}
-
-// ------------------------------------------------------------
-
-type SDK_MatchDataRequestPacket struct {
-	Version        SDKVersion
-	BuyerId        uint64
-	ServerAddress  net.UDPAddr
-	DatacenterId   uint64
-	UserHash       uint64
-	SessionId      uint64
-	RetryNumber    uint32
-	MatchId        uint64
-	NumMatchValues int32
-	MatchValues    [SDK_MaxMatchValues]float64
-}
-
-func (packet *SDK_MatchDataRequestPacket) Serialize(stream encoding.Stream) error {
-
-	packet.Version.Serialize(stream)
-
-	stream.SerializeUint64(&packet.BuyerId)
-	stream.SerializeAddress(&packet.ServerAddress)
-	stream.SerializeUint64(&packet.DatacenterId)
-	stream.SerializeUint64(&packet.UserHash)
-	stream.SerializeUint64(&packet.SessionId)
-	stream.SerializeUint32(&packet.RetryNumber)
-	stream.SerializeUint64(&packet.MatchId)
-
-	hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
-
-	stream.SerializeBool(&hasMatchValues)
-
-	if hasMatchValues {
-		stream.SerializeInteger(&packet.NumMatchValues, 0, SDK_MaxMatchValues)
-		for i := 0; i < int(packet.NumMatchValues); i++ {
-			stream.SerializeFloat64(&packet.MatchValues[i])
-		}
-	}
-
-	return stream.Error()
-}
-
-// ------------------------------------------------------------
-
-type SDK_MatchDataResponsePacket struct {
-	SessionId uint64
-}
-
-func (packet *SDK_MatchDataResponsePacket) Serialize(stream encoding.Stream) error {
-	stream.SerializeUint64(&packet.SessionId)
 	return stream.Error()
 }
 

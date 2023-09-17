@@ -280,14 +280,13 @@ type SessionData struct {
 	Longitude      float32 `json:"longitude"`
 	DirectRTT      uint32  `json:"direct_rtt"`
 	NextRTT        uint32  `json:"next_rtt"`
-	MatchId        uint64  `json:"match_id,string"`
 	BuyerId        uint64  `json:"buyer_id,string"`
 	DatacenterId   uint64  `json:"datacenter_id,string"`
 	ServerAddress  string  `json:"server_address"`
 }
 
 func (data *SessionData) Value() string {
-	return fmt.Sprintf("%x|%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%s",
+	return fmt.Sprintf("%x|%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%s",
 		data.SessionId,
 		data.UserHash,
 		data.StartTime,
@@ -298,7 +297,6 @@ func (data *SessionData) Value() string {
 		data.Longitude,
 		data.DirectRTT,
 		data.NextRTT,
-		data.MatchId,
 		data.BuyerId,
 		data.DatacenterId,
 		data.ServerAddress,
@@ -307,7 +305,7 @@ func (data *SessionData) Value() string {
 
 func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 14 {
+	if len(values) != 13 {
 		return
 	}
 	sessionId, err := strconv.ParseUint(values[0], 16, 64)
@@ -347,19 +345,15 @@ func (data *SessionData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	matchId, err := strconv.ParseUint(values[10], 16, 64)
+	buyerId, err := strconv.ParseUint(values[10], 16, 64)
 	if err != nil {
 		return
 	}
-	buyerId, err := strconv.ParseUint(values[11], 16, 64)
+	datacenterId, err := strconv.ParseUint(values[11], 16, 64)
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[12], 16, 64)
-	if err != nil {
-		return
-	}
-	serverAddress := values[13]
+	serverAddress := values[12]
 
 	data.SessionId = sessionId
 	data.UserHash = userHash
@@ -371,7 +365,6 @@ func (data *SessionData) Parse(value string) {
 	data.Longitude = float32(longitude)
 	data.DirectRTT = uint32(directRTT)
 	data.NextRTT = uint32(nextRTT)
-	data.MatchId = matchId
 	data.BuyerId = buyerId
 	data.DatacenterId = datacenterId
 	data.ServerAddress = serverAddress
@@ -388,7 +381,6 @@ func GenerateRandomSessionData() *SessionData {
 	data.Longitude = float32(common.RandomInt(-18000, +18000)) / 100.0
 	data.DirectRTT = rand.Uint32()
 	data.NextRTT = rand.Uint32()
-	data.MatchId = rand.Uint64()
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
 	data.ServerAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
@@ -402,7 +394,6 @@ type ServerData struct {
 	SDKVersion_Major uint8  `json:"sdk_version_major"`
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
-	MatchId          uint64 `json:"match_id,string"`
 	BuyerId          uint64 `json:"buyer_id,string"`
 	DatacenterId     uint64 `json:"datacenter_id,string"`
 	NumSessions      uint32 `json:"num_sessions"`
@@ -410,12 +401,11 @@ type ServerData struct {
 }
 
 func (data *ServerData) Value() string {
-	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%x|%d|%x",
+	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%d|%x",
 		data.ServerAddress,
 		data.SDKVersion_Major,
 		data.SDKVersion_Minor,
 		data.SDKVersion_Patch,
-		data.MatchId,
 		data.BuyerId,
 		data.DatacenterId,
 		data.NumSessions,
@@ -425,7 +415,7 @@ func (data *ServerData) Value() string {
 
 func (data *ServerData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 9 {
+	if len(values) != 8 {
 		return
 	}
 	serverAddress := values[0]
@@ -441,23 +431,19 @@ func (data *ServerData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	matchId, err := strconv.ParseUint(values[4], 16, 64)
+	buyerId, err := strconv.ParseUint(values[4], 16, 64)
 	if err != nil {
 		return
 	}
-	buyerId, err := strconv.ParseUint(values[5], 16, 64)
+	datacenterId, err := strconv.ParseUint(values[5], 16, 64)
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[6], 16, 64)
+	numSessions, err := strconv.ParseUint(values[6], 10, 32)
 	if err != nil {
 		return
 	}
-	numSessions, err := strconv.ParseUint(values[7], 10, 32)
-	if err != nil {
-		return
-	}
-	startTime, err := strconv.ParseUint(values[8], 16, 64)
+	startTime, err := strconv.ParseUint(values[7], 16, 64)
 	if err != nil {
 		return
 	}
@@ -465,7 +451,6 @@ func (data *ServerData) Parse(value string) {
 	data.SDKVersion_Major = uint8(sdkVersionMajor)
 	data.SDKVersion_Minor = uint8(sdkVersionMinor)
 	data.SDKVersion_Patch = uint8(sdkVersionPatch)
-	data.MatchId = matchId
 	data.BuyerId = buyerId
 	data.DatacenterId = datacenterId
 	data.NumSessions = uint32(numSessions)
@@ -478,7 +463,6 @@ func GenerateRandomServerData() *ServerData {
 	data.SDKVersion_Major = uint8(common.RandomInt(0, 255))
 	data.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
 	data.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
-	data.MatchId = rand.Uint64()
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
 	data.NumSessions = rand.Uint32()

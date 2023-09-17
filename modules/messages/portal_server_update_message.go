@@ -19,7 +19,6 @@ type PortalServerUpdateMessage struct {
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
-	MatchId          uint64
 	BuyerId          uint64
 	DatacenterId     uint64
 	NumSessions      uint32
@@ -44,7 +43,6 @@ func (message *PortalServerUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
-	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteUint32(buffer, &index, message.NumSessions)
@@ -80,10 +78,6 @@ func (message *PortalServerUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Patch) {
 		return fmt.Errorf("failed to read sdk version patch")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
-		return fmt.Errorf("failed to read session id")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {

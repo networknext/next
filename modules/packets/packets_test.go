@@ -157,34 +157,6 @@ func GenerateRandomServerUpdateResponsePacket() packets.SDK_ServerUpdateResponse
 	return packet
 }
 
-func GenerateRandomMatchDataRequestPacket() packets.SDK_MatchDataRequestPacket {
-
-	packet := packets.SDK_MatchDataRequestPacket{
-		Version:        packets.SDKVersion{1, 2, 3},
-		BuyerId:        12341241,
-		ServerAddress:  core.ParseAddress("127.0.0.1:44444"),
-		DatacenterId:   184283418,
-		UserHash:       210987451,
-		SessionId:      987249128471,
-		RetryNumber:    4,
-		MatchId:        1234209487198,
-		NumMatchValues: 10,
-	}
-
-	for i := 0; i < int(packet.NumMatchValues); i++ {
-		packet.MatchValues[i] = float64(i) * 34852.0
-	}
-
-	return packet
-}
-
-func GenerateRandomMatchDataResponsePacket() packets.SDK_MatchDataResponsePacket {
-
-	return packets.SDK_MatchDataResponsePacket{
-		SessionId: rand.Uint64(),
-	}
-}
-
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
@@ -375,34 +347,6 @@ func Test_SDK_ServerUpdateResponsePacket(t *testing.T) {
 		readPacket := packets.SDK_ServerUpdateResponsePacket{}
 
 		PacketSerializationTest[*packets.SDK_ServerUpdateResponsePacket](&writePacket, &readPacket, t)
-	}
-}
-
-func Test_SDK_MatchDataRequestPacket(t *testing.T) {
-
-	t.Parallel()
-
-	for i := 0; i < NumIterations; i++ {
-
-		writePacket := GenerateRandomMatchDataRequestPacket()
-
-		readPacket := packets.SDK_MatchDataRequestPacket{}
-
-		PacketSerializationTest[*packets.SDK_MatchDataRequestPacket](&writePacket, &readPacket, t)
-	}
-}
-
-func Test_SDK_MatchDataResponsePacket(t *testing.T) {
-
-	t.Parallel()
-
-	for i := 0; i < NumIterations; i++ {
-
-		writePacket := GenerateRandomMatchDataResponsePacket()
-
-		readPacket := packets.SDK_MatchDataResponsePacket{}
-
-		PacketSerializationTest[*packets.SDK_MatchDataResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 

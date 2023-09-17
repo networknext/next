@@ -83,7 +83,6 @@ type PortalSessionData struct {
 	Longitude      float32 `json:"longitude"`
 	DirectRTT      uint32  `json:"direct_rtt"`
 	NextRTT        uint32  `json:"next_rtt"`
-	MatchId        string  `json:"match_id"`
 	BuyerId        string  `json:"buyer_id"`
 	DatacenterId   string  `json:"datacenter_id"`
 	ServerAddress  string  `json:"server_address"`
@@ -94,7 +93,6 @@ type PortalServerData struct {
 	SDKVersion_Major uint8  `json:"sdk_version_major"`
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
-	MatchId          string `json:"match_id"`
 	BuyerId          string `json:"buyer_id"`
 	DatacenterId     string `json:"datacenter_id"`
 	NumSessions      uint32 `json:"num_sessions"`

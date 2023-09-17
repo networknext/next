@@ -24,7 +24,6 @@ type PortalSessionUpdateMessage struct {
 	SessionId      uint64
 	UserHash       uint64
 	StartTime      uint64
-	MatchId        uint64
 	BuyerId        uint64
 	DatacenterId   uint64
 	Latitude       float32
@@ -87,7 +86,6 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint64(buffer, &index, message.SessionId)
 	encoding.WriteUint64(buffer, &index, message.UserHash)
 	encoding.WriteUint64(buffer, &index, message.StartTime)
-	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteFloat32(buffer, &index, message.Latitude)
@@ -171,10 +169,6 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.StartTime) {
 		return fmt.Errorf("failed to read start time")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
-		return fmt.Errorf("failed to read session id")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.BuyerId) {

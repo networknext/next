@@ -22,8 +22,6 @@ const (
 	SDK_SERVER_UPDATE_RESPONSE_PACKET  = 53
 	SDK_SESSION_UPDATE_REQUEST_PACKET  = 54
 	SDK_SESSION_UPDATE_RESPONSE_PACKET = 55
-	SDK_MATCH_DATA_REQUEST_PACKET      = 56
-	SDK_MATCH_DATA_RESPONSE_PACKET     = 57
 
 	SDK_MaxDatacenterNameLength = 256
 	SDK_MaxSessionDataSize      = 1024
@@ -81,8 +79,6 @@ const (
 
 	SDK_ContinueRouteTokenSize          = 17
 	SDK_EncryptedContinueRouteTokenSize = 57
-
-	SDK_MaxMatchValues = 64
 
 	SDK_InvalidRouteValue = 10000
 

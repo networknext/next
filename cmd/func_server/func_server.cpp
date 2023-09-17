@@ -33,7 +33,6 @@
 #include <unordered_set>
 
 std::map<std::string,uint8_t*> client_map;
-std::unordered_set<std::string> match_data_set;
 
 static volatile int quit = 0;
 
@@ -46,7 +45,6 @@ bool no_upgrade = false;
 int upgrade_count = 0;
 int num_upgrades = 0;
 bool session_events = false;
-bool match_data = false;
 bool flush = false;
 
 extern bool next_packet_loss;
@@ -181,12 +179,6 @@ int main()
     if ( session_events_env )
     {
         session_events = true;
-    }
-
-    const char * match_data_env = getenv( "SERVER_MATCH_DATA" );
-    if ( match_data_env )
-    {
-        match_data = true;
     }
 
     const char * flush_env = getenv( "SERVER_FLUSH" );

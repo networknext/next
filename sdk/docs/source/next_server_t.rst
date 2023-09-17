@@ -670,7 +670,7 @@ Use this function to input in-game events that may be relevant to analytics.
 		// ...
 	};
 
-	next_server_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
+	next_server_session_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
 
 next_server_flush
 -----------------

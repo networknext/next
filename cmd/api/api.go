@@ -249,7 +249,6 @@ type PortalSessionData struct {
 	Longitude      float32 `json:"longitude"`
 	DirectRTT      uint32  `json:"direct_rtt"`
 	NextRTT        uint32  `json:"next_rtt"`
-	MatchId        uint64  `json:"match_id,string"`
 	BuyerId        uint64  `json:"buyer_id,string"`
 	BuyerName      string  `json:"buyer_name"`
 	BuyerCode      string  `json:"buyer_code"`
@@ -269,7 +268,6 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 	output.Longitude = input.Longitude
 	output.DirectRTT = input.DirectRTT
 	output.NextRTT = input.NextRTT
-	output.MatchId = input.MatchId
 	output.BuyerId = input.BuyerId
 	output.DatacenterId = input.DatacenterId
 	output.ServerAddress = input.ServerAddress
@@ -392,7 +390,6 @@ type PortalServerData struct {
 	SDKVersion_Major uint8  `json:"sdk_version_major"`
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
-	MatchId          uint64 `json:"match_id,string"`
 	BuyerId          uint64 `json:"buyer_id,string"`
 	DatacenterId     uint64 `json:"datacenter_id,string"`
 	NumSessions      uint32 `json:"num_sessions"`
@@ -429,7 +426,6 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		response.Servers[i].SDKVersion_Major = servers[i].SDKVersion_Major
 		response.Servers[i].SDKVersion_Minor = servers[i].SDKVersion_Minor
 		response.Servers[i].SDKVersion_Patch = servers[i].SDKVersion_Patch
-		response.Servers[i].MatchId = servers[i].MatchId
 		response.Servers[i].BuyerId = servers[i].BuyerId
 		response.Servers[i].DatacenterId = servers[i].DatacenterId
 		response.Servers[i].NumSessions = servers[i].NumSessions

@@ -319,7 +319,6 @@ locals {
     "near_relay_ping",
     "session_update",
     "session_summary",
-    "match_data",
   ]
   
 }
@@ -594,12 +593,6 @@ locals {
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "Unique identifier for this session"
-      },
-      {
-        "name": "match_id",
-        "type": "INT64",
-        "mode": "NULLABLE",
-        "description": "Match id if set on the server for this session. NULL if not specified."
       },
       {
         "name": "datacenter_id",
@@ -882,12 +875,6 @@ locals {
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "The datacenter this server is in"
-      },
-      {
-        "name": "match_id",
-        "type": "INT64",
-        "mode": "NULLABLE",
-        "description": "The current match id on the server (optional: NULL if not specified)"
       },
       {
         "name": "num_sessions",
@@ -1292,12 +1279,6 @@ locals {
         "type": "INT64",
         "mode": "REQUIRED",
         "description": "Unique id for the session"
-      },
-      {
-        "name": "match_id",
-        "type": "INT64",
-        "mode": "NULLABLE",
-        "description": "Match id if currently set on the server. Optional. NULL if not specified"
       },
       {
         "name": "user_hash",
