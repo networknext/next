@@ -21,9 +21,8 @@ variable "google_database_bucket" { type = string }
 variable "google_machine_type" { type = string }
 
 variable "cloudflare_api_token" { type = string }
-variable "cloudflare_zone_id_api" { type = string }
-variable "cloudflare_zone_id_relay_backend" { type = string }
-variable "cloudflare_zone_id_server_backend" { type = string }
+variable "cloudflare_zone_id" { type = string }
+variable "cloudflare_domain" { type = string }
 
 variable "relay_backend_public_key" { type = string }
 variable "relay_backend_private_key" { type = string }
@@ -71,28 +70,47 @@ provider "cloudflare" {
 # ----------------------------------------------------------------------------------------
 
 resource "cloudflare_record" "api_domain" {
-  zone_id = var.cloudflare_zone_id_api
-  name    = "dev"
+  zone_id = var.cloudflare_zone_id
+  name    = "api-dev"
   value   = module.api.address
   type    = "A"
   proxied = false
 }
 
 resource "cloudflare_record" "server_backend_domain" {
-  zone_id = var.cloudflare_zone_id_server_backend
-  name    = "dev"
+  zone_id = var.cloudflare_zone_id
+  name    = "server-dev"
   value   = module.server_backend.address
   type    = "A"
   proxied = false
 }
 
 resource "cloudflare_record" "relay_backend_domain" {
-  zone_id = var.cloudflare_zone_id_relay_backend
-  name    = "dev"
+  zone_id = var.cloudflare_zone_id
+  name    = "relay-dev"
   value   = module.relay_gateway.address
   type    = "A"
   proxied = false
 }
+
+resource "cloudflare_record" "raspberry_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "raspberry-dev"
+  value   = module.raspberry_backend.address
+  type    = "A"
+  proxied = false
+}
+
+// todo: portal domain here
+/*
+resource "cloudflare_record" "portal_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "portal-dev"
+  value   = module.portal.address
+  type    = "A"
+  proxied = false
+}
+*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -136,36 +154,6 @@ resource "google_compute_firewall" "allow_ssh" {
   target_tags = ["allow-ssh"]
 }
 
-resource "google_compute_firewall" "allow_health_checks" {
-  name          = "allow-health-checks"
-  project       = var.google_project
-  direction     = "INGRESS"
-  network       = google_compute_network.development.id
-  source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-
-  target_tags = ["allow-health-checks"]
-}
-
-resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
-  name          = "allow-network-load-balancer-traffic"
-  project       = var.google_project
-  direction     = "INGRESS"
-  network       = google_compute_network.development.id
-  source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20", "209.85.152.0/22", "209.85.204.0/22"]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-
-  target_tags = ["allow-health-checks"]
-}
-
 resource "google_compute_firewall" "allow_http" {
   name          = "allow-http"
   project       = var.google_project
@@ -179,17 +167,17 @@ resource "google_compute_firewall" "allow_http" {
   target_tags = ["allow-http"]
 }
 
-resource "google_compute_firewall" "allow_http_vpn_only" {
-  name          = "allow-http-vpn-only"
+resource "google_compute_firewall" "allow_https" {
+  name          = "allow-https"
   project       = var.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
-  source_ranges = ["${var.vpn_address}/32"]
+  source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "tcp"
-    ports    = ["80"]
+    ports    = ["443"]
   }
-  target_tags = ["allow-http-vpn-only"]
+  target_tags = ["allow-https"]
 }
 
 resource "google_compute_firewall" "allow_udp_40000" {
@@ -1468,7 +1456,7 @@ module "magic_backend" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
-  tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags                       = ["allow-ssh", "allow-http"]
 }
 
 output "magic_backend_address" {
@@ -1514,7 +1502,8 @@ module "relay_gateway" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "relay-dev.${var.cloudflare_domain}"
 }
 
 output "relay_gateway_address" {
@@ -1561,7 +1550,7 @@ module "relay_backend" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
-  tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags                       = ["allow-ssh", "allow-http"]
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1611,7 +1600,7 @@ module "analytics" {
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
-  tags                       = ["allow-ssh", "allow-health-checks"]
+  tags                       = ["allow-ssh", "allow-http"]
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1659,7 +1648,8 @@ module "api" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http-vpn-only"]
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "api-dev.${var.cloudflare_domain}"
 }
 
 output "api_address" {
@@ -1700,7 +1690,7 @@ module "portal_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags               = ["allow-ssh", "allow-http"]
   target_size        = 2
 }
 
@@ -1735,7 +1725,7 @@ module "map_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags               = ["allow-ssh", "allow-health-checks"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1823,7 +1813,8 @@ module "raspberry_backend" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-https"]
+  domain                   = "raspberry-dev.${var.cloudflare_domain}"
 }
 
 output "raspberry_backend_address" {
@@ -1850,7 +1841,7 @@ module "raspberry_server" {
     NEXT_LOG_LEVEL=4
     NEXT_DATACENTER=cloud
     NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
-    RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
+    RASPBERRY_BACKEND_URL="https://${module.raspberry_backend.address}"
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
@@ -1888,7 +1879,7 @@ module "raspberry_client" {
     DEBUG_LOGS=1
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
-    RASPBERRY_BACKEND_URL="http://${module.raspberry_backend.address}"
+    RASPBERRY_BACKEND_URL="https://${module.raspberry_backend.address}"
     RASPBERRY_NUM_CLIENTS=64
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
