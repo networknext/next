@@ -19,26 +19,17 @@ func bash(command string) {
 
 func main() {
 
-	if len(os.Args) != 3 {
-		os.Exit(1)
-	}
-
-	tag := os.Args[1]
-	branch := os.Args[2]
-
 	envs := []string{"dev", "staging", "prod"}
 
-	found := false
-
 	for i := range envs {
-		if strings.Contains(tag, envs[i]) || strings.Contains(branch, envs[i]) {
-			bash(fmt.Sprintf("cd portal && yarn build-%s", envs[i]))
-			found = true
-			break
+		for j := 1; j < len(os.Args); j++ {
+			if strings.Contains(os.Args[j], envs[i]) {
+				bash(fmt.Sprintf("cd portal && yarn build-%s", envs[i]))
+				os.Exit(1)
+			}
+
 		}
 	}
 
-	if !found {
-		bash(fmt.Sprintf("cd portal && yarn build-local"))
-	}
+	bash(fmt.Sprintf("cd portal && yarn build-local"))
 }
