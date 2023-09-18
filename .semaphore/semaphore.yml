@@ -78,6 +78,20 @@ blocks:
             - make dist/test
             - cd dist && ./test
 
+  - name: "Portal"
+    dependencies: []
+    task:
+      jobs:
+        - name: "Build Portal"
+          commands:
+            - checkout
+            - cd portal
+            - yarn install
+            - yarn build-${SEMAPHORE_GIT_BRANCH}
+            - cd ../dist
+            - tar -zcvf portal.tar.gz *
+            - artifact push workflow portal.tar.gz --force
+
   - name: "Build Artifacts (Golang)"
 
     dependencies: []
