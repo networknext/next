@@ -1452,10 +1452,10 @@ type Environment struct {
 	APIKey                   string `json:"api_key"`
 	VPNAddress               string `json:"vpn_address"`
 	SSHKeyFile               string `json:"ssh_key_file"`
-	RaspberryBackendHostname string `json:"raspberry_backend_hostname"`
 	RelayBackendHostname     string `json:"relay_backend_hostname"`
 	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
 	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
+	RaspberryBackendURL      string `json:"raspberry_backend_url"`
 }
 
 func (e *Environment) String() string {
@@ -1466,10 +1466,10 @@ func (e *Environment) String() string {
 	sb.WriteString(fmt.Sprintf(" + API Key = %s\n", e.APIKey))
 	sb.WriteString(fmt.Sprintf(" + VPN Address = %s\n", e.VPNAddress))
 	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
-	sb.WriteString(fmt.Sprintf(" + Raspberry Backend Hostname = %s\n", e.RaspberryBackendHostname))
 	sb.WriteString(fmt.Sprintf(" + Relay Backend Hostname = %s\n", e.RelayBackendHostname))
 	sb.WriteString(fmt.Sprintf(" + Relay Backend Public Key = %s\n", e.RelayBackendPublicKey))
 	sb.WriteString(fmt.Sprintf(" + Relay Artifacts Bucket Name = %s\n", e.RelayArtifactsBucketName))
+	sb.WriteString(fmt.Sprintf(" + Raspberry Backend URL = %s\n", e.RaspberryBackendURL))
 	return sb.String()
 }
 

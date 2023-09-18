@@ -1725,7 +1725,7 @@ module "map_cruncher" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks"]
+  tags               = ["allow-ssh", "allow-http"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1772,7 +1772,7 @@ module "server_backend" {
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
+  tags               = ["allow-ssh", "allow-http", "allow-udp-40000"]
   target_size        = 2
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
@@ -1813,7 +1813,7 @@ module "raspberry_backend" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-https"]
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
 }
 
