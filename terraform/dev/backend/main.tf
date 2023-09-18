@@ -13,6 +13,7 @@ variable "google_credentials" { type = string }
 variable "google_project" { type = string }
 variable "google_location" { type = string }
 variable "google_region" { type = string }
+variable "google_zones" { type = list(string) }
 variable "google_zone" { type = string }
 variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
@@ -1461,6 +1462,7 @@ module "magic_backend" {
   machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
+  zones                      = var.google_zones
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
@@ -1603,6 +1605,7 @@ module "analytics" {
   machine_type               = var.google_machine_type
   project                    = var.google_project
   region                     = var.google_region
+  zones                      = var.google_zones
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
@@ -1693,6 +1696,7 @@ module "portal_cruncher" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
@@ -1727,6 +1731,7 @@ module "map_cruncher" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
@@ -1857,6 +1862,7 @@ module "raspberry_server" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
@@ -1895,6 +1901,7 @@ module "raspberry_client" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
@@ -1928,6 +1935,7 @@ module "ip2location" {
   machine_type       = var.google_machine_type
   project            = var.google_project
   region             = var.google_region
+  zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account

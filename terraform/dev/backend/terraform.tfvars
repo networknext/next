@@ -9,6 +9,7 @@ google_project              = "development-394617"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
+google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]
 google_artifacts_bucket     = "gs://test_network_next_backend_artifacts"
 google_database_bucket      = "gs://test_network_next_database_files"
 google_machine_type         = "f1-micro"
