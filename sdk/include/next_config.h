@@ -26,9 +26,9 @@
 #include "next.h"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                 "prod.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME               "server.virtualgo.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                  "dev.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME           "server-dev.virtualgo.net"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
