@@ -1841,7 +1841,7 @@ module "raspberry_server" {
     NEXT_LOG_LEVEL=4
     NEXT_DATACENTER=cloud
     NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
-    RASPBERRY_BACKEND_URL="https://${module.raspberry_backend.address}"
+    RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
@@ -1879,7 +1879,7 @@ module "raspberry_client" {
     DEBUG_LOGS=1
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
-    RASPBERRY_BACKEND_URL="https://${module.raspberry_backend.address}"
+    RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=64
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
