@@ -8,6 +8,8 @@
     "serve-staging": "vue-cli-service serve --mode staging",
     "serve-prod": "vue-cli-service serve --mode prod",
     "build-local": "vue-cli-service build --mode local",
+    "build-master": "vue-cli-service build --mode local",
+    "build-main": "vue-cli-service build --mode local",
     "build-dev": "vue-cli-service build --mode dev",
     "build-staging": "vue-cli-service build --mode staging",
     "build-prod": "vue-cli-service build --mode prod",
