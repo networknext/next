@@ -29,26 +29,22 @@ const (
 	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
 	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
 	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
-	SDK_HandlerEvent_CouldNotReadMatchDataRequestPacket     = 14
 
-	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 15
-	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 16
-	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 17
-	SDK_HandlerEvent_ProcessMatchDataRequestPacket     = 18
+	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 14
+	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 15
+	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 16
 
-	SDK_HandlerEvent_SentServerInitResponsePacket    = 19
-	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 20
-	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 21
-	SDK_HandlerEvent_SentMatchDataResponsePacket     = 22
+	SDK_HandlerEvent_SentServerInitResponsePacket    = 17
+	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 18
+	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 19
 
-	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 23
-	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 24
-	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 25
-	SDK_HandlerEvent_SentAnalyticsMatchDataMessage     = 26
+	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 20
+	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 21
+	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 22
 
-	SDK_HandlerEvent_SentPortalServerUpdateMessage = 27
+	SDK_HandlerEvent_SentPortalServerUpdateMessage = 23
 
-	SDK_HandlerEvent_NumEvents = 28
+	SDK_HandlerEvent_NumEvents = 24
 )
 
 type SDK_Handler struct {
@@ -74,7 +70,6 @@ type SDK_Handler struct {
 	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
 	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
 	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsMatchDataMessageChannel      chan<- *messages.AnalyticsMatchDataMessage
 }
 
 func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -91,7 +86,7 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 
 	packetType := packetData[0]
 
-	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET && packetType != packets.SDK_MATCH_DATA_REQUEST_PACKET {
+	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET {
 		core.Debug("unsupported packet type %d", packetType)
 		handler.Events[SDK_HandlerEvent_UnsupportedPacketType] = true
 		return
@@ -194,16 +189,6 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 		SDK_ProcessSessionUpdateRequestPacket(handler, conn, from, &packet)
 		break
 
-	case packets.SDK_MATCH_DATA_REQUEST_PACKET:
-		packet := packets.SDK_MatchDataRequestPacket{}
-		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read match data request packet from %s: %v", from.String(), err)
-			handler.Events[SDK_HandlerEvent_CouldNotReadMatchDataRequestPacket] = true
-			return
-		}
-		SDK_ProcessMatchDataRequestPacket(handler, conn, from, &packet)
-		break
-
 	default:
 		panic("unknown packet type")
 	}
@@ -236,10 +221,6 @@ func SDK_SendResponsePacket[P packets.Packet](handler *SDK_Handler, conn *net.UD
 
 	case packets.SDK_SESSION_UPDATE_RESPONSE_PACKET:
 		handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket] = true
-		break
-
-	case packets.SDK_MATCH_DATA_RESPONSE_PACKET:
-		handler.Events[SDK_HandlerEvent_SentMatchDataResponsePacket] = true
 		break
 
 	default:
@@ -340,7 +321,6 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
-			message.MatchId = requestPacket.MatchId
 			message.DatacenterId = requestPacket.DatacenterId
 			message.NumSessions = requestPacket.NumSessions
 			message.ServerAddress = *from
@@ -363,7 +343,6 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
-			message.MatchId = requestPacket.MatchId
 			message.DatacenterId = requestPacket.DatacenterId
 			message.NumSessions = requestPacket.NumSessions
 			message.StartTime = requestPacket.StartTime
@@ -410,60 +389,6 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 	}
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
-}
-
-func SDK_ProcessMatchDataRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_MatchDataRequestPacket) {
-
-	handler.Events[SDK_HandlerEvent_ProcessMatchDataRequestPacket] = true
-
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received match data request packet from %s", from.String())
-	core.Debug("---------------------------------------------------------------------------")
-
-	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
-	if !exists {
-		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
-		handler.Events[SDK_HandlerEvent_UnknownBuyer] = true
-		return
-	}
-
-	if !buyer.Live {
-		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
-		handler.Events[SDK_HandlerEvent_BuyerNotLive] = true
-		return
-	}
-
-	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
-		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
-		handler.Events[SDK_HandlerEvent_SDKTooOld] = true
-		return
-	}
-
-	responsePacket := &packets.SDK_MatchDataResponsePacket{}
-	responsePacket.SessionId = requestPacket.SessionId
-
-	SDK_SendResponsePacket(handler, conn, from, packets.SDK_MATCH_DATA_RESPONSE_PACKET, responsePacket)
-
-	if handler.AnalyticsMatchDataMessageChannel != nil {
-
-		message := messages.AnalyticsMatchDataMessage{}
-
-		message.Timestamp = uint64(time.Now().Unix())
-		message.BuyerId = requestPacket.BuyerId
-		message.ServerAddress = requestPacket.ServerAddress
-		message.DatacenterId = requestPacket.DatacenterId
-		message.SessionId = requestPacket.SessionId
-		message.MatchId = requestPacket.MatchId
-		message.NumMatchValues = uint32(requestPacket.NumMatchValues)
-
-		for i := 0; i < int(requestPacket.NumMatchValues); i++ {
-			message.MatchValues[i] = requestPacket.MatchValues[i]
-		}
-
-		handler.AnalyticsMatchDataMessageChannel <- &message
-
-		handler.Events[SDK_HandlerEvent_SentAnalyticsMatchDataMessage] = true
-	}
 }
 
 func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_SessionUpdateRequestPacket) {

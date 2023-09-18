@@ -26,9 +26,9 @@
 #include "next.h"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                 "prod.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME               "server.virtualgo.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                  "dev.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME           "server-dev.virtualgo.net"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
@@ -81,8 +81,6 @@
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                     5
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
-#define NEXT_MATCH_DATA_RESEND_TIME                                  10.0
-#define NEXT_MATCH_DATA_FLUSH_RESEND_TIME                             1.0
 #define NEXT_SERVER_FLUSH_TIMEOUT                                    30.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
@@ -164,8 +162,6 @@
 #define NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET                     53
 #define NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET                     54
 #define NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET                    55
-#define NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET                         56
-#define NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET                        57
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 

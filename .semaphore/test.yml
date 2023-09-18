@@ -270,18 +270,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_session_events
 
-        - name: "test_match_id"
-          commands:
-            - cd ./dist && ./func_test_sdk test_match_id
-
-        - name: "test_match_values"
-          commands:
-            - cd ./dist && ./func_test_sdk test_match_values
-
-        - name: "test_match_data_retry"
-          commands:
-            - cd ./dist && ./func_test_sdk test_match_data_retry
-
         - name: "test_flush"
           commands:
             - cd ./dist && ./func_test_sdk test_flush
@@ -339,13 +327,13 @@ blocks:
 
       jobs:
 
-        - name: "test_flush_session_events_and_match_data"
+        - name: "test_flush_session_events"
           commands:
-            - cd ./dist && ./func_test_sdk test_flush_session_events_and_match_data
+            - cd ./dist && ./func_test_sdk test_flush_session_events
 
-        - name: "test_flush_session_events_and_match_data_retry"
+        - name: "test_flush_session_events_retry"
           commands:
-            - cd ./dist && ./func_test_sdk test_flush_session_events_and_match_data_retry
+            - cd ./dist && ./func_test_sdk test_flush_session_events_retry
 
         - name: "test_big_packets"
           commands:

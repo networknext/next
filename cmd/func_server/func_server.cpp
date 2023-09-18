@@ -33,7 +33,6 @@
 #include <unordered_set>
 
 std::map<std::string,uint8_t*> client_map;
-std::unordered_set<std::string> match_data_set;
 
 static volatile int quit = 0;
 
@@ -46,7 +45,6 @@ bool no_upgrade = false;
 int upgrade_count = 0;
 int num_upgrades = 0;
 bool session_events = false;
-bool match_data = false;
 bool flush = false;
 
 extern bool next_packet_loss;
@@ -96,15 +94,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
                 uint64_t event2 = (1<<20);
                 uint64_t event3 = (1<<30); 
                 next_server_session_event( server, from, event1 | event2 | event3 );
-            }
-
-            if ( match_data && !flush && match_data_set.find( address_string ) == match_data_set.end() )
-            {
-                const double match_values[] = {10.10f, 20.20f, 30.30f};
-                int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
-                next_server_match( server, from, "test match id", match_values, num_match_values );
-
-                match_data_set.insert( address_string );
             }
         }
 
@@ -192,12 +181,6 @@ int main()
         session_events = true;
     }
 
-    const char * match_data_env = getenv( "SERVER_MATCH_DATA" );
-    if ( match_data_env )
-    {
-        match_data = true;
-    }
-
     const char * flush_env = getenv( "SERVER_FLUSH" );
     if ( flush_env )
     {
@@ -232,9 +215,6 @@ int main()
         uint64_t event2 = (1<<20);
         uint64_t event3 = (1<<30);
 
-        const double match_values[] = {10.10f, 20.20f, 30.30f};
-        int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
-
         for ( std::map<std::string,uint8_t*>::iterator itor = client_map.begin(); itor != client_map.end(); ++itor )
         {
             next_address_t client_address;
@@ -245,12 +225,6 @@ int main()
             {
                 next_server_session_event( server, &client_address, event1 | event2 | event3 );
             }
-
-            if ( match_data )
-            {
-                next_server_match( server, &client_address, "test match id", match_values, num_match_values );
-            }
-
         }
 
         next_server_flush ( server );

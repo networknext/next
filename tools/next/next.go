@@ -286,10 +286,8 @@ func main() {
 			}
 
 			env.Name = args[0]
-			env.AdminURL = getKeyValue(envFilePath, "ADMIN_REST_API_URL")
-			env.PortalURL = getKeyValue(envFilePath, "PORTAL_REST_API_URL")
-			env.DatabaseURL = getKeyValue(envFilePath, "DATABASE_REST_API_URL")
 			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
+			env.API_URL = getKeyValue(envFilePath, "API_URL")
 			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
 			env.APIKey = getKeyValue(envFilePath, "API_KEY")
 			env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
@@ -817,7 +815,7 @@ func getDatabase() *db.Database {
 
 	if env.Name != "local" {
 		response := AdminDatabaseResponse{}
-		GetJSON(fmt.Sprintf("%s/admin/database", env.AdminURL), &response)
+		GetJSON(fmt.Sprintf("%s/admin/database", env.API_URL), &response)
 		if response.Error != "" {
 			fmt.Printf("%s\n", response.Error)
 			os.Exit(1)
@@ -883,7 +881,7 @@ func commitDatabase() {
 	request.User = fmt.Sprintf("%s <%s>", gitUser, gitEmail)
 	request.Database = database_base64
 
-	err = PutJSON(fmt.Sprintf("%s/admin/commit", env.AdminURL), &request, &response)
+	err = PutJSON(fmt.Sprintf("%s/admin/commit", env.API_URL), &request, &response)
 	if err != nil {
 		fmt.Printf("error: could not post JSON to commit database endpoint: %v", err)
 		os.Exit(1)
@@ -937,8 +935,8 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	adminRelaysResponse := AdminRelaysResponse{}
 	portalRelaysResponse := PortalRelaysResponse{}
 
-	GetJSON(fmt.Sprintf("%s/admin/relays", env.AdminURL), &adminRelaysResponse)
-	GetJSON(fmt.Sprintf("%s/portal/relays/0/%d", env.PortalURL, constants.MaxRelays), &portalRelaysResponse)
+	GetJSON(fmt.Sprintf("%s/admin/relays", env.API_URL), &adminRelaysResponse)
+	GetJSON(fmt.Sprintf("%s/portal/relays/0/%d", env.API_URL, constants.MaxRelays), &portalRelaysResponse)
 
 	type RelayRow struct {
 		Name            string
@@ -1119,7 +1117,7 @@ echo setting up relay environment
 
 sudo cat > relay.env <<- EOM
 RELAY_NAME=$RELAY_NAME
-RELAY_NUM
+RELAY_NUM_THREADS=1
 RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
 RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
 RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
@@ -1200,7 +1198,7 @@ func getRelayInfo(env Environment, regex string) []admin.RelayData {
 
 	relaysResponse := AdminRelaysResponse{}
 
-	GetJSON(fmt.Sprintf("%s/admin/relays", env.AdminURL), &relaysResponse)
+	GetJSON(fmt.Sprintf("%s/admin/relays", env.API_URL), &relaysResponse)
 
 	relays := make([]admin.RelayData, 0)
 
@@ -1449,31 +1447,29 @@ func keys(env Environment, regexes []string) {
 
 type Environment struct {
 	Name                     string `json:"name"`
-	AdminURL                 string `json:"admin_url"`
-	PortalURL                string `json:"portal_url"`
-	DatabaseURL              string `json:"database_url"`
-	SSHKeyFile               string `json:"ssh_key_filepath"`
+	API_URL                  string `json:"api_url"`
 	APIPrivateKey            string `json:"api_private_key"`
 	APIKey                   string `json:"api_key"`
 	VPNAddress               string `json:"vpn_address"`
+	SSHKeyFile               string `json:"ssh_key_file"`
 	RelayBackendHostname     string `json:"relay_backend_hostname"`
 	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
 	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
+	RaspberryBackendURL      string `json:"raspberry_backend_url"`
 }
 
 func (e *Environment) String() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("[%s]\n\n", e.Name))
-	sb.WriteString(fmt.Sprintf(" + Admin URL = %s\n", e.AdminURL))
-	sb.WriteString(fmt.Sprintf(" + Portal URL = %s\n", e.PortalURL))
-	sb.WriteString(fmt.Sprintf(" + Database URL = %s\n", e.DatabaseURL))
-	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
+	sb.WriteString(fmt.Sprintf(" + API URL = %s\n", e.API_URL))
 	sb.WriteString(fmt.Sprintf(" + API Private Key = %s\n", e.APIPrivateKey))
 	sb.WriteString(fmt.Sprintf(" + API Key = %s\n", e.APIKey))
 	sb.WriteString(fmt.Sprintf(" + VPN Address = %s\n", e.VPNAddress))
+	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
 	sb.WriteString(fmt.Sprintf(" + Relay Backend Hostname = %s\n", e.RelayBackendHostname))
 	sb.WriteString(fmt.Sprintf(" + Relay Backend Public Key = %s\n", e.RelayBackendPublicKey))
 	sb.WriteString(fmt.Sprintf(" + Relay Artifacts Bucket Name = %s\n", e.RelayArtifactsBucketName))
+	sb.WriteString(fmt.Sprintf(" + Raspberry Backend URL = %s\n", e.RaspberryBackendURL))
 	return sb.String()
 }
 
@@ -1549,7 +1545,7 @@ func (e *Environment) Clean() {
 
 func getCostMatrix(env Environment, fileName string) {
 
-	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", env.PortalURL))
+	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", env.API_URL))
 
 	os.WriteFile("cost.bin", cost_matrix_binary, 0644)
 
@@ -1818,7 +1814,7 @@ func routes(src string, dest string) {
 // -------------------------------------------------------------------------------------------
 
 func ping() {
-	url := fmt.Sprintf("%s/ping", env.AdminURL)
+	url := fmt.Sprintf("%s/ping", env.API_URL)
 	text := GetText(url)
 	fmt.Printf("%s\n\n", text)
 }

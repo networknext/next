@@ -39,6 +39,187 @@
 
 // ---------------------------------------------------------------
 
+#define NEXT_SERVER_COMMAND_UPGRADE_SESSION                         0
+#define NEXT_SERVER_COMMAND_SESSION_EVENT                           1
+#define NEXT_SERVER_COMMAND_FLUSH                                   2
+#define NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK             3
+#define NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK     4
+#define NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK            5
+
+struct next_server_command_t
+{
+    int type;
+};
+
+struct next_server_command_upgrade_session_t : public next_server_command_t
+{
+    next_address_t address;
+    uint64_t session_id;
+    uint64_t user_hash;
+};
+
+struct next_server_command_session_event_t : public next_server_command_t
+{
+    next_address_t address;
+    uint64_t session_events;
+};
+
+struct next_server_command_flush_t : public next_server_command_t
+{
+    // ...
+};
+
+struct next_server_command_set_packet_receive_callback_t : public next_server_command_t
+{
+    void (*callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end );
+    void * callback_data;
+};
+
+struct next_server_command_set_send_packet_to_address_callback_t : public next_server_command_t
+{
+    int (*callback) ( void * data, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
+    void * callback_data;
+};
+
+struct next_server_command_set_payload_receive_callback_t : public next_server_command_t
+{
+    int (*callback) ( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes );
+    void * callback_data;
+};
+
+// ---------------------------------------------------------------
+
+#define NEXT_SERVER_NOTIFY_PACKET_RECEIVED                      0
+#define NEXT_SERVER_NOTIFY_PENDING_SESSION_TIMED_OUT            1
+#define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
+#define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
+#define NEXT_SERVER_NOTIFY_INIT_TIMED_OUT                       4
+#define NEXT_SERVER_NOTIFY_READY                                5
+#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                       6
+#define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        7
+#define NEXT_SERVER_NOTIFY_DIRECT_ONLY                          8
+
+struct next_server_notify_t
+{
+    int type;
+};
+
+struct next_server_notify_packet_received_t : public next_server_notify_t
+{
+    next_address_t from;
+    int packet_bytes;
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+};
+
+struct next_server_notify_pending_session_cancelled_t : public next_server_notify_t
+{
+    next_address_t address;
+    uint64_t session_id;
+};
+
+struct next_server_notify_pending_session_timed_out_t : public next_server_notify_t
+{
+    next_address_t address;
+    uint64_t session_id;
+};
+
+struct next_server_notify_session_upgraded_t : public next_server_notify_t
+{
+    next_address_t address;
+    uint64_t session_id;
+};
+
+struct next_server_notify_session_timed_out_t : public next_server_notify_t
+{
+    next_address_t address;
+    uint64_t session_id;
+};
+
+struct next_server_notify_init_timed_out_t : public next_server_notify_t
+{
+    // ...
+};
+
+struct next_server_notify_ready_t : public next_server_notify_t
+{
+    char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
+};
+
+struct next_server_notify_flush_finished_t : public next_server_notify_t
+{
+    // ...
+};
+
+struct next_server_notify_magic_updated_t : public next_server_notify_t
+{
+    uint8_t current_magic[8];
+};
+
+struct next_server_notify_direct_only_t : public next_server_notify_t
+{
+    // ...
+};
+
+// ---------------------------------------------------------------
+
+struct next_server_internal_t;
+
+void next_server_internal_initialize_sentinels( next_server_internal_t * server );
+
+void next_server_internal_verify_sentinels( next_server_internal_t * server );
+
+void next_server_internal_resolve_hostname( next_server_internal_t * server );
+
+void next_server_internal_autodetect( next_server_internal_t * server );
+
+void next_server_internal_initialize( next_server_internal_t * server );
+
+void next_server_internal_destroy( next_server_internal_t * server );
+
+next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string );
+
+void next_server_internal_destroy( next_server_internal_t * server );
+
+void next_server_internal_quit( next_server_internal_t * server );
+
+void next_server_internal_send_packet_to_address( next_server_internal_t * server, const next_address_t * address, const uint8_t * packet_data, int packet_bytes );
+
+void next_server_internal_send_packet_to_backend( next_server_internal_t * server, const uint8_t * packet_data, int packet_bytes );
+
+int next_server_internal_send_packet( next_server_internal_t * server, const next_address_t * to_address, uint8_t packet_id, void * packet_object );
+
+next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t packet_type, uint8_t * packet_data, int packet_bytes );
+
+void next_server_internal_update_route( next_server_internal_t * server );
+
+void next_server_internal_update_pending_upgrades( next_server_internal_t * server );
+
+void next_server_internal_update_sessions( next_server_internal_t * server );
+
+void next_server_internal_update_flush( next_server_internal_t * server );
+
+void next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int begin, int end );
+
+void next_server_internal_process_passthrough_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes );
+
+void next_server_internal_block_and_receive_packet( next_server_internal_t * server );
+
+void next_server_internal_upgrade_session( next_server_internal_t * server, const next_address_t * address, uint64_t session_id, uint64_t user_hash );
+
+void next_server_internal_session_events( next_server_internal_t * server, const next_address_t * address, uint64_t session_events );
+
+void next_server_internal_flush_session_update( next_server_internal_t * server );
+
+void next_server_internal_flush( next_server_internal_t * server );
+
+void next_server_internal_pump_commands( next_server_internal_t * server );
+
+void next_server_internal_update_init( next_server_internal_t * server );
+
+void next_server_internal_backend_update( next_server_internal_t * server );
+
+// ---------------------------------------------------------------
+
 extern next_internal_config_t next_global_config;
 
 extern int next_signed_packets[256];
@@ -55,7 +236,6 @@ struct next_server_internal_t
     int state;
     uint64_t customer_id;
     uint64_t datacenter_id;
-    uint64_t match_id;
     uint64_t start_time;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -141,9 +321,7 @@ struct next_server_internal_t
     bool flushing;
     bool flushed;
     uint64_t num_session_updates_to_flush;
-    uint64_t num_match_data_to_flush;
     uint64_t num_flushed_session_updates;
-    uint64_t num_flushed_match_data;
 
     NEXT_DECLARE_SENTINEL(11)
 
@@ -774,8 +952,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
         next_session_entry_t * entry = &server->session_manager->entries[i];
 
-        // todo: here we stop doing something when ping times out or fallback to direct. related?
-
         if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
@@ -987,7 +1163,7 @@ void next_server_internal_update_flush( next_server_internal_t * server )
         return;
 
     if ( next_global_config.disable_network_next || server->state != NEXT_SERVER_STATE_INITIALIZED || 
-         ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush ) )
+         ( server->num_flushed_session_updates == server->num_session_updates_to_flush ) )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server internal flush completed" );
         
@@ -1047,8 +1223,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
              packet_id != NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET &&
              packet_id != NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET &&
              packet_id != NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET &&
-             packet_id != NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET && 
-             packet_id != NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET )
+             packet_id != NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET )
         {
             if ( !next_advanced_packet_filter( packet_data + begin, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, end - begin ) )
             {
@@ -1464,57 +1639,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
             entry->session_update_flush_finished = true;
             server->num_flushed_session_updates++;
-        }
-
-        return;
-    }
-
-    // match data response
-
-    if ( packet_id == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET)
-    {
-        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing match data response packet" );
-
-        if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
-            return;
-        }
-
-        NextBackendMatchDataResponsePacket packet;
-        memset( &packet, 0, sizeof(packet) );
-
-        if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. packet failed to read" );
-            return;
-        }
-
-        next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
-        if ( !entry )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. could not find session %" PRIx64, packet.session_id );
-            return;
-        }
-
-        if ( !entry->waiting_for_match_data_response )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. not waiting for match data response" );
-            return;
-        }
-
-        entry->match_data_response_received = true;
-        entry->waiting_for_match_data_response = false;
-
-        if ( entry->match_data_flush )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed match data for session %" PRIx64 " to backend", entry->session_id );
-            entry->match_data_flush_finished = true;
-            server->num_flushed_match_data++;
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data for session %" PRIx64 " with backend", packet.session_id );
         }
 
         return;
@@ -2094,12 +2218,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_jitter_server_to_client = packet.jitter_server_to_client;
 
-            // todo
-            printf("-----------------------------------------------------\n");
-            printf("stats_packets_sent_client_to_server = %d\n", (int) session->stats_packets_sent_client_to_server );
-            printf("stats_packets_sent_lost_server_to_client = %d\n", (int) session->stats_packets_lost_server_to_client );
-            printf("-----------------------------------------------------\n");
-
             session->last_client_stats_update = next_platform_time();
         }
 
@@ -2322,46 +2440,6 @@ void next_server_internal_session_events( next_server_internal_t * server, const
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server set session event %x for session %" PRIx64 " at address %s", session_events, entry->session_id, next_address_to_string( address, buffer ) );
 }
 
-void next_server_internal_match_data( next_server_internal_t * server, const next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values )
-{
-    next_assert( server );
-    next_assert( address );
-
-    next_server_internal_verify_sentinels( server );
-
-    if ( next_global_config.disable_network_next )
-        return;
-
-    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-        return;
-
-    next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
-    if ( !entry )
-    {
-        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not find session at address %s. server not sending match data", next_address_to_string( address, buffer ) );
-        return;
-    }
-
-    if ( entry->has_match_data || entry->waiting_for_match_data_response || entry->match_data_response_received )
-    {
-        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_WARN, "server already sent match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
-        return;
-    }
-
-    entry->match_id = match_id;
-    entry->num_match_values = num_match_values;
-    for ( int i = 0; i < num_match_values; ++i )
-    {
-        entry->match_values[i] = match_values[i];
-    }
-    entry->has_match_data = true;
-
-    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
-}
-
 void next_server_internal_flush_session_update( next_server_internal_t * server )
 {
     next_assert( server );
@@ -2391,31 +2469,6 @@ void next_server_internal_flush_session_update( next_server_internal_t * server 
     }
 }
 
-void next_server_internal_flush_match_data( next_server_internal_t * server )
-{
-    next_assert( server );
-    next_assert( server->session_manager );
-
-    if ( next_global_config.disable_network_next )
-        return;
-
-    const int max_entry_index = server->session_manager->max_entry_index;
-
-    for ( int i = 0; i <= max_entry_index; ++i )
-    {
-        if ( server->session_manager->session_ids[i] == 0 )
-            continue;
-
-        next_session_entry_t * session = &server->session_manager->entries[i];
-
-        if ( ( !session->has_match_data ) || ( session->has_match_data && session->match_data_response_received ) )
-            continue;
-
-        session->match_data_flush = true;
-        server->num_match_data_to_flush++;
-    }
-}
-
 void next_server_internal_flush( next_server_internal_t * server )
 {
     next_assert( server );
@@ -2440,9 +2493,7 @@ void next_server_internal_flush( next_server_internal_t * server )
 
     next_server_internal_flush_session_update( server );
 
-    next_server_internal_flush_match_data( server );
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server flush started. %d session updates and %d match data to flush", server->num_session_updates_to_flush, server->num_match_data_to_flush );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server flush started. %d session updates to flush", server->num_session_updates_to_flush );
 }
 
 void next_server_internal_pump_commands( next_server_internal_t * server )
@@ -2485,16 +2536,6 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 #endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_session_event_t * event = (next_server_command_session_event_t*) command;
                 next_server_internal_session_events( server, &event->address, event->session_events );
-            }
-            break;
-
-            case NEXT_SERVER_COMMAND_MATCH_DATA:
-            {
-#if NEXT_SPIKE_TRACKING
-                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_MATCH_DATA" );
-#endif // #if NEXT_SPIKE_TRACKING
-                next_server_command_match_data_t * match_data = (next_server_command_match_data_t*) command;
-                next_server_internal_match_data( server, &match_data->address, match_data->match_id, match_data->match_values, match_data->num_match_values );
             }
             break;
 
@@ -3049,7 +3090,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.request_id = server->server_update_request_id;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
-        packet.match_id = server->match_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
         packet.start_time = server->start_time;
@@ -3175,7 +3215,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_kbps_down = session->stats_next_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
             {
-                // todo: session mutex usage is a bit weird
                 next_platform_mutex_guard( &server->session_mutex );
                 packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             }
@@ -3197,16 +3236,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
             packet.packets_out_of_order_server_to_client = session->stats_packets_out_of_order_server_to_client;
-
-            // todo
-            printf("-------------------------------------------------\n");
-            printf("packets sent client to server = %d\n", (int) packet.packets_sent_client_to_server);
-            printf("packets sent server to client = %d\n", (int) packet.packets_sent_server_to_client);
-            printf("packets lost client to server = %d\n", (int) packet.packets_lost_client_to_server);
-            printf("packets lost server to client = %d\n", (int) packet.packets_lost_server_to_client);
-            printf("packets out of order client to server = %d\n", (int) packet.packets_out_of_order_client_to_server);
-            printf("packets out of order server to client = %d\n", (int) packet.packets_out_of_order_server_to_client);
-            printf("-------------------------------------------------\n");
 
             packet.jitter_client_to_server = session->stats_jitter_client_to_server;
             packet.jitter_server_to_client = session->stats_jitter_server_to_client;
@@ -3338,114 +3367,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 next_platform_mutex_guard( &server->session_mutex );
                 session->mutex_send_over_network_next = false;
             }
-        }
-    }
-
-    // match data
-
-    for ( int i = 0; i <= max_entry_index; ++i )
-    {
-        if ( server->session_manager->session_ids[i] == 0 )
-            continue;
-
-        next_session_entry_t * session = &server->session_manager->entries[i];
-
-        if ( !session->has_match_data || session->match_data_response_received )
-            continue;
-
-        if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
-        {
-            NextBackendMatchDataRequestPacket packet;
-            
-            packet.Reset();
-            
-            packet.customer_id = server->customer_id;
-            packet.datacenter_id = server->datacenter_id;
-            packet.server_address = server->server_address;
-            packet.user_hash = session->user_hash;
-            packet.session_id = session->session_id;
-            packet.match_id = session->match_id;
-            packet.num_match_values = session->num_match_values;
-            next_assert( packet.num_match_values <= NEXT_MAX_MATCH_VALUES );
-            for ( int j = 0; j < session->num_match_values; ++j )
-            {
-                packet.match_values[j] = session->match_values[j];
-            }
-
-            session->match_data_request_packet = packet;
-
-            uint8_t magic[8];
-            memset( magic, 0, sizeof(magic) );
-
-            uint8_t from_address_data[32];
-            uint8_t to_address_data[32];
-            uint16_t from_address_port;
-            uint16_t to_address_port;
-            int from_address_bytes;
-            int to_address_bytes;
-
-            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
-            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
-
-            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-            next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
-            int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
-                return;
-            }
-
-            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
-
-            next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
-            
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent match data packet to backend for session %" PRIx64, session->session_id );
-
-            session->next_match_data_resend_time = ( session->match_data_flush ) ? current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME : current_time + NEXT_MATCH_DATA_RESEND_TIME;
-
-            session->waiting_for_match_data_response = true;
-        }
-
-        if ( session->waiting_for_match_data_response && session->next_match_data_resend_time <= current_time )
-        {
-            session->match_data_request_packet.retry_number++;
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent match data packet to backend for session %" PRIx64 " (%d)", session->session_id, session->match_data_request_packet.retry_number );
-
-            uint8_t magic[8];
-            memset( magic, 0, sizeof(magic) );
-
-            uint8_t from_address_data[32];
-            uint8_t to_address_data[32];
-            uint16_t from_address_port;
-            uint16_t to_address_port;
-            int from_address_bytes;
-            int to_address_bytes;
-
-            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
-            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
-
-            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-            next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
-            int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data request packet for backend" );
-                return;
-            }
-
-            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
-
-            next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
-
-            session->next_match_data_resend_time += ( session->match_data_flush && !session->match_data_flush_finished ) ? NEXT_MATCH_DATA_FLUSH_RESEND_TIME : NEXT_MATCH_DATA_RESEND_TIME;
         }
     }
 }
@@ -4219,50 +4140,6 @@ void next_server_session_event( struct next_server_t * server, const struct next
     {    
 #if NEXT_SPIKE_TRACKING
         next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_SERVER_EVENT from %s:%d", __FILE__, __LINE__ );
-#endif // #if NEXT_SPIKE_TRACKING
-        next_platform_mutex_guard( &server->internal->command_mutex );
-        next_queue_push( server->internal->command_queue, command );
-    }
-}
-
-void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values )
-{
-    next_server_verify_sentinels( server );
-
-    next_assert( server );
-    next_assert( address );
-    next_assert( server->internal );
-    next_assert( num_match_values >= 0 );
-    next_assert( num_match_values <= NEXT_MAX_MATCH_VALUES );
-
-    if ( server->flushing )
-    {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server match. server is flushed" );
-        return;
-    }
-
-    // send match data command to internal server
-
-    next_server_command_match_data_t * command = (next_server_command_match_data_t*) next_malloc( server->context, sizeof( next_server_command_match_data_t ) );
-    if ( !command )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server match data failed. could not create match data command" );
-        return;
-    }
-
-    command->type = NEXT_SERVER_COMMAND_MATCH_DATA;
-    command->address = *address;
-    command->match_id = next_hash_string( match_id );
-    memset( command->match_values, 0, sizeof(command->match_values) );
-    for ( int i = 0; i < num_match_values; ++i )
-    {
-        command->match_values[i] = match_values[i];
-    }
-    command->num_match_values = num_match_values;
-
-    {
-#if NEXT_SPIKE_TRACKING
-        next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_MATCH_DATA from %s:%d", __FILE__, __LINE__ );
 #endif // #if NEXT_SPIKE_TRACKING
         next_platform_mutex_guard( &server->internal->command_mutex );
         next_queue_push( server->internal->command_queue, command );

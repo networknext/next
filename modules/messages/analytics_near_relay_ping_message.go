@@ -20,7 +20,6 @@ type AnalyticsNearRelayPingMessage struct {
 	Timestamp           uint64
 	BuyerId             uint64
 	SessionId           uint64
-	MatchId             uint64
 	UserHash            uint64
 	Latitude            float32
 	Longitude           float32
@@ -51,7 +50,6 @@ func (message *AnalyticsNearRelayPingMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.SessionId)
-	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.UserHash)
 	encoding.WriteFloat32(buffer, &index, message.Latitude)
 	encoding.WriteFloat32(buffer, &index, message.Longitude)
@@ -88,10 +86,6 @@ func (message *AnalyticsNearRelayPingMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
 		return fmt.Errorf("failed to read session id")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
-		return fmt.Errorf("failed to read match id")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.UserHash) {
@@ -144,9 +138,6 @@ func (message *AnalyticsNearRelayPingMessage) Save() (map[string]bigquery.Value,
 	bigquery_entry["timestamp"] = int(message.Timestamp)
 	bigquery_entry["buyer_id"] = int(message.BuyerId)
 	bigquery_entry["session_id"] = int(message.SessionId)
-	if message.MatchId != 0 {
-		bigquery_entry["match_id"] = int(message.MatchId)
-	}
 	bigquery_entry["user_hash"] = int(message.UserHash)
 	bigquery_entry["latitude"] = float64(message.Latitude)
 	bigquery_entry["longitude"] = float64(message.Longitude)

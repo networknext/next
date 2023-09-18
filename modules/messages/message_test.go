@@ -111,30 +111,6 @@ func GenerateRandomAnalyticsRelayUpdateMessage() messages.AnalyticsRelayUpdateMe
 	return message
 }
 
-func GenerateRandomAnalyticsMatchDataMessage() messages.AnalyticsMatchDataMessage {
-
-	numMatchValues := rand.Intn(65)
-
-	matchValues := [constants.MaxMatchValues]float64{}
-
-	for i := 0; i < numMatchValues; i++ {
-		matchValues[i] = rand.Float64()
-	}
-
-	return messages.AnalyticsMatchDataMessage{
-		Version:        byte(common.RandomInt(messages.AnalyticsMatchDataMessageVersion_Min, messages.AnalyticsMatchDataMessageVersion_Max)),
-		Timestamp:      uint64(time.Now().Unix()),
-		Type:           rand.Uint64(),
-		BuyerId:        rand.Uint64(),
-		ServerAddress:  common.RandomAddress(),
-		DatacenterId:   rand.Uint64(),
-		SessionId:      rand.Uint64(),
-		MatchId:        rand.Uint64(),
-		NumMatchValues: uint32(numMatchValues),
-		MatchValues:    matchValues,
-	}
-}
-
 func GenerateRandomAnalyticsServerInitMessage() messages.AnalyticsServerInitMessage {
 
 	message := messages.AnalyticsServerInitMessage{
@@ -236,7 +212,6 @@ func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSum
 		SessionId:                       rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		BuyerId:                         rand.Uint64(),
-		MatchId:                         rand.Uint64(),
 		UserHash:                        rand.Uint64(),
 		Latitude:                        float32(common.RandomInt(-90, +90)),
 		Longitude:                       float32(common.RandomInt(-180, +180)),
@@ -287,7 +262,6 @@ func GenerateRandomPortalServerUpdateMessage() messages.PortalServerUpdateMessag
 		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),
-		MatchId:          rand.Uint64(),
 		BuyerId:          rand.Uint64(),
 		DatacenterId:     rand.Uint64(),
 		NumSessions:      rand.Uint32(),
@@ -306,7 +280,6 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),
 		SessionId:        rand.Uint64(),
-		MatchId:          rand.Uint64(),
 		BuyerId:          rand.Uint64(),
 		DatacenterId:     rand.Uint64(),
 		Latitude:         float32(common.RandomInt(-90, +90)),
@@ -419,7 +392,6 @@ func GenerateRandomAnalyticsNearRelayPingMessage() messages.AnalyticsNearRelayPi
 		Timestamp:           rand.Uint64(),
 		BuyerId:             rand.Uint64(),
 		SessionId:           rand.Uint64(),
-		MatchId:             rand.Uint64(),
 		UserHash:            rand.Uint64(),
 		Latitude:            float32(common.RandomInt(-90, +90)),
 		Longitude:           float32(common.RandomInt(-180, +180)),
@@ -528,15 +500,6 @@ func TestAnalyticsServerUpdateMessage(t *testing.T) {
 		writeMessage := GenerateRandomAnalyticsServerUpdateMessage()
 		readMessage := messages.AnalyticsServerUpdateMessage{}
 		MessageReadWriteTest[*messages.AnalyticsServerUpdateMessage](&writeMessage, &readMessage, t)
-	}
-}
-
-func TestAnalyticsMatchDataMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsMatchDataMessage()
-		readMessage := messages.AnalyticsMatchDataMessage{}
-		MessageReadWriteTest[*messages.AnalyticsMatchDataMessage](&writeMessage, &readMessage, t)
 	}
 }
 

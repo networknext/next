@@ -33,7 +33,6 @@ var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
 var analyticsSessionUpdateMessageChannel chan *messages.AnalyticsSessionUpdateMessage
 var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummaryMessage
-var analyticsMatchDataMessageChannel chan *messages.AnalyticsMatchDataMessage
 var analyticsNearRelayPingMessageChannel chan *messages.AnalyticsNearRelayPingMessage
 
 var enableGooglePubsub bool
@@ -136,7 +135,6 @@ func main() {
 	analyticsServerUpdateMessageChannel = make(chan *messages.AnalyticsServerUpdateMessage, channelSize)
 	analyticsSessionUpdateMessageChannel = make(chan *messages.AnalyticsSessionUpdateMessage, channelSize)
 	analyticsSessionSummaryMessageChannel = make(chan *messages.AnalyticsSessionSummaryMessage, channelSize)
-	analyticsMatchDataMessageChannel = make(chan *messages.AnalyticsMatchDataMessage, channelSize)
 	analyticsNearRelayPingMessageChannel = make(chan *messages.AnalyticsNearRelayPingMessage, channelSize)
 
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
@@ -144,7 +142,6 @@ func main() {
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
-	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsMatchDataMessage]("match data", analyticsMatchDataMessageChannel)
 
 	// start the service
 

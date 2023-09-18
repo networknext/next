@@ -62,6 +62,8 @@ DONE
 
 	Implement load testing harness
 
+	Secure with HTTPS
+
 TODO
 
 	Load test to 1000 relays, 100k servers, and 1M sessions

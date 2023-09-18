@@ -19,8 +19,6 @@ const (
 
 	MaxTags = 8
 
-	MaxMatchValues = 64
-
 	MagicBytes = 8
 
 	MaxConnectionType = 3

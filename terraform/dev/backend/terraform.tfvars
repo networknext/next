@@ -9,14 +9,14 @@ google_project              = "development-394617"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
+google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]
 google_artifacts_bucket     = "gs://test_network_next_backend_artifacts"
 google_database_bucket      = "gs://test_network_next_database_files"
 google_machine_type         = "f1-micro"
 
-cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"
-cloudflare_zone_id_api            = "eba5d882ea2aa23f92dfb50fbf7e3cf4" # -> virtualgo.net
-cloudflare_zone_id_relay_backend  = "4690b11494ddc59f6fdf514780d24e0a" # -> losangelesfreewaysatnight.com
-cloudflare_zone_id_server_backend = "d74db52c8b51a2b80a76f736713e3edd" # -> spacecats.net
+cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
+cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4" # -> virtualgo.net
+cloudflare_domain           = "virtualgo.net"
 
 relay_backend_public_key    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 relay_backend_private_key   = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="

@@ -19,7 +19,6 @@ type AnalyticsSessionSummaryMessage struct {
 	Version                         uint8
 	Timestamp                       uint64
 	SessionId                       uint64
-	MatchId                         uint64
 	DatacenterId                    uint64
 	BuyerId                         uint64
 	UserHash                        uint64
@@ -80,7 +79,6 @@ func (message *AnalyticsSessionSummaryMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.Version)
 	encoding.WriteUint64(buffer, &index, message.Timestamp)
 	encoding.WriteUint64(buffer, &index, message.SessionId)
-	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.UserHash)
@@ -146,10 +144,6 @@ func (message *AnalyticsSessionSummaryMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint64(buffer, &index, &message.SessionId) {
 		return fmt.Errorf("failed to read session id")
-	}
-
-	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
-		return fmt.Errorf("failed to read match id")
 	}
 
 	if !encoding.ReadUint64(buffer, &index, &message.DatacenterId) {
@@ -321,9 +315,6 @@ func (message *AnalyticsSessionSummaryMessage) Save() (map[string]bigquery.Value
 
 	bigquery_message["timestamp"] = int(message.Timestamp)
 	bigquery_message["session_id"] = int(message.SessionId)
-	if message.MatchId != 0 {
-		bigquery_message["match_id"] = int(message.MatchId)
-	}
 	bigquery_message["datacenter_id"] = int(message.DatacenterId)
 	bigquery_message["buyer_id"] = int(message.BuyerId)
 	bigquery_message["user_hash"] = int(message.UserHash)

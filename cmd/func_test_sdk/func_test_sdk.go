@@ -208,7 +208,6 @@ type ServerConfig struct {
 	force_resolve_hostname_timeout bool
 	force_autodetect_timeout       bool
 	session_events                 bool
-	match_data                     bool
 	flush                          bool
 }
 
@@ -279,10 +278,6 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 
 	if config.session_events {
 		cmd.Env = append(cmd.Env, "SESSION_EVENTS=1")
-	}
-
-	if config.match_data {
-		cmd.Env = append(cmd.Env, "SERVER_MATCH_DATA=1")
 	}
 
 	if config.flush {
@@ -2850,190 +2845,6 @@ func test_session_events() {
 
 }
 
-func test_match_id() {
-
-	fmt.Printf("test_match_id\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.stop_sending_packets_time = 50.0
-	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.match_data = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	backend_cmd, backend_stdout := backend("MATCH_ID")
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	backend_cmd.Process.Signal(os.Interrupt)
-
-	server_cmd.Wait()
-	backend_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
-	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
-
-	backendSawMatchID := strings.Contains(backend_stdout.String(), "match id d5f5127019cac4e5")
-
-	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
-	serverSawMatchDataRequest := strings.Contains(server_stdout.String(), "server sent match data packet")
-	serverSawMatchDataResponse := strings.Contains(server_stdout.String(), "server successfully recorded match data")
-
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverAddsMatchData)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataRequest)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataResponse)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
-
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
-
-}
-
-func test_match_values() {
-
-	fmt.Printf("test_match_values\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.stop_sending_packets_time = 50.0
-	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.match_data = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	backend_cmd, backend_stdout := backend("MATCH_VALUES")
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	backend_cmd.Process.Signal(os.Interrupt)
-
-	server_cmd.Wait()
-	backend_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
-	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
-
-	backendSawMatchValue1 := strings.Contains(backend_stdout.String(), "match value 10.10")
-	backendSawMatchValue2 := strings.Contains(backend_stdout.String(), "match value 20.20")
-	backendSawMatchValue3 := strings.Contains(backend_stdout.String(), "match value 30.30")
-
-	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
-	serverSawMatchDataRequest := strings.Contains(server_stdout.String(), "server sent match data packet")
-	serverSawMatchDataResponse := strings.Contains(server_stdout.String(), "server successfully recorded match data")
-
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchValue1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchValue2)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchValue3)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverAddsMatchData)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataRequest)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataResponse)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
-
-}
-
-func test_match_data_retry() {
-
-	fmt.Printf("test_match_data_retry\n")
-
-	clientConfig := &ClientConfig{}
-	clientConfig.stop_sending_packets_time = 50.0
-	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.match_data = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	backend_cmd, backend_stdout := backend("FORCE_RETRY")
-
-	client_cmd.Wait()
-
-	server_cmd.Process.Signal(os.Interrupt)
-	backend_cmd.Process.Signal(os.Interrupt)
-
-	server_cmd.Wait()
-	backend_cmd.Wait()
-
-	client_counters := read_client_counters(client_stderr.String())
-
-	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
-	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
-
-	backendSawMatchID := strings.Contains(backend_stdout.String(), "match id d5f5127019cac4e5")
-	backendSawMatchValue1 := strings.Contains(backend_stdout.String(), "match value 10.10")
-	backendSawMatchValue2 := strings.Contains(backend_stdout.String(), "match value 20.20")
-	backendSawMatchValue3 := strings.Contains(backend_stdout.String(), "match value 30.30")
-
-	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
-	serverSawMatchDataRequest := strings.Contains(server_stdout.String(), "server sent match data packet")
-	serverSawMatchDataResponse := strings.Contains(server_stdout.String(), "server successfully recorded match data")
-
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchValue1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchValue2)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchValue3)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverAddsMatchData)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataRequest)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataResponse)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
-
-}
-
 func test_flush() {
 
 	fmt.Printf("test_flush\n")
@@ -3154,9 +2965,9 @@ func test_flush_retry() {
 
 }
 
-func test_flush_session_events_and_match_data() {
+func test_flush_session_events() {
 
-	fmt.Printf("test_flush_session_events_and_match_data\n")
+	fmt.Printf("test_flush_session_events\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 40.0
@@ -3167,13 +2978,12 @@ func test_flush_session_events_and_match_data() {
 
 	serverConfig := &ServerConfig{}
 	serverConfig.session_events = true
-	serverConfig.match_data = true
 	serverConfig.flush = true
 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	backend_cmd, backend_stdout := backend("MATCH_ID")
+	backend_cmd, backend_stdout := backend("")
 
 	client_cmd.Wait()
 
@@ -3190,25 +3000,19 @@ func test_flush_session_events_and_match_data() {
 	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
 	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
 
-	backendSawMatchID := strings.Contains(backend_stdout.String(), "match id d5f5127019cac4e5")
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 	backendSawSessionEvents := strings.Contains(backend_stdout.String(), "session events 40100400")
 
 	serverFlushedSessionEvents := strings.Contains(server_stdout.String(), "server flushed session events 40100400 to backend")
-	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
 	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
-	serverSawMatchDataFlush := strings.Contains(server_stdout.String(), "server flushed match data")
 	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server flush finished")
 
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdate)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionEvents)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverFlushedSessionEvents)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverAddsMatchData)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawFlushRequest)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawSessionUpdateFlush)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataFlush)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawFlushComplete)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
@@ -3226,9 +3030,9 @@ func test_flush_session_events_and_match_data() {
 
 }
 
-func test_flush_session_events_and_match_data_retry() {
+func test_flush_session_events_retry() {
 
-	fmt.Printf("test_flush_session_events_and_match_data_retry\n")
+	fmt.Printf("test_flush_session_events_retry\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 30.0
@@ -3239,13 +3043,12 @@ func test_flush_session_events_and_match_data_retry() {
 
 	serverConfig := &ServerConfig{}
 	serverConfig.session_events = true
-	serverConfig.match_data = true
 	serverConfig.flush = true
 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	backend_cmd, backend_stdout := backend("MATCH_ID")
+	backend_cmd, backend_stdout := backend("")
 
 	client_cmd.Wait()
 
@@ -3259,25 +3062,19 @@ func test_flush_session_events_and_match_data_retry() {
 
 	client_counters := read_client_counters(client_stderr.String())
 
-	backendSawMatchID := strings.Contains(backend_stdout.String(), "match id d5f5127019cac4e5")
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 	backendSawSessionEvents := strings.Contains(backend_stdout.String(), "session events 40100400")
 
 	serverFlushedSessionEvents := strings.Contains(server_stdout.String(), "server flushed session events 40100400 to backend")
-	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
 	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
-	serverSawMatchDataFlush := strings.Contains(server_stdout.String(), "server flushed match data")
 	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server flush finished")
 
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdate)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionEvents)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverFlushedSessionEvents)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverAddsMatchData)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawFlushRequest)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawSessionUpdateFlush)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawMatchDataFlush)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawFlushComplete)
 
 }
@@ -3374,13 +3171,10 @@ func main() {
 		test_server_ready_autodetect_timeout,
 		test_client_connect_before_ready,
 		test_session_events,
-		test_match_id,
-		test_match_values,
-		test_match_data_retry,
 		test_flush,
 		test_flush_retry,
-		test_flush_session_events_and_match_data,
-		test_flush_session_events_and_match_data_retry,
+		test_flush_session_events,
+		test_flush_session_events_retry,
 		test_big_packets,
 	}
 

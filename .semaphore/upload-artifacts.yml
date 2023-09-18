@@ -117,6 +117,11 @@ blocks:
             - artifact pull workflow load_test_sessions.tar.gz
             - gsutil cp load_test_sessions.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/load_test_sessions.tar.gz
 
+        - name: "Portal"
+          commands:
+            - artifact pull workflow portal.tar.gz
+            - gsutil cp portal.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/portal.tar.gz
+
 # ------------------------------------------------------------------------------------------------------------
 
 promotions:

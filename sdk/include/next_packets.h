@@ -410,7 +410,6 @@ struct NextBackendServerUpdateRequestPacket
     uint64_t customer_id;
     uint64_t request_id;
     uint64_t datacenter_id;
-    uint64_t match_id;
     uint32_t num_sessions;
     next_address_t server_address;
     uint64_t start_time;
@@ -423,7 +422,6 @@ struct NextBackendServerUpdateRequestPacket
         customer_id = 0;
         request_id = 0;
         datacenter_id = 0;
-        match_id = 0;
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
         start_time = 0;
@@ -437,7 +435,6 @@ struct NextBackendServerUpdateRequestPacket
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
-        serialize_uint64( stream, match_id );
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
         serialize_uint64( stream, start_time );
@@ -649,74 +646,6 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_float( stream, jitter_client_to_server );
         serialize_float( stream, jitter_server_to_client );
 
-        return true;
-    }
-};
-
-// ---------------------------------------------------------------
-
-struct NextBackendMatchDataRequestPacket
-{
-    int version_major;
-    int version_minor;
-    int version_patch;
-    uint64_t customer_id;
-    next_address_t server_address;
-    uint64_t datacenter_id;
-    uint64_t user_hash;
-    uint64_t session_id;
-    uint32_t retry_number;
-    uint64_t match_id;
-    int num_match_values;
-    double match_values[NEXT_MAX_MATCH_VALUES];
-
-    void Reset()
-    {
-        memset( this, 0, sizeof(NextBackendMatchDataRequestPacket) );
-        version_major = NEXT_VERSION_MAJOR_INT;
-        version_minor = NEXT_VERSION_MINOR_INT;
-        version_patch = NEXT_VERSION_PATCH_INT;
-    }
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_bits( stream, version_major, 8 );
-        serialize_bits( stream, version_minor, 8 );
-        serialize_bits( stream, version_patch, 8 );
-        serialize_uint64( stream, customer_id );
-        serialize_address( stream, server_address );
-        serialize_uint64( stream, datacenter_id );
-        serialize_uint64( stream, user_hash );
-        serialize_uint64( stream, session_id );
-        serialize_uint32( stream, retry_number );
-        serialize_uint64( stream, match_id );
-
-        bool has_match_values = Stream::IsWriting && num_match_values > 0;
-
-        serialize_bool( stream, has_match_values );
-
-        if ( has_match_values )
-        {
-            serialize_int( stream, num_match_values, 0, NEXT_MAX_MATCH_VALUES );
-            for ( int i = 0; i < num_match_values; ++i )
-            {
-                serialize_double( stream, match_values[i] );
-            }
-        }
-
-        return true;
-    }
-};
-
-// ---------------------------------------------------------------
-
-struct NextBackendMatchDataResponsePacket
-{
-    uint64_t session_id;
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_uint64( stream, session_id );
         return true;
     }
 };

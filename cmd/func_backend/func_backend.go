@@ -65,9 +65,7 @@ const BACKEND_MODE_JITTER = 12
 const BACKEND_MODE_DIRECT_STATS = 13
 const BACKEND_MODE_NEXT_STATS = 14
 const BACKEND_MODE_NEAR_RELAY_STATS = 15
-const BACKEND_MODE_MATCH_ID = 16
-const BACKEND_MODE_MATCH_VALUES = 17
-const BACKEND_MODE_ZERO_MAGIC = 18
+const BACKEND_MODE_ZERO_MAGIC = 16
 
 type Backend struct {
 	mutex        sync.RWMutex
@@ -534,7 +532,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	packetType := packetData[0]
 
-	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET && packetType != packets.SDK_MATCH_DATA_REQUEST_PACKET {
+	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET {
 		fmt.Printf("unsupported packet type %d", packetType)
 		return
 	}
@@ -592,15 +590,6 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 			return
 		}
 		ProcessSessionUpdateRequestPacket(conn, from, &packet)
-		break
-
-	case packets.SDK_MATCH_DATA_REQUEST_PACKET:
-		packet := packets.SDK_MatchDataRequestPacket{}
-		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read match data request packet from %s: %v", from.String(), err)
-			return
-		}
-		ProcessMatchDataRequestPacket(conn, from, &packet)
 		break
 
 	default:
@@ -951,32 +940,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	SendResponsePacket(conn, from, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, responsePacket)
 }
 
-func ProcessMatchDataRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_MatchDataRequestPacket) {
-
-	fmt.Printf("server match data request\n")
-
-	if backend.mode == BACKEND_MODE_FORCE_RETRY && requestPacket.RetryNumber < 4 {
-		fmt.Printf("force retry for match data request packet\n")
-		return
-	}
-
-	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
-		fmt.Printf("match id %x\n", requestPacket.MatchId)
-	}
-
-	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
-		for i := 0; i < int(requestPacket.NumMatchValues); i++ {
-			fmt.Printf("match value %.2f\n", requestPacket.MatchValues[i])
-		}
-	}
-
-	responsePacket := &packets.SDK_MatchDataResponsePacket{
-		SessionId: requestPacket.SessionId,
-	}
-
-	SendResponsePacket(conn, from, packets.SDK_MATCH_DATA_RESPONSE_PACKET, responsePacket)
-}
-
 // -----------------------------------------------
 
 func main() {
@@ -1039,14 +1002,6 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
 		backend.mode = BACKEND_MODE_NEXT_STATS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
-		backend.mode = BACKEND_MODE_MATCH_ID
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
-		backend.mode = BACKEND_MODE_MATCH_VALUES
 	}
 
 	if os.Getenv("BACKEND_MODE") == "ZERO_MAGIC" {

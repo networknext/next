@@ -180,7 +180,6 @@ func RunServer(index int) {
 					BuyerId:       buyerId,
 					RequestId:     requestId,
 					DatacenterId:  datacenterId,
-					MatchId:       0,
 					NumSessions:   uint32(common.RandomInt(100, 200)),
 					ServerAddress: address,
 					StartTime:     startTime,

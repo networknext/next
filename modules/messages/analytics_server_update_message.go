@@ -25,7 +25,6 @@ type AnalyticsServerUpdateMessage struct {
 	SDKVersion_Patch byte
 	BuyerId          uint64
 	DatacenterId     uint64
-	MatchId          uint64
 	NumSessions      uint32
 	ServerAddress    net.UDPAddr
 }
@@ -70,10 +69,6 @@ func (message *AnalyticsServerUpdateMessage) Read(buffer []byte) error {
 		return fmt.Errorf("failed to read datacenter id")
 	}
 
-	if !encoding.ReadUint64(buffer, &index, &message.MatchId) {
-		return fmt.Errorf("failed to read match id")
-	}
-
 	if !encoding.ReadUint32(buffer, &index, &message.NumSessions) {
 		return fmt.Errorf("failed to read num sessions")
 	}
@@ -100,7 +95,6 @@ func (message *AnalyticsServerUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Patch)
 	encoding.WriteUint64(buffer, &index, message.BuyerId)
 	encoding.WriteUint64(buffer, &index, message.DatacenterId)
-	encoding.WriteUint64(buffer, &index, message.MatchId)
 	encoding.WriteUint32(buffer, &index, message.NumSessions)
 	encoding.WriteAddress(buffer, &index, &message.ServerAddress)
 
@@ -115,9 +109,6 @@ func (message *AnalyticsServerUpdateMessage) Save() (map[string]bigquery.Value, 
 	bigquery_entry["sdk_version_patch"] = int(message.SDKVersion_Patch)
 	bigquery_entry["buyer_id"] = int(message.BuyerId)
 	bigquery_entry["datacenter_id"] = int(message.DatacenterId)
-	if message.MatchId != 0 {
-		bigquery_entry["match_id"] = int(message.MatchId)
-	}
 	bigquery_entry["num_sessions"] = int(message.NumSessions)
 	bigquery_entry["server_address"] = message.ServerAddress.String()
 	return bigquery_entry, "", nil

@@ -99,7 +99,7 @@ func test_dev() {
 
 	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
 	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
-	bash("psql -U developer -h localhost postgres -f ../sql/dev.sql")
+	bash("psql -U developer -h localhost postgres -f ../sql/test.sql")
 
 	ValidateDatabase()
 }
