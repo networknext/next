@@ -17,7 +17,7 @@ variable "machine_type" { type = string }
 variable "tag" { type = string }
 variable "extra" { type = string }
 variable "project" { type = string }
-variable "zone" { type = string }                   # todo: want to remove this and go regional
+variable "region" { type = string }
 variable "zones" { type = list(string) }
 variable "default_network" { type = string }
 variable "default_subnetwork" { type = string }
@@ -119,11 +119,10 @@ resource "google_compute_health_check" "service_vm" {
   }
 }
 
-# todo: this instance manager is zonal, but we want it regional
-
-resource "google_compute_instance_group_manager" "service" {
+resource "google_compute_region_instance_group_manager" "service" {
   name     = var.service_name
-  zone     = var.zone
+  region   = var.region
+  distribution_policy_zones = var.zones
   named_port {
     name = "http"
     port = 80
