@@ -87,7 +87,8 @@ blocks:
             - checkout
             - cd portal
             - yarn install
-            - yarn build-${SEMAPHORE_GIT_BRANCH}
+            - PORTAL_ENV = $SEMAPHORE_GIT_TAG_NAME if SEMAPHORE_GIT_TAG_NAME!='' else $SEMAPHORE_GIT_BRANCH_NAME
+            - yarn build-${PORTAL_ENV}
             - cd dist
             - tar -zcvf portal.tar.gz *
             - artifact push workflow portal.tar.gz --force
