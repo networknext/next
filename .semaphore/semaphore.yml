@@ -88,7 +88,7 @@ blocks:
             - cd portal
             - yarn install
             - cd ..
-            - tools/build_portal/build_portal.go $SEMAPHORE_GIT_TAG_NAME $SEMAPHORE_GIT_BRANCH
+            - go run tools/build_portal/build_portal.go $SEMAPHORE_GIT_TAG_NAME $SEMAPHORE_GIT_BRANCH
             - cd portal/dist
             - tar -zcvf portal.tar.gz *
             - artifact push workflow portal.tar.gz --force
