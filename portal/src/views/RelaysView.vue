@@ -19,7 +19,31 @@
     </table>
   </div>
 
-  <div class="d-none d-md-block">
+  <div class="d-none d-md-block d-xxl-none">
+    <table id="relays_table" class="table table-striped table-hover">
+      <thead>
+        <tr>
+          <th>Relay Name</th>
+          <th>Current Sessions</th>
+          <th>Status</th>
+          <th>Uptime</th>
+          <th>Datacenter</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in data" :key='item'>
+          <td> <router-link :to='item["Relay Link"]'> {{ item["Relay Name"] }} </router-link> </td>
+          <td> {{ item["Current Sessions"] }} </td>
+          <td> {{ item["Status"] }} </td>
+          <td> {{ item["Uptime"] }} </td>
+          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <div class="d-none d-xxl-block">
     <table id="relays_table" class="table table-striped table-hover">
       <thead>
         <tr>
