@@ -120,7 +120,9 @@ blocks:
         - name: "Portal"
           commands:
             - artifact pull workflow portal.tar.gz
+            - artifact pull workflow nginx.conf
             - gsutil cp portal.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/portal.tar.gz
+            - gsutil cp nginx.conf ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/nginx.conf
 
 # ------------------------------------------------------------------------------------------------------------
 

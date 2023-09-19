@@ -92,6 +92,8 @@ blocks:
             - cd portal/dist
             - tar -zcvf portal.tar.gz *
             - artifact push workflow portal.tar.gz --force
+            - cd ..
+            - artifact push workflow deploy/nginx.conf --force
 
   - name: "Build Artifacts (Golang)"
 
