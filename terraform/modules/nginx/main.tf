@@ -67,6 +67,7 @@ resource "google_compute_url_map" "service" {
 
   default_url_redirect {
     https_redirect = true
+    strip_query = false
   }  
 }
 
@@ -113,14 +114,14 @@ resource "google_compute_instance_template" "service" {
 
   metadata = {
     startup-script = <<-EOF1
-      #! /bin/bash
-      set -euo pipefail
-      export DEBIAN_FRONTEND=noninteractive
-      apt-get update
-      apt-get install -y nginx
-      gsutil cp ${var.artifact} /var/www/html
-      cd /var/www/html && tar -zxf *.tar.gz
-      cat <<EOF2 > /etc/nginx/conf.d/default.conf
+#! /bin/bash
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y nginx
+gsutil cp ${var.artifact} /var/www/html
+cd /var/www/html && tar -zxf *.tar.gz
+cat <<EOF2 > /etc/nginx/conf.d/default.conf
 server {
   listen 80;
   location / {
@@ -130,7 +131,7 @@ server {
   }
 }
 EOF2
-    EOF1
+EOF1
   }
 
   service_account {
