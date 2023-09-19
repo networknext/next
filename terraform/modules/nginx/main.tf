@@ -64,6 +64,10 @@ resource "google_compute_url_map" "service" {
       service = google_compute_backend_service.service.id
     }
   }
+
+  default_url_redirect {
+    https_redirect = true
+  }  
 }
 
 resource "google_compute_global_forwarding_rule" "service" {
