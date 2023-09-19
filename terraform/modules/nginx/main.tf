@@ -125,7 +125,7 @@ cat <<EOF2 > /etc/nginx/conf.d/default.conf
 server {
   listen 80;
   location / {
-      root /usr/share/nginx/html;
+      root /var/www/html;
       index index.html index.htm;
       try_files $uri $uri/ /index.html;
   }
