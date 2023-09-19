@@ -101,8 +101,6 @@ resource "cloudflare_record" "raspberry_domain" {
   proxied = false
 }
 
-// todo: portal domain here
-/*
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-dev"
@@ -110,7 +108,6 @@ resource "cloudflare_record" "portal_domain" {
   type    = "A"
   proxied = false
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -1932,6 +1929,32 @@ module "ip2location" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 1
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "portal" {
+
+  source = "../../modules/nginx"
+
+  service_name = "portal"
+
+  tag                      = var.tag
+  extra                    = var.extra
+  machine_type             = var.google_machine_type
+  project                  = var.google_project
+  region                   = var.google_region
+  zones                    = var.google_zones
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "portal-dev.${var.cloudflare_domain}"
+}
+
+output "portal_address" {
+  description = "The IP address of the portal load balancer"
+  value       = module.portal.address
 }
 
 # ----------------------------------------------------------------------------------------
