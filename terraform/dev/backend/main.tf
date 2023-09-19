@@ -1939,6 +1939,7 @@ module "portal" {
 
   service_name = "portal"
 
+  artifact                 = "${var.google_artifacts_bucket}/${var.tag}/portal.tar.gz"
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = var.google_machine_type
@@ -1960,7 +1961,7 @@ output "portal_address" {
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_router" "router" {
-  name    = "router-to-internet"      # todo: rename back to router once we clean up
+  name    = "router-to-internet"
   network = google_compute_network.development.id
   project = var.google_project
   region  = var.google_region
