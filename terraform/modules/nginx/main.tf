@@ -80,7 +80,7 @@ resource "google_compute_backend_service" "service" {
   port_name               = "http"
   load_balancing_scheme   = "EXTERNAL"
   timeout_sec             = 10
-  health_checks           = [google_compute_health_check.service.id]
+  health_checks           = [google_compute_health_check.service_lb.id]
   backend {
     group           = google_compute_region_instance_group_manager.service.instance_group
     balancing_mode  = "UTILIZATION"
@@ -99,11 +99,6 @@ resource "google_compute_instance_template" "service" {
 
   tags = var.tags
 
-  service_account {
-    email  = var.service_account
-    scopes = ["cloud-platform"]
-  }
-
   disk {
     source_image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     auto_delete  = true
@@ -112,13 +107,31 @@ resource "google_compute_instance_template" "service" {
   }
 
   metadata = {
-    startup-script = <<-EOF
-      #!/bin/bash
+    startup-script = <<-EOF1
+      #! /bin/bash
+      set -euo pipefail
+
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
-      apt-get install -y nginx
-      mkdif -f /anus
-    EOF
+      apt-get install -y nginx-light jq
+
+      NAME=$(curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/hostname")
+      IP=$(curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip")
+      METADATA=$(curl -f -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/?recursive=True" | jq 'del(.["startup-script"])')
+
+      cat <<EOF > /var/www/html/index.html
+      <pre>
+      Name: $NAME
+      IP: $IP
+      Metadata: $METADATA
+      </pre>
+      EOF
+    EOF1
+  }
+
+  service_account {
+    email  = var.service_account
+    scopes = ["cloud-platform"]
   }
 
   lifecycle {
@@ -126,12 +139,23 @@ resource "google_compute_instance_template" "service" {
   }
 }
 
-resource "google_compute_health_check" "service" {
-  name                = var.service_name
+resource "google_compute_health_check" "service_lb" {
+  name                = "${var.service_name}-lb"
   check_interval_sec  = 1
   timeout_sec         = 1
   healthy_threshold   = 5
   unhealthy_threshold = 2
+  http_health_check {
+    port         = "80"
+  }
+}
+
+resource "google_compute_health_check" "service_vm" {
+  name                = "${var.service_name}-vm"
+  check_interval_sec  = 5
+  timeout_sec         = 5
+  healthy_threshold   = 2
+  unhealthy_threshold = 10
   http_health_check {
     port         = "80"
   }
@@ -152,7 +176,7 @@ resource "google_compute_region_instance_group_manager" "service" {
   base_instance_name = var.service_name
   target_size        = 2
   auto_healing_policies {
-    health_check      = google_compute_health_check.service.id
+    health_check      = google_compute_health_check.service_vm.id
     initial_delay_sec = 120
   }
   update_policy {
@@ -166,7 +190,7 @@ resource "google_compute_region_instance_group_manager" "service" {
 }
 
 output "address" {
-  description = "The IP address of the nginx load balancer"
+  description = "The IP address of the external http load balancer"
   value = google_compute_global_address.service.address
 }
 
