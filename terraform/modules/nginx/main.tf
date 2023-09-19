@@ -119,7 +119,7 @@ resource "google_compute_instance_template" "service" {
     gsutil cp ${var.artifact} /var/www/html
     gsutil cp ${var.config} /etc/nginx/nginx.conf
     cd /var/www/html
-    tar -zxf *.tag.gz
+    tar -zxf *.tar.gz
     systemctl restart nginx
     EOF
   }
