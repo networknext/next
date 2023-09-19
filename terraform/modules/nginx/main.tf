@@ -117,15 +117,15 @@ resource "google_compute_instance_template" "service" {
       gsutil cp ${var.artifact} /var/www/html
       cd /var/www/html && tar -zxf *.tar.gz
       cat <<EOF2 > /etc/nginx/conf.d/default.conf
-          server {
-          listen 80;
-          location / {
-              root /usr/share/nginx/html;
-              index index.html index.htm;
-              try_files $uri $uri/ /index.html;
-          }
-      }
-      EOF2
+server {
+  listen 80;
+  location / {
+      root /usr/share/nginx/html;
+      index index.html index.htm;
+      try_files $uri $uri/ /index.html;
+  }
+}
+EOF2
     EOF1
   }
 
