@@ -34,11 +34,6 @@ resource "google_compute_managed_ssl_certificate" "service" {
   }
 }
 
-resource "google_compute_target_http_proxy" "default" {
-  name    = var.service_name
-  url_map = google_compute_url_map.service.id
-}
-
 resource "google_compute_target_https_proxy" "service" {
   name             = var.service_name
   url_map          = google_compute_url_map.service.id
@@ -125,10 +120,11 @@ server {
   listen 80;
   location / {
       root /var/www/html;
-      index index.html index.htm;
+      index index.html;
       try_files $uri $uri/ /index.html;
   }
 }
+systemctl restart nginx
 EOF2
 EOF1
   }
@@ -196,6 +192,29 @@ resource "google_compute_region_instance_group_manager" "service" {
 output "address" {
   description = "The IP address of the external http load balancer"
   value = google_compute_global_address.service.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_url_map" "http-redirect" {
+  name = "http-redirect"
+  default_url_redirect {
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"  // 301 redirect
+    strip_query            = false
+    https_redirect         = true  // this is the magic
+  }
+}
+
+resource "google_compute_target_http_proxy" "http-redirect" {
+  name    = "http-redirect"
+  url_map = google_compute_url_map.http-redirect.self_link
+}
+
+resource "google_compute_global_forwarding_rule" "http-redirect" {
+  name       = "http-redirect"
+  target     = google_compute_target_http_proxy.http-redirect.self_link
+  ip_address = google_compute_global_address.service.address
+  port_range = "80"
 }
 
 # ----------------------------------------------------------------------------------------
