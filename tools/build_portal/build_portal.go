@@ -25,9 +25,8 @@ func main() {
 		for j := 1; j < len(os.Args); j++ {
 			if strings.Contains(os.Args[j], envs[i]) {
 				bash(fmt.Sprintf("cd portal && yarn build-%s", envs[i]))
-				os.Exit(1)
+				return
 			}
-
 		}
 	}
 
