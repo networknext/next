@@ -34,6 +34,11 @@ resource "google_compute_managed_ssl_certificate" "service" {
   }
 }
 
+resource "google_compute_target_http_proxy" "default" {
+  name    = var.service_name
+  url_map = google_compute_url_map.service.id
+}
+
 resource "google_compute_target_https_proxy" "service" {
   name             = var.service_name
   url_map          = google_compute_url_map.service.id
@@ -63,11 +68,6 @@ resource "google_compute_url_map" "service" {
       paths   = ["/*"]
       service = google_compute_backend_service.service.id
     }
-  }
-
-  default_url_redirect {
-    https_redirect = true
-    strip_query = false
   }
 }
 
