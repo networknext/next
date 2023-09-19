@@ -139,6 +139,7 @@ resource "google_compute_health_check" "service_lb" {
   healthy_threshold   = 5
   unhealthy_threshold = 2
   http_health_check {
+    request_path = "/index.html"
     port         = "80"
   }
 }
@@ -150,6 +151,7 @@ resource "google_compute_health_check" "service_vm" {
   healthy_threshold   = 2
   unhealthy_threshold = 10
   http_health_check {
+    request_path = "/index.html"
     port         = "80"
   }
 }
