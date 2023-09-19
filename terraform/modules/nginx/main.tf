@@ -114,7 +114,7 @@ resource "google_compute_instance_template" "service" {
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
       apt-get install -y nginx
-      gsutil cp ${ARTIFACT} /var/www/html
+      gsutil cp ${var.artifact} /var/www/html
       cd /var/www/html && tar -zxf *.tar.gz
     EOF
   }

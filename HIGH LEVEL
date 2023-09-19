@@ -64,6 +64,8 @@ DONE
 
 	Secure with HTTPS
 
+	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
+
 TODO
 
 	Load test to 1000 relays, 100k servers, and 1M sessions
@@ -75,10 +77,6 @@ TODO
 	-----------
 
 	Rebuild portal (second half)
-
-	-----------
-
-	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
 
 	-----------
 
