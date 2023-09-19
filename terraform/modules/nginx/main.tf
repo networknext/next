@@ -108,25 +108,25 @@ resource "google_compute_instance_template" "service" {
 
   metadata = {
     startup-script = <<-EOF1
-#! /bin/bash
-set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y nginx
-gsutil cp ${var.artifact} /var/www/html
-cd /var/www/html && tar -zxf *.tar.gz
-cat <<EOF2 > /etc/nginx/conf.d/default.conf
-server {
-  listen 80;
-  location / {
-      root /var/www/html;
-      index index.html;
-      try_files $uri $uri/ /index.html;
-  }
-}
-systemctl restart nginx
-EOF2
-EOF1
+    #! /bin/bash
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y nginx
+    gsutil cp ${var.artifact} /var/www/html
+    cd /var/www/html && tar -zxf *.tar.gz
+    cat <<EOF2 > /etc/nginx/conf.d/default.conf
+    server {
+      listen 80;
+      location / {
+          root /var/www/html;
+          index index.html;
+          try_files $$uri $$uri/ /index.html;
+      }
+    }
+    systemctl restart nginx
+    EOF2
+    EOF1
   }
 
   service_account {
