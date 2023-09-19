@@ -12,6 +12,7 @@ terraform {
 # ----------------------------------------------------------------------------------------
 
 variable "artifact" { type = string }
+variable "config" { type = string }
 variable "service_name" { type = string }
 variable "machine_type" { type = string }
 variable "tag" { type = string }

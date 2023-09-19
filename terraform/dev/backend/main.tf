@@ -1940,6 +1940,7 @@ module "portal" {
   service_name = "portal"
 
   artifact                 = "${var.google_artifacts_bucket}/${var.tag}/portal.tar.gz"
+  config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = var.google_machine_type
