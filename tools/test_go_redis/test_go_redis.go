@@ -143,6 +143,7 @@ func RunPollThread(ctx context.Context) {
 			fmt.Printf("-------------------------------------------------\n")
 
 			start := time.Now()
+
 			secs := start.Unix()
 
 			minutes := secs / 60
