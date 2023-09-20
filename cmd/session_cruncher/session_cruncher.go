@@ -85,8 +85,8 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	numSessions := len(body) / 12
 	index := 0
 	currentTime := uint64(time.Now().Unix())
+	session := Session{}
 	for i := 0; i < numSessions; i++ {
-		session := Session{}
 		session.timestamp = currentTime
 		session.sessionId = binary.LittleEndian.Uint64(body[index:index+8])
 		session.score = int32(binary.LittleEndian.Uint32(body[index+8:index+12]))
