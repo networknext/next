@@ -62,6 +62,85 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 	}
 }
 
+func RunServerInsertThreads(ctx context.Context, threadCount int) {
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			redisClient := CreateRedisClusterClient()
+
+			_ = redisClient
+
+			/*
+			serverInserter := portal.CreateServerInserter(redisClient, 1000)
+
+			iteration := uint64(0)
+
+			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
+
+			for {
+
+				for j := 0; j < 1000; j++ {
+
+					serverData := portal.GenerateRandomServerData()
+
+					id := uint32(iteration + uint64(j))
+
+					serverData.ServerAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
+
+					serverInserter.Insert(ctx, serverData)
+				}
+
+				time.Sleep(10 * time.Second)
+
+				iteration++
+			}
+			*/
+		}(k)
+	}
+}
+
+func RunRelayInsertThreads(ctx context.Context, threadCount int) {
+
+	for k := 0; k < threadCount; k++ {
+
+		go func(thread int) {
+
+			redisClient := CreateRedisClusterClient()
+
+			_ = redisClient
+
+			/*
+			relayInserter := portal.CreateRelayInserter(pool, 1000)
+
+			iteration := uint64(0)
+
+			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
+
+			for {
+
+				for j := 0; j < 10; j++ {
+
+					relayData := portal.GenerateRandomRelayData()
+					relaySample := portal.GenerateRandomRelaySample()
+
+					id := uint32(iteration + uint64(j))
+
+					relayData.RelayAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
+
+					relayInserter.Insert(relayData, relaySample)
+				}
+
+				time.Sleep(10 * time.Second)
+
+				iteration++
+			}
+			*/
+		}(k)
+	}
+}
+
 func RunPollThread(ctx context.Context) {
 
 	go func() {
@@ -97,6 +176,10 @@ func main() {
 	ctx := context.Background()
 
 	RunSessionInsertThreads(ctx, threadCount)
+
+	RunServerInsertThreads(ctx, threadCount)
+
+	RunRelayInsertThreads(ctx, threadCount)
 
 	RunPollThread(ctx)
 
