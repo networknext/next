@@ -112,6 +112,8 @@ func main() {
 		portal_cruncher()
 	} else if command == "map-cruncher" {
 		map_cruncher()
+	} else if command == "session-cruncher" {
+		session_cruncher()
 	} else if command == "relay" {
 		relay()
 	} else if command == "server-backend" {
@@ -291,10 +293,6 @@ func server_backend() {
 	bash("HTTP_PORT=40000 ./dist/server_backend")
 }
 
-func website_cruncher() {
-	bash("HTTP_PORT=40010 ./dist/website_cruncher")
-}
-
 func portal_cruncher() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
@@ -309,6 +307,14 @@ func map_cruncher() {
 		httpPort = "40100"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/map_cruncher", httpPort))
+}
+
+func session_cruncher() {
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40200"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/session_cruncher", httpPort))
 }
 
 func happy_path() {
