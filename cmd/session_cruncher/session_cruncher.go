@@ -4,6 +4,7 @@ import (
 	"time"
 	"net/http"
 	"io/ioutil"
+	"math/rand"
 	"encoding/binary"
 
 	"github.com/networknext/next/modules/common"
@@ -13,6 +14,7 @@ import (
 )
 
 type Session struct {
+	timestamp   uint64
 	sessionId	uint64
 	score       int32
 }
@@ -42,9 +44,8 @@ func TestThread() {
 	for {
 		session := Session{}
 		session.timestamp = uint64(time.Now().Unix())
-		session.sessionId = binary.LittleEndian.Uint64(body[index:index+8])
-		session.score = int32(binary.LittleEndian.Uint32(body[index+8:index+12]))
-		index += 12
+		session.sessionId = rand.Uint64()
+		session.score = int32(common.RandomInt(0,100))
 		sessionChannel <- session
 		time.Sleep(time.Second)		
 	}
