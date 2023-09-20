@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 	"net/http"
-	"io/ioutil"
+	// "io/ioutil"
 	"math/rand"
-	"encoding/binary"
+	// "encoding/binary"
+	"sync"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -18,9 +19,15 @@ type Session struct {
 	score       int32
 }
 
-var sessionChannel chan Session
+type Bucket struct {
+	mutex 			sync.Mutex
+	sessionChannel 	chan Session
+	set 			*SortedSet
+}
 
-var set *SortedSet
+const NumBuckets = 1000
+
+var buckets []Bucket
 
 func main() {
 
@@ -30,11 +37,13 @@ func main() {
 	service.Router.HandleFunc("/session_counts", sessionCountsHandler).Methods("GET")
 	service.Router.HandleFunc("/sessions/{begin}/{end}", sessionsHandler).Methods("GET")
 
-	sessionChannel = make(chan Session, 10000000)
-	
-	set = NewSortedSet()
+	buckets = make([]Bucket, NumBuckets)
 
-	go ProcessThread()
+	for i := range buckets {
+		buckets[i].sessionChannel = make(chan Session, 1000000)
+		buckets[i].set = NewSortedSet()
+		StartProcessThread(i)
+	}
 
 	go SortThread()
 
@@ -51,19 +60,24 @@ func TestThread() {
 		session := Session{}
 		session.timestamp = uint64(time.Now().Unix())
 		session.sessionId = rand.Uint64()
-		session.score = -int32(rand.Intn(100))
-		sessionChannel <- session
+		session.score = int32(i%NumBuckets)
+		buckets[session.score].sessionChannel <- session
 		i++
 	}
 }
 
-func ProcessThread() {
-	for {
-		select {
-		case session := <-sessionChannel:
-			set.Insert(session.sessionId, session.score)
+func StartProcessThread(i int) {
+	bucket := &buckets[i]
+	go func() {
+		for {
+			select {
+			case session := <-bucket.sessionChannel:
+				bucket.mutex.Lock()
+				bucket.set.Insert(session.sessionId, session.sessionId)
+				bucket.mutex.Unlock()
+			}
 		}
-	}
+	}()
 }
 
 func SortThread() {
@@ -71,17 +85,28 @@ func SortThread() {
 	for {
 		select {
 		case <-ticker.C:
-			// todo: not threadsafe
-			core.Log("%d sessions", set.GetCount())
+
 			start := time.Now()
-			sessions := set.GetByRankRange(1, 1000)
-			fmt.Printf("top %d sessions: %.6fms\n", len(sessions), float64(time.Since(start).Nanoseconds())/1000000.0)
+
+			buckets[0].mutex.Lock()
+			sessions := buckets[0].set.GetByRankRange(1, 100)
+			buckets[0].mutex.Unlock()
+
+			totalCount := uint64(0)
+			for i := 0; i < NumBuckets; i++ {
+				buckets[i].mutex.Lock()
+				totalCount += uint64(buckets[i].set.GetCount())
+				buckets[i].mutex.Unlock()
+			}
+
+			fmt.Printf("top %d/%d sessions: %.6fms\n", len(sessions), totalCount, float64(time.Since(start).Nanoseconds())/1000000.0)
 		}
 	}
 }
 
 func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	core.Log("session batch handler")
+	/*
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		core.Error("could not read body")
@@ -101,8 +126,9 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		session.sessionId = binary.LittleEndian.Uint64(body[index:index+8])
 		session.score = int32(binary.LittleEndian.Uint32(body[index+8:index+12]))
 		index += 12
-		sessionChannel <- session
+		bucketssessionChannel <- session
     }
+    */
 }
 
 func sessionCountsHandler(w http.ResponseWriter, r *http.Request) {
@@ -157,12 +183,12 @@ type SortedSetLevel struct {
 
 type SortedSetNode struct {
 	Key      uint64      // unique key of this node
-	Score    int32       // score to determine the order of this node in the set
+	Score    uint64      // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }
 
-func createNode(level int, score int32, key uint64) *SortedSetNode {
+func createNode(level int, score uint64, key uint64) *SortedSetNode {
 	node := SortedSetNode{
 		Score: score,
 		Key:   key,
@@ -182,7 +208,7 @@ func randomLevel() int {
 	return SKIPLIST_MAXLEVEL
 }
 
-func (this *SortedSet) insertNode(score int32, key uint64) *SortedSetNode {
+func (this *SortedSet) insertNode(score uint64, key uint64) *SortedSetNode {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 	var rank [SKIPLIST_MAXLEVEL]int64
 
@@ -250,7 +276,6 @@ func (this *SortedSet) insertNode(score int32, key uint64) *SortedSetNode {
 	return x
 }
 
-/* Internal function used by delete, DeleteByScore and DeleteByRank */
 func (this *SortedSet) deleteNode(x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*SortedSetNode) {
 	for i := 0; i < this.level; i++ {
 		if update[i].level[i].forward == x {
@@ -272,8 +297,7 @@ func (this *SortedSet) deleteNode(x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*S
 	delete(this.dict, x.Key)
 }
 
-/* Delete an element with matching score/key from the skiplist. */
-func (this *SortedSet) delete(score int32, key uint64) bool {
+func (this *SortedSet) delete(score uint64, key uint64) bool {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 
 	x := this.header
@@ -310,11 +334,10 @@ func (this *SortedSet) GetCount() int {
 	return int(this.length)
 }
 
-func (this *SortedSet) Insert(key uint64, score int32) bool {
+func (this *SortedSet) Insert(key uint64, score uint64) bool {
 	var newNode *SortedSetNode = nil
 	found := this.dict[key]
 	if found != nil {
-		// score does not change, only update value
 		if found.Score != score {
 			this.delete(found.Score, found.Key)
 			newNode = this.insertNode(score, key)
@@ -328,16 +351,7 @@ func (this *SortedSet) Insert(key uint64, score int32) bool {
 	return found == nil
 }
 
-func (this *SortedSet) Remove(key uint64) *SortedSetNode {
-	found := this.dict[key]
-	if found != nil {
-		this.delete(found.Score, found.Key)
-		return found
-	}
-	return nil
-}
-
-func (this *SortedSet) sanitizeIndexes(start int, end int) (int, int, bool) {
+func (this *SortedSet) sanitizeIndexes(start int, end int) (int, int) {
 	if start < 0 {
 		start = int(this.length) + start + 1
 	}
@@ -350,15 +364,10 @@ func (this *SortedSet) sanitizeIndexes(start int, end int) (int, int, bool) {
 	if end <= 0 {
 		end = 1
 	}
-
-	reverse := start > end
-	if reverse { // swap start and end
-		start, end = end, start
-	}
-	return start, end, reverse
+	return start, end
 }
 
-func (this *SortedSet) findNodeByRank(start int) (traversed int, x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*SortedSetNode) {
+func (this *SortedSet) findNodeByRank(start int) (traversed int, x *SortedSetNode) {
 	x = this.header
 	for i := this.level - 1; i >= 0; i-- {
 		for x.level[i].forward != nil &&
@@ -374,11 +383,12 @@ func (this *SortedSet) findNodeByRank(start int) (traversed int, x *SortedSetNod
 }
 
 func (this *SortedSet) GetByRankRange(start int, end int) []*SortedSetNode {
-	start, end, reverse := this.sanitizeIndexes(start, end)
+	
+	start, end = this.sanitizeIndexes(start, end)
 
 	var nodes []*SortedSetNode
 
-	traversed, x, _ := this.findNodeByRank(start)
+	traversed, x := this.findNodeByRank(start)
 
 	traversed++
 	x = x.level[0].forward
@@ -389,10 +399,5 @@ func (this *SortedSet) GetByRankRange(start int, end int) []*SortedSetNode {
 		x = next
 	}
 
-	if reverse {
-		for i, j := 0, len(nodes)-1; i < j; i, j = i+1, j-1 {
-			nodes[i], nodes[j] = nodes[j], nodes[i]
-		}
-	}
 	return nodes
 }
