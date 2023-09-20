@@ -38,5 +38,5 @@ yarn.lock
 
 # redis cluster
 appendonlydir
-dump.rdb
 nodes.conf
+*.rdb

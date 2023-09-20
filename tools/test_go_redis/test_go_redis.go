@@ -51,7 +51,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sliceData := GenerateRandomSliceData()
 
-					sessionInserter.Insert(sessionId, userHash, score, next, sessionData, sliceData)
+					sessionInserter.Insert(ctx, sessionId, userHash, score, next, sessionData, sliceData)
 				}
 
 				time.Sleep(10 * time.Second)
@@ -112,10 +112,10 @@ func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, min
 	pipeline := redisClient.Pipeline()
 
 	for i := 0; i < NumBuckets; i++ {
-		pipeline.ZCard(ctx, fmt.Sprintf("s-%02x-%d", minutes-1))
-		pipeline.ZCard(ctx, fmt.Sprintf("s-%02x-%d", minutes))
-		pipeline.ZCard(ctx, fmt.Sprintf("n-%02x-%d", minutes-1))
-		pipeline.ZCard(ctx, fmt.Sprintf("n-%02x-%d", minutes))
+		pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", i, minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", i, minutes))
+		pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", i, minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", i, minutes))
 	}
 
 	cmds, err := pipeline.Exec(ctx)
@@ -453,11 +453,7 @@ type SessionInserter struct {
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
-	/*
-	allSessions   redis.Args
-	nextSessions  redis.Args
-	userSessions  redis.Args
-	*/
+	pipeline      redis.Pipeliner
 }
 
 func CreateSessionInserter(redisClient *redis.ClusterClient, batchSize int) *SessionInserter {
@@ -465,74 +461,59 @@ func CreateSessionInserter(redisClient *redis.ClusterClient, batchSize int) *Ses
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
+	inserter.pipeline = redisClient.Pipeline()
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(sessionId uint64, userHash uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
 
 	currentTime := time.Now()
 
 	minutes := currentTime.Unix() / 60
 
-	_ = minutes
-
-	/*
-	if len(inserter.allSessions) == 0 {
-		inserter.allSessions = redis.Args{}.Add(fmt.Sprintf("s-%d", minutes))
-		inserter.nextSessions = redis.Args{}.Add(fmt.Sprintf("n-%d", minutes))
-		inserter.userSessions = redis.Args{}.Add(fmt.Sprintf("u-%016x-%d", userHash, minutes))
-	}
+	bucket := sessionId % NumBuckets
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-	inserter.allSessions = inserter.allSessions.Add(score)
-	inserter.allSessions = inserter.allSessions.Add(sessionIdString)
+	key := fmt.Sprintf("s-%03x-%d", bucket, minutes)
+	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: sessionIdString})
 
 	if next {
-		inserter.nextSessions = inserter.nextSessions.Add(score)
-		inserter.nextSessions = inserter.nextSessions.Add(sessionIdString)
+		key = fmt.Sprintf("n-%03x-%d", bucket, minutes)
+		inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: sessionIdString})
 	}
 
-	inserter.userSessions = inserter.userSessions.Add(sessionData.StartTime)
-	inserter.userSessions = inserter.userSessions.Add(sessionIdString)
+	key = fmt.Sprintf("u-%016x", userHash)
+	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(sessionData.StartTime), Member: sessionIdString})
 
-	key := fmt.Sprintf("sd-%s", sessionIdString)
-	inserter.redisClient.Send("SET", key, sessionData.Value())
+	key = fmt.Sprintf("sd-%s", sessionIdString)
+	inserter.pipeline.Set(ctx, key, sessionData.Value(), 0)
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
-	inserter.redisClient.Send("RPUSH", key, sliceData.Value())
+	inserter.pipeline.RPush(ctx, key, sliceData.Value())
 
 	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
-	inserter.redisClient.Send("HSET", key, sessionIdString, currentTime.Unix())
+	inserter.pipeline.HSet(ctx, key, sessionIdString, currentTime.Unix())
 
 	inserter.numPending++
 
-	inserter.CheckForFlush(currentTime)
-	*/
+	inserter.CheckForFlush(ctx, currentTime)
 }
 
-func (inserter *SessionInserter) CheckForFlush(currentTime time.Time) {
-	/*
+func (inserter *SessionInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
-		if len(inserter.allSessions) > 1 {
-			inserter.redisClient.Send("ZADD", inserter.allSessions...)
-		}
-		if len(inserter.nextSessions) > 1 {
-			inserter.redisClient.Send("ZADD", inserter.nextSessions...)
-		}
-		if len(inserter.userSessions) > 1 {
-			inserter.redisClient.Send("ZADD", inserter.userSessions...)
-		}
-		inserter.redisClient.Do("")
-		inserter.redisClient.Close()
-		inserter.numPending = 0
-		inserter.lastFlushTime = time.Now()
-		inserter.redisClient = inserter.redisPool.Get()
-		inserter.allSessions = redis.Args{}
-		inserter.nextSessions = redis.Args{}
-		inserter.userSessions = redis.Args{}
+		inserter.Flush(ctx)
 	}
-	*/
+}
+
+func (inserter *SessionInserter) Flush(ctx context.Context) {
+	_, err := inserter.pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("session insert error: %v", err)
+	}
+	inserter.numPending = 0
+	inserter.lastFlushTime = time.Now()
+	inserter.pipeline = inserter.redisClient.Pipeline()
 }
 
 // ------------------------------------------------------------------------------------------------------------
