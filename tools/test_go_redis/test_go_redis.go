@@ -107,10 +107,7 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := CreateRedisClusterClient()
 
-			_ = redisClient
-
-			/*
-			relayInserter := CreateRelayInserter(pool, 1000)
+			relayInserter := CreateRelayInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -121,20 +118,18 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 				for j := 0; j < 10; j++ {
 
 					relayData := GenerateRandomRelayData()
-					relaySample := GenerateRandomRelaySample()
 
 					id := uint32(iteration + uint64(j))
 
 					relayData.RelayAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
 
-					relayInserter.Insert(relayData, relaySample)
+					relayInserter.Insert(ctx, relayData)
 				}
 
 				time.Sleep(10 * time.Second)
 
 				iteration++
 			}
-			*/
 		}(k)
 	}
 }
@@ -165,6 +160,14 @@ func RunPollThread(ctx context.Context) {
 			serverCount := GetServerCount(ctx, redisClient, minutes)
 
 			fmt.Printf("servers: %d (%.1fms)\n", serverCount, float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
+			relayCount := GetRelayCount(ctx, redisClient, minutes)
+
+			fmt.Printf("relays: %d (%.1fms)\n", relayCount, float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 
@@ -566,6 +569,84 @@ func GenerateRandomServerData() *ServerData {
 	return &data
 }
 
+// --------------------------------------------------------------------------------------------------
+
+type RelayData struct {
+	RelayName    string `json:"relay_name"`
+	RelayId      uint64 `json:"relay_id,string"`
+	RelayAddress string `json:"relay_address"`
+	NumSessions  uint32 `json:"num_sessions"`
+	MaxSessions  uint32 `json:"max_sessions"`
+	StartTime    uint64 `json:"start_time,string"`
+	RelayFlags   uint64 `json:"relay_flags,string"`
+	RelayVersion string `json:"relay_version"`
+}
+
+func (data *RelayData) Value() string {
+	return fmt.Sprintf("%s|%x|%s|%d|%d|%x|%x|%s",
+		data.RelayName,
+		data.RelayId,
+		data.RelayAddress,
+		data.NumSessions,
+		data.MaxSessions,
+		data.StartTime,
+		data.RelayFlags,
+		data.RelayVersion,
+	)
+}
+
+func (data *RelayData) Parse(value string) {
+
+	values := strings.Split(value, "|")
+	if len(values) != 8 {
+		return
+	}
+	relayName := values[0]
+	relayId, err := strconv.ParseUint(values[1], 16, 64)
+	if err != nil {
+		return
+	}
+	relayAddress := values[2]
+	numSessions, err := strconv.ParseUint(values[3], 10, 32)
+	if err != nil {
+		return
+	}
+	maxSessions, err := strconv.ParseUint(values[4], 10, 32)
+	if err != nil {
+		return
+	}
+	startTime, err := strconv.ParseUint(values[5], 16, 64)
+	if err != nil {
+		return
+	}
+	relayFlags, err := strconv.ParseUint(values[6], 16, 64)
+	if err != nil {
+		return
+	}
+	relayVersion := values[7]
+	data.RelayName = relayName
+	data.RelayId = relayId
+	data.RelayAddress = relayAddress
+	data.NumSessions = uint32(numSessions)
+	data.MaxSessions = uint32(maxSessions)
+	data.StartTime = startTime
+	data.RelayFlags = relayFlags
+	data.RelayVersion = relayVersion
+}
+
+func GenerateRandomRelayData() *RelayData {
+	data := RelayData{}
+	data.RelayName = common.RandomString(32)
+	data.RelayId = rand.Uint64()
+	data.RelayAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
+	data.NumSessions = rand.Uint32()
+	data.MaxSessions = rand.Uint32()
+	data.StartTime = rand.Uint64()
+	data.RelayFlags = rand.Uint64()
+	data.RelayVersion = common.RandomString(constants.MaxRelayVersionLength)
+	return &data
+}
+
 // ------------------------------------------------------------------------------------------------------------
 
 type SessionInserter struct {
@@ -779,4 +860,97 @@ func GetServerCount(ctx context.Context, redisClient *redis.ClusterClient, minut
 
 	return totalServerCount
 }
+
+// ------------------------------------------------------------------------------------------------------------
+
+type RelayInserter struct {
+	redisClient   *redis.ClusterClient
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	pipeline      redis.Pipeliner
+}
+
+func CreateRelayInserter(redisClient *redis.ClusterClient, batchSize int) *RelayInserter {
+	inserter := RelayInserter{}
+	inserter.redisClient = redisClient
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	inserter.pipeline = redisClient.Pipeline()
+	return &inserter
+}
+
+func (inserter *RelayInserter) Insert(ctx context.Context, relayData *RelayData) {
+
+	currentTime := time.Now()
+
+	minutes := currentTime.Unix() / 60
+
+	bucket := relayData.RelayId % NumBuckets
+
+	score := uint32(relayData.RelayId) ^ uint32(relayData.RelayId>>32)
+
+	key := fmt.Sprintf("r-%03x-%d", bucket, minutes)
+	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: relayData.RelayAddress})
+
+	inserter.pipeline.Set(ctx, fmt.Sprintf("rd-%s", relayData.RelayAddress), relayData.Value(), 0)
+
+	inserter.numPending++
+
+	inserter.CheckForFlush(ctx, currentTime)
+}
+
+func (inserter *RelayInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		inserter.Flush(ctx)
+	}
+}
+
+func (inserter *RelayInserter) Flush(ctx context.Context) {
+	_, err := inserter.pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("relay insert error: %v", err)
+	}
+	inserter.numPending = 0
+	inserter.lastFlushTime = time.Now()
+	inserter.pipeline = inserter.redisClient.Pipeline()
+}
+
+// ------------------------------------------------------------------------------------------------------------
+
+func GetRelayCount(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) int {
+
+	pipeline := redisClient.Pipeline()
+
+	for i := 0; i < NumBuckets; i++ {
+		pipeline.ZCard(ctx, fmt.Sprintf("r-%03x-%d", i, minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("r-%03x-%d", i, minutes))
+	}
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get relay counts: %v", err)
+		return 0
+	}
+
+	var totalRelayCount_a int
+	var totalRelayCount_b int
+
+	for i := 0; i < NumBuckets*2; i+=2 {
+
+		total_a := int(cmds[i].(*redis.IntCmd).Val())
+		total_b := int(cmds[i+1].(*redis.IntCmd).Val())
+
+		totalRelayCount_a += total_a
+		totalRelayCount_b += total_b
+	}
+
+	totalRelayCount := totalRelayCount_a
+	if totalRelayCount_b > totalRelayCount {
+		totalRelayCount = totalRelayCount_b
+	}
+
+	return totalRelayCount
+}
+
 // ------------------------------------------------------------------------------------------------------------
