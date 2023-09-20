@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 	"net/http"
-	// "io/ioutil"
+	"io/ioutil"
 	"math/rand"
-	// "encoding/binary"
+	"encoding/binary"
 	"sync"
 
 	"github.com/networknext/next/modules/common"
@@ -73,7 +73,7 @@ func StartProcessThread(i int) {
 			select {
 			case session := <-bucket.sessionChannel:
 				bucket.mutex.Lock()
-				bucket.set.Insert(session.sessionId, session.sessionId)
+				bucket.set.Insert(session.sessionId, session.score)
 				bucket.mutex.Unlock()
 			}
 		}
@@ -121,7 +121,6 @@ func SortThread() {
 
 func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	core.Log("session batch handler")
-	/*
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		core.Error("could not read body")
@@ -140,10 +139,15 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		session.timestamp = currentTime
 		session.sessionId = binary.LittleEndian.Uint64(body[index:index+8])
 		session.score = int32(binary.LittleEndian.Uint32(body[index+8:index+12]))
+		bucketIndex := session.score
+		if bucketIndex < 0 {
+			bucketIndex = 0
+		} else if bucketIndex > NumBuckets - 1 {
+			bucketIndex = NumBuckets - 1
+		}
 		index += 12
-		bucketssessionChannel <- session
+		buckets[bucketIndex].sessionChannel <- session
     }
-    */
 }
 
 func sessionCountsHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,12 +202,12 @@ type SortedSetLevel struct {
 
 type SortedSetNode struct {
 	Key      uint64      // unique key of this node
-	Score    uint64      // score to determine the order of this node in the set
+	Score    int32       // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }
 
-func createNode(level int, score uint64, key uint64) *SortedSetNode {
+func createNode(level int, score int32, key uint64) *SortedSetNode {
 	node := SortedSetNode{
 		Score: score,
 		Key:   key,
@@ -223,7 +227,7 @@ func randomLevel() int {
 	return SKIPLIST_MAXLEVEL
 }
 
-func (this *SortedSet) insertNode(score uint64, key uint64) *SortedSetNode {
+func (this *SortedSet) insertNode(score int32, key uint64) *SortedSetNode {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 	var rank [SKIPLIST_MAXLEVEL]int64
 
@@ -312,7 +316,7 @@ func (this *SortedSet) deleteNode(x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*S
 	delete(this.dict, x.Key)
 }
 
-func (this *SortedSet) delete(score uint64, key uint64) bool {
+func (this *SortedSet) delete(score int32, key uint64) bool {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 
 	x := this.header
@@ -349,7 +353,7 @@ func (this *SortedSet) GetCount() int {
 	return int(this.length)
 }
 
-func (this *SortedSet) Insert(key uint64, score uint64) bool {
+func (this *SortedSet) Insert(key uint64, score int32) bool {
 	var newNode *SortedSetNode = nil
 	found := this.dict[key]
 	if found != nil {
