@@ -70,10 +70,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := CreateRedisClusterClient()
 
-			_ = redisClient
-
-			/*
-			serverInserter := portal.CreateServerInserter(redisClient, 1000)
+			serverInserter := CreateServerInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -83,7 +80,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 				for j := 0; j < 1000; j++ {
 
-					serverData := portal.GenerateRandomServerData()
+					serverData := GenerateRandomServerData()
 
 					id := uint32(iteration + uint64(j))
 
@@ -96,7 +93,6 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 				iteration++
 			}
-			*/
 		}(k)
 	}
 }
@@ -112,7 +108,7 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 			_ = redisClient
 
 			/*
-			relayInserter := portal.CreateRelayInserter(pool, 1000)
+			relayInserter := CreateRelayInserter(pool, 1000)
 
 			iteration := uint64(0)
 
@@ -122,8 +118,8 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 
 				for j := 0; j < 10; j++ {
 
-					relayData := portal.GenerateRandomRelayData()
-					relaySample := portal.GenerateRandomRelaySample()
+					relayData := GenerateRandomRelayData()
+					relaySample := GenerateRandomRelaySample()
 
 					id := uint32(iteration + uint64(j))
 
@@ -529,6 +525,89 @@ func GenerateRandomSliceData() *SliceData {
 	return &data
 }
 
+// --------------------------------------------------------------------------------------------------
+
+type ServerData struct {
+	ServerAddress    string
+	SDKVersion_Major uint8
+	SDKVersion_Minor uint8
+	SDKVersion_Patch uint8
+	BuyerId          uint64
+	DatacenterId     uint64
+	NumSessions      uint32
+	StartTime        uint64
+}
+
+func (data *ServerData) Value() string {
+	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%d|%x",
+		data.ServerAddress,
+		data.SDKVersion_Major,
+		data.SDKVersion_Minor,
+		data.SDKVersion_Patch,
+		data.BuyerId,
+		data.DatacenterId,
+		data.NumSessions,
+		data.StartTime,
+	)
+}
+
+func (data *ServerData) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) != 8 {
+		return
+	}
+	serverAddress := values[0]
+	sdkVersionMajor, err := strconv.ParseUint(values[1], 10, 8)
+	if err != nil {
+		return
+	}
+	sdkVersionMinor, err := strconv.ParseUint(values[2], 10, 8)
+	if err != nil {
+		return
+	}
+	sdkVersionPatch, err := strconv.ParseUint(values[3], 10, 8)
+	if err != nil {
+		return
+	}
+	buyerId, err := strconv.ParseUint(values[4], 16, 64)
+	if err != nil {
+		return
+	}
+	datacenterId, err := strconv.ParseUint(values[5], 16, 64)
+	if err != nil {
+		return
+	}
+	numSessions, err := strconv.ParseUint(values[6], 10, 32)
+	if err != nil {
+		return
+	}
+	startTime, err := strconv.ParseUint(values[7], 16, 64)
+	if err != nil {
+		return
+	}
+	data.ServerAddress = serverAddress
+	data.SDKVersion_Major = uint8(sdkVersionMajor)
+	data.SDKVersion_Minor = uint8(sdkVersionMinor)
+	data.SDKVersion_Patch = uint8(sdkVersionPatch)
+	data.BuyerId = buyerId
+	data.DatacenterId = datacenterId
+	data.NumSessions = uint32(numSessions)
+	data.StartTime = startTime
+}
+
+func GenerateRandomServerData() *ServerData {
+	data := ServerData{}
+	data.ServerAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
+	data.SDKVersion_Major = uint8(common.RandomInt(0, 255))
+	data.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
+	data.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
+	data.BuyerId = rand.Uint64()
+	data.DatacenterId = rand.Uint64()
+	data.NumSessions = rand.Uint32()
+	data.StartTime = rand.Uint64()
+	return &data
+}
+
 // ------------------------------------------------------------------------------------------------------------
 
 type SessionInserter struct {
@@ -593,6 +672,81 @@ func (inserter *SessionInserter) Flush(ctx context.Context) {
 	_, err := inserter.pipeline.Exec(ctx)
 	if err != nil {
 		core.Error("session insert error: %v", err)
+	}
+	inserter.numPending = 0
+	inserter.lastFlushTime = time.Now()
+	inserter.pipeline = inserter.redisClient.Pipeline()
+}
+
+// ------------------------------------------------------------------------------------------------------------
+
+type ServerInserter struct {
+	redisClient   *redis.ClusterClient
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	pipeline      redis.Pipeliner
+}
+
+func CreateServerInserter(redisClient *redis.ClusterClient, batchSize int) *ServerInserter {
+	inserter := ServerInserter{}
+	inserter.redisClient = redisClient
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	inserter.pipeline = redisClient.Pipeline()
+	return &inserter
+}
+
+func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerData) {
+
+	currentTime := time.Now()
+
+	minutes := currentTime.Unix() / 60
+
+	_ = minutes
+
+	/*
+	if len(inserter.servers) == 0 {
+		inserter.servers = redis.Args{}.Add(fmt.Sprintf("sv-%d", minutes))
+	}
+
+	serverId := common.HashString(serverData.ServerAddress)
+
+	score := uint32(serverId) ^ uint32(serverId>>32)
+
+	inserter.servers = inserter.servers.Add(score)
+	inserter.servers = inserter.servers.Add(serverData.ServerAddress)
+
+	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value())
+
+	inserter.numPending++
+
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		if len(inserter.servers) > 1 {
+			inserter.redisClient.Send("ZADD", inserter.servers...)
+		}
+		inserter.redisClient.Do("")
+		inserter.redisClient.Close()
+		inserter.numPending = 0
+		inserter.lastFlushTime = time.Now()
+		inserter.redisClient = inserter.redisPool.Get()
+		inserter.servers = redis.Args{}
+	}
+	*/
+
+	inserter.CheckForFlush(ctx, currentTime)
+}
+
+func (inserter *ServerInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		inserter.Flush(ctx)
+	}
+}
+
+func (inserter *ServerInserter) Flush(ctx context.Context) {
+	_, err := inserter.pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("server insert error: %v", err)
 	}
 	inserter.numPending = 0
 	inserter.lastFlushTime = time.Now()
