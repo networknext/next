@@ -90,7 +90,7 @@ func RunPollThread(ctx context.Context) {
 
 func main() {
 
-	redisNodes = []string{"127.0.0.1:7000", "127.0.0.1:7001", "127.0.0.1:7002", "127.0.0.1:7003", "127.0.0.1:7004", "127.0.0.1:7005"}
+	redisNodes = []string{"127.0.0.1:10000", "127.0.0.1:10001", "127.0.0.1:10002", "127.0.0.1:10003", "127.0.0.1:10004", "127.0.0.1:10005"}
 
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 100)
 
@@ -105,12 +105,18 @@ func main() {
 
 // --------------------------------------------------------------------------------------------------
 
+const NumBuckets = 256
+
 func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) (int, int) {
 
 	pipeline := redisClient.Pipeline()
 
-	incr := pipeline.Incr(ctx, "pipeline_counter")
-	pipeline.Expire(ctx, "pipeline_counter", time.Hour)
+	for i := 0; i < NumBuckets; i++ {
+		pipeline.ZCard(ctx, fmt.Sprintf("s-%02x-%d", minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("s-%02x-%d", minutes))
+		pipeline.ZCard(ctx, fmt.Sprintf("n-%02x-%d", minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("n-%02x-%d", minutes))
+	}
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
@@ -118,43 +124,23 @@ func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, min
 		return 0,0
 	}
 
-	_ = cmds
+	var totalSessionCount_a int
+	var totalSessionCount_b int
+	var nextSessionCount_a int
+	var nextSessionCount_b int
 
-	fmt.Println(incr.Val())
+	for i := 0; i < NumBuckets*4; i+=4 {
 
-	/*
-	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes-1))
-	redisClient.Send("ZCARD", fmt.Sprintf("s-%d", minutes))
-	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes-1))
-	redisClient.Send("ZCARD", fmt.Sprintf("n-%d", minutes))
+		total_a := int(cmds[i].(*redis.IntCmd).Val())
+		total_b := int(cmds[i+1].(*redis.IntCmd).Val())
+		next_a := int(cmds[i+2].(*redis.IntCmd).Val())
+		next_b := int(cmds[i+3].(*redis.IntCmd).Val())
 
-	redisClient.Flush()
-
-	totalSessionCount_a, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		core.Error("redis get total sessions count a failed: %v", err)
-		return 0, 0
+		totalSessionCount_a += total_a
+		totalSessionCount_b += total_b
+		nextSessionCount_a += next_a
+		nextSessionCount_b += next_b
 	}
-
-	totalSessionCount_b, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		core.Error("redis get total sessions count b failed: %v", err)
-		return 0, 0
-	}
-
-	nextSessionCount_a, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		core.Error("redis get next sessions count a failed: %v", err)
-		return 0, 0
-	}
-
-	nextSessionCount_b, err := redis.Int(redisClient.Receive())
-	if err != nil {
-		core.Error("redis get next sessions count b failed: %v", err)
-		return 0, 0
-	}
-
-	redisClient.Close()
 
 	totalSessionCount := totalSessionCount_a
 	if totalSessionCount_b > totalSessionCount {
@@ -167,9 +153,6 @@ func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, min
 	}
 
 	return totalSessionCount, nextSessionCount
-	*/
-
-	return 0, 0
 }
 
 // --------------------------------------------------------------------------------------------------
