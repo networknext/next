@@ -2,6 +2,7 @@ package main
 
 import (
 	"os/exec"
+	"time"
 	"fmt"
 )
 
@@ -18,4 +19,14 @@ func bash(command string) bool {
 func main() {
 
 	fmt.Printf("\nstarting redis cluster\n\n")
+
+	for i := 0; i < 6; i++ {
+		bash(fmt.Sprintf("cd redis/%03d && redis-server ./redis.conf", 7000+i))
+	}
+
+	bash("redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 --cluster-replicas 1 --cluster-yes")
+
+	for {
+		time.Sleep(time.Hour)
+	}
 }

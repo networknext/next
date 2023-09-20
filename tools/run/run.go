@@ -218,6 +218,8 @@ func main() {
 		load_test_sessions()
 	} else if command == "redis-cluster" {
 		redis_cluster()
+	} else if command == "test-go-redis" {
+		test_go_redis()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -599,4 +601,8 @@ func load_test_sessions() {
 
 func redis_cluster() {
 	bash("go run tools/redis_cluster/redis_cluster.go")
+}
+
+func test_go_redis() {
+	bash("go run tools/test_go_redis/test_go_redis.go")
 }
