@@ -16,6 +16,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const NumBuckets = 256
+
 var redisNodes []string
 
 func CreateRedisClusterClient() *redis.ClusterClient {
@@ -158,6 +160,14 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
+			start = time.Now()
+
+			serverCount := GetServerCount(ctx, redisClient, minutes)
+
+			fmt.Printf("servers: %d (%.1fms)\n", serverCount, float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
 			time.Sleep(time.Second)
 		}
 	}()
@@ -180,58 +190,6 @@ func main() {
 	RunPollThread(ctx)
 
 	time.Sleep(time.Minute)
-}
-
-// --------------------------------------------------------------------------------------------------
-
-const NumBuckets = 256
-
-func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) (int, int) {
-
-	pipeline := redisClient.Pipeline()
-
-	for i := 0; i < NumBuckets; i++ {
-		pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", i, minutes-1))
-		pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", i, minutes))
-		pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", i, minutes-1))
-		pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", i, minutes))
-	}
-
-	cmds, err := pipeline.Exec(ctx)
-	if err != nil {
-		core.Error("failed to get session counts: %v", err)
-		return 0,0
-	}
-
-	var totalSessionCount_a int
-	var totalSessionCount_b int
-	var nextSessionCount_a int
-	var nextSessionCount_b int
-
-	for i := 0; i < NumBuckets*4; i+=4 {
-
-		total_a := int(cmds[i].(*redis.IntCmd).Val())
-		total_b := int(cmds[i+1].(*redis.IntCmd).Val())
-		next_a := int(cmds[i+2].(*redis.IntCmd).Val())
-		next_b := int(cmds[i+3].(*redis.IntCmd).Val())
-
-		totalSessionCount_a += total_a
-		totalSessionCount_b += total_b
-		nextSessionCount_a += next_a
-		nextSessionCount_b += next_b
-	}
-
-	totalSessionCount := totalSessionCount_a
-	if totalSessionCount_b > totalSessionCount {
-		totalSessionCount = totalSessionCount_b
-	}
-
-	nextSessionCount := nextSessionCount_a
-	if nextSessionCount_b > nextSessionCount {
-		nextSessionCount = nextSessionCount_b
-	}
-
-	return totalSessionCount, nextSessionCount
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -678,6 +636,56 @@ func (inserter *SessionInserter) Flush(ctx context.Context) {
 	inserter.pipeline = inserter.redisClient.Pipeline()
 }
 
+// --------------------------------------------------------------------------------------------------
+
+func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) (int, int) {
+
+	pipeline := redisClient.Pipeline()
+
+	for i := 0; i < NumBuckets; i++ {
+		pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", i, minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", i, minutes))
+		pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", i, minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", i, minutes))
+	}
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get session counts: %v", err)
+		return 0,0
+	}
+
+	var totalSessionCount_a int
+	var totalSessionCount_b int
+	var nextSessionCount_a int
+	var nextSessionCount_b int
+
+	for i := 0; i < NumBuckets*4; i+=4 {
+
+		total_a := int(cmds[i].(*redis.IntCmd).Val())
+		total_b := int(cmds[i+1].(*redis.IntCmd).Val())
+		next_a := int(cmds[i+2].(*redis.IntCmd).Val())
+		next_b := int(cmds[i+3].(*redis.IntCmd).Val())
+
+		totalSessionCount_a += total_a
+		totalSessionCount_b += total_b
+		nextSessionCount_a += next_a
+		nextSessionCount_b += next_b
+	}
+
+	totalSessionCount := totalSessionCount_a
+	if totalSessionCount_b > totalSessionCount {
+		totalSessionCount = totalSessionCount_b
+	}
+
+	nextSessionCount := nextSessionCount_a
+	if nextSessionCount_b > nextSessionCount {
+		nextSessionCount = nextSessionCount_b
+	}
+
+	return totalSessionCount, nextSessionCount
+}
+
 // ------------------------------------------------------------------------------------------------------------
 
 type ServerInserter struct {
@@ -703,36 +711,18 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	minutes := currentTime.Unix() / 60
 
-	_ = minutes
-
-	/*
-	if len(inserter.servers) == 0 {
-		inserter.servers = redis.Args{}.Add(fmt.Sprintf("sv-%d", minutes))
-	}
-
 	serverId := common.HashString(serverData.ServerAddress)
+
+	bucket := serverId % NumBuckets
 
 	score := uint32(serverId) ^ uint32(serverId>>32)
 
-	inserter.servers = inserter.servers.Add(score)
-	inserter.servers = inserter.servers.Add(serverData.ServerAddress)
+	key := fmt.Sprintf("sv-%03x-%d", bucket, minutes)
+	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: serverData.ServerAddress})
 
-	inserter.redisClient.Send("SET", fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value())
+	inserter.pipeline.Set(ctx, fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value(), 0)
 
 	inserter.numPending++
-
-	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
-		if len(inserter.servers) > 1 {
-			inserter.redisClient.Send("ZADD", inserter.servers...)
-		}
-		inserter.redisClient.Do("")
-		inserter.redisClient.Close()
-		inserter.numPending = 0
-		inserter.lastFlushTime = time.Now()
-		inserter.redisClient = inserter.redisPool.Get()
-		inserter.servers = redis.Args{}
-	}
-	*/
 
 	inserter.CheckForFlush(ctx, currentTime)
 }
@@ -753,4 +743,40 @@ func (inserter *ServerInserter) Flush(ctx context.Context) {
 	inserter.pipeline = inserter.redisClient.Pipeline()
 }
 
+// ------------------------------------------------------------------------------------------------------------
+
+func GetServerCount(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) int {
+
+	pipeline := redisClient.Pipeline()
+
+	for i := 0; i < NumBuckets; i++ {
+		pipeline.ZCard(ctx, fmt.Sprintf("sv-%03x-%d", i, minutes-1))
+		pipeline.ZCard(ctx, fmt.Sprintf("sv-%03x-%d", i, minutes))
+	}
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get server counts: %v", err)
+		return 0
+	}
+
+	var totalServerCount_a int
+	var totalServerCount_b int
+
+	for i := 0; i < NumBuckets*2; i+=2 {
+
+		total_a := int(cmds[i].(*redis.IntCmd).Val())
+		total_b := int(cmds[i+1].(*redis.IntCmd).Val())
+
+		totalServerCount_a += total_a
+		totalServerCount_b += total_b
+	}
+
+	totalServerCount := totalServerCount_a
+	if totalServerCount_b > totalServerCount {
+		totalServerCount = totalServerCount_b
+	}
+
+	return totalServerCount
+}
 // ------------------------------------------------------------------------------------------------------------
