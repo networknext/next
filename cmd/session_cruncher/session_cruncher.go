@@ -88,14 +88,29 @@ func SortThread() {
 
 			start := time.Now()
 
-			buckets[0].mutex.Lock()
-			sessions := buckets[0].set.GetByRankRange(1, 100)
-			buckets[0].mutex.Unlock()
+			for i := 0; i < NumBuckets; i++ {
+				buckets[i].mutex.Lock()
+			}
+
+			const TopSessions = 1000
+
+			sessions := make([]*SortedSetNode, 0)
+
+			for i := 0; i < NumBuckets; i++ {
+				bucketSessions := buckets[i].set.GetByRankRange(1, TopSessions)
+				sessions = append(sessions, bucketSessions...)
+				if len(sessions) >= TopSessions {
+					sessions = sessions[:TopSessions]
+					break
+				}
+			}
 
 			totalCount := uint64(0)
 			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Lock()
 				totalCount += uint64(buckets[i].set.GetCount())
+			}
+
+			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Unlock()
 			}
 
