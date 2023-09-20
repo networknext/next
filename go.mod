@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	cloud.google.com/go/bigquery v1.47.0
+	cloud.google.com/go/profiler v0.3.1
 	cloud.google.com/go/pubsub v1.28.0
 	cloud.google.com/go/storage v1.29.0
 	github.com/go-redis/redis/v8 v8.11.5
@@ -18,6 +19,7 @@ require (
 	github.com/modood/table v0.0.0-20220527013332-8d47e76dad33
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/peterbourgon/ff/v3 v3.3.0
+	github.com/redis/go-redis/v9 v9.1.0
 	github.com/rs/cors v1.9.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.6.0
@@ -31,7 +33,6 @@ require (
 	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.12.0 // indirect
-	cloud.google.com/go/profiler v0.3.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/apache/arrow/go/v10 v10.0.1 // indirect
 	github.com/apache/thrift v0.18.0 // indirect

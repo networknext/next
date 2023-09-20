@@ -66,6 +66,8 @@ DONE
 
 	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
 
+	Load test to 1000 relays, 100k servers and 100k sessions.
+
 TODO
 
 	Load test to 1000 relays, 100k servers, and 1M sessions
@@ -77,6 +79,10 @@ TODO
 	-----------
 
 	Rebuild portal (second half)
+
+	-----------
+
+	Finalize SDK and UE5 plugin
 
 	-----------
 
