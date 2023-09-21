@@ -36,6 +36,10 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 			iteration := uint64(0)
 
+			nearRelayInserter := CreateNearRelayInserter(redisClient, 1000)
+
+			near_relay_max := uint64(0)
+
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
 			for {
@@ -53,6 +57,12 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 					sliceData := GenerateRandomSliceData()
 
 					sessionInserter.Insert(ctx, sessionId, userHash, sessionData, sliceData)
+
+					if sessionId > near_relay_max {
+						nearRelayData := GenerateRandomNearRelayData()
+						nearRelayInserter.Insert(ctx, sessionId, nearRelayData)
+						near_relay_max = sessionId
+					}
 				}
 
 				time.Sleep(10 * time.Second)
