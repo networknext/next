@@ -268,7 +268,12 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
-			// todo: get relay list
+			start = time.Now()
+
+			relayList := GetRelayList(ctx, redisClient, relayAddresses)
+			if serverList != nil {
+				fmt.Printf("relay list %d (%.3fms)\n", len(relayList), float64(time.Since(start).Milliseconds()))
+			}
 
 			// ------------------------------------------------------------------------------------------
 
@@ -1548,6 +1553,39 @@ func GetRelayData(ctx context.Context, redisClient *redis.ClusterClient, relayAd
 	relayData.Parse(redis_relay_data)
 
 	return &relayData
+}
+
+func GetRelayList(ctx context.Context, redisClient *redis.ClusterClient, relayAddresses []string) ([]*RelayData) {
+
+	pipeline := redisClient.Pipeline()
+
+	for i := range relayAddresses {
+		pipeline.Get(ctx, fmt.Sprintf("rd-%s", relayAddresses[i]))
+	}
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get relay list: %v", err)
+		return nil
+	}
+
+	relayList := make([]*RelayData, 0)
+
+	for i := range relayAddresses {
+
+		redis_relay_data := cmds[i].(*redis.StringCmd).Val()
+
+		relayData := RelayData{}
+		relayData.Parse(redis_relay_data)
+
+		if relayData.RelayAddress != relayAddresses[i] {
+			continue
+		}
+
+		relayList = append(relayList, &relayData)
+	}
+
+	return relayList
 }
 
 // ------------------------------------------------------------------------------------------------------------
