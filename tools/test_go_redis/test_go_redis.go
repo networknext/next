@@ -205,7 +205,27 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
-			// todo: get server list
+			start = time.Now()
+
+			serverAddresses := GetServerAddresses(ctx, redisClient, minutes, 0, 100)
+
+			fmt.Printf("server addresses -> %d server addresses (%.3fms)\n", len(serverAddresses), float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
+			/*
+			serverAddresses := make([]string, 100)
+			for i := range serverAddresses {
+				serverAddresses[i] = fmt.Sprintf("208.3.0.0:%d", 15+i)
+			}
+			*/
+
+			serverList := GetServerList(ctx, redisClient, serverAddresses)
+			if serverList != nil {
+				fmt.Printf("server list %d (%.3fms)\n", len(serverList), float64(time.Since(start).Milliseconds()))
+			}
 
 			// ------------------------------------------------------------------------------------------
 
@@ -904,7 +924,6 @@ func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessi
 		sessionData.Parse(redis_session_data)
 
 		if sessionData.SessionId != sessionIds[i] {
-			fmt.Printf("%016x != %016x\n", sessionData.SessionId, sessionIds[i])
 			continue
 		}
 
@@ -1165,8 +1184,8 @@ func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, server
 	pipeline := redisClient.Pipeline()
 
 	pipeline.Get(ctx, fmt.Sprintf("svd-%s", serverAddress))
-	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverAddress, minutes))
 	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverAddress, minutes-1))
+	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverAddress, minutes))
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
@@ -1221,6 +1240,122 @@ func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, server
 	serverSessionData := GetSessionList(ctx, redisClient, serverSessionIds)
 
 	return &serverData, serverSessionData
+}
+
+func GetServerList(ctx context.Context, redisClient *redis.ClusterClient, serverAddresses []string) ([]*ServerData) {
+
+	pipeline := redisClient.Pipeline()
+
+	for i := range serverAddresses {
+		pipeline.Get(ctx, fmt.Sprintf("svd-%s", serverAddresses[i]))
+	}
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get server list: %v", err)
+		return nil
+	}
+
+	serverList := make([]*ServerData, 0)
+
+	for i := range serverAddresses {
+
+		redis_server_data := cmds[i].(*redis.StringCmd).Val()
+
+		serverData := ServerData{}
+		serverData.Parse(redis_server_data)
+
+		if serverData.ServerAddress != serverAddresses[i] {
+			continue
+		}
+
+		serverList = append(serverList, &serverData)
+	}
+
+	return serverList
+}
+
+func GetServerAddresses(ctx context.Context, redisClient *redis.ClusterClient, minutes int64, begin int, end int) []string {
+
+	if begin < 0 {
+		core.Error("invalid begin passed to get server addresses: %d", begin)
+		return nil
+	}
+
+	if end < 0 {
+		core.Error("invalid end passed to get server addresses: %d", end)
+		return nil
+	}
+
+	if end <= begin {
+		core.Error("end must be greater than begin")
+		return nil
+	}
+
+	// get the set of server addresses in the range [begin,end]
+
+	pipeline := redisClient.Pipeline()
+
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("sv-%d", minutes-1), int64(begin), int64(end-1))
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("sv-%d", minutes), int64(begin), int64(end-1))
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get server addresses: %v", err)
+		return nil
+	}
+
+	redis_server_addresses_a, err := cmds[0].(*redis.ZSliceCmd).Result()
+	if err != nil {
+		core.Error("failed to get redis server addresses a: %v", err)
+		return nil
+	}
+
+	redis_server_addresses_b, err := cmds[1].(*redis.ZSliceCmd).Result()
+	if err != nil {
+		core.Error("failed to get redis server addresses b: %v", err)
+		return nil
+	}
+
+	serverMap := make(map[string]int32)
+
+	for i := range redis_server_addresses_a {
+		address := redis_server_addresses_a[i].Member.(string)
+		score := int32(redis_server_addresses_a[i].Score)
+		serverMap[address] = score
+	}
+
+	for i := range redis_server_addresses_b {
+		address := redis_server_addresses_b[i].Member.(string)
+		score := int32(redis_server_addresses_b[i].Score)
+		serverMap[address] = score
+	}
+
+	type ServerEntry struct {
+		address string
+		score   int32
+	}
+
+	serverEntries := make([]ServerEntry, len(serverMap))
+	index := 0
+	for k,v := range serverMap {
+		serverEntries[index] = ServerEntry{k,v}
+		index++
+	}
+
+	sort.SliceStable(serverEntries, func(i, j int) bool { return serverEntries[i].score > serverEntries[j].score })
+
+	maxSize := end - begin
+	if len(serverEntries) > maxSize {
+		serverEntries = serverEntries[:maxSize]
+	}
+
+	serverAddresses := make([]string, len(serverEntries))
+	for i := range serverEntries {
+		serverAddresses[i] = serverEntries[i].address
+	}
+
+	return serverAddresses
 }
 
 // ------------------------------------------------------------------------------------------------------------
