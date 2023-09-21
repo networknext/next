@@ -10,8 +10,6 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/messages"
 	"github.com/networknext/next/modules/portal"
-
-	"github.com/gomodule/redigo/redis"
 )
 
 var service *common.Service
@@ -20,7 +18,8 @@ var redisPortalHostname string
 var redisRelayBackendHostname string
 var redisServerBackendHostname string
 
-var pool *redis.Pool
+// todo
+// var pool *redis.Pool
 
 func main() {
 
@@ -54,8 +53,12 @@ func main() {
 		service.LoadIP2Location()
 	}
 
-	pool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
+	// todo
+	// pool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
 
+	_ = reps
+
+	/*
 	for j := 0; j < reps; j++ {
 
 		sessionInserter := portal.CreateSessionInserter(pool, sessionInsertBatchSize)
@@ -69,6 +72,7 @@ func main() {
 		ProcessRelayUpdateMessages(service, redisRelayBackendHostname, "relay update", relayInserter)
 
 	}
+	*/
 
 	service.StartWebServer()
 
@@ -121,14 +125,18 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	userHash := message.UserHash
 
+	// todo: insert to session cruncher
+	/*
 	next := message.Next
 
+	// todo: normalize to [0,1000]
 	score := uint32(0)
 	if next {
 		score = uint32(message.NextRTT)
 	} else {
 		score = 10000 - uint32(message.DirectRTT)
 	}
+	*/
 
 	var isp string
 	if !service.Local {
@@ -175,7 +183,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		Next:             message.Next,
 	}
 
-	sessionInserter.Insert(sessionId, userHash, score, next, &sessionData, &sliceData)
+	sessionInserter.Insert(service.Context, sessionId, userHash, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
@@ -231,7 +239,7 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 		StartTime:        message.StartTime,
 	}
 
-	serverInserter.Insert(&serverData)
+	serverInserter.Insert(service.Context, &serverData)
 }
 
 // -------------------------------------------------------------------------------
@@ -287,7 +295,7 @@ func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRe
 		NearRelayPacketLoss: message.NearRelayPacketLoss,
 	}
 
-	nearRelayInserter.Insert(sessionId, &nearRelayData)
+	nearRelayInserter.Insert(service.Context, sessionId, &nearRelayData)
 }
 
 // -------------------------------------------------------------------------------
@@ -343,6 +351,8 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter)
 		RelayVersion: message.RelayVersion,
 	}
 
+	// todo: this should be time series
+	/*
 	relaySample := portal.RelaySample{
 		Timestamp:                 message.Timestamp,
 		NumSessions:               message.SessionCount,
@@ -359,8 +369,9 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter)
 		NumUnroutable:             message.NumUnroutable,
 		CurrentTime:               message.CurrentTime,
 	}
+	*/
 
-	relayInserter.Insert(&relayData, &relaySample)
+	relayInserter.Insert(service.Context, &relayData)
 }
 
 // -------------------------------------------------------------------------------

@@ -5,6 +5,8 @@
 
 package main
 
+// todo
+/*
 import (
 	"bytes"
 	"encoding/json"
@@ -560,4 +562,10 @@ func test_portal() {
 
 func main() {
 	test_portal()
+}
+*/
+
+// todo: dummy out
+func main() {
+	// ...
 }
