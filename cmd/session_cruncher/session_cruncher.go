@@ -13,15 +13,17 @@ import (
 	"github.com/networknext/next/modules/core"
 )
 
-type Session struct {
-	timestamp   uint64
-	sessionId	uint64
-	score       int32
+type SessionUpdate struct {
+	timestamp     uint64
+	sessionId	  uint64
+	previousScore int32
+	newScore      int32
+	delete        bool
 }
 
 type Bucket struct {
 	mutex 			sync.Mutex
-	sessionChannel 	chan Session
+	sessionChannel 	chan SessionUpdate
 	set 			*SortedSet
 }
 
@@ -40,7 +42,7 @@ func main() {
 	buckets = make([]Bucket, NumBuckets)
 
 	for i := range buckets {
-		buckets[i].sessionChannel = make(chan Session, 1000000)
+		buckets[i].sessionChannel = make(chan SessionUpdate, 1000000)
 		buckets[i].set = NewSortedSet()
 		StartProcessThread(i)
 	}
@@ -54,14 +56,31 @@ func main() {
 	service.WaitForShutdown()
 }
 
+func GetBucketIndex(score int32) int {
+	index := score
+	if index < 0 {
+		index = 0
+	} else if index > NumBuckets - 1 {
+		index = NumBuckets - 1
+	}
+	return int(index)
+}
+
 func TestThread() {
 	i := uint64(0) 
 	for {
-		session := Session{}
+		session := SessionUpdate{}
 		session.timestamp = uint64(time.Now().Unix())
 		session.sessionId = rand.Uint64()
-		session.score = int32(i%NumBuckets)
-		buckets[session.score].sessionChannel <- session
+		session.newScore = int32(i%NumBuckets)
+		session.previousScore = int32((i+5)%NumBuckets)						// todo: mock worst case, removing from bucket each update...
+		previousIndex := GetBucketIndex(session.previousScore)
+		newIndex := GetBucketIndex(session.newScore)
+		buckets[newIndex].sessionChannel <- session
+		if previousIndex != newIndex {
+			session.delete = true
+			buckets[previousIndex].sessionChannel <- session
+		}
 		i++
 	}
 }
@@ -72,9 +91,15 @@ func StartProcessThread(i int) {
 		for {
 			select {
 			case session := <-bucket.sessionChannel:
-				bucket.mutex.Lock()
-				bucket.set.Insert(session.sessionId, session.score)
-				bucket.mutex.Unlock()
+				if !session.delete {
+					bucket.mutex.Lock()
+					bucket.set.Insert(session.sessionId, session.newScore)
+					bucket.mutex.Unlock()
+				} else {
+					bucket.mutex.Lock()
+					bucket.set.Delete(session.sessionId)
+					bucket.mutex.Unlock()
+				}
 			}
 		}
 	}()
@@ -92,7 +117,7 @@ func SortThread() {
 				buckets[i].mutex.Lock()
 			}
 
-			const TopSessions = 1000
+			const TopSessions = 100000
 
 			sessions := make([]*SortedSetNode, 0)
 
@@ -127,26 +152,27 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	if len(body) % 12 != 0 {
-		core.Error("session batch should be multiple of 12 bytes")
+	if len(body) % 16 != 0 {
+		core.Error("session batch should be multiple of 16 bytes")
 		return
 	}
-	numSessions := len(body) / 12
+	numSessions := len(body) / 16
 	index := 0
 	currentTime := uint64(time.Now().Unix())
-	session := Session{}
+	session := SessionUpdate{}
 	for i := 0; i < numSessions; i++ {
 		session.timestamp = currentTime
 		session.sessionId = binary.LittleEndian.Uint64(body[index:index+8])
-		session.score = int32(binary.LittleEndian.Uint32(body[index+8:index+12]))
-		bucketIndex := session.score
-		if bucketIndex < 0 {
-			bucketIndex = 0
-		} else if bucketIndex > NumBuckets - 1 {
-			bucketIndex = NumBuckets - 1
+		session.newScore = int32(binary.LittleEndian.Uint32(body[index+8:index+12]))
+		session.previousScore = int32(binary.LittleEndian.Uint32(body[index+12:index+16]))
+		previousIndex := GetBucketIndex(session.previousScore)
+		newIndex := GetBucketIndex(session.newScore)
+		buckets[newIndex].sessionChannel <- session
+		if previousIndex != newIndex {
+			session.delete = true
+			buckets[previousIndex].sessionChannel <- session
 		}
-		index += 12
-		buckets[bucketIndex].sessionChannel <- session
+		index += 16
     }
 }
 
@@ -368,6 +394,15 @@ func (this *SortedSet) Insert(key uint64, score int32) bool {
 		this.dict[key] = newNode
 	}
 	return found == nil
+}
+
+func (this *SortedSet) Delete(key uint64) *SortedSetNode {
+	found := this.dict[key]
+	if found != nil {
+		this.delete(found.Score, found.Key)
+		return found
+	}
+	return nil
 }
 
 func (this *SortedSet) sanitizeIndexes(start int, end int) (int, int) {
