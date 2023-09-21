@@ -54,6 +54,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 					sessionData := GenerateRandomSessionData()
 
 					sessionData.SessionId = sessionId
+					sessionData.UserHash = userHash
 
 					sliceData := GenerateRandomSliceData()
 
@@ -174,6 +175,19 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
+			minutes := start.Unix() / 60
+
+			userHash := uint64(1000000) + iteration
+
+			userSessionList := GetUserSessionList(ctx, redisClient, userHash, minutes, 0, 100)
+			if userSessionList != nil {
+				fmt.Printf("user session list %d (%.3fms)\n", len(userSessionList), float64(time.Since(start).Milliseconds()))
+			}
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
 			sessionId := uint64(1000000) + iteration
 
 			sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessionId)
@@ -184,8 +198,6 @@ func RunPollThread(ctx context.Context) {
 			// ------------------------------------------------------------------------------------------
 
 			start = time.Now()
-
-			minutes := start.Unix() / 60
 
 			serverCount := GetServerCount(ctx, redisClient, minutes)
 
@@ -214,13 +226,6 @@ func RunPollThread(ctx context.Context) {
 			// ------------------------------------------------------------------------------------------
 
 			start = time.Now()
-
-			/*
-			serverAddresses := make([]string, 100)
-			for i := range serverAddresses {
-				serverAddresses[i] = fmt.Sprintf("208.3.0.0:%d", 15+i)
-			}
-			*/
 
 			serverList := GetServerList(ctx, redisClient, serverAddresses)
 			if serverList != nil {
@@ -933,24 +938,26 @@ func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessi
 	return sessionList
 }
 
-/*
-func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int, end int) []SessionData {
+func GetUserSessionList(ctx context.Context, redisClient *redis.ClusterClient, userHash uint64, minutes int64, begin int, end int) []SessionData {
 
 	if begin < 0 {
-		core.Error("invalid begin passed to get user sessions: %d", begin)
+		core.Error("invalid begin passed to get user session list: %d", begin)
 		return nil
 	}
 
 	if end < 0 {
-		core.Error("invalid end passed to get user sessions: %d", end)
+		core.Error("invalid end passed to get user session list: %d", end)
 		return nil
 	}
 
 	if end <= begin {
-		core.Error("invalid begin passed to get user sessions: %d", begin)
+		core.Error("invalid begin passed to get user session list: %d", begin)
 		return nil
 	}
 
+	// ...
+
+	/*
 	// get session ids in order in the range [begin,end]
 
 	redisClient := pool.Get()
@@ -1040,10 +1047,11 @@ func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int
 		sessions[i].Parse(redis_session_data[i])
 		sessions[i].SessionId = sessionEntries[i].SessionId
 	}
-
 	return sessions
+	*/
+
+	return nil
 }
-*/
 
 // ------------------------------------------------------------------------------------------------------------
 
