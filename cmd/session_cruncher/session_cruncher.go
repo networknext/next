@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -12,11 +11,15 @@ import (
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/encoding"
 )
 
 const TopSessionsCount = 100000
+
 const NumBuckets = 1000
+
 const SessionBatchVersion = uint64(0)
+
 const TopSessionsVersion = uint64(0)
 
 type SessionUpdate struct {
@@ -29,9 +32,10 @@ type SessionUpdate struct {
 }
 
 type TopSessions struct {
-	totalSessions uint64
-	nextSessions  uint64
-	topSessions   [TopSessionsCount]uint64
+	totalSessions  uint64
+	nextSessions   uint64
+	numTopSessions int
+	topSessions    [TopSessionsCount]uint64
 }
 
 type Bucket struct {
@@ -44,6 +48,10 @@ type Bucket struct {
 }
 
 var buckets []Bucket
+
+var topSessionsMutex sync.Mutex
+var topSessions *TopSessions
+var topSessionsData []byte
 
 func main() {
 
@@ -62,9 +70,13 @@ func main() {
 		StartProcessThread(&buckets[i])
 	}
 
-	go SortThread()
+	topSessionsMutex.Lock()
+	topSessions = &TopSessions{}
+	topSessionsMutex.Unlock()
 
 	go TestThread()
+
+	go TopSessionsThread()
 
 	service.StartWebServer()
 
@@ -154,7 +166,7 @@ func StartProcessThread(bucket *Bucket) {
 	}()
 }
 
-func SortThread() {
+func TopSessionsThread() {
 	ticker := time.NewTicker(time.Second)
 	for {
 		select {
@@ -238,9 +250,39 @@ func SortThread() {
 
 			sort.Slice(sessions, func(i int, j int) bool { return sessions[i].score < sessions[j].score })
 
-			fmt.Printf("top %d of %d/%d sessions: %.6fms\n", len(sessions), nextCount, totalCount, float64(time.Since(start).Nanoseconds())/1000000.0)
+			newTopSessions := &TopSessions{}
+			newTopSessions.nextSessions = nextCount
+			newTopSessions.totalSessions = totalCount
+			newTopSessions.numTopSessions = len(sessions)
+			for i := range sessions {
+				newTopSessions.topSessions[i] = sessions[i].sessionId
+			}
 
-			// todo: stash this data somewhere ready to serve up...
+			data := make([]byte, 8 + 8 + 8 + 4 + 8*newTopSessions.numTopSessions)
+
+			index = 0
+
+			encoding.WriteUint64(data[:], &index, TopSessionsVersion)
+			encoding.WriteUint64(data[:], &index, newTopSessions.nextSessions)
+			encoding.WriteUint64(data[:], &index, newTopSessions.totalSessions)
+			encoding.WriteUint32(data[:], &index, uint32(newTopSessions.numTopSessions))
+
+			for i := 0; i < newTopSessions.numTopSessions; i++ {
+				encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
+			}
+
+			topSessionsMutex.Lock()
+			topSessions = newTopSessions
+			topSessionsData = data
+			topSessionsMutex.Unlock()
+
+			duration := time.Since(start)
+
+			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
+
+			if duration > time.Second {
+				core.Warn("session cruncher can't keep up!")
+			}
 		}
 	}
 }
@@ -299,7 +341,10 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func topSessionsHandler(w http.ResponseWriter, r *http.Request) {
-	core.Log("top sessions handler")
+	topSessionsMutex.Lock()
+	data := topSessionsData
+	topSessionsMutex.Unlock()
+	w.Write(data)
 }
 
 // ---------------------------------------------------------------------------------------
