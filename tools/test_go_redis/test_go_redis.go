@@ -48,6 +48,8 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sessionData := GenerateRandomSessionData()
 
+					sessionData.SessionId = sessionId
+
 					sliceData := GenerateRandomSliceData()
 
 					sessionInserter.Insert(ctx, sessionId, userHash, sessionData, sliceData)
@@ -147,11 +149,25 @@ func RunPollThread(ctx context.Context) {
 
 			start := time.Now()
 
+			sessionIds := make([]uint64, 1000)
+			for i := 0; i < len(sessionIds); i++ {
+				sessionIds[i] = uint64(1000000) + uint64(i)
+			}
+
+			sessionList := GetSessionList(ctx, redisClient, sessionIds)
+			if sessionList != nil {
+				fmt.Printf("session list %d (%.3fms)\n", len(sessionList), float64(time.Since(start).Milliseconds()))
+			}
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
 			sessionId := uint64(1000000) + iteration
 
 			sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessionId)
 			if sessionData != nil {
-				fmt.Printf("session %x: %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
+				fmt.Printf("session data %x -> %d slices, %d near relay data (%.3fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
 			}
 
 			// ------------------------------------------------------------------------------------------
@@ -162,7 +178,7 @@ func RunPollThread(ctx context.Context) {
 
 			serverCount := GetServerCount(ctx, redisClient, minutes)
 
-			fmt.Printf("servers: %d (%.1fms)\n", serverCount, float64(time.Since(start).Milliseconds()))
+			fmt.Printf("servers: %d (%.3fms)\n", serverCount, float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 
@@ -170,7 +186,7 @@ func RunPollThread(ctx context.Context) {
 
 			relayCount := GetRelayCount(ctx, redisClient, minutes)
 
-			fmt.Printf("relays: %d (%.1fms)\n", relayCount, float64(time.Since(start).Milliseconds()))
+			fmt.Printf("relays: %d (%.3fms)\n", relayCount, float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 
@@ -760,14 +776,14 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-	key := fmt.Sprintf("u-%016x", userHash)
-	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(sessionData.StartTime), Member: sessionIdString})
-
-	key = fmt.Sprintf("sd-%s", sessionIdString)
+	key := fmt.Sprintf("sd-%s", sessionIdString)
 	inserter.pipeline.Set(ctx, key, sessionData.Value(), 0)
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
 	inserter.pipeline.RPush(ctx, key, sliceData.Value())
+
+	key = fmt.Sprintf("u-%016x", userHash)
+	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(sessionData.StartTime), Member: sessionIdString})
 
 	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
 	inserter.pipeline.HSet(ctx, key, sessionIdString, currentTime.Unix())
@@ -827,6 +843,40 @@ func GetSessionData(ctx context.Context, redisClient *redis.ClusterClient, sessi
 	}
 
 	return &sessionData, sliceData, nearRelayData
+}
+
+func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessionIds []uint64) ([]*SessionData) {
+
+	pipeline := redisClient.Pipeline()
+
+	for i := range sessionIds {
+		pipeline.Get(ctx, fmt.Sprintf("sd-%016x", sessionIds[i]))
+	}
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get session list: %v", err)
+		return nil
+	}
+
+	sessionList := make([]*SessionData, 0)
+
+	for i := range sessionIds {
+
+		redis_session_data := cmds[i].(*redis.StringCmd).Val()
+
+		sessionData := SessionData{}
+		sessionData.Parse(redis_session_data)
+
+		if sessionData.SessionId != sessionIds[i] {
+			fmt.Printf("%016x != %016x\n", sessionData.SessionId, sessionIds[i])
+			continue
+		}
+
+		sessionList = append(sessionList, &sessionData)
+	}
+
+	return sessionList
 }
 
 /*
