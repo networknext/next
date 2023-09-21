@@ -177,7 +177,7 @@ func RunPollThread(ctx context.Context) {
 
 			minutes := start.Unix() / 60
 
-			userHash := uint64(1000000) + iteration
+			userHash := uint64(0x131e)
 
 			userSessionList := GetUserSessionList(ctx, redisClient, userHash, minutes, 0, 100)
 			if userSessionList != nil {
@@ -207,21 +207,24 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			serverAddress := "208.3.0.0:15"
-
-			serverData, serverSessions := GetServerData(ctx, redisClient, serverAddress, minutes)
-
-			if serverData != nil {
-				fmt.Printf("server data %s -> %d sessions (%.3fms)\n", serverData.ServerAddress, len(serverSessions), float64(time.Since(start).Milliseconds()))
-			}
-
-			// ------------------------------------------------------------------------------------------
-
-			start = time.Now()
-
 			serverAddresses := GetServerAddresses(ctx, redisClient, minutes, 0, 100)
 
 			fmt.Printf("server addresses -> %d server addresses (%.3fms)\n", len(serverAddresses), float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
+			if len(serverAddresses) > 0 {
+
+				start := time.Now()
+
+				serverAddress := serverAddresses[0]
+
+				serverData, serverSessions := GetServerData(ctx, redisClient, serverAddress, minutes)
+
+				if serverData != nil {
+					fmt.Printf("server data %s -> %d sessions (%.3fms)\n", serverData.ServerAddress, len(serverSessions), float64(time.Since(start).Milliseconds()))
+				}				
+			}
 
 			// ------------------------------------------------------------------------------------------
 
@@ -842,7 +845,7 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	key = fmt.Sprintf("sl-%s", sessionIdString)
 	inserter.pipeline.RPush(ctx, key, sliceData.Value())
 
-	key = fmt.Sprintf("u-%016x", userHash)
+	key = fmt.Sprintf("u-%016x-%d", userHash, minutes)
 	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(sessionData.StartTime), Member: sessionIdString})
 
 	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
@@ -938,7 +941,7 @@ func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessi
 	return sessionList
 }
 
-func GetUserSessionList(ctx context.Context, redisClient *redis.ClusterClient, userHash uint64, minutes int64, begin int, end int) []SessionData {
+func GetUserSessionList(ctx context.Context, redisClient *redis.ClusterClient, userHash uint64, minutes int64, begin int, end int) []*SessionData {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get user session list: %d", begin)
@@ -955,102 +958,76 @@ func GetUserSessionList(ctx context.Context, redisClient *redis.ClusterClient, u
 		return nil
 	}
 
-	// ...
+	// get user session ids in order in the range [begin,end]
 
-	/*
-	// get session ids in order in the range [begin,end]
+	pipeline := redisClient.Pipeline()
 
-	redisClient := pool.Get()
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes-1), int64(begin), int64(end-1))
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes), int64(begin), int64(end-1))
 
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("u-%016x-%d", userHash, minutes-1), begin, end-1, "WITHSCORES")
-	redisClient.Send("ZREVRANGE", fmt.Sprintf("u-%016x-%d", userHash, minutes), begin, end-1, "WITHSCORES")
-
-	redisClient.Flush()
-
-	sessions_a, err := redis.Strings(redisClient.Receive())
+	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("redis get sessions a failed: %v", err)
+		core.Error("failed to get user sessions: %v", err)
 		return nil
 	}
 
-	sessions_b, err := redis.Strings(redisClient.Receive())
+	redis_user_sessions_a, err := cmds[0].(*redis.ZSliceCmd).Result()
 	if err != nil {
-		core.Error("redis get sessions b failed: %v", err)
+		core.Error("failed to get redis user sessions a: %v", err)
 		return nil
 	}
 
-	redisClient.Close()
-
-	sessionsMap := make(map[uint64]SessionEntry)
-
-	for i := 0; i < len(sessions_b); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			SessionId: uint64(sessionId),
-			Score:     uint32(score),
-		}
+	redis_user_sessions_b, err := cmds[1].(*redis.ZSliceCmd).Result()
+	if err != nil {
+		core.Error("failed to get redis user sessions b: %v", err)
+		return nil
 	}
 
-	for i := 0; i < len(sessions_a); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			SessionId: uint64(sessionId),
-			Score:     uint32(score),
-		}
+	sessionMap := make(map[uint64]uint64)
+
+	for i := range redis_user_sessions_a {
+		sessionId, _ := strconv.ParseUint(redis_user_sessions_a[i].Member.(string), 16, 64)
+		score := uint64(redis_user_sessions_a[i].Score)
+		sessionMap[sessionId] = score
 	}
 
-	sessionEntries := make([]SessionEntry, len(sessionsMap))
+	for i := range redis_user_sessions_b {
+		sessionId, _ := strconv.ParseUint(redis_user_sessions_b[i].Member.(string), 16, 64)
+		score := uint64(redis_user_sessions_b[i].Score)
+		sessionMap[sessionId] = score
+	}
+
+	type SessionEntry struct {
+		sessionId uint64
+		score     uint64
+	}
+
+	sessionEntries := make([]SessionEntry, len(sessionMap))
 	index := 0
-	for _, v := range sessionsMap {
-		sessionEntries[index] = v
+	for k, v := range sessionMap {
+		sessionEntries[index].sessionId = k
+		sessionEntries[index].score = v
 		index++
 	}
 
-	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
-	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].sessionId < sessionEntries[j].sessionId })
+	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].score > sessionEntries[j].score })
 
 	maxSize := end - begin
 	if len(sessionEntries) > maxSize {
 		sessionEntries = sessionEntries[:maxSize]
 	}
 
-	// now get session data for the set of session ids in [begin, end]
-
-	if len(sessionEntries) == 0 {
-		return nil
-	}
-
-	redisClient = pool.Get()
-
-	args := redis.Args{}
+	userSessionIds := make([]uint64, len(sessionEntries))
+	index = 0
 	for i := range sessionEntries {
-		args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
+		userSessionIds[index] = sessionEntries[i].sessionId
+		index++
 	}
 
-	redisClient.Send("MGET", args...)
+	userSessions := GetSessionList(ctx, redisClient, userSessionIds)
 
-	redisClient.Flush()
-
-	redis_session_data, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		core.Error("redis mget get session data failed: %v", err)
-		return nil
-	}
-
-	redisClient.Close()
-
-	sessions := make([]SessionData, len(redis_session_data))
-
-	for i := range sessions {
-		sessions[i].Parse(redis_session_data[i])
-		sessions[i].SessionId = sessionEntries[i].SessionId
-	}
-	return sessions
-	*/
-
-	return nil
+	return userSessions
 }
 
 // ------------------------------------------------------------------------------------------------------------
