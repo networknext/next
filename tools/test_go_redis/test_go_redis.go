@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sort"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -194,9 +195,33 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
+			serverAddress := "208.3.0.0:15"
+
+			serverData, serverSessions := GetServerData(ctx, redisClient, serverAddress, minutes)
+
+			if serverData != nil {
+				fmt.Printf("server data %s -> %d sessions (%.3fms)\n", serverData.ServerAddress, len(serverSessions), float64(time.Since(start).Milliseconds()))
+			}
+
+			// ------------------------------------------------------------------------------------------
+
+			// todo: get server list
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
 			relayCount := GetRelayCount(ctx, redisClient, minutes)
 
 			fmt.Printf("relays: %d (%.3fms)\n", relayCount, float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
+			// todo: get relay data
+
+			// ------------------------------------------------------------------------------------------
+
+			// todo: get relay list
 
 			// ------------------------------------------------------------------------------------------
 
@@ -1133,6 +1158,69 @@ func GetServerCount(ctx context.Context, redisClient *redis.ClusterClient, minut
 	}
 
 	return totalServerCount
+}
+
+func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, serverAddress string, minutes int64) (*ServerData, []*SessionData) {
+
+	pipeline := redisClient.Pipeline()
+
+	pipeline.Get(ctx, fmt.Sprintf("svd-%s", serverAddress))
+	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverAddress, minutes))
+	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverAddress, minutes-1))
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get server data: %v", err)
+		return nil, nil
+	}
+
+	redis_server_data := cmds[0].(*redis.StringCmd).Val()
+
+	redis_server_sessions_a := cmds[1].(*redis.MapStringStringCmd).Val()
+
+	redis_server_sessions_b := cmds[2].(*redis.MapStringStringCmd).Val()
+
+	serverData := ServerData{}
+	serverData.Parse(redis_server_data)
+
+	if serverData.ServerAddress != serverAddress {
+		return nil, nil
+	}
+
+	currentTime := uint64(time.Now().Unix())
+
+	sessionMap := make(map[uint64]bool)
+
+	for k,v := range redis_server_sessions_a {
+		session_id, _ := strconv.ParseUint(k, 16, 64)
+		timestamp, _ := strconv.ParseUint(v, 10, 64)
+		if currentTime-timestamp > 30 {
+			continue
+		}
+		sessionMap[session_id] = true
+	}
+
+	for k,v := range redis_server_sessions_b {
+		session_id, _ := strconv.ParseUint(k, 16, 64)
+		timestamp, _ := strconv.ParseUint(v, 10, 64)
+		if currentTime-timestamp > 30 {
+			continue
+		}
+		sessionMap[session_id] = true
+	}
+
+	serverSessionIds := make([]uint64, len(sessionMap))
+	index := 0
+	for k := range sessionMap {
+		serverSessionIds[index] = k
+		index++
+	}
+
+	sort.SliceStable(serverSessionIds, func(i, j int) bool { return serverSessionIds[i] < serverSessionIds[j] })
+
+	serverSessionData := GetSessionList(ctx, redisClient, serverSessionIds)
+
+	return &serverData, serverSessionData
 }
 
 // ------------------------------------------------------------------------------------------------------------
