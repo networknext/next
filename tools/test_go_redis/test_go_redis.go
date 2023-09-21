@@ -991,44 +991,52 @@ func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int
 }
 */
 
-// ------------------------------------------------------------------------------------------------------------// ----------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------
 
-/*
 type NearRelayInserter struct {
-	redisPool     *redis.Pool
-	redisClient   redis.Conn
+	redisClient   *redis.ClusterClient
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
+	pipeline      redis.Pipeliner
 }
 
-func CreateNearRelayInserter(pool *redis.Pool, batchSize int) *NearRelayInserter {
+func CreateNearRelayInserter(redisClient *redis.ClusterClient, batchSize int) *NearRelayInserter {
 	inserter := NearRelayInserter{}
-	inserter.redisPool = pool
-	inserter.redisClient = pool.Get()
+	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
+	inserter.pipeline = redisClient.Pipeline()
 	return &inserter
 }
 
-func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearRelayData) {
+func (inserter *NearRelayInserter) Insert(ctx context.Context, sessionId uint64, nearRelayData *NearRelayData) {
 
 	currentTime := time.Now()
 
 	key := fmt.Sprintf("nr-%016x", sessionId)
-	inserter.redisClient.Send("RPUSH", key, nearRelayData.Value())
+	inserter.pipeline.RPush(ctx, key, nearRelayData.Value())
 
 	inserter.numPending++
 
+	inserter.CheckForFlush(ctx, currentTime)
+}
+
+func (inserter *NearRelayInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
-		inserter.redisClient.Do("")
-		inserter.redisClient.Close()
-		inserter.numPending = 0
-		inserter.lastFlushTime = time.Now()
-		inserter.redisClient = inserter.redisPool.Get()
+		inserter.Flush(ctx)
 	}
 }
-*/
+
+func (inserter *NearRelayInserter) Flush(ctx context.Context) {
+	_, err := inserter.pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("near relay insert error: %v", err)
+	}
+	inserter.numPending = 0
+	inserter.lastFlushTime = time.Now()
+	inserter.pipeline = inserter.redisClient.Pipeline()
+}
 
 // ------------------------------------------------------------------------------------------------------------
 
