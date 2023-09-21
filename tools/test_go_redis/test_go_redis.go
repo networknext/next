@@ -43,15 +43,14 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 				for j := 0; j < 10000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
+
 					userHash := uint64(j) + iteration
-					score := uint32(rand.Intn(10000))
-					next := ((uint64(j) + iteration) % 10) == 0
 
 					sessionData := GenerateRandomSessionData()
 
 					sliceData := GenerateRandomSliceData()
 
-					sessionInserter.Insert(ctx, sessionId, userHash, score, next, sessionData, sliceData)
+					sessionInserter.Insert(ctx, sessionId, userHash, sessionData, sliceData)
 				}
 
 				time.Sleep(10 * time.Second)
@@ -134,27 +133,32 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 
 func RunPollThread(ctx context.Context) {
 
+	iteration := uint64(0)
+
 	go func() {
 
 		redisClient := CreateRedisClusterClient()
 
 		for {
 
-			fmt.Printf("-------------------------------------------------\n")
+			// ------------------------------------------------------------------------------------------
+
+			fmt.Printf("------------------------------------------------------------------------------------------------\n")
 
 			start := time.Now()
 
-			secs := start.Unix()
+			sessionId := uint64(1000000) + iteration
 
-			minutes := secs / 60
-
-			totalSessionCount, nextSessionCount := GetSessionCounts(ctx, redisClient, minutes)
-
-			fmt.Printf("sessions: %d/%d (%.1fms)\n", nextSessionCount, totalSessionCount, float64(time.Since(start).Milliseconds()))
+			sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessionId)
+			if sessionData != nil {
+				fmt.Printf("session %x: %d slices, %d near relay data (%.1fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
+			}
 
 			// ------------------------------------------------------------------------------------------
 
 			start = time.Now()
+
+			minutes := start.Unix() / 60
 
 			serverCount := GetServerCount(ctx, redisClient, minutes)
 
@@ -170,30 +174,9 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
-			begin := 0
-			end := 100
-
-			start = time.Now()
-
-			sessions := GetSessions(ctx, redisClient, minutes, begin, end)
-
-			fmt.Printf("session list: %d (%.1fms)\n", len(sessions), float64(time.Since(start).Milliseconds()))
-
-			// ------------------------------------------------------------------------------------------
-
-			/*
-				if len(sessions) > 0 {
-					start = time.Now()
-					sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessions[0].SessionId)
-					if sessionData != nil {
-						fmt.Printf("session %x: %d slices (%.1fms)\n", sessionData.SessionId, len(sliceData), float64(time.Since(start).Milliseconds()))
-					}
-				}
-			*/
-
-			// ------------------------------------------------------------------------------------------
-
 			time.Sleep(time.Second)
+
+			iteration++
 		}
 	}()
 }
@@ -510,6 +493,87 @@ func GenerateRandomSliceData() *SliceData {
 
 // --------------------------------------------------------------------------------------------------
 
+type NearRelayData struct {
+	Timestamp           uint64                           `json:"timestamp,string"`
+	NumNearRelays       uint32                           `json:"num_near_relays"`
+	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
+	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
+	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
+	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
+}
+
+func (data *NearRelayData) Value() string {
+	output := fmt.Sprintf("%x|%d", data.Timestamp, data.NumNearRelays)
+	for i := 0; i < int(data.NumNearRelays); i++ {
+		output += fmt.Sprintf("|%x|%d|%d|%.2f", data.NearRelayId[i], data.NearRelayRTT[i], data.NearRelayJitter[i], data.NearRelayPacketLoss[i])
+	}
+	return output
+}
+
+func (data *NearRelayData) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) < 2 {
+		return
+	}
+	timestamp, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	numNearRelays, err := strconv.ParseInt(values[1], 10, 8)
+	if err != nil || numNearRelays < 0 || numNearRelays > constants.MaxNearRelays {
+		return
+	}
+	if len(values) != 2+int(numNearRelays)*4 {
+		return
+	}
+	nearRelayId := make([]uint64, numNearRelays)
+	nearRelayRTT := make([]uint64, numNearRelays)
+	nearRelayJitter := make([]uint64, numNearRelays)
+	nearRelayPacketLoss := make([]float64, numNearRelays)
+	for i := 0; i < int(numNearRelays); i++ {
+		nearRelayId[i], err = strconv.ParseUint(values[2+i*4], 16, 64)
+		if err != nil {
+			return
+		}
+		nearRelayRTT[i], err = strconv.ParseUint(values[2+i*4+1], 10, 8)
+		if err != nil {
+			return
+		}
+		nearRelayJitter[i], err = strconv.ParseUint(values[2+i*4+2], 10, 8)
+		if err != nil {
+			return
+		}
+		nearRelayPacketLoss[i], err = strconv.ParseFloat(values[2+i*4+3], 32)
+		if err != nil {
+			return
+		}
+	}
+	data.Timestamp = timestamp
+	data.NumNearRelays = uint32(numNearRelays)
+	for i := 0; i < int(numNearRelays); i++ {
+		data.NearRelayId[i] = nearRelayId[i]
+		data.NearRelayRTT[i] = uint8(nearRelayRTT[i])
+		data.NearRelayJitter[i] = uint8(nearRelayJitter[i])
+		data.NearRelayPacketLoss[i] = float32(nearRelayPacketLoss[i])
+	}
+	return
+}
+
+func GenerateRandomNearRelayData() *NearRelayData {
+	data := NearRelayData{}
+	data.Timestamp = uint64(time.Now().Unix())
+	data.NumNearRelays = constants.MaxNearRelays
+	for i := 0; i < int(data.NumNearRelays); i++ {
+		data.NearRelayId[i] = rand.Uint64()
+		data.NearRelayRTT[i] = uint8(common.RandomInt(5, 20))
+		data.NearRelayJitter[i] = uint8(common.RandomInt(5, 20))
+		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 10000)) / 100.0
+	}
+	return &data
+}
+
+// --------------------------------------------------------------------------------------------------
+
 type ServerData struct {
 	ServerAddress    string
 	SDKVersion_Major uint8
@@ -688,7 +752,7 @@ func CreateSessionInserter(redisClient *redis.ClusterClient, batchSize int) *Ses
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, score uint32, next bool, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, sessionData *SessionData, sliceData *SliceData) {
 
 	currentTime := time.Now()
 
@@ -696,15 +760,7 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
-	key := fmt.Sprintf("s-%d", minutes)
-	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: sessionIdString})
-
-	if next {
-		key = fmt.Sprintf("n-%d", minutes)
-		inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: sessionIdString})
-	}
-
-	key = fmt.Sprintf("u-%016x", userHash)
+	key := fmt.Sprintf("u-%016x", userHash)
 	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(sessionData.StartTime), Member: sessionIdString})
 
 	key = fmt.Sprintf("sd-%s", sessionIdString)
@@ -739,175 +795,38 @@ func (inserter *SessionInserter) Flush(ctx context.Context) {
 
 // --------------------------------------------------------------------------------------------------
 
-func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) (int, int) {
+func GetSessionData(ctx context.Context, redisClient *redis.ClusterClient, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
 	pipeline := redisClient.Pipeline()
 
-	pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", minutes-1))
-	pipeline.ZCard(ctx, fmt.Sprintf("s-%03x-%d", minutes))
-	pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", minutes-1))
-	pipeline.ZCard(ctx, fmt.Sprintf("n-%03x-%d", minutes))
+	pipeline.Get(ctx, fmt.Sprintf("sd-%016x", sessionId))
+	pipeline.LRange(ctx, fmt.Sprintf("sl-%016x", sessionId), 0, -1)
+	pipeline.LRange(ctx, fmt.Sprintf("nr-%016x", sessionId), 0, -1)
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to get session counts: %v", err)
-		return 0, 0
+		core.Error("failed to get session data: %v", err)
+		return nil, nil, nil
 	}
 
-	var totalSessionCount_a int
-	var totalSessionCount_b int
-	var nextSessionCount_a int
-	var nextSessionCount_b int
+	redis_session_data := cmds[0].(*redis.StringCmd).Val()
+	redis_slice_data := cmds[1].(*redis.StringSliceCmd).Val()
+	redis_near_relay_data := cmds[2].(*redis.StringSliceCmd).Val()
 
-	total_a := int(cmds[0].(*redis.IntCmd).Val())
-	total_b := int(cmds[1].(*redis.IntCmd).Val())
-	next_a := int(cmds[2].(*redis.IntCmd).Val())
-	next_b := int(cmds[3].(*redis.IntCmd).Val())
+	sessionData := SessionData{}
+	sessionData.Parse(redis_session_data)
 
-	totalSessionCount_a += total_a
-	totalSessionCount_b += total_b
-	nextSessionCount_a += next_a
-	nextSessionCount_b += next_b
-
-	totalSessionCount := totalSessionCount_a
-	if totalSessionCount_b > totalSessionCount {
-		totalSessionCount = totalSessionCount_b
+	sliceData := make([]SliceData, len(redis_slice_data))
+	for i := 0; i < len(redis_slice_data); i++ {
+		sliceData[i].Parse(redis_slice_data[i])
 	}
 
-	nextSessionCount := nextSessionCount_a
-	if nextSessionCount_b > nextSessionCount {
-		nextSessionCount = nextSessionCount_b
+	nearRelayData := make([]NearRelayData, len(redis_near_relay_data))
+	for i := 0; i < len(redis_near_relay_data); i++ {
+		nearRelayData[i].Parse(redis_near_relay_data[i])
 	}
 
-	return totalSessionCount, nextSessionCount
-}
-
-type SessionEntry struct {
-	SessionId uint64
-	Score     uint32
-}
-
-func GetSessions(ctx context.Context, redisClient *redis.ClusterClient, minutes int64, begin int, end int) []SessionData {
-
-	if begin < 0 {
-		core.Error("invalid begin passed to get sessions: %d", begin)
-		return nil
-	}
-
-	if end < 0 {
-		core.Error("invalid end passed to get sessions: %d", end)
-		return nil
-	}
-
-	if end <= begin {
-		core.Error("invalid begin passed to get sessions: %d", begin)
-		return nil
-	}
-
-	// get session ids in order in the range [begin,end]
-
-	pipeline := redisClient.Pipeline()
-
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("s-%d", minutes-1), int64(begin), int64(end-1))
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("s-%d", minutes), int64(begin), int64(end-1))
-
-	cmds, err := pipeline.Exec(ctx)
-	if err != nil {
-		core.Error("failed to get sessions: %v", err)
-		return nil
-	}
-
-	_ = cmds
-
-	/*
-		sessions_a := cmds[0].(*redis.ZSliceCmd).Val()
-		if err != nil {
-			core.Error("redis get sessions a failed: %v", err)
-			return nil
-		}
-
-		sessions_b := cmds[1].(*redis.ZSliceCmd).Val()
-		if err != nil {
-			core.Error("redis get sessions b failed: %v", err)
-			return nil
-		}
-
-		fmt.Printf("got %d sessions\n", len(sessions_a))
-	*/
-
-	/*
-		sessionsMap := make(map[uint64]SessionEntry)
-
-		for i := 0; i < len(sessions_b); i += 2 {
-			sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-			score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-			sessionsMap[sessionId] = SessionEntry{
-				SessionId: uint64(sessionId),
-				Score:     uint32(score),
-			}
-		}
-
-		for i := 0; i < len(sessions_a); i += 2 {
-			sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-			score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-			sessionsMap[sessionId] = SessionEntry{
-				SessionId: uint64(sessionId),
-				Score:     uint32(score),
-			}
-		}
-
-		sessionEntries := make([]SessionEntry, len(sessionsMap))
-		index := 0
-		for _, v := range sessionsMap {
-			sessionEntries[index] = v
-			index++
-		}
-
-		sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
-		sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
-
-		maxSize := end - begin
-		if len(sessionEntries) > maxSize {
-			sessionEntries = sessionEntries[:maxSize]
-		}
-
-		// now get session data for the set of session ids in [begin, end]
-
-		if len(sessionEntries) == 0 {
-			return nil
-		}
-
-		redisClient = pool.Get()
-
-		args := redis.Args{}
-		for i := range sessionEntries {
-			args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
-		}
-
-		redisClient.Send("MGET", args...)
-
-		redisClient.Flush()
-
-		redis_session_data, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			core.Error("redis mget get session data failed: %v", err)
-			return nil
-		}
-
-		redisClient.Close()
-
-		sessions := make([]SessionData, len(redis_session_data))
-
-		for i := range sessions {
-			sessions[i].Parse(redis_session_data[i])
-			sessions[i].SessionId = sessionEntries[i].SessionId
-		}
-	*/
-
-	// todo
-	sessions := make([]SessionData, 0)
-
-	return sessions
+	return &sessionData, sliceData, nearRelayData
 }
 
 /*
@@ -1019,49 +938,6 @@ func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int
 	}
 
 	return sessions
-}
-
-func GetSessionData(pool *redis.Pool, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
-
-	redisClient := pool.Get()
-
-	redisClient.Send("GET", fmt.Sprintf("sd-%016x", sessionId))
-	redisClient.Send("LRANGE", fmt.Sprintf("sl-%016x", sessionId), 0, -1)
-	redisClient.Send("LRANGE", fmt.Sprintf("nr-%016x", sessionId), 0, -1)
-
-	redisClient.Flush()
-
-	redis_session_data, err := redis.String(redisClient.Receive())
-	if err != nil {
-		return nil, nil, nil
-	}
-
-	redis_slice_data, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		return nil, nil, nil
-	}
-
-	redis_near_relay_data, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		return nil, nil, nil
-	}
-
-	redisClient.Close()
-
-	sessionData := SessionData{}
-	sessionData.Parse(redis_session_data)
-
-	sliceData := make([]SliceData, len(redis_slice_data))
-	for i := 0; i < len(redis_slice_data); i++ {
-		sliceData[i].Parse(redis_slice_data[i])
-	}
-
-	nearRelayData := make([]NearRelayData, len(redis_near_relay_data))
-	for i := 0; i < len(redis_near_relay_data); i++ {
-		nearRelayData[i].Parse(redis_near_relay_data[i])
-	}
-
-	return &sessionData, sliceData, nearRelayData
 }
 */
 
