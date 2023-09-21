@@ -991,6 +991,45 @@ func GetUserSessions(pool *redis.Pool, userHash uint64, minutes int64, begin int
 }
 */
 
+// ------------------------------------------------------------------------------------------------------------// ----------------------------------------------------------------------------------
+
+/*
+type NearRelayInserter struct {
+	redisPool     *redis.Pool
+	redisClient   redis.Conn
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+}
+
+func CreateNearRelayInserter(pool *redis.Pool, batchSize int) *NearRelayInserter {
+	inserter := NearRelayInserter{}
+	inserter.redisPool = pool
+	inserter.redisClient = pool.Get()
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	return &inserter
+}
+
+func (inserter *NearRelayInserter) Insert(sessionId uint64, nearRelayData *NearRelayData) {
+
+	currentTime := time.Now()
+
+	key := fmt.Sprintf("nr-%016x", sessionId)
+	inserter.redisClient.Send("RPUSH", key, nearRelayData.Value())
+
+	inserter.numPending++
+
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		inserter.redisClient.Do("")
+		inserter.redisClient.Close()
+		inserter.numPending = 0
+		inserter.lastFlushTime = time.Now()
+		inserter.redisClient = inserter.redisPool.Get()
+	}
+}
+*/
+
 // ------------------------------------------------------------------------------------------------------------
 
 type ServerInserter struct {
