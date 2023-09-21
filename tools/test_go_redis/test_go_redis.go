@@ -1,16 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"math/rand"
 	"context"
-	"strings"
+	"fmt"
+	"math/rand"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
-	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/envvar"
 
 	"github.com/redis/go-redis/v9"
@@ -182,13 +182,13 @@ func RunPollThread(ctx context.Context) {
 			// ------------------------------------------------------------------------------------------
 
 			/*
-			if len(sessions) > 0 {
-				start = time.Now()
-				sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessions[0].SessionId)
-				if sessionData != nil {
-					fmt.Printf("session %x: %d slices (%.1fms)\n", sessionData.SessionId, len(sliceData), float64(time.Since(start).Milliseconds()))
+				if len(sessions) > 0 {
+					start = time.Now()
+					sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessions[0].SessionId)
+					if sessionData != nil {
+						fmt.Printf("session %x: %d slices (%.1fms)\n", sessionData.SessionId, len(sliceData), float64(time.Since(start).Milliseconds()))
+					}
 				}
-			}
 			*/
 
 			// ------------------------------------------------------------------------------------------
@@ -751,7 +751,7 @@ func GetSessionCounts(ctx context.Context, redisClient *redis.ClusterClient, min
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
 		core.Error("failed to get session counts: %v", err)
-		return 0,0
+		return 0, 0
 	}
 
 	var totalSessionCount_a int
@@ -820,88 +820,88 @@ func GetSessions(ctx context.Context, redisClient *redis.ClusterClient, minutes 
 	_ = cmds
 
 	/*
-	sessions_a := cmds[0].(*redis.ZSliceCmd).Val()
-	if err != nil {
-		core.Error("redis get sessions a failed: %v", err)
-		return nil
-	}
+		sessions_a := cmds[0].(*redis.ZSliceCmd).Val()
+		if err != nil {
+			core.Error("redis get sessions a failed: %v", err)
+			return nil
+		}
 
-	sessions_b := cmds[1].(*redis.ZSliceCmd).Val()
-	if err != nil {
-		core.Error("redis get sessions b failed: %v", err)
-		return nil
-	}
+		sessions_b := cmds[1].(*redis.ZSliceCmd).Val()
+		if err != nil {
+			core.Error("redis get sessions b failed: %v", err)
+			return nil
+		}
 
-	fmt.Printf("got %d sessions\n", len(sessions_a))
+		fmt.Printf("got %d sessions\n", len(sessions_a))
 	*/
 
 	/*
-	sessionsMap := make(map[uint64]SessionEntry)
+		sessionsMap := make(map[uint64]SessionEntry)
 
-	for i := 0; i < len(sessions_b); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			SessionId: uint64(sessionId),
-			Score:     uint32(score),
+		for i := 0; i < len(sessions_b); i += 2 {
+			sessionId, _ := strconv.ParseUint(sessions_b[i], 16, 64)
+			score, _ := strconv.ParseUint(sessions_b[i+1], 10, 32)
+			sessionsMap[sessionId] = SessionEntry{
+				SessionId: uint64(sessionId),
+				Score:     uint32(score),
+			}
 		}
-	}
 
-	for i := 0; i < len(sessions_a); i += 2 {
-		sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
-		score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
-		sessionsMap[sessionId] = SessionEntry{
-			SessionId: uint64(sessionId),
-			Score:     uint32(score),
+		for i := 0; i < len(sessions_a); i += 2 {
+			sessionId, _ := strconv.ParseUint(sessions_a[i], 16, 64)
+			score, _ := strconv.ParseUint(sessions_a[i+1], 10, 32)
+			sessionsMap[sessionId] = SessionEntry{
+				SessionId: uint64(sessionId),
+				Score:     uint32(score),
+			}
 		}
-	}
 
-	sessionEntries := make([]SessionEntry, len(sessionsMap))
-	index := 0
-	for _, v := range sessionsMap {
-		sessionEntries[index] = v
-		index++
-	}
+		sessionEntries := make([]SessionEntry, len(sessionsMap))
+		index := 0
+		for _, v := range sessionsMap {
+			sessionEntries[index] = v
+			index++
+		}
 
-	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
-	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
+		sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].SessionId < sessionEntries[j].SessionId })
+		sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].Score > sessionEntries[j].Score })
 
-	maxSize := end - begin
-	if len(sessionEntries) > maxSize {
-		sessionEntries = sessionEntries[:maxSize]
-	}
+		maxSize := end - begin
+		if len(sessionEntries) > maxSize {
+			sessionEntries = sessionEntries[:maxSize]
+		}
 
-	// now get session data for the set of session ids in [begin, end]
+		// now get session data for the set of session ids in [begin, end]
 
-	if len(sessionEntries) == 0 {
-		return nil
-	}
+		if len(sessionEntries) == 0 {
+			return nil
+		}
 
-	redisClient = pool.Get()
+		redisClient = pool.Get()
 
-	args := redis.Args{}
-	for i := range sessionEntries {
-		args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
-	}
+		args := redis.Args{}
+		for i := range sessionEntries {
+			args = args.Add(fmt.Sprintf("sd-%016x", sessionEntries[i].SessionId))
+		}
 
-	redisClient.Send("MGET", args...)
+		redisClient.Send("MGET", args...)
 
-	redisClient.Flush()
+		redisClient.Flush()
 
-	redis_session_data, err := redis.Strings(redisClient.Receive())
-	if err != nil {
-		core.Error("redis mget get session data failed: %v", err)
-		return nil
-	}
+		redis_session_data, err := redis.Strings(redisClient.Receive())
+		if err != nil {
+			core.Error("redis mget get session data failed: %v", err)
+			return nil
+		}
 
-	redisClient.Close()
+		redisClient.Close()
 
-	sessions := make([]SessionData, len(redis_session_data))
+		sessions := make([]SessionData, len(redis_session_data))
 
-	for i := range sessions {
-		sessions[i].Parse(redis_session_data[i])
-		sessions[i].SessionId = sessionEntries[i].SessionId
-	}
+		for i := range sessions {
+			sessions[i].Parse(redis_session_data[i])
+			sessions[i].SessionId = sessionEntries[i].SessionId
+		}
 	*/
 
 	// todo

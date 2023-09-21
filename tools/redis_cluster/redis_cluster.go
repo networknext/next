@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"time"
-	"fmt"
 )
 
 func runCommand(command string, args []string) bool {

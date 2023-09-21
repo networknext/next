@@ -152,7 +152,7 @@ func ProcessAnalyticsRelayToRelayPingMessage(service *common.Service, name strin
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -193,7 +193,7 @@ func ProcessAnalyticsNearRelayPingMessage(service *common.Service, name string, 
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -234,7 +234,7 @@ func ProcessAnalyticsRouteMatrixUpdateMessage(service *common.Service, name stri
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -275,7 +275,7 @@ func ProcessAnalyticsRelayUpdateMessage(service *common.Service, name string, im
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -316,7 +316,7 @@ func ProcessAnalyticsServerInitMessage(service *common.Service, name string, imp
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -357,7 +357,7 @@ func ProcessAnalyticsServerUpdateMessage(service *common.Service, name string, i
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -398,7 +398,7 @@ func ProcessAnalyticsSessionUpdateMessage(service *common.Service, name string, 
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}
@@ -439,7 +439,7 @@ func ProcessAnalyticsSessionSummaryMessage(service *common.Service, name string,
 				}
 
 				publisher.PublishChannel <- &message
-				
+
 				pubsubMessage.Ack()
 			}
 		}

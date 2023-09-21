@@ -24,11 +24,11 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/ip2location"
 
+	"cloud.google.com/go/profiler"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/cors"
-    "cloud.google.com/go/profiler"
 )
 
 var (
@@ -145,15 +145,15 @@ func CreateService(serviceName string) *Service {
 
 		core.Log("profiler is enabled")
 
-	    profilerConfig := profiler.Config{
-	    	Service: 		serviceName,
-	        ServiceVersion: tag,
-	    }
+		profilerConfig := profiler.Config{
+			Service:        serviceName,
+			ServiceVersion: tag,
+		}
 
-	    if err := profiler.Start(profilerConfig); err != nil {
+		if err := profiler.Start(profilerConfig); err != nil {
 			core.Error("could not start profiler")
 			os.Exit(1)
-	    }
+		}
 	}
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, tag, []string{}))
