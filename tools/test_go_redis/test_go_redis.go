@@ -245,11 +245,26 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
-			// todo: get relay addresses
+			start = time.Now()
+
+			relayAddresses := GetRelayAddresses(ctx, redisClient, minutes, 0, 100)
+
+			fmt.Printf("relay addresses -> %d relay addresses (%.3fms)\n", len(relayAddresses), float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 
-			// todo: get relay data
+			if len(relayAddresses) > 0 {
+
+				start := time.Now()
+
+				relayAddress := relayAddresses[0]
+
+				relayData := GetRelayData(ctx, redisClient, relayAddress)
+
+				if relayData != nil {
+					fmt.Printf("relay data %s (%.3fms)\n", relayData.RelayAddress, float64(time.Since(start).Milliseconds()))
+				}				
+			}
 
 			// ------------------------------------------------------------------------------------------
 
@@ -1430,6 +1445,109 @@ func GetRelayCount(ctx context.Context, redisClient *redis.ClusterClient, minute
 	}
 
 	return totalRelayCount
+}
+
+func GetRelayAddresses(ctx context.Context, redisClient *redis.ClusterClient, minutes int64, begin int, end int) []string {
+
+	if begin < 0 {
+		core.Error("invalid begin passed to get relay addresses: %d", begin)
+		return nil
+	}
+
+	if end < 0 {
+		core.Error("invalid end passed to get relay addresses: %d", end)
+		return nil
+	}
+
+	if end <= begin {
+		core.Error("end must be greater than begin")
+		return nil
+	}
+
+	// get the set of relay addresses in the range [begin,end]
+
+	pipeline := redisClient.Pipeline()
+
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("r-%d", minutes-1), int64(begin), int64(end-1))
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("r-%d", minutes), int64(begin), int64(end-1))
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get relay addresses: %v", err)
+		return nil
+	}
+
+	redis_relay_addresses_a, err := cmds[0].(*redis.ZSliceCmd).Result()
+	if err != nil {
+		core.Error("failed to get redis relay addresses a: %v", err)
+		return nil
+	}
+
+	redis_relay_addresses_b, err := cmds[1].(*redis.ZSliceCmd).Result()
+	if err != nil {
+		core.Error("failed to get redis relay addresses b: %v", err)
+		return nil
+	}
+
+	relayMap := make(map[string]int32)
+
+	for i := range redis_relay_addresses_a {
+		address := redis_relay_addresses_a[i].Member.(string)
+		score := int32(redis_relay_addresses_a[i].Score)
+		relayMap[address] = score
+	}
+
+	for i := range redis_relay_addresses_b {
+		address := redis_relay_addresses_b[i].Member.(string)
+		score := int32(redis_relay_addresses_b[i].Score)
+		relayMap[address] = score
+	}
+
+	type RelayEntry struct {
+		address string
+		score   int32
+	}
+
+	relayEntries := make([]RelayEntry, len(relayMap))
+	index := 0
+	for k,v := range relayMap {
+		relayEntries[index] = RelayEntry{k,v}
+		index++
+	}
+
+	sort.SliceStable(relayEntries, func(i, j int) bool { return relayEntries[i].score > relayEntries[j].score })
+
+	maxSize := end - begin
+	if len(relayEntries) > maxSize {
+		relayEntries = relayEntries[:maxSize]
+	}
+
+	relayAddresses := make([]string, len(relayEntries))
+	for i := range relayEntries {
+		relayAddresses[i] = relayEntries[i].address
+	}
+
+	return relayAddresses
+}
+
+func GetRelayData(ctx context.Context, redisClient *redis.ClusterClient, relayAddress string) *RelayData {
+
+	pipeline := redisClient.Pipeline()
+
+	pipeline.Get(ctx, fmt.Sprintf("rd-%s", relayAddress))
+
+	cmds, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to get relay data: %v", err)
+		return nil
+	}
+
+	redis_relay_data := cmds[0].(*redis.StringCmd).Val()
+
+	relayData := RelayData{}
+	relayData.Parse(redis_relay_data)
+
+	return &relayData
 }
 
 // ------------------------------------------------------------------------------------------------------------
