@@ -25,6 +25,7 @@ import (
 
 var redisClusterClient *redis.ClusterClient
 var redisRelayBackendClient *redis.Client
+var redisMapCruncherClient *redis.Client
 
 var controller *admin.Controller
 
@@ -33,18 +34,21 @@ var service *common.Service
 var privateKey string
 var pgsqlConfig string
 var databaseURL string
+var sessionCruncherURL string
+
+var watcher *portal.TopSessionsWatcher
 
 func main() {
 
 	service = common.CreateService("api")
 
-	// todo: redis cluster config
-	redisCluster := []string{"127.0.0.1:7000", "127.0.0.1:7001", "127.0.0.1:7002", "127.0.0.1:7003", "127.0.0.1:7004", "127.0.0.1:7005"}
-
+	redisCluster := envvar.GetStringArray("REDIS_CLUSTER", []string{"127.0.0.1:10000", "127.0.0.1:10001", "127.0.0.1:10002", "127.0.0.1:10003", "127.0.0.1:10004", "127.0.0.1:10005"})
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	databaseURL = envvar.GetString("DATABASE_URL", "")
+	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
 	redisRelayBackendHostname := envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
+	redisMapCruncherHostname := envvar.GetString("REDIS_MAP_CRUNCHER_HOSTNAME", "127.0.0.1:6379")
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
@@ -58,8 +62,12 @@ func main() {
 	if databaseURL != "" {
 		core.Debug("database url: %s", databaseURL)
 	}
+	if sessionCruncherURL != "" {
+		core.Debug("session cruncher url: %s", sessionCruncherURL)
+	}
 	core.Debug("redis cluster: %s", redisCluster)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
+	core.Debug("redis map cruncher hostname: %s", redisMapCruncherHostname)
 	core.Debug("enable admin: %v", enableAdmin)
 	core.Debug("enable portal: %v", enablePortal)
 	core.Debug("enable database: %v", enableDatabase)
@@ -118,8 +126,11 @@ func main() {
 
 	if enablePortal {
 
+		watcher = portal.CreateTopSessionsWatcher(sessionCruncherURL)
+
 		redisClusterClient = common.CreateRedisClusterClient(redisCluster)
 		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
+		redisMapCruncherClient = common.CreateRedisClient(redisMapCruncherHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
@@ -224,14 +235,13 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalSessionCountsResponse struct {
-	TotalSessionCount int `json:"total_session_count"`
 	NextSessionCount  int `json:"next_session_count"`
+	TotalSessionCount int `json:"total_session_count"`
 }
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	// todo: needs session cruncher
-	// response.TotalSessionCount, response.NextSessionCount = portal.GetSessionCounts(redisPortalPool, time.Now().Unix()/60)
+	response.NextSessionCount, response.TotalSessionCount = watcher.GetSessionCounts()
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -288,30 +298,38 @@ type PortalSessionsResponse struct {
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	// todo
-	/*
-		vars := mux.Vars(r)
-		begin, err := strconv.ParseUint(vars["begin"], 10, 32)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		end, err := strconv.ParseUint(vars["end"], 10, 32)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	*/
+	fmt.Printf("get sessions: [%d,%d]\n", begin, end)
+
 	response := PortalSessionsResponse{}
-	// todo: needs session cruncher
-	/*
-		sessions := portal.GetSessions(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
-		response.Sessions = make([]PortalSessionData, len(sessions))
-		database := service.Database()
-		for i := range response.Sessions {
-			upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
-		}
-	*/
+	sessionIds := watcher.GetSessions(int(begin), int(end))
+
+	// todo
+	fmt.Printf("%d session ids\n", len(sessionIds))
+
+	sessions := portal.GetSessionList(service.Context, redisClusterClient, sessionIds)
+	
+	// todo
+	fmt.Printf("%d sessions\n", len(sessions))
+
+	response.Sessions = make([]PortalSessionData, len(sessions))
+
+	database := service.Database()
+	for i := range response.Sessions {
+		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -455,19 +473,15 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalServerDataResponse struct {
-	ServerData       *portal.ServerData `json:"server_data"`
-	ServerSessionIds []uint64           `json:"server_session_ids"`
+	ServerData       *portal.ServerData    `json:"server_data"`
+	ServerSessions   []*portal.SessionData `json:"server_sessions"`
 }
 
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
-		vars := mux.Vars(r)
-		serverAddress := vars["server_address"]
-	*/
+	vars := mux.Vars(r)
+	serverAddress := vars["server_address"]
 	response := PortalServerDataResponse{}
-	// todo
-	// response.ServerData, response.ServerSessionIds = portal.GetServerData(redisPortalPool, serverAddress, time.Now().Unix()/60)
+	response.ServerData, response.ServerSessions = portal.GetServerData(service.Context, redisClusterClient, serverAddress, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -481,7 +495,7 @@ type PortalRelayCountResponse struct {
 
 func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalRelayCountResponse{}
-	// response.RelayCount = portal.GetRelayCount(redisPortalPool, time.Now().Unix()/60)
+	response.RelayCount = portal.GetRelayCount(service.Context, redisClusterClient, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -555,28 +569,20 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalRelayDataResponse struct {
 	RelayData *portal.RelayData `json:"relay_data"`
-	// todo
-	// RelaySamples []portal.RelaySample `json:"relay_samples"`
 }
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
-		vars := mux.Vars(r)
-		relayName := vars["relay_name"]
-		database := service.Database()
-	*/
+	vars := mux.Vars(r)
+	relayName := vars["relay_name"]
+	database := service.Database()
 	response := PortalRelayDataResponse{}
-	// todo
-	/*
-		if database != nil {
-			relay := database.GetRelayByName(relayName)
-			if relay != nil {
-				relayAddress := relay.PublicAddress.String()
-				response.RelayData, response.RelaySamples = portal.GetRelayData(redisPortalPool, relayAddress)
-			}
+	if database != nil {
+		relay := database.GetRelayByName(relayName)
+		if relay != nil {
+			relayAddress := relay.PublicAddress.String()
+			response.RelayData = portal.GetRelayData(service.Context, redisClusterClient, relayAddress)
 		}
-	*/
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -698,8 +704,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	// todo
-	data := []byte{} // common.LoadMasterServiceData(redisPortalPool, "map_cruncher", "map_data")
+	data := common.LoadMasterServiceData(service.Context, redisMapCruncherClient, "map_cruncher", "map_data")
 	w.Write(data)
 }
 
@@ -708,9 +713,7 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	// todo
-	data := []byte{}
-	// data := common.LoadMasterServiceData(redisRelayBackendPool, "relay_backend", "cost_matrix")
+	data := common.LoadMasterServiceData(service.Context, redisRelayBackendClient, "relay_backend", "cost_matrix")
 	w.Write(data)
 }
 

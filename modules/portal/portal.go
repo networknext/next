@@ -144,25 +144,25 @@ func GenerateRandomSessionData() *SessionData {
 // --------------------------------------------------------------------------------------------------
 
 type SliceData struct {
-	Timestamp        uint64
-	SliceNumber      uint32
-	DirectRTT        uint32
-	NextRTT          uint32
-	PredictedRTT     uint32
-	DirectJitter     uint32
-	NextJitter       uint32
-	RealJitter       uint32
-	DirectPacketLoss float32
-	NextPacketLoss   float32
-	RealPacketLoss   float32
-	RealOutOfOrder   float32
-	InternalEvents   uint64
-	SessionEvents    uint64
-	DirectKbpsUp     uint32
-	DirectKbpsDown   uint32
-	NextKbpsUp       uint32
-	NextKbpsDown     uint32
-	Next             bool
+	Timestamp        uint64  `json:"timestamp,string"`
+	SliceNumber      uint32  `json:"session_id"`
+	DirectRTT        uint32  `json:"direct_rtt"`
+	NextRTT          uint32  `json:"next_rtt"`
+	PredictedRTT     uint32  `json:"predicted_rtt"`
+	DirectJitter     uint32  `json:"direct_jitter"`
+	NextJitter       uint32  `json:"next_jitter"`
+	RealJitter       uint32  `json:"real_jitter"`
+	DirectPacketLoss float32 `json:"direct_packet_loss"`
+	NextPacketLoss   float32 `json:"next_packet_loss"`
+	RealPacketLoss   float32 `json:"real_packet_loss"`
+	RealOutOfOrder   float32 `json:"real_out_of_order"`
+	InternalEvents   uint64  `json:"internal_events,string"`
+	SessionEvents    uint64  `json:"session_events,string"`
+	DirectKbpsUp     uint32  `json:"direct_kpbs_up"`
+	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
+	NextKbpsUp       uint32  `json:"next_kbps_up"`
+	NextKbpsDown     uint32  `json:"next_kbps_down"`
+	Next             bool    `json:"next"`
 }
 
 func (data *SliceData) Value() string {
@@ -396,14 +396,14 @@ func GenerateRandomNearRelayData() *NearRelayData {
 // --------------------------------------------------------------------------------------------------
 
 type ServerData struct {
-	ServerAddress    string
-	SDKVersion_Major uint8
-	SDKVersion_Minor uint8
-	SDKVersion_Patch uint8
-	BuyerId          uint64
-	DatacenterId     uint64
-	NumSessions      uint32
-	StartTime        uint64
+	ServerAddress    string  `json:"server_address"`
+	SDKVersion_Major uint8   `json:"sdk_version_major"`
+	SDKVersion_Minor uint8   `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8   `json:"sdk_version_patch"`
+	BuyerId          uint64  `json:"buyer_id,string"`
+	DatacenterId     uint64  `json:"datacenter_id,string"`
+	NumSessions      uint32  `json:"num_sessions"`
+	StartTime        uint64  `json:"start_time,string"`
 }
 
 func (data *ServerData) Value() string {
