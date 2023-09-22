@@ -1114,12 +1114,10 @@ blocks:
 
             - make clean
             - make -j dist/api dist/session_cruncher dist/func_test_portal 
-            - ./run redis-cluster &
             - cd ./dist && ./func_test_portal test_portal
 
             - killall api || true
             - killall session_cruncher || true
-            - killall redis || true
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -1249,9 +1247,7 @@ blocks:
 
         - name: "Load Test Portal"
           commands:
-            - ./run redis-cluster &
             - ./run load-test-portal
-            - killall redis || true
 
         - name: "Load Test Redis Data"
           commands:
