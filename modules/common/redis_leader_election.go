@@ -26,7 +26,7 @@ type RedisLeaderElectionConfig struct {
 
 type RedisLeaderElection struct {
 	config           RedisLeaderElectionConfig
-	redisClient      *redis.Client
+	redisClient      redis.Cmdable
 	startTime        time.Time
 	instanceId       string
 	leaderInstanceId string
@@ -42,7 +42,7 @@ type InstanceEntry struct {
 	UpdateTime uint64
 }
 
-func CreateRedisLeaderElection(redisClient *redis.Client, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
+func CreateRedisLeaderElection(redisClient redis.Cmdable, config RedisLeaderElectionConfig) (*RedisLeaderElection, error) {
 
 	leaderElection := &RedisLeaderElection{}
 
@@ -76,7 +76,7 @@ func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 	}()
 }
 
-func getInstanceEntries(ctx context.Context, redisClient *redis.Client, service string, minutes int64) []InstanceEntry {
+func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service string, minutes int64) []InstanceEntry {
 
 	// get all instance keys and values
 
@@ -232,7 +232,7 @@ func (leaderElection *RedisLeaderElection) IsReady() bool {
 	return value
 }
 
-func LoadMasterServiceData(ctx context.Context, redisClient *redis.Client, service string, name string) []byte {
+func LoadMasterServiceData(ctx context.Context, redisClient redis.Cmdable, service string, name string) []byte {
 	seconds := time.Now().Unix()
 	minutes := seconds / 60
 	instanceEntries := getInstanceEntries(ctx, redisClient, service, minutes)

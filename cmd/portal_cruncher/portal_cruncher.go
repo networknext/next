@@ -10,18 +10,22 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/messages"
 	"github.com/networknext/next/modules/portal"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var service *common.Service
 
 var redisPortalHostname string
+var redisPortalCluster []string
 var redisRelayBackendHostname string
 var redisServerBackendHostname string
 var sessionCruncherURL string
 
 func main() {
 
-	redisCluster := envvar.GetStringArray("REDIS_CLUSTER", []string{"127.0.0.1:10000", "127.0.0.1:10001", "127.0.0.1:10002", "127.0.0.1:10003", "127.0.0.1:10004", "127.0.0.1:10005"})
+	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
+	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname = envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
@@ -35,7 +39,8 @@ func main() {
 
 	service = common.CreateService("portal_cruncher")
 
-	core.Debug("redis cluster: %v", redisCluster)
+	core.Debug("redis portal cluster: %v", redisPortalCluster)
+	core.Debug("redis portal hostname: %s", redisPortalHostname)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 	core.Debug("session cruncher url: %s", sessionCruncherURL)
@@ -50,10 +55,10 @@ func main() {
 	}
 
 	for j := 0; j < reps; j++ {
-		ProcessSessionUpdateMessages(service, redisServerBackendHostname, redisCluster, sessionInsertBatchSize)
-		ProcessServerUpdateMessages(service, redisServerBackendHostname, redisCluster, serverInsertBatchSize)
-		ProcessNearRelayUpdateMessages(service, redisServerBackendHostname, redisCluster, nearRelayInsertBatchSize)
-		ProcessRelayUpdateMessages(service, redisRelayBackendHostname, redisCluster, relayInsertBatchSize)
+		ProcessSessionUpdateMessages(service, redisServerBackendHostname, sessionInsertBatchSize)
+		ProcessServerUpdateMessages(service, redisServerBackendHostname, serverInsertBatchSize)
+		ProcessNearRelayUpdateMessages(service, redisServerBackendHostname, nearRelayInsertBatchSize)
+		ProcessRelayUpdateMessages(service, redisRelayBackendHostname, relayInsertBatchSize)
 	}
 
 	service.StartWebServer()
@@ -63,11 +68,16 @@ func main() {
 
 // -------------------------------------------------------------------------------
 
-func ProcessSessionUpdateMessages(service *common.Service, redisStreams string, redisCluster []string, batchSize int) {
+func ProcessSessionUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
 
 	name := "session update"
 
-	redisClient := common.CreateRedisClusterClient(redisCluster)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
 
 	sessionInserter := portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, batchSize)
 
@@ -169,11 +179,16 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 // -------------------------------------------------------------------------------
 
-func ProcessServerUpdateMessages(service *common.Service, redisStreams string, redisCluster []string, batchSize int) {
+func ProcessServerUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
 
 	name := "server update"
 
-	redisClient := common.CreateRedisClusterClient(redisCluster)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
 
 	serverInserter := portal.CreateServerInserter(redisClient, batchSize)
 
@@ -231,11 +246,16 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 
 // -------------------------------------------------------------------------------
 
-func ProcessNearRelayUpdateMessages(service *common.Service, redisStreams string, redisCluster []string, batchSize int) {
+func ProcessNearRelayUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
 
 	name := "near relay update"
 
-	redisClient := common.CreateRedisClusterClient(redisCluster)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
 
 	nearRelayInserter := portal.CreateNearRelayInserter(redisClient, batchSize)
 
@@ -293,11 +313,16 @@ func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRe
 
 // -------------------------------------------------------------------------------
 
-func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, redisCluster []string, batchSize int) {
+func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
 
 	name := "relay update"
 
-	redisClient := common.CreateRedisClusterClient(redisCluster)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
 
 	relayInserter := portal.CreateRelayInserter(redisClient, batchSize)
 

@@ -830,7 +830,7 @@ func (publisher *SessionCruncherPublisher) NumBatchesSent() int {
 // ------------------------------------------------------------------------------------------------------------
 
 type SessionInserter struct {
-	redisClient   *redis.ClusterClient
+	redisClient   redis.Cmdable
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
@@ -838,7 +838,7 @@ type SessionInserter struct {
 	publisher     *SessionCruncherPublisher
 }
 
-func CreateSessionInserter(ctx context.Context, redisClient *redis.ClusterClient, sessionCruncherURL string, batchSize int) *SessionInserter {
+func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessionCruncherURL string, batchSize int) *SessionInserter {
 	inserter := SessionInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
@@ -1028,7 +1028,7 @@ func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
 
 // --------------------------------------------------------------------------------------------------
 
-func GetSessionData(ctx context.Context, redisClient *redis.ClusterClient, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
+func GetSessionData(ctx context.Context, redisClient redis.Cmdable, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1062,7 +1062,7 @@ func GetSessionData(ctx context.Context, redisClient *redis.ClusterClient, sessi
 	return &sessionData, sliceData, nearRelayData
 }
 
-func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessionIds []uint64) []*SessionData {
+func GetSessionList(ctx context.Context, redisClient redis.Cmdable, sessionIds []uint64) []*SessionData {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1095,7 +1095,7 @@ func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessi
 	return sessionList
 }
 
-func GetUserSessionList(ctx context.Context, redisClient *redis.ClusterClient, userHash uint64, minutes int64, begin int, end int) []*SessionData {
+func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash uint64, minutes int64, begin int, end int) []*SessionData {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get user session list: %d", begin)
@@ -1187,14 +1187,14 @@ func GetUserSessionList(ctx context.Context, redisClient *redis.ClusterClient, u
 // ------------------------------------------------------------------------------------------------------------
 
 type NearRelayInserter struct {
-	redisClient   *redis.ClusterClient
+	redisClient   redis.Cmdable
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
 	pipeline      redis.Pipeliner
 }
 
-func CreateNearRelayInserter(redisClient *redis.ClusterClient, batchSize int) *NearRelayInserter {
+func CreateNearRelayInserter(redisClient redis.Cmdable, batchSize int) *NearRelayInserter {
 	inserter := NearRelayInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
@@ -1234,14 +1234,14 @@ func (inserter *NearRelayInserter) Flush(ctx context.Context) {
 // ------------------------------------------------------------------------------------------------------------
 
 type ServerInserter struct {
-	redisClient   *redis.ClusterClient
+	redisClient   redis.Cmdable
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
 	pipeline      redis.Pipeliner
 }
 
-func CreateServerInserter(redisClient *redis.ClusterClient, batchSize int) *ServerInserter {
+func CreateServerInserter(redisClient redis.Cmdable, batchSize int) *ServerInserter {
 	inserter := ServerInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
@@ -1288,7 +1288,7 @@ func (inserter *ServerInserter) Flush(ctx context.Context) {
 
 // ------------------------------------------------------------------------------------------------------------
 
-func GetServerCount(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) int {
+func GetServerCount(ctx context.Context, redisClient redis.Cmdable, minutes int64) int {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1318,7 +1318,7 @@ func GetServerCount(ctx context.Context, redisClient *redis.ClusterClient, minut
 	return totalServerCount
 }
 
-func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, serverAddress string, minutes int64) (*ServerData, []*SessionData) {
+func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverAddress string, minutes int64) (*ServerData, []*SessionData) {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1381,7 +1381,7 @@ func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, server
 	return &serverData, serverSessionData
 }
 
-func GetServerList(ctx context.Context, redisClient *redis.ClusterClient, serverAddresses []string) []*ServerData {
+func GetServerList(ctx context.Context, redisClient redis.Cmdable, serverAddresses []string) []*ServerData {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1414,7 +1414,7 @@ func GetServerList(ctx context.Context, redisClient *redis.ClusterClient, server
 	return serverList
 }
 
-func GetServerAddresses(ctx context.Context, redisClient *redis.ClusterClient, minutes int64, begin int, end int) []string {
+func GetServerAddresses(ctx context.Context, redisClient redis.Cmdable, minutes int64, begin int, end int) []string {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get server addresses: %d", begin)
@@ -1500,14 +1500,14 @@ func GetServerAddresses(ctx context.Context, redisClient *redis.ClusterClient, m
 // ------------------------------------------------------------------------------------------------------------
 
 type RelayInserter struct {
-	redisClient   *redis.ClusterClient
+	redisClient   redis.Cmdable
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
 	pipeline      redis.Pipeliner
 }
 
-func CreateRelayInserter(redisClient *redis.ClusterClient, batchSize int) *RelayInserter {
+func CreateRelayInserter(redisClient redis.Cmdable, batchSize int) *RelayInserter {
 	inserter := RelayInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
@@ -1552,7 +1552,7 @@ func (inserter *RelayInserter) Flush(ctx context.Context) {
 
 // ------------------------------------------------------------------------------------------------------------
 
-func GetRelayCount(ctx context.Context, redisClient *redis.ClusterClient, minutes int64) int {
+func GetRelayCount(ctx context.Context, redisClient redis.Cmdable, minutes int64) int {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1582,7 +1582,7 @@ func GetRelayCount(ctx context.Context, redisClient *redis.ClusterClient, minute
 	return totalRelayCount
 }
 
-func GetRelayAddresses(ctx context.Context, redisClient *redis.ClusterClient, minutes int64, begin int, end int) []string {
+func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes int64, begin int, end int) []string {
 
 	if begin < 0 {
 		core.Error("invalid begin passed to get relay addresses: %d", begin)
@@ -1665,7 +1665,7 @@ func GetRelayAddresses(ctx context.Context, redisClient *redis.ClusterClient, mi
 	return relayAddresses
 }
 
-func GetRelayData(ctx context.Context, redisClient *redis.ClusterClient, relayAddress string) *RelayData {
+func GetRelayData(ctx context.Context, redisClient redis.Cmdable, relayAddress string) *RelayData {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1685,7 +1685,7 @@ func GetRelayData(ctx context.Context, redisClient *redis.ClusterClient, relayAd
 	return &relayData
 }
 
-func GetRelayList(ctx context.Context, redisClient *redis.ClusterClient, relayAddresses []string) []*RelayData {
+func GetRelayList(ctx context.Context, redisClient redis.Cmdable, relayAddresses []string) []*RelayData {
 
 	pipeline := redisClient.Pipeline()
 
