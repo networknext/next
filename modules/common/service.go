@@ -87,8 +87,7 @@ type Service struct {
 	currentMagic  []byte
 	previousMagic []byte
 
-	// todo
-	// leaderElection *RedisLeaderElection
+	leaderElection *RedisLeaderElection
 
 	sendTrafficToMe  func() bool
 	machineIsHealthy func() bool
@@ -458,45 +457,16 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
+func CreateRedisClient(hostname string) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr: hostname,
+	})
+}
+
 func CreateRedisClusterClient(redisNodes []string) *redis.ClusterClient {
 	clusterOptions := redis.ClusterOptions{Addrs: redisNodes}
 	redisClient := redis.NewClusterClient(&clusterOptions)
 	return redisClient
-}
-
-// todo
-/*
-func CreateRedisClient(hostname string) redis.Conn {
-	redisClient, err := redis.Dial("tcp", hostname)
-	if err != nil {
-		panic(err)
-	}
-	redisClient.Send("PING")
-	redisClient.Flush()
-	pong, err := redisClient.Receive()
-	if err != nil || pong != "PONG" {
-		panic(err)
-	}
-	return redisClient
-}
-
-func CreateRedisPool(hostname string, active int, idle int) *redis.Pool {
-	pool := redis.Pool{
-		MaxActive:   active,
-		MaxIdle:     idle,
-		IdleTimeout: 60 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", hostname)
-		},
-	}
-	redisClient := pool.Get()
-	redisClient.Send("PING")
-	redisClient.Flush()
-	pong, err := redisClient.Receive()
-	if err != nil || pong != "PONG" {
-		panic(err)
-	}
-	return &pool
 }
 
 func (service *Service) LeaderElection() {
@@ -504,17 +474,15 @@ func (service *Service) LeaderElection() {
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 100)
-	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 1000)
 
-	pool := CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+	redisClient := CreateRedisClient(redisHostname)
 
 	config := RedisLeaderElectionConfig{}
 	config.Timeout = time.Second * 10
 	config.ServiceName = service.ServiceName
 
 	var err error
-	service.leaderElection, err = CreateRedisLeaderElection(pool, config)
+	service.leaderElection, err = CreateRedisLeaderElection(redisClient, config)
 	if err != nil {
 		core.Error("could not create redis leader election: %v")
 		os.Exit(1)
@@ -522,31 +490,22 @@ func (service *Service) LeaderElection() {
 
 	service.leaderElection.Start(service.Context)
 }
-*/
 
-// todo
-func (service *Service) LeaderElection() {
-}
 func (service *Service) Store(name string, data []byte) {
 	core.Debug("store %s (%d bytes)", name, len(data))
-	/*
 	if service.leaderElection == nil {
 		panic("leader election must be enabled to call store")
 	}
 	service.leaderElection.Store(service.Context, name, data)
-	*/
 }
 
 func (service *Service) Load(name string) []byte {
-	/*
 	if service.leaderElection == nil {
 		panic("leader election must be enabled to call load")
 	}
 	data := service.leaderElection.Load(service.Context, name)
 	core.Debug("loaded %s (%d bytes)", name, len(data))
 	return data
-	*/
-	return []byte{}
 }
 
 func (service *Service) UpdateRouteMatrix() {
@@ -646,24 +605,17 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 }
 
 func (service *Service) IsLeader() bool {
-	// todo
-	/*
 	return true
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
 	}
 	return false
-	*/
-	return true
 }
 
 func (service *Service) IsReady() bool {
-	// todo
-	/*
 	if service.leaderElection != nil {
 		return service.leaderElection.IsReady()
 	}
-	*/
 	return true
 }
 
