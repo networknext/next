@@ -309,23 +309,10 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	// todo
-	fmt.Printf("get sessions: [%d,%d]\n", begin, end)
-
 	response := PortalSessionsResponse{}
 	sessionIds := watcher.GetSessions(int(begin), int(end))
-
-	// todo
-	fmt.Printf("%d session ids\n", len(sessionIds))
-
 	sessions := portal.GetSessionList(service.Context, redisClusterClient, sessionIds)
-	
-	// todo
-	fmt.Printf("%d sessions\n", len(sessions))
-
 	response.Sessions = make([]PortalSessionData, len(sessions))
-
 	database := service.Database()
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
