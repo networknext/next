@@ -1659,7 +1659,7 @@ output "api_address" {
 
 module "session_cruncher" {
 
-  source = "../../modules/internal_mig_with_health_check"
+  source = "../../modules/internal_http_service"
 
   service_name = "session-cruncher"
 
