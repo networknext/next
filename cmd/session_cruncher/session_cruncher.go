@@ -23,10 +23,9 @@ const SessionBatchVersion = uint64(0)
 const TopSessionsVersion = uint64(0)
 
 type SessionUpdate struct {
-	timestamp     uint64
 	sessionId     uint64
+	currentScore  int32
 	previousScore int32
-	newScore      int32
 	next          bool
 	delete        bool
 }
@@ -74,8 +73,6 @@ func main() {
 	topSessions = &TopSessions{}
 	topSessionsMutex.Unlock()
 
-	go TestThread()
-
 	go TopSessionsThread()
 
 	service.StartWebServer()
@@ -91,32 +88,6 @@ func GetBucketIndex(score int32) int {
 		index = NumBuckets - 1
 	}
 	return int(index)
-}
-
-func TestThread() {
-	i := uint64(0)
-	for {
-
-		session := SessionUpdate{}
-		session.timestamp = uint64(time.Now().Unix())
-		session.sessionId = rand.Uint64()
-		session.newScore = int32(i % NumBuckets)
-		session.previousScore = int32((i + 5) % NumBuckets)
-		session.next = (i % 10) == 0
-
-		previousIndex := GetBucketIndex(session.previousScore)
-
-		newIndex := GetBucketIndex(session.newScore)
-
-		buckets[newIndex].sessionUpdateChannel <- session
-
-		if previousIndex != newIndex {
-			session.delete = true
-			buckets[previousIndex].sessionUpdateChannel <- session
-		}
-
-		i++
-	}
 }
 
 func StartProcessThread(bucket *Bucket) {
@@ -142,24 +113,20 @@ func StartProcessThread(bucket *Bucket) {
 					minute = currentMinute
 				}
 
-				sessionMinute := int64(sessionUpdate.timestamp / 60)
-
-				if sessionMinute == minute {
-					if !sessionUpdate.delete {
-						bucket.mutex.Lock()
-						bucket.currentSessions.Insert(sessionUpdate.sessionId, sessionUpdate.newScore)
-						if sessionUpdate.next {
-							bucket.currentNext[sessionUpdate.sessionId] = true
-						}
-						bucket.mutex.Unlock()
-					} else {
-						bucket.mutex.Lock()
-						bucket.currentSessions.Delete(sessionUpdate.sessionId)
-						if sessionUpdate.next {
-							delete(bucket.currentNext, sessionUpdate.sessionId)
-						}
-						bucket.mutex.Unlock()
+				if !sessionUpdate.delete {
+					bucket.mutex.Lock()
+					bucket.currentSessions.Insert(sessionUpdate.sessionId, sessionUpdate.currentScore)
+					if sessionUpdate.next {
+						bucket.currentNext[sessionUpdate.sessionId] = true
 					}
+					bucket.mutex.Unlock()
+				} else {
+					bucket.mutex.Lock()
+					bucket.currentSessions.Delete(sessionUpdate.sessionId)
+					if sessionUpdate.next {
+						delete(bucket.currentNext, sessionUpdate.sessionId)
+					}
+					bucket.mutex.Unlock()
 				}
 			}
 		}
@@ -316,23 +283,19 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	numSessionUpdates := len(body) / 17
 
-	core.Debug("session batch handler: processing %d session updates", numSessionUpdates)
-
 	index := 0
-	currentTime := uint64(time.Now().Unix())
 	sessionUpdate := SessionUpdate{}
 	for i := 0; i < numSessionUpdates; i++ {
-		sessionUpdate.timestamp = currentTime
 		sessionUpdate.sessionId = binary.LittleEndian.Uint64(body[index : index+8])
-		sessionUpdate.newScore = int32(binary.LittleEndian.Uint32(body[index+8 : index+12]))
+		sessionUpdate.currentScore = int32(binary.LittleEndian.Uint32(body[index+8 : index+12]))
 		sessionUpdate.previousScore = int32(binary.LittleEndian.Uint32(body[index+12 : index+16]))
 		if body[index+16] != 0 {
 			sessionUpdate.next = true
 		}
+		currentIndex := GetBucketIndex(sessionUpdate.currentScore)
 		previousIndex := GetBucketIndex(sessionUpdate.previousScore)
-		newIndex := GetBucketIndex(sessionUpdate.newScore)
-		buckets[newIndex].sessionUpdateChannel <- sessionUpdate
-		if previousIndex != newIndex {
+		buckets[currentIndex].sessionUpdateChannel <- sessionUpdate
+		if previousIndex != currentIndex {
 			sessionUpdate.delete = true
 			buckets[previousIndex].sessionUpdateChannel <- sessionUpdate
 		}

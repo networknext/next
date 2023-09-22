@@ -170,8 +170,8 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
-	} else if command == "load-test-redis-portal" {
-		load_test_redis_portal()
+	} else if command == "load-test-portal" {
+		load_test_portal()
 	} else if command == "load-test-redis-data" {
 		load_test_redis_data()
 	} else if command == "load-test-redis-pubsub" {
@@ -484,8 +484,8 @@ func load_test_redis_streams() {
 	bash("go run tools/load_test_redis_streams/load_test_redis_streams.go")
 }
 
-func load_test_redis_portal() {
-	bash("go run tools/load_test_redis_portal/load_test_redis_portal.go")
+func load_test_portal() {
+	bash("go run tools/load_test_portal/load_test_portal.go")
 }
 
 func load_test_map() {

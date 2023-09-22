@@ -13,6 +13,8 @@ import (
 
 var RedisNodes = []string{"127.0.0.1:10000", "127.0.0.1:10001", "127.0.0.1:10002", "127.0.0.1:10003", "127.0.0.1:10004", "127.0.0.1:10005"}
 
+var SessionCruncherURL = "http://127.0.0.1:40200/session_batch"
+
 func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
@@ -21,7 +23,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := common.CreateRedisClusterClient(RedisNodes)
 
-			sessionInserter := portal.CreateSessionInserter(redisClient, 1000)
+			sessionInserter := portal.CreateSessionInserter(ctx, redisClient, SessionCruncherURL, 1000)
 
 			iteration := uint64(0)
 
@@ -46,7 +48,12 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					sessionInserter.Insert(ctx, sessionId, userHash, sessionData, sliceData)
+					next := common.RandomBool()
+
+					currentScore := uint32(common.RandomInt(0,999))
+					previousScore := uint32(common.RandomInt(0,999))
+
+					sessionInserter.Insert(ctx, sessionId, userHash, next, currentScore, previousScore, sessionData, sliceData)
 
 					if sessionId > near_relay_max {
 						nearRelayData := portal.GenerateRandomNearRelayData()

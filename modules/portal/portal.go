@@ -8,10 +8,15 @@ import (
 	"strings"
 	"time"
 	"context"
+	"sync"
+	"bytes"
+	"net/http"
+	"io/ioutil"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/encoding"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -685,28 +690,181 @@ func GenerateRandomRelaySample() *RelaySample {
 
 // ------------------------------------------------------------------------------------------------------------
 
+type SessionCruncherEntry struct {
+	SessionId          uint64
+	PreviousScore      uint32
+	CurrentScore       uint32
+	Next               uint8
+}
+
+type SessionCruncherPublisherConfig struct {
+	URL                string
+	BatchSize          int
+	BatchDuration      time.Duration
+	MessageChannelSize int
+}
+
+type SessionCruncherPublisher struct {
+	MessageChannel     chan SessionCruncherEntry
+	config             SessionCruncherPublisherConfig
+	batchStartTime     time.Time
+	mutex              sync.RWMutex
+	lastBatchSendTime  time.Time
+	batchMessages      []SessionCruncherEntry
+	numMessagesSent    int
+	numBatchesSent     int
+}
+
+func CreateSessionCruncherPublisher(ctx context.Context, config SessionCruncherPublisherConfig) *SessionCruncherPublisher {
+
+	if config.MessageChannelSize == 0 {
+		config.MessageChannelSize = 1024
+	}
+
+	if config.BatchDuration == 0 {
+		config.BatchDuration = time.Second
+	}
+
+	if config.BatchSize == 0 {
+		config.BatchSize = 1000
+	}
+
+	publisher := &SessionCruncherPublisher{}
+
+	publisher.config = config
+	publisher.MessageChannel = make(chan SessionCruncherEntry, config.MessageChannelSize)
+
+	go publisher.updateMessageChannel(ctx)
+
+	return publisher
+}
+
+const SessionBatchVersion_Write = uint64(0)
+
+func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Context) {
+
+	for {
+		select {
+
+		case <-ctx.Done():
+			return
+
+		case message := <-publisher.MessageChannel:
+			var sendBatch []SessionCruncherEntry
+			publisher.mutex.Lock()
+			publisher.batchMessages = append(publisher.batchMessages, message)
+			publisher.numMessagesSent++
+			if len(publisher.batchMessages) >= publisher.config.BatchSize || time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration {
+				sendBatch = make([]SessionCruncherEntry, len(publisher.batchMessages))
+				copy(sendBatch, publisher.batchMessages)
+				publisher.batchMessages = publisher.batchMessages[:0]
+				publisher.numBatchesSent++
+				publisher.lastBatchSendTime = time.Now()
+			}
+			publisher.mutex.Unlock()
+			if len(sendBatch) > 0 {
+				go func() {
+					data := make([]byte, 8+17*len(sendBatch))
+					index := 0
+					encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
+					for i := range sendBatch {
+						encoding.WriteUint64(data[:], &index, sendBatch[i].SessionId)
+						encoding.WriteUint32(data[:], &index, sendBatch[i].CurrentScore)
+						encoding.WriteUint32(data[:], &index, sendBatch[i].PreviousScore)
+						encoding.WriteUint8(data[:], &index, sendBatch[i].Next)
+					}
+					err := postBinary(publisher.config.URL, data)
+					if err != nil {
+						core.Error("failed to post session cruncher batch: %v", err)
+					}
+				}()
+			}
+		}
+	}
+}
+
+func postBinary(url string, data []byte) error {
+
+	buffer := bytes.NewBuffer(data)
+
+	request, _ := http.NewRequest("POST", url, buffer)
+
+	request.Header.Add("Content-Type", "application/octet-stream")
+
+	httpClient := &http.Client{}
+	response, err := httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != 200 {
+		return fmt.Errorf("got response %d", response.StatusCode)
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		return fmt.Errorf("could not read response: %v", err)
+	}
+
+	response.Body.Close()
+
+	_ = body
+
+	return nil
+}
+
+func (publisher *SessionCruncherPublisher) NumMessagesSent() int {
+	publisher.mutex.RLock()
+	value := publisher.numMessagesSent
+	publisher.mutex.RUnlock()
+	return value
+}
+
+func (publisher *SessionCruncherPublisher) NumBatchesSent() int {
+	publisher.mutex.RLock()
+	value := publisher.numBatchesSent
+	publisher.mutex.RUnlock()
+	return value
+}
+
+// ------------------------------------------------------------------------------------------------------------
+
 type SessionInserter struct {
 	redisClient   *redis.ClusterClient
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
 	pipeline      redis.Pipeliner
+	publisher     *SessionCruncherPublisher    
 }
 
-func CreateSessionInserter(redisClient *redis.ClusterClient, batchSize int) *SessionInserter {
+func CreateSessionInserter(ctx context.Context, redisClient *redis.ClusterClient, sessionCruncherURL string, batchSize int) *SessionInserter {
 	inserter := SessionInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
+	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL, BatchSize: batchSize})
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, next bool, currentScore uint32, previousScore uint32, sessionData *SessionData, sliceData *SliceData) {
 
 	currentTime := time.Now()
 
 	minutes := currentTime.Unix() / 60
+
+	entry := SessionCruncherEntry{
+		SessionId: sessionId,
+		CurrentScore: currentScore,
+		PreviousScore: previousScore,
+	}
+
+	if next {
+		entry.Next = 1
+	}
+
+	inserter.publisher.MessageChannel <- entry
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 

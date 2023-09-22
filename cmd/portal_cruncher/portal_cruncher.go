@@ -17,6 +17,7 @@ var service *common.Service
 var redisPortalHostname string
 var redisRelayBackendHostname string
 var redisServerBackendHostname string
+var sessionCruncherURL string
 
 func main() {
 
@@ -25,6 +26,7 @@ func main() {
 
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname = envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
+	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200/session_batch")
 
 	sessionInsertBatchSize := envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 1000)
 	serverInsertBatchSize := envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 1000)
@@ -38,6 +40,7 @@ func main() {
 	core.Debug("redis cluster: %v", redisCluster)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
+	core.Debug("session cruncher url: %s", sessionCruncherURL)
 
 	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
 	core.Debug("server insert batch size: %d", serverInsertBatchSize)
@@ -68,7 +71,7 @@ func ProcessSessionUpdateMessages(service *common.Service, redisStreams string, 
 
 	redisClient := common.CreateRedisClusterClient(redisCluster)
 
-	sessionInserter := portal.CreateSessionInserter(redisClient, batchSize)
+	sessionInserter := portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, batchSize)
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 	consumerGroup := streamName
@@ -97,13 +100,6 @@ func ProcessSessionUpdateMessages(service *common.Service, redisStreams string, 
 	}()
 }
 
-/*
-		serverInserter := portal.CreateServerInserter(service.Context, serverInsertBatchSize)
-		nearRelayInserter := portal.CreateNearRelayInserter(service.Context, nearRelayInsertBatchSize)
-		relayInserter := portal.CreateRelayInserter(service.Context, relayInsertBatchSize)
-*/
-
-
 func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionInserter) {
 
 	message := messages.PortalSessionUpdateMessage{}
@@ -119,17 +115,25 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	userHash := message.UserHash
 
-	// todo: for insert to session cruncher
-	// next := message.Next
+	next := message.Next
 
-	// // todo: normalize to [0,1000]
-	// score := uint32(0)
-	// if next {
-	// 	score = uint32(message.NextRTT)
-	// } else {
-	// 	score = 10000 - uint32(message.DirectRTT)
-	// }
+	score := int32(0)
+	if next {
+	 	score = 500 - int32(message.NextRTT)
+	} else {
+	 	score = 500 + int32(message.DirectRTT)
+	}
+
+	if score < 0 {
+		score = 0
+	} else if score > 999 {
+		score = 999
+	}
 	
+	// todo: hack
+	currentScore := uint32(score)
+	previousScore := uint32(score)
+
 	var isp string
 	if !service.Local {
 		isp = service.GetISP(message.ClientAddress.IP)
@@ -175,7 +179,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		Next:             message.Next,
 	}
 
-	sessionInserter.Insert(service.Context, sessionId, userHash, &sessionData, &sliceData)
+	sessionInserter.Insert(service.Context, sessionId, userHash, next, currentScore, previousScore, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
