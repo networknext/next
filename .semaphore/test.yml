@@ -1114,7 +1114,7 @@ blocks:
 
             - make clean
             - make -j dist/api dist/session_cruncher dist/func_test_portal 
-            - ./run redis-cluster
+            - ./run redis-cluster &
             - cd ./dist && ./func_test_portal test_portal
 
             - killall api || true
