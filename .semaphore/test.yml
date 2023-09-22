@@ -1280,9 +1280,11 @@ blocks:
           commands:
             - ./run load-test-map
 
-        - name: "Load Test Redis Portal"
+        - name: "Load Test Portal"
           commands:
-            - ./run load-test-redis-portal
+            - ./run redis-cluster &
+            - ./run load-test-portal
+            - killall redis
 
         - name: "Load Test Redis Data"
           commands:
