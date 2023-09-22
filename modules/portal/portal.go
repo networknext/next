@@ -844,7 +844,7 @@ func CreateSessionInserter(ctx context.Context, redisClient *redis.ClusterClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
-	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL, BatchSize: batchSize})
+	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL + "/session_batch", BatchSize: batchSize})
 	return &inserter
 }
 

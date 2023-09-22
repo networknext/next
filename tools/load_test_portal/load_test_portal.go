@@ -13,7 +13,7 @@ import (
 
 var RedisNodes = []string{"127.0.0.1:10000", "127.0.0.1:10001", "127.0.0.1:10002", "127.0.0.1:10003", "127.0.0.1:10004", "127.0.0.1:10005"}
 
-var SessionCruncherURL = "http://127.0.0.1:40200/session_batch"
+var SessionCruncherURL = "http://127.0.0.1:40200"
 
 func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
