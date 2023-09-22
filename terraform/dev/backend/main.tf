@@ -1637,17 +1637,19 @@ module "api" {
     sudo systemctl start app.service
   EOF1
 
-  tag                      = var.tag
-  extra                    = var.extra
-  machine_type             = var.google_machine_type
-  project                  = var.google_project
-  region                   = var.google_region
-  zones                    = var.google_zones
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-http", "allow-https"]
-  domain                   = "api-dev.${var.cloudflare_domain}"
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = var.google_machine_type
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.development.id
+  default_subnetwork         = google_compute_subnetwork.development.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http", "allow-https"]
+  domain                     = "api-dev.${var.cloudflare_domain}"
 }
 
 output "api_address" {
