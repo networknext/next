@@ -1284,7 +1284,7 @@ blocks:
           commands:
             - ./run redis-cluster &
             - ./run load-test-portal
-            - killall redis
+            - killall redis || true
 
         - name: "Load Test Redis Data"
           commands:
