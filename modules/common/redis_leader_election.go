@@ -101,11 +101,11 @@ func getInstanceEntries(ctx context.Context, redisClient *redis.Client, service 
 
 	instanceMap := make(map[string]string)
 
-	for k,v := range instances_b {
+	for k, v := range instances_b {
 		instanceMap[k] = v
 	}
 
-	for k,v := range instances_a {
+	for k, v := range instances_a {
 		instanceMap[k] = v
 	}
 

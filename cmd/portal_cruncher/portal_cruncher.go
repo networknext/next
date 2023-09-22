@@ -119,9 +119,9 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	score := int32(0)
 	if next {
-	 	score = 500 - int32(message.NextRTT)
+		score = 500 - int32(message.NextRTT)
 	} else {
-	 	score = 500 + int32(message.DirectRTT)
+		score = 500 + int32(message.DirectRTT)
 	}
 
 	if score < 0 {
@@ -129,7 +129,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	} else if score > 999 {
 		score = 999
 	}
-	
+
 	// todo: hack
 	currentScore := uint32(score)
 	previousScore := uint32(score)

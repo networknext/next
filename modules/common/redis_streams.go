@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/google/uuid"
 	"github.com/networknext/next/modules/core"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisStreamsConfig struct {

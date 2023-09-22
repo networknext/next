@@ -27,8 +27,8 @@ import (
 	"cloud.google.com/go/profiler"
 	"github.com/gorilla/mux"
 	"github.com/oschwald/maxminddb-golang"
-	"github.com/rs/cors"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/cors"
 )
 
 var (

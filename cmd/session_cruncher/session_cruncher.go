@@ -23,18 +23,18 @@ const SessionBatchVersion = uint64(0)
 const TopSessionsVersion = uint64(0)
 
 type SessionUpdate struct {
-	sessionId     uint64
-	score         int32
-	next          bool
+	sessionId uint64
+	score     int32
+	next      bool
 }
 
 type SessionDelete struct {
-	sessionId     uint64
+	sessionId uint64
 }
 
 type TopSessions struct {
-	totalSessions  uint64
-	nextSessions   uint64
+	nextSessions   uint32
+	totalSessions  uint32
 	numTopSessions int
 	topSessions    [TopSessionsCount]uint64
 }
@@ -110,7 +110,7 @@ func StartProcessThread(bucket *Bucket) {
 					bucket.currentNext[sessionUpdate.sessionId] = true
 				}
 				bucket.mutex.Unlock()
-			
+
 			case sessionDelete := <-bucket.sessionDeleteChannel:
 
 				bucket.mutex.Lock()
@@ -227,21 +227,20 @@ func TopSessionsThread() {
 			}
 
 			newTopSessions := &TopSessions{}
-			newTopSessions.nextSessions = nextCount
-			newTopSessions.totalSessions = totalCount
+			newTopSessions.nextSessions = uint32(nextCount)
+			newTopSessions.totalSessions = uint32(totalCount)
 			newTopSessions.numTopSessions = len(sessions)
 			for i := range sessions {
 				newTopSessions.topSessions[i] = sessions[i].sessionId
 			}
 
-			data := make([]byte, 8 + 8 + 8 + 4 + 8*newTopSessions.numTopSessions)
+			data := make([]byte, 8+8+8+4+8*newTopSessions.numTopSessions)
 
 			index = 0
 
 			encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-			encoding.WriteUint64(data[:], &index, newTopSessions.nextSessions)
-			encoding.WriteUint64(data[:], &index, newTopSessions.totalSessions)
-			encoding.WriteUint32(data[:], &index, uint32(newTopSessions.numTopSessions))
+			encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
+			encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
 
 			for i := 0; i < newTopSessions.numTopSessions; i++ {
 				encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])

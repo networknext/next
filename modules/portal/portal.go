@@ -1,18 +1,18 @@
 package portal
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
-	"context"
 	"sync"
-	"bytes"
-	"net/http"
-	"io/ioutil"
-
+	"time"
+	
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -691,10 +691,10 @@ func GenerateRandomRelaySample() *RelaySample {
 // ------------------------------------------------------------------------------------------------------------
 
 type SessionCruncherEntry struct {
-	SessionId          uint64
-	PreviousScore      uint32
-	CurrentScore       uint32
-	Next               uint8
+	SessionId     uint64
+	PreviousScore uint32
+	CurrentScore  uint32
+	Next          uint8
 }
 
 type SessionCruncherPublisherConfig struct {
@@ -705,14 +705,14 @@ type SessionCruncherPublisherConfig struct {
 }
 
 type SessionCruncherPublisher struct {
-	MessageChannel     chan SessionCruncherEntry
-	config             SessionCruncherPublisherConfig
-	batchStartTime     time.Time
-	mutex              sync.RWMutex
-	lastBatchSendTime  time.Time
-	batchMessages      []SessionCruncherEntry
-	numMessagesSent    int
-	numBatchesSent     int
+	MessageChannel    chan SessionCruncherEntry
+	config            SessionCruncherPublisherConfig
+	batchStartTime    time.Time
+	mutex             sync.RWMutex
+	lastBatchSendTime time.Time
+	batchMessages     []SessionCruncherEntry
+	numMessagesSent   int
+	numBatchesSent    int
 }
 
 func CreateSessionCruncherPublisher(ctx context.Context, config SessionCruncherPublisherConfig) *SessionCruncherPublisher {
@@ -835,7 +835,7 @@ type SessionInserter struct {
 	batchSize     int
 	numPending    int
 	pipeline      redis.Pipeliner
-	publisher     *SessionCruncherPublisher    
+	publisher     *SessionCruncherPublisher
 }
 
 func CreateSessionInserter(ctx context.Context, redisClient *redis.ClusterClient, sessionCruncherURL string, batchSize int) *SessionInserter {
@@ -855,8 +855,8 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	minutes := currentTime.Unix() / 60
 
 	entry := SessionCruncherEntry{
-		SessionId: sessionId,
-		CurrentScore: currentScore,
+		SessionId:     sessionId,
+		CurrentScore:  currentScore,
 		PreviousScore: previousScore,
 	}
 
@@ -903,6 +903,131 @@ func (inserter *SessionInserter) Flush(ctx context.Context) {
 
 // --------------------------------------------------------------------------------------------------
 
+const TopSessionsVersion = uint64(0)
+
+type TopSessionsWatcher struct {
+	url           string
+	mutex         sync.RWMutex
+	nextSessions  int
+	totalSessions int
+	topSessions   []uint64
+}
+
+func CreateTopSessionsWatcher(sessionCruncherURL string) *TopSessionsWatcher {
+	watcher := TopSessionsWatcher{}
+	watcher.url = sessionCruncherURL + "/top_sessions"
+	go watcher.watchTopSessions()
+	return &watcher
+}
+
+func (watcher *TopSessionsWatcher) watchTopSessions() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+
+		case <-ticker.C:
+
+			data := getBinary(watcher.url)
+
+			if data == nil {
+				break
+			}
+
+			if len(data) < 16 {
+				core.Error("top session response is too small")
+				break
+			}
+
+			index := 0
+
+			var version uint64
+			encoding.ReadUint64(data[:], &index, &version)
+			if version != TopSessionsVersion {
+				core.Error("bad top sessions version. expected %d, got %d", version, TopSessionsVersion)
+				break
+			}
+
+			var nextSessions, totalSessions uint32
+			encoding.ReadUint32(data[:], &index, &nextSessions)
+			encoding.ReadUint32(data[:], &index, &totalSessions)
+
+			numSessions := ( len(data) - 16 ) / 8
+			sessions := make([]uint64, numSessions)
+			for i := 0; i < numSessions; i++ {
+				encoding.ReadUint64(data[:], &index, &sessions[i])
+			}
+
+			watcher.mutex.Lock()
+			watcher.nextSessions = int(nextSessions)
+			watcher.totalSessions = int(totalSessions)
+			watcher.topSessions = sessions
+			watcher.mutex.Unlock()
+		}
+	}
+}
+
+func getBinary(url string) []byte {
+
+	var err error
+	var response *http.Response
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+
+	client := &http.Client{}
+
+	response, err = client.Do(req)
+
+	if err != nil {
+		core.Error("failed to read %s: %v", url, err)
+		return nil
+	}
+
+	if response == nil {
+		core.Error("no response from %s", url)
+		return nil
+	}
+
+	if response.StatusCode != 200 {
+		core.Error("got %d response for %s", response.StatusCode, url)
+		return nil
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		core.Error("could not read response body for %s: %v", url, err)
+		return nil
+	}
+
+	response.Body.Close()
+
+	return body
+}
+
+func (watcher *TopSessionsWatcher) GetSessionCounts() (int, int) {
+	watcher.mutex.RLock()
+	next := watcher.nextSessions
+	total := watcher.totalSessions
+	watcher.mutex.RUnlock()
+	return next, total
+}
+
+func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
+	if begin < 0 {
+		return nil
+	}
+	if end <= begin {
+		return nil
+	}
+	watcher.mutex.RLock()
+	sessions := watcher.topSessions
+	watcher.mutex.RUnlock()
+	if end >= len(sessions) {
+		end = len(sessions)
+	}
+	return sessions[begin:end]
+}
+
+// --------------------------------------------------------------------------------------------------
+
 func GetSessionData(ctx context.Context, redisClient *redis.ClusterClient, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
 	pipeline := redisClient.Pipeline()
@@ -937,7 +1062,7 @@ func GetSessionData(ctx context.Context, redisClient *redis.ClusterClient, sessi
 	return &sessionData, sliceData, nearRelayData
 }
 
-func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessionIds []uint64) ([]*SessionData) {
+func GetSessionList(ctx context.Context, redisClient *redis.ClusterClient, sessionIds []uint64) []*SessionData {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1224,7 +1349,7 @@ func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, server
 
 	sessionMap := make(map[uint64]bool)
 
-	for k,v := range redis_server_sessions_a {
+	for k, v := range redis_server_sessions_a {
 		session_id, _ := strconv.ParseUint(k, 16, 64)
 		timestamp, _ := strconv.ParseUint(v, 10, 64)
 		if currentTime-timestamp > 30 {
@@ -1233,7 +1358,7 @@ func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, server
 		sessionMap[session_id] = true
 	}
 
-	for k,v := range redis_server_sessions_b {
+	for k, v := range redis_server_sessions_b {
 		session_id, _ := strconv.ParseUint(k, 16, 64)
 		timestamp, _ := strconv.ParseUint(v, 10, 64)
 		if currentTime-timestamp > 30 {
@@ -1256,7 +1381,7 @@ func GetServerData(ctx context.Context, redisClient *redis.ClusterClient, server
 	return &serverData, serverSessionData
 }
 
-func GetServerList(ctx context.Context, redisClient *redis.ClusterClient, serverAddresses []string) ([]*ServerData) {
+func GetServerList(ctx context.Context, redisClient *redis.ClusterClient, serverAddresses []string) []*ServerData {
 
 	pipeline := redisClient.Pipeline()
 
@@ -1352,8 +1477,8 @@ func GetServerAddresses(ctx context.Context, redisClient *redis.ClusterClient, m
 
 	serverEntries := make([]ServerEntry, len(serverMap))
 	index := 0
-	for k,v := range serverMap {
-		serverEntries[index] = ServerEntry{k,v}
+	for k, v := range serverMap {
+		serverEntries[index] = ServerEntry{k, v}
 		index++
 	}
 
@@ -1520,8 +1645,8 @@ func GetRelayAddresses(ctx context.Context, redisClient *redis.ClusterClient, mi
 
 	relayEntries := make([]RelayEntry, len(relayMap))
 	index := 0
-	for k,v := range relayMap {
-		relayEntries[index] = RelayEntry{k,v}
+	for k, v := range relayMap {
+		relayEntries[index] = RelayEntry{k, v}
 		index++
 	}
 
@@ -1560,7 +1685,7 @@ func GetRelayData(ctx context.Context, redisClient *redis.ClusterClient, relayAd
 	return &relayData
 }
 
-func GetRelayList(ctx context.Context, redisClient *redis.ClusterClient, relayAddresses []string) ([]*RelayData) {
+func GetRelayList(ctx context.Context, redisClient *redis.ClusterClient, relayAddresses []string) []*RelayData {
 
 	pipeline := redisClient.Pipeline()
 

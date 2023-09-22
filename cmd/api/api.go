@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 	// "strings"
-	
+
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -19,8 +19,8 @@ import (
 	"github.com/networknext/next/modules/portal"
 
 	// jwt "github.com/dgrijalva/jwt-go"
-	"github.com/redis/go-redis/v9"
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 )
 
 var redisClusterClient *redis.ClusterClient
@@ -289,28 +289,28 @@ type PortalSessionsResponse struct {
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	// todo
-	/*	
-	vars := mux.Vars(r)
-	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	end, err := strconv.ParseUint(vars["end"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	/*
+		vars := mux.Vars(r)
+		begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		end, err := strconv.ParseUint(vars["end"], 10, 32)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	*/
 	response := PortalSessionsResponse{}
 	// todo: needs session cruncher
 	/*
-	sessions := portal.GetSessions(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
-	response.Sessions = make([]PortalSessionData, len(sessions))
-	database := service.Database()
-	for i := range response.Sessions {
-		upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
-	}
+		sessions := portal.GetSessions(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
+		response.Sessions = make([]PortalSessionData, len(sessions))
+		database := service.Database()
+		for i := range response.Sessions {
+			upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
+		}
 	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -421,7 +421,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
- 	serverAddresses := portal.GetServerAddresses(service.Context, redisClusterClient, time.Now().Unix()/60, int(begin), int(end))
+	serverAddresses := portal.GetServerAddresses(service.Context, redisClusterClient, time.Now().Unix()/60, int(begin), int(end))
 	servers := portal.GetServerList(service.Context, redisClusterClient, serverAddresses)
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
@@ -462,8 +462,8 @@ type PortalServerDataResponse struct {
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	// todo
 	/*
-	vars := mux.Vars(r)
-	serverAddress := vars["server_address"]
+		vars := mux.Vars(r)
+		serverAddress := vars["server_address"]
 	*/
 	response := PortalServerDataResponse{}
 	// todo
@@ -554,7 +554,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData    *portal.RelayData    `json:"relay_data"`
+	RelayData *portal.RelayData `json:"relay_data"`
 	// todo
 	// RelaySamples []portal.RelaySample `json:"relay_samples"`
 }
@@ -562,20 +562,20 @@ type PortalRelayDataResponse struct {
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	// todo
 	/*
-	vars := mux.Vars(r)
-	relayName := vars["relay_name"]
-	database := service.Database()
+		vars := mux.Vars(r)
+		relayName := vars["relay_name"]
+		database := service.Database()
 	*/
 	response := PortalRelayDataResponse{}
 	// todo
 	/*
-	if database != nil {
-		relay := database.GetRelayByName(relayName)
-		if relay != nil {
-			relayAddress := relay.PublicAddress.String()
-			response.RelayData, response.RelaySamples = portal.GetRelayData(redisPortalPool, relayAddress)
+		if database != nil {
+			relay := database.GetRelayByName(relayName)
+			if relay != nil {
+				relayAddress := relay.PublicAddress.String()
+				response.RelayData, response.RelaySamples = portal.GetRelayData(redisPortalPool, relayAddress)
+			}
 		}
-	}
 	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
