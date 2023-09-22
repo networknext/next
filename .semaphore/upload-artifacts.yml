@@ -52,6 +52,11 @@ blocks:
             - artifact pull workflow api.tar.gz
             - gsutil cp api.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/api.tar.gz
 
+        - name: "Session Cruncher"
+          commands:
+            - artifact pull workflow session_cruncher.tar.gz
+            - gsutil cp session_cruncher.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/session_cruncher.tar.gz
+
         - name: "Map Cruncher"
           commands:
             - artifact pull workflow map_cruncher.tar.gz

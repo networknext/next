@@ -119,6 +119,11 @@ blocks:
             - make dist/api.tar.gz
             - artifact push workflow dist/api.tar.gz --force
 
+        - name: "Session Cruncher"
+          commands:
+            - make dist/session_cruncher.tar.gz
+            - artifact push workflow dist/session_cruncher.tar.gz --force
+
         - name: "Map Cruncher"
           commands:
             - make dist/map_cruncher.tar.gz

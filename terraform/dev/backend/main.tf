@@ -204,16 +204,6 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_redis_instance" "redis_portal" {
-  name               = "redis-portal"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
-}
-
 resource "google_redis_instance" "redis_map_cruncher" {
   name               = "redis-map-cruncher"
   tier               = "BASIC"
@@ -262,11 +252,6 @@ resource "google_redis_instance" "redis_server_backend" {
   authorized_network = google_compute_network.development.id
 }
 
-output "redis_portal_address" {
-  description = "The IP address of the portal redis instance"
-  value       = google_redis_instance.redis_portal.host
-}
-
 output "redis_map_cruncher_address" {
   description = "The IP address of the map cruncher redis instance"
   value       = google_redis_instance.redis_map_cruncher.host
@@ -291,6 +276,38 @@ output "redis_server_backend_address" {
   description = "The IP address of the server backend redis instance"
   value       = google_redis_instance.redis_server_backend.host
 }
+
+# ----------------------------------------------------------------------------------------
+
+// todo
+/*
+resource "google_redis_cluster" "cluster-ha" {
+  provider       = google-beta
+  name           = "ha-cluster"
+  shard_count    = 3
+  psc_configs {
+    network = google_compute_network.development.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
+  ]
+}
+
+resource "google_network_connectivity_service_connection_policy" "default" {
+  provider = google-beta
+  name = "redis-cluster"
+  location = "us-central1"
+  service_class = "gcp-memorystore-redis"
+  network = google_compute_network.development.id
+  psc_config {
+    subnetworks = [google_compute_subnetwork.development.id]
+  }
+}
+*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -1609,6 +1626,11 @@ output "analytics_address" {
 
 # ----------------------------------------------------------------------------------------
 
+// todo
+locals {
+  redis_cluster = "10.0.0.5:6379"
+}
+
 module "api" {
 
   source = "../../modules/external_http_service"
@@ -1623,8 +1645,10 @@ module "api" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_CLUSTER="${locals.redis_cluster}
+    REDIS_MAP_CRUNCHER_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -1656,6 +1680,39 @@ output "api_address" {
 
 // ---------------------------------------------------------------------------------------
 
+module "session_cruncher" {
+
+  source = "../../modules/internal_mig_with_health_check"
+
+  service_name = "session-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = var.google_machine_type
+  project            = var.google_project
+  region             = var.google_region
+  zones              = var.google_zones
+  default_network    = google_compute_network.development.id
+  default_subnetwork = google_compute_subnetwork.development.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-http"]
+  target_size        = 1
+}
+
+// ---------------------------------------------------------------------------------------
+
 module "portal_cruncher" {
 
   source = "../../modules/internal_mig_with_health_check"
@@ -1670,9 +1727,10 @@ module "portal_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_CLUSTER="${locals.redis_cluster}
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
