@@ -1,5 +1,7 @@
 package common
 
+// todo
+/*
 import (
 	"bytes"
 	"context"
@@ -9,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/google/uuid"
 	"github.com/networknext/next/modules/core"
 )
@@ -284,3 +285,4 @@ func LoadMasterServiceData(pool *redis.Pool, service string, name string) []byte
 	}
 	return []byte(value)
 }
+*/

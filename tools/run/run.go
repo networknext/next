@@ -220,8 +220,6 @@ func main() {
 		load_test_sessions()
 	} else if command == "redis-cluster" {
 		redis_cluster()
-	} else if command == "test-go-redis" {
-		test_go_redis()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}

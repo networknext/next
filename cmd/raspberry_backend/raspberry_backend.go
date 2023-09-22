@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"

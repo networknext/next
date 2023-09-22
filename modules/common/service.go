@@ -25,10 +25,10 @@ import (
 	"github.com/networknext/next/modules/ip2location"
 
 	"cloud.google.com/go/profiler"
-	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/rs/cors"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -87,7 +87,8 @@ type Service struct {
 	currentMagic  []byte
 	previousMagic []byte
 
-	leaderElection *RedisLeaderElection
+	// todo
+	// leaderElection *RedisLeaderElection
 
 	sendTrafficToMe  func() bool
 	machineIsHealthy func() bool
@@ -457,6 +458,14 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
+func CreateRedisClusterClient(redisNodes []string) *redis.ClusterClient {
+	clusterOptions := redis.ClusterOptions{Addrs: redisNodes}
+	redisClient := redis.NewClusterClient(&clusterOptions)
+	return redisClient
+}
+
+// todo
+/*
 func CreateRedisClient(hostname string) redis.Conn {
 	redisClient, err := redis.Dial("tcp", hostname)
 	if err != nil {
@@ -513,22 +522,31 @@ func (service *Service) LeaderElection() {
 
 	service.leaderElection.Start(service.Context)
 }
+*/
 
+// todo
+func (service *Service) LeaderElection() {
+}
 func (service *Service) Store(name string, data []byte) {
 	core.Debug("store %s (%d bytes)", name, len(data))
+	/*
 	if service.leaderElection == nil {
 		panic("leader election must be enabled to call store")
 	}
 	service.leaderElection.Store(service.Context, name, data)
+	*/
 }
 
 func (service *Service) Load(name string) []byte {
+	/*
 	if service.leaderElection == nil {
 		panic("leader election must be enabled to call load")
 	}
 	data := service.leaderElection.Load(service.Context, name)
 	core.Debug("loaded %s (%d bytes)", name, len(data))
 	return data
+	*/
+	return []byte{}
 }
 
 func (service *Service) UpdateRouteMatrix() {
@@ -628,16 +646,24 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 }
 
 func (service *Service) IsLeader() bool {
+	// todo
+	/*
+	return true
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
 	}
 	return false
+	*/
+	return true
 }
 
 func (service *Service) IsReady() bool {
+	// todo
+	/*
 	if service.leaderElection != nil {
 		return service.leaderElection.IsReady()
 	}
+	*/
 	return true
 }
 

@@ -25,8 +25,6 @@ import (
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
-
-	"github.com/gomodule/redigo/redis"
 )
 
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"

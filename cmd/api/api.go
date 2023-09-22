@@ -18,12 +18,14 @@ import (
 	"github.com/networknext/next/modules/portal"
 
 	// jwt "github.com/dgrijalva/jwt-go"
-	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 )
 
+// todo
+/*
 var redisPortalPool *redis.Pool
 var redisRelayBackendPool *redis.Pool
+*/
 
 var controller *admin.Controller
 
@@ -119,8 +121,11 @@ func main() {
 
 	if enablePortal {
 
+		// todo
+		/*
 		redisPortalPool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
 		redisRelayBackendPool = common.CreateRedisPool(redisRelayBackendHostname, redisPoolActive, redisPoolIdle)
+		*/
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
@@ -719,7 +724,8 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	data := common.LoadMasterServiceData(redisPortalPool, "map_cruncher", "map_data")
+	// todo
+	data := []byte{} // common.LoadMasterServiceData(redisPortalPool, "map_cruncher", "map_data")
 	w.Write(data)
 }
 
@@ -728,7 +734,9 @@ func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	data := common.LoadMasterServiceData(redisRelayBackendPool, "relay_backend", "cost_matrix")
+	// todo
+	data := []byte{}
+	// data := common.LoadMasterServiceData(redisRelayBackendPool, "relay_backend", "cost_matrix")
 	w.Write(data)
 }
 
