@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 	// "strings"
 	
 	"github.com/networknext/next/modules/admin"
@@ -18,14 +19,12 @@ import (
 	"github.com/networknext/next/modules/portal"
 
 	// jwt "github.com/dgrijalva/jwt-go"
+	"github.com/redis/go-redis/v9"
 	"github.com/gorilla/mux"
 )
 
-// todo
-/*
-var redisPortalPool *redis.Pool
-var redisRelayBackendPool *redis.Pool
-*/
+var redisClusterClient *redis.ClusterClient
+var redisRelayBackendClient *redis.Client
 
 var controller *admin.Controller
 
@@ -39,13 +38,13 @@ func main() {
 
 	service = common.CreateService("api")
 
+	// todo: redis cluster config
+	redisCluster := []string{"127.0.0.1:7000", "127.0.0.1:7001", "127.0.0.1:7002", "127.0.0.1:7003", "127.0.0.1:7004", "127.0.0.1:7005"}
+
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	databaseURL = envvar.GetString("DATABASE_URL", "")
-	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname := envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
-	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 1000)
-	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 10000)
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
@@ -59,10 +58,8 @@ func main() {
 	if databaseURL != "" {
 		core.Debug("database url: %s", databaseURL)
 	}
-	core.Debug("redis portal hostname: %s", redisPortalHostname)
+	core.Debug("redis cluster: %s", redisCluster)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
-	core.Debug("redis pool active: %d", redisPoolActive)
-	core.Debug("redis pool idle: %d", redisPoolIdle)
 	core.Debug("enable admin: %v", enableAdmin)
 	core.Debug("enable portal: %v", enablePortal)
 	core.Debug("enable database: %v", enableDatabase)
@@ -121,11 +118,8 @@ func main() {
 
 	if enablePortal {
 
-		// todo
-		/*
-		redisPortalPool = common.CreateRedisPool(redisPortalHostname, redisPoolActive, redisPoolIdle)
-		redisRelayBackendPool = common.CreateRedisPool(redisRelayBackendHostname, redisPoolActive, redisPoolIdle)
-		*/
+		redisClusterClient = common.CreateRedisClusterClient(redisCluster)
+		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
@@ -236,7 +230,7 @@ type PortalSessionCountsResponse struct {
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	// todo
+	// todo: needs session cruncher
 	// response.TotalSessionCount, response.NextSessionCount = portal.GetSessionCounts(redisPortalPool, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -309,7 +303,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 	response := PortalSessionsResponse{}
-	// todo
+	// todo: needs session cruncher
 	/*
 	sessions := portal.GetSessions(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
 	response.Sessions = make([]PortalSessionData, len(sessions))
@@ -328,8 +322,6 @@ type PortalUserSessionsResponse struct {
 }
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
 	vars := mux.Vars(r)
 	userHash, err := strconv.ParseUint(vars["user_hash"], 16, 64)
 	if err != nil {
@@ -346,17 +338,13 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	*/
 	response := PortalUserSessionsResponse{}
-	// todo
-	/*
-	sessions := portal.GetUserSessions(redisPortalPool, userHash, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetUserSessionList(service.Context, redisClusterClient, userHash, time.Now().Unix()/60, int(begin), int(end))
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
 	for i := range response.Sessions {
-		upgradePortalSessionData(database, &sessions[i], &response.Sessions[i])
+		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
 	}
-	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -369,25 +357,20 @@ type PortalSessionDataResponse struct {
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
 	vars := mux.Vars(r)
 	sessionId, err := strconv.ParseUint(vars["session_id"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	*/
 	response := PortalSessionDataResponse{}
-	/*
-	sessionData, sliceData, nearRelayData := portal.GetSessionData(redisPortalPool, sessionId)
+	sessionData, sliceData, nearRelayData := portal.GetSessionData(service.Context, redisClusterClient, sessionId)
 	if sessionData != nil {
 		database := service.Database()
 		upgradePortalSessionData(database, sessionData, &response.SessionData)
 		response.SliceData = sliceData
 		response.NearRelayData = nearRelayData
 	}
-	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -401,8 +384,7 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
-	// todo
-	// response.ServerCount = portal.GetServerCount(redisPortalPool, time.Now().Unix()/60)
+	response.ServerCount = portal.GetServerCount(service.Context, redisClusterClient, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -428,8 +410,6 @@ type PortalServersResponse struct {
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
 	vars := mux.Vars(r)
 	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
 	if err != nil {
@@ -441,10 +421,9 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
- 	servers := portal.GetServers(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
- 	*/
+ 	serverAddresses := portal.GetServerAddresses(service.Context, redisClusterClient, time.Now().Unix()/60, int(begin), int(end))
+	servers := portal.GetServerList(service.Context, redisClusterClient, serverAddresses)
 	response := PortalServersResponse{}
-	/*
 	response.Servers = make([]PortalServerData, len(servers))
 	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
@@ -470,7 +449,6 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -531,8 +509,6 @@ type PortalRelaysResponse struct {
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
 	vars := mux.Vars(r)
 	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
 	if err != nil {
@@ -544,10 +520,9 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	relays := portal.GetRelays(redisPortalPool, time.Now().Unix()/60, int(begin), int(end))
-	*/
+	relayAddresses := portal.GetRelayAddresses(service.Context, redisClusterClient, time.Now().Unix()/60, int(begin), int(end))
+	relays := portal.GetRelayList(service.Context, redisClusterClient, relayAddresses)
 	response := PortalRelaysResponse{}
-	/*
 	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
 	response.Relays = make([]PortalRelayData, len(relays))
@@ -573,7 +548,6 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
 		}
 	}
-	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
