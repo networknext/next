@@ -202,14 +202,20 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name string, data []byte) {
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name)
-	leaderElection.redisClient.Set(ctx, key, data, 0)
+	err := leaderElection.redisClient.Set(ctx, key, data, 0).Err()
+	if err != nil {
+		core.Error("failed to store data: %v", err)
+	}
 }
 
 func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string) []byte {
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name)
-	cmd := leaderElection.redisClient.Get(ctx, key)
-	value := cmd.Val()
-	return []byte(value)
+	value, err := leaderElection.redisClient.Get(ctx, key).Result()
+	if err != nil {
+		return nil
+	} else {
+		return []byte(value)
+	}
 }
 
 func (leaderElection *RedisLeaderElection) IsLeader() bool {
@@ -235,7 +241,9 @@ func LoadMasterServiceData(ctx context.Context, redisClient *redis.Client, servi
 	}
 	masterInstance := instanceEntries[0]
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", service, RedisLeaderElectionVersion, masterInstance.InstanceId, name)
-	cmd := redisClient.Get(ctx, key)
-	value := cmd.Val()
+	value, err := redisClient.Get(ctx, key).Result()
+	if err != nil {
+		return nil
+	}
 	return []byte(value)
 }
