@@ -4,15 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
-	"strings"
 	"time"
-	"sort"
 
-	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/constants"
-	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/portal"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -33,11 +28,11 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := CreateRedisClusterClient()
 
-			sessionInserter := CreateSessionInserter(redisClient, 1000)
+			sessionInserter := portal.CreateSessionInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
-			nearRelayInserter := CreateNearRelayInserter(redisClient, 1000)
+			nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 1000)
 
 			near_relay_max := uint64(0)
 
@@ -51,17 +46,17 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					userHash := uint64(j) + iteration
 
-					sessionData := GenerateRandomSessionData()
+					sessionData := portal.GenerateRandomSessionData()
 
 					sessionData.SessionId = sessionId
 					sessionData.UserHash = userHash
 
-					sliceData := GenerateRandomSliceData()
+					sliceData := portal.GenerateRandomSliceData()
 
 					sessionInserter.Insert(ctx, sessionId, userHash, sessionData, sliceData)
 
 					if sessionId > near_relay_max {
-						nearRelayData := GenerateRandomNearRelayData()
+						nearRelayData := portal.GenerateRandomNearRelayData()
 						nearRelayInserter.Insert(ctx, sessionId, nearRelayData)
 						near_relay_max = sessionId
 					}
@@ -83,7 +78,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := CreateRedisClusterClient()
 
-			serverInserter := CreateServerInserter(redisClient, 1000)
+			serverInserter := portal.CreateServerInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -93,7 +88,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 				for j := 0; j < 1000; j++ {
 
-					serverData := GenerateRandomServerData()
+					serverData := portal.GenerateRandomServerData()
 
 					id := uint32(iteration + uint64(j))
 
@@ -118,7 +113,7 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := CreateRedisClusterClient()
 
-			relayInserter := CreateRelayInserter(redisClient, 1000)
+			relayInserter := portal.CreateRelayInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -128,7 +123,7 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 
 				for j := 0; j < 10; j++ {
 
-					relayData := GenerateRandomRelayData()
+					relayData := portal.GenerateRandomRelayData()
 
 					id := uint32(iteration + uint64(j))
 
@@ -166,7 +161,7 @@ func RunPollThread(ctx context.Context) {
 				sessionIds[i] = uint64(1000000) + uint64(i)
 			}
 
-			sessionList := GetSessionList(ctx, redisClient, sessionIds)
+			sessionList := portal.GetSessionList(ctx, redisClient, sessionIds)
 			if sessionList != nil {
 				fmt.Printf("session list %d (%.3fms)\n", len(sessionList), float64(time.Since(start).Milliseconds()))
 			}
@@ -179,7 +174,7 @@ func RunPollThread(ctx context.Context) {
 
 			userHash := uint64(0x131e)
 
-			userSessionList := GetUserSessionList(ctx, redisClient, userHash, minutes, 0, 100)
+			userSessionList := portal.GetUserSessionList(ctx, redisClient, userHash, minutes, 0, 100)
 			if userSessionList != nil {
 				fmt.Printf("user session list %d (%.3fms)\n", len(userSessionList), float64(time.Since(start).Milliseconds()))
 			}
@@ -190,7 +185,7 @@ func RunPollThread(ctx context.Context) {
 
 			sessionId := uint64(1000000) + iteration
 
-			sessionData, sliceData, nearRelayData := GetSessionData(ctx, redisClient, sessionId)
+			sessionData, sliceData, nearRelayData := portal.GetSessionData(ctx, redisClient, sessionId)
 			if sessionData != nil {
 				fmt.Printf("session data %x -> %d slices, %d near relay data (%.3fms)\n", sessionData.SessionId, len(sliceData), len(nearRelayData), float64(time.Since(start).Milliseconds()))
 			}
@@ -199,7 +194,7 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			serverCount := GetServerCount(ctx, redisClient, minutes)
+			serverCount := portal.GetServerCount(ctx, redisClient, minutes)
 
 			fmt.Printf("servers: %d (%.3fms)\n", serverCount, float64(time.Since(start).Milliseconds()))
 
@@ -207,7 +202,7 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			serverAddresses := GetServerAddresses(ctx, redisClient, minutes, 0, 100)
+			serverAddresses := portal.GetServerAddresses(ctx, redisClient, minutes, 0, 100)
 
 			fmt.Printf("server addresses -> %d server addresses (%.3fms)\n", len(serverAddresses), float64(time.Since(start).Milliseconds()))
 
@@ -219,7 +214,7 @@ func RunPollThread(ctx context.Context) {
 
 				serverAddress := serverAddresses[0]
 
-				serverData, serverSessions := GetServerData(ctx, redisClient, serverAddress, minutes)
+				serverData, serverSessions := portal.GetServerData(ctx, redisClient, serverAddress, minutes)
 
 				if serverData != nil {
 					fmt.Printf("server data %s -> %d sessions (%.3fms)\n", serverData.ServerAddress, len(serverSessions), float64(time.Since(start).Milliseconds()))
@@ -230,7 +225,7 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			serverList := GetServerList(ctx, redisClient, serverAddresses)
+			serverList := portal.GetServerList(ctx, redisClient, serverAddresses)
 			if serverList != nil {
 				fmt.Printf("server list %d (%.3fms)\n", len(serverList), float64(time.Since(start).Milliseconds()))
 			}
@@ -239,7 +234,7 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			relayCount := GetRelayCount(ctx, redisClient, minutes)
+			relayCount := portal.GetRelayCount(ctx, redisClient, minutes)
 
 			fmt.Printf("relays: %d (%.3fms)\n", relayCount, float64(time.Since(start).Milliseconds()))
 
@@ -247,7 +242,7 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			relayAddresses := GetRelayAddresses(ctx, redisClient, minutes, 0, 100)
+			relayAddresses := portal.GetRelayAddresses(ctx, redisClient, minutes, 0, 100)
 
 			fmt.Printf("relay addresses -> %d relay addresses (%.3fms)\n", len(relayAddresses), float64(time.Since(start).Milliseconds()))
 
@@ -259,7 +254,7 @@ func RunPollThread(ctx context.Context) {
 
 				relayAddress := relayAddresses[0]
 
-				relayData := GetRelayData(ctx, redisClient, relayAddress)
+				relayData := portal.GetRelayData(ctx, redisClient, relayAddress)
 
 				if relayData != nil {
 					fmt.Printf("relay data %s (%.3fms)\n", relayData.RelayAddress, float64(time.Since(start).Milliseconds()))
@@ -270,7 +265,7 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			relayList := GetRelayList(ctx, redisClient, relayAddresses)
+			relayList := portal.GetRelayList(ctx, redisClient, relayAddresses)
 			if serverList != nil {
 				fmt.Printf("relay list %d (%.3fms)\n", len(relayList), float64(time.Since(start).Milliseconds()))
 			}
