@@ -24,10 +24,12 @@ const TopSessionsVersion = uint64(0)
 
 type SessionUpdate struct {
 	sessionId     uint64
-	currentScore  int32
-	previousScore int32
+	score         int32
 	next          bool
-	delete        bool
+}
+
+type SessionDelete struct {
+	sessionId     uint64
 }
 
 type TopSessions struct {
@@ -40,6 +42,7 @@ type TopSessions struct {
 type Bucket struct {
 	mutex                sync.Mutex
 	sessionUpdateChannel chan SessionUpdate
+	sessionDeleteChannel chan SessionDelete
 	currentSessions      *SortedSet
 	previousSessions     *SortedSet
 	currentNext          map[uint64]bool
@@ -96,8 +99,26 @@ func StartProcessThread(bucket *Bucket) {
 
 	go func() {
 		for {
+			ticker := time.NewTicker(time.Second)
 			select {
+
 			case sessionUpdate := <-bucket.sessionUpdateChannel:
+
+				bucket.mutex.Lock()
+				bucket.currentSessions.Insert(sessionUpdate.sessionId, sessionUpdate.score)
+				if sessionUpdate.next {
+					bucket.currentNext[sessionUpdate.sessionId] = true
+				}
+				bucket.mutex.Unlock()
+			
+			case sessionDelete := <-bucket.sessionDeleteChannel:
+
+				bucket.mutex.Lock()
+				bucket.currentSessions.Delete(sessionDelete.sessionId)
+				delete(bucket.currentNext, sessionDelete.sessionId)
+				bucket.mutex.Unlock()
+
+			case <-ticker.C:
 
 				currentTime := time.Now().Unix()
 
@@ -111,22 +132,6 @@ func StartProcessThread(bucket *Bucket) {
 					bucket.currentNext = make(map[uint64]bool)
 					bucket.mutex.Unlock()
 					minute = currentMinute
-				}
-
-				if !sessionUpdate.delete {
-					bucket.mutex.Lock()
-					bucket.currentSessions.Insert(sessionUpdate.sessionId, sessionUpdate.currentScore)
-					if sessionUpdate.next {
-						bucket.currentNext[sessionUpdate.sessionId] = true
-					}
-					bucket.mutex.Unlock()
-				} else {
-					bucket.mutex.Lock()
-					bucket.currentSessions.Delete(sessionUpdate.sessionId)
-					if sessionUpdate.next {
-						delete(bucket.currentNext, sessionUpdate.sessionId)
-					}
-					bucket.mutex.Unlock()
 				}
 			}
 		}
@@ -160,7 +165,7 @@ func TopSessionsThread() {
 
 			for i := 0; i < NumBuckets; i++ {
 				bucketSessions := buckets[i].previousSessions.GetByRankRange(1, TopSessionsCount)
-				sessions_b = append(sessions_a, bucketSessions...)
+				sessions_b = append(sessions_b, bucketSessions...)
 				if len(sessions_b) >= TopSessionsCount {
 					sessions_b = sessions_b[:TopSessionsCount]
 					break
@@ -216,6 +221,10 @@ func TopSessionsThread() {
 			}
 
 			sort.Slice(sessions, func(i int, j int) bool { return sessions[i].score < sessions[j].score })
+
+			if len(sessions) > TopSessionsCount {
+				sessions = sessions[:TopSessionsCount]
+			}
 
 			newTopSessions := &TopSessions{}
 			newTopSessions.nextSessions = nextCount
@@ -284,20 +293,19 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	numSessionUpdates := len(body) / 17
 
 	index := 0
-	sessionUpdate := SessionUpdate{}
 	for i := 0; i < numSessionUpdates; i++ {
-		sessionUpdate.sessionId = binary.LittleEndian.Uint64(body[index : index+8])
-		sessionUpdate.currentScore = int32(binary.LittleEndian.Uint32(body[index+8 : index+12]))
-		sessionUpdate.previousScore = int32(binary.LittleEndian.Uint32(body[index+12 : index+16]))
+		sessionId := binary.LittleEndian.Uint64(body[index : index+8])
+		currentScore := int32(binary.LittleEndian.Uint32(body[index+8 : index+12]))
+		previousScore := int32(binary.LittleEndian.Uint32(body[index+12 : index+16]))
+		var next bool
 		if body[index+16] != 0 {
-			sessionUpdate.next = true
+			next = true
 		}
-		currentIndex := GetBucketIndex(sessionUpdate.currentScore)
-		previousIndex := GetBucketIndex(sessionUpdate.previousScore)
-		buckets[currentIndex].sessionUpdateChannel <- sessionUpdate
+		currentIndex := GetBucketIndex(currentScore)
+		previousIndex := GetBucketIndex(previousScore)
+		buckets[currentIndex].sessionUpdateChannel <- SessionUpdate{sessionId: sessionId, score: currentScore, next: next}
 		if previousIndex != currentIndex {
-			sessionUpdate.delete = true
-			buckets[previousIndex].sessionUpdateChannel <- sessionUpdate
+			buckets[previousIndex].sessionDeleteChannel <- SessionDelete{sessionId: sessionId}
 		}
 		index += 17
 	}

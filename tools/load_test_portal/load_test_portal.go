@@ -50,8 +50,8 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					next := common.RandomBool()
 
-					currentScore := uint32(common.RandomInt(0,999))
-					previousScore := uint32(common.RandomInt(0,999))
+					currentScore := uint32(sessionId%1000)
+					previousScore := currentScore
 
 					sessionInserter.Insert(ctx, sessionId, userHash, next, currentScore, previousScore, sessionData, sliceData)
 
