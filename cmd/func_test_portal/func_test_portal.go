@@ -285,9 +285,11 @@ func Get(url string, object interface{}) {
 
 	response.Body.Close()
 
+	/*
 	fmt.Printf("--------------------------------------------------------------------\n")
 	fmt.Printf("%s", body)
 	fmt.Printf("--------------------------------------------------------------------\n")
+	*/
 
 	err = json.Unmarshal([]byte(body), &object)
 	if err != nil {
