@@ -63,6 +63,9 @@ type PortalSessionUpdateMessage struct {
 	NearRelayJitter     [constants.MaxNearRelays]byte
 	NearRelayPacketLoss [constants.MaxNearRelays]float32
 	NearRelayRoutable   [constants.MaxNearRelays]bool
+
+	CurrentScore  uint32
+	PreviousScore uint32
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {
@@ -131,6 +134,9 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteFloat32(buffer, &index, message.NearRelayPacketLoss[i])
 		encoding.WriteBool(buffer, &index, message.NearRelayRoutable[i])
 	}
+
+	encoding.WriteUint32(buffer, &index, message.CurrentScore)
+	encoding.WriteUint32(buffer, &index, message.PreviousScore)
 
 	return buffer[:index]
 }
@@ -318,6 +324,14 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 		if !encoding.ReadBool(buffer, &index, &message.NearRelayRoutable[i]) {
 			return fmt.Errorf("failed to read near relay packet routable")
 		}
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.CurrentScore) {
+		return fmt.Errorf("failed to read current score")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.PreviousScore) {
+		return fmt.Errorf("failed to read previous score")
 	}
 
 	return nil

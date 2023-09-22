@@ -68,6 +68,9 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
+	// for tracking previous score across session update
+	PreviousScore uint32
+
 	// lat/long if we looked it up this update
 	Latitude  float32
 	Longitude float32
@@ -142,6 +145,38 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.SliceNumber != 0 && !SessionUpdate_ReadSessionData(state) {
 		return true
+	}
+
+	/*
+		Update scores
+
+		We track the highest score seen per-session to keep scores (and session ordering in portal) stable.
+
+		Previous score is required for the bucketing algorithm that tracks top sessions.		
+	*/
+
+	score := int32(0)
+
+	if state.Request.Next {
+		score = 500 - int32(state.Request.NextRTT)
+	} else {
+		score = 500 + int32(state.Request.DirectRTT)
+	}
+
+	if score < 0 {
+		score = 0
+	} else if score > 999 {
+		score = 999
+	}
+
+	if state.Request.SliceNumber > 1 {
+		state.PreviousScore = state.Input.HighestScore
+		if uint32(score) > state.Input.HighestScore {
+			state.Input.HighestScore = uint32(score)
+		}
+	} else {
+		state.Input.HighestScore = uint32(score)
+		state.PreviousScore = uint32(score)
 	}
 
 	/*
@@ -1167,6 +1202,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 		message.NearRelayRoutable[i] = state.Request.NearRelayRTT[i] != 255
 	}
+
+	message.CurrentScore = state.Output.HighestScore
+	message.PreviousScore = state.PreviousScore
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message

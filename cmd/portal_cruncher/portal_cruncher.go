@@ -117,22 +117,9 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	next := message.Next
 
-	score := int32(0)
-	if next {
-		score = 500 - int32(message.NextRTT)
-	} else {
-		score = 500 + int32(message.DirectRTT)
-	}
+	currentScore := message.CurrentScore
 
-	if score < 0 {
-		score = 0
-	} else if score > 999 {
-		score = 999
-	}
-
-	// todo: hack
-	currentScore := uint32(score)
-	previousScore := uint32(score)
+	previousScore := message.PreviousScore
 
 	var isp string
 	if !service.Local {
