@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"strconv"
 	"time"
+	"context"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -348,7 +349,7 @@ func test_portal() {
 
 	redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-	redisClient.Do("FLUSHALL")
+	redisClient.FlushAll(context.Background())
 
 	// create a dummy database
 

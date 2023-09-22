@@ -15,6 +15,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"context"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -91,7 +92,15 @@ func happy_path(wait bool) int {
 
 	redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-	redisClient.Do("FLUSHALL")
+	redisClient.FlushAll(context.Background())
+
+	// initialize redis cluster
+
+	fmt.Printf("starting redis cluster:\n\n")
+
+	run("redis-cluster", "logs/redis_cluster")
+
+	fmt.Printf("\n")
 
 	// initialize api
 
@@ -397,6 +406,34 @@ func happy_path(wait bool) int {
 		fmt.Printf("\n\nerror: server backend failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server_backend_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	// initialize session cruncher
+
+	fmt.Printf("\nstarting session cruncher:\n\n")
+
+	session_cruncher_stdout := run("session-cruncher", "logs/session_cruncher")
+
+	fmt.Printf("\nverifying session cruncher ...")
+
+	session_cruncher_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(session_cruncher_stdout.String(), "starting http server on port 40200") {
+			session_cruncher_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !session_cruncher_initialized {
+		fmt.Printf("\n\nerror: session cruncher failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", session_cruncher_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
