@@ -141,6 +141,25 @@ func api() *exec.Cmd {
 	return cmd
 }
 
+func session_cruncher() *exec.Cmd {
+
+	cmd := exec.Command("./session_cruncher")
+	if cmd == nil {
+		panic("could not create session cruncher!\n")
+		return nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40200")
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	cmd.Start()
+
+	return cmd
+}
+
 func RunSessionInsertThreads(threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
@@ -386,6 +405,10 @@ func test_portal() {
 
 	api_cmd := api()
 
+	// run the session cruncher, it handles high load session tracking that is too intense for redis
+
+	session_cruncher_cmd := session_cruncher()
+
 	// run redis insertion threads
 
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 10)
@@ -534,7 +557,10 @@ func test_portal() {
 	}
 
 	api_cmd.Process.Signal(os.Interrupt)
+	session_cruncher_cmd.Process.Signal(os.Interrupt)
+
 	api_cmd.Wait()
+	session_cruncher_cmd.Wait()
 
 	if !ready {
 		fmt.Printf("error: portal API is broken\n")
