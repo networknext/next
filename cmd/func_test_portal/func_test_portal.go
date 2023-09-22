@@ -25,8 +25,6 @@ import (
 	"github.com/networknext/next/modules/portal"
 )
 
-var RedisNodes = []string{"127.0.0.1:10000", "127.0.0.1:10001", "127.0.0.1:10002", "127.0.0.1:10003", "127.0.0.1:10004", "127.0.0.1:10005"}
-
 var SessionCruncherURL = "http://127.0.0.1:40200"
 
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
@@ -166,7 +164,7 @@ func RunSessionInsertThreads(threadCount int) {
 
 		go func(thread int) {
 
-			redisClient := common.CreateRedisClusterClient(RedisNodes)
+			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
 			sessionInserter := portal.CreateSessionInserter(context.Background(), redisClient, SessionCruncherURL, 1000)
 
@@ -213,7 +211,7 @@ func RunServerInsertThreads(threadCount int) {
 
 		go func(thread int) {
 
-			redisClient := common.CreateRedisClusterClient(RedisNodes)
+			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
 			serverInserter := portal.CreateServerInserter(redisClient, 1000)
 
@@ -237,7 +235,7 @@ func RunRelayInsertThreads(threadCount int) {
 
 		go func(thread int) {
 
-			redisClient := common.CreateRedisClusterClient(RedisNodes)
+			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
 			relayInserter := portal.CreateRelayInserter(redisClient, 1000)
 
