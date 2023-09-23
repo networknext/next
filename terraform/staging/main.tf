@@ -1676,6 +1676,7 @@ module "api" {
   min_size                 = 3
   max_size                 = 16
   target_cpu               = 60
+  domain                   = "api-staging.${var.cloudflare_domain}"
 }
 
 output "api_address" {
