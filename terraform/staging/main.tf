@@ -1521,6 +1521,7 @@ module "relay_gateway" {
   min_size                 = 3
   max_size                 = 64
   target_cpu               = 60
+  domain                   = "relay-staging.${var.cloudflare_domain}"
 }
 
 output "relay_gateway_address" {
