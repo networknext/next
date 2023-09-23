@@ -151,7 +151,10 @@ func ProcessAnalyticsRelayToRelayPingMessage(service *common.Service, name strin
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -192,7 +195,10 @@ func ProcessAnalyticsNearRelayPingMessage(service *common.Service, name string, 
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -233,7 +239,10 @@ func ProcessAnalyticsRouteMatrixUpdateMessage(service *common.Service, name stri
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -274,7 +283,10 @@ func ProcessAnalyticsRelayUpdateMessage(service *common.Service, name string, im
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -315,7 +327,10 @@ func ProcessAnalyticsServerInitMessage(service *common.Service, name string, imp
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -356,7 +371,10 @@ func ProcessAnalyticsServerUpdateMessage(service *common.Service, name string, i
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -397,7 +415,10 @@ func ProcessAnalyticsSessionUpdateMessage(service *common.Service, name string, 
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
@@ -438,7 +459,10 @@ func ProcessAnalyticsSessionSummaryMessage(service *common.Service, name string,
 					break
 				}
 
-				publisher.PublishChannel <- &message
+				// todo
+				_ = message
+				_ = publisher
+				// publisher.PublishChannel <- &message
 
 				pubsubMessage.Ack()
 			}
