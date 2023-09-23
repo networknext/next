@@ -21,8 +21,7 @@ variable "google_database_bucket" { type = string }
 
 variable "cloudflare_api_token" { type = string }
 variable "cloudflare_zone_id_api" { type = string }
-variable "cloudflare_zone_id_relay_backend" { type = string }
-variable "cloudflare_zone_id_server_backend" { type = string }
+variable "cloudflare_domain" { type = string }
 
 variable "relay_backend_public_key" { type = string }
 variable "relay_backend_private_key" { type = string }
@@ -70,25 +69,33 @@ provider "cloudflare" {
 # ----------------------------------------------------------------------------------------
 
 resource "cloudflare_record" "api_domain" {
-  zone_id = var.cloudflare_zone_id_api
-  name    = "staging"
+  zone_id = var.cloudflare_zone_id
+  name    = "api-staging"
   value   = module.api.address
   type    = "A"
   proxied = false
 }
 
 resource "cloudflare_record" "server_backend_domain" {
-  zone_id = var.cloudflare_zone_id_server_backend
-  name    = "staging"
+  zone_id = var.cloudflare_zone_id
+  name    = "server-staging"
   value   = module.server_backend.address
   type    = "A"
   proxied = false
 }
 
 resource "cloudflare_record" "relay_backend_domain" {
-  zone_id = var.cloudflare_zone_id_relay_backend
-  name    = "staging"
+  zone_id = var.cloudflare_zone_id
+  name    = "relay-staging"
   value   = module.relay_gateway.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "portal_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "portal-staging"
+  value   = module.portal.address
   type    = "A"
   proxied = false
 }
@@ -2004,7 +2011,7 @@ module "portal" {
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
-  domain                   = "portal-dev.${var.cloudflare_domain}"
+  domain                   = "portal-staging.${var.cloudflare_domain}"
 }
 
 output "portal_address" {
