@@ -1680,7 +1680,7 @@ output "api_address" {
 
 module "session_cruncher" {
 
-  source = "../../modules/internal_http_service"
+  source = "../modules/internal_http_service"
 
   service_name = "session-cruncher"
 
@@ -1982,6 +1982,34 @@ module "load_test_sessions" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 2
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "portal" {
+
+  source = "../modules/nginx"      # todo: this should become autoscale
+
+  service_name = "portal"
+
+  artifact                 = "${var.google_artifacts_bucket}/${var.tag}/portal.tar.gz"
+  config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
+  tag                      = var.tag
+  extra                    = var.extra
+  machine_type             = "n1-highcpu-2"
+  project                  = var.google_project
+  region                   = var.google_region
+  zones                    = var.google_zones
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "portal-dev.${var.cloudflare_domain}"
+}
+
+output "portal_address" {
+  description = "The IP address of the portal load balancer"
+  value       = module.portal.address
 }
 
 # ----------------------------------------------------------------------------------------
