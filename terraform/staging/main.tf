@@ -248,10 +248,10 @@ resource "google_redis_instance" "redis_relay_backend" {
 resource "google_redis_instance" "redis_server_backend" {
   name                    = "redis-server-backend"
   tier                    = "STANDARD_HA"
-  memory_size_gb          = 10
+  memory_size_gb          = 40
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
-  redis_configs           = { "maxmemory-gb" = "5" }
+  redis_configs           = { "maxmemory-gb" = "20" }
   authorized_network      = google_compute_network.staging.id
 }
 
