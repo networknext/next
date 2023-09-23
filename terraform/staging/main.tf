@@ -20,7 +20,7 @@ variable "google_artifacts_bucket" { type = string }
 variable "google_database_bucket" { type = string }
 
 variable "cloudflare_api_token" { type = string }
-variable "cloudflare_zone_id_api" { type = string }
+variable "cloudflare_zone_id" { type = string }
 variable "cloudflare_domain" { type = string }
 
 variable "relay_backend_public_key" { type = string }
