@@ -1707,7 +1707,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-22"
+  machine_type               = "c3-highcpu-44"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1832,7 +1832,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-highcpu-22"
+  machine_type       = "c3-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1843,7 +1843,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 40
+  target_cpu         = 20
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
