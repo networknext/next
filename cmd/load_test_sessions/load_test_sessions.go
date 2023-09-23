@@ -125,7 +125,7 @@ func RunSession(index int) {
 			buffer := make([]byte, 4096)
 			packetBytes, from, err := conn.ReadFromUDP(buffer[:])
 			if err != nil {
-				fmt.Printf("udp receive error: %v\n", err)
+				core.Error("udp receive error: %v", err)
 				break
 			}
 
@@ -198,9 +198,9 @@ func RunSession(index int) {
 				for i := 0; i < 9; i++ {
 
 					if retryNumber == 0 {
-						fmt.Printf("update session %03d\n", index)
+						core.Debug("update session %03d", index)
 					} else {
-						fmt.Printf("update session %03d (retry %d)\n", index, retryNumber)
+						core.Debug("update session %03d (retry %d)", index, retryNumber)
 					}
 
 					mutex.Lock()
@@ -239,12 +239,7 @@ func RunSession(index int) {
 					}
 
 					if sliceNumber >= 1 {
-						// give 50% of sessions a very high direct RTT, so they tend to go over network next
-						if (sessionId % 2) == 0 {
-							packet.DirectRTT = 250
-						} else {
-							packet.DirectRTT = 1
-						}
+						packet.DirectRTT = float32(sessionId % 500)
 					}
 
 					if next {
@@ -296,14 +291,16 @@ func RunSession(index int) {
 
 				if sessionDuration > sessionTimeout {
 					if !clientPingTimedOut {
-						fmt.Printf("client ping timed out\n")
+						core.Debug("client ping timed out")
 						clientPingTimedOut = true
 					}
 				}
 
+				// todo: disable this for now, to check the session count accuracy
+				/*
 				if sessionDuration > sessionTimeout+60 {
 					mutex.Lock()
-					fmt.Printf("new session %03d\n", index)
+					core.Debug("new session %03d\n", index)
 					sessionId = rand.Uint64()
 					sliceNumber = 0
 					retryNumber = 0
@@ -315,6 +312,7 @@ func RunSession(index int) {
 					numNearRelays = 0
 					mutex.Unlock()
 				}
+				*/
 			}
 		}
 	}()

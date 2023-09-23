@@ -309,6 +309,8 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("---------------------------------------------------------------------------")
 
+	// todo: disabled so we can focus on session scalability
+	/*
 	defer func() {
 
 		if handler.AnalyticsServerUpdateMessageChannel != nil {
@@ -353,6 +355,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			handler.Events[SDK_HandlerEvent_SentPortalServerUpdateMessage] = true
 		}
 	}()
+	*/
 
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {

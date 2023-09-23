@@ -158,7 +158,13 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	score := int32(0)
 
 	if state.Request.Next {
-		score = 500 - int32(state.Request.NextRTT)
+		improvement := int32(state.Request.DirectRTT) - int32(state.Request.NextRTT)
+		if improvement < 0 {
+			improvement = 0
+		} else if improvement > 500 {
+			improvement = 500
+		}
+		score = 500 - improvement
 	} else {
 		score = 500 + int32(state.Request.DirectRTT)
 	}
@@ -1121,15 +1127,18 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendPortalSessionUpdateMessage(state)
 
-		sendPortalNearRelayUpdateMessage(state)
-
 		sendPortalMapUpdateMessage(state)
+
+		// todo: disabled so we can focus on scaling up sessions to 10M
+		/*
+		sendPortalNearRelayUpdateMessage(state)
 
 		sendAnalyticsSessionUpdateMessage(state)
 
 		sendAnalyticsSessionSummaryMessage(state)
 
 		sendAnalyticsNearRelayPingMessages(state)
+		*/
 	}
 }
 

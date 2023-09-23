@@ -5,6 +5,8 @@
 
 package main
 
+// todo: turn this off so we can load test sessions alone
+/*
 import (
 	"bytes"
 	"encoding/json"
@@ -302,11 +304,9 @@ func Get(url string, object interface{}) {
 
 	response.Body.Close()
 
-	/*
-	fmt.Printf("--------------------------------------------------------------------\n")
-	fmt.Printf("%s", body)
-	fmt.Printf("--------------------------------------------------------------------\n")
-	*/
+	// fmt.Printf("--------------------------------------------------------------------\n")
+	// fmt.Printf("%s", body)
+	// fmt.Printf("--------------------------------------------------------------------\n")
 
 	err = json.Unmarshal([]byte(body), &object)
 	if err != nil {
@@ -568,4 +568,9 @@ func test_portal() {
 
 func main() {
 	test_portal()
+}
+*/
+
+func main() {
+	// ...
 }
