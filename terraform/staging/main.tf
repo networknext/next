@@ -2000,8 +2000,8 @@ module "portal" {
   project                  = var.google_project
   region                   = var.google_region
   zones                    = var.google_zones
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
+  default_network          = google_compute_network.staging.id
+  default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-dev.${var.cloudflare_domain}"
