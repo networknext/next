@@ -1707,7 +1707,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  machine_type               = "c3-highcpu-22"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
