@@ -1642,6 +1642,8 @@ module "api" {
     ENV=staging
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_MAP_CRUNCHER_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
@@ -1676,6 +1678,41 @@ output "api_address" {
 
 // ---------------------------------------------------------------------------------------
 
+module "session_cruncher" {
+
+  source = "../../modules/internal_http_service"
+
+  service_name = "session-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "c3-highcpu-8"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.staging.id
+  default_subnetwork         = google_compute_subnetwork.staging.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
+}
+
+// ---------------------------------------------------------------------------------------
+
 module "portal_cruncher" {
 
   source = "../modules/internal_mig_with_health_check_autoscale"
@@ -1692,6 +1729,7 @@ module "portal_cruncher" {
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_PROFILER=1
     REPS=10
@@ -1944,6 +1982,28 @@ module "load_test_sessions" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 2
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_router" "router" {
+  name    = "router-to-internet"
+  network = google_compute_network.staging.id
+  project = var.google_project
+  region  = var.google_region
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "nat"
+  router                             = google_compute_router.router.name
+  region                             = var.google_region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
 }
 
 # ----------------------------------------------------------------------------------------
