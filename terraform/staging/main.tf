@@ -1698,7 +1698,7 @@ module "session_cruncher" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
-    ENV=dev
+    ENV=staging
     DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
