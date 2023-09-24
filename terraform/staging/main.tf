@@ -249,16 +249,6 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-//resource "google_redis_instance" "redis_portal" {
-//  name                    = "redis-portal"
-//  tier                    = "STANDARD_HA"
-//  memory_size_gb          = 40
-//  region                  = "us-central1"
-//  redis_version           = "REDIS_7_0"
-//  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "20" }
-//  authorized_network      = google_compute_network.staging.id
-//}
-
 resource "google_redis_instance" "redis_relay_backend" {
   name                    = "redis-relay-backend"
   tier                    = "STANDARD_HA"
@@ -266,16 +256,6 @@ resource "google_redis_instance" "redis_relay_backend" {
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
   redis_configs           = { "maxmemory-gb" = "5" }
-  authorized_network      = google_compute_network.staging.id
-}
-
-resource "google_redis_instance" "redis_server_backend" {
-  name                    = "redis-server-backend"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 40
-  region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
-  redis_configs           = { "maxmemory-gb" = "20" }
   authorized_network      = google_compute_network.staging.id
 }
 
@@ -301,6 +281,7 @@ resource "google_redis_instance" "redis_analytics" {
 
 locals {
   redis_portal_address = "10.0.0.207:6379"
+  redis_server_backend_address = "10.0.0.207:6379"
 }
 
 output "redis_portal_address" {
@@ -1766,8 +1747,8 @@ module "portal_cruncher" {
     cat <<EOF > /app/app.env
     ENV=staging
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
-    REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_PROFILER=1
@@ -1846,7 +1827,7 @@ module "server_backend" {
     UDP_NUM_THREADS=64
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    REDIS_CLUSTER="${local.redis_server_backend_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"

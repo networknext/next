@@ -134,7 +134,7 @@ func main() {
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	producerThreadCount := envvar.GetInt("PRODUCER_THREAD_COUNT", 500)
+	producerThreadCount := envvar.GetInt("PRODUCER_THREAD_COUNT", 100)
 	consumerThreadCount := envvar.GetInt("CONSUMER_THREAD_COUNT", 1000)
 
 	var numMessagesSent uint64
