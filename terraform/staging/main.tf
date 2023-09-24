@@ -102,6 +102,29 @@ resource "cloudflare_record" "portal_domain" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_compute_managed_ssl_certificate" "api" {
+  name = "api"
+  managed {
+    domains = ["api-staging.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "relay" {
+  name = "relay"
+  managed {
+    domains = ["relay-staging.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "portal" {
+  name = "portal"
+  managed {
+    domains = ["portal-staging.${var.cloudflare_domain}"]
+  }
+}
+
+# ----------------------------------------------------------------------------------------
+
 resource "google_compute_network" "staging" {
   name                    = "staging"
   project                 = var.google_project
@@ -1522,6 +1545,7 @@ module "relay_gateway" {
   max_size                 = 64
   target_cpu               = 60
   domain                   = "relay-staging.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.relay.id
 }
 
 output "relay_gateway_address" {
@@ -1678,6 +1702,7 @@ module "api" {
   max_size                 = 16
   target_cpu               = 60
   domain                   = "api-staging.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.api.id
 }
 
 output "api_address" {
@@ -2014,6 +2039,7 @@ module "portal" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-staging.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.portal.id
 }
 
 output "portal_address" {

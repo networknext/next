@@ -63,9 +63,7 @@ func main() {
 		StartProcessThread(&buckets[i])
 	}
 
-	topSessionsMutex.Lock()
-	topSessions = &TopSessions{}
-	topSessionsMutex.Unlock()
+	UpdateTopSessions(&TopSessions{})
 
 	go TopSessionsThread()
 
@@ -100,8 +98,28 @@ func StartProcessThread(bucket *Bucket) {
 	}()
 }
 
+func UpdateTopSessions(newTopSessions *TopSessions) {
+
+	data := make([]byte, 8+4+4+4+8*newTopSessions.numTopSessions)
+
+	index := 0
+
+	encoding.WriteUint64(data[:], &index, TopSessionsVersion)
+	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
+	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
+
+	for i := 0; i < newTopSessions.numTopSessions; i++ {
+		encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
+	}
+
+	topSessionsMutex.Lock()
+	topSessions = newTopSessions
+	topSessionsData = data
+	topSessionsMutex.Unlock()
+}
+
 func TopSessionsThread() {
-	ticker := time.NewTicker(20*time.Second)
+	ticker := time.NewTicker(10*time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -137,6 +155,13 @@ func TopSessionsThread() {
 			nextSessionsMap := make(map[uint64]bool, maxNextSessions)
 			totalSessionsMap := make(map[uint64]bool, maxTotalSessions)
 
+			type Session struct {
+				sessionId uint64
+				score     int32
+			}
+	
+			sessions := make([]Session, 0, TopSessionsCount)
+
 			for i := 0; i < NumBuckets; i++ {
 				bucketNextSessions := nextSessions[i].GetByRankRange(1, -1)
 				bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
@@ -148,19 +173,15 @@ func TopSessionsThread() {
 				for j := range bucketTotalSessions {
 					if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
 						totalSessionsMap[bucketTotalSessions[j].Key] = true
+						if len(sessions) < TopSessionsCount {
+							sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
+						}
 					}
 				}
 			}
 
 			nextCount := len(nextSessionsMap)
 			totalCount := len(totalSessionsMap)
-
-			type Session struct {
-				sessionId uint64
-				score     int32
-			}
-	
-			sessions := make([]Session, 0, TopSessionsCount)
 
 			newTopSessions := &TopSessions{}
 			newTopSessions.nextSessions = uint32(nextCount)
@@ -170,22 +191,7 @@ func TopSessionsThread() {
 				newTopSessions.topSessions[i] = sessions[i].sessionId
 			}
 
-			data := make([]byte, 8+8+8+4+8*newTopSessions.numTopSessions)
-
-			index := 0
-
-			encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-			encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
-			encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
-
-			for i := 0; i < newTopSessions.numTopSessions; i++ {
-				encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
-			}
-
-			topSessionsMutex.Lock()
-			topSessions = newTopSessions
-			topSessionsData = data
-			topSessionsMutex.Unlock()
+			UpdateTopSessions(newTopSessions)
 
 			duration := time.Since(start)
 

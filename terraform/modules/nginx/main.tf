@@ -25,20 +25,14 @@ variable "default_subnetwork" { type = string }
 variable "service_account" { type = string }
 variable "tags" { type = list }
 variable "domain" { type = string }
+variable "certificate" { type = string }
 
 # ----------------------------------------------------------------------------------------
-
-resource "google_compute_managed_ssl_certificate" "service" {
-  name = var.service_name
-  managed {
-    domains = [var.domain]
-  }
-}
 
 resource "google_compute_target_https_proxy" "service" {
   name             = var.service_name
   url_map          = google_compute_url_map.service.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.service.id]
+  ssl_certificates = [var.certificate]
 }
 
 resource "google_compute_global_address" "service" {

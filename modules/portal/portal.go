@@ -927,7 +927,7 @@ func (watcher *TopSessionsWatcher) watchTopSessions() {
 				break
 			}
 
-			if len(data) < 16 {
+			if len(data) < 8 + 4 + 4 + 4 {
 				core.Error("top session response is too small")
 				break
 			}
@@ -945,7 +945,7 @@ func (watcher *TopSessionsWatcher) watchTopSessions() {
 			encoding.ReadUint32(data[:], &index, &nextSessions)
 			encoding.ReadUint32(data[:], &index, &totalSessions)
 
-			numSessions := ( len(data) - 16 ) / 8
+			numSessions := ( len(data) - ( 8 + 4 + 4 + 4 ) ) / 8
 			sessions := make([]uint64, numSessions)
 			for i := 0; i < numSessions; i++ {
 				encoding.ReadUint64(data[:], &index, &sessions[i])
