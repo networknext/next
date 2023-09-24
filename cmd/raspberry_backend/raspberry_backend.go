@@ -19,7 +19,6 @@ import (
 )
 
 var redisHostname string
-var redisPassword string
 
 var magicUpdateSeconds int
 
@@ -43,7 +42,6 @@ func main() {
 	updateChannel = make(chan *Update, 10*1024)
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
 	core.Debug("redis hostname: %s", redisHostname)
 
@@ -51,7 +49,6 @@ func main() {
 
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     redisHostname,
-		Password: redisPassword,
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {

@@ -19,7 +19,6 @@ const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change 
 
 type RedisLeaderElectionConfig struct {
 	RedisHostname string
-	RedisPassword string
 	ServiceName   string
 	Timeout       time.Duration
 }

@@ -717,7 +717,7 @@ type SessionCruncherPublisher struct {
 func CreateSessionCruncherPublisher(ctx context.Context, config SessionCruncherPublisherConfig) *SessionCruncherPublisher {
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {

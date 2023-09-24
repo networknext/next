@@ -23,10 +23,9 @@ func RunProducerThreads(ctx context.Context, hostname string, threadCount int, n
 
 		producers[i], err = common.CreateRedisPubsubProducer(ctx, common.RedisPubsubConfig{
 			RedisHostname:      hostname,
-			RedisPassword:      "",
 			PubsubChannelName:  "test-channel",
-			MessageChannelSize: 10 * 1024,
-			BatchSize:          1000,
+			MessageChannelSize: 1024 * 1024,
+			BatchSize:          10000,
 			BatchDuration:      time.Second,
 		})
 
@@ -76,9 +75,8 @@ func RunConsumerThreads(ctx context.Context, hostname string, threadCount int, n
 
 		consumers[i], err = common.CreateRedisPubsubConsumer(ctx, common.RedisPubsubConfig{
 			RedisHostname:      hostname,
-			RedisPassword:      "",
 			PubsubChannelName:  "test-channel",
-			MessageChannelSize: 10 * 1024,
+			MessageChannelSize: 1024 * 1024,
 		})
 
 		if err != nil {

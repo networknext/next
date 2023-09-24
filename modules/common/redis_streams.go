@@ -13,7 +13,7 @@ import (
 
 type RedisStreamsConfig struct {
 	RedisHostname      string
-	RedisPassword      string
+	RedisCluster       []string
 	StreamName         string
 	ConsumerGroup      string
 	BatchSize          int
@@ -24,7 +24,7 @@ type RedisStreamsConfig struct {
 type RedisStreamsProducer struct {
 	MessageChannel  chan []byte
 	config          RedisStreamsConfig
-	redisClient     *redis.Client
+	redisClient     redis.StreamCmdable
 	messageBatch    [][]byte
 	batchStartTime  time.Time
 	mutex           sync.RWMutex
@@ -34,19 +34,17 @@ type RedisStreamsProducer struct {
 
 func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) (*RedisStreamsProducer, error) {
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
+	var redisClient redis.StreamCmdable
+	if len(config.RedisCluster) > 0 {
+		redisClient = CreateRedisClusterClient(config.RedisCluster)
+	} else {
+		redisClient = CreateRedisClient(config.RedisHostname)
 	}
 
 	producer := &RedisStreamsProducer{}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -54,7 +52,7 @@ func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) 
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	producer.config = config
@@ -155,7 +153,6 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {

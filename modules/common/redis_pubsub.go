@@ -16,7 +16,6 @@ import (
 
 type RedisPubsubConfig struct {
 	RedisHostname      string
-	RedisPassword      string
 	PubsubChannelName  string
 	BatchSize          int
 	BatchDuration      time.Duration
@@ -37,7 +36,6 @@ type RedisPubsubProducer struct {
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
@@ -46,7 +44,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -54,7 +52,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	producer := &RedisPubsubProducer{}
@@ -164,7 +162,6 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
 	})
 
 	_, err := redisClient.Ping(ctx).Result()
@@ -173,7 +170,7 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	consumer := &RedisPubsubConsumer{}

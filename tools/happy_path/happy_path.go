@@ -94,14 +94,6 @@ func happy_path(wait bool) int {
 
 	redisClient.FlushAll(context.Background())
 
-	// initialize redis cluster
-
-	fmt.Printf("starting redis cluster:\n\n")
-
-	run("redis-cluster", "logs/redis_cluster")
-
-	fmt.Printf("\n")
-
 	// initialize api
 
 	fmt.Printf("starting api:\n\n")

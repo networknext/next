@@ -68,6 +68,30 @@ provider "cloudflare" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_compute_managed_ssl_certificate" "api" {
+  name = "api"
+  managed {
+    domains = ["api-staging.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "relay" {
+  name = "relay"
+  managed {
+    domains = ["relay-staging.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "portal" {
+  name = "portal"
+  managed {
+    domains = ["portal-staging.${var.cloudflare_domain}"]
+  }
+}
+
+# ----------------------------------------------------------------------------------------
+
+/*
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
@@ -98,29 +122,6 @@ resource "cloudflare_record" "portal_domain" {
   value   = module.portal.address
   type    = "A"
   proxied = false
-}
-
-# ----------------------------------------------------------------------------------------
-
-resource "google_compute_managed_ssl_certificate" "api" {
-  name = "api"
-  managed {
-    domains = ["api-staging.${var.cloudflare_domain}"]
-  }
-}
-
-resource "google_compute_managed_ssl_certificate" "relay" {
-  name = "relay"
-  managed {
-    domains = ["relay-staging.${var.cloudflare_domain}"]
-  }
-}
-
-resource "google_compute_managed_ssl_certificate" "portal" {
-  name = "portal"
-  managed {
-    domains = ["portal-staging.${var.cloudflare_domain}"]
-  }
 }
 
 # ----------------------------------------------------------------------------------------
@@ -248,17 +249,15 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
-resource "google_redis_instance" "redis_portal" {
-  name                    = "redis-portal"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 40
-  region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "20" }
-  authorized_network      = google_compute_network.staging.id
-}
-*/
+//resource "google_redis_instance" "redis_portal" {
+//  name                    = "redis-portal"
+//  tier                    = "STANDARD_HA"
+//  memory_size_gb          = 40
+//  region                  = "us-central1"
+//  redis_version           = "REDIS_7_0"
+//  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "20" }
+//  authorized_network      = google_compute_network.staging.id
+//}
 
 resource "google_redis_instance" "redis_relay_backend" {
   name                    = "redis-relay-backend"
@@ -300,15 +299,13 @@ resource "google_redis_instance" "redis_analytics" {
   authorized_network      = google_compute_network.staging.id
 }
 
-/*
-output "redis_portal_address" {
-  description = "The IP address of the portal redis instance (read/write)"
-  value       = google_redis_instance.redis_portal.host
-}
-*/
-
 locals {
   redis_portal_address = "10.0.0.207:6379"
+}
+
+output "redis_portal_address" {
+  description = "The IP address of the portal redis instance"
+  value       = local.redis_portal_instance
 }
 
 output "redis_relay_backend_address" {
@@ -2078,3 +2075,4 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/
