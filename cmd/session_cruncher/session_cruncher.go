@@ -144,18 +144,21 @@ func TopSessionsThread() {
 		select {
 		case <-ticker.C:
 
-			bucketDistribution := make([]uint64, 0)
+			bucketDistribution := make([]int, 0)
 
 			start := time.Now()
 
-			sessions_a := make([]*SortedSetNode, 0, len(TopSessionsCount)*2)
-			sessions_b := make([]*SortedSetNode, 0, len(TopSessionsCount)*2)
+			sessions_a := make([]*SortedSetNode, 0, TopSessionsCount*2)
+			sessions_b := make([]*SortedSetNode, 0, TopSessionsCount*2)
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Lock()
 			}
 
 			for i := 0; i < NumBuckets; i++ {
+				// todo
+				bucketDistribution = append(bucketDistribution, buckets[i].currentSessions.GetCount())
+
 				bucketSessions := buckets[i].currentSessions.GetByRankRange(1, TopSessionsCount)
 				sessions_a = append(sessions_a, bucketSessions...)
 				if len(sessions_a) >= TopSessionsCount {
@@ -255,6 +258,8 @@ func TopSessionsThread() {
 			duration := time.Since(start)
 
 			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
+
+			core.Log("bucket distribution: %v", bucketDistribution)
 
 			if duration > time.Second {
 				core.Warn("session cruncher can't keep up!")
