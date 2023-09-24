@@ -39,6 +39,7 @@ var enableGooglePubsub bool
 var enableRedisStreams bool
 
 var redisHostname string
+var redisCluster []string
 
 func main() {
 
@@ -62,6 +63,7 @@ func main() {
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 	core.Debug("enable redis streams: %v", enableRedisStreams)
 	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis cluster: %v", redisCluster)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -282,6 +284,7 @@ func processPortalMessages_RedisStreams[T messages.Message](service *common.Serv
 
 	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
+		RedisCluster:  redisCluster,
 		StreamName:    streamName,
 	})
 
@@ -309,6 +312,7 @@ func processPortalMessages_RedisPubsub[T messages.Message](service *common.Servi
 
 	redisPubsubProducer, err := common.CreateRedisPubsubProducer(service.Context, common.RedisPubsubConfig{
 		RedisHostname:     redisHostname,
+		RedisCluster:      redisCluster,
 		PubsubChannelName: channelName,
 	})
 
