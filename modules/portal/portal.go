@@ -692,8 +692,7 @@ func GenerateRandomRelaySample() *RelaySample {
 
 type SessionCruncherEntry struct {
 	SessionId     uint64
-	PreviousScore uint32
-	CurrentScore  uint32
+	Score         uint32
 	Next          uint8
 }
 
@@ -743,6 +742,8 @@ const SessionBatchVersion_Write = uint64(0)
 
 func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Context) {
 
+	var sendBatch []SessionCruncherEntry
+
 	for {
 		select {
 
@@ -750,11 +751,10 @@ func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Cont
 			return
 
 		case message := <-publisher.MessageChannel:
-			var sendBatch []SessionCruncherEntry
 			publisher.mutex.Lock()
 			publisher.batchMessages = append(publisher.batchMessages, message)
 			publisher.numMessagesSent++
-			if len(publisher.batchMessages) >= publisher.config.BatchSize || time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration {
+			if len(publisher.batchMessages) >= publisher.config.BatchSize { //} || (len(publisher.batchMessages) > 0 && time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration) {
 				sendBatch = make([]SessionCruncherEntry, len(publisher.batchMessages))
 				copy(sendBatch, publisher.batchMessages)
 				publisher.batchMessages = publisher.batchMessages[:0]
@@ -764,13 +764,14 @@ func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Cont
 			publisher.mutex.Unlock()
 			if len(sendBatch) > 0 {
 				go func() {
-					data := make([]byte, 8+17*len(sendBatch))
+					// todo
+					fmt.Printf("send batch of %d\n", len(sendBatch))
+					data := make([]byte, 8+13*len(sendBatch))
 					index := 0
 					encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
 					for i := range sendBatch {
 						encoding.WriteUint64(data[:], &index, sendBatch[i].SessionId)
-						encoding.WriteUint32(data[:], &index, sendBatch[i].CurrentScore)
-						encoding.WriteUint32(data[:], &index, sendBatch[i].PreviousScore)
+						encoding.WriteUint32(data[:], &index, sendBatch[i].Score)
 						encoding.WriteUint8(data[:], &index, sendBatch[i].Next)
 					}
 					err := postBinary(publisher.config.URL, data)
@@ -848,16 +849,16 @@ func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessi
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, next bool, currentScore uint32, previousScore uint32, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, next bool, score uint32, sessionData *SessionData, sliceData *SliceData) {
 
-	currentTime := time.Now()
+	//currentTime := time.Now()
 
-	minutes := currentTime.Unix() / 60
+	// todo
+	//minutes := currentTime.Unix() / 60
 
 	entry := SessionCruncherEntry{
 		SessionId:     sessionId,
-		CurrentScore:  currentScore,
-		PreviousScore: previousScore,
+		Score:         score,
 	}
 
 	if next {
@@ -866,6 +867,8 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	inserter.publisher.MessageChannel <- entry
 
+	// todo
+	/*
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)
@@ -883,6 +886,7 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	inserter.numPending++
 
 	inserter.CheckForFlush(ctx, currentTime)
+	*/
 }
 
 func (inserter *SessionInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {

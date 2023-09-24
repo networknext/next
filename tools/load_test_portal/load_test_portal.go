@@ -19,15 +19,17 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 		go func(thread int) {
 
+			fmt.Printf("starting thread %d\n", thread)
+
 			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
 			sessionInserter := portal.CreateSessionInserter(ctx, redisClient, SessionCruncherURL, 1000)
 
 			iteration := uint64(0)
 
-			nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 1000)
+			// nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 1000)
 
-			near_relay_max := uint64(0)
+			// near_relay_max := uint64(0)
 
 			time.Sleep(time.Duration(rand.Intn(10000)) * time.Millisecond)
 
@@ -35,7 +37,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 				for j := 0; j < 10000; j++ {
 
-					sessionId := uint64(thread*1000000) + uint64(j) + iteration
+					sessionId := uint64(thread*10000000000) + uint64(j) + iteration
 
 					userHash := uint64(j) + iteration
 
@@ -46,18 +48,19 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					next := common.RandomBool()
+					next := (sessionId%2)==0
 
-					currentScore := uint32(sessionId % 1000)
-					previousScore := currentScore
+					score := uint32(sessionId % 1000)
 
-					sessionInserter.Insert(ctx, sessionId, userHash, next, currentScore, previousScore, sessionData, sliceData)
+					sessionInserter.Insert(ctx, sessionId, userHash, next, score, sessionData, sliceData)
 
+					/*
 					if sessionId > near_relay_max {
 						nearRelayData := portal.GenerateRandomNearRelayData()
 						nearRelayInserter.Insert(ctx, sessionId, nearRelayData)
 						near_relay_max = sessionId
 					}
+					*/
 				}
 
 				time.Sleep(10 * time.Second)
@@ -68,6 +71,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 	}
 }
 
+/*
 func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
@@ -137,6 +141,7 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 		}(k)
 	}
 }
+*/
 
 func RunPollThread(ctx context.Context) {
 
@@ -144,7 +149,7 @@ func RunPollThread(ctx context.Context) {
 
 	go func() {
 
-		redisClient := common.CreateRedisClient("127.0.0.1:6379")
+		// redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
 		watcher := portal.CreateTopSessionsWatcher(SessionCruncherURL)
 
@@ -165,6 +170,7 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
+			/*
 			start := time.Now()
 
 			sessionList := portal.GetSessionList(ctx, redisClient, sessions)
@@ -277,6 +283,7 @@ func RunPollThread(ctx context.Context) {
 			}
 
 			// ------------------------------------------------------------------------------------------
+			*/
 
 			time.Sleep(time.Second)
 
@@ -293,11 +300,11 @@ func main() {
 
 	RunSessionInsertThreads(ctx, threadCount)
 
-	RunServerInsertThreads(ctx, threadCount)
+	// RunServerInsertThreads(ctx, threadCount)
 
-	RunRelayInsertThreads(ctx, threadCount)
+	// RunRelayInsertThreads(ctx, threadCount)
 
 	RunPollThread(ctx)
 
-	time.Sleep(time.Minute)
+	time.Sleep(time.Minute * 10)
 }

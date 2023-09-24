@@ -125,9 +125,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	next := message.Next
 
-	currentScore := 999 - message.CurrentScore
-
-	previousScore := 999 - message.PreviousScore
+	score := 999 - message.CurrentScore
 
 	var isp string
 	if !service.Local {
@@ -174,7 +172,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		Next:             message.Next,
 	}
 
-	sessionInserter.Insert(service.Context, sessionId, userHash, next, currentScore, previousScore, &sessionData, &sliceData)
+	sessionInserter.Insert(service.Context, sessionId, userHash, next, score, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------
