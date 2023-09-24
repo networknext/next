@@ -725,7 +725,7 @@ func CreateSessionCruncherPublisher(ctx context.Context, config SessionCruncherP
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	publisher := &SessionCruncherPublisher{}
@@ -742,8 +742,6 @@ const SessionBatchVersion_Write = uint64(0)
 
 func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Context) {
 
-	var sendBatch []SessionCruncherEntry
-
 	for {
 		select {
 
@@ -752,34 +750,26 @@ func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Cont
 
 		case message := <-publisher.MessageChannel:
 			publisher.mutex.Lock()
-			publisher.batchMessages = append(publisher.batchMessages, message)
 			publisher.numMessagesSent++
-			if len(publisher.batchMessages) >= publisher.config.BatchSize { //} || (len(publisher.batchMessages) > 0 && time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration) {
-				sendBatch = make([]SessionCruncherEntry, len(publisher.batchMessages))
-				copy(sendBatch, publisher.batchMessages)
+			publisher.batchMessages = append(publisher.batchMessages, message)
+			if len(publisher.batchMessages) >= publisher.config.BatchSize || (len(publisher.batchMessages) > 0 && time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration) {
+				data := make([]byte, 8+13*len(publisher.batchMessages))
+				index := 0
+				encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
+				for i := range publisher.batchMessages {
+					encoding.WriteUint64(data[:], &index, publisher.batchMessages[i].SessionId)
+					encoding.WriteUint32(data[:], &index, publisher.batchMessages[i].Score)
+					encoding.WriteUint8(data[:], &index, publisher.batchMessages[i].Next)
+				}
+				err := postBinary(publisher.config.URL, data)
+				if err != nil {
+					core.Error("failed to post session cruncher batch: %v", err)
+				}
 				publisher.batchMessages = publisher.batchMessages[:0]
 				publisher.numBatchesSent++
 				publisher.lastBatchSendTime = time.Now()
 			}
 			publisher.mutex.Unlock()
-			if len(sendBatch) > 0 {
-				go func() {
-					// todo
-					fmt.Printf("send batch of %d\n", len(sendBatch))
-					data := make([]byte, 8+13*len(sendBatch))
-					index := 0
-					encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
-					for i := range sendBatch {
-						encoding.WriteUint64(data[:], &index, sendBatch[i].SessionId)
-						encoding.WriteUint32(data[:], &index, sendBatch[i].Score)
-						encoding.WriteUint8(data[:], &index, sendBatch[i].Next)
-					}
-					err := postBinary(publisher.config.URL, data)
-					if err != nil {
-						core.Error("failed to post session cruncher batch: %v", err)
-					}
-				}()
-			}
 		}
 	}
 }

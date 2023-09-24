@@ -8,7 +8,6 @@ import (
 	// "sort"
 	"sync"
 	"time"
-	"fmt"
 	
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -337,8 +336,6 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	numSessionUpdates := len(body) / 13
 
-	fmt.Printf("processing batch of %d\n", numSessionUpdates)
-
 	index := 0
 	for i := 0; i < numSessionUpdates; i++ {
 		sessionId := binary.LittleEndian.Uint64(body[index : index+8])
@@ -347,8 +344,8 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		if body[index+12] != 0 {
 			next = true
 		}
-		index := GetBucketIndex(score)
-		buckets[index].sessionUpdateChannel <- SessionUpdate{sessionId: sessionId, score: score, next: next}
+		bucketIndex := GetBucketIndex(score)
+		buckets[bucketIndex].sessionUpdateChannel <- SessionUpdate{sessionId: sessionId, score: score, next: next}
 		index += 13
 	}
 }
