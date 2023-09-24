@@ -248,6 +248,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 resource "google_redis_instance" "redis_portal" {
   name                    = "redis-portal"
   tier                    = "STANDARD_HA"
@@ -257,6 +258,7 @@ resource "google_redis_instance" "redis_portal" {
   redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "20" }
   authorized_network      = google_compute_network.staging.id
 }
+*/
 
 resource "google_redis_instance" "redis_relay_backend" {
   name                    = "redis-relay-backend"
@@ -298,9 +300,15 @@ resource "google_redis_instance" "redis_analytics" {
   authorized_network      = google_compute_network.staging.id
 }
 
+/*
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance (read/write)"
   value       = google_redis_instance.redis_portal.host
+}
+*/
+
+locals {
+  redis_portal_address = "10.0.0.207:6379"
 }
 
 output "redis_relay_backend_address" {
@@ -1672,7 +1680,7 @@ module "api" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_MAP_CRUNCHER_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
@@ -1760,7 +1768,7 @@ module "portal_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
