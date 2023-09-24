@@ -1245,9 +1245,9 @@ blocks:
           commands:
             - ./run load-test-map
 
-        - name: "Load Test Portal"
-          commands:
-            - ./run load-test-portal
+#        - name: "Load Test Portal"
+#          commands:
+#            - ./run load-test-portal
 
         - name: "Load Test Redis Data"
           commands:
