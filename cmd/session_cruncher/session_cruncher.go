@@ -144,13 +144,16 @@ func TopSessionsThread() {
 		select {
 		case <-ticker.C:
 
+			bucketDistribution := make([]uint64, 0)
+
 			start := time.Now()
+
+			sessions_a := make([]*SortedSetNode, 0, len(TopSessionsCount)*2)
+			sessions_b := make([]*SortedSetNode, 0, len(TopSessionsCount)*2)
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Lock()
 			}
-
-			sessions_a := make([]*SortedSetNode, 0)
 
 			for i := 0; i < NumBuckets; i++ {
 				bucketSessions := buckets[i].currentSessions.GetByRankRange(1, TopSessionsCount)
@@ -160,8 +163,6 @@ func TopSessionsThread() {
 					break
 				}
 			}
-
-			sessions_b := make([]*SortedSetNode, 0)
 
 			for i := 0; i < NumBuckets; i++ {
 				bucketSessions := buckets[i].previousSessions.GetByRankRange(1, TopSessionsCount)
