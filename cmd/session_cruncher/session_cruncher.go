@@ -119,7 +119,7 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(10*time.Second)
+	ticker := time.NewTicker(60*time.Second)
 	for {
 		select {
 		case <-ticker.C:
