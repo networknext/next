@@ -175,6 +175,8 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		score = 999
 	}
 
+	score = 999 - score
+
 	if state.Request.SliceNumber > 1 {
 		state.PreviousScore = state.Input.HighestScore
 		if uint32(score) > state.Input.HighestScore {
