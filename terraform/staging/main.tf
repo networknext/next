@@ -91,7 +91,6 @@ resource "google_compute_managed_ssl_certificate" "portal" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
@@ -2057,4 +2056,3 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
-*/
