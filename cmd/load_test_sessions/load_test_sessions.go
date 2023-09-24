@@ -296,8 +296,6 @@ func RunSession(index int) {
 					}
 				}
 
-				// todo: disable this for now, to check the session count accuracy
-				/*
 				if sessionDuration > sessionTimeout+60 {
 					mutex.Lock()
 					core.Debug("new session %03d\n", index)
@@ -312,7 +310,6 @@ func RunSession(index int) {
 					numNearRelays = 0
 					mutex.Unlock()
 				}
-				*/
 			}
 		}
 	}()
