@@ -841,10 +841,9 @@ func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessi
 
 func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, next bool, score uint32, sessionData *SessionData, sliceData *SliceData) {
 
-	//currentTime := time.Now()
+	currentTime := time.Now()
 
-	// todo
-	//minutes := currentTime.Unix() / 60
+	minutes := currentTime.Unix() / 60
 
 	entry := SessionCruncherEntry{
 		SessionId:     sessionId,
@@ -857,8 +856,6 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	inserter.publisher.MessageChannel <- entry
 
-	// todo
-	/*
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)
@@ -876,7 +873,6 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	inserter.numPending++
 
 	inserter.CheckForFlush(ctx, currentTime)
-	*/
 }
 
 func (inserter *SessionInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
