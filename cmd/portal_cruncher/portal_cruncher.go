@@ -18,22 +18,24 @@ var service *common.Service
 
 var redisPortalHostname string
 var redisPortalCluster []string
-var redisRelayBackendHostname string
 var redisServerBackendHostname string
+var redisServerBackendCluster []string
+var redisRelayBackendHostname string
 var sessionCruncherURL string
 
 func main() {
 
 	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	redisServerBackendCluster = envvar.GetStringArray("REDIS_SERVER_BACKEND_CLUSTER", []string{})
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname = envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
 
-	sessionInsertBatchSize := envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 1000)
-	serverInsertBatchSize := envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 1000)
-	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 1000)
-	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 1000)
+	sessionInsertBatchSize := envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 10000)
+	serverInsertBatchSize := envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 10000)
+	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 10000)
+	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 10000)
 
 	reps := envvar.GetInt("REPS", 1)
 
@@ -41,8 +43,9 @@ func main() {
 
 	core.Debug("redis portal cluster: %v", redisPortalCluster)
 	core.Debug("redis portal hostname: %s", redisPortalHostname)
-	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
+	core.Debug("redis server backend cluster: %s", redisServerBackendCluster)
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
+	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
 	core.Debug("session cruncher url: %s", sessionCruncherURL)
 
 	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
@@ -55,9 +58,9 @@ func main() {
 	}
 
 	for j := 0; j < reps; j++ {
-		ProcessSessionUpdateMessages(service, redisServerBackendHostname, sessionInsertBatchSize)
-		ProcessServerUpdateMessages(service, redisServerBackendHostname, serverInsertBatchSize)
-		ProcessNearRelayUpdateMessages(service, redisServerBackendHostname, nearRelayInsertBatchSize)
+		ProcessSessionUpdateMessages(service, sessionInsertBatchSize)
+		ProcessServerUpdateMessages(service, serverInsertBatchSize)
+		ProcessNearRelayUpdateMessages(service, nearRelayInsertBatchSize)
 		ProcessRelayUpdateMessages(service, redisRelayBackendHostname, relayInsertBatchSize)
 	}
 
@@ -68,7 +71,7 @@ func main() {
 
 // -------------------------------------------------------------------------------
 
-func ProcessSessionUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
+func ProcessSessionUpdateMessages(service *common.Service, batchSize int) {
 
 	name := "session update"
 
@@ -85,7 +88,8 @@ func ProcessSessionUpdateMessages(service *common.Service, redisStreams string, 
 	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
-		RedisHostname: redisStreams,
+		RedisHostname: redisServerBackendHostname,
+		RedisCluster:  redisServerBackendCluster,
 		StreamName:    streamName,
 		ConsumerGroup: consumerGroup,
 	}
@@ -177,7 +181,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 // -------------------------------------------------------------------------------
 
-func ProcessServerUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
+func ProcessServerUpdateMessages(service *common.Service, batchSize int) {
 
 	name := "server update"
 
@@ -194,7 +198,8 @@ func ProcessServerUpdateMessages(service *common.Service, redisStreams string, b
 	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
-		RedisHostname: redisStreams,
+		RedisHostname: redisServerBackendHostname,
+		RedisCluster:  redisServerBackendCluster,
 		StreamName:    streamName,
 		ConsumerGroup: consumerGroup,
 	}
@@ -244,7 +249,7 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 
 // -------------------------------------------------------------------------------
 
-func ProcessNearRelayUpdateMessages(service *common.Service, redisStreams string, batchSize int) {
+func ProcessNearRelayUpdateMessages(service *common.Service, batchSize int) {
 
 	name := "near relay update"
 
@@ -261,7 +266,8 @@ func ProcessNearRelayUpdateMessages(service *common.Service, redisStreams string
 	consumerGroup := streamName
 
 	config := common.RedisStreamsConfig{
-		RedisHostname: redisStreams,
+		RedisHostname: redisServerBackendHostname,
+		RedisCluster:  redisServerBackendCluster,
 		StreamName:    streamName,
 		ConsumerGroup: consumerGroup,
 	}

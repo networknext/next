@@ -17,7 +17,6 @@ import (
 )
 
 var redisHostname string
-var redisPassword string
 var redisPubsubChannelName string
 var relayUpdateBatchSize int
 var relayUpdateBatchDuration time.Duration
@@ -33,7 +32,6 @@ func main() {
 	service := common.CreateService("relay_gateway")
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
 	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
@@ -318,7 +316,6 @@ func CreatePubsubProducer(service *common.Service) *common.RedisPubsubProducer {
 	config := common.RedisPubsubConfig{}
 
 	config.RedisHostname = redisHostname
-	config.RedisPassword = redisPassword
 	config.PubsubChannelName = redisPubsubChannelName
 	config.BatchSize = relayUpdateBatchSize
 	config.BatchDuration = relayUpdateBatchDuration

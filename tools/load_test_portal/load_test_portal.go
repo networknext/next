@@ -25,7 +25,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 			iteration := uint64(0)
 
-			nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 1000)
+			nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 10000)
 
 			near_relay_max := uint64(0)
 
@@ -75,7 +75,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-			serverInserter := portal.CreateServerInserter(redisClient, 1000)
+			serverInserter := portal.CreateServerInserter(redisClient, 10000)
 
 			iteration := uint64(0)
 
@@ -110,7 +110,7 @@ func RunRelayInsertThreads(ctx context.Context, threadCount int) {
 
 			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-			relayInserter := portal.CreateRelayInserter(redisClient, 1000)
+			relayInserter := portal.CreateRelayInserter(redisClient, 10000)
 
 			iteration := uint64(0)
 

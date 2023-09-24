@@ -39,7 +39,7 @@ var enableGooglePubsub bool
 var enableRedisStreams bool
 
 var redisHostname string
-var redisPassword string
+var redisCluster []string
 
 func main() {
 
@@ -56,7 +56,6 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
 	core.Debug("channel size: %d", channelSize)
 	core.Debug("max packet size: %d bytes", maxPacketSize)
@@ -64,6 +63,7 @@ func main() {
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 	core.Debug("enable redis streams: %v", enableRedisStreams)
 	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis cluster: %v", redisCluster)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -284,7 +284,7 @@ func processPortalMessages_RedisStreams[T messages.Message](service *common.Serv
 
 	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
+		RedisCluster:  redisCluster,
 		StreamName:    streamName,
 	})
 
@@ -312,7 +312,7 @@ func processPortalMessages_RedisPubsub[T messages.Message](service *common.Servi
 
 	redisPubsubProducer, err := common.CreateRedisPubsubProducer(service.Context, common.RedisPubsubConfig{
 		RedisHostname:     redisHostname,
-		RedisPassword:     redisPassword,
+		RedisCluster:      redisCluster,
 		PubsubChannelName: channelName,
 	})
 
@@ -351,7 +351,7 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 		config := common.GooglePubsubConfig{
 			ProjectId:          service.GoogleProjectId,
 			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024,
+			MessageChannelSize: 1024 * 1024,
 		}
 
 		var err error

@@ -35,7 +35,7 @@ type GooglePubsubProducer struct {
 func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) (*GooglePubsubProducer, error) {
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -43,7 +43,7 @@ func CreateGooglePubsubProducer(ctx context.Context, config GooglePubsubConfig) 
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	pubsubClient, err := pubsub.NewClient(ctx, config.ProjectId, config.ClientOptions...)
@@ -156,7 +156,7 @@ type GooglePubsubConsumer struct {
 func CreateGooglePubsubConsumer(ctx context.Context, config GooglePubsubConfig) (*GooglePubsubConsumer, error) {
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	pubsubClient, err := pubsub.NewClient(ctx, config.ProjectId)

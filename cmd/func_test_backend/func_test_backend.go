@@ -677,7 +677,6 @@ func test_redis_pubsub() {
 
 		consumers[i], err = common.CreateRedisPubsubConsumer(cancelContext, common.RedisPubsubConfig{
 			RedisHostname:      "127.0.0.1:6379",
-			RedisPassword:      "",
 			PubsubChannelName:  "test-channel",
 			MessageChannelSize: 10 * 1024,
 		})
@@ -702,7 +701,6 @@ func test_redis_pubsub() {
 
 		producers[i], err = common.CreateRedisPubsubProducer(cancelContext, common.RedisPubsubConfig{
 			RedisHostname:      "127.0.0.1:6379",
-			RedisPassword:      "",
 			PubsubChannelName:  "test-channel",
 			MessageChannelSize: 10 * 1024,
 			BatchSize:          1000,
@@ -837,7 +835,6 @@ func test_redis_streams() {
 
 		consumers[i], err = common.CreateRedisStreamsConsumer(cancelContext, common.RedisStreamsConfig{
 			RedisHostname:      "127.0.0.1:6379",
-			RedisPassword:      "",
 			StreamName:         "test-stream",
 			ConsumerGroup:      "test-group",
 			BatchDuration:      time.Millisecond * 100,
@@ -865,7 +862,6 @@ func test_redis_streams() {
 
 		producers[i], err = common.CreateRedisStreamsProducer(cancelContext, common.RedisStreamsConfig{
 			RedisHostname:      "127.0.0.1:6379",
-			RedisPassword:      "",
 			StreamName:         "test-stream",
 			BatchSize:          100,
 			BatchDuration:      time.Millisecond * 100,

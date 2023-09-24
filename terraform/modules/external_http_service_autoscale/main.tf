@@ -27,20 +27,14 @@ variable "min_size" { type = number }
 variable "max_size" { type = number }
 variable "target_cpu" { type = number }
 variable "domain" { type = string }
+variable "certificate" { type = string }
 
 # ----------------------------------------------------------------------------------------
-
-resource "google_compute_managed_ssl_certificate" "service" {
-  name = var.service_name
-  managed {
-    domains = [var.domain]
-  }
-}
 
 resource "google_compute_target_https_proxy" "service" {
   name             = var.service_name
   url_map          = google_compute_url_map.service.id
-  ssl_certificates = [google_compute_managed_ssl_certificate.service.id]
+  ssl_certificates = [var.certificate]
 }
 
 

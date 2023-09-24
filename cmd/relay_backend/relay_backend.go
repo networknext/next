@@ -26,7 +26,6 @@ var maxPacketLoss float32
 var routeMatrixInterval time.Duration
 
 var redisHostName string
-var redisPassword string
 
 var relayUpdateRedisPubsubChannelName string
 var relayUpdateRedisPubsubChannelSize int
@@ -68,10 +67,9 @@ func main() {
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
 	relayUpdateRedisPubsubChannelName = envvar.GetString("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
-	relayUpdateRedisPubsubChannelSize = envvar.GetInt("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_SIZE", 10*1024)
+	relayUpdateRedisPubsubChannelSize = envvar.GetInt("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_SIZE", 1024*1024)
 
 	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
 	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
@@ -575,7 +573,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 	config := common.RedisPubsubConfig{}
 
 	config.RedisHostname = redisHostName
-	config.RedisPassword = redisPassword
 	config.PubsubChannelName = relayUpdateRedisPubsubChannelName
 	config.MessageChannelSize = relayUpdateRedisPubsubChannelSize
 
@@ -596,7 +593,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 		portalRelayUpdateProducer, err = common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
 			RedisHostname: redisHostName,
-			RedisPassword: redisPassword,
 			StreamName:    "relay_update",
 		})
 

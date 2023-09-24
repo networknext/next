@@ -11,12 +11,11 @@ import (
 	"github.com/networknext/next/modules/encoding"
 )
 
-// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers.
-// this is different to streams and google pubsub where messages are load balanced across consumers
+// IMPORTANT: In redis pubsub each consumer gets a full set of messages produced by all producers.
 
 type RedisPubsubConfig struct {
 	RedisHostname      string
-	RedisPassword      string
+	RedisCluster       []string
 	PubsubChannelName  string
 	BatchSize          int
 	BatchDuration      time.Duration
@@ -27,7 +26,7 @@ type RedisPubsubProducer struct {
 	MessageChannel  chan []byte
 	config          RedisPubsubConfig
 	mutex           sync.RWMutex
-	redisClient     *redis.Client
+	redisClient     redis.PubSubCmdable
 	messageBatch    [][]byte
 	batchStartTime  time.Time
 	numMessagesSent int
@@ -35,18 +34,16 @@ type RedisPubsubProducer struct {
 }
 
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		core.Error("failed to create pubsub client: %v", err)
-		return nil, err
+
+	var redisClient redis.PubSubCmdable
+	if len(config.RedisCluster) > 0 {
+		redisClient = CreateRedisClusterClient(config.RedisCluster)
+	} else {
+		redisClient = CreateRedisClient(config.RedisHostname)
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -54,7 +51,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	producer := &RedisPubsubProducer{}
@@ -164,7 +161,6 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
 	})
 
 	_, err := redisClient.Ping(ctx).Result()
@@ -173,7 +169,7 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	consumer := &RedisPubsubConsumer{}

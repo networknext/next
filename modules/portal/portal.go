@@ -717,7 +717,7 @@ type SessionCruncherPublisher struct {
 func CreateSessionCruncherPublisher(ctx context.Context, config SessionCruncherPublisherConfig) *SessionCruncherPublisher {
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -841,10 +841,9 @@ func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessi
 
 func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, next bool, score uint32, sessionData *SessionData, sliceData *SliceData) {
 
-	//currentTime := time.Now()
+	currentTime := time.Now()
 
-	// todo
-	//minutes := currentTime.Unix() / 60
+	minutes := currentTime.Unix() / 60
 
 	entry := SessionCruncherEntry{
 		SessionId:     sessionId,
@@ -857,8 +856,6 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	inserter.publisher.MessageChannel <- entry
 
-	// todo
-	/*
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)
@@ -876,7 +873,6 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	inserter.numPending++
 
 	inserter.CheckForFlush(ctx, currentTime)
-	*/
 }
 
 func (inserter *SessionInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
@@ -927,7 +923,7 @@ func (watcher *TopSessionsWatcher) watchTopSessions() {
 				break
 			}
 
-			if len(data) < 16 {
+			if len(data) < 8 + 4 + 4 + 4 {
 				core.Error("top session response is too small")
 				break
 			}
@@ -945,7 +941,7 @@ func (watcher *TopSessionsWatcher) watchTopSessions() {
 			encoding.ReadUint32(data[:], &index, &nextSessions)
 			encoding.ReadUint32(data[:], &index, &totalSessions)
 
-			numSessions := ( len(data) - 16 ) / 8
+			numSessions := ( len(data) - ( 8 + 4 + 4 + 4 ) ) / 8
 			sessions := make([]uint64, numSessions)
 			for i := 0; i < numSessions; i++ {
 				encoding.ReadUint64(data[:], &index, &sessions[i])
