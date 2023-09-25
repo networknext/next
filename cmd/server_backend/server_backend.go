@@ -56,6 +56,7 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
 
 	core.Debug("channel size: %d", channelSize)
 	core.Debug("max packet size: %d bytes", maxPacketSize)
