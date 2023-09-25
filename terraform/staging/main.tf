@@ -1815,7 +1815,7 @@ module "server_backend" {
     ENV=staging
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=16
+    UDP_NUM_THREADS=8
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_CLUSTER="${local.redis_server_backend_address}"
@@ -1835,7 +1835,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-highcpu-4"
+  machine_type       = "c3-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1846,7 +1846,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 256
-  target_cpu         = 25
+  target_cpu         = 20
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
