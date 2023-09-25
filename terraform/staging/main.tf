@@ -1815,7 +1815,7 @@ module "server_backend" {
     ENV=staging
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=8
+    UDP_NUM_THREADS=64
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_CLUSTER="${local.redis_server_backend_address}"
@@ -1835,7 +1835,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c3-highcpu-8"
+  machine_type       = "c3-highcpu-44"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
