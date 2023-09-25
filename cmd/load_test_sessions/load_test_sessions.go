@@ -80,9 +80,9 @@ func RunSession(index int) {
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, 10000+index))
 
-	userHash := rand.Uint64()
+	userHash := r.Uint64()
 
-	sessionId := rand.Uint64()
+	sessionId := r.Uint64()
 
 	sliceNumber := 0
 
@@ -92,7 +92,7 @@ func RunSession(index int) {
 
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
 
-	serverAddress := common.RandomAddress()
+	serverAddress := core.ParseAddress("127.0.0.1:50000")
 
 	clientPublicKey, _ := crypto.Box_KeyPair()
 	serverPublicKey, _ := crypto.Box_KeyPair()
@@ -303,7 +303,7 @@ func RunSession(index int) {
 				if sessionDuration > sessionTimeout+60 {
 					mutex.Lock()
 					core.Debug("new session %03d\n", index)
-					sessionId = rand.Uint64()
+					sessionId = r.Uint64()
 					sliceNumber = 0
 					retryNumber = 0
 					sessionDuration = 0
