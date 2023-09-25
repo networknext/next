@@ -285,17 +285,17 @@ locals {
 
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
-  value       = local.redis_portal_instance
+  value       = local.redis_portal_address
+}
+
+output "redis_server_backend_address" {
+  description = "The IP address of the server backend redis instance"
+  value       = local.redis_server_backend.address
 }
 
 output "redis_relay_backend_address" {
   description = "The IP address of the relay backend redis instance"
   value       = google_redis_instance.redis_relay_backend.host
-}
-
-output "redis_server_backend_address" {
-  description = "The IP address of the server backend redis instance"
-  value       = google_redis_instance.redis_server_backend.host
 }
 
 output "redis_map_cruncher_address" {
