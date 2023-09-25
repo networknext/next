@@ -1761,6 +1761,8 @@ module "portal_cruncher" {
 
 // ---------------------------------------------------------------------------------------
 
+// todo: disabled. we will rework it so that it drives from the session cruncher top sessions insthead
+/*
 module "map_cruncher" {
 
   source = "../modules/internal_mig_with_health_check"
@@ -1794,6 +1796,7 @@ module "map_cruncher" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
