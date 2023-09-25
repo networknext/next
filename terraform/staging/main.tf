@@ -1754,7 +1754,7 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size           = 3
+  min_size           = 16
   max_size           = 64
   target_cpu         = 60
 }
@@ -1844,9 +1844,9 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size           = 3
-  max_size           = 256
-  target_cpu         = 20
+  min_size           = 16
+  max_size           = 16 # todo: try with no autoscale basically
+  target_cpu         = 60
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }

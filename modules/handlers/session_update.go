@@ -1127,23 +1127,18 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if !state.FirstUpdate {
 
-		go func() {
+		sendPortalSessionUpdateMessage(state)
 
-			sendPortalSessionUpdateMessage(state)
+		// todo: disabled so we can focus on scaling up sessions to 10M
+		/*
+		sendPortalNearRelayUpdateMessage(state)
 
-			sendPortalMapUpdateMessage(state)
+		sendAnalyticsSessionUpdateMessage(state)
 
-			// todo: disabled so we can focus on scaling up sessions to 10M
-			/*
-			sendPortalNearRelayUpdateMessage(state)
+		sendAnalyticsSessionSummaryMessage(state)
 
-			sendAnalyticsSessionUpdateMessage(state)
-
-			sendAnalyticsSessionSummaryMessage(state)
-
-			sendAnalyticsNearRelayPingMessages(state)
-			*/
-		}()
+		sendAnalyticsNearRelayPingMessages(state)
+		*/
 	}
 }
 
