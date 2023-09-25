@@ -68,9 +68,13 @@ DONE
 
 	Load test to 1000 relays, 100k servers and 100k sessions.
 
+	Load test to 1000 relays, 100k servers, and 1M sessions
+
 TODO
 
-	Load test to 1000 relays, 100k servers, and 1M sessions
+	Load test to 10M sessions
+
+	Load test to 1M servers
 
 	-----------
 
@@ -78,7 +82,7 @@ TODO
 
 	-----------
 
-	Rebuild portal (second half)
+	Finalize portal
 
 	-----------
 
