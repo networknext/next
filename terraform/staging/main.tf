@@ -1845,8 +1845,8 @@ module "server_backend" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
-  max_size           = 64
-  target_cpu         = 60
+  max_size           = 256
+  target_cpu         = 25
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
