@@ -74,7 +74,7 @@ func RunSession(index int) {
 
 	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	initialDelay := time.Duration(r.Intn(300))
+	initialDelay := time.Duration(r.Intn(600))
 
 	time.Sleep(initialDelay * time.Second)
 
