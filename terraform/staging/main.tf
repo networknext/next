@@ -1993,14 +1993,14 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 2
+  target_size        = 20
 }
 
 # ----------------------------------------------------------------------------------------
 
 module "portal" {
 
-  source = "../modules/nginx"      # todo: this should become autoscale
+  source = "../modules/nginx"
 
   service_name = "portal"
 

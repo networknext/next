@@ -74,7 +74,11 @@ DONE
 
 TODO
 
-	Setup prod environment
+	Adjust the staging env so it does 1M sessions out of the box
+
+	-----------
+
+	Setup prod environment (1M sessions)
 
 	-----------
 
