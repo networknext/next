@@ -1761,7 +1761,7 @@ module "portal_cruncher" {
 
 // ---------------------------------------------------------------------------------------
 
-// todo: disabled. we will rework it so that it drives from the session cruncher top sessions insthead
+// todo: disabled. we will rework it so that it drives from the session cruncher top sessions instead
 /*
 module "map_cruncher" {
 

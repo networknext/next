@@ -143,7 +143,7 @@ type RedisStreamsConsumer struct {
 	MessageChannel      chan []byte
 	config              RedisStreamsConfig
 	consumerId          string
-	redisClient         *redis.Client
+	redisClient         redis.StreamCmdable
 	mutex               sync.RWMutex
 	numMessagesReceived int
 	numBatchesReceived  int
@@ -151,19 +151,18 @@ type RedisStreamsConsumer struct {
 
 func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) (*RedisStreamsConsumer, error) {
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
+	var redisClient redis.StreamCmdable
+	if len(config.RedisCluster) > 0 {
+		redisClient = CreateRedisClusterClient(config.RedisCluster)
+	} else {
+		redisClient = CreateRedisClient(config.RedisHostname)
 	}
 
 	consumerId := uuid.New().String()
 
 	// core.Debug("redis streams: stream name = %s, consumer id = %s, consumer group = %s", config.StreamName, consumerId, config.ConsumerGroup)
 
-	_, err = redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "$").Result()
+	_, err := redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "$").Result()
 	if err != nil {
 		if strings.Contains(err.Error(), "BUSYGROUP") {
 			// core.Debug("consumer group %v already exists", config.ConsumerGroup)

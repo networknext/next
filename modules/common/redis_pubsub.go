@@ -150,6 +150,7 @@ type RedisPubsubConsumer struct {
 	MessageChannel      chan []byte
 	config              RedisPubsubConfig
 	redisClient         *redis.Client
+	redisClusterClient  *redis.ClusterClient
 	pubsubSubscription  *redis.PubSub
 	pubsubChannel       <-chan *redis.Message
 	mutex               sync.RWMutex
@@ -159,13 +160,12 @@ type RedisPubsubConsumer struct {
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-	})
-
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
+	var redisClient *redis.Client
+	var redisClusterClient *redis.ClusterClient
+	if len(config.RedisCluster) > 0 {
+		redisClusterClient = CreateRedisClusterClient(config.RedisCluster)
+	} else {
+		redisClient = CreateRedisClient(config.RedisHostname)
 	}
 
 	if config.MessageChannelSize == 0 {
@@ -176,7 +176,12 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 
 	consumer.config = config
 	consumer.redisClient = redisClient
-	consumer.pubsubSubscription = consumer.redisClient.Subscribe(ctx, config.PubsubChannelName)
+	consumer.redisClusterClient = redisClusterClient
+	if consumer.redisClusterClient != nil {
+		consumer.pubsubSubscription = consumer.redisClusterClient.Subscribe(ctx, config.PubsubChannelName)
+	} else {
+		consumer.pubsubSubscription = consumer.redisClient.Subscribe(ctx, config.PubsubChannelName)
+	}
 	consumer.pubsubChannel = consumer.pubsubSubscription.Channel()
 	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 
