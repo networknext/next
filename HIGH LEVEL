@@ -72,9 +72,27 @@ DONE
 
 	Load test to 5M sessions
 
+	Adjust the staging env so it does 1M sessions out of the box
+
 TODO
 
-	Adjust the staging env so it does 1M sessions out of the box
+	Verify that we can hit stability out of the box quickly with default instances @ 1M
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------
 
