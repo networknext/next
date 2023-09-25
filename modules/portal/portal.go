@@ -690,6 +690,8 @@ func GenerateRandomRelaySample() *RelaySample {
 
 // ------------------------------------------------------------------------------------------------------------
 
+const NumBuckets = 1000
+
 type SessionCruncherEntry struct {
 	SessionId     uint64
 	Score         uint32
@@ -753,25 +755,60 @@ func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Cont
 			publisher.numMessagesSent++
 			publisher.batchMessages = append(publisher.batchMessages, message)
 			if len(publisher.batchMessages) >= publisher.config.BatchSize || (len(publisher.batchMessages) > 0 && time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration) {
-				data := make([]byte, 8+13*len(publisher.batchMessages))
-				index := 0
-				encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
-				for i := range publisher.batchMessages {
-					encoding.WriteUint64(data[:], &index, publisher.batchMessages[i].SessionId)
-					encoding.WriteUint32(data[:], &index, publisher.batchMessages[i].Score)
-					encoding.WriteUint8(data[:], &index, publisher.batchMessages[i].Next)
-				}
-				err := postBinary(publisher.config.URL, data)
-				if err != nil {
-					core.Error("failed to post session cruncher batch: %v", err)
-				}
-				publisher.batchMessages = publisher.batchMessages[:0]
-				publisher.numBatchesSent++
-				publisher.lastBatchSendTime = time.Now()
+				publisher.sendBatch()
 			}
 			publisher.mutex.Unlock()
 		}
 	}
+}
+
+func (publisher *SessionCruncherPublisher) sendBatch() {
+
+	batchSize := [NumBuckets]uint32{}
+
+	for i := range publisher.batchMessages {
+		batchSize[publisher.batchMessages[i].Score]++
+	}
+
+	batch := make([][]SessionCruncherEntry, NumBuckets)
+
+	for i := range batchSize {
+		batch[i] = make([]SessionCruncherEntry, 0, batchSize[i])
+	}
+
+	for i := range publisher.batchMessages {
+		index := int(publisher.batchMessages[i].Score)
+		batch[index] = append(batch[index], publisher.batchMessages[i])
+	}
+
+	size := 8 + 4*NumBuckets
+	for i := range batchSize {
+		size += int(batchSize[i]) * 9
+	}
+
+	data := make([]byte, size)
+
+	index := 0
+	
+	encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
+
+	for i := 0; i < NumBuckets; i++ {
+		encoding.WriteUint32(data[:], &index, uint32(batchSize[i]))
+		for j := range batch[i] {
+			encoding.WriteUint64(data[:], &index, batch[i][j].SessionId)
+			encoding.WriteUint8(data[:], &index, batch[i][j].Next)
+		}
+	}
+
+	err := postBinary(publisher.config.URL, data)
+
+	if err != nil {
+		core.Error("failed to post session cruncher batch: %v", err)
+	}
+
+	publisher.batchMessages = publisher.batchMessages[:0]
+	publisher.numBatchesSent++
+	publisher.lastBatchSendTime = time.Now()
 }
 
 func postBinary(url string, data []byte) error {

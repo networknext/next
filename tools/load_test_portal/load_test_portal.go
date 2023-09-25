@@ -143,7 +143,7 @@ func RunPollThread(ctx context.Context) {
 
 	go func() {
 
-		// redisClient := common.CreateRedisClient("127.0.0.1:6379")
+		redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
 		watcher := portal.CreateTopSessionsWatcher(SessionCruncherURL)
 
@@ -164,7 +164,6 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
-			/*
 			start := time.Now()
 
 			sessionList := portal.GetSessionList(ctx, redisClient, sessions)
@@ -277,7 +276,6 @@ func RunPollThread(ctx context.Context) {
 			}
 
 			// ------------------------------------------------------------------------------------------
-			*/
 
 			time.Sleep(time.Second)
 
@@ -294,9 +292,9 @@ func main() {
 
 	RunSessionInsertThreads(ctx, threadCount)
 
-	// RunServerInsertThreads(ctx, threadCount)
+	RunServerInsertThreads(ctx, threadCount)
 
-	// RunRelayInsertThreads(ctx, threadCount)
+	RunRelayInsertThreads(ctx, threadCount)
 
 	RunPollThread(ctx)
 

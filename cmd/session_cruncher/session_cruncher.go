@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	// "sort"
 	"sync"
 	"time"
 	
@@ -24,8 +23,8 @@ const TopSessionsVersion = uint64(0)
 
 type SessionUpdate struct {
 	sessionId uint64
-	score     int32
-	next      bool
+	score     uint32
+	next      uint8
 }
 
 type TopSessions struct {
@@ -37,7 +36,7 @@ type TopSessions struct {
 
 type Bucket struct {
 	mutex                sync.Mutex
-	sessionUpdateChannel chan SessionUpdate
+	sessionUpdateChannel chan []SessionUpdate
 	totalSessions        *SortedSet
 	nextSessions         *SortedSet
 }
@@ -57,13 +56,15 @@ func main() {
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
-		buckets[i].sessionUpdateChannel = make(chan SessionUpdate, 1000000)
+		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
 		buckets[i].nextSessions = NewSortedSet()
 		buckets[i].totalSessions = NewSortedSet()
 		StartProcessThread(&buckets[i])
 	}
 
 	UpdateTopSessions(&TopSessions{})
+
+	// go TestThread()
 
 	go TopSessionsThread()
 
@@ -72,7 +73,23 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func GetBucketIndex(score int32) int {
+/*
+func TestThread() {
+	for {
+		for index := 0; index < NumBuckets; index++ {
+			batch := make([]SessionUpdate, 1000)
+			for i := 0; i < len(batch); i++ {
+				batch[i].sessionId = rand.Uint64()
+				batch[i].score = uint32(index)	
+				batch[i].next = uint8(i%2)
+			}
+			buckets[index].sessionUpdateChannel <- batch
+		}
+	}
+}
+*/
+
+func GetBucketIndex(score uint32) int {
 	index := score
 	if index < 0 {
 		index = 0
@@ -86,11 +103,13 @@ func StartProcessThread(bucket *Bucket) {
 	go func() {
 		for {
 			select {
-			case sessionUpdate := <-bucket.sessionUpdateChannel:
+			case batch := <-bucket.sessionUpdateChannel:
 				bucket.mutex.Lock()
-				bucket.totalSessions.Insert(sessionUpdate.sessionId, sessionUpdate.score)
-				if sessionUpdate.next {
-					bucket.nextSessions.Insert(sessionUpdate.sessionId, sessionUpdate.score)
+				for i := range batch {
+					bucket.totalSessions.Insert(batch[i].sessionId, batch[i].score)
+					if batch[i].next != 0 {
+						bucket.nextSessions.Insert(batch[i].sessionId, batch[i].score)
+					}
 				}
 				bucket.mutex.Unlock()
 			}
@@ -157,7 +176,7 @@ func TopSessionsThread() {
 
 			type Session struct {
 				sessionId uint64
-				score     int32
+				score     uint32
 			}
 	
 			sessions := make([]Session, 0, TopSessionsCount)
@@ -196,119 +215,6 @@ func TopSessionsThread() {
 			duration := time.Since(start)
 
 			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
-
-			/*
-			start := time.Now()
-
-			sessions_a := make([]*SortedSetNode, 0, TopSessionsCount*2)
-			sessions_b := make([]*SortedSetNode, 0, TopSessionsCount*2)
-
-			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Lock()
-			}
-
-			for i := 0; i < NumBuckets; i++ {
-				bucketSessions := buckets[i].currentSessions.GetByRankRange(1, TopSessionsCount)
-				sessions_a = append(sessions_a, bucketSessions...)
-				if len(sessions_a) >= TopSessionsCount {
-					sessions_a = sessions_a[:TopSessionsCount]
-					break
-				}
-			}
-
-			for i := 0; i < NumBuckets; i++ {
-				bucketSessions := buckets[i].previousSessions.GetByRankRange(1, TopSessionsCount)
-				sessions_b = append(sessions_b, bucketSessions...)
-				if len(sessions_b) >= TopSessionsCount {
-					sessions_b = sessions_b[:TopSessionsCount]
-					break
-				}
-			}
-
-			totalCount_a := uint64(0)
-			totalCount_b := uint64(0)
-			nextCount_a := uint64(0)
-			nextCount_b := uint64(0)
-			for i := 0; i < NumBuckets; i++ {
-				totalCount_a += uint64(buckets[i].currentSessions.GetCount())
-				totalCount_b += uint64(buckets[i].previousSessions.GetCount())
-				nextCount_a += uint64(len(buckets[i].currentNext))
-				nextCount_b += uint64(len(buckets[i].previousNext))
-			}
-
-			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Unlock()
-			}
-
-			totalCount := totalCount_a
-			if totalCount_b > totalCount {
-				totalCount = totalCount_b
-			}
-
-			nextCount := nextCount_a
-			if nextCount_b > nextCount {
-				nextCount = nextCount_b
-			}
-
-			sessionMap := make(map[uint64]int32)
-
-			for i := range sessions_a {
-				sessionMap[sessions_a[i].Key] = sessions_a[i].Score
-			}
-
-			for i := range sessions_b {
-				sessionMap[sessions_b[i].Key] = sessions_b[i].Score
-			}
-
-			sessions := make([]Session, len(sessionMap))
-			index := 0
-			for k, v := range sessionMap {
-				sessions[index].sessionId = k
-				sessions[index].score = v
-				index++
-			}
-
-			sort.Slice(sessions, func(i int, j int) bool { return sessions[i].score < sessions[j].score })
-
-			if len(sessions) > TopSessionsCount {
-				sessions = sessions[:TopSessionsCount]
-			}
-
-			newTopSessions := &TopSessions{}
-			newTopSessions.nextSessions = uint32(nextCount)
-			newTopSessions.totalSessions = uint32(totalCount)
-			newTopSessions.numTopSessions = len(sessions)
-			for i := range sessions {
-				newTopSessions.topSessions[i] = sessions[i].sessionId
-			}
-
-			data := make([]byte, 8+8+8+4+8*newTopSessions.numTopSessions)
-
-			index = 0
-
-			encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-			encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
-			encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
-
-			for i := 0; i < newTopSessions.numTopSessions; i++ {
-				encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
-			}
-
-			topSessionsMutex.Lock()
-			topSessions = newTopSessions
-			topSessionsData = data
-			topSessionsMutex.Unlock()
-
-			duration := time.Since(start)
-
-			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
-
-			core.Log("bucket distribution: %v", bucketDistribution)
-
-			if duration > time.Second {
-				core.Warn("session cruncher can't keep up!")
-			}
-			*/
 		}
 	}
 }
@@ -340,19 +246,19 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	body = body[8:]
 
-	numSessionUpdates := len(body) / 13
-
 	index := 0
-	for i := 0; i < numSessionUpdates; i++ {
-		sessionId := binary.LittleEndian.Uint64(body[index : index+8])
-		score := int32(binary.LittleEndian.Uint32(body[index+8 : index+12]))
-		var next bool
-		if body[index+12] != 0 {
-			next = true
+	for j := 0; j < NumBuckets; j++ {
+		var numUpdates uint32
+		encoding.ReadUint32(body[:], &index, &numUpdates)
+		batch := make([]SessionUpdate, numUpdates)
+		if numUpdates > 0 {
+			for i := 0; i < int(numUpdates); i++ {
+				encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
+				encoding.ReadUint8(body[:], &index, &batch[i].next)
+				batch[i].score = uint32(j)
+			}
+			buckets[j].sessionUpdateChannel <- batch
 		}
-		bucketIndex := GetBucketIndex(score)
-		buckets[bucketIndex].sessionUpdateChannel <- SessionUpdate{sessionId: sessionId, score: score, next: next}
-		index += 13
 	}
 }
 
@@ -407,12 +313,12 @@ type SortedSetLevel struct {
 
 type SortedSetNode struct {
 	Key      uint64 // unique key of this node
-	Score    int32  // score to determine the order of this node in the set
+	Score    uint32  // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }
 
-func createNode(level int, score int32, key uint64) *SortedSetNode {
+func createNode(level int, score uint32, key uint64) *SortedSetNode {
 	node := SortedSetNode{
 		Score: score,
 		Key:   key,
@@ -432,7 +338,7 @@ func randomLevel() int {
 	return SKIPLIST_MAXLEVEL
 }
 
-func (this *SortedSet) insertNode(score int32, key uint64) *SortedSetNode {
+func (this *SortedSet) insertNode(score uint32, key uint64) *SortedSetNode {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 	var rank [SKIPLIST_MAXLEVEL]int64
 
@@ -521,7 +427,7 @@ func (this *SortedSet) deleteNode(x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*S
 	delete(this.dict, x.Key)
 }
 
-func (this *SortedSet) delete(score int32, key uint64) bool {
+func (this *SortedSet) delete(score uint32, key uint64) bool {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 
 	x := this.header
@@ -558,7 +464,7 @@ func (this *SortedSet) GetCount() int {
 	return int(this.length)
 }
 
-func (this *SortedSet) Insert(key uint64, score int32) bool {
+func (this *SortedSet) Insert(key uint64, score uint32) bool {
 	var newNode *SortedSetNode = nil
 	found := this.dict[key]
 	if found != nil {
