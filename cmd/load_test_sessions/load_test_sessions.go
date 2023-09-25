@@ -72,7 +72,11 @@ func SimulateSessions() {
 
 func RunSession(index int) {
 
-	time.Sleep(time.Duration(common.RandomInt(0, 300)) * time.Second)
+	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	initialDelay := time.Duration(r.Intn(300))
+
+	time.Sleep(initialDelay * time.Second)
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, 10000+index))
 
