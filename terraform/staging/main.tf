@@ -91,40 +91,6 @@ resource "google_compute_managed_ssl_certificate" "portal" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "cloudflare_record" "api_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "api-staging"
-  value   = module.api.address
-  type    = "A"
-  proxied = false
-}
-
-resource "cloudflare_record" "server_backend_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "server-staging"
-  value   = module.server_backend.address
-  type    = "A"
-  proxied = false
-}
-
-resource "cloudflare_record" "relay_backend_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "relay-staging"
-  value   = module.relay_gateway.address
-  type    = "A"
-  proxied = false
-}
-
-resource "cloudflare_record" "portal_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "portal-staging"
-  value   = module.portal.address
-  type    = "A"
-  proxied = false
-}
-
-# ----------------------------------------------------------------------------------------
-
 resource "google_compute_network" "staging" {
   name                    = "staging"
   project                 = var.google_project
@@ -208,19 +174,6 @@ resource "google_compute_firewall" "allow_http" {
   target_tags = ["allow-http"]
 }
 
-resource "google_compute_firewall" "allow_http_vpn_only" {
-  name          = "allow-http-vpn-only"
-  project       = var.google_project
-  direction     = "INGRESS"
-  network       = google_compute_network.staging.id
-  source_ranges = ["${var.vpn_address}/32"]
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-  target_tags = ["allow-http-vpn-only"]
-}
-
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
   project       = var.google_project
@@ -247,6 +200,45 @@ resource "google_compute_firewall" "allow_udp_all" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+resource "cloudflare_record" "api_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "api-staging"
+  value   = module.api.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "server_backend_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "server-staging"
+  value   = module.server_backend.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "relay_backend_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "relay-staging"
+  value   = module.relay_gateway.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "portal_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "portal-staging"
+  value   = module.portal.address
+  type    = "A"
+  proxied = false
+}
+
+# ----------------------------------------------------------------------------------------
+
+locals {
+  redis_portal_address = "10.0.0.207:6379"
+  redis_server_backend_address = "10.0.0.40:6379"
+}
 
 resource "google_redis_instance" "redis_relay_backend" {
   name                    = "redis-relay-backend"
@@ -276,11 +268,6 @@ resource "google_redis_instance" "redis_analytics" {
   redis_version           = "REDIS_7_0"
   redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "1" }
   authorized_network      = google_compute_network.staging.id
-}
-
-locals {
-  redis_portal_address = "10.0.0.207:6379"
-  redis_server_backend_address = "10.0.0.207:6379"
 }
 
 output "redis_portal_address" {
@@ -1682,7 +1669,7 @@ module "api" {
   default_network          = google_compute_network.staging.id
   default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-health-checks", "allow-http-vpn-only"]
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = 3
   max_size                 = 16
   target_cpu               = 60
