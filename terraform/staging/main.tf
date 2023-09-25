@@ -290,7 +290,7 @@ output "redis_portal_address" {
 
 output "redis_server_backend_address" {
   description = "The IP address of the server backend redis instance"
-  value       = local.redis_server_backend.address
+  value       = local.redis_server_backend_address
 }
 
 output "redis_relay_backend_address" {
@@ -1788,7 +1788,7 @@ module "map_cruncher" {
     ENV=staging
     REPS=64
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
-    REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
     ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service

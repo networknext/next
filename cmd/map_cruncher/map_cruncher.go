@@ -12,18 +12,21 @@ import (
 	"github.com/networknext/next/modules/portal"
 )
 
+var redisServerBackendCluster []string
 var redisServerBackendHostname string
 
 var mapInstance *portal.Map
 
 func main() {
 
+	redisServerBackendCluster = envvar.GetStringArray("REDIS_SERVER_BACKEND_CLUSTER", []string{})
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 
 	reps := envvar.GetInt("REPS", 1)
 
 	service := common.CreateService("map_cruncher")
 
+	core.Debug("redis server backend cluster: %v", redisServerBackendCluster)
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 
 	for i := 0; i < reps; i++ {
@@ -88,6 +91,7 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, p
 
 	config := common.RedisPubsubConfig{}
 
+	config.RedisCluster = redisServerBackendCluster
 	config.RedisHostname = redisServerBackendHostname
 	config.PubsubChannelName = channelName
 
