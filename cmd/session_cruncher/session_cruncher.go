@@ -64,7 +64,7 @@ func main() {
 
 	UpdateTopSessions(&TopSessions{})
 
-	go TestThread()
+	// go TestThread()
 
 	go TopSessionsThread()
 
@@ -73,6 +73,7 @@ func main() {
 	service.WaitForShutdown()
 }
 
+/*
 func TestThread() {
 	for {
 		for index := 0; index < NumBuckets; index++ {
@@ -86,6 +87,7 @@ func TestThread() {
 		}
 	}
 }
+*/
 
 func GetBucketIndex(score uint32) int {
 	index := score
@@ -249,10 +251,12 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		var numUpdates uint32
 		encoding.ReadUint32(body[:], &index, &numUpdates)
 		batch := make([]SessionUpdate, numUpdates)
-		for i := 0; i < int(numUpdates); i++ {
-			encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
-			encoding.ReadUint32(body[:], &index, &batch[i].score)
-			encoding.ReadUint8(body[:], &index, &batch[i].next)
+		if numUpdates > 0 {
+			for i := 0; i < int(numUpdates); i++ {
+				encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
+				encoding.ReadUint8(body[:], &index, &batch[i].next)
+				batch[i].score = uint32(j)
+			}
 			buckets[j].sessionUpdateChannel <- batch
 		}
 	}
