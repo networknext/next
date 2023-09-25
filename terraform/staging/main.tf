@@ -1739,6 +1739,7 @@ module "portal_cruncher" {
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_PROFILER=1
     REPS=10
+    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1777,6 +1778,7 @@ module "map_cruncher" {
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
     ENABLE_PROFILER=1
+    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1

@@ -98,7 +98,7 @@ func ProcessMessages[T messages.Message](service *common.Service, name string, p
 	consumer, err := common.CreateRedisPubsubConsumer(service.Context, config)
 
 	if err != nil {
-		core.Error("could not create redis pubsub consumer for map updates")
+		core.Error("could not create redis pubsub consumer for map updates: %v", err)
 		os.Exit(1)
 	}
 
