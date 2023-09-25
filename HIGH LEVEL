@@ -78,6 +78,14 @@ TODO
 
 	Verify that we can hit stability out of the box quickly with default instances @ 1M
 
+	It feels like we need too many server backends for the given amount of sessions
+
+	Dig in. What's going on here?
+
+	Try tuning the UDP_THREAD_COUNT -- was 64, try 8...
+
+	Try dialing in a ramp up over 5 minutes with sessions delaying start time...
+
 
 
 

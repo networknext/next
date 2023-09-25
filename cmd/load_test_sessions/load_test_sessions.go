@@ -72,7 +72,7 @@ func SimulateSessions() {
 
 func RunSession(index int) {
 
-	time.Sleep(time.Duration(common.RandomInt(0, 10000)) * time.Millisecond)
+	time.Sleep(time.Duration(common.RandomInt(0, 300)) * time.Second)
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, 10000+index))
 
@@ -95,7 +95,7 @@ func RunSession(index int) {
 
 	sessionDuration := 0
 
-	sessionTimeout := common.RandomInt(240, 300)
+	sessionTimeout := 300
 
 	var mutex sync.Mutex
 
