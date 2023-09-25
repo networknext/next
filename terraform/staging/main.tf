@@ -1607,7 +1607,7 @@ module "analytics" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-highcpu-2"
+  machine_type               = "n1-highcpu-8"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
