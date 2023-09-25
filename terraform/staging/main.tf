@@ -1754,7 +1754,7 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size           = 10
+  min_size           = 3
   max_size           = 64
   target_cpu         = 60
 }
@@ -1844,7 +1844,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size           = 10
+  min_size           = 3
   max_size           = 64
   target_cpu         = 60
 
