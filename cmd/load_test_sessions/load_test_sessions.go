@@ -74,9 +74,9 @@ func RunSession(index int) {
 
 	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	initialDelay := time.Duration(r.Intn(600))
+	initialDelay := time.Duration(r.Intn(300)) * time.Second
 
-	time.Sleep(initialDelay * time.Second)
+	time.Sleep(initialDelay)
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, 10000+index))
 
