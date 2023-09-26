@@ -3320,7 +3320,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             else
             {
                 // IMPORTANT: don't send session update retries if we have fallen back to direct
-                // otherwise, we swamp the server backend with 10X load for the rest of the session
+                // otherwise, we swamp the server backend with increased load for the rest of the session
                 session->waiting_for_update_response = false;
                 session->next_session_update_time = -1.0;
             }
