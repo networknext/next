@@ -1748,8 +1748,8 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size           = 1
-  max_size           = 1
+  min_size           = 3
+  max_size           = 64
   target_cpu         = 60
 }
 
@@ -1836,8 +1836,8 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size           = 1
-  max_size           = 1 # todo: try with no autoscale basically
+  min_size           = 3
+  max_size           = 64
   target_cpu         = 60
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
@@ -1964,7 +1964,7 @@ module "load_test_sessions" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
     cat <<EOF > /app/app.env
-    NUM_SESSIONS=10000
+    NUM_SESSIONS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
@@ -1973,7 +1973,7 @@ module "load_test_sessions" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-8"
+  machine_type       = "n1-highcpu-16"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1981,7 +1981,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1
+  target_size        = 20
 }
 
 # ----------------------------------------------------------------------------------------

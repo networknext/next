@@ -204,7 +204,7 @@ func RunSession(index int) {
 					if retryNumber == 0 {
 						core.Debug("[%016x] update", sessionId)
 					} else {
-						core.Debug("[%016x] retry %d", sessionId, retryNumber)
+						core.Log("[%016x] retry %d", sessionId, retryNumber)
 					}
 
 					mutex.Lock()
