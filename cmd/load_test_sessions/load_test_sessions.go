@@ -279,7 +279,7 @@ func RunSession(index int) {
 
 				mutex.Lock()
 
-				if !receivedResponse {
+				if !receivedResponse && !fallbackToDirect {
 					core.Error("fallback to direct")
 					fallbackToDirect = true
 				}
