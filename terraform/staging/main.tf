@@ -201,6 +201,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
@@ -1699,7 +1700,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-4"
+  machine_type               = "c3-standard-8"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1755,8 +1756,6 @@ module "portal_cruncher" {
 
 // ---------------------------------------------------------------------------------------
 
-// todo: disabled. we will rework it so that it drives from the session cruncher top sessions instead
-/*
 module "map_cruncher" {
 
   source = "../modules/internal_mig_with_health_check"
@@ -1789,7 +1788,6 @@ module "map_cruncher" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -1981,7 +1979,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 20
+  target_size        = 2
 }
 
 # ----------------------------------------------------------------------------------------
@@ -2031,3 +2029,4 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/
