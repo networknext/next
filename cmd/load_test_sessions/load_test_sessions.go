@@ -78,11 +78,9 @@ func RunSession(index int) {
 
 	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	/*
 	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond)	// jitter delay
 
-	time.Sleep(time.Duration(r.Intn(300)) * time.Second)        // initial delay
-	*/
+	time.Sleep(time.Duration(r.Intn(360)) * time.Second)        // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, basePort+index))
 
