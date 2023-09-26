@@ -293,6 +293,7 @@ func RunSession(index int) {
 
 				sessionDuration += 10
 
+				/*
 				if sessionDuration > sessionTimeout {
 					if !clientPingTimedOut {
 						core.Debug("client ping timed out")
@@ -314,6 +315,7 @@ func RunSession(index int) {
 					numNearRelays = 0
 					mutex.Unlock()
 				}
+				*/
 			}
 		}
 	}()
