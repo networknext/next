@@ -204,7 +204,8 @@ func RunSession(index int) {
 					if retryNumber == 0 {
 						core.Debug("update session %03d", index)
 					} else {
-						core.Debug("update session %03d (retry %d)", index, retryNumber)
+						// todo
+						core.Log("[%016] retry %d", sessionId, retryNumber)
 					}
 
 					mutex.Lock()
@@ -280,7 +281,7 @@ func RunSession(index int) {
 				mutex.Lock()
 
 				if !receivedResponse && !fallbackToDirect {
-					core.Error("fallback to direct")
+					core.Error("[%016x] fallback to direct", sessionId)
 					fallbackToDirect = true
 				}
 
