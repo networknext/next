@@ -282,7 +282,6 @@ func RunSession(index int) {
 				if !receivedResponse {
 					core.Error("fallback to direct")
 					fallbackToDirect = true
-					os.Exit(1)
 				}
 
 				sliceNumber += 1
