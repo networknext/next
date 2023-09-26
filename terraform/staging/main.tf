@@ -1973,7 +1973,7 @@ module "load_test_sessions" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-8"
+  machine_type       = "n1-highcpu-16"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
