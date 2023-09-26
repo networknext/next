@@ -1964,7 +1964,7 @@ module "load_test_sessions" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
     cat <<EOF > /app/app.env
-    NUM_SESSIONS=1000
+    NUM_SESSIONS=10000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
@@ -1973,7 +1973,7 @@ module "load_test_sessions" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-16"
+  machine_type       = "n1-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones

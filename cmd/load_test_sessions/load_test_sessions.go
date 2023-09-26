@@ -202,10 +202,9 @@ func RunSession(index int) {
 				for i := 0; i < 9; i++ {
 
 					if retryNumber == 0 {
-						core.Debug("update session %03d", index)
+						core.Debug("[%016x] update", sessionId)
 					} else {
-						// todo
-						core.Log("[%016x] retry %d", sessionId, retryNumber)
+						core.Debug("[%016x] retry %d", sessionId, retryNumber)
 					}
 
 					mutex.Lock()
@@ -292,30 +291,6 @@ func RunSession(index int) {
 				mutex.Unlock()
 
 				sessionDuration += 10
-
-				/*
-				if sessionDuration > sessionTimeout {
-					if !clientPingTimedOut {
-						core.Debug("client ping timed out")
-						clientPingTimedOut = true
-					}
-				}
-
-				if sessionDuration > sessionTimeout+60 {
-					mutex.Lock()
-					core.Debug("new session %03d\n", index)
-					sessionId = r.Uint64()
-					sliceNumber = 0
-					retryNumber = 0
-					sessionDuration = 0
-					next = false
-					fallbackToDirect = false
-					clientPingTimedOut = false
-					sessionDataBytes = 0
-					numNearRelays = 0
-					mutex.Unlock()
-				}
-				*/
 			}
 		}
 	}()
