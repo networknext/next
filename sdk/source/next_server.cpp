@@ -3312,66 +3312,69 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->stats_client_bandwidth_over_limit = false;
             session->stats_server_bandwidth_over_limit = false;
 
-            session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
-
-            session->waiting_for_update_response = true;
-        }
-
-        // IMPORTANT: If we have fallen back to direct, don't resend session update requests.
-        // Just send them once and be done with it -- otherwise, when sessions fallback to direct
-        // they continually put 10X load on the server backend with all their retries.
-        if ( !session->stats_fallback_to_direct )
-        {
-            if ( session->waiting_for_update_response && session->next_session_resend_time <= current_time )
+            if ( !session->stats_fallback_to_direct )
             {
-                session->session_update_request_packet.retry_number++;
-
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64 " (%d)", session->session_id, session->session_update_request_packet.retry_number );
-
-                uint8_t magic[8];
-                memset( magic, 0, sizeof(magic) );
-
-                uint8_t from_address_data[32];
-                uint8_t to_address_data[32];
-                uint16_t from_address_port;
-                uint16_t to_address_port;
-                int from_address_bytes;
-                int to_address_bytes;
-
-                next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
-                next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
-
-                uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-                next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
-                int packet_bytes = 0;
-                if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &session->session_update_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
-                {
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update request packet for backend" );
-                    return;
-                }
-
-                next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-                next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
-
-                next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
-
-                session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
+                session->waiting_for_update_response = true;
+                session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
             }
-
-            if ( !session->session_update_timed_out && session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
+            else
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
+                // IMPORTANT: don't send session update retries if we have fallen back to direct
+                // otherwise, we swamp the server backend with 10X load for the rest of the session
                 session->waiting_for_update_response = false;
                 session->next_session_update_time = -1.0;
-                session->session_update_timed_out = true;
+            }
+        }
 
-                // IMPORTANT: Send packets direct from now on for this session
-                {
-                    next_platform_mutex_guard( &server->session_mutex );
-                    session->mutex_send_over_network_next = false;
-                }
+        if ( session->waiting_for_update_response && session->next_session_resend_time <= current_time )
+        {
+            session->session_update_request_packet.retry_number++;
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64 " (%d)", session->session_id, session->session_update_request_packet.retry_number );
+
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
+
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+            next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &session->session_update_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update request packet for backend" );
+                return;
+            }
+
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+
+            next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
+
+            session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
+        }
+
+        if ( !session->session_update_timed_out && session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server timed out waiting for backend response for session %" PRIx64, session->session_id );
+            session->waiting_for_update_response = false;
+            session->next_session_update_time = -1.0;
+            session->session_update_timed_out = true;
+
+            // IMPORTANT: Send packets direct from now on for this session
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                session->mutex_send_over_network_next = false;
             }
         }
     }
