@@ -209,7 +209,7 @@ func RunSession(index int) {
 					receivedResponse = false
 					mutex.Unlock()
 
-					for i := 0; i < 5; i++ {
+					for i := 0; i < 4; i++ {
 
 						if retryNumber == 0 {
 							core.Debug("[%016x] update (%d)", sessionId, index)
@@ -273,7 +273,7 @@ func RunSession(index int) {
 							return
 						}
 
-						time.Sleep(*2time.Second)
+						time.Sleep(2*time.Second)
 
 						mutex.Lock()
 						done := receivedResponse
@@ -302,11 +302,11 @@ func RunSession(index int) {
 
 					sessionDuration += 10
 
-					if sessionDuration > 30 {
+					if sessionDuration > 300 {
 						clientPingTimedOut = true					
 					}
 
-					if sessionDuration > 40 {
+					if sessionDuration > 360 {
 						core.Debug("[%016x] end (%d)", sessionId, index)
 						conn.Close()
 						goto restart;
