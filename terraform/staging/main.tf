@@ -1698,7 +1698,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  machine_type               = "c3-highmem-8"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1739,7 +1739,7 @@ module "portal_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-2"
+  machine_type       = "n1-standard-2"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1836,7 +1836,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 20
+  target_cpu         = 60
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1971,7 +1971,7 @@ module "load_test_sessions" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-16"
+  machine_type       = "n1-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones

@@ -223,7 +223,7 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		core.Error("could not read session batch body")
+		core.Error("could not read session batch body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

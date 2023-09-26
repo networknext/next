@@ -45,9 +45,9 @@ func main() {
 
 	core.Log("num relays = %d", numRelays)
 	core.Log("num sessions = %d", numSessions)
+	core.Log("base port = %d", basePort)
 	core.Log("client address = %s", clientAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
-	core.Log("base port = %d", basePort)
 
 	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
 
@@ -299,22 +299,8 @@ func RunSession(index int) {
 					mutex.Unlock()
 
 					sessionDuration += 10
-
-					/*
-					if sessionDuration > 300 {
-						clientPingTimedOut = true					
-					}
-
-					if sessionDuration > 360 {
-						core.Debug("[%016x] end (%d)", sessionId, index)
-						conn.Close()
-						goto restart;
-					}
-					*/
 				}
 			}
-
-			// restart:
 		}
 
 	}()
