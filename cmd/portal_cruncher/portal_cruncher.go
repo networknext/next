@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"time"
+	"fmt"
+	"context"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -37,6 +39,8 @@ func main() {
 	relayInsertBatchSize := envvar.GetInt("RELAY_INSERT_BATCH_SIZE", 10000)
 	nearRelayInsertBatchSize := envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 10000)
 
+	forceRedisPortalClusterSettings := envvar.GetBool("FORCE_REDIS_PORTAL_CLUSTER_SETTINGS", false)
+
 	reps := envvar.GetInt("REPS", 1)
 
 	service = common.CreateService("portal_cruncher")
@@ -53,6 +57,12 @@ func main() {
 	core.Debug("relay insert batch size: %d", relayInsertBatchSize)
 	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
+	core.Debug("force redis portal cluster settings: %v", forceRedisPortalClusterSettings)
+
+	if forceRedisPortalClusterSettings {
+		ForceRedisPortalClusterSettings()
+	}
+
 	if !service.Local {
 		service.LoadIP2Location()
 	}
@@ -67,6 +77,30 @@ func main() {
 	service.StartWebServer()
 
 	service.WaitForShutdown()
+}
+
+// -------------------------------------------------------------------------------
+
+// IMPORTANT: force redis cluster settings on cluster master nodes. we have no other way of doing this in google cloud cluster.
+// without this, the portal redis cluster will freeze up and run out of memory once it fills up available memory.
+
+func ForceRedisPortalClusterSettings() {
+
+	core.Log("*** forcing redis portal cluster settings ***")
+
+	redisClient := redis.NewClusterClient(&redis.ClusterOptions{Addrs: redisPortalCluster})
+
+	_, err := redisClient.Ping(service.Context).Result() 
+	if err != nil { 
+		panic(fmt.Sprintf("could not ping portal redis cluster: %v", err))
+	}
+
+	err = redisClient.ForEachMaster(service.Context, func(ctx context.Context, shard *redis.Client) error {
+		return shard.ConfigSet(ctx, "maxmemory-policy", "allkeys-lru").Err()
+	})
+	if err != nil {
+	    panic(fmt.Sprintf("could not force redis portal cluster settings: %v", err))
+	}
 }
 
 // -------------------------------------------------------------------------------

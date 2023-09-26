@@ -1727,6 +1727,7 @@ module "portal_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    FORCE_REDIS_PORTAL_CLUSTER_SETTINGS=true
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
