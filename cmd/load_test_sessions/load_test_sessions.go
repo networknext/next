@@ -300,6 +300,7 @@ func RunSession(index int) {
 
 					sessionDuration += 10
 
+					/*
 					if sessionDuration > 300 {
 						clientPingTimedOut = true					
 					}
@@ -309,10 +310,11 @@ func RunSession(index int) {
 						conn.Close()
 						goto restart;
 					}
+					*/
 				}
 			}
 
-			restart:
+			// restart:
 		}
 
 	}()

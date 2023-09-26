@@ -1692,7 +1692,6 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1734,7 +1733,6 @@ module "portal_cruncher" {
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     REPS=10
-    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1772,7 +1770,6 @@ module "map_cruncher" {
     REPS=64
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
-    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1
