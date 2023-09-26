@@ -36,9 +36,19 @@ func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) 
 
 	var redisClient redis.StreamCmdable
 	if len(config.RedisCluster) > 0 {
-		redisClient = CreateRedisClusterClient(config.RedisCluster)
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
+		redisClient = client
 	} else {
-		redisClient = CreateRedisClient(config.RedisHostname)
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
+		redisClient = client
 	}
 
 	producer := &RedisStreamsProducer{}
@@ -153,9 +163,19 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 
 	var redisClient redis.StreamCmdable
 	if len(config.RedisCluster) > 0 {
-		redisClient = CreateRedisClusterClient(config.RedisCluster)
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
+		redisClient = client
 	} else {
-		redisClient = CreateRedisClient(config.RedisHostname)
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
+		redisClient = client
 	}
 
 	consumerId := uuid.New().String()

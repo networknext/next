@@ -37,9 +37,19 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 
 	var redisClient redis.PubSubCmdable
 	if len(config.RedisCluster) > 0 {
-		redisClient = CreateRedisClusterClient(config.RedisCluster)
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
+		redisClient = client
 	} else {
-		redisClient = CreateRedisClient(config.RedisHostname)
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
+		redisClient = client
 	}
 
 	if config.MessageChannelSize == 0 {
@@ -164,8 +174,16 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	var redisClusterClient *redis.ClusterClient
 	if len(config.RedisCluster) > 0 {
 		redisClusterClient = CreateRedisClusterClient(config.RedisCluster)
+		_, err := redisClusterClient.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
 	} else {
 		redisClient = CreateRedisClient(config.RedisHostname)
+		_, err := redisClient.Ping(ctx).Result() 
+		if err != nil { 
+			return nil, err
+		}
 	}
 
 	if config.MessageChannelSize == 0 {
