@@ -80,7 +80,7 @@ func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler 
 					break
 				}
 
-				packetHandler(udpServer.conn[thread], from, receiveBuffer[:receivePacketBytes])
+				go packetHandler(udpServer.conn[thread], from, receiveBuffer[:receivePacketBytes])
 			}
 
 			udpServer.conn[thread].Close()
