@@ -1447,7 +1447,6 @@ module "magic_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a magic_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1497,7 +1496,6 @@ module "relay_gateway" {
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     PING_KEY=${var.ping_key}
-    ENABLE_PROFILER=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1547,7 +1545,6 @@ module "relay_backend" {
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     ENABLE_GOOGLE_PUBSUB=true
-    ENABLE_PROFILER=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1598,7 +1595,6 @@ module "analytics" {
     REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_GOOGLE_BIGQUERY=true
-    ENABLE_PROFILER=1
     REPS=10
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
@@ -1654,7 +1650,6 @@ module "api" {
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
     API_PRIVATE_KEY=${var.api_private_key}
     ALLOWED_ORIGIN="*"
-    ENABLE_PROFILER=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1737,7 +1732,6 @@ module "portal_cruncher" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
-    ENABLE_PROFILER=1
     REPS=10
     DEBUG_LOGS=1
     EOF
@@ -1779,7 +1773,6 @@ module "map_cruncher" {
     REPS=64
     REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
-    ENABLE_PROFILER=1
     DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
@@ -1828,7 +1821,6 @@ module "server_backend" {
     PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
-    ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1873,7 +1865,6 @@ module "ip2location" {
     ENV=staging
     MAXMIND_LICENSE_KEY=${var.maxmind_license_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
-    ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1908,7 +1899,6 @@ module "load_test_relays" {
     RELAY_BACKEND_HOSTNAME=http://${module.relay_gateway.address}
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
-    ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1943,7 +1933,6 @@ module "load_test_servers" {
     NUM_SERVERS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
-    ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1978,7 +1967,6 @@ module "load_test_sessions" {
     NUM_SESSIONS=1000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
-    ENABLE_PROFILER=1
     EOF
     sudo systemctl start app.service
   EOF1
