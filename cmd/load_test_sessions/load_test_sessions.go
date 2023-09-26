@@ -99,7 +99,7 @@ func RunSession(index int) {
 
 	sessionDuration := 0
 
-	sessionTimeout := 300
+	// sessionTimeout := 300
 
 	var mutex sync.Mutex
 
