@@ -13,7 +13,7 @@ import (
 	"github.com/networknext/next/modules/encoding"
 )
 
-const TopSessionsCount = 100000
+const TopSessionsCount = 10000
 
 const NumBuckets = 1000
 

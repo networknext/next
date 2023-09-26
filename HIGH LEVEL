@@ -72,11 +72,15 @@ DONE
 
 	Load test to 5M sessions
 
-	Adjust the staging env so it does 1M sessions out of the box
-
 TODO
 
-	Setup prod environment (1M sessions)
+	Load test to 10M sessions
+
+	Load test to 1M servers
+
+	-----------
+
+	Setup prod environment
 
 	-----------
 
