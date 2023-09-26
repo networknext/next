@@ -1808,6 +1808,8 @@ module "server_backend" {
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     UDP_NUM_THREADS=8
+    UDP_SOCKET_READ_BUFFER=100*1024*1024
+    UDP_SOCKET_WRITE_BUFFER=100*1024*1024
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_CLUSTER="${local.redis_server_backend_address}"
