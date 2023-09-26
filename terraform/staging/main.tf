@@ -201,6 +201,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
@@ -2029,3 +2030,4 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/
