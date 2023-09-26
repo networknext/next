@@ -1985,7 +1985,7 @@ module "load_test_sessions" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-16"
+  machine_type       = "n1-highcpu-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1993,7 +1993,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 100
+  target_size        = 2
 }
 
 # ----------------------------------------------------------------------------------------
