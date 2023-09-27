@@ -27,6 +27,8 @@ import (
 
 var SessionCruncherURL = "http://127.0.0.1:40200"
 
+var ServerCruncherURL = "http://127.0.0.1:40300"
+
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
 
 var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
@@ -212,7 +214,7 @@ func RunServerInsertThreads(threadCount int) {
 
 			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-			serverInserter := portal.CreateServerInserter(redisClient, 1000)
+			serverInserter := portal.CreateServerInserter(context.Background(), redisClient, ServerCruncherURL, 1000)
 
 			for {
 

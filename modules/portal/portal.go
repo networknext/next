@@ -1260,20 +1260,159 @@ func (inserter *NearRelayInserter) Flush(ctx context.Context) {
 
 // ------------------------------------------------------------------------------------------------------------
 
+const MaxServerAddressLength = 64
+
+type ServerCruncherEntry struct {
+	ServerAddress      string
+	Score              uint32
+}
+
+type ServerCruncherPublisherConfig struct {
+	URL                string
+	BatchSize          int
+	BatchDuration      time.Duration
+	MessageChannelSize int
+}
+
+type ServerCruncherPublisher struct {
+	MessageChannel    chan ServerCruncherEntry
+	config            ServerCruncherPublisherConfig
+	batchStartTime    time.Time
+	mutex             sync.RWMutex
+	lastBatchSendTime time.Time
+	batchMessages     []ServerCruncherEntry
+	numMessagesSent   int
+	numBatchesSent    int
+}
+
+func CreateServerCruncherPublisher(ctx context.Context, config ServerCruncherPublisherConfig) *ServerCruncherPublisher {
+
+	if config.MessageChannelSize == 0 {
+		config.MessageChannelSize = 1024 * 1024
+	}
+
+	if config.BatchDuration == 0 {
+		config.BatchDuration = time.Second
+	}
+
+	if config.BatchSize == 0 {
+		config.BatchSize = 10000
+	}
+
+	publisher := &ServerCruncherPublisher{}
+
+	publisher.config = config
+	publisher.MessageChannel = make(chan ServerCruncherEntry, config.MessageChannelSize)
+
+	go publisher.updateMessageChannel(ctx)
+
+	return publisher
+}
+
+const ServerBatchVersion_Write = uint64(0)
+
+func (publisher *ServerCruncherPublisher) updateMessageChannel(ctx context.Context) {
+
+	for {
+		select {
+
+		case <-ctx.Done():
+			return
+
+		case message := <-publisher.MessageChannel:
+			publisher.mutex.Lock()
+			publisher.numMessagesSent++
+			publisher.batchMessages = append(publisher.batchMessages, message)
+			if len(publisher.batchMessages) >= publisher.config.BatchSize || (len(publisher.batchMessages) > 0 && time.Since(publisher.lastBatchSendTime) >= publisher.config.BatchDuration) {
+				publisher.sendBatch()
+			}
+			publisher.mutex.Unlock()
+		}
+	}
+}
+
+func (publisher *ServerCruncherPublisher) sendBatch() {
+
+	batchSize := [NumBuckets]uint32{}
+
+	for i := range publisher.batchMessages {
+		batchSize[publisher.batchMessages[i].Score]++
+	}
+
+	batch := make([][]ServerCruncherEntry, NumBuckets)
+
+	for i := range batchSize {
+		batch[i] = make([]ServerCruncherEntry, 0, batchSize[i])
+	}
+
+	for i := range publisher.batchMessages {
+		index := int(publisher.batchMessages[i].Score)
+		batch[index] = append(batch[index], publisher.batchMessages[i])
+	}
+
+	size := 8 + 4*NumBuckets
+	for i := range batchSize {
+		size += 4 + int(batchSize[i]) * MaxServerAddressLength
+	}
+
+	data := make([]byte, size)
+
+	index := 0
+	
+	encoding.WriteUint64(data[:], &index, ServerBatchVersion_Write)
+
+	for i := 0; i < NumBuckets; i++ {
+		encoding.WriteUint32(data[:], &index, uint32(batchSize[i]))
+		for j := range batch[i] {
+			encoding.WriteString(data[:], &index, batch[i][j].ServerAddress, MaxServerAddressLength)
+		}
+	}
+
+	data = data[:index]
+
+	err := postBinary(publisher.config.URL, data)
+
+	if err != nil {
+		core.Error("failed to post server cruncher batch: %v", err)
+	}
+
+	publisher.batchMessages = publisher.batchMessages[:0]
+	publisher.numBatchesSent++
+	publisher.lastBatchSendTime = time.Now()
+}
+
+func (publisher *ServerCruncherPublisher) NumMessagesSent() int {
+	publisher.mutex.RLock()
+	value := publisher.numMessagesSent
+	publisher.mutex.RUnlock()
+	return value
+}
+
+func (publisher *ServerCruncherPublisher) NumBatchesSent() int {
+	publisher.mutex.RLock()
+	value := publisher.numBatchesSent
+	publisher.mutex.RUnlock()
+	return value
+}
+
+// ------------------------------------------------------------------------------------------------------------
+
 type ServerInserter struct {
 	redisClient   redis.Cmdable
 	lastFlushTime time.Time
 	batchSize     int
 	numPending    int
 	pipeline      redis.Pipeliner
+	publisher     *ServerCruncherPublisher
 }
 
-func CreateServerInserter(redisClient redis.Cmdable, batchSize int) *ServerInserter {
+func CreateServerInserter(ctx context.Context, redisClient redis.Cmdable, serverCruncherURL string, batchSize int) *ServerInserter {
 	inserter := ServerInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
+	inserter.publisher = CreateServerCruncherPublisher(ctx, ServerCruncherPublisherConfig{URL: serverCruncherURL + "/server_batch", BatchSize: batchSize})
 	return &inserter
 }
 
@@ -1281,14 +1420,16 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	currentTime := time.Now()
 
-	minutes := currentTime.Unix() / 60
-
 	serverId := common.HashString(serverData.ServerAddress)
 
-	score := uint32(serverId) ^ uint32(serverId>>32)
+	score := ( uint32(serverId) ^ uint32(serverId>>32) ) % NumBuckets
 
-	key := fmt.Sprintf("sv-%d", minutes)
-	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: serverData.ServerAddress})
+	entry := ServerCruncherEntry{
+		ServerAddress: serverData.ServerAddress,
+		Score:         score,
+	}
+
+	inserter.publisher.MessageChannel <- entry
 
 	inserter.pipeline.Set(ctx, fmt.Sprintf("svd-%s", serverData.ServerAddress), serverData.Value(), 0)
 
@@ -1314,36 +1455,6 @@ func (inserter *ServerInserter) Flush(ctx context.Context) {
 }
 
 // ------------------------------------------------------------------------------------------------------------
-
-func GetServerCount(ctx context.Context, redisClient redis.Cmdable, minutes int64) int {
-
-	pipeline := redisClient.Pipeline()
-
-	pipeline.ZCard(ctx, fmt.Sprintf("sv-%d", minutes-1))
-	pipeline.ZCard(ctx, fmt.Sprintf("sv-%d", minutes))
-
-	cmds, err := pipeline.Exec(ctx)
-	if err != nil {
-		core.Error("failed to get server counts: %v", err)
-		return 0
-	}
-
-	var totalServerCount_a int
-	var totalServerCount_b int
-
-	total_a := int(cmds[0].(*redis.IntCmd).Val())
-	total_b := int(cmds[1].(*redis.IntCmd).Val())
-
-	totalServerCount_a += total_a
-	totalServerCount_b += total_b
-
-	totalServerCount := totalServerCount_a
-	if totalServerCount_b > totalServerCount {
-		totalServerCount = totalServerCount_b
-	}
-
-	return totalServerCount
-}
 
 func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverAddress string, minutes int64) (*ServerData, []*SessionData) {
 
@@ -1441,87 +1552,92 @@ func GetServerList(ctx context.Context, redisClient redis.Cmdable, serverAddress
 	return serverList
 }
 
-func GetServerAddresses(ctx context.Context, redisClient redis.Cmdable, minutes int64, begin int, end int) []string {
+// ------------------------------------------------------------------------------------------------------------
 
+const TopServersVersion = uint64(0)
+
+type TopServersWatcher struct {
+	url              string
+	mutex            sync.RWMutex
+	totalServerCount int
+	topServers       []string
+}
+
+func CreateTopServersWatcher(serverCruncherURL string) *TopServersWatcher {
+	watcher := TopServersWatcher{}
+	watcher.url = serverCruncherURL + "/top_servers"
+	go watcher.watchTopServers()
+	return &watcher
+}
+
+func (watcher *TopServersWatcher) watchTopServers() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+
+		case <-ticker.C:
+
+			data := getBinary(watcher.url)
+
+			if data == nil {
+				break
+			}
+
+			// todo: rework
+			/*
+			if len(data) < 8 + 4 + 4 + 4 {
+				core.Error("top server response is too small")
+				break
+			}
+
+			index := 0
+
+			var version uint64
+			encoding.ReadUint64(data[:], &index, &version)
+			if version != TopServersVersion {
+				core.Error("bad top servers version. expected %d, got %d", version, TopServersVersion)
+				break
+			}
+
+			var totalServerCount uint32
+			encoding.ReadUint32(data[:], &index, &totalServerCount)
+
+			numServers := ( len(data) - ( 8 + 4 + 4 + 4 ) ) / 8
+			sessions := make([]uint64, numSessions)
+			for i := 0; i < numSessions; i++ {
+				encoding.ReadUint64(data[:], &index, &sessions[i])
+			}
+
+			watcher.mutex.Lock()
+			watcher.totalServerCount = int(totalServerCount)
+			watcher.topServers = servers
+			watcher.mutex.Unlock()
+			*/
+		}
+	}
+}
+
+func (watcher *TopServersWatcher) GetServerCount() int {
+	watcher.mutex.RLock()
+	total := watcher.totalServerCount
+	watcher.mutex.RUnlock()
+	return total
+}
+
+func (watcher *TopServersWatcher) GetServers(begin int, end int) []string {
 	if begin < 0 {
-		core.Error("invalid begin passed to get server addresses: %d", begin)
 		return nil
 	}
-
-	if end < 0 {
-		core.Error("invalid end passed to get server addresses: %d", end)
-		return nil
-	}
-
 	if end <= begin {
-		core.Error("end must be greater than begin")
 		return nil
 	}
-
-	// get the set of server addresses in the range [begin,end]
-
-	pipeline := redisClient.Pipeline()
-
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("sv-%d", minutes-1), int64(begin), int64(end-1))
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("sv-%d", minutes), int64(begin), int64(end-1))
-
-	cmds, err := pipeline.Exec(ctx)
-	if err != nil {
-		core.Error("failed to get server addresses: %v", err)
-		return nil
+	watcher.mutex.RLock()
+	servers := watcher.topServers
+	watcher.mutex.RUnlock()
+	if end >= len(servers) {
+		end = len(servers)
 	}
-
-	redis_server_addresses_a, err := cmds[0].(*redis.ZSliceCmd).Result()
-	if err != nil {
-		core.Error("failed to get redis server addresses a: %v", err)
-		return nil
-	}
-
-	redis_server_addresses_b, err := cmds[1].(*redis.ZSliceCmd).Result()
-	if err != nil {
-		core.Error("failed to get redis server addresses b: %v", err)
-		return nil
-	}
-
-	serverMap := make(map[string]int32)
-
-	for i := range redis_server_addresses_a {
-		address := redis_server_addresses_a[i].Member.(string)
-		score := int32(redis_server_addresses_a[i].Score)
-		serverMap[address] = score
-	}
-
-	for i := range redis_server_addresses_b {
-		address := redis_server_addresses_b[i].Member.(string)
-		score := int32(redis_server_addresses_b[i].Score)
-		serverMap[address] = score
-	}
-
-	type ServerEntry struct {
-		address string
-		score   int32
-	}
-
-	serverEntries := make([]ServerEntry, len(serverMap))
-	index := 0
-	for k, v := range serverMap {
-		serverEntries[index] = ServerEntry{k, v}
-		index++
-	}
-
-	sort.SliceStable(serverEntries, func(i, j int) bool { return serverEntries[i].score > serverEntries[j].score })
-
-	maxSize := end - begin
-	if len(serverEntries) > maxSize {
-		serverEntries = serverEntries[:maxSize]
-	}
-
-	serverAddresses := make([]string, len(serverEntries))
-	for i := range serverEntries {
-		serverAddresses[i] = serverEntries[i].address
-	}
-
-	return serverAddresses
+	return servers[begin:end]
 }
 
 // ------------------------------------------------------------------------------------------------------------

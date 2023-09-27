@@ -396,7 +396,8 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
-	response.ServerCount = portal.GetServerCount(service.Context, redisPortalClient, time.Now().Unix()/60)
+	// todo: update to top server watcher
+	// response.ServerCount = portal.GetServerCount(service.Context, redisPortalClient, time.Now().Unix()/60)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -422,6 +423,8 @@ type PortalServersResponse struct {
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
+	// todo
+	/*
 	vars := mux.Vars(r)
 	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
 	if err != nil {
@@ -433,7 +436,9 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	serverAddresses := portal.GetServerAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, int(begin), int(end))
+	*/
+	// todo: update to top server watcher
+	serverAddresses := []string{} // portal.GetServerAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, int(begin), int(end))
 	servers := portal.GetServerList(service.Context, redisPortalClient, serverAddresses)
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))

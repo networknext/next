@@ -22,6 +22,7 @@ var redisServerBackendHostname string
 var redisServerBackendCluster []string
 var redisRelayBackendHostname string
 var sessionCruncherURL string
+var serverCruncherURL string
 
 func main() {
 
@@ -31,6 +32,7 @@ func main() {
 	redisServerBackendHostname = envvar.GetString("REDIS_SERVER_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname = envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
 	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
+	serverCruncherURL = envvar.GetString("SERVER_CRUNCHER_URL", "http://127.0.0.1:40300")
 
 	sessionInsertBatchSize := envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 10000)
 	serverInsertBatchSize := envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 10000)
@@ -47,6 +49,7 @@ func main() {
 	core.Debug("redis server backend hostname: %s", redisServerBackendHostname)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
 	core.Debug("session cruncher url: %s", sessionCruncherURL)
+	core.Debug("server cruncher url: %s", serverCruncherURL)
 
 	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
 	core.Debug("server insert batch size: %d", serverInsertBatchSize)
@@ -192,7 +195,7 @@ func ProcessServerUpdateMessages(service *common.Service, batchSize int) {
 		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
 
-	serverInserter := portal.CreateServerInserter(redisClient, batchSize)
+	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, batchSize)
 
 	streamName := strings.ReplaceAll(name, " ", "_")
 	consumerGroup := streamName
