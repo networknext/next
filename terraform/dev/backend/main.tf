@@ -69,6 +69,63 @@ provider "cloudflare" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_compute_managed_ssl_certificate" "api" {
+  name = "api"
+  managed {
+    domains = ["api-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "relay" {
+  name = "relay"
+  managed {
+    domains = ["relay-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "portal" {
+  name = "portal"
+  managed {
+    domains = ["portal-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "raspberry" {
+  name = "raspberry"
+  managed {
+    domains = ["portal-dev.${var.cloudflare_domain}"]
+  }
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_network" "development" {
+  name                    = "development"
+  project                 = var.google_project
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "development" {
+  name                     = "development"
+  project                  = var.google_project
+  ip_cidr_range            = "10.0.0.0/16"
+  region                   = var.google_region
+  network                  = google_compute_network.development.id
+  private_ip_google_access = true
+}
+
+resource "google_compute_subnetwork" "internal_http_load_balancer" {
+  name          = "internal-http-load-balancer"
+  project       = var.google_project
+  region        = var.google_region
+  purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
+  role          = "ACTIVE"
+  network       = google_compute_network.development.id
+  ip_cidr_range = "10.1.0.0/16"
+}
+
+# ----------------------------------------------------------------------------------------
+
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-dev"
@@ -107,33 +164,6 @@ resource "cloudflare_record" "portal_domain" {
   value   = module.portal.address
   type    = "A"
   proxied = false
-}
-
-# ----------------------------------------------------------------------------------------
-
-resource "google_compute_network" "development" {
-  name                    = "development"
-  project                 = var.google_project
-  auto_create_subnetworks = false
-}
-
-resource "google_compute_subnetwork" "development" {
-  name                     = "development"
-  project                  = var.google_project
-  ip_cidr_range            = "10.0.0.0/16"
-  region                   = var.google_region
-  network                  = google_compute_network.development.id
-  private_ip_google_access = true
-}
-
-resource "google_compute_subnetwork" "internal_http_load_balancer" {
-  name          = "internal-http-load-balancer"
-  project       = var.google_project
-  region        = var.google_region
-  purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
-  role          = "ACTIVE"
-  network       = google_compute_network.development.id
-  ip_cidr_range = "10.1.0.0/16"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1501,6 +1531,7 @@ module "relay_gateway" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "relay-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.relay.id
 }
 
 output "relay_gateway_address" {
@@ -1650,6 +1681,7 @@ module "api" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http", "allow-https"]
   domain                     = "api-dev.${var.cloudflare_domain}"
+  certificate                = google_compute_managed_ssl_certificate.api.id
 }
 
 output "api_address" {
@@ -1888,6 +1920,7 @@ module "raspberry_backend" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.raspberry.id
 }
 
 output "raspberry_backend_address" {
@@ -2028,6 +2061,7 @@ module "portal" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.portal.id
 }
 
 output "portal_address" {
