@@ -1672,7 +1672,7 @@ module "api" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-highcpu-2"
+  machine_type               = "g1-small"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1711,7 +1711,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-4"
+  machine_type               = "g1-small"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1746,7 +1746,7 @@ module "server_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-4"
+  machine_type               = "g1-small"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
