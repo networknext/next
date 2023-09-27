@@ -16,7 +16,7 @@
           <td class="green-center" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td v-else> -- </td>
+          <td class="nada-center" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -42,7 +42,7 @@
           <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="right" v-else> -- </td>
+          <td class="nada" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -70,7 +70,7 @@
           <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="right" v-else> -- </td>
+          <td class="nada" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -104,7 +104,7 @@
           <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="right" v-else> -- </td>
+          <td class="nada" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -224,6 +224,12 @@ export default {
   text-align: right;
 }
 
+.nada {
+  color: #D3D3D3;
+  font-weight: bold;
+  text-align: right;
+}
+
 .green-center {
   color: #11AA44;
   font-weight: bold;
@@ -236,6 +242,11 @@ export default {
 
 .red-center {
   color: #E34234;
+  font-weight: bold;
+}
+
+.nada-center {
+  color: #D3D3D3;
   font-weight: bold;
 }
 
