@@ -164,8 +164,9 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	sliceData := portal.SliceData{
 		Timestamp:        uint64(time.Now().Unix()),
 		SliceNumber:      message.SliceNumber,
-		DirectRTT:        uint32(message.DirectRTT),
-		NextRTT:          uint32(message.NextRTT),
+		// todo
+		DirectRTT:        directRTT,
+		NextRTT:          nextRTT,
 		PredictedRTT:     uint32(message.NextPredictedRTT),
 		DirectJitter:     uint32(message.DirectJitter),
 		NextJitter:       uint32(message.NextJitter),

@@ -127,6 +127,7 @@ async function getData() {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
       const user_hash = parse_uint64(v.user_hash)
+      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt : ""
       let row = {
         "Session ID":session_id,
         "User Hash":user_hash,
@@ -137,7 +138,7 @@ async function getData() {
         "Datacenter Link": "datacenter/" + v.datacenter_name,
         "Server Address":v.server_address,
         "Direct RTT":v.direct_rtt,
-        "Next RTT":v.next_rtt,
+        "Next RTT":next_rtt,
         "Improvement":"--"
       }
       data.push(row)
