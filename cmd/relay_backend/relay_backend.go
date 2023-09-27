@@ -17,7 +17,7 @@ import (
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
-	// "github.com/networknext/next/modules/messages"
+	"github.com/networknext/next/modules/messages"
 	"github.com/networknext/next/modules/packets"
 )
 
@@ -583,8 +583,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		os.Exit(1)
 	}
 
-	// todo
-	/*
 	var portalRelayUpdateProducer *common.RedisStreamsProducer
 	var analyticsRelayUpdateProducer *common.GooglePubsubProducer
 	var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
@@ -624,7 +622,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 			os.Exit(1)
 		}
 	}
-	*/
 
 	go func() {
 
@@ -683,8 +680,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					relayUpdateRequest.RelayCounters[:],
 				)
 
-				// todo: disabled so we can focus on session scaling
-				/*
 				// build relay to relay ping messages for analytics
 
 				numRoutable := 0
@@ -796,7 +791,6 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 						}
 					}
 				}
-				*/
 			}
 		}
 	}()

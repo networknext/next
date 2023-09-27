@@ -63,7 +63,7 @@ func main() {
 
 	UpdateTopServers(&TopServers{})
 
-	go TestThread()
+	// go TestThread()
 
 	go TopSessionsThread()
 
@@ -130,7 +130,7 @@ func UpdateTopServers(newTopServers *TopServers) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(10*time.Second) // todo
+	ticker := time.NewTicker(60*time.Second)
 	for {
 		select {
 		case <-ticker.C:

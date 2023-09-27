@@ -5,8 +5,6 @@
 
 package main
 
-// todo: turn this off so we can load test sessions alone
-/*
 import (
 	"bytes"
 	"encoding/json"
@@ -190,10 +188,9 @@ func RunSessionInsertThreads(threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					currentScore := uint32(sessionId % 1000)
-					previousScore := uint32(sessionId % 1000)
-
-					sessionInserter.Insert(context.Background(), sessionId, userHash, next, currentScore, previousScore, sessionData, sliceData)
+					score := uint32(sessionId % 1000)
+					
+					sessionInserter.Insert(context.Background(), sessionId, userHash, next, score, sessionData, sliceData)
 
 					nearRelayData := portal.GenerateRandomNearRelayData()
 					nearRelayInserter.Insert(context.Background(), sessionId, nearRelayData)
@@ -568,9 +565,4 @@ func test_portal() {
 
 func main() {
 	test_portal()
-}
-*/
-
-func main() {
-	// ...
 }

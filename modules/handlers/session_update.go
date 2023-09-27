@@ -1129,8 +1129,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendPortalSessionUpdateMessage(state)
 
-		// todo: disabled so we can focus on scaling up sessions to 10M
-		/*
 		sendPortalNearRelayUpdateMessage(state)
 
 		sendAnalyticsSessionUpdateMessage(state)
@@ -1138,7 +1136,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		sendAnalyticsSessionSummaryMessage(state)
 
 		sendAnalyticsNearRelayPingMessages(state)
-		*/
 	}
 }
 

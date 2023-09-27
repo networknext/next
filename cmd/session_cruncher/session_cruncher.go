@@ -65,7 +65,7 @@ func main() {
 
 	UpdateTopSessions(&TopSessions{})
 
-	go TestThread()
+	// go TestThread()
 	
 	go TopSessionsThread()
 

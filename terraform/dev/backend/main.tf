@@ -1693,6 +1693,41 @@ module "session_cruncher" {
 
 // ---------------------------------------------------------------------------------------
 
+module "server_cruncher" {
+
+  source = "../../modules/internal_http_service"
+
+  service_name = "server-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "n1-standard-4"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.development.id
+  default_subnetwork         = google_compute_subnetwork.development.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
+}
+
+// ---------------------------------------------------------------------------------------
+
 module "portal_cruncher" {
 
   source = "../../modules/internal_mig_with_health_check"
@@ -1761,6 +1796,7 @@ module "map_cruncher" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-http"]
+  target_size        = 0 # todo: disabled for now until we work out what to do here
 }
 
 # ----------------------------------------------------------------------------------------
