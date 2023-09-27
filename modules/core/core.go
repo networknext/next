@@ -1964,3 +1964,23 @@ func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr
 		crypto.Auth_Sign(data[:length], key, pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes])
 	}
 }
+
+func GetSessionScore(next bool, directRTT int32, nextRTT int32) uint32 {
+	var score uint32
+	if next {
+		improvement := directRTT - nextRTT
+		if improvement < 0 {
+			improvement = 0
+		}
+		if improvement > 254 {
+			improvement = 254
+		}
+		score = uint32(254 - improvement)
+	} else {
+		score = uint32(999 - directRTT)
+		if score < 255 {
+			score = 255
+		}
+	}
+	return score
+}

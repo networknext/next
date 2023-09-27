@@ -68,9 +68,6 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
-	// for tracking previous score across session update
-	PreviousScore uint32
-
 	// lat/long if we looked it up this update
 	Latitude  float32
 	Longitude float32
@@ -150,41 +147,19 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	/*
 		Update scores
 
-		We track the highest score seen per-session to keep scores (and session ordering in portal) stable.
+		We track the best score seen per-session to keep scores (and session ordering in portal) stable.
 
-		Previous score is required for the bucketing algorithm that tracks top sessions.		
+		The lowest scores are the best scores, so we check if the new score is lower than the current best score.
 	*/
 
-	score := int32(0)
-
-	if state.Request.Next {
-		improvement := int32(state.Request.DirectRTT) - int32(state.Request.NextRTT)
-		if improvement < 0 {
-			improvement = 0
-		} else if improvement > 500 {
-			improvement = 500
-		}
-		score = 500 - improvement
-	} else {
-		score = 500 + int32(state.Request.DirectRTT)
-	}
-
-	if score < 0 {
-		score = 0
-	} else if score > 999 {
-		score = 999
-	}
-
-	score = 999 - score
+	score := core.GetSessionScore(state.Request.Next, int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
 
 	if state.Request.SliceNumber > 1 {
-		state.PreviousScore = state.Input.HighestScore
-		if uint32(score) > state.Input.HighestScore {
-			state.Input.HighestScore = uint32(score)
+		if uint32(score) < state.Input.BestScore {
+			state.Input.BestScore = uint32(score)
 		}
 	} else {
-		state.Input.HighestScore = uint32(score)
-		state.PreviousScore = uint32(score)
+		state.Input.BestScore = uint32(score)
 	}
 
 	/*
@@ -1209,8 +1184,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		message.NearRelayRoutable[i] = state.Request.NearRelayRTT[i] != 255
 	}
 
-	message.CurrentScore = state.Output.HighestScore
-	message.PreviousScore = state.PreviousScore
+	message.Score = state.Output.BestScore
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message

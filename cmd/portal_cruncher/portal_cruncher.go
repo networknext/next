@@ -130,9 +130,6 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	userHash := message.UserHash
 
-	// todo
-	// next := message.Next
-
 	var isp string
 	if !service.Local {
 		isp = service.GetISP(message.ClientAddress.IP)
@@ -140,29 +137,28 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		isp = "Local"
 	}
 
+	// todo: fake stuff
+
+	// next := message.Next
+
 	next := false
 	if (message.SessionId%2)==0 {
 		next = true
 	}
 
-	var directRTT, nextRTT, score uint32
+	var directRTT, nextRTT int32
 
 	if next {
-		directRTT = 100 + uint32(sessionId % 100)
-		nextRTT = 1 + uint32(sessionId % 79)
-		improvement := directRTT - nextRTT
-		if improvement > 254 {
-			improvement = 254
-		}
-		score = 254 - improvement
+		directRTT = 100 + int32(sessionId % 100)
+		nextRTT = 1 + int32(sessionId % 79)
 	} else {
-		directRTT = uint32(sessionId % 100)
-		nextRTT = uint32(0)
-		score = 999 - directRTT
-		if score < 255 {
-			score = 255
-		}
+		directRTT = int32(sessionId % 100)
+		nextRTT = int32(0)
 	}
+
+	// todo: end fake stuff
+
+	score := core.GetSessionScore(next, directRTT, nextRTT)
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
@@ -173,8 +169,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		PlatformType:   message.PlatformType,
 		Latitude:       message.Latitude,
 		Longitude:      message.Longitude,
-		DirectRTT:      directRTT,
-		NextRTT:        nextRTT,
+		DirectRTT:      uint32(directRTT),
+		NextRTT:        uint32(nextRTT),
 		BuyerId:        message.BuyerId,
 		DatacenterId:   message.DatacenterId,
 		ServerAddress:  message.ServerAddress.String(),
@@ -183,8 +179,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	sliceData := portal.SliceData{
 		Timestamp:        uint64(time.Now().Unix()),
 		SliceNumber:      message.SliceNumber,
-		DirectRTT:        directRTT,
-		NextRTT:          nextRTT,
+		DirectRTT:        uint32(directRTT),
+		NextRTT:          uint32(nextRTT),
 		PredictedRTT:     uint32(message.NextPredictedRTT),
 		DirectJitter:     uint32(message.DirectJitter),
 		NextJitter:       uint32(message.NextJitter),
