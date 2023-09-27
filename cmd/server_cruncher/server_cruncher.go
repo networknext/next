@@ -13,60 +13,58 @@ import (
 	"github.com/networknext/next/modules/encoding"
 )
 
-const TopSessionsCount = 10000
+const MaxServerAddressLength = 64 		// IMPORTANT: Enough for IPv4 and IPv6 + port number
+
+const TopServersCount = 10000
 
 const NumBuckets = 1000
 
-const SessionBatchVersion = uint64(0)
+const ServerBatchVersion = uint64(0)
 
-const TopSessionsVersion = uint64(0)
+const TopServersVersion = uint64(0)
 
-type SessionUpdate struct {
-	sessionId uint64
-	next      uint8
+type ServerUpdate struct {
+	serverAddress string
 }
 
-type TopSessions struct {
-	nextSessions   uint32
-	totalSessions  uint32
-	numTopSessions int
-	topSessions    [TopSessionsCount]uint64
+type TopServers struct {
+	totalServerCount  uint32
+	numTopServers     int
+	topServers        [TopServersCount]string
 }
 
 type Bucket struct {
 	index                int
 	mutex                sync.Mutex
-	sessionUpdateChannel chan []SessionUpdate
-	totalSessions        *SortedSet
-	nextSessions         *SortedSet
+	serverUpdateChannel  chan []ServerUpdate
+	totalServers         *SortedSet
 }
 
 var buckets []Bucket
 
-var topSessionsMutex sync.Mutex
-var topSessions *TopSessions
-var topSessionsData []byte
+var topServersMutex sync.Mutex
+var topServers *TopServers
+var topServersData []byte
 
 func main() {
 
-	service := common.CreateService("session_cruncher")
+	service := common.CreateService("server_cruncher")
 
-	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
-	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
+	service.Router.HandleFunc("/server_batch", serverBatchHandler).Methods("POST")
+	service.Router.HandleFunc("/top_servers", topServersHandler).Methods("GET")
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
 		buckets[i].index = i
-		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
-		buckets[i].nextSessions = NewSortedSet()
-		buckets[i].totalSessions = NewSortedSet()
+		buckets[i].serverUpdateChannel = make(chan []ServerUpdate, 1000000)
+		buckets[i].totalServers = NewSortedSet()
 		StartProcessThread(&buckets[i])
 	}
 
-	UpdateTopSessions(&TopSessions{})
+	UpdateTopServers(&TopServers{})
 
 	go TestThread()
-	
+
 	go TopSessionsThread()
 
 	service.StartWebServer()
@@ -77,12 +75,12 @@ func main() {
 func TestThread() {
 	for {
 		for index := 0; index < NumBuckets; index++ {
-			batch := make([]SessionUpdate, 1000)
+			batch := make([]ServerUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
-				batch[i].sessionId = rand.Uint64()
-				batch[i].next = uint8(i%2)
+				serverAddress := common.RandomAddress()
+				batch[i].serverAddress = serverAddress.String()
 			}
-			buckets[index].sessionUpdateChannel <- batch
+			buckets[index].serverUpdateChannel <- batch
 		}
 	}
 }
@@ -101,13 +99,10 @@ func StartProcessThread(bucket *Bucket) {
 	go func() {
 		for {
 			select {
-			case batch := <-bucket.sessionUpdateChannel:
+			case batch := <-bucket.serverUpdateChannel:
 				bucket.mutex.Lock()
 				for i := range batch {
-					bucket.totalSessions.Insert(batch[i].sessionId, uint32(bucket.index))
-					if batch[i].next != 0 {
-						bucket.nextSessions.Insert(batch[i].sessionId, uint32(bucket.index))
-					}
+					bucket.totalServers.Insert(batch[i].serverAddress, uint32(bucket.index))
 				}
 				bucket.mutex.Unlock()
 			}
@@ -115,44 +110,40 @@ func StartProcessThread(bucket *Bucket) {
 	}()
 }
 
-func UpdateTopSessions(newTopSessions *TopSessions) {
+func UpdateTopServers(newTopServers *TopServers) {
 
-	data := make([]byte, 8+4+4+4+8*newTopSessions.numTopSessions)
+	data := make([]byte, 8+4+4+newTopServers.numTopServers*(4+MaxServerAddressLength))
 
 	index := 0
 
-	encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
-	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
+	encoding.WriteUint64(data[:], &index, TopServersVersion)
+	encoding.WriteUint32(data[:], &index, newTopServers.totalServerCount)
 
-	for i := 0; i < newTopSessions.numTopSessions; i++ {
-		encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
+	for i := 0; i < newTopServers.numTopServers; i++ {
+		encoding.WriteString(data[:], &index, newTopServers.topServers[i], MaxServerAddressLength)
 	}
 
-	topSessionsMutex.Lock()
-	topSessions = newTopSessions
-	topSessionsData = data
-	topSessionsMutex.Unlock()
+	topServersMutex.Lock()
+	topServers = newTopServers
+	topServersData = data[:index]
+	topServersMutex.Unlock()
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(60*time.Second)
+	ticker := time.NewTicker(10*time.Second) // todo
 	for {
 		select {
 		case <-ticker.C:
 
-			nextSessions := make([]*SortedSet, NumBuckets)
-			totalSessions := make([]*SortedSet, NumBuckets)
+			totalServers := make([]*SortedSet, NumBuckets)
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Lock()
 			}
 
 			for i := 0; i < NumBuckets; i++ {
-				nextSessions[i] = buckets[i].nextSessions
-				totalSessions[i] = buckets[i].totalSessions
-				buckets[i].nextSessions = NewSortedSet()
-				buckets[i].totalSessions = NewSortedSet()
+				totalServers[i] = buckets[i].totalServers
+				buckets[i].totalServers = NewSortedSet()
 			}
 
 			for i := 0; i < NumBuckets; i++ {
@@ -161,67 +152,56 @@ func TopSessionsThread() {
 
 			start := time.Now()
 
-			maxNextSessions := 0
-			maxTotalSessions := 0
+			maxTotalServers := 0
 
 			for i := 0; i < NumBuckets; i++ {
-				maxNextSessions += nextSessions[i].GetCount()
-				maxTotalSessions += totalSessions[i].GetCount()
+				maxTotalServers += totalServers[i].GetCount()
 			}
 
-			nextSessionsMap := make(map[uint64]bool, maxNextSessions)
-			totalSessionsMap := make(map[uint64]bool, maxTotalSessions)
+			totalServersMap := make(map[string]bool, maxTotalServers)
 
-			type Session struct {
-				sessionId uint64
-				score     uint32
+			type Server struct {
+				serverAddress string
+				score         uint32
 			}
 	
-			sessions := make([]Session, 0, TopSessionsCount)
+			servers := make([]Server, 0, TopServersCount)
 
 			for i := 0; i < NumBuckets; i++ {
-				bucketNextSessions := nextSessions[i].GetByRankRange(1, -1)
-				bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
-				for j := range bucketNextSessions {
-					if _, exists := nextSessionsMap[bucketNextSessions[j].Key]; !exists {
-						nextSessionsMap[bucketNextSessions[j].Key] = true
-					}
-				}
-				for j := range bucketTotalSessions {
-					if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
-						totalSessionsMap[bucketTotalSessions[j].Key] = true
-						if len(sessions) < TopSessionsCount {
-							sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
+				bucketTotalServers := totalServers[i].GetByRankRange(1, -1)
+				for j := range bucketTotalServers {
+					if _, exists := totalServersMap[bucketTotalServers[j].Key]; !exists {
+						totalServersMap[bucketTotalServers[j].Key] = true
+						if len(servers) < TopServersCount {
+							servers = append(servers, Server{serverAddress: bucketTotalServers[j].Key, score: bucketTotalServers[j].Score})
 						}
 					}
 				}
 			}
 
-			nextCount := len(nextSessionsMap)
-			totalCount := len(totalSessionsMap)
+			totalServerCount := len(totalServersMap)
 
-			newTopSessions := &TopSessions{}
-			newTopSessions.nextSessions = uint32(nextCount)
-			newTopSessions.totalSessions = uint32(totalCount)
-			newTopSessions.numTopSessions = len(sessions)
-			for i := range sessions {
-				newTopSessions.topSessions[i] = sessions[i].sessionId
+			newTopServers := &TopServers{}
+			newTopServers.totalServerCount= uint32(totalServerCount)
+			newTopServers.numTopServers = len(servers)
+			for i := range servers {
+				newTopServers.topServers[i] = servers[i].serverAddress
 			}
 
-			UpdateTopSessions(newTopSessions)
+			UpdateTopServers(newTopServers)
 
 			duration := time.Since(start)
 
-			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
+			core.Log("top %d of %d servers (%.6fms)", len(servers), totalServerCount, float64(duration.Nanoseconds())/1000000.0)
 		}
 	}
 }
 
-func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
+func serverBatchHandler(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		core.Error("could not read session batch body: %v", err)
+		core.Error("could not read server batch body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -229,15 +209,15 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if len(body) < 8 {
-		core.Error("session batch is too small")
+		core.Error("server batch is too small")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	version := binary.LittleEndian.Uint64(body[0:8])
 
-	if version != SessionBatchVersion {
-		core.Error("session batch has unknown version %d, expected %d\n", version, SessionBatchVersion)
+	if version != ServerBatchVersion {
+		core.Error("server batch has unknown version %d, expected %d\n", version, ServerBatchVersion)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -248,21 +228,20 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	for j := 0; j < NumBuckets; j++ {
 		var numUpdates uint32
 		encoding.ReadUint32(body[:], &index, &numUpdates)
-		batch := make([]SessionUpdate, numUpdates)
+		batch := make([]ServerUpdate, numUpdates)
 		if numUpdates > 0 {
 			for i := 0; i < int(numUpdates); i++ {
-				encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
-				encoding.ReadUint8(body[:], &index, &batch[i].next)
+				encoding.ReadString(body[:], &index, &batch[i].serverAddress, MaxServerAddressLength)
 			}
-			buckets[j].sessionUpdateChannel <- batch
+			buckets[j].serverUpdateChannel <- batch
 		}
 	}
 }
 
-func topSessionsHandler(w http.ResponseWriter, r *http.Request) {
-	topSessionsMutex.Lock()
-	data := topSessionsData
-	topSessionsMutex.Unlock()
+func topServersHandler(w http.ResponseWriter, r *http.Request) {
+	topServersMutex.Lock()
+	data := topServersData
+	topServersMutex.Unlock()
 	w.Write(data)
 }
 
@@ -300,7 +279,7 @@ type SortedSet struct {
 	tail   *SortedSetNode
 	length int64
 	level  int
-	dict   map[uint64]*SortedSetNode
+	dict   map[string]*SortedSetNode
 }
 
 type SortedSetLevel struct {
@@ -309,13 +288,13 @@ type SortedSetLevel struct {
 }
 
 type SortedSetNode struct {
-	Key      uint64 // unique key of this node
+	Key      string  // unique key of this node
 	Score    uint32  // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }
 
-func createNode(level int, score uint32, key uint64) *SortedSetNode {
+func createNode(level int, score uint32, key string) *SortedSetNode {
 	node := SortedSetNode{
 		Score: score,
 		Key:   key,
@@ -335,7 +314,7 @@ func randomLevel() int {
 	return SKIPLIST_MAXLEVEL
 }
 
-func (this *SortedSet) insertNode(score uint32, key uint64) *SortedSetNode {
+func (this *SortedSet) insertNode(score uint32, key string) *SortedSetNode {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 	var rank [SKIPLIST_MAXLEVEL]int64
 
@@ -424,7 +403,7 @@ func (this *SortedSet) deleteNode(x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*S
 	delete(this.dict, x.Key)
 }
 
-func (this *SortedSet) delete(score uint32, key uint64) bool {
+func (this *SortedSet) delete(score uint32, key string) bool {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 
 	x := this.header
@@ -451,9 +430,9 @@ func (this *SortedSet) delete(score uint32, key uint64) bool {
 func NewSortedSet() *SortedSet {
 	sortedSet := SortedSet{
 		level: 1,
-		dict:  make(map[uint64]*SortedSetNode),
+		dict:  make(map[string]*SortedSetNode),
 	}
-	sortedSet.header = createNode(SKIPLIST_MAXLEVEL, 0, 0)
+	sortedSet.header = createNode(SKIPLIST_MAXLEVEL, 0, "")
 	return &sortedSet
 }
 
@@ -461,7 +440,7 @@ func (this *SortedSet) GetCount() int {
 	return int(this.length)
 }
 
-func (this *SortedSet) Insert(key uint64, score uint32) bool {
+func (this *SortedSet) Insert(key string, score uint32) bool {
 	var newNode *SortedSetNode = nil
 	found := this.dict[key]
 	if found != nil {
@@ -478,7 +457,7 @@ func (this *SortedSet) Insert(key uint64, score uint32) bool {
 	return found == nil
 }
 
-func (this *SortedSet) Delete(key uint64) *SortedSetNode {
+func (this *SortedSet) Delete(key string) *SortedSetNode {
 	found := this.dict[key]
 	if found != nil {
 		this.delete(found.Score, found.Key)

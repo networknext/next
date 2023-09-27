@@ -114,6 +114,8 @@ func main() {
 		map_cruncher()
 	} else if command == "session-cruncher" {
 		session_cruncher()
+	} else if command == "server-cruncher" {
+		server_cruncher()
 	} else if command == "relay" {
 		relay()
 	} else if command == "server-backend" {
@@ -313,6 +315,14 @@ func session_cruncher() {
 		httpPort = "40200"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/session_cruncher", httpPort))
+}
+
+func server_cruncher() {
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40300"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/server_cruncher", httpPort))
 }
 
 func happy_path() {
