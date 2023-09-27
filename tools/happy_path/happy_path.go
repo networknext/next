@@ -432,6 +432,34 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// initialize server cruncher
+
+	fmt.Printf("\nstarting server cruncher:\n\n")
+
+	server_cruncher_stdout := run("server-cruncher", "logs/server_cruncher")
+
+	fmt.Printf("\nverifying server cruncher ...")
+
+	server_cruncher_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(server_cruncher_stdout.String(), "starting http server on port 40300") {
+			server_cruncher_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !server_cruncher_initialized {
+		fmt.Printf("\n\nerror: server cruncher failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server_cruncher_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
 	// initialize portal cruncher
 
 	fmt.Printf("\nstarting portal cruncher:\n\n")
@@ -477,57 +505,6 @@ func happy_path(wait bool) int {
 		fmt.Printf("\n\nerror: portal cruncher 2 failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// initialize map cruncher
-
-	fmt.Printf("\nstarting map cruncher:\n\n")
-
-	map_cruncher_1_stdout := run("map-cruncher", "logs/map_cruncher_1")
-	map_cruncher_2_stdout := run("map-cruncher", "logs/map_cruncher_2", "HTTP_PORT=40101")
-
-	fmt.Printf("\nverifying map cruncher 1 ...")
-
-	map_cruncher_1_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(map_cruncher_1_stdout.String(), "starting http server on port 40100") {
-			map_cruncher_1_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !map_cruncher_1_initialized {
-		fmt.Printf("\n\nerror: map cruncher 1 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying map cruncher 2 ...")
-
-	map_cruncher_2_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(map_cruncher_2_stdout.String(), "starting http server on port 40101") {
-			map_cruncher_2_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !map_cruncher_2_initialized {
-		fmt.Printf("\n\nerror: map cruncher 2 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -609,32 +586,6 @@ func happy_path(wait bool) int {
 		fmt.Printf("%s", analytics_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("    map cruncher ...")
-
-	map_cruncher_leader_elected := false
-
-	for i := 0; i < 250; i++ {
-		map_cruncher_1_is_leader := strings.Contains(map_cruncher_1_stdout.String(), "we became the leader")
-		map_cruncher_2_is_leader := strings.Contains(map_cruncher_2_stdout.String(), "we became the leader")
-		if map_cruncher_1_is_leader || map_cruncher_2_is_leader {
-			map_cruncher_leader_elected = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !map_cruncher_leader_elected {
-		fmt.Printf("\n\nerror: no map cruncher leader?\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -811,35 +762,6 @@ func happy_path(wait bool) int {
 
 	// ----------------------------------------------------------------------------------------------
 
-	fmt.Printf("verifying leader election in map cruncher ...")
-
-	map_cruncher_1_is_leader := strings.Contains(map_cruncher_1_stdout.String(), "we became the leader")
-	map_cruncher_2_is_leader := strings.Contains(map_cruncher_2_stdout.String(), "we became the leader")
-
-	if map_cruncher_1_is_leader && map_cruncher_2_is_leader {
-		fmt.Printf("\n\nerror: leader flap in map cruncher\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	if map_cruncher_1_is_leader && map_cruncher_2_is_leader {
-		fmt.Printf("\n\nerror: no map cruncher leader?\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// ----------------------------------------------------------------------------------------------
-
 	fmt.Printf("verifying portal cruncher received session update messages ...")
 
 	if !strings.Contains(portal_cruncher_1_stdout.String(), "received session update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received session update message") {
@@ -890,20 +812,6 @@ func happy_path(wait bool) int {
 		fmt.Printf("%s", portal_cruncher_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying map cruncher received map update messages ...")
-
-	if !strings.Contains(map_cruncher_1_stdout.String(), "received map update message") && !strings.Contains(map_cruncher_2_stdout.String(), "received map update message") {
-		fmt.Printf("\n\nerror: map cruncher did not receive map update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", map_cruncher_2_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
