@@ -1672,7 +1672,7 @@ module "api" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = var.google_machine_type
+  machine_type               = "n1-highcpu-2"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
