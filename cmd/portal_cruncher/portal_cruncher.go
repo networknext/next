@@ -141,9 +141,28 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	}
 
 	next := false
-	directRTT := uint32(sessionId % 100)
-	nextRTT := uint32(0)
-	score := 999 - directRTT
+	if (message.SessionId%2)==0 {
+		next = true
+	}
+
+	var directRTT, nextRTT, score uint32
+
+	if next {
+		directRTT := 100 + uint32(sessionId % 100)
+		nextRTT := uint32(sessionId % 79)
+		improvement := directRTT - nextRTT
+		if improvement > 254 {
+			improvement = 254
+		}
+		score = 254 - improvement
+	} else {
+		directRTT = uint32(sessionId % 100)
+		nextRTT = uint32(0)
+		score = 999 - directRTT
+		if score < 255 {
+			score = 255
+		}
+	}
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
@@ -164,7 +183,6 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	sliceData := portal.SliceData{
 		Timestamp:        uint64(time.Now().Unix()),
 		SliceNumber:      message.SliceNumber,
-		// todo
 		DirectRTT:        directRTT,
 		NextRTT:          nextRTT,
 		PredictedRTT:     uint32(message.NextPredictedRTT),
