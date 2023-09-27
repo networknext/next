@@ -35,8 +35,10 @@ var privateKey string
 var pgsqlConfig string
 var databaseURL string
 var sessionCruncherURL string
+var serverCruncherURL string
 
-var watcher *portal.TopSessionsWatcher
+var topSessionsWatcher *portal.TopSessionsWatcher
+var topServersWatcher *portal.TopServersWatcher
 
 func main() {
 
@@ -46,6 +48,7 @@ func main() {
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
 	databaseURL = envvar.GetString("DATABASE_URL", "")
 	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
+	serverCruncherURL = envvar.GetString("SERVER_CRUNCHER_URL", "http://127.0.0.1:40300")
 	redisPortalCluster := envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname := envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
@@ -128,7 +131,9 @@ func main() {
 
 	if enablePortal {
 
-		watcher = portal.CreateTopSessionsWatcher(sessionCruncherURL)
+		topSessionsWatcher = portal.CreateTopSessionsWatcher(sessionCruncherURL)
+
+		topServersWatcher = portal.CreateTopServersWatcher(serverCruncherURL)
 
 		if len(redisPortalCluster) > 0 {
 			redisPortalClient = common.CreateRedisClusterClient(redisPortalCluster)
@@ -248,7 +253,7 @@ type PortalSessionCountsResponse struct {
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	response.NextSessionCount, response.TotalSessionCount = watcher.GetSessionCounts()
+	response.NextSessionCount, response.TotalSessionCount = topSessionsWatcher.GetSessionCounts()
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -317,7 +322,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalSessionsResponse{}
-	sessionIds := watcher.GetSessions(int(begin), int(end))
+	sessionIds := topSessionsWatcher.GetSessions(int(begin), int(end))
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	database := service.Database()
@@ -396,8 +401,7 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
-	// todo: update to top server watcher
-	// response.ServerCount = portal.GetServerCount(service.Context, redisPortalClient, time.Now().Unix()/60)
+	response.ServerCount = topServersWatcher.GetServerCount()
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -423,8 +427,6 @@ type PortalServersResponse struct {
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	/*
 	vars := mux.Vars(r)
 	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
 	if err != nil {
@@ -436,9 +438,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	*/
-	// todo: update to top server watcher
-	serverAddresses := []string{} // portal.GetServerAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, int(begin), int(end))
+	serverAddresses := topServersWatcher.GetServers(int(begin), int(end))
 	servers := portal.GetServerList(service.Context, redisPortalClient, serverAddresses)
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))

@@ -1627,6 +1627,7 @@ module "api" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_MAP_CRUNCHER_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379" 
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -1746,6 +1747,7 @@ module "portal_cruncher" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service

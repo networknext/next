@@ -160,6 +160,25 @@ func session_cruncher() *exec.Cmd {
 	return cmd
 }
 
+func server_cruncher() *exec.Cmd {
+
+	cmd := exec.Command("./server_cruncher")
+	if cmd == nil {
+		panic("could not create server cruncher!\n")
+		return nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40300")
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	cmd.Start()
+
+	return cmd
+}
+
 func RunSessionInsertThreads(threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
@@ -250,7 +269,7 @@ func RunRelayInsertThreads(threadCount int) {
 
 					id := 1 + uint64(k*threadCount+j)
 
-					relayData.RelayName = fmt.Sprintf("local-%d", id)
+					relayData.RelayName = fmt.Sprintf("local-%03d", id)
 
 					relayData.RelayAddress = fmt.Sprintf("127.0.0.1:%d", 2000+id)
 
@@ -374,7 +393,7 @@ func test_portal() {
 		relayId := uint64(1 + i)
 		relay := db.Relay{
 			Id:            relayId,
-			Name:          fmt.Sprintf("local-%d", i+1),
+			Name:          fmt.Sprintf("local-%03d", i+1),
 			PublicAddress: core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i)),
 			SSHAddress:    core.ParseAddress("127.0.0.1:22"),
 			Datacenter:    database.DatacenterMap[1],
@@ -398,13 +417,17 @@ func test_portal() {
 
 	database.Save("database.bin")
 
-	// run the API service, it will load the database
-
-	api_cmd := api()
-
-	// run the session cruncher, it handles high load session tracking that is too intense for redis
+	// run the session and server crunchers, they handles high load work that is too intense for redis
 
 	session_cruncher_cmd := session_cruncher()
+
+	server_cruncher_cmd := server_cruncher()
+
+	time.Sleep(10*time.Second)
+
+	// run the API service
+
+	api_cmd := api()
 
 	// run redis insertion threads
 
@@ -418,7 +441,7 @@ func test_portal() {
 
 	var ready bool
 
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 
 		fmt.Printf("iteration %d\n", i)
 
@@ -555,9 +578,11 @@ func test_portal() {
 
 	api_cmd.Process.Signal(os.Interrupt)
 	session_cruncher_cmd.Process.Signal(os.Interrupt)
+	server_cruncher_cmd.Process.Signal(os.Interrupt)
 
 	api_cmd.Wait()
 	session_cruncher_cmd.Wait()
+	server_cruncher_cmd.Wait()
 
 	if !ready {
 		fmt.Printf("error: portal API is broken\n")
