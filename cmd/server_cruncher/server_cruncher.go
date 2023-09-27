@@ -118,6 +118,7 @@ func UpdateTopServers(newTopServers *TopServers) {
 
 	encoding.WriteUint64(data[:], &index, TopServersVersion)
 	encoding.WriteUint32(data[:], &index, newTopServers.totalServerCount)
+	encoding.WriteUint32(data[:], &index, uint32(newTopServers.numTopServers))
 
 	for i := 0; i < newTopServers.numTopServers; i++ {
 		encoding.WriteString(data[:], &index, newTopServers.topServers[i], MaxServerAddressLength)

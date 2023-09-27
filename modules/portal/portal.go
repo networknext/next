@@ -1583,9 +1583,7 @@ func (watcher *TopServersWatcher) watchTopServers() {
 				break
 			}
 
-			// todo: rework
-			/*
-			if len(data) < 8 + 4 + 4 + 4 {
+			if len(data) < 8 + 4 {
 				core.Error("top server response is too small")
 				break
 			}
@@ -1602,17 +1600,18 @@ func (watcher *TopServersWatcher) watchTopServers() {
 			var totalServerCount uint32
 			encoding.ReadUint32(data[:], &index, &totalServerCount)
 
-			numServers := ( len(data) - ( 8 + 4 + 4 + 4 ) ) / 8
-			sessions := make([]uint64, numSessions)
-			for i := 0; i < numSessions; i++ {
-				encoding.ReadUint64(data[:], &index, &sessions[i])
+			var numTopServers uint32
+			encoding.ReadUint32(data[:], &index, &numTopServers)
+
+			servers := make([]string, numTopServers)
+			for i := 0; i < int(numTopServers); i++ {
+				encoding.ReadString(data[:], &index, &servers[i], MaxServerAddressLength)
 			}
 
 			watcher.mutex.Lock()
 			watcher.totalServerCount = int(totalServerCount)
 			watcher.topServers = servers
 			watcher.mutex.Unlock()
-			*/
 		}
 	}
 }
