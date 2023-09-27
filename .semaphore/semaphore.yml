@@ -124,6 +124,11 @@ blocks:
             - make dist/session_cruncher.tar.gz
             - artifact push workflow dist/session_cruncher.tar.gz --force
 
+        - name: "Server Cruncher"
+          commands:
+            - make dist/server_cruncher.tar.gz
+            - artifact push workflow dist/server_cruncher.tar.gz --force
+
         - name: "Map Cruncher"
           commands:
             - make dist/map_cruncher.tar.gz
