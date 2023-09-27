@@ -5267,3 +5267,40 @@ func TestPingTokenSignatures(t *testing.T) {
 		assert.True(t, crypto.Auth_Verify(data[:length], key, pingTokens[i*constants.PingTokenBytes:]))
 	}
 }
+
+func TestSessionScore(t *testing.T) {
+
+	// biggest next improvement should be 0 (lowest score)
+
+	assert.True(t, core.GetSessionScore(true, 254, 0) == uint32(0))
+
+	// no next improvement should be 254 (no improvement)
+
+	assert.True(t, core.GetSessionScore(true, 0, 0) == uint32(254))
+
+	// next is worse than direct is still no improvement
+
+	assert.True(t, core.GetSessionScore(true, 100, 200) == uint32(254))
+
+	// biggest direct RTT values come first, after next values with no improvement
+
+	assert.True(t, core.GetSessionScore(false, 1000, 0) == uint32(255))
+
+	// lowest direct RTT values are last
+
+	assert.True(t, core.GetSessionScore(false, 0, 0) == uint32(999))
+
+	// test random direct sessions
+
+	for i := 0; i < 10000; i++ {
+		score := core.GetSessionScore(false, int32(rand.Intn(5000)-2000), int32(rand.Intn(5000)-2000))
+		assert.True(t, score <= 999)
+	}
+
+	// test random next sessions
+
+	for i := 0; i < 10000; i++ {
+		score := core.GetSessionScore(true, int32(rand.Intn(5000)-2000), int32(rand.Intn(5000)-2000))
+		assert.True(t, score <= 999)
+	}
+}
