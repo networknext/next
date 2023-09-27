@@ -130,9 +130,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	userHash := message.UserHash
 
-	next := message.Next
-
-	score := 999 - message.CurrentScore
+	// todo
+	// next := message.Next
 
 	var isp string
 	if !service.Local {
@@ -140,6 +139,11 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	} else {
 		isp = "Local"
 	}
+
+	next := false
+	directRTT := uint32(sessionId % 100)
+	nextRTT := uint32(0)
+	score := 999 - directRTT
 
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
@@ -150,8 +154,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		PlatformType:   message.PlatformType,
 		Latitude:       message.Latitude,
 		Longitude:      message.Longitude,
-		DirectRTT:      uint32(message.DirectRTT),
-		NextRTT:        uint32(message.NextRTT),
+		DirectRTT:      directRTT,
+		NextRTT:        nextRTT,
 		BuyerId:        message.BuyerId,
 		DatacenterId:   message.DatacenterId,
 		ServerAddress:  message.ServerAddress.String(),
