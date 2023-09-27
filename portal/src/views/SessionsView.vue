@@ -13,7 +13,10 @@
       <tbody>
         <tr v-for="item in data" :key='item'>
           <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-          <td> {{ item["Improvement"] }} </td>
+          <td class="green-center" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
+          <td class="orange-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
+          <td class="red-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
+          <td v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -34,9 +37,12 @@
         <tr v-for="item in data" :key='item'>
           <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
           <td> {{ item["ISP"] }} </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="right"> {{ item["Improvement"] }} </td>
+          <td class="right"> {{ item["Direct RTT"] }} ms</td>
+          <td class="right"> {{ item["Next RTT"] }} ms</td>
+          <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
+          <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
+          <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
+          <td class="right" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -59,9 +65,12 @@
           <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
           <td class="fixed"> <router-link :to='"user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
           <td> {{ item["ISP"] }} </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="right"> {{ item["Improvement"] }} </td>
+          <td class="right"> {{ item["Direct RTT"] }} ms</td>
+          <td class="right"> {{ item["Next RTT"] }} ms</td>
+          <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
+          <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
+          <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
+          <td class="right" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -90,9 +99,12 @@
           <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
           <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
           <td> <router-link :to='"server/" + item["Server Address"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="right"> {{ item["Improvement"] }} </td>
+          <td class="right"> {{ item["Direct RTT"] }} ms</td>
+          <td class="right"> {{ item["Next RTT"] }} ms</td>
+          <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
+          <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
+          <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
+          <td class="right" v-else> -- </td>
         </tr>
       </tbody>
     </table>
@@ -128,6 +140,7 @@ async function getData() {
       const session_id = parse_uint64(v.session_id)
       const user_hash = parse_uint64(v.user_hash)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt : ""
+      const improvement = v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
       let row = {
         "Session ID":session_id,
         "User Hash":user_hash,
@@ -139,7 +152,7 @@ async function getData() {
         "Server Address":v.server_address,
         "Direct RTT":v.direct_rtt,
         "Next RTT":next_rtt,
-        "Improvement":"--"
+        "Improvement":improvement,
       }
       data.push(row)
       i++;
@@ -191,6 +204,39 @@ export default {
 
 .right {
   text-align: right;
+}
+
+.green {
+  color: #11AA44;
+  font-weight: bold;
+  text-align: right;
+}
+
+.orange {
+  color: #F38701;
+  font-weight: bold;
+  text-align: right;
+}
+
+.red {
+  color: #E34234;
+  font-weight: bold;
+  text-align: right;
+}
+
+.green-center {
+  color: #11AA44;
+  font-weight: bold;
+}
+
+.orange-center {
+  color: #F38701;
+  font-weight: bold;
+}
+
+.red-center {
+  color: #E34234;
+  font-weight: bold;
 }
 
 a {
