@@ -69,31 +69,31 @@ provider "cloudflare" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_managed_ssl_certificate" "api" {
-  name = "api"
+resource "google_compute_managed_ssl_certificate" "api-dev" {
+  name = "api-dev"
   managed {
     domains = ["api-dev.${var.cloudflare_domain}"]
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "relay" {
-  name = "relay"
+resource "google_compute_managed_ssl_certificate" "relay-dev" {
+  name = "relay-dev"
   managed {
     domains = ["relay-dev.${var.cloudflare_domain}"]
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "portal" {
-  name = "portal"
+resource "google_compute_managed_ssl_certificate" "portal-dev" {
+  name = "portal-dev"
   managed {
     domains = ["portal-dev.${var.cloudflare_domain}"]
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "raspberry" {
-  name = "raspberry"
+resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
+  name = "raspberry-dev"
   managed {
-    domains = ["portal-dev.${var.cloudflare_domain}"]
+    domains = ["raspberry-dev.${var.cloudflare_domain}"]
   }
 }
 
@@ -1531,7 +1531,7 @@ module "relay_gateway" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "relay-dev.${var.cloudflare_domain}"
-  certificate              = google_compute_managed_ssl_certificate.relay.id
+  certificate              = google_compute_managed_ssl_certificate.relay-dev.id
 }
 
 output "relay_gateway_address" {
@@ -1681,7 +1681,7 @@ module "api" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http", "allow-https"]
   domain                     = "api-dev.${var.cloudflare_domain}"
-  certificate                = google_compute_managed_ssl_certificate.api.id
+  certificate                = google_compute_managed_ssl_certificate.api-dev.id
 }
 
 output "api_address" {
@@ -1920,7 +1920,7 @@ module "raspberry_backend" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
-  certificate              = google_compute_managed_ssl_certificate.raspberry.id
+  certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
 }
 
 output "raspberry_backend_address" {
@@ -2061,7 +2061,7 @@ module "portal" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-dev.${var.cloudflare_domain}"
-  certificate              = google_compute_managed_ssl_certificate.portal.id
+  certificate              = google_compute_managed_ssl_certificate.portal-dev.id
 }
 
 output "portal_address" {

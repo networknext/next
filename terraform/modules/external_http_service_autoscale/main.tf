@@ -37,7 +37,6 @@ resource "google_compute_target_https_proxy" "service" {
   ssl_certificates = [var.certificate]
 }
 
-
 resource "google_compute_global_address" "service" {
   name = var.service_name
 }
