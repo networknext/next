@@ -415,7 +415,6 @@ type PortalServerData struct {
 	BuyerId          uint64 `json:"buyer_id,string"`
 	DatacenterId     uint64 `json:"datacenter_id,string"`
 	NumSessions      uint32 `json:"num_sessions"`
-	StartTime        uint64 `json:"start_time,string"`
 	Uptime           uint64 `json:"uptime,string"`
 	BuyerName        string `json:"buyer_name"`
 	BuyerCode        string `json:"buyer_code"`
@@ -443,7 +442,6 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
 	database := service.Database()
-	currentTime := uint64(time.Now().Unix())
 	for i := range servers {
 		response.Servers[i].ServerAddress = servers[i].ServerAddress
 		response.Servers[i].SDKVersion_Major = servers[i].SDKVersion_Major
@@ -452,8 +450,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 		response.Servers[i].BuyerId = servers[i].BuyerId
 		response.Servers[i].DatacenterId = servers[i].DatacenterId
 		response.Servers[i].NumSessions = servers[i].NumSessions
-		response.Servers[i].StartTime = servers[i].StartTime
-		response.Servers[i].Uptime = currentTime - servers[i].StartTime
+		response.Servers[i].Uptime = servers[i].Uptime
 		if database != nil {
 			buyer := database.GetBuyer(response.Servers[i].BuyerId)
 			if buyer != nil {

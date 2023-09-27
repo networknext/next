@@ -53,7 +53,7 @@ func RunServerUpdateThreads(threadCount int, updateChannels []chan *Update) {
 				for j := 0; j < NumServers; j++ {
 
 					packet := packets.SDK_ServerUpdateRequestPacket{
-						Version:      packets.SDKVersion{5, 0, 0},
+						Version:      packets.SDKVersion{1, 0, 0},
 						BuyerId:      BuyerId,
 						RequestId:    rand.Uint64(),
 						DatacenterId: DatacenterId,

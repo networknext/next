@@ -134,8 +134,6 @@ func RunServer(index int) {
 
 	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03d", index%numRelays))
 
-	startTime := uint64(time.Now().Unix())
-
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
 
 	lc := net.ListenConfig{}
@@ -182,7 +180,7 @@ func RunServer(index int) {
 					DatacenterId:  datacenterId,
 					NumSessions:   uint32(common.RandomInt(100, 200)),
 					ServerAddress: address,
-					StartTime:     startTime,
+					Uptime:        uint64(requestId * 10),
 				}
 
 				requestId += 1

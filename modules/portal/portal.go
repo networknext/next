@@ -403,7 +403,7 @@ type ServerData struct {
 	BuyerId          uint64  `json:"buyer_id,string"`
 	DatacenterId     uint64  `json:"datacenter_id,string"`
 	NumSessions      uint32  `json:"num_sessions"`
-	StartTime        uint64  `json:"start_time,string"`
+	Uptime           uint64  `json:"uptime,string"`
 }
 
 func (data *ServerData) Value() string {
@@ -415,7 +415,7 @@ func (data *ServerData) Value() string {
 		data.BuyerId,
 		data.DatacenterId,
 		data.NumSessions,
-		data.StartTime,
+		data.Uptime,
 	)
 }
 
@@ -449,7 +449,7 @@ func (data *ServerData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	startTime, err := strconv.ParseUint(values[7], 16, 64)
+	uptime, err := strconv.ParseUint(values[7], 16, 64)
 	if err != nil {
 		return
 	}
@@ -460,7 +460,7 @@ func (data *ServerData) Parse(value string) {
 	data.BuyerId = buyerId
 	data.DatacenterId = datacenterId
 	data.NumSessions = uint32(numSessions)
-	data.StartTime = startTime
+	data.Uptime = uptime
 }
 
 func GenerateRandomServerData() *ServerData {
@@ -472,7 +472,7 @@ func GenerateRandomServerData() *ServerData {
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
 	data.NumSessions = rand.Uint32()
-	data.StartTime = rand.Uint64()
+	data.Uptime = rand.Uint64()
 	return &data
 }
 

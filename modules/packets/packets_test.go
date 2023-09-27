@@ -112,7 +112,7 @@ func PacketSerializationTest[P packets.Packet](writePacket P, readPacket P, t *t
 func GenerateRandomServerInitRequestPacket() packets.SDK_ServerInitRequestPacket {
 
 	return packets.SDK_ServerInitRequestPacket{
-		Version:        packets.SDKVersion{5, 0, 0},
+		Version:        packets.SDKVersion{1, 0, 0},
 		BuyerId:        rand.Uint64(),
 		RequestId:      rand.Uint64(),
 		DatacenterId:   rand.Uint64(),
@@ -137,10 +137,11 @@ func GenerateRandomServerInitResponsePacket() packets.SDK_ServerInitResponsePack
 func GenerateRandomServerUpdateRequestPacket() packets.SDK_ServerUpdateRequestPacket {
 
 	return packets.SDK_ServerUpdateRequestPacket{
-		Version:      packets.SDKVersion{5, 0, 0},
+		Version:      packets.SDKVersion{1, 0, 0},
 		BuyerId:      rand.Uint64(),
 		RequestId:    rand.Uint64(),
 		DatacenterId: rand.Uint64(),
+		Uptime:       rand.Uint64(),
 	}
 }
 

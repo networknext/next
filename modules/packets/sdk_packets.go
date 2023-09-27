@@ -141,7 +141,7 @@ type SDK_ServerUpdateRequestPacket struct {
 	DatacenterId  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
-	StartTime     uint64
+	Uptime        uint64
 }
 
 func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -151,7 +151,7 @@ func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) e
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
-	stream.SerializeUint64(&packet.StartTime)
+	stream.SerializeUint64(&packet.Uptime)
 	return stream.Error()
 }
 

@@ -263,7 +263,7 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 		BuyerId:          message.BuyerId,
 		DatacenterId:     message.DatacenterId,
 		NumSessions:      message.NumSessions,
-		StartTime:        message.StartTime,
+		Uptime:           message.Uptime,
 	}
 
 	serverInserter.Insert(service.Context, &serverData)

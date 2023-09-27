@@ -262,7 +262,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		handler.Events[SDK_HandlerEvent_BuyerNotLive] = true
 	}
 
-	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{1, 0, 0}) {
 		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
 		responsePacket.Response = packets.SDK_ServerInitResponseOldSDKVersion
 		handler.Events[SDK_HandlerEvent_SDKTooOld] = true
@@ -345,7 +345,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.BuyerId = requestPacket.BuyerId
 			message.DatacenterId = requestPacket.DatacenterId
 			message.NumSessions = requestPacket.NumSessions
-			message.StartTime = requestPacket.StartTime
+			message.Uptime = requestPacket.Uptime
 			message.ServerAddress = *from
 
 			handler.PortalServerUpdateMessageChannel <- &message
@@ -367,7 +367,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 		return
 	}
 
-	if !requestPacket.Version.AtLeast(packets.SDKVersion{5, 0, 0}) {
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{1, 0, 0}) {
 		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
 		handler.Events[SDK_HandlerEvent_SDKTooOld] = true
 		return

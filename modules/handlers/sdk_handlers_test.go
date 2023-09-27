@@ -577,11 +577,11 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	index := 16 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
-	// modify the packet so it has an old SDK version of 1.2.3
+	// modify the packet so it has an old SDK version of 0.1.2
 
-	packetData[16] = 1
-	packetData[17] = 2
-	packetData[18] = 3
+	packetData[16] = 0
+	packetData[17] = 1
+	packetData[18] = 2
 
 	// actually sign the packet, so it passes the signature check
 
@@ -761,7 +761,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 	requestId := uint64(0x12345)
 
 	packet := packets.SDK_ServerInitRequestPacket{
-		Version:        packets.SDKVersion{5, 0, 0},
+		Version:        packets.SDKVersion{1, 0, 0},
 		BuyerId:        buyerId,
 		RequestId:      requestId,
 		DatacenterId:   common.DatacenterId("local"),
@@ -913,7 +913,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 	select {
 	case message := <-harness.analyticsServerInitMessageChannel:
-		assert.Equal(t, message.SDKVersion_Major, byte(5))
+		assert.Equal(t, message.SDKVersion_Major, byte(1))
 		assert.Equal(t, message.SDKVersion_Minor, byte(0))
 		assert.Equal(t, message.SDKVersion_Patch, byte(0))
 		assert.Equal(t, message.BuyerId, packet.BuyerId)
@@ -1061,11 +1061,11 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	index := 16 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
-	// modify the packet so it has an old SDK version of 1.2.3
+	// modify the packet so it has an old SDK version of 0.1.2
 
-	packetData[16] = 1
-	packetData[17] = 2
-	packetData[18] = 3
+	packetData[16] = 0
+	packetData[17] = 1
+	packetData[18] = 2
 
 	// actually sign the packet, so it passes the signature check
 
@@ -1243,7 +1243,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 	requestId := uint64(0x12345)
 
 	packet := packets.SDK_ServerUpdateRequestPacket{
-		Version:      packets.SDKVersion{5, 0, 0},
+		Version:      packets.SDKVersion{1, 0, 0},
 		BuyerId:      buyerId,
 		RequestId:    requestId,
 		DatacenterId: common.DatacenterId("local"),
@@ -1398,7 +1398,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 	select {
 	case message := <-harness.analyticsServerUpdateMessageChannel:
-		assert.Equal(t, message.SDKVersion_Major, byte(5))
+		assert.Equal(t, message.SDKVersion_Major, byte(1))
 		assert.Equal(t, message.SDKVersion_Minor, byte(0))
 		assert.Equal(t, message.SDKVersion_Patch, byte(0))
 		assert.Equal(t, message.BuyerId, packet.BuyerId)
