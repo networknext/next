@@ -148,8 +148,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	var directRTT, nextRTT, score uint32
 
 	if next {
-		directRTT := 100 + uint32(sessionId % 100)
-		nextRTT := uint32(sessionId % 79)
+		directRTT = 100 + uint32(sessionId % 100)
+		nextRTT = 1 + uint32(sessionId % 79)
 		improvement := directRTT - nextRTT
 		if improvement > 254 {
 			improvement = 254
