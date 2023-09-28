@@ -5360,7 +5360,6 @@ func TestPagination(t *testing.T) {
 	
 	{
 		begin, end, outputPage := core.DoPagination(-100, 1000)
-		fmt.Printf("begin = %d, end = %d, outputPage = %d\n", begin, end, outputPage)
 		assert.True(t, begin==0)
 		assert.True(t, end==100)
 		assert.True(t, outputPage==0)
