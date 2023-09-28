@@ -309,34 +309,6 @@ type PortalSessionsResponse struct {
 	OutputPage int               `json:"output_page"`
 }
 
-func doPagination(page int, length int) (begin, end, outputPage int) {
-	begin = 0
-	end = 100
-	outputPage = page
-	if length > 100 {
-		if page > 0 {
-			begin = page * 100
-			end = (page+1) * 100
-			if end > length {
-				outputPage = -1
-				end = length
-				begin = end - 100
-			}
-		} else {
-			end = length - page*100
-			begin = end - 100
-			if begin < 0 {
-				outputPage = 0
-				begin = 0
-				end = 100
-			}
-		}
-	} else {
-		end = length
-	}
-	return
-}
-
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 32)
@@ -346,7 +318,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalSessionsResponse{}
 	sessionIds := topSessionsWatcher.GetTopSessions()
-	begin, end, outputPage := doPagination(int(page), len(sessionIds))
+	begin, end, outputPage := core.DoPagination(int(page), len(sessionIds))
 	sessionIds = sessionIds[begin:end]
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
