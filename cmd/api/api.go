@@ -144,7 +144,7 @@ func main() {
 		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
-		service.Router.HandleFunc("/portal/sessions/{pace}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/sessions/{page}", isAuthorized(portalSessionsHandler))
 		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
