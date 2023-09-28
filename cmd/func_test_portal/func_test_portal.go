@@ -487,7 +487,7 @@ func test_portal() {
 
 		sessionsResponse := PortalSessionsResponse{}
 
-		Get("http://127.0.0.1:50000/portal/sessions/0/10", &sessionsResponse)
+		Get("http://127.0.0.1:50000/portal/sessions/0", &sessionsResponse)
 
 		fmt.Printf("got data for %d sessions\n", len(sessionsResponse.Sessions))
 

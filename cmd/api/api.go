@@ -144,7 +144,7 @@ func main() {
 		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
-		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/sessions/{pace}", isAuthorized(portalSessionsHandler))
 		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
@@ -306,24 +306,46 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 
 type PortalSessionsResponse struct {
 	Sessions []PortalSessionData `json:"sessions"`
+	OutputPage int               `json:"output_page"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	page, err := strconv.ParseInt(vars["page"], 10, 32)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	response := PortalSessionsResponse{}
-	sessionIds := topSessionsWatcher.GetSessions(int(begin), int(end))
+	sessionIds := topSessionsWatcher.GetTopSessions()
+	begin := 0
+	end := 100
+	outputPage := page
+	if len(sessionIds) > 100 {
+		if page > 0 {
+			begin = int(page) * 100
+			end = int(page+1) * 100
+			if end > len(sessionIds) {
+				outputPage = -1
+				end = len(sessionIds)
+				begin = end - 100
+			}
+		} else {
+			end = len(sessionIds) - int(page)*100
+			begin = end - 100
+			if begin < 0 {
+				outputPage = 0
+				begin = 0
+				end = 100
+			}
+		}
+	} else {
+		end = len(sessionIds)
+	}
+	sessionIds = sessionIds[begin:end]
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
+	response.OutputPage = int(outputPage)
 	database := service.Database()
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])

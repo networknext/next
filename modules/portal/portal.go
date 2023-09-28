@@ -1059,6 +1059,13 @@ func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
 	return sessions[begin:end]
 }
 
+func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
+	watcher.mutex.RLock()
+	sessions := watcher.topSessions
+	watcher.mutex.RUnlock()
+	return sessions
+}
+
 // --------------------------------------------------------------------------------------------------
 
 const MapDataVersion = uint64(0)

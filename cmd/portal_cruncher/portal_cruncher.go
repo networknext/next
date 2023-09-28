@@ -137,14 +137,6 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		isp = "Local"
 	}
 
-	next := message.Next
-
-	directRTT := int32(message.DirectRTT)
-
-	nextRTT := int32(message.NextRTT)
-
-	score := core.GetSessionScore(next, directRTT, nextRTT)
-
 	sessionData := portal.SessionData{
 		SessionId:      message.SessionId,
 		UserHash:       message.UserHash,
@@ -154,8 +146,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		PlatformType:   message.PlatformType,
 		Latitude:       message.Latitude,
 		Longitude:      message.Longitude,
-		DirectRTT:      uint32(directRTT),
-		NextRTT:        uint32(nextRTT),
+		DirectRTT:      message.BestDirectRTT,
+		NextRTT:        message.BestNextRTT,
 		BuyerId:        message.BuyerId,
 		DatacenterId:   message.DatacenterId,
 		ServerAddress:  message.ServerAddress.String(),
@@ -164,8 +156,8 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	sliceData := portal.SliceData{
 		Timestamp:        uint64(time.Now().Unix()),
 		SliceNumber:      message.SliceNumber,
-		DirectRTT:        uint32(directRTT),
-		NextRTT:          uint32(nextRTT),
+		DirectRTT:        uint32(message.DirectRTT),
+		NextRTT:          uint32(message.NextRTT),
 		PredictedRTT:     uint32(message.NextPredictedRTT),
 		DirectJitter:     uint32(message.DirectJitter),
 		NextJitter:       uint32(message.NextJitter),
@@ -183,7 +175,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		Next:             message.Next,
 	}
 
-	sessionInserter.Insert(service.Context, sessionId, userHash, next, score, &sessionData, &sliceData)
+	sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
 }
 
 // -------------------------------------------------------------------------------

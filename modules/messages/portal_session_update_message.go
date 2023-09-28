@@ -64,7 +64,9 @@ type PortalSessionUpdateMessage struct {
 	NearRelayPacketLoss [constants.MaxNearRelays]float32
 	NearRelayRoutable   [constants.MaxNearRelays]bool
 
-	Score uint32
+	BestScore uint32
+	BestDirectRTT uint32
+	BestNextRTT uint32
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {
@@ -134,7 +136,9 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 		encoding.WriteBool(buffer, &index, message.NearRelayRoutable[i])
 	}
 
-	encoding.WriteUint32(buffer, &index, message.Score)
+	encoding.WriteUint32(buffer, &index, message.BestScore)
+	encoding.WriteUint32(buffer, &index, message.BestDirectRTT)
+	encoding.WriteUint32(buffer, &index, message.BestNextRTT)
 
 	return buffer[:index]
 }
@@ -324,8 +328,16 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 		}
 	}
 
-	if !encoding.ReadUint32(buffer, &index, &message.Score) {
-		return fmt.Errorf("failed to read score")
+	if !encoding.ReadUint32(buffer, &index, &message.BestScore) {
+		return fmt.Errorf("failed to read best score")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.BestDirectRTT) {
+		return fmt.Errorf("failed to read best direct rtt")
+	}
+
+	if !encoding.ReadUint32(buffer, &index, &message.BestNextRTT) {
+		return fmt.Errorf("failed to read best next rtt")
 	}
 
 	return nil

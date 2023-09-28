@@ -357,6 +357,8 @@ func GenerateRandomSessionData() SDK_SessionData {
 		DurationOnNext:                rand.Uint32(),
 		Error:                         rand.Uint64(),
 		BestScore:                     uint32(common.RandomInt(0, 999)),
+		BestDirectRTT:                 uint32(common.RandomInt(0, 500)),
+		BestNextRTT:                   uint32(common.RandomInt(0, 500)),
 	}
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
@@ -493,6 +495,8 @@ type SDK_SessionData struct {
 	StartTimestamp                      uint64
 	Error                               uint64
 	BestScore                           uint32
+	BestDirectRTT                       uint32
+	BestNextRTT                         uint32
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -571,6 +575,8 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.Error)
 
 	stream.SerializeBits(&sessionData.BestScore, 10)
+	stream.SerializeBits(&sessionData.BestDirectRTT, 10)
+	stream.SerializeBits(&sessionData.BestNextRTT, 10)
 
 	return stream.Error()
 }

@@ -132,7 +132,7 @@ function parse_uint64(value) {
 
 async function getData() {
   try {
-    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/sessions/0/100');
+    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/sessions/' + this.$route.params.page);
     let i = 0;
     let data = []
     while (i < res.data.sessions.length) {
