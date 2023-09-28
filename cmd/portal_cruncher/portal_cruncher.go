@@ -175,6 +175,9 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		Next:             message.Next,
 	}
 
+	// todo
+	core.Log("best score = %d, best direct rtt = %d, best next rtt = %d, direct rtt = %d, next rtt = %d", message.BestScore, message.BestDirectRTT, message.BestNextRTT, int(message.DirectRTT), int(message.NextRTT))
+
 	sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
 }
 
