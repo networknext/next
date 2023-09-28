@@ -72,19 +72,19 @@ DONE
 
 	Load test to 5M sessions
 
-TODO
-
 	Load test to 10M sessions
 
-	Load test to 1M servers
+TODO
+
+	Finalize portal
+
+	-----------
+
+	Load test to 1K relays, 1M servers and 10M sessions.
 
 	-----------
 
 	Setup prod environment
-
-	-----------
-
-	Finalize portal
 
 	-----------
 

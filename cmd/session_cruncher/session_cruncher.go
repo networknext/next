@@ -70,9 +70,8 @@ type MapPoints struct {
 	mapPoints    [TopSessionsCount]MapPoint
 }
 
-var mapPointsMutex sync.Mutex
-var mapPoints *MapPoints
-var mapPointsData []byte
+var mapDataMutex sync.Mutex
+var mapData []byte
 
 func main() {
 
@@ -80,7 +79,7 @@ func main() {
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
-	service.Router.HandleFunc("/map_points", mapPointsHandler).Methods("GET")
+	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
@@ -94,7 +93,7 @@ func main() {
 
 	UpdateTopSessions(&TopSessions{})
 
-	UpdateMapPoints(&MapPoints{})
+	UpdateMapData(&MapPoints{})
 
 	// go TestThread()
 	
@@ -170,7 +169,7 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 	topSessionsMutex.Unlock()
 }
 
-func UpdateMapPoints(newMapPoints *MapPoints) {
+func UpdateMapData(newMapPoints *MapPoints) {
 
 	data := make([]byte, 8+4+newMapPoints.numMapPoints*(8+1+4+4))
 
@@ -187,10 +186,9 @@ func UpdateMapPoints(newMapPoints *MapPoints) {
 		encoding.WriteFloat32(data[:], &index, newMapPoints.mapPoints[i].longitude)
 	}
 
-	mapPointsMutex.Lock()
-	mapPoints = newMapPoints
-	mapPointsData = data
-	mapPointsMutex.Unlock()
+	mapDataMutex.Lock()
+	mapData = data
+	mapDataMutex.Unlock()
 }
 
 func TopSessionsThread() {
@@ -282,7 +280,7 @@ func TopSessionsThread() {
 				newMapPoints.mapPoints[i].longitude = entry.longitude
 			}
 
-			UpdateMapPoints(&newMapPoints)
+			UpdateMapData(&newMapPoints)
 
 			duration := time.Since(start)
 
@@ -342,10 +340,10 @@ func topSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func mapPointsHandler(w http.ResponseWriter, r *http.Request) {
-	mapPointsMutex.Lock()
-	data := mapPointsData
-	mapPointsMutex.Unlock()
+func mapDataHandler(w http.ResponseWriter, r *http.Request) {
+	mapDataMutex.Lock()
+	data := mapData
+	mapDataMutex.Unlock()
 	w.Write(data)
 }
 

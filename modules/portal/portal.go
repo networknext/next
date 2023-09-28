@@ -1061,6 +1061,54 @@ func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
 
 // --------------------------------------------------------------------------------------------------
 
+const MapDataVersion = uint64(0)
+
+type MapDataWatcher struct {
+	url           string
+	mutex         sync.RWMutex
+	mapData       []byte
+}
+
+func CreateMapDataWatcher(sessionCruncherURL string) *MapDataWatcher {
+	watcher := MapDataWatcher{}
+	watcher.url = sessionCruncherURL + "/map_data"
+	go watcher.watchMapData()
+	return &watcher
+}
+
+func (watcher *MapDataWatcher) watchMapData() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+
+		case <-ticker.C:
+
+			data := getBinary(watcher.url)
+
+			if data == nil {
+				break
+			}
+
+			if len(data) < 8+4 {
+				core.Error("map data response is too small")
+				break
+			}
+
+			watcher.mutex.Lock()
+			watcher.mapData = data
+			watcher.mutex.Unlock()
+		}
+	}
+}
+
+func (watcher *MapDataWatcher) GetMapData() []byte {
+	watcher.mutex.RLock()
+	data := watcher.mapData
+	return data
+}
+
+// --------------------------------------------------------------------------------------------------
+
 func GetSessionData(ctx context.Context, redisClient redis.Cmdable, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
 
 	pipeline := redisClient.Pipeline()

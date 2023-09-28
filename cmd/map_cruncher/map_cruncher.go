@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"os"
 	"strings"
@@ -143,3 +144,8 @@ func ProcessMapUpdate(messageData []byte) {
 }
 
 // -------------------------------------------------------------------------------
+*/
+
+func main() {
+	// ...
+}

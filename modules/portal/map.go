@@ -1,13 +1,15 @@
 package portal
 
 import (
-	"context"
-	"math/rand"
-	"time"
+	// "context"
+	// "math/rand"
+	// "time"
 
-	"github.com/networknext/next/modules/encoding"
+	// "github.com/networknext/next/modules/encoding"
 )
 
+// todo: remove
+/*
 const MapWidth = 360
 const MapHeight = 180
 const CellSize = 10
@@ -125,3 +127,4 @@ func WriteMapData(entries []CellEntry) []byte {
 	}
 	return data
 }
+*/
