@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------------------
 
 <template>
-
+  
   <div class="d-md-none">
     <table id="sessions_table" class="table table-striped table-hover">
       <thead>
@@ -110,6 +110,29 @@
     </table>
   </div>
 
+  <nav>
+    <ul v-if="data.length > 0" class="pagination justify-content-center">
+      <div v-if="page==0">
+        <li class="page-item disabled">
+          <a class="page-link" aria-disabled="true">Previous</a>
+        </li>
+      </div>
+      <div v-else>
+        <a class="page-link" @click="this.prevPage()">Previous</a>
+      </div>
+      <li class="page-item active" aria-current="page">
+        <a class="page-link" href="#">0</a>
+      </li>
+      <li class="page-item"><a class="page-link" @click="this.setPage(2)">1</a></li>
+      <li class="page-item"><a class="page-link" @click="this.setPage(3)">2</a></li>
+      <li class="page-item"><a class="page-link" @click="this.setPage(4)">3</a></li>
+      <li class="page-item"><a class="page-link" @click="this.setPage(5)">4</a></li>
+      <li class="page-item">
+        <a class="page-link" @click="this.nextPage()">Next</a>
+      </li>
+    </ul>
+  </nav>
+
 </template>
 
 // -----------------------------------------------------------------------------------------
@@ -201,6 +224,30 @@ export default {
   },
 
   methods: {
+
+    async setPage(page) {
+      this.page = page
+      let result = await getData(this.page)
+      this.data = result[0]
+      this.page = result[1]
+      console.log("page " + this.page)
+    },
+
+    async nextPage() {
+      this.page++
+      let result = await getData(this.page)
+      this.data = result[0]
+      this.page = result[1]
+      console.log("page " + this.page)
+    },
+
+    async prevPage() {
+      this.page--
+      let result = await getData(this.page)
+      this.data = result[0]
+      this.page = result[1]
+      console.log("page " + this.page)
+    },
 
     async update() {
       let result = await getData(this.page)

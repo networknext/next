@@ -29,7 +29,7 @@
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/sessions/0" @click="visible=!visible">Sessions</router-link>
+            <router-link class="nav-link" to="/sessions" @click="visible=!visible">Sessions</router-link>
           </li>
 
           <li class="nav-item">
