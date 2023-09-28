@@ -2869,6 +2869,10 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     return true;
 }
 
+#if NEXT_DEVELOPMENT
+bool raspberry_fake_latency = false;
+#endif // #if NEXT_DEVELOPMENT
+
 void next_server_internal_update_init( next_server_internal_t * server )
 {
     next_server_internal_verify_sentinels( server );
@@ -3268,6 +3272,24 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             memcpy( packet.session_data_signature, session->session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
 
             session->session_update_request_packet = packet;
+
+#if NEXT_DEVELOPMENT
+            // This is used by the raspberry pi clients in dev to give a normal distribution of latencies across all sessions, so I can test the portal
+            if ( raspberry_fake_latency )
+            {
+                packet.next = ( session->session_id % 2 ) == 0;
+                if ( packet.next )
+                {
+                    packet.direct_rtt = 100 + ( session->session_id % 100 );
+                    packet.next_rtt = 1 + ( session->session_id % 79 );
+                }
+                else
+                {
+                    packet.direct_rtt = ( session->session_id % 100 );
+                    packet.next_rtt = 0;
+                }
+            }
+#endif // #if NEXT_DEVELOPMENT
 
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );

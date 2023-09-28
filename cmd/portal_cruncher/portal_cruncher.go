@@ -137,26 +137,11 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		isp = "Local"
 	}
 
-	// todo: fake stuff
+	next := message.Next
 
-	// next := message.Next
+	directRTT := int32(message.DirectRTT)
 
-	next := false
-	if (message.SessionId%2)==0 {
-		next = true
-	}
-
-	var directRTT, nextRTT int32
-
-	if next {
-		directRTT = 100 + int32(sessionId % 100)
-		nextRTT = 1 + int32(sessionId % 79)
-	} else {
-		directRTT = int32(sessionId % 100)
-		nextRTT = int32(0)
-	}
-
-	// todo: end fake stuff
+	nextRTT := int32(message.NextRTT)
 
 	score := core.GetSessionScore(next, directRTT, nextRTT)
 

@@ -32,6 +32,8 @@
 
 static volatile int quit = 0;
 
+extern bool raspberry_fake_latency;
+
 void interrupt_handler( int signal )
 {
     (void) signal; quit = 1;
@@ -98,6 +100,8 @@ extern const char * next_platform_getenv( const char * name );
 int main()
 {
     printf( "\nRaspberry Server\n\n" );
+
+    raspberry_fake_latency = true;
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
