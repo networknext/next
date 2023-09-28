@@ -159,7 +159,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			state.Input.BestScore = uint32(score)
 		}
 	} else {
-		state.Input.BestScore = uint32(score)
+		state.Input.BestScore = uint32(999)
 	}
 
 	/*
