@@ -150,6 +150,8 @@ func RunPollThread(ctx context.Context) {
 
 		topServersWatcher := portal.CreateTopServersWatcher(ServerCruncherURL)
 
+		mapDataWatcher := portal.CreateMapDataWatcher(SessionCruncherURL)
+
 		for {
 
 			// ------------------------------------------------------------------------------------------
@@ -216,6 +218,14 @@ func RunPollThread(ctx context.Context) {
 			serverAddresses := topServersWatcher.GetServers(0, 100)
 
 			fmt.Printf("server addresses -> %d server addresses (%.3fms)\n", len(serverAddresses), float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
+			mapData := mapDataWatcher.GetMapData()
+
+			fmt.Printf("map data: %d bytes (%.3fms)\n", len(mapData), float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 

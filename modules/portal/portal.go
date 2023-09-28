@@ -1104,6 +1104,7 @@ func (watcher *MapDataWatcher) watchMapData() {
 func (watcher *MapDataWatcher) GetMapData() []byte {
 	watcher.mutex.RLock()
 	data := watcher.mapData
+	watcher.mutex.RUnlock()
 	return data
 }
 
