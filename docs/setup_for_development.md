@@ -172,7 +172,6 @@ verifying analytics 2 ... OK
 waiting for leader election
 
     analytics ... OK
-    map cruncher ... OK
     relay backend ... OK
 
 starting client and server:
@@ -192,7 +191,6 @@ verifying portal cruncher received session update messages ... OK
 verifying portal cruncher received server update messages ... OK
 verifying portal cruncher received relay update messages ... OK
 verifying portal cruncher received near relay update messages ... OK
-verifying map cruncher received map update messages ... OK
 
 *** SUCCESS! ***
 
@@ -343,14 +341,6 @@ starting portal cruncher:
 verifying portal cruncher 1 ... OK
 verifying portal cruncher 2 ... OK
 
-starting map cruncher:
-
-   run map-cruncher
-   run map-cruncher HTTP_PORT=40101
-
-verifying map cruncher 1 ... OK
-verifying map cruncher 2 ... OK
-
 starting analytics:
 
    run analytics
@@ -362,7 +352,6 @@ verifying analytics 2 ... OK
 waiting for leader election
 
     analytics ... OK
-    map cruncher ... OK
     relay backend ... OK
 
 starting client and server:
@@ -378,12 +367,10 @@ post validation:
 verifying leader election in relay backend ... OK
 verifying leader election in analytics ... OK
 verifying leader election in analytics ... OK
-verifying leader election in map cruncher ... OK
 verifying portal cruncher received session update messages ... OK
 verifying portal cruncher received server update messages ... OK
 verifying portal cruncher received relay update messages ... OK
 verifying portal cruncher received near relay update messages ... OK
-verifying map cruncher received map update messages ... OK
 
 *** SUCCESS! ***
 

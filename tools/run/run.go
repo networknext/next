@@ -110,8 +110,6 @@ func main() {
 		api()
 	} else if command == "portal-cruncher" {
 		portal_cruncher()
-	} else if command == "map-cruncher" {
-		map_cruncher()
 	} else if command == "session-cruncher" {
 		session_cruncher()
 	} else if command == "server-cruncher" {
@@ -299,14 +297,6 @@ func portal_cruncher() {
 		httpPort = "40012"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
-}
-
-func map_cruncher() {
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "40100"
-	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/map_cruncher", httpPort))
 }
 
 func session_cruncher() {

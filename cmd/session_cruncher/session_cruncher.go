@@ -178,7 +178,6 @@ func UpdateMapData(newMapPoints *MapPoints) {
 	encoding.WriteUint64(data[:], &index, MapPointsVersion)
 	encoding.WriteUint32(data[:], &index, uint32(newMapPoints.numMapPoints))
 
-	// todo: this needs to be encoded more like how map cruncher does it
 	for i := 0; i < newMapPoints.numMapPoints; i++ {
 		encoding.WriteUint64(data[:], &index, newMapPoints.mapPoints[i].sessionId)
 		encoding.WriteUint8(data[:], &index, newMapPoints.mapPoints[i].next)
