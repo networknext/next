@@ -3285,7 +3285,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 }
                 else
                 {
-                    packet.direct_rtt = ( session->session_id % 100 );
+                    packet.direct_rtt = ( session->session_id % 500 );
                     packet.next_rtt = 0;
                 }
             }

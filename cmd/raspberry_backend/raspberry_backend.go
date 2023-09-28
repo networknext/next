@@ -133,6 +133,7 @@ func serverUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Debug("server update from %s", address)
 	updateChannel <- &Update{address: address}
 	w.WriteHeader(http.StatusOK)
 }
