@@ -3096,7 +3096,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
-        packet.uptime = uint64_t( next_platform_time() - server->start_time );
+        packet.uptime = uint64_t( time(NULL) - server->start_time );
 
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
