@@ -38,6 +38,7 @@ var serverCruncherURL string
 
 var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
+var mapDataWatcher *portal.MapDataWatcher
 
 func main() {
 
@@ -131,6 +132,8 @@ func main() {
 		topSessionsWatcher = portal.CreateTopSessionsWatcher(sessionCruncherURL)
 
 		topServersWatcher = portal.CreateTopServersWatcher(serverCruncherURL)
+
+		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
 
 		if len(redisPortalCluster) > 0 {
 			redisPortalClient = common.CreateRedisClusterClient(redisPortalCluster)
@@ -696,8 +699,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	// todo
-	data := []byte{}
+	data := mapDataWatcher.GetMapData()
 	w.Write(data)
 }
 
