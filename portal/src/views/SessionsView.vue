@@ -132,6 +132,9 @@ function parse_uint64(value) {
 
 async function getData(page) {
   try {
+    if (page == null) {
+      page = 0
+    }
     const url = process.env.VUE_APP_API_URL + '/portal/sessions/' + page
     console.log("url: " + url)
     const res = await axios.get(url);
@@ -159,6 +162,7 @@ async function getData(page) {
       }
       data.push(row)
       outputPage = res.data.output_page
+      console.log("output page is " + outputPage)
       i++;
     }
     return [data, outputPage]
@@ -182,7 +186,9 @@ export default {
   },
 
   async beforeRouteEnter (to, from, next) {
-    var result = await getData(0)
+    const values = to.path.split("/")
+    const page = parseInt(values[values.length-1])
+    const result = await getData(page)
     next(vm => {
       vm.data = result[0]
       vm.page = result[1]

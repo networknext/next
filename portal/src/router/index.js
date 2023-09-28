@@ -21,7 +21,7 @@ const routes = [
     component: MapView
   },
   {
-    path: '/sessions/:page',
+    path: '/sessions/:page?',
     name: 'sessions',
     component: SessionsView,
   },

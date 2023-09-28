@@ -318,26 +318,11 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalSessionsResponse{}
 	sessionIds := topSessionsWatcher.GetTopSessions()
-
-	// todo
-	core.Log("========================================================================================")
-	core.Log("page = %d", page)
-	core.Log("%d top sessions", len(sessionIds))
-
 	begin, end, outputPage := core.DoPagination(int(page), len(sessionIds))
 	sessionIds = sessionIds[begin:end]
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	response.OutputPage = outputPage
-
-	// todo
-	core.Log("begin = %d", begin)
-	core.Log("end = %d", end)
-	core.Log("outputPage = %d", outputPage)
-	core.Log("length session ids post = %d", len(sessionIds))
-	core.Log("length sessions = %d", len(sessions))
-	core.Log("========================================================================================")
-
 	database := service.Database()
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
