@@ -299,7 +299,7 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		RealJitter:       float32(common.RandomInt(0, 1000)),
 		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
 		NumNearRelays:    uint32(common.RandomInt(0, constants.MaxNearRelays)),
-		Score:            uint32(common.RandomInt(0,1000)),
+		Score:            uint32(common.RandomInt(0, 1000)),
 	}
 
 	message.Next = common.RandomBool()

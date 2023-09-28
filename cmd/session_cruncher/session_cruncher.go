@@ -24,6 +24,8 @@ const TopSessionsVersion = uint64(0)
 type SessionUpdate struct {
 	sessionId uint64
 	next      uint8
+	latitude  float32
+	longitude float32
 }
 
 type TopSessions struct {
@@ -39,6 +41,7 @@ type Bucket struct {
 	sessionUpdateChannel chan []SessionUpdate
 	totalSessions        *SortedSet
 	nextSessions         *SortedSet
+	mapEntries           map[uint64]MapEntry
 }
 
 var buckets []Bucket
@@ -47,12 +50,35 @@ var topSessionsMutex sync.Mutex
 var topSessions *TopSessions
 var topSessionsData []byte
 
+type MapEntry struct {
+	latitude  float32
+	longitude float32
+	next      uint8
+}
+
+type MapPoint struct {
+	sessionId uint64
+	next      uint8
+	latitude  float32
+	longitude float32
+}
+
+type MapPoints struct {
+	numMapPoints int
+	mapPoints    [TopSessionsCount]MapPoint
+}
+
+var mapPointsMutex sync.Mutex
+var mapPoints *MapPoints
+var mapPointsData []byte
+
 func main() {
 
 	service := common.CreateService("session_cruncher")
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
+	service.Router.HandleFunc("/map_points", mapPointsHandler).Methods("GET")
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
@@ -60,12 +86,15 @@ func main() {
 		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
 		buckets[i].nextSessions = NewSortedSet()
 		buckets[i].totalSessions = NewSortedSet()
+		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
 	}
 
 	UpdateTopSessions(&TopSessions{})
 
-	// go TestThread()
+	UpdateMapPoints(&MapPoints{})
+
+	go TestThread()
 	
 	go TopSessionsThread()
 
@@ -81,8 +110,11 @@ func TestThread() {
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
 				batch[i].next = uint8(i%2)
+				batch[i].latitude = rand.Float32()
+				batch[i].longitude = rand.Float32()
 			}
 			buckets[index].sessionUpdateChannel <- batch
+			time.Sleep(1*time.Millisecond)
 		}
 	}
 }
@@ -108,6 +140,7 @@ func StartProcessThread(bucket *Bucket) {
 					if batch[i].next != 0 {
 						bucket.nextSessions.Insert(batch[i].sessionId, uint32(bucket.index))
 					}
+					bucket.mapEntries[batch[i].sessionId] = MapEntry{next: batch[i].next, latitude: batch[i].latitude, longitude: batch[i].longitude}
 				}
 				bucket.mutex.Unlock()
 			}
@@ -135,14 +168,38 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 	topSessionsMutex.Unlock()
 }
 
+func UpdateMapPoints(mapPoints *MapPoints) {
+
+	// todo
+	/*
+	data := make([]byte, 8+4+4+4+8*newTopSessions.numTopSessions)
+
+	index := 0
+
+	encoding.WriteUint64(data[:], &index, TopSessionsVersion)
+	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
+	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
+
+	for i := 0; i < newTopSessions.numTopSessions; i++ {
+		encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
+	}
+
+	topSessionsMutex.Lock()
+	topSessions = newTopSessions
+	topSessionsData = data
+	topSessionsMutex.Unlock()
+	*/
+}
+
 func TopSessionsThread() {
-	ticker := time.NewTicker(60*time.Second)
+	ticker := time.NewTicker(1*time.Second) // todo
 	for {
 		select {
 		case <-ticker.C:
 
 			nextSessions := make([]*SortedSet, NumBuckets)
 			totalSessions := make([]*SortedSet, NumBuckets)
+			mapEntries := make([]map[uint64]MapEntry, NumBuckets)
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Lock()
@@ -151,13 +208,18 @@ func TopSessionsThread() {
 			for i := 0; i < NumBuckets; i++ {
 				nextSessions[i] = buckets[i].nextSessions
 				totalSessions[i] = buckets[i].totalSessions
+				mapEntries[i] = buckets[i].mapEntries
 				buckets[i].nextSessions = NewSortedSet()
 				buckets[i].totalSessions = NewSortedSet()
+				buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 			}
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Unlock()
 			}
+
+			// todo
+			_ = mapEntries
 
 			start := time.Now()
 
@@ -209,6 +271,19 @@ func TopSessionsThread() {
 			}
 
 			UpdateTopSessions(newTopSessions)
+
+			newMapPoints := MapPoints{}
+			newMapPoints.numMapPoints = len(sessions)
+			for i := range sessions {
+				newMapPoints.mapPoints[i].sessionId = sessions[i].sessionId
+				score := sessions[i].score
+				entry := mapEntries[score][sessions[i].sessionId]
+				newMapPoints.mapPoints[i].next = entry.next
+				newMapPoints.mapPoints[i].latitude = entry.latitude
+				newMapPoints.mapPoints[i].longitude = entry.longitude
+			}
+
+			UpdateMapPoints(&newMapPoints)
 
 			duration := time.Since(start)
 
@@ -263,6 +338,13 @@ func topSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	topSessionsMutex.Lock()
 	data := topSessionsData
 	topSessionsMutex.Unlock()
+	w.Write(data)
+}
+
+func mapPointsHandler(w http.ResponseWriter, r *http.Request) {
+	mapPointsMutex.Lock()
+	data := mapPointsData
+	mapPointsMutex.Unlock()
 	w.Write(data)
 }
 
@@ -451,7 +533,7 @@ func (this *SortedSet) delete(score uint32, key uint64) bool {
 func NewSortedSet() *SortedSet {
 	sortedSet := SortedSet{
 		level: 1,
-		dict:  make(map[uint64]*SortedSetNode),
+		dict:  make(map[uint64]*SortedSetNode, 10000),
 	}
 	sortedSet.header = createNode(SKIPLIST_MAXLEVEL, 0, 0)
 	return &sortedSet

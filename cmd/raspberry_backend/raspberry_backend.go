@@ -48,7 +48,7 @@ func main() {
 	ctx := context.Background()
 
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:     redisHostname,
+		Addr: redisHostname,
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {

@@ -356,7 +356,7 @@ func GenerateRandomSessionData() SDK_SessionData {
 		StartTimestamp:                rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
 		Error:                         rand.Uint64(),
-		BestScore:                     uint32(common.RandomInt(0,999)),
+		BestScore:                     uint32(common.RandomInt(0, 999)),
 	}
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {

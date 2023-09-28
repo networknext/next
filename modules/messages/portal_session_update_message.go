@@ -64,7 +64,7 @@ type PortalSessionUpdateMessage struct {
 	NearRelayPacketLoss [constants.MaxNearRelays]float32
 	NearRelayRoutable   [constants.MaxNearRelays]bool
 
-	Score  uint32
+	Score uint32
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {

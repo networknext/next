@@ -47,7 +47,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					next := (sessionId%2)==0
+					next := (sessionId % 2) == 0
 
 					score := uint32(sessionId % 1000)
 

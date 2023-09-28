@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,7 +16,6 @@ import (
 	"os/exec"
 	"strconv"
 	"time"
-	"context"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -210,7 +210,7 @@ func RunSessionInsertThreads(threadCount int) {
 					sliceData := portal.GenerateRandomSliceData()
 
 					score := uint32(sessionId % 1000)
-					
+
 					sessionInserter.Insert(context.Background(), sessionId, userHash, next, score, sessionData, sliceData)
 
 					nearRelayData := portal.GenerateRandomNearRelayData()
@@ -369,7 +369,7 @@ type PortalRelaysResponse struct {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData    *PortalRelayData    `json:"relay_data"`
+	RelayData *PortalRelayData `json:"relay_data"`
 }
 
 func test_portal() {
@@ -423,7 +423,7 @@ func test_portal() {
 
 	server_cruncher_cmd := server_cruncher()
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// run the API service
 

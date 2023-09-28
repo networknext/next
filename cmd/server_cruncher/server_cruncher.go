@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"sync"
 	"time"
-	
+
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
 )
 
-const MaxServerAddressLength = 64 		// IMPORTANT: Enough for IPv4 and IPv6 + port number
+const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
 
 const TopServersCount = 10000
 
@@ -28,16 +28,16 @@ type ServerUpdate struct {
 }
 
 type TopServers struct {
-	totalServerCount  uint32
-	numTopServers     int
-	topServers        [TopServersCount]string
+	totalServerCount uint32
+	numTopServers    int
+	topServers       [TopServersCount]string
 }
 
 type Bucket struct {
-	index                int
-	mutex                sync.Mutex
-	serverUpdateChannel  chan []ServerUpdate
-	totalServers         *SortedSet
+	index               int
+	mutex               sync.Mutex
+	serverUpdateChannel chan []ServerUpdate
+	totalServers        *SortedSet
 }
 
 var buckets []Bucket
@@ -131,7 +131,7 @@ func UpdateTopServers(newTopServers *TopServers) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(60*time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -165,7 +165,7 @@ func TopSessionsThread() {
 				serverAddress string
 				score         uint32
 			}
-	
+
 			servers := make([]Server, 0, TopServersCount)
 
 			for i := 0; i < NumBuckets; i++ {
@@ -183,7 +183,7 @@ func TopSessionsThread() {
 			totalServerCount := len(totalServersMap)
 
 			newTopServers := &TopServers{}
-			newTopServers.totalServerCount= uint32(totalServerCount)
+			newTopServers.totalServerCount = uint32(totalServerCount)
 			newTopServers.numTopServers = len(servers)
 			for i := range servers {
 				newTopServers.topServers[i] = servers[i].serverAddress
@@ -289,8 +289,8 @@ type SortedSetLevel struct {
 }
 
 type SortedSetNode struct {
-	Key      string  // unique key of this node
-	Score    uint32  // score to determine the order of this node in the set
+	Key      string // unique key of this node
+	Score    uint32 // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }
@@ -431,7 +431,7 @@ func (this *SortedSet) delete(score uint32, key string) bool {
 func NewSortedSet() *SortedSet {
 	sortedSet := SortedSet{
 		level: 1,
-		dict:  make(map[string]*SortedSetNode),
+		dict:  make(map[string]*SortedSetNode, 10000),
 	}
 	sortedSet.header = createNode(SKIPLIST_MAXLEVEL, 0, "")
 	return &sortedSet
