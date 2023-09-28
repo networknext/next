@@ -696,6 +696,8 @@ type SessionCruncherEntry struct {
 	SessionId uint64
 	Score     uint32
 	Next      uint8
+	Latitude  float32
+	Longitude float32
 }
 
 type SessionCruncherPublisherConfig struct {
@@ -783,7 +785,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += int(batchSize[i]) * 9
+		size += int(batchSize[i]) * (8+1+4+4)
 	}
 
 	data := make([]byte, size)
@@ -797,6 +799,8 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 		for j := range batch[i] {
 			encoding.WriteUint64(data[:], &index, batch[i][j].SessionId)
 			encoding.WriteUint8(data[:], &index, batch[i][j].Next)
+			encoding.WriteFloat32(data[:], &index, batch[i][j].Latitude)
+			encoding.WriteFloat32(data[:], &index, batch[i][j].Longitude)
 		}
 	}
 
@@ -885,6 +889,8 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	entry := SessionCruncherEntry{
 		SessionId: sessionId,
 		Score:     score,
+		Latitude:  sessionData.Latitude,
+		Longitude: sessionData.Longitude,
 	}
 
 	if next {

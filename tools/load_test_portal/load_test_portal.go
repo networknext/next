@@ -292,7 +292,7 @@ func RunPollThread(ctx context.Context) {
 
 func main() {
 
-	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 1) // todo
+	threadCount := envvar.GetInt("THREAD_COUNT", 1)
 
 	ctx := context.Background()
 

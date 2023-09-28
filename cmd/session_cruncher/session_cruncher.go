@@ -21,6 +21,8 @@ const SessionBatchVersion = uint64(0)
 
 const TopSessionsVersion = uint64(0)
 
+const MapPointsVersion = uint64(0)
+
 type SessionUpdate struct {
 	sessionId uint64
 	next      uint8
@@ -94,7 +96,7 @@ func main() {
 
 	UpdateMapPoints(&MapPoints{})
 
-	go TestThread()
+	// go TestThread()
 	
 	go TopSessionsThread()
 
@@ -168,31 +170,31 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 	topSessionsMutex.Unlock()
 }
 
-func UpdateMapPoints(mapPoints *MapPoints) {
+func UpdateMapPoints(newMapPoints *MapPoints) {
 
-	// todo
-	/*
-	data := make([]byte, 8+4+4+4+8*newTopSessions.numTopSessions)
+	data := make([]byte, 8+4+newMapPoints.numMapPoints*(8+1+4+4))
 
 	index := 0
 
-	encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
-	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
+	encoding.WriteUint64(data[:], &index, MapPointsVersion)
+	encoding.WriteUint32(data[:], &index, uint32(newMapPoints.numMapPoints))
 
-	for i := 0; i < newTopSessions.numTopSessions; i++ {
-		encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
+	// todo: this needs to be encoded more like how map cruncher does it
+	for i := 0; i < newMapPoints.numMapPoints; i++ {
+		encoding.WriteUint64(data[:], &index, newMapPoints.mapPoints[i].sessionId)
+		encoding.WriteUint8(data[:], &index, newMapPoints.mapPoints[i].next)
+		encoding.WriteFloat32(data[:], &index, newMapPoints.mapPoints[i].latitude)
+		encoding.WriteFloat32(data[:], &index, newMapPoints.mapPoints[i].longitude)
 	}
 
-	topSessionsMutex.Lock()
-	topSessions = newTopSessions
-	topSessionsData = data
-	topSessionsMutex.Unlock()
-	*/
+	mapPointsMutex.Lock()
+	mapPoints = newMapPoints
+	mapPointsData = data
+	mapPointsMutex.Unlock()
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(1*time.Second) // todo
+	ticker := time.NewTicker(60*time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -217,9 +219,6 @@ func TopSessionsThread() {
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Unlock()
 			}
-
-			// todo
-			_ = mapEntries
 
 			start := time.Now()
 
@@ -328,6 +327,8 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 			for i := 0; i < int(numUpdates); i++ {
 				encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
 				encoding.ReadUint8(body[:], &index, &batch[i].next)
+				encoding.ReadFloat32(body[:], &index, &batch[i].latitude)
+				encoding.ReadFloat32(body[:], &index, &batch[i].longitude)
 			}
 			buckets[j].sessionUpdateChannel <- batch
 		}
