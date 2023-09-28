@@ -244,16 +244,6 @@ resource "google_redis_instance" "redis_portal" {
   authorized_network = google_compute_network.development.id
 }
 
-resource "google_redis_instance" "redis_map_cruncher" {
-  name               = "redis-map-cruncher"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
-}
-
 resource "google_redis_instance" "redis_raspberry" {
   name               = "redis-raspberry"
   tier               = "BASIC"
@@ -295,11 +285,6 @@ resource "google_redis_instance" "redis_server_backend" {
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = google_redis_instance.redis_portal.host
-}
-
-output "redis_map_cruncher_address" {
-  description = "The IP address of the map cruncher redis instance"
-  value       = google_redis_instance.redis_map_cruncher.host
 }
 
 output "redis_raspberry_address" {
@@ -1656,7 +1641,6 @@ module "api" {
     DEBUG_LOGS=1
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
-    REDIS_MAP_CRUNCHER_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379" 
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
@@ -1796,41 +1780,6 @@ module "portal_cruncher" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-http"]
   target_size        = 2
-}
-
-// ---------------------------------------------------------------------------------------
-
-module "map_cruncher" {
-
-  source = "../../modules/internal_mig_with_health_check"
-
-  service_name = "map-cruncher"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
-    REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
-    EOF
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = var.google_machine_type
-  project            = var.google_project
-  region             = var.google_region
-  zones              = var.google_zones
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-http"]
-  target_size        = 0 # todo: disabled for now until we work out what to do here
 }
 
 # ----------------------------------------------------------------------------------------

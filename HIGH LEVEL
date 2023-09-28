@@ -10,8 +10,6 @@ DONE
 
 	Rebuild analytics service	
 
-	Rebuild portal cruncher -> redis cruncher / map cruncher.
-
 	API service with REST API to drive the portal functionality.
 
 	API service with REST API to drive admin functionality (talk to the postgres database, eg. CRUD)

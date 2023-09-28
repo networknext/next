@@ -25,7 +25,6 @@ import (
 
 var redisPortalClient redis.Cmdable
 var redisRelayBackendClient *redis.Client
-var redisMapCruncherClient *redis.Client
 
 var controller *admin.Controller
 
@@ -52,7 +51,6 @@ func main() {
 	redisPortalCluster := envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname := envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
-	redisMapCruncherHostname := envvar.GetString("REDIS_MAP_CRUNCHER_HOSTNAME", "127.0.0.1:6379")
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
@@ -72,7 +70,6 @@ func main() {
 	core.Debug("redis portal cluster: %s", redisPortalCluster)
 	core.Debug("redis portal hostname: %s", redisPortalHostname)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
-	core.Debug("redis map cruncher hostname: %s", redisMapCruncherHostname)
 	core.Debug("enable admin: %v", enableAdmin)
 	core.Debug("enable portal: %v", enablePortal)
 	core.Debug("enable database: %v", enableDatabase)
@@ -142,7 +139,6 @@ func main() {
 		}
 
 		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
-		redisMapCruncherClient = common.CreateRedisClient(redisMapCruncherHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
@@ -700,7 +696,8 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	data := common.LoadMasterServiceData(service.Context, redisMapCruncherClient, "map_cruncher", "map_data")
+	// todo
+	data := []byte{}
 	w.Write(data)
 }
 

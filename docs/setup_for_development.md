@@ -83,7 +83,6 @@ dist/func_client
 dist/raspberry_server
 dist/server
 dist/api
-dist/map_cruncher
 dist/func_test_backend
 dist/portal_cruncher
 dist/func_server
@@ -162,14 +161,6 @@ starting portal cruncher:
 verifying portal cruncher 1 ... OK
 verifying portal cruncher 2 ... OK
 
-starting map cruncher:
-
-   run map-cruncher
-   run map-cruncher HTTP_PORT=40101
-
-verifying map cruncher 1 ... OK
-verifying map cruncher 2 ... OK
-
 starting analytics:
 
    run analytics
@@ -197,7 +188,6 @@ post validation:
 verifying leader election in relay backend ... OK
 verifying leader election in analytics ... OK
 verifying leader election in analytics ... OK
-verifying leader election in map cruncher ... OK
 verifying portal cruncher received session update messages ... OK
 verifying portal cruncher received server update messages ... OK
 verifying portal cruncher received relay update messages ... OK
@@ -275,7 +265,6 @@ dist/func_client
 dist/raspberry_server
 dist/server
 dist/api
-dist/map_cruncher
 dist/func_test_backend
 dist/portal_cruncher
 dist/func_server
