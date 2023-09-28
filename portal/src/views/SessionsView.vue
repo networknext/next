@@ -132,8 +132,9 @@ function parse_uint64(value) {
 
 async function getData(page) {
   try {
-    console.log("page = " + page)
-    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/sessions/' + page);
+    const url = process.env.VUE_APP_API_URL + '/portal/sessions/' + page
+    console.log("url: " + url)
+    const res = await axios.get(url);
     let i = 0
     let data = []
     let outputPage = 0
