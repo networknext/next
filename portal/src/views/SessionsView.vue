@@ -136,7 +136,6 @@ async function getData(page) {
       page = 0
     }
     const url = process.env.VUE_APP_API_URL + '/portal/sessions/' + page
-    console.log("url: " + url)
     const res = await axios.get(url);
     let i = 0
     let data = []
@@ -162,7 +161,6 @@ async function getData(page) {
       }
       data.push(row)
       outputPage = res.data.output_page
-      console.log("output page is " + outputPage)
       i++;
     }
     return [data, outputPage]
@@ -186,9 +184,16 @@ export default {
   },
 
   async beforeRouteEnter (to, from, next) {
-    const values = to.path.split("/")
-    const page = parseInt(values[values.length-1])
-    const result = await getData(page)
+    let values = to.path.split("/")
+    let page = 0
+    if (values.length > 0) {
+      let value = values[values.length-1]
+      page = parseInt(value)
+      if (isNaN(page)) {
+        page = 0
+      }
+    }
+    let result = await getData(page)
     next(vm => {
       vm.data = result[0]
       vm.page = result[1]
