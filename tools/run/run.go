@@ -178,8 +178,6 @@ func main() {
 		load_test_redis_pubsub()
 	} else if command == "load-test-redis-streams" {
 		load_test_redis_streams()
-	} else if command == "load-test-map" {
-		load_test_map()
 	} else if command == "load-test-optimize" {
 		load_test_optimize()
 	} else if command == "load-test-route-matrix" {
@@ -486,10 +484,6 @@ func load_test_redis_streams() {
 
 func load_test_portal() {
 	bash("go run tools/load_test_portal/load_test_portal.go")
-}
-
-func load_test_map() {
-	bash("go run tools/load_test_map/load_test_map.go")
 }
 
 func load_test_optimize() {

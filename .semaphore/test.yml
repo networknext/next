@@ -1242,10 +1242,6 @@ blocks:
 
       jobs:
 
-        - name: "Load Test Map"
-          commands:
-            - ./run load-test-map
-
         - name: "Load Test Portal"
           commands:
             - ./run load-test-portal
