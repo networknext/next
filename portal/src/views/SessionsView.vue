@@ -206,6 +206,14 @@ export default {
     };
   },
 
+  mounted() {
+    document.addEventListener('keypress', this.onKeyPress);
+  },
+  
+  beforeUnmount() {
+    document.removeEventListener('keypress', this.onKeyPress);
+  },
+
   async beforeRouteEnter (to, from, next) {
     let values = to.path.split("/")
     let page = 0
@@ -224,6 +232,15 @@ export default {
   },
 
   methods: {
+
+    onKeyPress(event) {
+      if (event.key == '1') {
+        this.prevPage()
+      }
+      if (event.key == '2') {
+        this.nextPage()
+      }
+    },
 
     async setPage(page) {
       this.page = page
