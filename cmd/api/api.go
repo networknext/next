@@ -307,6 +307,7 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 type PortalSessionsResponse struct {
 	Sessions []PortalSessionData `json:"sessions"`
 	OutputPage int               `json:"output_page"`
+	NumPages int				 `json:"num_pages"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -318,11 +319,12 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalSessionsResponse{}
 	sessionIds := topSessionsWatcher.GetTopSessions()
-	begin, end, outputPage := core.DoPagination(int(page), len(sessionIds))
+	begin, end, outputPage, numPages := core.DoPagination(int(page), len(sessionIds))
 	sessionIds = sessionIds[begin:end]
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	response.OutputPage = outputPage
+	response.NumPages = numPages
 	database := service.Database()
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])

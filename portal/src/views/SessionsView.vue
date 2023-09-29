@@ -110,29 +110,6 @@
     </table>
   </div>
 
-  <nav>
-    <ul v-if="data.length > 0" class="pagination justify-content-center">
-      <div v-if="page==0">
-        <li class="page-item disabled">
-          <a class="page-link" aria-disabled="true">Previous</a>
-        </li>
-      </div>
-      <div v-else>
-        <a class="page-link" @click="this.prevPage()">Previous</a>
-      </div>
-      <li class="page-item active" aria-current="page">
-        <a class="page-link" href="#">0</a>
-      </li>
-      <li class="page-item"><a class="page-link" @click="this.setPage(2)">1</a></li>
-      <li class="page-item"><a class="page-link" @click="this.setPage(3)">2</a></li>
-      <li class="page-item"><a class="page-link" @click="this.setPage(4)">3</a></li>
-      <li class="page-item"><a class="page-link" @click="this.setPage(5)">4</a></li>
-      <li class="page-item">
-        <a class="page-link" @click="this.nextPage()">Next</a>
-      </li>
-    </ul>
-  </nav>
-
 </template>
 
 // -----------------------------------------------------------------------------------------
@@ -168,7 +145,7 @@ async function getData(page) {
       const session_id = parse_uint64(v.session_id)
       const user_hash = parse_uint64(v.user_hash)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
-      const improvement = v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
+      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
       let row = {
         "Session ID":session_id,
         "User Hash":user_hash,
@@ -259,11 +236,13 @@ export default {
     },
 
     async prevPage() {
-      this.page--
-      let result = await getData(this.page)
-      this.data = result[0]
-      this.page = result[1]
-      console.log("page " + this.page)
+      if (this.page != 0) {
+        this.page--
+        let result = await getData(this.page)
+        this.data = result[0]
+        this.page = result[1]
+        console.log("page " + this.page)
+      }
     },
 
     async update() {
