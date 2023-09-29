@@ -339,7 +339,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalUserSessionsResponse struct {
-	Sessions []PortalSessionData `json:"sessions"`
+	Sessions   []PortalSessionData `json:"sessions"`
 	OutputPage int                 `json:"output_page"`
 	NumPages   int                 `json:"num_pages"`
 }

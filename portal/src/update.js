@@ -7,6 +7,7 @@ const update = {
       updated: false,
       page: 0,
       num_pages: 1,
+      param: null,
     };
   },
 
@@ -48,7 +49,7 @@ const update = {
     async nextPage() {
       if (this.page < this.num_pages-1) {
         this.page++
-        let result = await this.getData(this.page)
+        let result = await this.getData(this.page, this.param)
         if (result != null) {
           this.data = result[0]
           this.page = result[1]
@@ -60,7 +61,7 @@ const update = {
     async prevPage() {
       if (this.page > 0) {
         this.page--
-        let result = await this.getData(this.page)
+        let result = await this.getData(this.page, this.param)
         if (result != null) {
           this.data = result[0]
           this.page = result[1]
