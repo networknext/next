@@ -53,9 +53,13 @@
 import axios from "axios";
 import update from "@/update.js"
 
-async function getData() {
+async function getData(page) {
   try {
-    const res = await axios.get(process.env.VUE_APP_API_URL + '/database/buyers');
+    if (page == null) {
+      page = 0
+    }
+    const url = process.env.VUE_APP_API_URL + '/portal/buyers/' + page
+    const res = await axios.get(url);
     let i = 0;
     let data = []
     while (i < res.data.buyers.length) {
@@ -71,16 +75,9 @@ async function getData() {
       data.push(row)
       i++;
     }
-    data.sort( function(a,b) {
-      if (a["Buyer"] < b["Buyer"]) {
-        return -1
-      }
-      if (a["Buyer Name"] > b["Buyer Name"]) {
-        return +1
-      }
-      return 0
-    })
-    return data
+    const outputPage = res.data.output_page
+    const numPages = res.data.num_pages
+    return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
     return null
@@ -100,16 +97,38 @@ export default {
   },
 
   async beforeRouteEnter (to, from, next) {
-    var data = await getData()
+    let values = to.path.split("/")
+    let page = 0
+    if (values.length > 0) {
+      let value = values[values.length-1]
+      page = parseInt(value)
+      if (isNaN(page)) {
+        page = 0
+      }
+    }
+    let result = await getData(page)
     next(vm => {
-      vm.data = data
+      if (result != null) {
+        vm.data = result[0]
+        vm.page = result[1]
+        vm.num_pages = result[2]
+      }
     })
   },
 
   methods: {
 
+    async getData(page) {
+      return getData(page)
+    },
+
     async update() {
-      this.data = await getData()
+      let result = await getData(this.page)
+      if (result != null) {
+        this.data = result[0]
+        this.page = result[1]
+        this.num_pages = result[2]
+      }
     }
 
   }

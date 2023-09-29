@@ -158,6 +158,7 @@ func main() {
 		service.Router.HandleFunc("/portal/relays/{page}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
+		service.Router.HandleFunc("/portal/buyers/{page}", isAuthorized(portalBuyersHandler))
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
 
 		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
@@ -591,6 +592,38 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+type PortalBuyersResponse struct {
+	Buyers []db.Buyer `json:"buyers"`
+	OutputPage int `json:"output_page"`
+	NumPages int `json:"num_pages"`
+}
+
+func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	database_response := database.GetBuyers()
+	buyers := database_response.Buyers
+	sort.Slice(buyers, func(i, j int) bool { return buyers[i].Name < buyers[j].Name })
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(buyers))
+	buyers = buyers[begin:end]
+	response := PortalBuyersResponse{}
+	response.Buyers = buyers
+	response.OutputPage = outputPage
+	response.NumPages = numPages
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
 
 type PortalBuyerDataResponse struct {
 	BuyerData *db.Buyer `json:"buyer_data"`
