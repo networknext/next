@@ -16,6 +16,11 @@
         </div>
       </div>
 
+      <div class="d-xxl-none arrows">
+        <i class="bi bi-arrow-left-circle material-icons"></i>
+        <i class="bi bi-arrow-right-circle material-icons"></i>
+      </div>
+
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" @click="visible=!visible">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -124,8 +129,20 @@ export default {
     width: 100%;
   }
 
+  .arrows {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+  }
+
   .table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
     background-color: #439EFF33;
+  }
+
+  .material-icons {
+      color: #ddddee;
+      font-size: 38px;
   }
 
 </style>
