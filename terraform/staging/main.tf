@@ -236,8 +236,8 @@ resource "cloudflare_record" "portal_domain" {
 # ----------------------------------------------------------------------------------------
 
 locals {
-  redis_portal_address = "10.0.0.108:6379"
-  redis_server_backend_address = "10.0.0.113:6379"
+  redis_portal_address = "10.0.0.51:6379"
+  redis_server_backend_address = "10.0.0.47:6379"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
