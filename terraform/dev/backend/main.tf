@@ -1771,7 +1771,7 @@ module "portal_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "g1-small"
+  machine_type       = "n1-standard-1"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
