@@ -1,4 +1,6 @@
 
+import emitter from "@/mitt.js";
+
 const update = {
 
   data() {
@@ -15,6 +17,8 @@ const update = {
   mounted: function () {
     this.timer = setInterval(() => { this.update(); this.$emit('update', this.page, this.num_pages) }, 1000)
     document.addEventListener('keypress', this.onKeyPress);
+    emitter.on('prev_page', () => this.prevPage() )
+    emitter.on('next_page', () => this.nextPage() )
   },
 
   beforeUnmount() {

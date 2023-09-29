@@ -17,8 +17,8 @@
       </div>
 
       <div v-if="num_pages > 1" class="d-xxl-none arrows">
-        <i class="bi bi-arrow-left-circle material-icons"></i>
-        <i class="bi bi-arrow-right-circle material-icons"></i>
+        <i class="bi bi-arrow-left-circle material-icons" @click="prevPage()"></i>
+        <i class="bi bi-arrow-right-circle material-icons" @click="nextPage()"></i>
       </div>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" @click="visible=!visible">
@@ -76,6 +76,7 @@
 <script>
 
 import SessionCounts from '@/components/SessionCounts.vue';
+import emitter from "@/mitt.js";
 
 export default {
 
@@ -98,6 +99,14 @@ export default {
     update(page, num_pages) {
       this.page = page
       this.num_pages = num_pages
+    },
+
+    prevPage() {
+      emitter.emit('prev_page')
+    },
+
+    nextPage() {
+      emitter.emit('next_page')
     }
 
   }
