@@ -12,9 +12,10 @@ import (
 	"sort"
 	// "strings"
 
-	"github.com/networknext/next/modules/admin"
-	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/admin"
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
@@ -154,7 +155,7 @@ func main() {
 		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
-		service.Router.HandleFunc("/portal/relays/{begin}/{end}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/relays/{page}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
@@ -518,26 +519,28 @@ type PortalRelayData struct {
 
 type PortalRelaysResponse struct {
 	Relays []PortalRelayData `json:"relays"`
+	OutputPage int `json:"output_page"`
+	NumPages int `json:"num_pages"`
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	end, err := strconv.ParseUint(vars["end"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, int(begin), int(end))
+	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
 	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(relays))
+	sort.Slice(relays, func(i, j int) bool { return relays[i].NumSessions < relays[j].NumSessions })
+	relays = relays[begin:end]
 	response := PortalRelaysResponse{}
 	database := service.Database()
 	currentTime := uint64(time.Now().Unix())
 	response.Relays = make([]PortalRelayData, len(relays))
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	for i := range response.Relays {
 		response.Relays[i].RelayName = relays[i].RelayName
 		response.Relays[i].RelayId = relays[i].RelayId
