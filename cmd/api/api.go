@@ -357,7 +357,7 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response := PortalUserSessionsResponse{}
-	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, 0, 1000)
+	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, 1000)
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessions))
 	sessions = sessions[begin:end]
 	response.Sessions = make([]PortalSessionData, len(sessions))

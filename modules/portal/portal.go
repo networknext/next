@@ -1184,29 +1184,19 @@ func GetSessionList(ctx context.Context, redisClient redis.Cmdable, sessionIds [
 	return sessionList
 }
 
-func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash uint64, minutes int64, begin int, end int) []*SessionData {
+func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash uint64, minutes int64, max int) []*SessionData {
 
-	if begin < 0 {
-		core.Error("invalid begin passed to get user session list: %d", begin)
+	if max < 1 {
+		core.Error("invalid max passed in to get user session list: %d", max)
 		return nil
 	}
 
-	if end < 0 {
-		core.Error("invalid end passed to get user session list: %d", end)
-		return nil
-	}
-
-	if end <= begin {
-		core.Error("invalid begin passed to get user session list: %d", begin)
-		return nil
-	}
-
-	// get user session ids in order in the range [begin,end]
+	// get user session ids in order in the range [0,max)
 
 	pipeline := redisClient.Pipeline()
 
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes-1), int64(begin), int64(end-1))
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes), int64(begin), int64(end-1))
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes-1), 0, int64(max-1))
+	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes), 0, int64(max-1))
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
@@ -1253,12 +1243,11 @@ func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash
 		index++
 	}
 
-	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].sessionId < sessionEntries[j].sessionId })
+	sort.Slice(sessionEntries, func(i, j int) bool { return sessionEntries[i].sessionId < sessionEntries[j].sessionId })
 	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].score > sessionEntries[j].score })
 
-	maxSize := end - begin
-	if len(sessionEntries) > maxSize {
-		sessionEntries = sessionEntries[:maxSize]
+	if len(sessionEntries) > max {
+		sessionEntries = sessionEntries[:max]
 	}
 
 	userSessionIds := make([]uint64, len(sessionEntries))
@@ -1574,7 +1563,7 @@ func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverAddress
 		index++
 	}
 
-	sort.SliceStable(serverSessionIds, func(i, j int) bool { return serverSessionIds[i] < serverSessionIds[j] })
+	sort.Slice(serverSessionIds, func(i, j int) bool { return serverSessionIds[i] < serverSessionIds[j] })
 
 	serverSessionData := GetSessionList(ctx, redisClient, serverSessionIds)
 
@@ -1860,8 +1849,6 @@ func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes i
 		relayEntries[index] = RelayEntry{k, v}
 		index++
 	}
-
-	sort.SliceStable(relayEntries, func(i, j int) bool { return relayEntries[i].score > relayEntries[j].score })
 
 	maxSize := end - begin
 	if len(relayEntries) > maxSize {
