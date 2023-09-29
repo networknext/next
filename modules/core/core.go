@@ -2031,6 +2031,9 @@ func DoPagination_Simple(page int, length int) (begin, end, outputPage, numPages
 	if length%100 != 0 {
 		numPages += 1
 	}
+	if numPages < 1 {
+		numPages = 1
+	}
 	if page < 0 {
 		page = 0
 	}

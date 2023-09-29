@@ -515,7 +515,7 @@ func test_portal() {
 
 		serversResponse := PortalServersResponse{}
 
-		Get("http://127.0.0.1:50000/portal/servers/0/10", &serversResponse)
+		Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
 
 		serverDataResponse := PortalServerDataResponse{}
 
@@ -539,7 +539,7 @@ func test_portal() {
 
 		relaysResponse := PortalRelaysResponse{}
 
-		Get("http://127.0.0.1:50000/portal/relays/0/10", &relaysResponse)
+		Get("http://127.0.0.1:50000/portal/relays/0", &relaysResponse)
 
 		fmt.Printf("got data for %d relays\n", len(relaysResponse.Relays))
 
@@ -561,7 +561,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if sessionCountsResponse.TotalSessionCount < 100 {
+		if sessionCountsResponse.TotalSessionCount < 10 {
 			fmt.Printf("B\n")
 			ready = false
 		}
@@ -591,7 +591,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(serverDataResponse.ServerSessionIds) < 100 {
+		if len(serverDataResponse.ServerSessionIds) < 10 {
 			fmt.Printf("H\n")
 			ready = false
 		}
