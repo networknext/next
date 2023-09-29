@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"time"
+	"sort"
 	// "strings"
 
 	"github.com/networknext/next/modules/admin"
@@ -656,6 +657,7 @@ func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	database_response := database.GetDatacenters()
 	datacenters := database_response.Datacenters
+	sort.Slice(datacenters, func(i, j int) bool { return datacenters[i].Name < datacenters[j].Name })
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(datacenters))
 	datacenters = datacenters[begin:end]
 	response := PortalDatacentersResponse{}
