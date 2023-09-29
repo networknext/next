@@ -75,7 +75,6 @@ async function getData(page) {
       page = 0
     }
     const url = process.env.VUE_APP_API_URL + '/portal/servers/' + page
-    console.log("url = " + url)
     const res = await axios.get(url);
     let i = 0;
     let data = []
@@ -96,7 +95,6 @@ async function getData(page) {
       data.push(row)
       i++;
     }
-    console.log(res.data)
     const outputPage = res.data.output_page
     const numPages = res.data.num_pages
     return [data, outputPage, numPages]
@@ -130,9 +128,11 @@ export default {
     }
     let result = await getData(page)
     next(vm => {
-      vm.data = result[0]
-      vm.page = result[1]
-      vm.num_pages = result[2]
+      if (result != null) {
+        vm.data = result[0]
+        vm.page = result[1]
+        vm.num_pages = result[2]
+      }
     })
   },
 
@@ -144,9 +144,11 @@ export default {
 
     async update() {
       let result = await getData(this.page)
-      this.data = result[0]
-      this.page = result[1]
-      this.num_pages = result[2]
+      if (result != null) {
+        this.data = result[0]
+        this.page = result[1]
+        this.num_pages = result[2]
+      }
     }
 
   }

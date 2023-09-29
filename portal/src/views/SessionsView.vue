@@ -194,9 +194,11 @@ export default {
     }
     let result = await getData(page)
     next(vm => {
-      vm.data = result[0]
-      vm.page = result[1]
-      vm.num_pages = result[2]
+      if (result != null) {
+        vm.data = result[0]
+        vm.page = result[1]
+        vm.num_pages = result[2]
+      }
     })
   },
 
@@ -208,9 +210,11 @@ export default {
 
     async update() {
       let result = await getData(this.page)
-      this.data = result[0]
-      this.page = result[1]
-      this.num_pages = result[2]
+      if (result != null) {
+        this.data = result[0]
+        this.page = result[1]
+        this.num_pages = result[2]
+      }
     }
 
   }

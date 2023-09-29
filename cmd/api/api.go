@@ -160,7 +160,7 @@ func main() {
 
 		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
 
-		service.Router.HandleFunc("/portal/datacenters", isAuthorized(portalDatacentersHandler))
+		service.Router.HandleFunc("/portal/datacenters/{page}", isAuthorized(portalDatacentersHandler))
 		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
 
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
@@ -638,30 +638,43 @@ type PortalDatacenterData struct {
 
 type PortalDatacentersResponse struct {
 	Datacenters []PortalDatacenterData `json:"datacenters"`
+	OutputPage int `json:"output_page"`
+	NumPages int `json:"num_pages"`
 }
 
 func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	database := service.Database()
 	if database == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	database_response := database.GetDatacenters()
+	datacenters := database_response.Datacenters
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(datacenters))
+	datacenters = datacenters[begin:end]
 	response := PortalDatacentersResponse{}
-	response.Datacenters = make([]PortalDatacenterData, len(database_response.Datacenters))
+	response.Datacenters = make([]PortalDatacenterData, len(datacenters))
 	for i := range response.Datacenters {
-		response.Datacenters[i].Id = database_response.Datacenters[i].Id
-		response.Datacenters[i].Name = database_response.Datacenters[i].Name
-		response.Datacenters[i].Native = database_response.Datacenters[i].Native
-		response.Datacenters[i].Latitude = database_response.Datacenters[i].Latitude
-		response.Datacenters[i].Longitude = database_response.Datacenters[i].Longitude
-		response.Datacenters[i].SellerId = database_response.Datacenters[i].SellerId
-		seller := database.GetSeller(database_response.Datacenters[i].SellerId)
+		response.Datacenters[i].Id = datacenters[i].Id
+		response.Datacenters[i].Name = datacenters[i].Name
+		response.Datacenters[i].Native = datacenters[i].Native
+		response.Datacenters[i].Latitude = datacenters[i].Latitude
+		response.Datacenters[i].Longitude = datacenters[i].Longitude
+		response.Datacenters[i].SellerId = datacenters[i].SellerId
+		seller := database.GetSeller(datacenters[i].SellerId)
 		if seller != nil {
 			response.Datacenters[i].SellerName = seller.Name
 			response.Datacenters[i].SellerCode = seller.Code
 		}
 	}
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
