@@ -7,12 +7,13 @@ const update = {
       updated: false,
       page: 0,
       num_pages: 1,
-      param: null,
     };
   },
 
+  emits: ['update'],
+
   mounted: function () {
-    this.timer = setInterval(() => { this.update() }, 1000)
+    this.timer = setInterval(() => { this.update(); this.$emit('update', this.page, this.num_pages) }, 1000)
     document.addEventListener('keypress', this.onKeyPress);
   },
 
@@ -44,6 +45,7 @@ const update = {
         this.page = result[1]
         this.num_pages = result[2]
       }
+      this.$emit('update', this.page, this.num_pages)
     },
 
     async nextPage() {
@@ -56,6 +58,7 @@ const update = {
           this.num_pages = result[2]
         }
       }
+      this.$emit('update', this.page, this.num_pages)
     },
 
     async prevPage() {
@@ -68,8 +71,10 @@ const update = {
           this.num_pages = result[2]
         }
       }
+      this.$emit('update', this.page, this.num_pages)
     }
   }
 }
 
 export default update
+

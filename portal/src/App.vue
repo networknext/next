@@ -16,7 +16,7 @@
         </div>
       </div>
 
-      <div class="d-xxl-none arrows">
+      <div v-if="num_pages > 1" class="d-xxl-none arrows">
         <i class="bi bi-arrow-left-circle material-icons"></i>
         <i class="bi bi-arrow-right-circle material-icons"></i>
       </div>
@@ -67,7 +67,7 @@
     </div>
   </nav>
 
-  <router-view/>
+  <router-view @update="update" />
 
 </template>
 
@@ -78,15 +78,29 @@
 import SessionCounts from '@/components/SessionCounts.vue';
 
 export default {
+
   name: 'App',
+
   components: {
     SessionCounts,
   },
+
   data() {
     return {
       visible: false,
+      page: 0,
+      num_pages: 1,
     }
   },
+
+  methods: {
+
+    update(page, num_pages) {
+      this.page = page
+      this.num_pages = num_pages
+    }
+
+  }
 }
 </script>
 
@@ -134,6 +148,7 @@ export default {
     gap: 10px;
     align-items: center;
     justify-content: center;
+    height: 10px;
   }
 
   .table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
@@ -141,7 +156,7 @@ export default {
   }
 
   .material-icons {
-      color: #ddddee;
+      color: #bbbbbbcc;
       font-size: 38px;
   }
 
