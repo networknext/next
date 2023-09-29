@@ -646,7 +646,7 @@ func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalSellersResponse struct {
-	Sellers    []db.Seller `json:"seller"`
+	Sellers    []db.Seller `json:"sellers"`
 	OutputPage int         `json:"output_page"`
 	NumPages   int         `json:"num_pages"`
 }
