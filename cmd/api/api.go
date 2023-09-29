@@ -149,7 +149,7 @@ func main() {
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
 		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
-		service.Router.HandleFunc("/portal/servers/{begin}/{end}", isAuthorized(portalServersHandler))
+		service.Router.HandleFunc("/portal/servers/{page}", isAuthorized(portalServersHandler))
 		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
@@ -423,24 +423,25 @@ type PortalServerData struct {
 
 type PortalServersResponse struct {
 	Servers []PortalServerData `json:"servers"`
+	OutputPage int             `jsot:"output_page"`
+	NumPages int               `jsot:"num_pages"`
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	end, err := strconv.ParseUint(vars["end"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	serverAddresses := topServersWatcher.GetServers(int(begin), int(end))
+	serverAddresses := topServersWatcher.GetTopServers()
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverAddresses))
+	serverAddresses = serverAddresses[begin:end]
 	servers := portal.GetServerList(service.Context, redisPortalClient, serverAddresses)
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	database := service.Database()
 	for i := range servers {
 		response.Servers[i].ServerAddress = servers[i].ServerAddress

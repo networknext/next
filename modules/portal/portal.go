@@ -1701,6 +1701,13 @@ func (watcher *TopServersWatcher) GetServers(begin int, end int) []string {
 	return servers[begin:end]
 }
 
+func (watcher *TopServersWatcher) GetTopServers() []string {
+	watcher.mutex.RLock()
+	servers := watcher.topServers
+	watcher.mutex.RUnlock()
+	return servers
+}
+
 // ------------------------------------------------------------------------------------------------------------
 
 type RelayInserter struct {
