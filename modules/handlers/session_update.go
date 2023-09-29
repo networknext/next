@@ -167,7 +167,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			}
 		}
 	} else {
-		state.Input.BestScore = 1000
+		state.Input.BestScore = 999
 	}
 
 	/*
