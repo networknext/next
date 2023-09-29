@@ -533,7 +533,8 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
 	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(relays))
-	sort.Slice(relays, func(i, j int) bool { return relays[i].NumSessions < relays[j].NumSessions })
+	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions < relays[j].NumSessions })
 	relays = relays[begin:end]
 	response := PortalRelaysResponse{}
 	database := service.Database()
