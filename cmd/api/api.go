@@ -147,7 +147,7 @@ func main() {
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions/{page}", isAuthorized(portalSessionsHandler))
-		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
+		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{page}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
 		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
@@ -340,6 +340,8 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalUserSessionsResponse struct {
 	Sessions []PortalSessionData `json:"sessions"`
+	OutputPage int                 `json:"output_page"`
+	NumPages   int                 `json:"num_pages"`
 }
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -349,19 +351,18 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	response := PortalUserSessionsResponse{}
-	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, int(begin), int(end))
+	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, 0, 1000)
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessions))
+	sessions = sessions[begin:end]
 	response.Sessions = make([]PortalSessionData, len(sessions))
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	database := service.Database()
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
