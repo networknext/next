@@ -198,7 +198,7 @@ func RunPollThread(ctx context.Context) {
 
 			userHash := uint64(0x131e)
 
-			userSessionList := portal.GetUserSessionList(ctx, redisClient, userHash, minutes, 0, 100)
+			userSessionList := portal.GetUserSessionList(ctx, redisClient, userHash, minutes, 100)
 			if userSessionList != nil {
 				fmt.Printf("user session list %d (%.3fms)\n", len(userSessionList), float64(time.Since(start).Milliseconds()))
 			}
