@@ -60,15 +60,6 @@ async function getData(page) {
     }
     const url = process.env.VUE_APP_API_URL + '/portal/datacenters/' + page
     const res = await axios.get(url);
-    res.data.datacenters.sort(function (a, b) {
-      if (a.name < b.name) {
-        return -1;
-      }
-      if (a.name > b.name) {
-        return 1;
-      }
-      return 0;
-    });
     let i = 0
     let data = []
     while (i < res.data.datacenters.length) {
