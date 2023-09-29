@@ -140,6 +140,7 @@ async function getData(page) {
     let i = 0
     let data = []
     let outputPage = 0
+    let numPages = 1
     while (i < res.data.sessions.length) {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
@@ -161,9 +162,10 @@ async function getData(page) {
       }
       data.push(row)
       outputPage = res.data.output_page
+      numPages = res.data.num_pages
       i++;
     }
-    return [data, outputPage]
+    return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
     return null
@@ -179,16 +181,7 @@ export default {
   data() {
     return {
       data: [],
-      page: 0,
     };
-  },
-
-  mounted() {
-    document.addEventListener('keypress', this.onKeyPress);
-  },
-  
-  beforeUnmount() {
-    document.removeEventListener('keypress', this.onKeyPress);
   },
 
   async beforeRouteEnter (to, from, next) {
@@ -205,50 +198,21 @@ export default {
     next(vm => {
       vm.data = result[0]
       vm.page = result[1]
+      vm.num_pages = result[2]
     })
   },
 
   methods: {
 
-    onKeyPress(event) {
-      if (event.key == '1') {
-        this.prevPage()
-      }
-      if (event.key == '2') {
-        this.nextPage()
-      }
-    },
-
-    async setPage(page) {
-      this.page = page
-      let result = await getData(this.page)
-      this.data = result[0]
-      this.page = result[1]
-      console.log("page " + this.page)
-    },
-
-    async nextPage() {
-      this.page++
-      let result = await getData(this.page)
-      this.data = result[0]
-      this.page = result[1]
-      console.log("page " + this.page)
-    },
-
-    async prevPage() {
-      if (this.page > 0) {
-        this.page--
-        let result = await getData(this.page)
-        this.data = result[0]
-        this.page = result[1]
-        console.log("page " + this.page)
-      }
+    async getData(page) {
+      return getData(page)
     },
 
     async update() {
       let result = await getData(this.page)
       this.data = result[0]
       this.page = result[1]
+      this.num_pages = result[2]
     }
 
   }
