@@ -167,9 +167,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			}
 		}
 	} else {
-		state.Input.BestScore = uint32(score)
-		state.Input.BestDirectRTT = uint32(state.Request.DirectRTT)
-		state.Input.BestNextRTT = uint32(state.Request.NextRTT)
+		state.Input.BestScore = 1000
 	}
 
 	/*
