@@ -1629,6 +1629,7 @@ module "api" {
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
@@ -1698,6 +1699,40 @@ module "session_cruncher" {
 
 // ---------------------------------------------------------------------------------------
 
+module "server_cruncher" {
+
+  source = "../modules/internal_http_service"
+
+  service_name = "server-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=staging
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "c3-highmem-8"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.staging.id
+  default_subnetwork         = google_compute_subnetwork.staging.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
+}
+
+// ---------------------------------------------------------------------------------------
+
 module "portal_cruncher" {
 
   source = "../modules/internal_mig_with_health_check_autoscale"
@@ -1716,6 +1751,7 @@ module "portal_cruncher" {
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     REPS=10
     EOF
