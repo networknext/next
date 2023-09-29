@@ -236,7 +236,7 @@ export default {
     },
 
     async prevPage() {
-      if (this.page != 0) {
+      if (this.page > 0) {
         this.page--
         let result = await getData(this.page)
         this.data = result[0]

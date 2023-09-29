@@ -319,7 +319,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	response := PortalSessionsResponse{}
 	sessionIds := topSessionsWatcher.GetTopSessions()
-	begin, end, outputPage, numPages := core.DoPagination(int(page), len(sessionIds))
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessionIds))
 	sessionIds = sessionIds[begin:end]
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
