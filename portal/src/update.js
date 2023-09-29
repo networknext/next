@@ -40,23 +40,28 @@ const update = {
       let result = await this.getData(this.page)
       this.data = result[0]
       this.page = result[1]
+      this.num_pages = result[2]
     },
 
     async nextPage() {
+      console.log("next page " + this.page)
       if (this.page < this.num_pages-1) {
         this.page++
         let result = await this.getData(this.page)
         this.data = result[0]
         this.page = result[1]
+        this.num_pages = result[2]
       }
     },
 
     async prevPage() {
+      console.log("prev page" + this.page)
       if (this.page > 0) {
         this.page--
         let result = await this.getData(this.page)
         this.data = result[0]
         this.page = result[1]
+        this.num_pages = result[2]
       }
     }
   }

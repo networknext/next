@@ -423,8 +423,8 @@ type PortalServerData struct {
 
 type PortalServersResponse struct {
 	Servers []PortalServerData `json:"servers"`
-	OutputPage int             `jsot:"output_page"`
-	NumPages int               `jsot:"num_pages"`
+	OutputPage int             `json:"output_page"`
+	NumPages int               `json:"num_pages"`
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {

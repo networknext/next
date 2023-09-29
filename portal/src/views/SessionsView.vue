@@ -139,8 +139,6 @@ async function getData(page) {
     const res = await axios.get(url);
     let i = 0
     let data = []
-    let outputPage = 0
-    let numPages = 1
     while (i < res.data.sessions.length) {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
@@ -161,10 +159,10 @@ async function getData(page) {
         "Improvement":improvement,
       }
       data.push(row)
-      outputPage = res.data.output_page
-      numPages = res.data.num_pages
       i++;
     }
+    const outputPage = res.data.output_page
+    const numPages = res.data.num_pages
     return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
