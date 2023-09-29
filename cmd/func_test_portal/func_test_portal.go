@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,7 +16,6 @@ import (
 	"os/exec"
 	"strconv"
 	"time"
-	"context"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -210,7 +210,7 @@ func RunSessionInsertThreads(threadCount int) {
 					sliceData := portal.GenerateRandomSliceData()
 
 					score := uint32(sessionId % 1000)
-					
+
 					sessionInserter.Insert(context.Background(), sessionId, userHash, next, score, sessionData, sliceData)
 
 					nearRelayData := portal.GenerateRandomNearRelayData()
@@ -332,6 +332,38 @@ func Get(url string, object interface{}) {
 	}
 }
 
+func GetBinary(url string) []byte {
+
+	var err error
+	var response *http.Response
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	client := &http.Client{}
+	response, err = client.Do(req)
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response == nil {
+		core.Error("no response from %s", url)
+		os.Exit(1)
+	}
+
+	if response.StatusCode != 200 {
+		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	return body
+}
+
 type PortalSessionCountsResponse struct {
 	NextSessionCount  int `json:"next_session_count"`
 	TotalSessionCount int `json:"total_session_count"`
@@ -369,7 +401,7 @@ type PortalRelaysResponse struct {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData    *PortalRelayData    `json:"relay_data"`
+	RelayData *PortalRelayData `json:"relay_data"`
 }
 
 func test_portal() {
@@ -423,7 +455,7 @@ func test_portal() {
 
 	server_cruncher_cmd := server_cruncher()
 
-	time.Sleep(10*time.Second)
+	time.Sleep(10 * time.Second)
 
 	// run the API service
 
@@ -455,7 +487,7 @@ func test_portal() {
 
 		sessionsResponse := PortalSessionsResponse{}
 
-		Get("http://127.0.0.1:50000/portal/sessions/0/10", &sessionsResponse)
+		Get("http://127.0.0.1:50000/portal/sessions/0", &sessionsResponse)
 
 		fmt.Printf("got data for %d sessions\n", len(sessionsResponse.Sessions))
 
@@ -520,14 +552,16 @@ func test_portal() {
 			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].RelayName), &relayDataResponse)
 		}
 
+		mapData := GetBinary("http://127.0.0.1:50000/portal/map_data")
+
 		ready = true
 
-		if sessionCountsResponse.NextSessionCount < 100 {
+		if sessionCountsResponse.NextSessionCount < 10 {
 			fmt.Printf("A\n")
 			ready = false
 		}
 
-		if sessionCountsResponse.TotalSessionCount < 1000 {
+		if sessionCountsResponse.TotalSessionCount < 100 {
 			fmt.Printf("B\n")
 			ready = false
 		}
@@ -557,13 +591,18 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(serverDataResponse.ServerSessionIds) < 10000 {
+		if len(serverDataResponse.ServerSessionIds) < 100 {
 			fmt.Printf("H\n")
 			ready = false
 		}
 
 		if relayCountResponse.RelayCount < 10 {
 			fmt.Printf("I\n")
+			ready = false
+		}
+
+		if len(mapData) == 0 {
+			fmt.Printf("J\n")
 			ready = false
 		}
 

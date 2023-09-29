@@ -20,6 +20,7 @@
     "axios": "^1.4.0",
     "bignumber.js": "^9.1.1",
     "bootstrap": "^5.3.1",
+    "bootstrap-icons": "^1.11.1",
     "core-js": "^3.8.3",
     "node-sass": "^9.0.0",
     "vue": "^3.2.13",

@@ -47,7 +47,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					next := (sessionId%2)==0
+					next := (sessionId % 2) == 0
 
 					score := uint32(sessionId % 1000)
 
@@ -150,6 +150,8 @@ func RunPollThread(ctx context.Context) {
 
 		topServersWatcher := portal.CreateTopServersWatcher(ServerCruncherURL)
 
+		mapDataWatcher := portal.CreateMapDataWatcher(SessionCruncherURL)
+
 		for {
 
 			// ------------------------------------------------------------------------------------------
@@ -216,6 +218,14 @@ func RunPollThread(ctx context.Context) {
 			serverAddresses := topServersWatcher.GetServers(0, 100)
 
 			fmt.Printf("server addresses -> %d server addresses (%.3fms)\n", len(serverAddresses), float64(time.Since(start).Milliseconds()))
+
+			// ------------------------------------------------------------------------------------------
+
+			start = time.Now()
+
+			mapData := mapDataWatcher.GetMapData()
+
+			fmt.Printf("map data: %d bytes (%.3fms)\n", len(mapData), float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 
@@ -292,7 +302,7 @@ func RunPollThread(ctx context.Context) {
 
 func main() {
 
-	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 1) // todo
+	threadCount := envvar.GetInt("THREAD_COUNT", 1)
 
 	ctx := context.Background()
 

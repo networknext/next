@@ -78,9 +78,9 @@ func RunSession(index int) {
 
 	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond)	// jitter delay
+	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
 
-	time.Sleep(time.Duration(r.Intn(360)) * time.Second)        // initial delay
+	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, basePort+index))
 
@@ -271,7 +271,7 @@ func RunSession(index int) {
 							return
 						}
 
-						time.Sleep(2*time.Second)
+						time.Sleep(2 * time.Second)
 
 						mutex.Lock()
 						done := receivedResponse

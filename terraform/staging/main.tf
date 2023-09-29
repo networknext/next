@@ -251,16 +251,6 @@ resource "google_redis_instance" "redis_relay_backend" {
   authorized_network      = google_compute_network.staging.id
 }
 
-resource "google_redis_instance" "redis_map_cruncher" {
-  name                    = "redis-map-cruncher"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 2
-  region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "1" }
-  authorized_network      = google_compute_network.staging.id
-}
-
 resource "google_redis_instance" "redis_analytics" {
   name                    = "redis-analytics"
   tier                    = "STANDARD_HA"
@@ -284,11 +274,6 @@ output "redis_server_backend_address" {
 output "redis_relay_backend_address" {
   description = "The IP address of the relay backend redis instance"
   value       = google_redis_instance.redis_relay_backend.host
-}
-
-output "redis_map_cruncher_address" {
-  description = "The IP address of the map cruncher redis instance"
-  value       = google_redis_instance.redis_map_cruncher.host
 }
 
 output "redis_analytics_address" {
@@ -1643,7 +1628,6 @@ module "api" {
     ENV=staging
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
-    REDIS_MAP_CRUNCHER_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
@@ -1751,41 +1735,6 @@ module "portal_cruncher" {
   min_size           = 3
   max_size           = 64
   target_cpu         = 60
-}
-
-// ---------------------------------------------------------------------------------------
-
-module "map_cruncher" {
-
-  source = "../modules/internal_mig_with_health_check"
-
-  service_name = "map-cruncher"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=staging
-    REPS=64
-    REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
-    REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
-    EOF
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = "c3-highcpu-4"
-  project            = var.google_project
-  region             = var.google_region
-  zones              = var.google_zones
-  default_network    = google_compute_network.staging.id
-  default_subnetwork = google_compute_subnetwork.staging.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size        = 0 # todo: disabled for now
 }
 
 # ----------------------------------------------------------------------------------------

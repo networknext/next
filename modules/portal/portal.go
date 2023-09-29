@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -396,14 +396,14 @@ func GenerateRandomNearRelayData() *NearRelayData {
 // --------------------------------------------------------------------------------------------------
 
 type ServerData struct {
-	ServerAddress    string  `json:"server_address"`
-	SDKVersion_Major uint8   `json:"sdk_version_major"`
-	SDKVersion_Minor uint8   `json:"sdk_version_minor"`
-	SDKVersion_Patch uint8   `json:"sdk_version_patch"`
-	BuyerId          uint64  `json:"buyer_id,string"`
-	DatacenterId     uint64  `json:"datacenter_id,string"`
-	NumSessions      uint32  `json:"num_sessions"`
-	Uptime           uint64  `json:"uptime,string"`
+	ServerAddress    string `json:"server_address"`
+	SDKVersion_Major uint8  `json:"sdk_version_major"`
+	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
+	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
+	BuyerId          uint64 `json:"buyer_id,string"`
+	DatacenterId     uint64 `json:"datacenter_id,string"`
+	NumSessions      uint32 `json:"num_sessions"`
+	Uptime           uint64 `json:"uptime,string"`
 }
 
 func (data *ServerData) Value() string {
@@ -693,9 +693,11 @@ func GenerateRandomRelaySample() *RelaySample {
 const NumBuckets = 1000
 
 type SessionCruncherEntry struct {
-	SessionId     uint64
-	Score         uint32
-	Next          uint8
+	SessionId uint64
+	Score     uint32
+	Next      uint8
+	Latitude  float32
+	Longitude float32
 }
 
 type SessionCruncherPublisherConfig struct {
@@ -783,13 +785,13 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += int(batchSize[i]) * 9
+		size += int(batchSize[i]) * (8+1+4+4)
 	}
 
 	data := make([]byte, size)
 
 	index := 0
-	
+
 	encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
 
 	for i := 0; i < NumBuckets; i++ {
@@ -797,6 +799,8 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 		for j := range batch[i] {
 			encoding.WriteUint64(data[:], &index, batch[i][j].SessionId)
 			encoding.WriteUint8(data[:], &index, batch[i][j].Next)
+			encoding.WriteFloat32(data[:], &index, batch[i][j].Latitude)
+			encoding.WriteFloat32(data[:], &index, batch[i][j].Longitude)
 		}
 	}
 
@@ -883,8 +887,10 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 	minutes := currentTime.Unix() / 60
 
 	entry := SessionCruncherEntry{
-		SessionId:     sessionId,
-		Score:         score,
+		SessionId: sessionId,
+		Score:     score,
+		Latitude:  sessionData.Latitude,
+		Longitude: sessionData.Longitude,
 	}
 
 	if next {
@@ -960,7 +966,7 @@ func (watcher *TopSessionsWatcher) watchTopSessions() {
 				break
 			}
 
-			if len(data) < 8 + 4 + 4 + 4 {
+			if len(data) < 8+4+4+4 {
 				core.Error("top session response is too small")
 				break
 			}
@@ -978,7 +984,7 @@ func (watcher *TopSessionsWatcher) watchTopSessions() {
 			encoding.ReadUint32(data[:], &index, &nextSessions)
 			encoding.ReadUint32(data[:], &index, &totalSessions)
 
-			numSessions := ( len(data) - ( 8 + 4 + 4 + 4 ) ) / 8
+			numSessions := (len(data) - (8 + 4 + 4 + 4)) / 8
 			sessions := make([]uint64, numSessions)
 			for i := 0; i < numSessions; i++ {
 				encoding.ReadUint64(data[:], &index, &sessions[i])
@@ -1051,6 +1057,62 @@ func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
 		end = len(sessions)
 	}
 	return sessions[begin:end]
+}
+
+func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
+	watcher.mutex.RLock()
+	sessions := watcher.topSessions
+	watcher.mutex.RUnlock()
+	return sessions
+}
+
+// --------------------------------------------------------------------------------------------------
+
+const MapDataVersion = uint64(0)
+
+type MapDataWatcher struct {
+	url           string
+	mutex         sync.RWMutex
+	mapData       []byte
+}
+
+func CreateMapDataWatcher(sessionCruncherURL string) *MapDataWatcher {
+	watcher := MapDataWatcher{}
+	watcher.url = sessionCruncherURL + "/map_data"
+	go watcher.watchMapData()
+	return &watcher
+}
+
+func (watcher *MapDataWatcher) watchMapData() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+
+		case <-ticker.C:
+
+			data := getBinary(watcher.url)
+
+			if data == nil {
+				break
+			}
+
+			if len(data) < 8+4 {
+				core.Error("map data response is too small")
+				break
+			}
+
+			watcher.mutex.Lock()
+			watcher.mapData = data
+			watcher.mutex.Unlock()
+		}
+	}
+}
+
+func (watcher *MapDataWatcher) GetMapData() []byte {
+	watcher.mutex.RLock()
+	data := watcher.mapData
+	watcher.mutex.RUnlock()
+	return data
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -1263,8 +1325,8 @@ func (inserter *NearRelayInserter) Flush(ctx context.Context) {
 const MaxServerAddressLength = 64
 
 type ServerCruncherEntry struct {
-	ServerAddress      string
-	Score              uint32
+	ServerAddress string
+	Score         uint32
 }
 
 type ServerCruncherPublisherConfig struct {
@@ -1352,13 +1414,13 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += 4 + int(batchSize[i]) * MaxServerAddressLength
+		size += 4 + int(batchSize[i])*MaxServerAddressLength
 	}
 
 	data := make([]byte, size)
 
 	index := 0
-	
+
 	encoding.WriteUint64(data[:], &index, ServerBatchVersion_Write)
 
 	for i := 0; i < NumBuckets; i++ {
@@ -1422,7 +1484,7 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	serverId := common.HashString(serverData.ServerAddress)
 
-	score := ( uint32(serverId) ^ uint32(serverId>>32) ) % NumBuckets
+	score := (uint32(serverId) ^ uint32(serverId>>32)) % NumBuckets
 
 	entry := ServerCruncherEntry{
 		ServerAddress: serverData.ServerAddress,
@@ -1583,7 +1645,7 @@ func (watcher *TopServersWatcher) watchTopServers() {
 				break
 			}
 
-			if len(data) < 8 + 4 {
+			if len(data) < 8+4 {
 				core.Error("top server response is too small")
 				break
 			}

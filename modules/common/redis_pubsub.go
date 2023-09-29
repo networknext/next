@@ -38,15 +38,15 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	var redisClient redis.PubSubCmdable
 	if len(config.RedisCluster) > 0 {
 		client := CreateRedisClusterClient(config.RedisCluster)
-		_, err := client.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 		redisClient = client
 	} else {
 		client := CreateRedisClient(config.RedisHostname)
-		_, err := client.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 		redisClient = client
@@ -174,14 +174,14 @@ func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*
 	var redisClusterClient *redis.ClusterClient
 	if len(config.RedisCluster) > 0 {
 		redisClusterClient = CreateRedisClusterClient(config.RedisCluster)
-		_, err := redisClusterClient.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := redisClusterClient.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 	} else {
 		redisClient = CreateRedisClient(config.RedisHostname)
-		_, err := redisClient.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := redisClient.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 	}

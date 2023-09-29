@@ -37,15 +37,15 @@ func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) 
 	var redisClient redis.StreamCmdable
 	if len(config.RedisCluster) > 0 {
 		client := CreateRedisClusterClient(config.RedisCluster)
-		_, err := client.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 		redisClient = client
 	} else {
 		client := CreateRedisClient(config.RedisHostname)
-		_, err := client.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 		redisClient = client
@@ -164,15 +164,15 @@ func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) 
 	var redisClient redis.StreamCmdable
 	if len(config.RedisCluster) > 0 {
 		client := CreateRedisClusterClient(config.RedisCluster)
-		_, err := client.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 		redisClient = client
 	} else {
 		client := CreateRedisClient(config.RedisHostname)
-		_, err := client.Ping(ctx).Result() 
-		if err != nil { 
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
 			return nil, err
 		}
 		redisClient = client

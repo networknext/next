@@ -25,7 +25,6 @@ import (
 
 var redisPortalClient redis.Cmdable
 var redisRelayBackendClient *redis.Client
-var redisMapCruncherClient *redis.Client
 
 var controller *admin.Controller
 
@@ -39,6 +38,7 @@ var serverCruncherURL string
 
 var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
+var mapDataWatcher *portal.MapDataWatcher
 
 func main() {
 
@@ -52,7 +52,6 @@ func main() {
 	redisPortalCluster := envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	redisRelayBackendHostname := envvar.GetString("REDIS_RELAY_BACKEND_HOSTNAME", "127.0.0.1:6379")
-	redisMapCruncherHostname := envvar.GetString("REDIS_MAP_CRUNCHER_HOSTNAME", "127.0.0.1:6379")
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
@@ -72,7 +71,6 @@ func main() {
 	core.Debug("redis portal cluster: %s", redisPortalCluster)
 	core.Debug("redis portal hostname: %s", redisPortalHostname)
 	core.Debug("redis relay backend hostname: %s", redisRelayBackendHostname)
-	core.Debug("redis map cruncher hostname: %s", redisMapCruncherHostname)
 	core.Debug("enable admin: %v", enableAdmin)
 	core.Debug("enable portal: %v", enablePortal)
 	core.Debug("enable database: %v", enableDatabase)
@@ -135,6 +133,8 @@ func main() {
 
 		topServersWatcher = portal.CreateTopServersWatcher(serverCruncherURL)
 
+		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
+
 		if len(redisPortalCluster) > 0 {
 			redisPortalClient = common.CreateRedisClusterClient(redisPortalCluster)
 		} else {
@@ -142,10 +142,9 @@ func main() {
 		}
 
 		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
-		redisMapCruncherClient = common.CreateRedisClient(redisMapCruncherHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
-		service.Router.HandleFunc("/portal/sessions/{begin}/{end}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/sessions/{page}", isAuthorized(portalSessionsHandler))
 		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{begin}/{end}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
@@ -307,24 +306,25 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 
 type PortalSessionsResponse struct {
 	Sessions []PortalSessionData `json:"sessions"`
+	OutputPage int               `json:"output_page"`
+	NumPages int				 `json:"num_pages"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	begin, err := strconv.ParseUint(vars["begin"], 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	end, err := strconv.ParseUint(vars["end"], 10, 32)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	response := PortalSessionsResponse{}
-	sessionIds := topSessionsWatcher.GetSessions(int(begin), int(end))
+	sessionIds := topSessionsWatcher.GetTopSessions()
+	begin, end, outputPage, numPages := core.DoPagination(int(page), len(sessionIds))
+	sessionIds = sessionIds[begin:end]
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
 	response.Sessions = make([]PortalSessionData, len(sessions))
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	database := service.Database()
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
@@ -469,8 +469,8 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalServerDataResponse struct {
-	ServerData       *portal.ServerData    `json:"server_data"`
-	ServerSessions   []*portal.SessionData `json:"server_sessions"`
+	ServerData     *portal.ServerData    `json:"server_data"`
+	ServerSessions []*portal.SessionData `json:"server_sessions"`
 }
 
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -700,7 +700,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 func portalMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
-	data := common.LoadMasterServiceData(service.Context, redisMapCruncherClient, "map_cruncher", "map_data")
+	data := mapDataWatcher.GetMapData()
 	w.Write(data)
 }
 

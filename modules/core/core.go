@@ -1989,3 +1989,36 @@ func GetSessionScore(next bool, directRTT int32, nextRTT int32) uint32 {
 	}
 	return score
 }
+
+func DoPagination(page int, length int) (begin, end, outputPage, numPages int) {
+	begin = 0
+	end = 100
+	outputPage = page
+	numPages = length/100
+	if length%100 != 0 {
+		numPages += 1
+	}
+	if length > 100 {
+		if page > 0 {
+			begin = page * 100
+			end = (page+1) * 100
+			if end > length {
+				outputPage = -1
+				end = length
+				begin = end - 100
+			}
+		} else if page < 0 {
+			end = length - (-page)*100
+			begin = end - 100
+			if begin < 0 {
+				outputPage = 0
+				begin = 0
+				end = 100
+			}
+		}
+	} else {
+		end = length
+		outputPage = 0
+	}
+	return
+}

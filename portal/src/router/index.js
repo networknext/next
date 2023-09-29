@@ -21,10 +21,9 @@ const routes = [
     component: MapView
   },
   {
-    path: '/sessions',
+    path: '/sessions/:page?',
     name: 'sessions',
     component: SessionsView,
-    meta: { transition: 'slide-left' },
   },
   {
     path: '/session/:id', 

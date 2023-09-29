@@ -5304,3 +5304,82 @@ func TestSessionScore(t *testing.T) {
 		assert.True(t, score <= 999)
 	}
 }
+
+func TestPagination(t *testing.T) {
+
+	t.Parallel()
+
+	// if there is nothing in the list, then we should always get page 0 [0,0]
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(100, 0)
+		assert.True(t, begin==0)
+		assert.True(t, end==0)
+		assert.True(t, outputPage==0)
+		assert.True(t, numPages==0)
+	}
+
+	// if the list is less than 100 long, then we should always get page 0 [0,length]
+	
+	{
+		begin, end, outputPage, numPages := core.DoPagination(100, 15)
+		assert.True(t, begin==0)
+		fmt.Printf("end = %d\n", end)
+		assert.True(t, end==15)
+		assert.True(t, outputPage==0)
+		assert.True(t, numPages==1)
+	}
+
+	// if the list is not evenly dividable by 100, we get an extra page at the end
+	
+	{
+		begin, end, outputPage, numPages := core.DoPagination(0, 1001)
+		assert.True(t, begin==0)
+		assert.True(t, end==100)
+		assert.True(t, outputPage==0)
+		assert.True(t, numPages==11)
+	}
+
+	// regular positive get page cases (relative to beginning of list)
+	
+	for i := 0; i < 100; i++ {
+		begin, end, outputPage, numPages := core.DoPagination(i, 100000)
+		assert.True(t, begin==i*100)
+		assert.True(t, end==(i+1)*100)
+		assert.True(t, outputPage==i)
+		assert.True(t, numPages==1000)
+	}
+
+	// regular negative page cases (relative to end of list)
+	
+	{
+		for i := 1; i < 100; i++ {
+			begin, end, outputPage, numPages := core.DoPagination(-i, 100000)
+			assert.True(t, end==100000-(i*100))
+			assert.True(t, begin==end-100)
+			assert.True(t, outputPage==-i)
+			assert.True(t, numPages==1000)
+		}
+	}
+
+	// positive pages that go past end, should clamp to page -1
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(100, 1000)
+		assert.True(t, begin==900)
+		assert.True(t, end==1000)
+		assert.True(t, outputPage==-1)
+		assert.True(t, numPages==10)
+	}
+
+	// negative pages that go past beginning, should clamp to page 0
+	
+	{
+		begin, end, outputPage,numPages := core.DoPagination(-100, 1000)
+		assert.True(t, begin==0)
+		assert.True(t, end==100)
+		assert.True(t, outputPage==0)
+		assert.True(t, numPages==10)
+	}
+
+}

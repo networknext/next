@@ -109,18 +109,6 @@ services:
     environment:
       - REDIS_HOSTNAME=redis:6379
 
-  map_cruncher:
-    build: 
-      context: .
-      dockerfile: docker/map_cruncher.Dockerfile
-    ports:
-      - "15000:80"
-    depends_on:
-      - base
-      - redis
-    environment:
-      - REDIS_HOSTNAME=redis:6379
-
   analytics:
     build: 
       context: .

@@ -110,8 +110,6 @@ func main() {
 		api()
 	} else if command == "portal-cruncher" {
 		portal_cruncher()
-	} else if command == "map-cruncher" {
-		map_cruncher()
 	} else if command == "session-cruncher" {
 		session_cruncher()
 	} else if command == "server-cruncher" {
@@ -180,8 +178,6 @@ func main() {
 		load_test_redis_pubsub()
 	} else if command == "load-test-redis-streams" {
 		load_test_redis_streams()
-	} else if command == "load-test-map" {
-		load_test_map()
 	} else if command == "load-test-optimize" {
 		load_test_optimize()
 	} else if command == "load-test-route-matrix" {
@@ -299,14 +295,6 @@ func portal_cruncher() {
 		httpPort = "40012"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
-}
-
-func map_cruncher() {
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "40100"
-	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/map_cruncher", httpPort))
 }
 
 func session_cruncher() {
@@ -496,10 +484,6 @@ func load_test_redis_streams() {
 
 func load_test_portal() {
 	bash("go run tools/load_test_portal/load_test_portal.go")
-}
-
-func load_test_map() {
-	bash("go run tools/load_test_map/load_test_map.go")
 }
 
 func load_test_optimize() {

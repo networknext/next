@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------------------
 
 <template>
-
+  
   <div class="d-md-none">
     <table id="sessions_table" class="table table-striped table-hover">
       <thead>
@@ -37,8 +37,8 @@
         <tr v-for="item in data" :key='item'>
           <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
           <td> {{ item["ISP"] }} </td>
-          <td class="right"> {{ item["Direct RTT"] }} ms</td>
-          <td class="right"> {{ item["Next RTT"] }} ms</td>
+          <td class="right"> {{ item["Direct RTT"] }} </td>
+          <td class="right"> {{ item["Next RTT"] }} </td>
           <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -65,8 +65,8 @@
           <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
           <td class="fixed"> <router-link :to='"user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
           <td> {{ item["ISP"] }} </td>
-          <td class="right"> {{ item["Direct RTT"] }} ms</td>
-          <td class="right"> {{ item["Next RTT"] }} ms</td>
+          <td class="right"> {{ item["Direct RTT"] }} </td>
+          <td class="right"> {{ item["Next RTT"] }} </td>
           <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -99,8 +99,8 @@
           <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
           <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
           <td> <router-link :to='"server/" + item["Server Address"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td class="right"> {{ item["Direct RTT"] }} ms</td>
-          <td class="right"> {{ item["Next RTT"] }} ms</td>
+          <td class="right"> {{ item["Direct RTT"] }} </td>
+          <td class="right"> {{ item["Next RTT"] }} </td>
           <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
           <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
           <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -130,17 +130,22 @@ function parse_uint64(value) {
   return hex
 }
 
-async function getData() {
+async function getData(page) {
   try {
-    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/sessions/0/100');
-    let i = 0;
+    if (page == null) {
+      page = 0
+    }
+    const url = process.env.VUE_APP_API_URL + '/portal/sessions/' + page
+    const res = await axios.get(url);
+    let i = 0
     let data = []
+    let outputPage = 0
     while (i < res.data.sessions.length) {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
       const user_hash = parse_uint64(v.user_hash)
-      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt : ""
-      const improvement = v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
+      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
+      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
       let row = {
         "Session ID":session_id,
         "User Hash":user_hash,
@@ -150,14 +155,15 @@ async function getData() {
         "Datacenter":v.datacenter_name,
         "Datacenter Link": "datacenter/" + v.datacenter_name,
         "Server Address":v.server_address,
-        "Direct RTT":v.direct_rtt,
+        "Direct RTT":v.direct_rtt + " ms",
         "Next RTT":next_rtt,
         "Improvement":improvement,
       }
       data.push(row)
+      outputPage = res.data.output_page
       i++;
     }
-    return data
+    return [data, outputPage]
   } catch (error) {
     console.log(error);
     return null
@@ -173,20 +179,76 @@ export default {
   data() {
     return {
       data: [],
+      page: 0,
     };
   },
 
+  mounted() {
+    document.addEventListener('keypress', this.onKeyPress);
+  },
+  
+  beforeUnmount() {
+    document.removeEventListener('keypress', this.onKeyPress);
+  },
+
   async beforeRouteEnter (to, from, next) {
-    var data = await getData()
+    let values = to.path.split("/")
+    let page = 0
+    if (values.length > 0) {
+      let value = values[values.length-1]
+      page = parseInt(value)
+      if (isNaN(page)) {
+        page = 0
+      }
+    }
+    let result = await getData(page)
     next(vm => {
-      vm.data = data
+      vm.data = result[0]
+      vm.page = result[1]
     })
   },
 
   methods: {
 
+    onKeyPress(event) {
+      if (event.key == '1') {
+        this.prevPage()
+      }
+      if (event.key == '2') {
+        this.nextPage()
+      }
+    },
+
+    async setPage(page) {
+      this.page = page
+      let result = await getData(this.page)
+      this.data = result[0]
+      this.page = result[1]
+      console.log("page " + this.page)
+    },
+
+    async nextPage() {
+      this.page++
+      let result = await getData(this.page)
+      this.data = result[0]
+      this.page = result[1]
+      console.log("page " + this.page)
+    },
+
+    async prevPage() {
+      if (this.page != 0) {
+        this.page--
+        let result = await getData(this.page)
+        this.data = result[0]
+        this.page = result[1]
+        console.log("page " + this.page)
+      }
+    },
+
     async update() {
-      this.data = await getData()
+      let result = await getData(this.page)
+      this.data = result[0]
+      this.page = result[1]
     }
 
   }
