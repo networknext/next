@@ -160,7 +160,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			state.Input.BestDirectRTT = uint32(state.Request.DirectRTT)
 			state.Input.BestNextRTT = uint32(state.Request.NextRTT)
 			if state.Input.BestDirectRTT > 1000 {
-				state.Input.BestDirectRTT  = 1000
+				state.Input.BestDirectRTT = 1000
 			}
 			if state.Input.BestNextRTT > 1000 {
 				state.Input.BestNextRTT = 1000

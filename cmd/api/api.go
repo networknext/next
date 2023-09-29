@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"time"
-	"sort"
 	// "strings"
 
+	"github.com/networknext/next/modules/admin"
+	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
-	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/admin"
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
@@ -161,6 +161,7 @@ func main() {
 		service.Router.HandleFunc("/portal/buyers/{page}", isAuthorized(portalBuyersHandler))
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
 
+		service.Router.HandleFunc("/portal/sellers/{page}", isAuthorized(portalSellersHandler))
 		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
 
 		service.Router.HandleFunc("/portal/datacenters/{page}", isAuthorized(portalDatacentersHandler))
@@ -308,9 +309,9 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 }
 
 type PortalSessionsResponse struct {
-	Sessions []PortalSessionData `json:"sessions"`
-	OutputPage int               `json:"output_page"`
-	NumPages int				 `json:"num_pages"`
+	Sessions   []PortalSessionData `json:"sessions"`
+	OutputPage int                 `json:"output_page"`
+	NumPages   int                 `json:"num_pages"`
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
@@ -425,9 +426,9 @@ type PortalServerData struct {
 }
 
 type PortalServersResponse struct {
-	Servers []PortalServerData `json:"servers"`
-	OutputPage int             `json:"output_page"`
-	NumPages int               `json:"num_pages"`
+	Servers    []PortalServerData `json:"servers"`
+	OutputPage int                `json:"output_page"`
+	NumPages   int                `json:"num_pages"`
 }
 
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
@@ -519,9 +520,9 @@ type PortalRelayData struct {
 }
 
 type PortalRelaysResponse struct {
-	Relays []PortalRelayData `json:"relays"`
-	OutputPage int `json:"output_page"`
-	NumPages int `json:"num_pages"`
+	Relays     []PortalRelayData `json:"relays"`
+	OutputPage int               `json:"output_page"`
+	NumPages   int               `json:"num_pages"`
 }
 
 func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
@@ -594,9 +595,9 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalBuyersResponse struct {
-	Buyers []db.Buyer `json:"buyers"`
-	OutputPage int `json:"output_page"`
-	NumPages int `json:"num_pages"`
+	Buyers     []db.Buyer `json:"buyers"`
+	OutputPage int        `json:"output_page"`
+	NumPages   int        `json:"num_pages"`
 }
 
 func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
@@ -644,6 +645,38 @@ func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type PortalSellersResponse struct {
+	Sellers    []db.Seller `json:"seller"`
+	OutputPage int         `json:"output_page"`
+	NumPages   int         `json:"num_pages"`
+}
+
+func portalSellersHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	database_response := database.GetSellers()
+	sellers := database_response.Sellers
+	sort.Slice(sellers, func(i, j int) bool { return sellers[i].Name < sellers[j].Name })
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sellers))
+	sellers = sellers[begin:end]
+	response := PortalSellersResponse{}
+	response.Sellers = sellers
+	response.OutputPage = outputPage
+	response.NumPages = numPages
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 type PortalSellerDataResponse struct {
 	SellerData *db.Seller `json:"seller_data"`
 }
@@ -676,8 +709,8 @@ type PortalDatacenterData struct {
 
 type PortalDatacentersResponse struct {
 	Datacenters []PortalDatacenterData `json:"datacenters"`
-	OutputPage int `json:"output_page"`
-	NumPages int `json:"num_pages"`
+	OutputPage  int                    `json:"output_page"`
+	NumPages    int                    `json:"num_pages"`
 }
 
 func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {

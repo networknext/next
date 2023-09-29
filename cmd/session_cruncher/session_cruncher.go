@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
-	
+
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
@@ -96,7 +96,7 @@ func main() {
 	UpdateMapData(&MapPoints{})
 
 	// go TestThread()
-	
+
 	go TopSessionsThread()
 
 	service.StartWebServer()
@@ -110,12 +110,12 @@ func TestThread() {
 			batch := make([]SessionUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
-				batch[i].next = uint8(i%2)
+				batch[i].next = uint8(i % 2)
 				batch[i].latitude = rand.Float32()
 				batch[i].longitude = rand.Float32()
 			}
 			buckets[index].sessionUpdateChannel <- batch
-			time.Sleep(1*time.Millisecond)
+			time.Sleep(1 * time.Millisecond)
 		}
 	}
 }
@@ -191,7 +191,7 @@ func UpdateMapData(newMapPoints *MapPoints) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(60*time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -234,7 +234,7 @@ func TopSessionsThread() {
 				sessionId uint64
 				score     uint32
 			}
-	
+
 			sessions := make([]Session, 0, TopSessionsCount)
 
 			for i := 0; i < NumBuckets; i++ {
@@ -390,7 +390,7 @@ type SortedSetLevel struct {
 
 type SortedSetNode struct {
 	Key      uint64 // unique key of this node
-	Score    uint32  // score to determine the order of this node in the set
+	Score    uint32 // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }

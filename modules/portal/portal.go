@@ -785,7 +785,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += int(batchSize[i]) * (8+1+4+4)
+		size += int(batchSize[i]) * (8 + 1 + 4 + 4)
 	}
 
 	data := make([]byte, size)
@@ -1071,9 +1071,9 @@ func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
 const MapDataVersion = uint64(0)
 
 type MapDataWatcher struct {
-	url           string
-	mutex         sync.RWMutex
-	mapData       []byte
+	url     string
+	mutex   sync.RWMutex
+	mapData []byte
 }
 
 func CreateMapDataWatcher(sessionCruncherURL string) *MapDataWatcher {

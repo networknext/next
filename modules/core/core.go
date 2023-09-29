@@ -1994,14 +1994,14 @@ func DoPagination(page int, length int) (begin, end, outputPage, numPages int) {
 	begin = 0
 	end = 100
 	outputPage = page
-	numPages = length/100
+	numPages = length / 100
 	if length%100 != 0 {
 		numPages += 1
 	}
 	if length > 100 {
 		if page > 0 {
 			begin = page * 100
-			end = (page+1) * 100
+			end = (page + 1) * 100
 			if end > length {
 				outputPage = -1
 				end = length
@@ -2027,18 +2027,18 @@ func DoPagination_Simple(page int, length int) (begin, end, outputPage, numPages
 	begin = 0
 	end = 100
 	outputPage = page
-	numPages = length/100
+	numPages = length / 100
 	if length%100 != 0 {
 		numPages += 1
 	}
 	if page < 0 {
 		page = 0
 	}
-	if page > numPages - 1 {
+	if page > numPages-1 {
 		page = numPages - 1
 	}
 	begin = page * 100
-	end = (page+1) * 100
+	end = (page + 1) * 100
 	if end > length {
 		end = length
 	}
