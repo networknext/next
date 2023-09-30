@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"math/rand"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -126,7 +127,11 @@ func SimulateServers() {
 
 func RunServer(index int) {
 
-	time.Sleep(time.Duration(common.RandomInt(0, 10000)) * time.Millisecond)
+	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
+
+	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", serverAddress, 10000+index))
 

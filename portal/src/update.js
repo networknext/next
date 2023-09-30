@@ -16,14 +16,14 @@ const update = {
 
   mounted: function () {
     this.timer = setInterval(() => { this.update(); this.$emit('update', this.page, this.num_pages) }, 1000)
-    document.addEventListener('keypress', this.onKeyPress);
+    document.addEventListener('keydown', this.onKeyPress);
     emitter.on('prev_page', () => this.prevPage() )
     emitter.on('next_page', () => this.nextPage() )
   },
 
   beforeUnmount() {
     clearInterval(this.timer)
-    document.removeEventListener('keypress', this.onKeyPress);
+    document.removeEventListener('keydown', this.onKeyPress);
   },
 
   methods: {
