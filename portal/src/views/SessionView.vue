@@ -1,4 +1,4 @@
-<template>
+-left<template>
 
   <div class="parent">
   
@@ -14,79 +14,226 @@
         
         <div id="packet_loss" class="graph"/>
 
+        <div id="bandwidth" class="graph"/>
+
       </div>
 
       <div class="padding"/>
 
       <div class="right">
 
-        <div class="top">
-          <p><b>Session Id</b></p>
-          <p><input type="text" class="text"></p>
-          <p><button type="button" class="btn btn-secondary">Search</button></p>
+        <div class="right-top">
+
+          <div class="top">
+
+            <p><b>Session Id</b></p>
+            <p><input type="text" class="text"></p>
+            <p><button type="button" class="btn btn-secondary">Search</button></p>
+
+          </div>
+
+          <div class="map"/>
+
+        </div>
+  
+        <div class="right-bottom">
+   
+          <div class="session_info">
+
+            <table id="sessions_table" class="table table-striped">
+              <tbody>
+
+                <tr>
+                  <td class="header">Datacenter</td>
+                  <td> {{ this.datacenter_name }} </td>
+                </tr>
+
+                <tr>
+                  <td class="header">ISP</td>
+                  <td> {{ this.isp }} </td>
+                </tr>
+
+                <tr>
+                  <td class="header">Platform</td>
+                  <td> {{ this.platform }} </td>
+                </tr>
+
+                <tr>
+                  <td class="header">Connection</td>
+                  <td> {{ this.connection }} </td>
+                </tr>
+
+                <tr>
+                  <td class="header">User Hash</td>
+                  <td class="fixed"> {{ this.user_hash }} </td>
+                </tr>
+
+                <tr>
+                  <td class="header">Buyer</td>
+                  <td> {{ this.buyer_name }} </td>
+                </tr>
+
+              </tbody>
+            </table>
+
+          </div>
+
         </div>
 
-        <div class="map"/>
+        <div class="route_info">
 
-        <div class="session_info">
+          <table id="route_table" class="table">
 
-          <table id="sessions_table" class="table table-striped table-hover">
+            <p class="header">Current Route</p>
+     
             <tbody>
 
               <tr>
-                <td class="header">Datacenter</td>
-                <td> {{ this.datacenter_name }} </td>
+                <td class="left_align header">Client</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
               </tr>
 
               <tr>
-                <td class="header">ISP</td>
-                <td> {{ this.isp }} </td>
+                <td class="left_align header relay_name">akamai.newyork.1.a</td>
+                <td class="left_align"> 135.122.10.3:40000 </td>
               </tr>
 
               <tr>
-                <td class="header">Platform</td>
-                <td> {{ this.platform }} </td>
+                <td class="left_align header relay_name">i3d.chicago</td>
+                <td class="left_align"> 122.61.5.10:40000 </td>
               </tr>
 
               <tr>
-                <td class="header">Connection</td>
-                <td> {{ this.connection }} </td>
+                <td class="left_align header relay_name">google.iowa.1.a</td>
+                <td class="left_align"> 35.22.54.10:40000 </td>
               </tr>
 
               <tr>
-                <td class="header">User Hash</td>
-                <td class="fixed"> {{ this.user_hash }} </td>
-              </tr>
-
-              <tr>
-                <td class="header">Buyer</td>
-                <td> {{ this.buyer_name }} </td>
+                <td class="left_align header">Server</td>
+                <td class="left_align"> 127.0.0.1:50000 </td>
               </tr>
 
             </tbody>
+
           </table>
 
         </div>
 
         <div class="near_relay_info">
 
-          <ul>
-            <li>near relay 1</li>
-            <li>near relay 2</li>
-            <li>near relay 3</li>
-            <li>near relay 4</li>
-            <li>near relay 5</li>
-            <li>near relay 6</li>
-            <li>near relay 7</li>
-            <li>near relay 8</li>
-            <li>near relay 9</li>
-            <li>near relay 10</li>
-            <li>near relay 11</li>
-            <li>near relay 12</li>
-            <li>near relay 13</li>
-            <li>near relay 14</li>
-            <li>near relay 15</li>
-          </ul>
+          <p class="header">Near Relays</p>
+   
+          <table class="table">
+
+            <tbody>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+              <tr>
+                <td class="left_align header">i3d.newyork</td>
+                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align"> 5ms </td>
+                <td class="left_align"> 2ms </td>
+                <td class="left_align"> 0% </td>
+              </tr>
+
+            </tbody>
+
+          </table>
 
         </div>
 
@@ -97,7 +244,6 @@
     </div>
 
   </div>
-
 
 </template>
 
@@ -382,6 +528,28 @@ let packet_loss_opts = {
   ]
 };
 
+let bandwidth_opts = {
+  title: "Bandwidth",
+  width: 2000,
+  height: 450,
+  legend: {
+    show: false
+  },
+  series: [
+    {},
+    {
+      stroke: "green",
+      fill: "rgba(100,100,100,0.1)"
+    }
+  ],
+  axes: [
+    {},
+    {
+      side: 1
+    }
+  ]
+};
+
 const data = arr;
 
 export default {
@@ -393,7 +561,19 @@ export default {
   mounted: function () {
     this.latency = new uPlot(latency_opts, data, document.getElementById('latency'))
     this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter'))
-    this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('jitter'))
+    this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss'))
+    this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
+  },
+
+  beforeUnmount() {
+    this.latency.destroy()
+    this.jitter.destroy()
+    this.packet_loss.destroy()
+    this.bandwidth.destroy()
+    this.latency = null
+    this.jitter = null
+    this.packet_loss = null
+    this.bandwidth = null
   },
 
   methods: {
@@ -457,6 +637,7 @@ export default {
   gap: 15px;
   font-weight: 1;
   font-size: 18px;
+  padding: 0px;
 }
 
 .bottom {
@@ -467,15 +648,27 @@ export default {
 }
 
 .left {
-  background-color: rgb(116, 255, 116);
   width: 80%;
   height: 100%;
 }
 
 .right {
-  background-color: rgb(248, 117, 117);
   width: 20%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.right-top {
+  display: flex;
+  flex-direction: column;
+}
+
+.right-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .padding {
@@ -494,21 +687,30 @@ export default {
   background-color: black;
   width: 100%;
   height: 500px;
+  flex-shrink: 0;
 }
 
 .session_info {
-  background-color: green;
   width: 100%;
-  height: 500px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
 }
 
-.near_relay_info {
-  background-color: lightgrey;
+.route_info {
   width: 100%;
-  height: 500px;
+  flex-direction: column;
+}
+
+.left_align {
+  text-align: left;
+}
+
+.near_relay_info {
+  width: 100%;
+}
+
+.relay_name {
 }
 
 .text {
