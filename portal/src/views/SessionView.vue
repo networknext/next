@@ -1,4 +1,4 @@
--left<template>
+2-left<template>
 
   <div class="parent">
   
@@ -26,9 +26,9 @@
 
           <div class="top">
 
-            <p><b>Session Id</b></p>
-            <p><input type="text" class="text"></p>
-            <p><button type="button" class="btn btn-secondary">Search</button></p>
+            <p class="tight-p"><b>Session Id</b></p>
+            <p class="tight-p"><input type="text" class="text"></p>
+            <p class="tight-p"><button type="button" class="btn btn-secondary">Search</button></p>
 
           </div>
 
@@ -71,6 +71,11 @@
                 <tr>
                   <td class="header">Buyer</td>
                   <td> {{ this.buyer_name }} </td>
+                </tr>
+
+                <tr>
+                  <td class="header">Start Time</td>
+                  <td> <p class="tight-p">{{ this.start_time }}</p> <p class="tight-p">{{ this.time_zone }}</p></td>
                 </tr>
 
               </tbody>
@@ -552,6 +557,32 @@ let bandwidth_opts = {
 
 const data = arr;
 
+function getPlatformName(platformId) {
+  switch(platformId) {
+  case 1: return "Windows"
+  case 2: return "Mac"
+  case 3: return "Linux"
+  case 4: return "Nintendo Switch"
+  case 5: return "PS4"
+  case 6: return "iOS"
+  case 7: return "Xbox One"
+  case 8: return "Xbox Series X"
+  case 9: return "PS5"
+  default:
+    return "Unknown"
+  }
+}
+
+function getConnectionName(connectionType) {
+  switch(connectionType) {
+  case 1: return "Wired"
+  case 2: return "Wi-Fi"
+  case 3: return "Cellular"
+  default:
+    return "Unknown"
+  }
+}
+
 export default {
 
   name: "App",
@@ -579,9 +610,6 @@ export default {
   methods: {
 
     async update() {
-
-      console.log('update')
-
       try {
         const session_id = this.$route.params.id
         const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/session/' + session_id)
@@ -590,8 +618,12 @@ export default {
           this.isp = res.data.session_data.isp
           this.buyer_name = res.data.session_data.buyer_name
           this.user_hash = this.parse_uint64(res.data.session_data.user_hash)
-          this.platform = 'Linux' // todo
-          this.connection = 'Wired' // todo
+          this.platform = getPlatformName(res.data.session_data.platform_type)
+          this.connection = getConnectionName(res.data.session_data.connection_type)
+          this.start_time = new Date(parseInt(res.data.session_data.start_time)).toString()
+          let values = this.start_time.split(" (")
+          this.start_time = values[0]
+          this.time_zone = '(' + values[1]
         }
       } catch (error) {
         console.log(error)
@@ -663,6 +695,7 @@ export default {
 .right-top {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 .right-bottom {
@@ -726,6 +759,11 @@ export default {
 
 button {
   font-size: 15px;
+}
+
+.tight-p {
+  line-height: 15px;
+  margin-bottom: 2px;
 }
 
 </style>
