@@ -1,64 +1,77 @@
 <template>
 
   <div class="parent">
-    
-    <div class="left">
-
-      <div id="latency" class="graph"/>
-      
-      <div id="jitter" class="graph"/>
-      
-      <div id="packet_loss" class="graph"/>
-
-    </div>
-
-    <div class="padding"/>
-
-    <div class="right">
-
-      <div class="map"/>
-
-      <div class="session_info">
   
-        <p class="session">session id = {{ $route.params.id }}</p>
+    <div class="bottom">
 
-        <p class="user">user hash = {{ this.user_hash }}</p>
+      <div class="padding"/>
 
-        <p class="slices">slices = {{ this.num_slices }}</p>
+      <div class="left">
 
-        <p class="near_relays">near relays = {{ this.num_near_relays }}</p>
+        <div id="latency" class="graph"/>
+        
+        <div id="jitter" class="graph"/>
+        
+        <div id="packet_loss" class="graph"/>
 
-        <p class="buyer_code">buyer code = {{ this.buyer_code }}</p>
+      </div>
 
-        <p class="datacenter_name">datacenter name = {{ this.datacenter_name }}</p>
+      <div class="padding"/>
+
+      <div class="right">
+
+        <div class="top">
+          <div class="padding"/>
+          <p><b>Session Id</b></p>
+          <p><input type="text" class="text"></p>
+          <p><button type="button" class="btn btn-secondary">Search</button></p>
+        </div>
+
+        <div class="map"/>
+
+        <div class="session_info">
+    
+          <p class="session">session id = {{ $route.params.id }}</p>
+
+          <p class="user">user hash = {{ this.user_hash }}</p>
+
+          <p class="slices">slices = {{ this.num_slices }}</p>
+
+          <p class="near_relays">near relays = {{ this.num_near_relays }}</p>
+
+          <p class="buyer_code">buyer code = {{ this.buyer_code }}</p>
+
+          <p class="datacenter_name">datacenter name = {{ this.datacenter_name }}</p>
+
+        </div>
+
+        <div class="near_relay_info">
+
+          <ul>
+            <li>near relay 1</li>
+            <li>near relay 2</li>
+            <li>near relay 3</li>
+            <li>near relay 4</li>
+            <li>near relay 5</li>
+            <li>near relay 6</li>
+            <li>near relay 7</li>
+            <li>near relay 8</li>
+            <li>near relay 9</li>
+            <li>near relay 10</li>
+            <li>near relay 11</li>
+            <li>near relay 12</li>
+            <li>near relay 13</li>
+            <li>near relay 14</li>
+            <li>near relay 15</li>
+          </ul>
+
+        </div>
 
       </div>
 
-      <div class="near_relay_info">
-
-        <ul>
-          <li>near relay 1</li>
-          <li>near relay 2</li>
-          <li>near relay 3</li>
-          <li>near relay 4</li>
-          <li>near relay 5</li>
-          <li>near relay 6</li>
-          <li>near relay 7</li>
-          <li>near relay 8</li>
-          <li>near relay 9</li>
-          <li>near relay 10</li>
-          <li>near relay 11</li>
-          <li>near relay 12</li>
-          <li>near relay 13</li>
-          <li>near relay 14</li>
-          <li>near relay 15</li>
-        </ul>
-
-      </div>
+      <div class="padding"/>
 
     </div>
-
-    <div class="padding"/>
 
   </div>
 
@@ -407,10 +420,32 @@ session {
 }
 
 .parent {
-  background-color: #00AAFF;
+  background-color: white;
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.top {
+  background-color: white;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-content: center;
+  align-items: center;
+  gap: 15px;
+  font-weight: 1;
+  font-size: 18px;
+}
+
+.bottom {
+  background-color: white;
+  height: 100%;  
+  display: flex;
+  flex-direction: row;
 }
 
 .left {
@@ -427,7 +462,7 @@ session {
 
 .padding {
   background-color: white;
-  width: 25px;
+  width: 15px;
   height: 100%;
 }
 
@@ -453,6 +488,16 @@ session {
   background-color: lightgrey;
   width: 100%;
   height: 500px;
+}
+
+.text {
+  width: 250px; height: 35px;
+  font-size: 15px;
+  padding: 5px;
+}
+
+button {
+  font-size: 15px;
 }
 
 </style>
