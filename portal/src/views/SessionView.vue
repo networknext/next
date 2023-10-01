@@ -1,4 +1,4 @@
-2-left<template>
+<template>
 
   <div class="parent">
   
@@ -24,11 +24,11 @@
 
         <div class="right-top">
 
-          <div class="top">
+          <div class="search">
 
-            <p class="tight-p"><b>Session Id</b></p>
-            <p class="tight-p"><input type="text" class="text"></p>
-            <p class="tight-p"><button type="button" class="btn btn-secondary">Search</button></p>
+            <p class="tight-p">Session</p>
+            <p class="tight-p test-text"><input id='session-id-input' type="text fixed" class="text"></p>
+            <p class="tight-p"><button type="button" class="btn btn-secondary" @click="this.search()">Search</button></p>
 
           </div>
 
@@ -45,7 +45,7 @@
 
                 <tr>
                   <td class="header">Datacenter</td>
-                  <td> {{ this.datacenter_name }} </td>
+                  <td> <router-link :to="'/datacenter/' + this.datacenter_name"> {{ this.datacenter_name }} </router-link> </td>
                 </tr>
 
                 <tr>
@@ -65,12 +65,12 @@
 
                 <tr>
                   <td class="header">User Hash</td>
-                  <td class="fixed"> {{ this.user_hash }} </td>
+                  <td class="fixed"> <router-link :to="'/user/' + this.user_hash"> {{ this.user_hash }} </router-link> </td>
                 </tr>
 
                 <tr>
                   <td class="header">Buyer</td>
-                  <td> {{ this.buyer_name }} </td>
+                  <td> <router-link :to="'/buyer/' + this.buyer_code"> {{ this.buyer_name }} </router-link> </td>
                 </tr>
 
                 <tr>
@@ -99,17 +99,17 @@
               </tr>
 
               <tr>
-                <td class="left_align header relay_name">akamai.newyork.1.a</td>
+                <td class="left_align header">akamai.newyork.1.a</td>
                 <td class="left_align"> 135.122.10.3:40000 </td>
               </tr>
 
               <tr>
-                <td class="left_align header relay_name">i3d.chicago</td>
+                <td class="left_align header">i3d.chicago</td>
                 <td class="left_align"> 122.61.5.10:40000 </td>
               </tr>
 
               <tr>
-                <td class="left_align header relay_name">google.iowa.1.a</td>
+                <td class="left_align header">google.iowa.1.a</td>
                 <td class="left_align"> 35.22.54.10:40000 </td>
               </tr>
 
@@ -616,6 +616,7 @@ export default {
         if (res.data.slice_data !== null) {
           this.datacenter_name = res.data.session_data.datacenter_name
           this.isp = res.data.session_data.isp
+          this.buyer_code = res.data.session_data.buyer_code
           this.buyer_name = res.data.session_data.buyer_name
           this.user_hash = this.parse_uint64(res.data.session_data.user_hash)
           this.platform = getPlatformName(res.data.session_data.platform_type)
@@ -624,18 +625,32 @@ export default {
           let values = this.start_time.split(" (")
           this.start_time = values[0]
           this.time_zone = '(' + values[1]
+          document.getElementById("session-id-input").value =
+          document.getElementById("session-id-input").defaultValue = session_id
         }
       } catch (error) {
         console.log(error)
       }
+    },
+
+    search() {
+      console.log('search')
+      // todo: get session id from text box
+      // todo: go to link
     }
   },
 
   data() {
     return {
-      user_hash: 0,
+      user_hash: '',
+      buyer_code: '',
       buyer_name: '',
       datacenter_name: '',
+      isp: '',
+      start_time: '',
+      time_zone: '',
+      platform: '',
+      connection: '',
     };
   },
 
@@ -658,20 +673,6 @@ export default {
   gap: 25px;
 }
 
-.top {
-  background-color: white;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  justify-content: left;
-  align-content: center;
-  align-items: center;
-  gap: 15px;
-  font-weight: 1;
-  font-size: 18px;
-  padding: 0px;
-}
-
 .bottom {
   background-color: white;
   height: 100%;  
@@ -680,16 +681,41 @@ export default {
 }
 
 .left {
-  width: 80%;
   height: 100%;
 }
 
 .right {
-  width: 20%;
+  width: 30%;
   height: 100%;
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+
+.search {
+  background-color: white;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  font-weight: 1;
+  font-size: 18px;
+  padding: 0px;
+}
+
+.text {
+  width: 100%;
+  height: 35px;
+  font-size: 15px;
+  padding: 5px;
+}
+
+.test-text {
+  background-color: pink;
+  width: 10px;
+  flex-grow: 1;
 }
 
 .right-top {
@@ -743,16 +769,6 @@ export default {
   width: 100%;
 }
 
-.relay_name {
-}
-
-.text {
-  width: 305px; 
-  height: 35px;
-  font-size: 15px;
-  padding: 5px;
-}
-
 .header {
   font-weight: bold;
 }
@@ -764,6 +780,11 @@ button {
 .tight-p {
   line-height: 15px;
   margin-bottom: 2px;
+}
+
+a {
+  color: #2c3e50;
+  text-decoration: none;
 }
 
 </style>
