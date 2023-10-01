@@ -179,7 +179,6 @@ export default {
 
   async beforeRouteEnter (to, from, next) {
     let values = to.path.split("/")
-    console.log(values)
     let user_hash = 0
     let page = 0
     if (values.length > 0) {
@@ -192,8 +191,6 @@ export default {
       if (isNaN(page)) {
         page = 0
       }
-      console.log("user hash is " + user_hash)
-      console.log("page is " + page)
     }
     let result = await getData(page, user_hash)
     next(vm => {

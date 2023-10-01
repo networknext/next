@@ -2,7 +2,15 @@
 
   <div class="parent">
   
-    <div class="bottom">
+    <div class="search">
+
+      <p class="tight-p">Session</p>
+      <p class="tight-p test-text"><input id='session-id-input' type="text fixed" class="text"></p>
+      <p class="tight-p"><button type="button" class="btn btn-secondary" @click="this.search()">Search</button></p>
+
+    </div>
+
+    <div v-show="this.found" class="bottom">
 
       <div class="padding"/>
 
@@ -24,14 +32,6 @@
 
         <div class="right-top">
 
-          <div class="search">
-
-            <p class="tight-p">Session</p>
-            <p class="tight-p test-text"><input id='session-id-input' type="text fixed" class="text"></p>
-            <p class="tight-p"><button type="button" class="btn btn-secondary" @click="this.search()">Search</button></p>
-
-          </div>
-
           <div class="map"/>
 
         </div>
@@ -45,37 +45,37 @@
 
                 <tr>
                   <td class="header">Datacenter</td>
-                  <td> <router-link :to="'/datacenter/' + this.datacenter_name"> {{ this.datacenter_name }} </router-link> </td>
+                  <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
                 </tr>
 
                 <tr>
                   <td class="header">ISP</td>
-                  <td> {{ this.isp }} </td>
+                  <td> {{ this.data['isp'] }} </td>
                 </tr>
 
                 <tr>
                   <td class="header">Platform</td>
-                  <td> {{ this.platform }} </td>
+                  <td> {{ this.data['platform'] }} </td>
                 </tr>
 
                 <tr>
                   <td class="header">Connection</td>
-                  <td> {{ this.connection }} </td>
+                  <td> {{ this.data['connection'] }} </td>
                 </tr>
 
                 <tr>
                   <td class="header">User Hash</td>
-                  <td class="fixed"> <router-link :to="'/user/' + this.user_hash"> {{ this.user_hash }} </router-link> </td>
+                  <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
                 </tr>
 
                 <tr>
                   <td class="header">Buyer</td>
-                  <td> <router-link :to="'/buyer/' + this.buyer_code"> {{ this.buyer_name }} </router-link> </td>
+                  <td> <router-link :to="'/buyer/' + this.data['buyer_code']"> {{ this.data['buyer_name'] }} </router-link> </td>
                 </tr>
 
                 <tr>
                   <td class="header">Start Time</td>
-                  <td> <p class="tight-p">{{ this.start_time }}</p> <p class="tight-p">{{ this.time_zone }}</p></td>
+                  <td> <p class="tight-p">{{ this.data['start_time'] }}</p> <p class="tight-p">{{ this.data['time_zone'] }}</p></td>
                 </tr>
 
               </tbody>
@@ -257,8 +257,17 @@
 import axios from "axios";
 import utils from '@/utils.js'
 import update from '@/update.js'
-
 import uPlot from "uplot";
+import BigNumber from "bignumber.js";
+
+function parse_uint64(value) {
+  const bignum = new BigNumber(value);
+  var hex = bignum.toString(16);
+  while (hex.length<16) {
+    hex = '0' + hex
+  }
+  return hex
+}
 
 const arr = [
   [
@@ -583,17 +592,74 @@ function getConnectionName(connectionType) {
   }
 }
 
+async function getData(page, session_id) {
+  try {
+    if (page == null) {
+      page = 0
+    }
+    const url = process.env.VUE_APP_API_URL + '/portal/session/' + session_id
+    const res = await axios.get(url);
+    let data = {}
+    if (res.data.slice_data !== null) {
+      data['session_id'] = parse_uint64(res.data.session_data.session_id)
+      data["datacenter_name"] = res.data.session_data.datacenter_name
+      data["isp"] = res.data.session_data.isp
+      data["buyer_code"] = res.data.session_data.buyer_code
+      data["buyer_name"] = res.data.session_data.buyer_name
+      data["user_hash"] = parse_uint64(res.data.session_data.user_hash)
+      data["platform"] = getPlatformName(res.data.session_data.platform_type)
+      data["connection"] = getConnectionName(res.data.session_data.connection_type)
+      let start_time = new Date(parseInt(res.data.session_data.start_time)).toString()
+      let values = start_time.split(" (")
+      data["start_time"] = values[0]
+      data["time_zone"] = '(' + values[1]
+    }
+    return [data, 0, 1]
+  } catch (error) {
+    console.log(error);
+    let data = {}
+    data['session_id'] = session_id
+    return [data, 0, 1]
+  }
+}
+
 export default {
 
   name: "App",
 
   mixins: [utils, update],
 
+  data() {
+    return {
+      data: {},
+      found: false,
+    };
+  },
+
+  async beforeRouteEnter (to, from, next) {
+    let values = to.path.split("/")
+    let session_id = values[values.length-1]
+    let result = await getData(0, session_id)
+    next(vm => {
+      if (result != null) {
+        vm.data = result[0]
+        vm.page = result[1]
+        vm.num_pages = result[2]
+        vm.$emit('update', vm.page, vm.num_pages)
+        console.log('found')
+        vm.found = true
+      }
+    })
+  },
+
   mounted: function () {
+    console.log('mounted')
     this.latency = new uPlot(latency_opts, data, document.getElementById('latency'))
     this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter'))
     this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
+    document.getElementById("session-id-input").value =
+    document.getElementById("session-id-input").defaultValue = this.data['session_id']
   },
 
   beforeUnmount() {
@@ -609,49 +675,27 @@ export default {
 
   methods: {
 
+    async getData(page, session_id) {
+      if (session_id == null) {
+        session_id = this.$route.params.id
+      }
+      return getData(page, session_id)
+    },
+
     async update() {
-      try {
-        const session_id = this.$route.params.id
-        const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/session/' + session_id)
-        if (res.data.slice_data !== null) {
-          this.datacenter_name = res.data.session_data.datacenter_name
-          this.isp = res.data.session_data.isp
-          this.buyer_code = res.data.session_data.buyer_code
-          this.buyer_name = res.data.session_data.buyer_name
-          this.user_hash = this.parse_uint64(res.data.session_data.user_hash)
-          this.platform = getPlatformName(res.data.session_data.platform_type)
-          this.connection = getConnectionName(res.data.session_data.connection_type)
-          this.start_time = new Date(parseInt(res.data.session_data.start_time)).toString()
-          let values = this.start_time.split(" (")
-          this.start_time = values[0]
-          this.time_zone = '(' + values[1]
-          document.getElementById("session-id-input").value =
-          document.getElementById("session-id-input").defaultValue = session_id
-        }
-      } catch (error) {
-        console.log(error)
+      let result = await getData(this.page, this.$route.params.id)
+      if (result != null) {
+        this.data = result[0]
+        this.page = result[1]
+        this.num_pages = result[2]
       }
     },
 
     search() {
-      console.log('search')
-      // todo: get session id from text box
-      // todo: go to link
-    }
-  },
+      const session_id = document.getElementById("session-id-input").value
+      this.$router.push('/session/' + session_id)
+    },
 
-  data() {
-    return {
-      user_hash: '',
-      buyer_code: '',
-      buyer_name: '',
-      datacenter_name: '',
-      isp: '',
-      start_time: '',
-      time_zone: '',
-      platform: '',
-      connection: '',
-    };
   },
 
 };
@@ -697,12 +741,14 @@ export default {
   width: 100%;
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
   gap: 15px;
   font-weight: 1;
   font-size: 18px;
   padding: 0px;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .text {
