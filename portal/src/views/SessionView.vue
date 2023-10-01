@@ -21,7 +21,6 @@
       <div class="right">
 
         <div class="top">
-          <div class="padding"/>
           <p><b>Session Id</b></p>
           <p><input type="text" class="text"></p>
           <p><button type="button" class="btn btn-secondary">Search</button></p>
@@ -30,18 +29,42 @@
         <div class="map"/>
 
         <div class="session_info">
-    
-          <p class="session">session id = {{ $route.params.id }}</p>
 
-          <p class="user">user hash = {{ this.user_hash }}</p>
+          <table id="sessions_table" class="table table-striped table-hover">
+            <tbody>
 
-          <p class="slices">slices = {{ this.num_slices }}</p>
+              <tr>
+                <td class="header">Datacenter</td>
+                <td> {{ this.datacenter_name }} </td>
+              </tr>
 
-          <p class="near_relays">near relays = {{ this.num_near_relays }}</p>
+              <tr>
+                <td class="header">ISP</td>
+                <td> {{ this.isp }} </td>
+              </tr>
 
-          <p class="buyer_code">buyer code = {{ this.buyer_code }}</p>
+              <tr>
+                <td class="header">Platform</td>
+                <td> {{ this.platform }} </td>
+              </tr>
 
-          <p class="datacenter_name">datacenter name = {{ this.datacenter_name }}</p>
+              <tr>
+                <td class="header">Connection</td>
+                <td> {{ this.connection }} </td>
+              </tr>
+
+              <tr>
+                <td class="header">User Hash</td>
+                <td class="fixed"> {{ this.user_hash }} </td>
+              </tr>
+
+              <tr>
+                <td class="header">Buyer</td>
+                <td> {{ this.buyer_name }} </td>
+              </tr>
+
+            </tbody>
+          </table>
 
         </div>
 
@@ -383,12 +406,12 @@ export default {
         const session_id = this.$route.params.id
         const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/session/' + session_id)
         if (res.data.slice_data !== null) {
-          this.user_hash = this.parse_uint64(res.data.session_data.user_hash)
-          this.buyer_code = res.data.session_data.buyer_code
           this.datacenter_name = res.data.session_data.datacenter_name
-          this.num_slices = res.data.slice_data.length
-          this.num_near_relays = res.data.near_relay_data[0].num_near_relays
-          this.updated = true
+          this.isp = res.data.session_data.isp
+          this.buyer_name = res.data.session_data.buyer_name
+          this.user_hash = this.parse_uint64(res.data.session_data.user_hash)
+          this.platform = 'Linux' // todo
+          this.connection = 'Wired' // todo
         }
       } catch (error) {
         console.log(error)
@@ -398,13 +421,8 @@ export default {
 
   data() {
     return {
-      fields: ["Session ID", "ISP", "Buyer", "Datacenter", "Server Address", "Direct RTT", "Next RTT", "Improvement"],
-      data: [],
       user_hash: 0,
-      num_slices: 0,
-      num_near_relays: 0,
-      buyer_code: '',
-      relay_name: '',
+      buyer_name: '',
       datacenter_name: '',
     };
   },
@@ -415,8 +433,8 @@ export default {
 
 <style scoped>
 
-session {
-  font-family: fixed-width;
+.fixed {
+  font-family: monospace;
 }
 
 .parent {
@@ -479,9 +497,12 @@ session {
 }
 
 .session_info {
-  background-color: grey;
+  background-color: green;
   width: 100%;
   height: 500px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .near_relay_info {
@@ -491,9 +512,14 @@ session {
 }
 
 .text {
-  width: 250px; height: 35px;
+  width: 305px; 
+  height: 35px;
   font-size: 15px;
   padding: 5px;
+}
+
+.header {
+  font-weight: bold;
 }
 
 button {
