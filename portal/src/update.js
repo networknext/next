@@ -9,6 +9,8 @@ const update = {
       updated: false,
       page: 0,
       num_pages: 1,
+      left_down: false,
+      right_down: false,
     };
   },
 
@@ -16,24 +18,41 @@ const update = {
 
   mounted: function () {
     this.timer = setInterval(() => { this.update(); this.$emit('update', this.page, this.num_pages) }, 1000)
-    document.addEventListener('keydown', this.onKeyPress);
+    document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('keyup', this.onKeyUp);
     emitter.on('prev_page', () => this.prevPage() )
     emitter.on('next_page', () => this.nextPage() )
   },
 
   beforeUnmount() {
     clearInterval(this.timer)
-    document.removeEventListener('keydown', this.onKeyPress);
+    document.removeEventListener('keydown', this.onKeyDown);
+    document.removeEventListener('keyup', this.onKeyUp);
   },
 
   methods: {
 
-    onKeyPress(event) {
+    onKeyDown(event) {
       if (event.key == '1') {
-        this.prevPage()
+        if (!this.left_down) {
+          this.prevPage()
+          this.left_down = true
+        }
       }
       if (event.key == '2') {
-        this.nextPage()
+        if (!this.right_down) {
+          this.nextPage()
+          this.right_down = true
+        }
+      }
+    },
+
+    onKeyUp(event) {
+      if (event.key == '1') {
+        this.left_down = false
+      }
+      if (event.key == '2') {
+        this.right_down = false
       }
     },
 

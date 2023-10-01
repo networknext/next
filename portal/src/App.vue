@@ -6,7 +6,7 @@
 
     <div class="container-fluid">
 
-      <div style="height=60px">
+      <div>
         <div class="d-xxl-none">
           <router-link class="navbar-brand" to="/"><img src="@/assets/n_black.png" style="width: 26.4; height:30px;"/></router-link>
           <SessionCounts/>
