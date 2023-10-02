@@ -26,7 +26,7 @@
 
       </div>
 
-      <div class="right">
+      <div class="right d-none d-xxl-block">
 
         <div class="right-top">
 
@@ -640,11 +640,23 @@ export default {
         if (typeof width === 'number' && width !== prevWidth) {
           prevWidth = width;
           if (this.latency) {
-            this.latency.setSize({width: width - 550, height: 450})
-            this.jitter.setSize({width: width - 550, height: 450})
-            this.packet_loss.setSize({width: width - 550, height: 450})
-            this.out_of_order.setSize({width: width - 550, height: 450})
-            this.bandwidth.setSize({width: width - 550, height: 450})
+            let graph_width = width
+            if (graph_width >= 1200) {
+              graph_width -= 550
+            } else {
+              graph_width -= 30
+            }
+            let graph_height = graph_width * 0.333
+            if (graph_height > 450) {
+              graph_height = 450
+            } else if (graph_height < 250) {
+              graph_height = 250
+            }
+            this.latency.setSize({width: graph_width, height: graph_height})
+            this.jitter.setSize({width: graph_width, height: graph_height})
+            this.packet_loss.setSize({width: graph_width, height: graph_height})
+            this.out_of_order.setSize({width: graph_width, height: graph_height})
+            this.bandwidth.setSize({width: graph_width, height: graph_height})
           }
         }
       }
