@@ -132,7 +132,7 @@
             <tbody>
 
               <tr v-for="item in this.data['near_relays']" :key="item.id">
-                <td class="left_align header"> {{ item.name }} </td>
+                <td class="left_align header"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="left_align"> {{ item.rtt }}ms </td>
                 <td class="left_align"> {{ item.jitter }}ms </td>
                 <td class="left_align"> {{ item.packet_loss}}% </td>
