@@ -85,7 +85,7 @@
 
         <div class="route_info">
 
-          <p class="header">Current Route</p>
+          <p class="header tight-p">Current Route</p>
    
           <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
 
@@ -800,7 +800,8 @@ export default {
 .right-bottom {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  justify-content: space-between;
+  gap: 50px;
 }
 
 .map {
@@ -820,6 +821,15 @@ export default {
 .route_info {
   width: 100%;
   flex-direction: column;
+  justify-content: space-between;
+  padding-top: 25px;
+}
+
+.near_relay_info {
+  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-top: 25px;
 }
 
 .left_align {
