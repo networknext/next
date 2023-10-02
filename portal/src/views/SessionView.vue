@@ -93,17 +93,17 @@
 
               <tr>
                 <td class="left_align header"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
-                <td class="left_align"> </td>
+                <td class="right_align"> </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
                 <td class="left_align header"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="left_align"> {{ item.address }} </td>
+                <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
                 <td class="left_align header"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="left_align"> {{ this.data['server_address'] }} </td>
+                <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>
@@ -116,12 +116,12 @@
 
               <tr>
                 <td class="left_align header"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
-                <td class="left_align"> </td>
+                <td class="right_align"> </td>
               </tr>
 
               <tr>
                 <td class="left_align header"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="left_align"> {{ this.data['server_address'] }} </td>
+                <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>
@@ -808,6 +808,10 @@ export default {
 
 .left_align {
   text-align: left;
+}
+
+.right_align {
+  text-align: right;
 }
 
 .near_relay_info {
