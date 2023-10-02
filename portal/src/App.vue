@@ -148,7 +148,7 @@ export default {
     text-align: center;
     color: #2c3e50;
     margin-top: 0px;
-    padding-top: 75px;
+    padding-top: 55px;
     width: 100%;
   }
 

@@ -146,8 +146,6 @@
 
       </div>
 
-      <div class="padding"/>
-
     </div>
 
   </div>
@@ -380,7 +378,7 @@ const arr = [
 
 let latency_opts = {
   title: "Latency",
-  width: 2000,
+  width: 1975,
   height: 450,
   legend: {
     show: false
@@ -402,7 +400,7 @@ let latency_opts = {
 
 let jitter_opts = {
   title: "Jitter",
-  width: 2000,
+  width: 1975,
   height: 450,
   legend: {
     show: false
@@ -424,7 +422,7 @@ let jitter_opts = {
 
 let packet_loss_opts = {
   title: "Packet Loss",
-  width: 2000,
+  width: 1975,
   height: 450,
   legend: {
     show: false
@@ -501,7 +499,7 @@ async function getData(page, session_id) {
     }
     const url = process.env.VUE_APP_API_URL + '/portal/session/' + session_id
     const res = await axios.get(url);
-    console.log(res.data.near_relay_data)
+    console.log(res.data.near_relay_data) // todo: remove when finished
     let data = {}
     if (res.data.slice_data !== null) {
       data['session_id'] = parse_uint64(res.data.session_data.session_id)
@@ -648,23 +646,24 @@ export default {
 }
 
 .parent {
-  background-color: white;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 15px;
+  padding: 15px;
 }
 
 .bottom {
-  background-color: white;
   height: 100%;  
   display: flex;
   flex-direction: row;
+  padding: 0px;
 }
 
 .left {
   height: 100%;
+  padding: 0px;
 }
 
 .right {
@@ -673,21 +672,19 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  padding: 0px;
 }
 
 .search {
-  background-color: white;
   width: 100%;
   display: flex;
   flex-direction: row;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   gap: 15px;
   font-weight: 1;
   font-size: 18px;
   padding: 0px;
-  padding-left: 15px;
-  padding-right: 15px;
 }
 
 .text {
@@ -698,7 +695,6 @@ export default {
 }
 
 .test-text {
-  background-color: pink;
   width: 10px;
   flex-grow: 1;
 }
@@ -716,13 +712,11 @@ export default {
 }
 
 .padding {
-  background-color: white;
   width: 15px;
   height: 100%;
 }
 
 .graph {
-  background-color: white;
   width: 100%;
   height: 500px;
 }
