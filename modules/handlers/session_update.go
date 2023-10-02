@@ -1196,6 +1196,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.BestDirectRTT = state.Output.BestDirectRTT
 	message.BestNextRTT = state.Output.BestNextRTT
 
+	// todo
+	core.Log("next = %v, num route relays = %d", message.Next, message.NextNumRouteRelays)
+
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message
 		state.SentPortalSessionUpdateMessage = true
