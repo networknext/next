@@ -6,7 +6,7 @@
 
       <p class="tight-p">Session</p>
       <p class="tight-p test-text"><input id='session-id-input' type="text fixed" class="text"></p>
-      <p class="tight-p"><button type="button" class="btn btn-secondary" @click="this.search()">Search</button></p>
+      <p class="tight-p"><button type="button" class="btn btn-secondary" id='search-button' @click="this.search()">Search</button></p>
 
     </div>
 
@@ -613,12 +613,14 @@ async function getData(page, session_id) {
       let values = start_time.split(" (")
       data["start_time"] = values[0]
       data["time_zone"] = '(' + values[1]
+      data["found"] = true
     }
     return [data, 0, 1]
   } catch (error) {
     console.log(error);
     let data = {}
     data['session_id'] = session_id
+    data['found'] = false
     return [data, 0, 1]
   }
 }
@@ -641,25 +643,24 @@ export default {
     let session_id = values[values.length-1]
     let result = await getData(0, session_id)
     next(vm => {
-      if (result != null) {
+      if (result != null && !result.error) {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
         vm.$emit('update', vm.page, vm.num_pages)
-        console.log('found')
-        vm.found = true
+        vm.found = result[0]['found']
       }
     })
   },
 
   mounted: function () {
-    console.log('mounted')
     this.latency = new uPlot(latency_opts, data, document.getElementById('latency'))
     this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter'))
     this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
     document.getElementById("session-id-input").value =
     document.getElementById("session-id-input").defaultValue = this.data['session_id']
+    document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
   },
 
   beforeUnmount() {
@@ -688,12 +689,19 @@ export default {
         this.data = result[0]
         this.page = result[1]
         this.num_pages = result[2]
+        this.found = result[0]['found']
       }
     },
 
     search() {
       const session_id = document.getElementById("session-id-input").value
       this.$router.push('/session/' + session_id)
+    },
+
+    onKeyUp(event) {
+      if (event.key == 'Enter') {
+        this.search()
+      }
     },
 
   },
