@@ -320,7 +320,7 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 		if relay != nil {
 			output.RouteRelayNames[i] = relay.Name
 			output.RouteRelayAddresses[i] = relay.PublicAddress.String()
-		}		
+		}
 	}
 }
 

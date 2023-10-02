@@ -499,7 +499,7 @@ async function getData(page, session_id) {
     }
     const url = process.env.VUE_APP_API_URL + '/portal/session/' + session_id
     const res = await axios.get(url);
-    console.log(res.data.near_relay_data) // todo: remove when finished
+    console.log(res.data.session_data) // todo: remove when finished
     let data = {}
     if (res.data.slice_data !== null) {
       data['session_id'] = parse_uint64(res.data.session_data.session_id)

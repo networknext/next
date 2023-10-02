@@ -153,6 +153,13 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		ServerAddress:  message.ServerAddress.String(),
 	}
 
+	if message.Next {
+		sessionData.NumRouteRelays = int(message.NextNumRouteRelays)
+		for i := 0; i < int(message.NextNumRouteRelays); i++ {
+			sessionData.RouteRelays[i] = message.NextRouteRelayId[i]
+		}
+	}
+
 	sliceData := portal.SliceData{
 		Timestamp:        uint64(time.Now().Unix()),
 		SliceNumber:      message.SliceNumber,
