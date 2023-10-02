@@ -1,6 +1,6 @@
 <template>
 
-  <div class="parent">
+  <div class="parent" id="parent">
   
     <div class="search">
 
@@ -12,9 +12,7 @@
 
     <div v-show="this.found" class="bottom">
 
-      <div class="padding"/>
-
-      <div class="left">
+      <div id="left" class="left">
 
         <div id="latency" class="graph"/>
         
@@ -22,11 +20,11 @@
         
         <div id="packet_loss" class="graph"/>
 
+        <div id="out_of_order" class="graph"/>
+
         <div id="bandwidth" class="graph"/>
 
       </div>
-
-      <div class="padding"/>
 
       <div class="right">
 
@@ -387,7 +385,7 @@ const arr = [
 
 let latency_opts = {
   title: "Latency",
-  width: 1975,
+  width: 0,
   height: 450,
   legend: {
     show: false
@@ -409,7 +407,7 @@ let latency_opts = {
 
 let jitter_opts = {
   title: "Jitter",
-  width: 1975,
+  width: 0,
   height: 450,
   legend: {
     show: false
@@ -431,7 +429,29 @@ let jitter_opts = {
 
 let packet_loss_opts = {
   title: "Packet Loss",
-  width: 1975,
+  width: 0,
+  height: 450,
+  legend: {
+    show: false
+  },
+  series: [
+    {},
+    {
+      stroke: "green",
+      fill: "rgba(100,100,100,0.1)"
+    }
+  ],
+  axes: [
+    {},
+    {
+      side: 1
+    }
+  ]
+};
+
+let out_of_order_opts = {
+  title: "Out of Order",
+  width: 0,
   height: 450,
   legend: {
     show: false
@@ -453,7 +473,7 @@ let packet_loss_opts = {
 
 let bandwidth_opts = {
   title: "Bandwidth",
-  width: 2000,
+  width: 0,
   height: 450,
   legend: {
     show: false
@@ -587,7 +607,6 @@ export default {
     return {
       data: {},
       found: false,
-      items: ['anus', 'butts'],
     };
   },
 
@@ -607,10 +626,32 @@ export default {
   },
 
   mounted: function () {
+  
     this.latency = new uPlot(latency_opts, data, document.getElementById('latency'))
     this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter'))
     this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss'))
+    this.out_of_order = new uPlot(out_of_order_opts, data, document.getElementById('out_of_order'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
+
+    let prevWidth = 0;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const width = entry.borderBoxSize?.[0].inlineSize;
+        if (typeof width === 'number' && width !== prevWidth) {
+          prevWidth = width;
+          if (this.latency) {
+            this.latency.setSize({width: width - 550, height: 450})
+            this.jitter.setSize({width: width - 550, height: 450})
+            this.packet_loss.setSize({width: width - 550, height: 450})
+            this.out_of_order.setSize({width: width - 550, height: 450})
+            this.bandwidth.setSize({width: width - 550, height: 450})
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, {box: 'border-box'});
+
     document.getElementById("session-id-input").value = document.getElementById("session-id-input").defaultValue = this.data['session_id']
     document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
   },
@@ -682,20 +723,32 @@ export default {
   display: flex;
   flex-direction: row;
   padding: 0px;
+  justify-content: space-between;
+  gap: 15px;
 }
 
 .left {
+  width: 100%;
   height: 100%;
   padding: 0px;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph {
+  width: 100%;
+  height: 100%;
 }
 
 .right {
-  width: 30%;
+  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   gap: 15px;
   padding: 0px;
+  max-width: 500px;
+  min-width: 300px;
 }
 
 .search {
@@ -732,16 +785,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 15px;
-}
-
-.padding {
-  width: 15px;
-  height: 100%;
-}
-
-.graph {
-  width: 100%;
-  height: 500px;
 }
 
 .map {
