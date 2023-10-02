@@ -40,7 +40,7 @@
    
           <div class="session_info">
 
-            <table id="sessions_table" class="table table-striped">
+            <table id="sessions_table" class="table table-striped" style="vertical-align: middle;">
               <tbody>
 
                 <tr>
