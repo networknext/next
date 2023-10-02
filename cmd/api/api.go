@@ -372,10 +372,40 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type NearRelayData struct {
+	Timestamp           uint64                           `json:"timestamp,string"`
+	NumNearRelays       uint32                           `json:"num_near_relays"`
+	NearRelayName       [constants.MaxNearRelays]string  `json:"near_relay_name"`
+	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
+	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
+	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
+	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
+}
+
+func upgradeNearRelayData(database *db.Database, input []portal.NearRelayData, output *[]NearRelayData) {
+	*output = make([]NearRelayData, len(input))
+	for i := range input {
+		(*output)[i].Timestamp = input[i].Timestamp
+		(*output)[i].NumNearRelays = input[i].NumNearRelays
+		for j := 0; j < int(input[i].NumNearRelays); j++ {
+			(*output)[i].NearRelayId[j] = input[i].NearRelayId[j]
+			(*output)[i].NearRelayRTT[j] = input[i].NearRelayRTT[j]
+			(*output)[i].NearRelayJitter[j] = input[i].NearRelayJitter[j]
+			(*output)[i].NearRelayPacketLoss[j] = input[i].NearRelayPacketLoss[j]
+			if database != nil {
+				if database != nil {
+					relay := database.GetRelay(input[i].NearRelayId[j])
+					(*output)[i].NearRelayName[j] = relay.Name
+				}
+			}
+		}
+	}
+}
+
 type PortalSessionDataResponse struct {
 	SessionData   PortalSessionData      `json:"session_data"`
 	SliceData     []portal.SliceData     `json:"slice_data"`
-	NearRelayData []portal.NearRelayData `json:"near_relay_data"`
+	NearRelayData []NearRelayData         `json:"near_relay_data"`
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -391,7 +421,7 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 		database := service.Database()
 		upgradePortalSessionData(database, sessionData, &response.SessionData)
 		response.SliceData = sliceData
-		response.NearRelayData = nearRelayData
+		upgradeNearRelayData(database, nearRelayData, &response.NearRelayData)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

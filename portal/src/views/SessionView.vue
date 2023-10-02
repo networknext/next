@@ -112,7 +112,6 @@
                 <td class="left_align header">google.iowa.1.a</td>
                 <td class="left_align"> 35.22.54.10:40000 </td>
               </tr>
-
               <tr>
                 <td class="left_align header">Server</td>
                 <td class="left_align"> 127.0.0.1:50000 </td>
@@ -599,6 +598,7 @@ async function getData(page, session_id) {
     }
     const url = process.env.VUE_APP_API_URL + '/portal/session/' + session_id
     const res = await axios.get(url);
+    console.log(res.data.near_relay_data)
     let data = {}
     if (res.data.slice_data !== null) {
       data['session_id'] = parse_uint64(res.data.session_data.session_id)
