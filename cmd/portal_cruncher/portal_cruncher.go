@@ -160,9 +160,6 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 		}
 	}
 
-	// todo
-	core.Log("next = %v, num route relays = %d", message.Next, sessionData.NumRouteRelays)
-
 	sliceData := portal.SliceData{
 		Timestamp:        uint64(time.Now().Unix()),
 		SliceNumber:      message.SliceNumber,

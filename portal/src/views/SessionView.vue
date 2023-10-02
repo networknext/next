@@ -87,34 +87,43 @@
 
         <div class="route_info">
 
-          <table id="route_table" class="table">
+          <p class="header">Current Route</p>
+   
+          <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
 
-            <p class="header">Current Route</p>
-     
             <tbody>
 
               <tr>
-                <td class="left_align header">Client</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
+                <td class="left_align header"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align"> </td>
+              </tr>
+
+              <tr v-for="item in this.data['route_relays']" :key="item.id">
+                <td class="left_align header"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
-                <td class="left_align header">akamai.newyork.1.a</td>
-                <td class="left_align"> 135.122.10.3:40000 </td>
+                <td class="left_align header"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align"> {{ this.data['server_address'] }} </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+          <table id="route_table" class="table" v-else>
+
+            <tbody>
+
+              <tr>
+                <td class="left_align header"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align"> </td>
               </tr>
 
               <tr>
-                <td class="left_align header">i3d.chicago</td>
-                <td class="left_align"> 122.61.5.10:40000 </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">google.iowa.1.a</td>
-                <td class="left_align"> 35.22.54.10:40000 </td>
-              </tr>
-              <tr>
-                <td class="left_align header">Server</td>
-                <td class="left_align"> 127.0.0.1:50000 </td>
+                <td class="left_align header"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>
@@ -499,7 +508,6 @@ async function getData(page, session_id) {
     }
     const url = process.env.VUE_APP_API_URL + '/portal/session/' + session_id
     const res = await axios.get(url);
-    console.log(res.data.session_data) // todo: remove when finished
     let data = {}
     if (res.data.slice_data !== null) {
       data['session_id'] = parse_uint64(res.data.session_data.session_id)
@@ -514,6 +522,21 @@ async function getData(page, session_id) {
       let values = start_time.split(" (")
       data["start_time"] = values[0]
       data["time_zone"] = '(' + values[1]
+      data["server_address"] = res.data.session_data.server_address
+      let session_data = res.data.session_data
+      if (session_data.num_route_relays > 0) {
+        let i = 0
+        let route_relays = []
+        while (i < session_data.num_route_relays) {
+          route_relays.push({
+            id:        session_data.route_relay_ids[i],
+            name:      session_data.route_relay_names[i],
+            address:   session_data.route_relay_addresses[i],
+          })
+          i++
+        }
+        data['route_relays'] = route_relays
+      }
       let near_relay_data = res.data.near_relay_data
       if (near_relay_data.length > 0) {
         near_relay_data = near_relay_data[near_relay_data.length-1]
