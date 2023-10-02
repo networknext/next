@@ -131,108 +131,11 @@
 
             <tbody>
 
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
-              </tr>
-
-              <tr>
-                <td class="left_align header">i3d.newyork</td>
-                <td class="left_align"> 127.0.0.1:30000 </td>
-                <td class="left_align"> 5ms </td>
-                <td class="left_align"> 2ms </td>
-                <td class="left_align"> 0% </td>
+              <tr v-for="item in this.data['near_relays']" :key="item.id">
+                <td class="left_align header"> {{ item.name }} </td>
+                <td class="left_align"> {{ item.rtt }}ms </td>
+                <td class="left_align"> {{ item.jitter }}ms </td>
+                <td class="left_align"> {{ item.packet_loss}}% </td>
               </tr>
 
             </tbody>
@@ -613,6 +516,34 @@ async function getData(page, session_id) {
       let values = start_time.split(" (")
       data["start_time"] = values[0]
       data["time_zone"] = '(' + values[1]
+      let near_relay_data = res.data.near_relay_data
+      if (near_relay_data.length > 0) {
+        near_relay_data = near_relay_data[near_relay_data.length-1]
+        let i = 0
+        let near_relays = []
+        while (i < near_relay_data.num_near_relays) {
+          if (near_relay_data.near_relay_rtt[i] != 0) {
+            near_relays.push({
+              id:          near_relay_data.near_relay_id[i],
+              name:        near_relay_data.near_relay_name[i],
+              rtt:         near_relay_data.near_relay_rtt[i],
+              jitter:      near_relay_data.near_relay_jitter[i],
+              packet_loss: near_relay_data.near_relay_packet_loss[i],
+            })
+          }
+          i++
+        }
+        near_relays.sort( function(a,b) {
+          if (a.name < b.name) {
+            return -1
+          }
+          if (a.name > b.name) {
+            return +1
+          }
+          return 0
+        })
+        data['near_relays'] = near_relays
+      }
       data["found"] = true
     }
     return [data, 0, 1]
@@ -635,6 +566,7 @@ export default {
     return {
       data: {},
       found: false,
+      items: ['anus', 'butts'],
     };
   },
 
@@ -658,8 +590,7 @@ export default {
     this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter'))
     this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
-    document.getElementById("session-id-input").value =
-    document.getElementById("session-id-input").defaultValue = this.data['session_id']
+    document.getElementById("session-id-input").value = document.getElementById("session-id-input").defaultValue = this.data['session_id']
     document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
   },
 
