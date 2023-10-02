@@ -403,9 +403,9 @@ func upgradeNearRelayData(database *db.Database, input []portal.NearRelayData, o
 }
 
 type PortalSessionDataResponse struct {
-	SessionData   PortalSessionData      `json:"session_data"`
-	SliceData     []portal.SliceData     `json:"slice_data"`
-	NearRelayData []NearRelayData         `json:"near_relay_data"`
+	SessionData   PortalSessionData  `json:"session_data"`
+	SliceData     []portal.SliceData `json:"slice_data"`
+	NearRelayData []NearRelayData    `json:"near_relay_data"`
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {

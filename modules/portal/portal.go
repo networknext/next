@@ -24,23 +24,25 @@ import (
 // --------------------------------------------------------------------------------------------------
 
 type SessionData struct {
-	SessionId      uint64  `json:"session_id,string"`
-	UserHash       uint64  `json:"user_hash,string"`
-	StartTime      uint64  `json:"start_time,string"`
-	ISP            string  `json:"isp"`
-	ConnectionType uint8   `json:"connection_type"`
-	PlatformType   uint8   `json:"platform_type"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
-	DirectRTT      uint32  `json:"direct_rtt"`
-	NextRTT        uint32  `json:"next_rtt"`
-	BuyerId        uint64  `json:"buyer_id,string"`
-	DatacenterId   uint64  `json:"datacenter_id,string"`
-	ServerAddress  string  `json:"server_address"`
+	SessionId      uint64                           `json:"session_id,string"`
+	UserHash       uint64                           `json:"user_hash,string"`
+	StartTime      uint64                           `json:"start_time,string"`
+	ISP            string                           `json:"isp"`
+	ConnectionType uint8                            `json:"connection_type"`
+	PlatformType   uint8                            `json:"platform_type"`
+	Latitude       float32                          `json:"latitude"`
+	Longitude      float32                          `json:"longitude"`
+	DirectRTT      uint32                           `json:"direct_rtt"`
+	NextRTT        uint32                           `json:"next_rtt"`
+	BuyerId        uint64                           `json:"buyer_id,string"`
+	DatacenterId   uint64                           `json:"datacenter_id,string"`
+	ServerAddress  string                           `json:"server_address"`
+	NumRouteRelays int                              `json:"num_route_relays"`
+	RouteRelays    [constants.MaxRouteRelays]uint64 `json:"route_relays,string"`
 }
 
 func (data *SessionData) Value() string {
-	return fmt.Sprintf("%x|%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%s",
+	value := fmt.Sprintf("%x|%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%s|%d|",
 		data.SessionId,
 		data.UserHash,
 		data.StartTime,
@@ -54,12 +56,17 @@ func (data *SessionData) Value() string {
 		data.BuyerId,
 		data.DatacenterId,
 		data.ServerAddress,
+		data.NumRouteRelays,
 	)
+	for i := 0; i < data.NumRouteRelays; i++ {
+		value += fmt.Sprintf("%x|", data.RouteRelays[i])
+	}
+	return value
 }
 
 func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 13 {
+	if len(values) < 14 {
 		return
 	}
 	sessionId, err := strconv.ParseUint(values[0], 16, 64)
@@ -108,7 +115,20 @@ func (data *SessionData) Parse(value string) {
 		return
 	}
 	serverAddress := values[12]
-
+	numRouteRelays, err := strconv.ParseUint(values[13], 10, 32)
+	if err != nil {
+		return
+	}
+	if len(values) != 14 + int(numRouteRelays) + 1 {
+		return
+	}
+	routeRelays := make([]uint64, numRouteRelays)
+	for i := range routeRelays {
+		routeRelays[i], err = strconv.ParseUint(values[14+i], 16, 64)
+		if err != nil {
+			return
+		}
+	}
 	data.SessionId = sessionId
 	data.UserHash = userHash
 	data.StartTime = startTime
@@ -122,6 +142,8 @@ func (data *SessionData) Parse(value string) {
 	data.BuyerId = buyerId
 	data.DatacenterId = datacenterId
 	data.ServerAddress = serverAddress
+	data.NumRouteRelays = int(numRouteRelays)
+	copy(data.RouteRelays[:], routeRelays)
 }
 
 func GenerateRandomSessionData() *SessionData {
@@ -138,6 +160,10 @@ func GenerateRandomSessionData() *SessionData {
 	data.BuyerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
 	data.ServerAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
+	data.NumRouteRelays = common.RandomInt(0, constants.MaxRouteRelays-1)
+	for i := 0; i < data.NumRouteRelays; i++ {
+		data.RouteRelays[i] = rand.Uint64()
+	}
 	return &data
 }
 
