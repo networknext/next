@@ -119,7 +119,7 @@ func (data *SessionData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	if len(values) != 14 + int(numRouteRelays) + 1 {
+	if len(values) != 14+int(numRouteRelays)+1 {
 		return
 	}
 	routeRelays := make([]uint64, numRouteRelays)

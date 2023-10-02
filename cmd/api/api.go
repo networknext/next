@@ -263,22 +263,26 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionData struct {
-	SessionId      uint64  `json:"session_id,string"`
-	UserHash       uint64  `json:"user_hash,string"`
-	StartTime      uint64  `json:"start_time,string"`
-	ISP            string  `json:"isp"`
-	ConnectionType uint8   `json:"connection_type"`
-	PlatformType   uint8   `json:"platform_type"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
-	DirectRTT      uint32  `json:"direct_rtt"`
-	NextRTT        uint32  `json:"next_rtt"`
-	BuyerId        uint64  `json:"buyer_id,string"`
-	BuyerName      string  `json:"buyer_name"`
-	BuyerCode      string  `json:"buyer_code"`
-	DatacenterId   uint64  `json:"datacenter_id,string"`
-	DatacenterName string  `json:"datacenter_name"`
-	ServerAddress  string  `json:"server_address"`
+	SessionId           uint64   `json:"session_id,string"`
+	UserHash            uint64   `json:"user_hash,string"`
+	StartTime           uint64   `json:"start_time,string"`
+	ISP                 string   `json:"isp"`
+	ConnectionType      uint8    `json:"connection_type"`
+	PlatformType        uint8    `json:"platform_type"`
+	Latitude            float32  `json:"latitude"`
+	Longitude           float32  `json:"longitude"`
+	DirectRTT           uint32   `json:"direct_rtt"`
+	NextRTT             uint32   `json:"next_rtt"`
+	BuyerId             uint64   `json:"buyer_id,string"`
+	BuyerName           string   `json:"buyer_name"`
+	BuyerCode           string   `json:"buyer_code"`
+	DatacenterId        uint64   `json:"datacenter_id,string"`
+	DatacenterName      string   `json:"datacenter_name"`
+	ServerAddress       string   `json:"server_address"`
+	NumRouteRelays      int      `json:"num_route_relays"`
+	RouteRelayIds       []uint64 `json:"route_relay_ids,string"`
+	RouteRelayNames     []string `json:"route_relay_names"`
+	RouteRelayAddresses []string `json:"route_relay_addresses"`
 }
 
 func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
@@ -305,6 +309,18 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 		if datacenter != nil {
 			output.DatacenterName = datacenter.Name
 		}
+	}
+	output.NumRouteRelays = input.NumRouteRelays
+	output.RouteRelayIds = make([]uint64, output.NumRouteRelays)
+	output.RouteRelayNames = make([]string, output.NumRouteRelays)
+	output.RouteRelayAddresses = make([]string, output.NumRouteRelays)
+	for i := 0; i < output.NumRouteRelays; i++ {
+		output.RouteRelayIds[i] = input.RouteRelays[i]
+		relay := database.GetRelay(input.RouteRelays[i])
+		if relay != nil {
+			output.RouteRelayNames[i] = relay.Name
+			output.RouteRelayAddresses[i] = relay.PublicAddress.String()
+		}		
 	}
 }
 
@@ -393,8 +409,8 @@ func upgradeNearRelayData(database *db.Database, input []portal.NearRelayData, o
 			(*output)[i].NearRelayJitter[j] = input[i].NearRelayJitter[j]
 			(*output)[i].NearRelayPacketLoss[j] = input[i].NearRelayPacketLoss[j]
 			if database != nil {
-				if database != nil {
-					relay := database.GetRelay(input[i].NearRelayId[j])
+				relay := database.GetRelay(input[i].NearRelayId[j])
+				if relay != nil {
 					(*output)[i].NearRelayName[j] = relay.Name
 				}
 			}
