@@ -26,7 +26,7 @@
 
       </div>
 
-      <div class="right d-none d-xxl-block">
+      <div id="right" class="right d-none d-xxl-block">
 
         <div class="right-top">
 
@@ -174,6 +174,11 @@ function parse_uint64(value) {
     hex = '0' + hex
   }
   return hex
+}
+
+function isVisible(element) {
+  var style = window.getComputedStyle(element);
+  return (style.display !== 'none')
 }
 
 const arr = [
@@ -635,29 +640,28 @@ export default {
 
     let prevWidth = 0;
     const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const width = entry.borderBoxSize?.[0].inlineSize;
-        if (typeof width === 'number' && width !== prevWidth) {
-          prevWidth = width;
-          if (this.latency) {
-            let graph_width = width
-            if (graph_width >= 1200) {
-              graph_width -= 550
-            } else {
-              graph_width -= 30
-            }
-            let graph_height = graph_width * 0.333
-            if (graph_height > 450) {
-              graph_height = 450
-            } else if (graph_height < 250) {
-              graph_height = 250
-            }
-            this.latency.setSize({width: graph_width, height: graph_height})
-            this.jitter.setSize({width: graph_width, height: graph_height})
-            this.packet_loss.setSize({width: graph_width, height: graph_height})
-            this.out_of_order.setSize({width: graph_width, height: graph_height})
-            this.bandwidth.setSize({width: graph_width, height: graph_height})
+      console.log(entries)
+      const width = document.body.clientWidth;
+      if (width !== prevWidth) {
+        prevWidth = width;
+        if (this.latency) {
+          let graph_width = width
+          if (isVisible(document.getElementById('right'))) {
+            graph_width -= 550
+          } else {
+            graph_width -= 30
           }
+          let graph_height = graph_width * 0.333
+          if (graph_height > 450) {
+            graph_height = 450
+          } else if (graph_height < 250) {
+            graph_height = 250
+          }
+          this.latency.setSize({width: graph_width, height: graph_height})
+          this.jitter.setSize({width: graph_width, height: graph_height})
+          this.packet_loss.setSize({width: graph_width, height: graph_height})
+          this.out_of_order.setSize({width: graph_width, height: graph_height})
+          this.bandwidth.setSize({width: graph_width, height: graph_height})
         }
       }
     });
