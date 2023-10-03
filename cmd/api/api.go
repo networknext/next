@@ -642,7 +642,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		upgradePortalRelayData(database, relayData, response.RelayData)
+		upgradePortalRelayData(database, relayData, &response.RelayData)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
