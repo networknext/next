@@ -85,6 +85,12 @@
 
       </div>
 
+      <div v-else>
+
+        <p class="no-relays">There are no relays in {{this.data.datacenter}}</p>
+
+      </div>
+
     </div>
 
   </div>
@@ -174,10 +180,10 @@ async function getData(page, datacenter) {
       "Uptime": "2d",
       "Relay Version": "1.0.21",
     }
-    const outputPage = 1
-    const numPages = 1
     data.relays.push(row)
     data.found = true
+    const outputPage = 1
+    const numPages = 1
     return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
@@ -322,6 +328,11 @@ tr {
 .test-text {
   width: 10px;
   flex-grow: 1;
+}
+
+.no-relays {
+  font-size: 18px;
+  padding: 0px;
 }
 
 </style>
