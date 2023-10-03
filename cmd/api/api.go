@@ -853,8 +853,10 @@ type PortalDatacenterDataResponse struct {
 func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	datacenterName := vars["datacenter_name"]
-	database := service.Database()
 	response := PortalDatacenterDataResponse{}
+	response.OutputPage = 0
+	response.NumPages = 1
+	database := service.Database()
 	if database != nil {
 		datacenter := database.GetDatacenterByName(datacenterName)
 		if datacenter != nil {
@@ -868,6 +870,27 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 			if seller != nil {
 				response.DatacenterData.SellerName = seller.Name
 				response.DatacenterData.SellerCode = seller.Code
+			}
+
+			datacenterRelayIds := database.GetDatacenterRelays(datacenter.Id)
+			datacenterRelays := make([]*db.Relay, len(datacenterRelayIds))
+			for i := range datacenterRelayIds {
+				datacenterRelays[i] = database.GetRelay(datacenterRelayIds[i])
+			}
+
+			datacenterRelayAddresses := make([]string, len(datacenterRelays))
+			for i := range datacenterRelays {
+				datacenterRelayAddresses[i] = datacenterRelays[i].PublicAddress.String()
+			}
+
+			relays := portal.GetRelayList(service.Context, redisPortalClient, datacenterRelayAddresses)
+
+			sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
+			sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
+
+			response.Relays = make([]PortalRelayData, len(datacenterRelays))
+			for i := range datacenterRelays {
+				upgradePortalRelayData(database, relays[i], &response.Relays[i])
 			}
 		}
 	}

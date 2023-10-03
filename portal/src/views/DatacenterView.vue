@@ -101,13 +101,10 @@
 
 <script>
 
-// todo
-//import axios from "axios"
+import axios from "axios"
 import utils from "@/utils.js"
 import update from "@/update.js"
 
-// todo
-/*
 function nice_uptime(value) {
   if (isNaN(value)) {
     return ''
@@ -123,7 +120,6 @@ function nice_uptime(value) {
   }
   return value + "s"
 }
-*/
 
 async function getData(page, datacenter) {
   try {
@@ -134,9 +130,6 @@ async function getData(page, datacenter) {
     let data = {}
     data.relays = []
     data.datacenter = datacenter
-
-    // todo
-    /*
     const url = process.env.VUE_APP_API_URL + '/portal/datacenter/' + datacenter + '/' + page
     const res = await axios.get(url);
     let i = 0
@@ -164,26 +157,7 @@ async function getData(page, datacenter) {
     }
     const outputPage = res.data.output_page
     const numPages = res.data.num_pages
-    */
-
-    // todo: this is a mock
-    let row = {
-      "Relay Name": datacenter,
-      "Relay Link": "/relay/" + datacenter,
-      "Public Address": "127.0.0.1:40000",
-      "Datacenter": datacenter,
-      "Datacenter Link": "/datacenter/" + datacenter,
-      "Seller": "Seller",
-      "Seller Link": "/seller/google",
-      "Current Sessions": 25,
-      "Status": "Online",
-      "Uptime": "2d",
-      "Relay Version": "1.0.21",
-    }
-    data.relays.push(row)
     data.found = true
-    const outputPage = 1
-    const numPages = 1
     return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
