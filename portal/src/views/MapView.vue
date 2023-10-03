@@ -1,7 +1,15 @@
 // ----------------------------------------------------
 
 <template>
-  <h1>Map</h1>
+
+  <div class="parent">
+  
+    <div class="map">
+
+    </div>
+
+  </div>
+
 </template>
 
 // ----------------------------------------------------
@@ -46,6 +54,17 @@ export default {
 h1 {
   margin: 75px 0 25px;
   color: #666666;
+}
+
+.parent {
+  width: 100%;
+  height: 100%;
+}
+
+.map {
+  background-color: #555555;
+  width: 100%;
+  height: 100%;
 }
 
 </style>

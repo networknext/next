@@ -910,7 +910,7 @@ export default {
 }
 
 .map {
-  background-color: black;
+  background-color: #555555;
   width: 100%;
   height: 500px;
   flex-shrink: 0;
@@ -921,6 +921,7 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  padding-top: 15px;
 }
 
 .route_info {
@@ -943,10 +944,6 @@ export default {
 
 .right_align {
   text-align: right;
-}
-
-.near_relay_info {
-  width: 100%;
 }
 
 .header {

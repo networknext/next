@@ -647,7 +647,7 @@ export default {
 }
 
 .map {
-  background-color: black;
+  background-color: #555555;
   width: 100%;
   height: 500px;
   flex-shrink: 0;
