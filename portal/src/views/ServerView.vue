@@ -18,11 +18,11 @@
       
         <div class="d-md-none">
   
-          <table id="session_table" class="table table-striped" style="text-align: center;">
+          <table id="session_table" class="table table-striped" style="text-align: center; table-layout:auto;" >
             <tbody>
 
               <tr>
-                <td class="bold">Sessions</td>
+                <td style="width: 50%" class="bold">Sessions</td>
                 <td> {{ this.data.session_count }} </td>
               </tr>
 
@@ -47,11 +47,11 @@
         </div>
 
         <div class="d-md-none">
-          <table id="sessions_table" class="table table-striped table-hover">
+          <table id="sessions_table" class="table table-striped table-hover" style="table-layout:auto;">
             <thead>
               <tr>
-                <th>Session ID</th>
-                <th>Improvement</th>
+                <th style="width: 50%">Session ID</th>
+                <th style="width: 50%">Improvement</th>
               </tr>
             </thead>
             <tbody>
@@ -454,7 +454,7 @@ tr {
   display: flex;
   flex-direction: row;
   gap: 25px;
-  padding-top: 15px;
+  padding-top: 10px;
 }
 
 .left {
@@ -463,7 +463,6 @@ tr {
   padding: 0px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   gap: 25px;
   padding-top: 5px;
 }
