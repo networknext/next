@@ -14,6 +14,39 @@
 
       <div id="left" class="left">
 
+        <div class="d-xxl-none">
+          <table id="sessions_table" class="table table-striped" style="vertical-align: middle;">
+            <tbody>
+
+              <tr>
+                <td class="bold">Datacenter</td>
+                <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
+              </tr>
+
+              <tr>
+                <td class="bold">ISP</td>
+                <td> {{ this.data['isp'] }} </td>
+              </tr>
+
+              <tr>
+                <td class="bold">Platform</td>
+                <td> {{ this.data['platform'] }} </td>
+              </tr>
+
+              <tr>
+                <td class="bold">Connection</td>
+                <td> {{ this.data['connection'] }} </td>
+              </tr>
+
+              <tr>
+                <td class="bold">User Hash</td>
+                <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
         <div id="latency" class="graph"/>
         
         <div id="jitter" class="graph"/>
@@ -23,6 +56,70 @@
         <div id="out_of_order" class="graph"/>
 
         <div id="bandwidth" class="graph"/>
+
+        <div class="d-xxl-none">
+
+          <p class="header" style="padding-top: 15px; padding-bottom: 5px">Current Route</p>
+   
+          <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
+
+            <tbody>
+
+              <tr>
+                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="right_align"> </td>
+              </tr>
+
+              <tr v-for="item in this.data['route_relays']" :key="item.id">
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="right_align"> {{ item.address }} </td>
+              </tr>
+
+              <tr>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="right_align"> {{ this.data['server_address'] }} </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+          <table id="route_table" class="table" v-else>
+
+            <tbody>
+
+              <tr>
+                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="right_align"> </td>
+              </tr>
+
+              <tr>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="right_align"> {{ this.data['server_address'] }} </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+          <p class="header" style="padding-top: 25px; padding-bottom: 15px">Near Relays</p>
+   
+          <table class="table">
+
+            <tbody>
+
+              <tr v-for="item in this.data['near_relays']" :key="item.id">
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align"> {{ item.rtt }}ms </td>
+                <td class="left_align"> {{ item.jitter }}ms </td>
+                <td class="left_align"> {{ item.packet_loss}}% </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
 
       </div>
 
@@ -42,37 +139,37 @@
               <tbody>
 
                 <tr>
-                  <td class="header">Datacenter</td>
+                  <td class="bold">Datacenter</td>
                   <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
                 </tr>
 
                 <tr>
-                  <td class="header">ISP</td>
+                  <td class="bold">ISP</td>
                   <td> {{ this.data['isp'] }} </td>
                 </tr>
 
                 <tr>
-                  <td class="header">Platform</td>
+                  <td class="bold">Platform</td>
                   <td> {{ this.data['platform'] }} </td>
                 </tr>
 
                 <tr>
-                  <td class="header">Connection</td>
+                  <td class="bold">Connection</td>
                   <td> {{ this.data['connection'] }} </td>
                 </tr>
 
                 <tr>
-                  <td class="header">User Hash</td>
+                  <td class="bold">User Hash</td>
                   <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
                 </tr>
 
                 <tr>
-                  <td class="header">Buyer</td>
+                  <td class="bold">Buyer</td>
                   <td> <router-link :to="'/buyer/' + this.data['buyer_code']"> {{ this.data['buyer_name'] }} </router-link> </td>
                 </tr>
 
                 <tr>
-                  <td class="header">Start Time</td>
+                  <td class="bold">Start Time</td>
                   <td> <p class="tight-p">{{ this.data['start_time'] }}</p> <p class="tight-p">{{ this.data['time_zone'] }}</p></td>
                 </tr>
 
@@ -85,24 +182,24 @@
 
         <div class="route_info">
 
-          <p class="header tight-p">Current Route</p>
+          <p class="bold tight-p">Current Route</p>
    
           <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
 
             <tbody>
 
               <tr>
-                <td class="left_align header"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
                 <td class="right_align"> </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
-                <td class="left_align header"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
-                <td class="left_align header"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
                 <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
@@ -115,12 +212,12 @@
             <tbody>
 
               <tr>
-                <td class="left_align header"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
                 <td class="right_align"> </td>
               </tr>
 
               <tr>
-                <td class="left_align header"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
                 <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
@@ -132,14 +229,14 @@
 
         <div class="near_relay_info">
 
-          <p class="header">Near Relays</p>
+          <p class="bold">Near Relays</p>
    
           <table class="table">
 
             <tbody>
 
               <tr v-for="item in this.data['near_relays']" :key="item.id">
-                <td class="left_align header"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="left_align"> {{ item.rtt }}ms </td>
                 <td class="left_align"> {{ item.jitter }}ms </td>
                 <td class="left_align"> {{ item.packet_loss}}% </td>
@@ -676,10 +773,12 @@ export default {
     this.latency.destroy()
     this.jitter.destroy()
     this.packet_loss.destroy()
+    this.out_of_order.destroy()
     this.bandwidth.destroy()
     this.latency = null
     this.jitter = null
     this.packet_loss = null
+    this.out_of_order = null
     this.bandwidth = null
   },
 
@@ -849,6 +948,11 @@ export default {
 }
 
 .header {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.bold {
   font-weight: bold;
 }
 
