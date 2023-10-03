@@ -751,6 +751,7 @@ export default {
   flex-direction: column;
   justify-content: space-between;
   gap: 25px;
+  padding-top: 5px;
 }
 
 .graph {
