@@ -56,7 +56,7 @@
             </thead>
             <tbody>
               <tr v-for="item in data.sessions" :key='item'>
-                <td class="fixed"> <router-link :to='"session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
+                <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
                 <td class="green-center" v-if="item.improvement != '--' && item.improvement >= 10"> {{ item.improvement }} ms</td>
                 <td class="orange-center" v-else-if="item.improvement != '--' && item.improvement >= 5"> {{ item.improvement }} ms</td>
                 <td class="red-center" v-else-if="item.improvement != '--' && item.improvement > 0"> {{ item.improvement }} ms</td>

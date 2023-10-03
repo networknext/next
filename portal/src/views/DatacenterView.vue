@@ -148,12 +148,12 @@ async function getData(page, datacenter) {
       }
       let row = {
         "Relay Name":v.relay_name,
-        "Relay Link":"relay/" + v.relay_name,
+        "Relay Link":"/relay/" + v.relay_name,
         "Public Address":v.relay_address,
         "Datacenter":v.datacenter_name,
-        "Datacenter Link":"datacenter/" + v.datacenter_name,
+        "Datacenter Link":"/datacenter/" + v.datacenter_name,
         "Seller":v.seller_name,
-        "Seller Link":"seller/" + v.seller_code,
+        "Seller Link":"/seller/" + v.seller_code,
         "Current Sessions":v.num_sessions,
         "Status":status,
         "Uptime":nice_uptime(v.uptime),
@@ -169,12 +169,12 @@ async function getData(page, datacenter) {
     // todo: this is a mock
     let row = {
       "Relay Name": datacenter,
-      "Relay Link": "relay/" + datacenter,
+      "Relay Link": "/relay/" + datacenter,
       "Public Address": "127.0.0.1:40000",
       "Datacenter": datacenter,
-      "Datacenter Link": "datacenter/" + datacenter,
+      "Datacenter Link": "/datacenter/" + datacenter,
       "Seller": "Seller",
-      "Seller Link": "seller/google",
+      "Seller Link": "/seller/google",
       "Current Sessions": 25,
       "Status": "Online",
       "Uptime": "2d",

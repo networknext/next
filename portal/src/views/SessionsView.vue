@@ -14,7 +14,7 @@
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td class="green-center" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -37,7 +37,7 @@
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
             <td class="right"> {{ item["Direct RTT"] }} </td>
             <td class="right"> {{ item["Next RTT"] }} </td>
@@ -64,8 +64,8 @@
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td class="fixed"> <router-link :to='"user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
             <td class="right"> {{ item["Direct RTT"] }} </td>
             <td class="right"> {{ item["Next RTT"] }} </td>
@@ -95,8 +95,8 @@
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td class="fixed"> <router-link :to='"user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
@@ -154,9 +154,9 @@ async function getData(page) {
         "User Hash":user_hash,
         "ISP":v.isp,
         "Buyer":v.buyer_name,
-        "Buyer Link":"buyer/" + v.buyer_code,
+        "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
-        "Datacenter Link": "datacenter/" + v.datacenter_name,
+        "Datacenter Link": "/datacenter/" + v.datacenter_name,
         "Server Address":v.server_address,
         "Direct RTT":v.direct_rtt + " ms",
         "Next RTT":next_rtt,

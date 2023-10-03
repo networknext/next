@@ -39,7 +39,7 @@ async function getData(page) {
       let v = res.data.sellers[i]
       let row = {
         "Seller Name":v.name,
-        "Seller Link":"seller/" + v.code,
+        "Seller Link":"/seller/" + v.code,
         "Seller Code":v.code,
       }
       data.push(row)
