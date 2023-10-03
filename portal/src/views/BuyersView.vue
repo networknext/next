@@ -67,7 +67,7 @@ async function getData(page) {
       let row = {
         "Buyer Name":v.name,
         "Buyer Code":v.code,
-        "Buyer Link":"buyer/" + v.code,
+        "Buyer Link":"/buyer/" + v.code,
         "Live":v.live,
         "Debug":v.debug,
         "Public Key":v.public_key

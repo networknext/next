@@ -80,12 +80,12 @@ async function getData(page) {
     let data = []
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
-      const datacenterLink = v.datacenter_name != "" ? "datacenter/" + v.datacenter_name : ""
+      const datacenterLink = v.datacenter_name != "" ? "/datacenter/" + v.datacenter_name : ""
       let row = {
         "Server Address":v.server_address,
         "Server Link":"server/" + v.server_address,
         "Buyer":"Raspberry",
-        "Buyer Link":"buyer/" + v.buyer_code,
+        "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link":datacenterLink,
         "Current Sessions":v.num_sessions.toLocaleString(),

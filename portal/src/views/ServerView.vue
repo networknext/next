@@ -246,7 +246,7 @@ async function getData(page, server) {
         "Connection": connection,
         "Platform": platform,
         "Datacenter": v.datacenter_name,
-        "Datacenter Link": "datacenter/" + v.datacenter_name,
+        "Datacenter Link": "/datacenter/" + v.datacenter_name,
       }
       data.sessions.push(row)
       data.found = true

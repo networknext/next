@@ -66,11 +66,11 @@ async function getData(page) {
       let v = res.data.datacenters[i]
       let row = {
         "Datacenter Name":v.name,
-        "Datacenter Link":"datacenter/" + v.name,
+        "Datacenter Link":"/datacenter/" + v.name,
         "Latitude":v.latitude.toFixed(2),
         "Longitude":v.longitude.toFixed(2),
         "Seller":v.seller_name,
-        "Seller Link":"seller/" + v.seller_code,
+        "Seller Link":"/seller/" + v.seller_code,
         "Native Name":v.native
       }
       data.push(row)

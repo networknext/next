@@ -130,7 +130,7 @@ async function getData(page, user_hash) {
         "Connection": connection,
         "Platform": platform,
         "Datacenter": v.datacenter_name,
-        "Datacenter Link": "datacenter/" + v.datacenter_name,
+        "Datacenter Link": "/datacenter/" + v.datacenter_name,
       }
       data.sessions.push(row)
       data.found = true
