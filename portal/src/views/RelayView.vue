@@ -419,6 +419,7 @@ async function getData(page, relay_name) {
       page = 0
     }
     const url = process.env.VUE_APP_API_URL + '/portal/relay/' + relay_name
+    console.log(url) // todo
     const res = await axios.get(url);
     let data = {}
     data['relay_name'] = relay_name

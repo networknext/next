@@ -1906,6 +1906,10 @@ func GetRelayData(ctx context.Context, redisClient redis.Cmdable, relayAddress s
 	relayData := RelayData{}
 	relayData.Parse(redis_relay_data)
 
+	if relayData.RelayAddress != relayAddress {
+		return nil
+	}
+
 	return &relayData
 }
 
