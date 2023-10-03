@@ -419,17 +419,15 @@ async function getData(page, relay_name) {
       page = 0
     }
     const url = process.env.VUE_APP_API_URL + '/portal/relay/' + relay_name
-    console.log(url) // todo
     const res = await axios.get(url);
     let data = {}
     data['relay_name'] = relay_name
-    console.log(res)
     if (res.data.relay_data !== null) {
       data["sessions"] = res.data.relay_data.num_sessions
       data["seller_name"] = res.data.relay_data.seller_name
       data["seller_code"] = res.data.relay_data.seller_code
       data["datacenter_name"] = res.data.relay_data.datacenter_name
-      data["version"] = res.data.relay_data.version                
+      data["version"] = res.data.relay_data.relay_version                
       data["uptime"] = nice_uptime(res.data.relay_data.uptime)     
       data["latitude"] = res.data.relay_data.latitude              
       data["longitude"] = res.data.relay_data.longitude            

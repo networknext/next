@@ -564,6 +564,8 @@ type PortalRelayData struct {
 	DatacenterId   uint64 `json:"datacenter_id,string"`
 	DatacenterName string `json:"datacenter_name"`
 	Uptime         uint64 `json:"uptime,string"`
+	Latitude       float32 `json:"latitude"`
+	Longitude       float32 `json:"longitude"`
 }
 
 func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData) {
@@ -585,6 +587,8 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 			output.DatacenterId = relay.Datacenter.Id
 			output.DatacenterName = relay.Datacenter.Name
 			output.Uptime = currentTime - output.StartTime
+			output.Latitude = input.Datacenter.Latitude
+			output.Longitude = input.Datacenter.Longitude
 		}
 	}
 }
