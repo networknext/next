@@ -15,7 +15,7 @@
       <div id="left" class="left">
 
         <div class="d-xxl-none">
-          <table id="sessions_table" class="table table-striped" style="vertical-align: middle;">
+          <table id="session_table" class="table table-striped" style="vertical-align: middle;">
             <tbody>
 
               <tr>
@@ -135,7 +135,7 @@
    
           <div class="session_info">
 
-            <table id="sessions_table" class="table table-striped" style="vertical-align: middle;">
+            <table id="session_table" class="table table-striped" style="vertical-align: middle;">
               <tbody>
 
                 <tr>
