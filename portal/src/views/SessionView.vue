@@ -170,7 +170,7 @@
 
                 <tr>
                   <td class="bold">Start Time</td>
-                  <td> <p class="tight-p">{{ this.data['start_time'] }}</p> <p class="tight-p">{{ this.data['time_zone'] }}</p></td>
+                  <td> {{ this.data['start_time'] }} </td>
                 </tr>
 
               </tbody>
@@ -640,10 +640,7 @@ async function getData(page, session_id) {
       data["user_hash"] = parse_uint64(res.data.session_data.user_hash)
       data["platform"] = getPlatformName(res.data.session_data.platform_type)
       data["connection"] = getConnectionName(res.data.session_data.connection_type)
-      let start_time = new Date(parseInt(res.data.session_data.start_time)).toString()
-      let values = start_time.split(" (")
-      data["start_time"] = values[0]
-      data["time_zone"] = '(' + values[1]
+      data["start_time"] = new Date(parseInt(res.data.session_data.start_time)).toLocaleString()
       data["server_address"] = res.data.session_data.server_address
       let session_data = res.data.session_data
       if (session_data.num_route_relays > 0) {
