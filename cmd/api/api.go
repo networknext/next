@@ -622,7 +622,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData *PortalRelayData `json:"relay_data"`
+	RelayData PortalRelayData `json:"relay_data"`
 }
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -633,15 +633,12 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 	if database != nil {
 		relay := database.GetRelayByName(relayName)
 		if relay == nil {
-			// todo
-			core.Error("relay not found: %s", relayName)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		relayAddress := relay.PublicAddress.String()
 		relayData := portal.GetRelayData(service.Context, redisPortalClient, relayAddress)
 		if relayData == nil {
-			core.Error("relay data not found: %s", relayAddress)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
