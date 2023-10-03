@@ -19,28 +19,23 @@
             <tbody>
 
               <tr>
-                <td class="bold">Datacenter</td>
-                <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
+                <td class="bold">Total Sessions</td>
+                <td> {{ this.data.total_sessions}} </td>
               </tr>
 
               <tr>
-                <td class="bold">ISP</td>
-                <td> {{ this.data['isp'] }} </td>
+                <td class="bold">Next Sessions</td>
+                <td> {{ this.data.next_sessions}} </td>
               </tr>
 
               <tr>
-                <td class="bold">Platform</td>
-                <td> {{ this.data['platform'] }} </td>
+                <td class="bold">Accelerated</td>
+                <td> {{ this.data.accelerated }}% </td>
               </tr>
 
               <tr>
-                <td class="bold">Connection</td>
-                <td> {{ this.data['connection'] }} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">User Hash</td>
-                <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
+                <td class="bold">Servers</td>
+                <td> {{ this.data.servers }} </td>
               </tr>
 
             </tbody>
@@ -51,197 +46,50 @@
         
         <div id="next_sessions" class="graph"/>
         
-        <div id="accelerated_percent" class="graph"/>
+        <div id="accelerated" class="graph"/>
 
-        <div id="server_count" class="graph"/>
-
-        <div class="d-xxl-none">
-
-          <p class="header" style="padding-top: 15px; padding-bottom: 5px">Route</p>
-   
-          <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
-
-            <tbody>
-
-              <tr>
-                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
-                <td class="right_align"> </td>
-              </tr>
-
-              <tr v-for="item in this.data['route_relays']" :key="item.id">
-                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="right_align"> {{ item.address }} </td>
-              </tr>
-
-              <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
-              </tr>
-
-            </tbody>
-
-          </table>
-
-          <table id="route_table" class="table" v-else>
-
-            <tbody>
-
-              <tr>
-                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
-                <td class="right_align"> </td>
-              </tr>
-
-              <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
-              </tr>
-
-            </tbody>
-
-          </table>
-
-          <p class="header" style="padding-top: 25px; padding-bottom: 15px">Near Relays</p>
-   
-          <table class="table">
-
-            <tbody>
-
-              <tr v-for="item in this.data['near_relays']" :key="item.id">
-                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="left_align"> {{ item.rtt }}ms </td>
-                <td class="left_align"> {{ item.jitter }}ms </td>
-                <td class="left_align"> {{ item.packet_loss}}% </td>
-              </tr>
-
-            </tbody>
-
-          </table>
-
-        </div>
+        <div id="servers" class="graph"/>
 
       </div>
 
       <div id="right" class="right d-none d-xxl-block">
 
-        <div class="right-top">
+        <div class="buyer_info">
 
-          <div class="map"/>
-
-        </div>
-  
-        <div class="right-bottom">
-   
-          <div class="buyer_info">
-
-            <table id="buyer_table" class="table table-striped" style="vertical-align: middle;">
-              <tbody>
-
-                <tr>
-                  <td class="bold">Datacenter</td>
-                  <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
-                </tr>
-
-                <tr>
-                  <td class="bold">ISP</td>
-                  <td> {{ this.data['isp'] }} </td>
-                </tr>
-
-                <tr>
-                  <td class="bold">Platform</td>
-                  <td> {{ this.data['platform'] }} </td>
-                </tr>
-
-                <tr>
-                  <td class="bold">Connection</td>
-                  <td> {{ this.data['connection'] }} </td>
-                </tr>
-
-                <tr>
-                  <td class="bold">User Hash</td>
-                  <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
-                </tr>
-
-                <tr>
-                  <td class="bold">Buyer</td>
-                  <td> <router-link :to="'/buyer/' + this.data['buyer_code']"> {{ this.data['buyer_name'] }} </router-link> </td>
-                </tr>
-
-                <tr>
-                  <td class="bold">Start Time</td>
-                  <td> {{ this.data['start_time'] }} </td>
-                </tr>
-
-              </tbody>
-            </table>
-
-          </div>
-
-        </div>
-
-        <div class="route_info">
-
-          <p class="bold tight-p">Route</p>
-   
-          <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
-
+          <table id="buyer_table" class="table table-striped" style="vertical-align: middle;">
             <tbody>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
-                <td class="right_align"> </td>
-              </tr>
-
-              <tr v-for="item in this.data['route_relays']" :key="item.id">
-                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="right_align"> {{ item.address }} </td>
+                <td class="bold">Total Sessions</td>
+                <td> {{ this.data.total_sessions}} </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
-              </tr>
-
-            </tbody>
-
-          </table>
-
-          <table id="route_table" class="table" v-else>
-
-            <tbody>
-
-              <tr>
-                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
-                <td class="right_align"> </td>
+                <td class="bold">Next Sessions</td>
+                <td> {{ this.data.next_sessions}} </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
+                <td class="bold">Accelerated</td>
+                <td> {{ this.data.accelerated }}% </td>
+              </tr>
+
+              <tr>
+                <td class="bold">Servers</td>
+                <td> {{ this.data.servers }} </td>
+              </tr>
+
+              <tr>
+                <td class="bold">Live</td>
+                <td> {{ this.data.live }} </td>
+              </tr>
+
+              <tr>
+                <td class="bold">Debug</td>
+                <td> {{ this.data.debug }} </td>
               </tr>
 
             </tbody>
-
-          </table>
-
-        </div>
-
-        <div class="near_relay_info">
-
-          <p class="bold">Near Relays</p>
-   
-          <table class="table">
-
-            <tbody>
-
-              <tr v-for="item in this.data['near_relays']" :key="item.id">
-                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="left_align"> {{ item.rtt }}ms </td>
-                <td class="left_align"> {{ item.jitter }}ms </td>
-                <td class="left_align"> {{ item.packet_loss}}% </td>
-              </tr>
-
-            </tbody>
-
           </table>
 
         </div>
@@ -256,20 +104,10 @@
 
 <script>
 
-import axios from "axios";
+//import axios from "axios";
 import utils from '@/utils.js'
 import update from '@/update.js'
 import uPlot from "uplot";
-import BigNumber from "bignumber.js";
-
-function parse_uint64(value) {
-  const bignum = new BigNumber(value);
-  var hex = bignum.toString(16);
-  while (hex.length<16) {
-    hex = '0' + hex
-  }
-  return hex
-}
 
 function isVisible(element) {
   var style = window.getComputedStyle(element);
@@ -527,8 +365,8 @@ let next_sessions_opts = {
   ]
 };
 
-let accelerated_percent_opts = {
-  title: "Accelerated Percent",
+let accelerated_opts = {
+  title: "Accelerated",
   width: 0,
   height: 450,
   legend: {
@@ -549,8 +387,8 @@ let accelerated_percent_opts = {
   ]
 };
 
-let server_count_opts = {
-  title: "Server Count",
+let servers_opts = {
+  title: "Servers",
   width: 0,
   height: 450,
   legend: {
@@ -575,6 +413,7 @@ const data = arr;
 
 async function getData(page, buyer) {
   try {
+    /*
     if (page == null) {
       page = 0
     }
@@ -582,62 +421,20 @@ async function getData(page, buyer) {
     const res = await axios.get(url);
     let data = {}
     if (res.data.slice_data !== null) {
-      data['buyer'] = parse_uint64(res.data.session_data.buyer)
-      /*
-      data["datacenter_name"] = res.data.session_data.datacenter_name
-      data["isp"] = res.data.session_data.isp
-      data["buyer_code"] = res.data.session_data.buyer_code
-      data["buyer_name"] = res.data.session_data.buyer_name
-      data["user_hash"] = parse_uint64(res.data.session_data.user_hash)
-      data["platform"] = getPlatformName(res.data.session_data.platform_type)
-      data["connection"] = getConnectionName(res.data.session_data.connection_type)
-      data["start_time"] = new Date(parseInt(res.data.session_data.start_time)).toLocaleString()
-      data["server_address"] = res.data.session_data.server_address
-      let session_data = res.data.session_data
-      if (session_data.num_route_relays > 0) {
-        let i = 0
-        let route_relays = []
-        while (i < session_data.num_route_relays) {
-          route_relays.push({
-            id:        session_data.route_relay_ids[i],
-            name:      session_data.route_relay_names[i],
-            address:   session_data.route_relay_addresses[i],
-          })
-          i++
-        }
-        data['route_relays'] = route_relays
-      }
-      let near_relay_data = res.data.near_relay_data
-      if (near_relay_data.length > 0) {
-        near_relay_data = near_relay_data[near_relay_data.length-1]
-        let i = 0
-        let near_relays = []
-        while (i < near_relay_data.num_near_relays) {
-          if (near_relay_data.near_relay_rtt[i] != 0) {
-            near_relays.push({
-              id:          near_relay_data.near_relay_id[i],
-              name:        near_relay_data.near_relay_name[i],
-              rtt:         near_relay_data.near_relay_rtt[i],
-              jitter:      near_relay_data.near_relay_jitter[i],
-              packet_loss: near_relay_data.near_relay_packet_loss[i],
-            })
-          }
-          i++
-        }
-        near_relays.sort( function(a,b) {
-          if (a.name < b.name) {
-            return -1
-          }
-          if (a.name > b.name) {
-            return +1
-          }
-          return 0
-        })
-        data['near_relays'] = near_relays
-      }
-      */
+      data['buyer'] = buyer
       data["found"] = true
     }
+    */
+    let data = {}
+    data['buyer'] = buyer
+    // todo: this is mocked
+    data['total_sessions'] = 1000
+    data['next_sessions'] = 500
+    data['accelerated'] = 50
+    data['servers'] = 8
+    data['live'] = true
+    data['debug'] = true
+    data['found'] = true
     return [data, 0, 1]
   } catch (error) {
     console.log(error);
@@ -682,8 +479,8 @@ export default {
   
     this.total_sessions = new uPlot(total_sessions_opts, data, document.getElementById('total_sessions'))
     this.next_sessions = new uPlot(next_sessions_opts, data, document.getElementById('next_sessions'))
-    this.accelerated_percent = new uPlot(accelerated_percent_opts, data, document.getElementById('accelerated_percent'))
-    this.server_count = new uPlot(server_count_opts, data, document.getElementById('server_count'))
+    this.accelerated = new uPlot(accelerated_opts, data, document.getElementById('accelerated'))
+    this.servers = new uPlot(servers_opts, data, document.getElementById('servers'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -695,15 +492,14 @@ export default {
   beforeUnmount() {
     this.total_sessions.destroy()
     this.next_sessions.destroy()
-    this.accelerated_percent.destroy()
-    this.server_count.destroy()
-    this.bandwidth.destroy()
+    this.accelerated.destroy()
+    this.servers.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.total_sessions = null
     this.next_sessions = null
-    this.accelerated_percent = null
-    this.server_count = null
+    this.accelerated = null
+    this.servers = null
     this.observer = null
   },
 
@@ -713,7 +509,7 @@ export default {
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
         this.prevWidth = width;
-        if (this.latency) {
+        if (this.total_sessions) {
           let graph_width = width
           if (isVisible(document.getElementById('right'))) {
             graph_width -= 550
@@ -726,11 +522,10 @@ export default {
           } else if (graph_height < 250) {
             graph_height = 250
           }
-          this.latency.setSize({width: graph_width, height: graph_height})
-          this.jitter.setSize({width: graph_width, height: graph_height})
-          this.packet_loss.setSize({width: graph_width, height: graph_height})
-          this.out_of_order.setSize({width: graph_width, height: graph_height})
-          this.bandwidth.setSize({width: graph_width, height: graph_height})
+          this.total_sessions.setSize({width: graph_width, height: graph_height})
+          this.next_sessions.setSize({width: graph_width, height: graph_height})
+          this.accelerated.setSize({width: graph_width, height: graph_height})
+          this.servers.setSize({width: graph_width, height: graph_height})
         }
       }    
     },
@@ -755,7 +550,7 @@ export default {
 
     search() {
       const buyer = document.getElementById("buyer-input").value
-      this.$router.push('/session/' + buyer)
+      this.$router.push('/buyer/' + buyer)
     },
 
     onKeyUp(event) {
@@ -866,25 +661,11 @@ export default {
   flex-shrink: 0;
 }
 
-.session_info {
+.buyer_info {
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-}
-
-.route_info {
-  width: 100%;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-top: 25px;
-}
-
-.near_relay_info {
-  width: 100%;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-top: 25px;
 }
 
 .left_align {
