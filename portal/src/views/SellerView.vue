@@ -116,7 +116,7 @@ async function getData(page, seller) {
     if (page == null) {
       page = 0
     }
-    const url = process.env.VUE_APP_API_URL + '/portal/relays/' + seller + '/' + page
+    const url = process.env.VUE_APP_API_URL + '/portal/seller/' + seller + '/' + page
     const res = await axios.get(url);
     let i = 0
     let data = {}

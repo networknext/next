@@ -162,7 +162,7 @@ func main() {
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
 
 		service.Router.HandleFunc("/portal/sellers/{page}", isAuthorized(portalSellersHandler))
-		service.Router.HandleFunc("/portal/seller/{seller_code}", isAuthorized(portalSellerDataHandler))
+		service.Router.HandleFunc("/portal/seller/{seller_code}/{page}", isAuthorized(portalSellerDataHandler))
 
 		service.Router.HandleFunc("/portal/datacenters/{page}", isAuthorized(portalDatacentersHandler))
 		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
@@ -550,22 +550,22 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayData struct {
-	RelayName      string `json:"relay_name"`
-	RelayId        uint64 `json:"relay_id,string"`
-	RelayAddress   string `json:"relay_address"`
-	NumSessions    uint32 `json:"num_sessions"`
-	MaxSessions    uint32 `json:"max_sessions"`
-	StartTime      uint64 `json:"start_time,string"`
-	RelayFlags     uint64 `json:"relay_flags,string"`
-	RelayVersion   string `json:"relay_version"`
-	SellerId       uint64 `json:"seller_id,string"`
-	SellerName     string `json:"seller_name"`
-	SellerCode     string `json:"seller_code"`
-	DatacenterId   uint64 `json:"datacenter_id,string"`
-	DatacenterName string `json:"datacenter_name"`
-	Uptime         uint64 `json:"uptime,string"`
+	RelayName      string  `json:"relay_name"`
+	RelayId        uint64  `json:"relay_id,string"`
+	RelayAddress   string  `json:"relay_address"`
+	NumSessions    uint32  `json:"num_sessions"`
+	MaxSessions    uint32  `json:"max_sessions"`
+	StartTime      uint64  `json:"start_time,string"`
+	RelayFlags     uint64  `json:"relay_flags,string"`
+	RelayVersion   string  `json:"relay_version"`
+	SellerId       uint64  `json:"seller_id,string"`
+	SellerName     string  `json:"seller_name"`
+	SellerCode     string  `json:"seller_code"`
+	DatacenterId   uint64  `json:"datacenter_id,string"`
+	DatacenterName string  `json:"datacenter_name"`
+	Uptime         uint64  `json:"uptime,string"`
 	Latitude       float32 `json:"latitude"`
-	Longitude       float32 `json:"longitude"`
+	Longitude      float32 `json:"longitude"`
 }
 
 func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData) {
@@ -587,8 +587,8 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 			output.DatacenterId = relay.Datacenter.Id
 			output.DatacenterName = relay.Datacenter.Name
 			output.Uptime = currentTime - output.StartTime
-			output.Latitude = input.Datacenter.Latitude
-			output.Longitude = input.Datacenter.Longitude
+			output.Latitude = relay.Datacenter.Latitude
+			output.Longitude = relay.Datacenter.Longitude
 		}
 	}
 }
@@ -739,14 +739,45 @@ func portalSellersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSellerDataResponse struct {
-	SellerData *db.Seller `json:"seller_data"`
+	SellerData *db.Seller        `json:"seller_data"`
+	Relays     []PortalRelayData `json:"relays"`
+	OutputPage int               `json:"output_page"`
+	NumPages   int               `json:"num_pages"`
 }
 
 func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sellerCode := vars["seller_code"]
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
+	rawRelays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	relays := make([]portal.RelayData, 0, len(rawRelays))
+	for i := range rawRelays {
+		relay := database.GetRelay(rawRelays[i].RelayId)
+		if relay != nil && relay.Seller.Code == sellerCode {
+			relays = append(relays, *rawRelays[i])
+		}
+	}
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(relays))
+	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
+	relays = relays[begin:end]
 	response := PortalSellerDataResponse{}
+	response.Relays = make([]PortalRelayData, len(relays))
+	for i := range response.Relays {
+		upgradePortalRelayData(database, &relays[i], &response.Relays[i])
+	}
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	if database != nil {
 		response.SellerData = database.GetSellerByCode(sellerCode)
 	}
