@@ -59,7 +59,7 @@
 
         <div class="d-xxl-none">
 
-          <p class="header" style="padding-top: 15px; padding-bottom: 5px">Current Route</p>
+          <p class="header" style="padding-top: 15px; padding-bottom: 5px">Route</p>
    
           <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
 
@@ -182,7 +182,7 @@
 
         <div class="route_info">
 
-          <p class="bold tight-p">Current Route</p>
+          <p class="bold tight-p">Route</p>
    
           <table id="route_table" class="table" v-if="this.data['route_relays'] != null && this.data['route_relays'].length > 0">
 
@@ -709,6 +709,8 @@ export default {
     return {
       data: {},
       found: false,
+      observer: null,
+      prevWidth: 0,
     };
   },
 
@@ -735,12 +737,35 @@ export default {
     this.out_of_order = new uPlot(out_of_order_opts, data, document.getElementById('out_of_order'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
 
-    let prevWidth = 0;
-    const observer = new ResizeObserver(entries => {
-      console.log(entries)
+    this.observer = new ResizeObserver(this.resize)
+    this.observer.observe(document.body, {box: 'border-box'})
+
+    document.getElementById("session-id-input").value = document.getElementById("session-id-input").defaultValue = this.data['session_id']
+    document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
+  },
+
+  beforeUnmount() {
+    this.latency.destroy()
+    this.jitter.destroy()
+    this.packet_loss.destroy()
+    this.out_of_order.destroy()
+    this.bandwidth.destroy()
+    this.observer.disconnect()
+    this.prevWidth = 0
+    this.latency = null
+    this.jitter = null
+    this.packet_loss = null
+    this.out_of_order = null
+    this.bandwidth = null
+    this.observer = null
+  },
+
+  methods: {
+
+    resize() {
       const width = document.body.clientWidth;
-      if (width !== prevWidth) {
-        prevWidth = width;
+      if (width !== this.prevWidth) {
+        this.prevWidth = width;
         if (this.latency) {
           let graph_width = width
           if (isVisible(document.getElementById('right'))) {
@@ -760,29 +785,8 @@ export default {
           this.out_of_order.setSize({width: graph_width, height: graph_height})
           this.bandwidth.setSize({width: graph_width, height: graph_height})
         }
-      }
-    });
-
-    observer.observe(document.body, {box: 'border-box'});
-
-    document.getElementById("session-id-input").value = document.getElementById("session-id-input").defaultValue = this.data['session_id']
-    document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
-  },
-
-  beforeUnmount() {
-    this.latency.destroy()
-    this.jitter.destroy()
-    this.packet_loss.destroy()
-    this.out_of_order.destroy()
-    this.bandwidth.destroy()
-    this.latency = null
-    this.jitter = null
-    this.packet_loss = null
-    this.out_of_order = null
-    this.bandwidth = null
-  },
-
-  methods: {
+      }    
+    },
 
     async getData(page, session_id) {
       if (session_id == null) {
@@ -798,6 +802,7 @@ export default {
         this.page = result[1]
         this.num_pages = result[2]
         this.found = result[0]['found']
+        this.$emit('update', this.page, this.num_pages)
       }
     },
 

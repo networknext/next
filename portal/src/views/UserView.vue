@@ -7,12 +7,12 @@
     <div class="search">
 
       <p class="tight-p">User</p>
-      <p class="tight-p test-text"><input id='session-id-input' type="text fixed" class="text"></p>
+      <p class="tight-p test-text"><input id='user-hash-input' type="text fixed" class="text"></p>
       <p class="tight-p"><button type="button" class="btn btn-secondary" id='search-button' @click="this.search()">Search</button></p>
 
     </div>
 
-    <div class="bottom">
+    <div v-if="this.found" class="bottom">
 
       <div class="d-xxl-none">
     
@@ -24,7 +24,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in data" :key='item'>
+            <tr v-for="item in data.sessions" :key='item'>
               <td> {{ item["Start Time"] }} </td>
               <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             </tr>
@@ -45,7 +45,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in data" :key='item'>
+            <tr v-for="item in data.sessions" :key='item'>
               <td> {{ item["Start Time"] }} </td>
               <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
               <td> {{ item["ISP"] }} </td>
@@ -113,10 +113,10 @@ async function getData(page, user_hash) {
       page = 0
     }
     const url = process.env.VUE_APP_API_URL + '/portal/user_sessions/' + user_hash + '/' + page
-    console.log(url)
     const res = await axios.get(url);
     let i = 0
-    let data = []
+    let data = {}
+    data.sessions = []
     while (i < res.data.sessions.length) {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
@@ -134,7 +134,9 @@ async function getData(page, user_hash) {
         "Datacenter": v.datacenter_name,
         "Datacenter Link": "datacenter/" + v.datacenter_name,
       }
-      data.push(row)
+      data.sessions.push(row)
+      data.found = true
+      data.user_hash = user_hash
       i++;
     }
     const outputPage = res.data.output_page
@@ -142,7 +144,8 @@ async function getData(page, user_hash) {
     return [data, outputPage, numPages]
   } catch (error) {
     console.log(error);
-    return null
+    let data = {found: false, user_hash: user_hash}
+    return [data, 0, 1]
   }
 }
 
@@ -152,9 +155,15 @@ export default {
 
   mixins: [utils,update],
 
+  mounted: function () {
+    document.getElementById("user-hash-input").value = document.getElementById("user-hash-input").defaultValue = this.data['user_hash']
+    document.getElementById("user-hash-input").addEventListener('keyup', this.onKeyUp);
+  },
+
   data() {
     return {
       data: [],
+      found: false,
     };
   },
 
@@ -179,6 +188,8 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
+        vm.$emit('update', vm.page, vm.num_pages)
+        vm.found = result[0]['found']
       }
     })
   },
@@ -198,8 +209,20 @@ export default {
         this.data = result[0]
         this.page = result[1]
         this.num_pages = result[2]
+        this.found = result[0]['found']
       }
-    }
+    },
+
+    search() {
+      const user_hash = document.getElementById("user-hash-input").value
+      this.$router.push('/user/' + user_hash)
+    },
+
+    onKeyUp(event) {
+      if (event.key == 'Enter') {
+        this.search()
+      }
+    },
 
   }
 };
