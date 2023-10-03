@@ -2,108 +2,63 @@
 
 <template>
 
-  <div class="d-md-none">
-    <table id="sessions_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Session ID</th>
-          <th>Improvement</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-          <td class="green-center" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
-          <td class="orange-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
-          <td class="red-center" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="nada-center" v-else> -- </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <div class="parent" id="parent">
+  
+    <div class="search">
 
-  <div class="d-none d-md-block d-lg-block d-xl-none">
-    <table id="sessions_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Session ID</th>
-          <th>ISP</th>
-          <th class="right">Direct RTT</th>
-          <th class="right">Next RTT</th>
-          <th class="right">Improvement</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-          <td> {{ item["ISP"] }} </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
-          <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
-          <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="nada" v-else> -- </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+      <p class="tight-p">User</p>
+      <p class="tight-p test-text"><input id='session-id-input' type="text fixed" class="text"></p>
+      <p class="tight-p"><button type="button" class="btn btn-secondary" id='search-button' @click="this.search()">Search</button></p>
 
-  <div class="d-none d-xl-block d-xxl-none">
-    <table id="sessions_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Session ID</th>
-          <th>ISP</th>
-          <th class="right">Direct RTT</th>
-          <th class="right">Next RTT</th>
-          <th class="right">Improvement</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-          <td> {{ item["ISP"] }} </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
-          <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
-          <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="nada" v-else> -- </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    </div>
 
-  <div class="d-none d-xxl-block">
-    <table id="sessions_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Session ID</th>
-          <th>ISP</th>
-          <th>Buyer</th>
-          <th>Datacenter</th>
-          <th>Server Address</th>
-          <th class="right">Direct RTT</th>
-          <th class="right">Next RTT</th>
-          <th class="right">Improvement</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td class="fixed"> <router-link :to='"session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-          <td> {{ item["ISP"] }} </td>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-          <td> <router-link :to='"server/" + item["Server Address"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td class="right"> {{ item["Direct RTT"] }} </td>
-          <td class="right"> {{ item["Next RTT"] }} </td>
-          <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
-          <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
-          <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
-          <td class="nada" v-else> -- </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="bottom">
+
+      <div class="d-xxl-none">
+    
+        <table id="sessions_table" class="table table-striped table-hover" style="table-layout:auto;">
+          <thead>
+            <tr>
+              <th style="width: 15%">Start Time</th>
+              <th style="width: 15%">Session ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in data" :key='item'>
+              <td> {{ item["Start Time"] }} </td>
+              <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-none d-xxl-block">
+        <table id="sessions_table" class="table table-striped table-hover" style="table-layout:auto;">
+          <thead>
+            <tr>
+              <th style="width: 15%">Start Time</th>
+              <th style="width: 15%">Session ID</th>
+              <th>ISP</th>
+              <th>Connection</th>
+              <th>Platform</th>
+              <th>Datacenter</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in data" :key='item'>
+              <td> {{ item["Start Time"] }} </td>
+              <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+              <td> {{ item["ISP"] }} </td>
+              <td> {{ item["Connection"] }} </td>
+              <td> {{ item["Platform"] }} </td>
+              <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
   </div>
 
 </template>
@@ -126,6 +81,32 @@ function parse_uint64(value) {
   return hex
 }
 
+function getPlatformName(platformId) {
+  switch(platformId) {
+  case 1: return "Windows"
+  case 2: return "Mac"
+  case 3: return "Linux"
+  case 4: return "Nintendo Switch"
+  case 5: return "PS4"
+  case 6: return "iOS"
+  case 7: return "Xbox One"
+  case 8: return "Xbox Series X"
+  case 9: return "PS5"
+  default:
+    return "Unknown"
+  }
+}
+
+function getConnectionName(connectionType) {
+  switch(connectionType) {
+  case 1: return "Wired"
+  case 2: return "Wi-Fi"
+  case 3: return "Cellular"
+  default:
+    return "Unknown"
+  }
+}
+
 async function getData(page, user_hash) {
   try {
     if (page == null) {
@@ -139,19 +120,19 @@ async function getData(page, user_hash) {
     while (i < res.data.sessions.length) {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
-      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
-      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
+      const connection = getConnectionName(v.connection_type)
+      const platform = getPlatformName(v.platform_type)
+      let start_time = new Date(parseInt(v.start_time)).toString()
+      let values = start_time.split(" (")
+      start_time = values[0].trim()
       let row = {
-        "Session ID":session_id,
-        "ISP":v.isp,
-        "Buyer":v.buyer_name,
-        "Buyer Link":"buyer/" + v.buyer_code,
-        "Datacenter":v.datacenter_name,
+        "Session ID": session_id,
+        "Start Time": start_time,
+        "ISP": v.isp,
+        "Connection": connection,
+        "Platform": platform,
+        "Datacenter": v.datacenter_name,
         "Datacenter Link": "datacenter/" + v.datacenter_name,
-        "Server Address":v.server_address,
-        "Direct RTT":v.direct_rtt + " ms",
-        "Next RTT":next_rtt,
-        "Improvement":improvement,
       }
       data.push(row)
       i++;
@@ -288,6 +269,48 @@ a {
 
 tr {
     white-space: nowrap;
+}
+
+.parent {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+}
+
+.search {
+  width: 100%;
+  height: 35px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  font-weight: 1;
+  font-size: 18px;
+  padding: 0px;
+}
+
+.text {
+  width: 100%;
+  height: 35px;
+  font-size: 15px;
+  padding: 5px;
+}
+
+.test-text {
+  width: 10px;
+  flex-grow: 1;
+}
+
+.bottom {
+  padding: 0px;
+}
+
+.align-left {
+  text-align: left;
 }
 
 </style>

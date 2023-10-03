@@ -749,6 +749,8 @@ export default {
   padding: 0px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  gap: 25px;
 }
 
 .graph {
@@ -769,6 +771,7 @@ export default {
 
 .search {
   width: 100%;
+  height: 35px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
