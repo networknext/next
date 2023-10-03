@@ -130,12 +130,12 @@ async function getData(page, seller) {
       }
       let row = {
         "Relay Name":v.relay_name,
-        "Relay Link":"relay/" + v.relay_name,
+        "Relay Link":"/relay/" + v.relay_name,
         "Public Address":v.relay_address,
         "Datacenter":v.datacenter_name,
-        "Datacenter Link":"datacenter/" + v.datacenter_name,
+        "Datacenter Link":"/datacenter/" + v.datacenter_name,
         "Seller":v.seller_name,
-        "Seller Link":"seller/" + v.seller_code,
+        "Seller Link":"/seller/" + v.seller_code,
         "Current Sessions":v.num_sessions,
         "Status":status,
         "Uptime":nice_uptime(v.uptime),

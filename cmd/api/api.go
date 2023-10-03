@@ -845,6 +845,9 @@ func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalDatacenterDataResponse struct {
 	DatacenterData PortalDatacenterData `json:"datacenter_data"`
+	Relays         []PortalRelayData    `json:"relays"`
+	OutputPage     int                  `json:"output_page"`
+	NumPages       int                  `json:"num_pages"`
 }
 
 func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
