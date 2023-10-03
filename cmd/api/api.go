@@ -566,6 +566,29 @@ type PortalRelayData struct {
 	Uptime         uint64 `json:"uptime,string"`
 }
 
+func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData) {
+	output.RelayName = input.RelayName
+	output.RelayId = input.RelayId
+	output.RelayAddress = input.RelayAddress
+	output.NumSessions = input.NumSessions
+	output.MaxSessions = input.MaxSessions
+	output.StartTime = input.StartTime
+	output.RelayFlags = input.RelayFlags
+	output.RelayVersion = input.RelayVersion
+	currentTime := uint64(time.Now().Unix())
+	if database != nil {
+		relay := database.GetRelay(input.RelayId)
+		if relay != nil {
+			output.SellerId = relay.Seller.Id
+			output.SellerName = relay.Seller.Name
+			output.SellerCode = relay.Seller.Code
+			output.DatacenterId = relay.Datacenter.Id
+			output.DatacenterName = relay.Datacenter.Name
+			output.Uptime = currentTime - output.StartTime
+		}
+	}
+}
+
 type PortalRelaysResponse struct {
 	Relays     []PortalRelayData `json:"relays"`
 	OutputPage int               `json:"output_page"`
@@ -587,31 +610,11 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	relays = relays[begin:end]
 	response := PortalRelaysResponse{}
 	database := service.Database()
-	currentTime := uint64(time.Now().Unix())
 	response.Relays = make([]PortalRelayData, len(relays))
 	response.OutputPage = outputPage
 	response.NumPages = numPages
 	for i := range response.Relays {
-		response.Relays[i].RelayName = relays[i].RelayName
-		response.Relays[i].RelayId = relays[i].RelayId
-		response.Relays[i].RelayAddress = relays[i].RelayAddress
-		response.Relays[i].NumSessions = relays[i].NumSessions
-		response.Relays[i].MaxSessions = relays[i].MaxSessions
-		response.Relays[i].StartTime = relays[i].StartTime
-		response.Relays[i].RelayFlags = relays[i].RelayFlags
-		response.Relays[i].RelayVersion = relays[i].RelayVersion
-		if database != nil {
-			relay := database.GetRelay(response.Relays[i].RelayId)
-			if relay == nil {
-				continue
-			}
-			response.Relays[i].SellerId = relay.Seller.Id
-			response.Relays[i].SellerName = relay.Seller.Name
-			response.Relays[i].SellerCode = relay.Seller.Code
-			response.Relays[i].DatacenterId = relay.Datacenter.Id
-			response.Relays[i].DatacenterName = relay.Datacenter.Name
-			response.Relays[i].Uptime = currentTime - response.Relays[i].StartTime
-		}
+		upgradePortalRelayData(database, relays[i], &response.Relays[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -619,7 +622,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData *portal.RelayData `json:"relay_data"`
+	RelayData *PortalRelayData `json:"relay_data"`
 }
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -631,7 +634,8 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 		relay := database.GetRelayByName(relayName)
 		if relay != nil {
 			relayAddress := relay.PublicAddress.String()
-			response.RelayData = portal.GetRelayData(service.Context, redisPortalClient, relayAddress)
+			relayData := portal.GetRelayData(service.Context, redisPortalClient, relayAddress)
+			upgradePortalRelayData(database, relayData, response.RelayData)
 		}
 	}
 	w.WriteHeader(http.StatusOK)

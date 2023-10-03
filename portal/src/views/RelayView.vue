@@ -422,13 +422,16 @@ async function getData(page, relay_name) {
     const res = await axios.get(url);
     let data = {}
     data['relay_name'] = relay_name
-    if (res.data.slice_data !== null) {
+    console.log(res)
+    if (res.data.relay_data !== null) {
       data["sessions"] = res.data.relay_data.num_sessions
-      data["datacenter_name"] = res.data.relay_data.datacenter_name           // todo: needs to be included in relay data
-      data["version"] = res.data.relay_data.version                           // todo: needs to be included in relay data
-      data["uptime"] = nice_uptime(res.data.relay_data.uptime)                // todo: needs to be included in relay data
-      data["latitude"] = res.data.relay_data.latitude                         // todo: needs to be included in relay data
-      data["longitude"] = res.data.relay_data.longitude                       // todo: needs to be included in relay data
+      data["seller_name"] = res.data.relay_data.seller_name
+      data["seller_code"] = res.data.relay_data.seller_code
+      data["datacenter_name"] = res.data.relay_data.datacenter_name
+      data["version"] = res.data.relay_data.version                
+      data["uptime"] = nice_uptime(res.data.relay_data.uptime)     
+      data["latitude"] = res.data.relay_data.latitude              
+      data["longitude"] = res.data.relay_data.longitude            
       data["found"] = true
     }
     return [data, 0, 1]
