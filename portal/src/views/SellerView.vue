@@ -171,7 +171,6 @@ export default {
   },
 
   mounted: function () {
-    console.log('mounted')
     document.getElementById("seller-input").value = document.getElementById("seller-input").defaultValue = this.data['seller']
     document.getElementById("seller-input").addEventListener('keyup', this.onKeyUp);
   },
@@ -199,7 +198,6 @@ export default {
         vm.num_pages = result[2]
         vm.$emit('update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
-        console.log('found = ' + vm.found)
       }
     })
   },

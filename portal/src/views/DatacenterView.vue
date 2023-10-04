@@ -130,7 +130,7 @@ async function getData(page, datacenter) {
     let data = {}
     data.relays = []
     data.datacenter = datacenter
-    const url = process.env.VUE_APP_API_URL + '/portal/datacenter/' + datacenter + '/' + page
+    const url = process.env.VUE_APP_API_URL + '/portal/datacenter/' + datacenter
     const res = await axios.get(url);
     let i = 0
     while (i < res.data.relays.length) {
@@ -182,7 +182,6 @@ export default {
   },
 
   mounted: function () {
-    console.log('mounted')
     document.getElementById("datacenter-input").value = document.getElementById("datacenter-input").defaultValue = this.data['datacenter']
     document.getElementById("datacenter-input").addEventListener('keyup', this.onKeyUp);
   },
@@ -210,7 +209,6 @@ export default {
         vm.num_pages = result[2]
         vm.$emit('update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
-        console.log('found = ' + vm.found)
       }
     })
   },
