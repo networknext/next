@@ -153,6 +153,12 @@ export default {
 
 <style scoped>
 
+.parent {
+  width: 100%;
+  height: 100%;
+  padding-top: 10px;
+}
+
 a {
   color: #2c3e50;
   text-decoration: none;

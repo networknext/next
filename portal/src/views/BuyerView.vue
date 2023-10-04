@@ -580,6 +580,7 @@ export default {
   flex-direction: column;
   gap: 15px;
   padding: 15px;
+  padding-top: 20px;
 }
 
 .bottom {

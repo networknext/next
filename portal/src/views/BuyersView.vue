@@ -150,6 +150,12 @@ export default {
 
 <style scoped>
 
+.parent {
+  width: 100%;
+  height: 100%;
+  padding-top: 10px;
+}
+
 tbody>tr>:nth-child(4){
   font-family: monospace;
 }

@@ -151,6 +151,10 @@ export default {
 
 <style scoped>
 
+.parent {
+  padding-top: 10px;
+}
+
 a {
   color: #2c3e50;
   text-decoration: none;

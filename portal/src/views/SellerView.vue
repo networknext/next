@@ -243,15 +243,6 @@ export default {
 
 <style scoped>
 
-a {
-  color: #2c3e50;
-  text-decoration: none;
-}
-
-tr {
-    white-space: nowrap;
-}
-
 .parent {
   width: 100%;
   height: 100%;
@@ -259,6 +250,16 @@ tr {
   flex-direction: column;
   gap: 15px;
   padding: 15px;
+  padding-top: 20px;
+}
+
+a {
+  color: #2c3e50;
+  text-decoration: none;
+}
+
+tr {
+    white-space: nowrap;
 }
 
 .bottom {
