@@ -269,24 +269,10 @@
 <script>
 
 import axios from "axios";
-import utils from '@/utils.js'
 import update from '@/update.js'
 import uPlot from "uplot";
-import BigNumber from "bignumber.js";
 
-function parse_uint64(value) {
-  const bignum = new BigNumber(value);
-  var hex = bignum.toString(16);
-  while (hex.length<16) {
-    hex = '0' + hex
-  }
-  return hex
-}
-
-function isVisible(element) {
-  var style = window.getComputedStyle(element);
-  return (style.display !== 'none')
-}
+import {parse_uint64, is_visible} from '@/utils.js'
 
 const arr = [
   [
@@ -710,7 +696,7 @@ export default {
 
   name: "App",
 
-  mixins: [utils, update],
+  mixins: [update],
 
   data() {
     return {
@@ -777,7 +763,7 @@ export default {
         this.prevWidth = width;
         if (this.latency) {
           let graph_width = width
-          if (isVisible(document.getElementById('right'))) {
+          if (is_visible(document.getElementById('right'))) {
             graph_width -= 550
           } else {
             graph_width -= 30

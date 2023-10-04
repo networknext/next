@@ -82,24 +82,9 @@
 <script>
 
 import axios from "axios"
-import utils from "@/utils.js"
 import update from "@/update.js"
 
-function nice_uptime(value) {
-  if (isNaN(value)) {
-    return ''
-  }
-  if (value > 86400) {
-    return Math.floor(value/86400).toLocaleString() + "d"
-  }
-  if (value > 3600) {
-    return Math.floor(value/3600).toLocaleString() + "h"
-  }
-  if (value > 60) {
-    return Math.floor(value/60).toLocaleString() + "m"
-  }
-  return value + "s"
-}
+import {nice_uptime} from '@/utils.js'
 
 async function getData(page) {
   try {
@@ -145,7 +130,7 @@ export default {
 
   name: "App",
 
-  mixins: [update, utils],
+  mixins: [update],
 
   data() {
     return {

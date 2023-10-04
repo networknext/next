@@ -105,14 +105,10 @@
 <script>
 
 //import axios from "axios";
-import utils from '@/utils.js'
 import update from '@/update.js'
 import uPlot from "uplot";
 
-function isVisible(element) {
-  var style = window.getComputedStyle(element);
-  return (style.display !== 'none')
-}
+import { is_visible } from '@/utils.js'
 
 const arr = [
   [
@@ -449,7 +445,7 @@ export default {
 
   name: "App",
 
-  mixins: [utils, update],
+  mixins: [update],
 
   data() {
     return {
@@ -513,7 +509,7 @@ export default {
         this.prevWidth = width;
         if (this.total_sessions) {
           let graph_width = width
-          if (isVisible(document.getElementById('right'))) {
+          if (is_visible(document.getElementById('right'))) {
             graph_width -= 550
           } else {
             graph_width -= 30

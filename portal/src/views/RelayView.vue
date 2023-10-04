@@ -113,30 +113,11 @@
 <script>
 
 import axios from "axios";
-import utils from '@/utils.js'
 import update from '@/update.js'
 import uPlot from "uplot";
 
-function nice_uptime(value) {
-  if (isNaN(value)) {
-    return ''
-  }
-  if (value > 86400) {
-    return Math.floor(value/86400).toLocaleString() + "d"
-  }
-  if (value > 3600) {
-    return Math.floor(value/3600).toLocaleString() + "h"
-  }
-  if (value > 60) {
-    return Math.floor(value/60).toLocaleString() + "m"
-  }
-  return value + "s"
-}
-
-function isVisible(element) {
-  var style = window.getComputedStyle(element);
-  return (style.display !== 'none')
-}
+import { nice_uptime } from '@/utils.js'
+import { is_visible } from '@/utils.js'
 
 const arr = [
   [
@@ -446,7 +427,7 @@ export default {
 
   name: "App",
 
-  mixins: [utils, update],
+  mixins: [update],
 
   data() {
     return {
@@ -506,7 +487,7 @@ export default {
         this.prevWidth = width;
         if (this.sessions) {
           let graph_width = width
-          if (isVisible(document.getElementById('right'))) {
+          if (is_visible(document.getElementById('right'))) {
             graph_width -= 550
           } else {
             graph_width -= 30

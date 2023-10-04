@@ -121,18 +121,9 @@
 <script>
 
 import axios from "axios";
-import utils from '@/utils.js'
 import update from '@/update.js'
-import BigNumber from "bignumber.js";
 
-function parse_uint64(value) {
-  const bignum = new BigNumber(value);
-  var hex = bignum.toString(16);
-  while (hex.length<16) {
-    hex = '0' + hex
-  }
-  return hex
-}
+import {parse_uint64} from '@/utils.js'
 
 async function getData(page) {
   try {
@@ -178,7 +169,7 @@ export default {
 
   name: "App",
 
-  mixins: [utils,update],
+  mixins: [update],
 
   data() {
     return {
