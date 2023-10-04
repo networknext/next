@@ -542,6 +542,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(serverSessions, func(i, j int) bool { return serverSessions[i].SessionId < serverSessions[j].SessionId })
 	serverSessions = serverSessions[begin:end]
 	upgradePortalServer(database, serverData, &response.ServerData)
+	response.ServerSessions = make([]PortalSessionData, len(serverSessions))
 	for i := range response.ServerSessions {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
