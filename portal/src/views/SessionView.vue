@@ -52,9 +52,7 @@
           </table>
         </div>
 
-        <div class="spacing"/>
-
-        <div id="latency_graph" class="latency_graph"/>
+        <div id="latency_graph" class="graph"/>
         
         <div id="jitter_graph" class="graph"/>
         
@@ -930,8 +928,8 @@ export default {
           let graph_height = graph_width * 0.333
           if (graph_height > 450) {
             graph_height = 450
-          } else if (graph_height < 250) {
-            graph_height = 250
+          } else if (graph_height < 300) {
+            graph_height = 300
           }
           this.latency.setSize({width: graph_width, height: graph_height})
           this.jitter.setSize({width: graph_width, height: graph_height})
@@ -941,6 +939,16 @@ export default {
         }
       }    
       this.show_legend = right_visible
+      var elements = document.getElementsByClassName('u-legend');
+      let i = 0;
+      while (i < elements.length) {
+        if (this.show_legend) {
+          elements[i].style.display = 'block';
+        } else {
+          elements[i].style.display = 'none';
+        }
+        i++;
+      }
     },
 
     async getData(page, session_id) {
@@ -1019,7 +1027,8 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: v-bind("show_legend ? '35px' : '0px'");
+  gap: v-bind("show_legend ? '35px' : '25px'");
+  padding-top: v-bind("show_legend ? '10px' : '0px'");
 }
 
 .graph {
@@ -1134,16 +1143,6 @@ button {
 a {
   color: #2c3e50;
   text-decoration: none;
-}
-
-.u-legend {
-  visibility: v-bind("show_legend ? 'visible' : 'hidden'");
-}
-
-.spacing {
-  height: 30px; 
-  color: white;
-  flex-shrink: 0;
 }
 
 </style>
