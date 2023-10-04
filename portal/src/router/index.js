@@ -17,7 +17,7 @@ import SellerView from '../views/SellerView.vue'
 const routes = [
   {
     path: '/',
-    name: 'map',
+    name: 'index',
     component: MapView
   },
   {
