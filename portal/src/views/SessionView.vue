@@ -917,6 +917,9 @@ export default {
       const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
+
+        // resize the graphs to match the page width
+
         this.prevWidth = width;
         if (this.latency) {
           let graph_width = width
@@ -928,8 +931,8 @@ export default {
           let graph_height = graph_width * 0.333
           if (graph_height > 450) {
             graph_height = 450
-          } else if (graph_height < 300) {
-            graph_height = 300
+          } else if (graph_height < 250) {
+            graph_height = 250
           }
           this.latency.setSize({width: graph_width, height: graph_height})
           this.jitter.setSize({width: graph_width, height: graph_height})
@@ -938,6 +941,9 @@ export default {
           this.bandwidth.setSize({width: graph_width, height: graph_height})
         }
       }    
+
+      // show legends in desktop, hide them in mobile layout
+
       this.show_legend = right_visible
       var elements = document.getElementsByClassName('u-legend');
       let i = 0;
