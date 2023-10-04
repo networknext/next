@@ -2,46 +2,50 @@
 
 <template>
 
-  <div class="d-xl-none">
-    <table id="buyer_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Buyer Name</th>
-          <th>Live</th>
-          <th>Debug</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
-          <td> {{ item["Live"] }} </td>
-          <td> {{ item["Debug"] }} </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <div class="parent" id="parent">
 
-  <div class="d-none d-xl-block">
-    <table id="buyer_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Buyer Name</th>
-          <th>Buyer Code</th>
-          <th>Live</th>
-          <th>Debug</th>
-          <th>Public Key</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Code"] }} </router-link> </td>
-          <td> {{ item["Live"] }} </td>
-          <td> {{ item["Debug"] }} </td>
-          <td> {{ item["Public Key"] }} </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="d-xl-none">
+      <table id="buyer_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Buyer Name</th>
+            <th>Live</th>
+            <th>Debug</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
+            <td> {{ item["Live"] }} </td>
+            <td> {{ item["Debug"] }} </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-none d-xl-block">
+      <table id="buyer_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Buyer Name</th>
+            <th>Buyer Code</th>
+            <th>Live</th>
+            <th>Debug</th>
+            <th>Public Key</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
+            <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Code"] }} </router-link> </td>
+            <td> {{ item["Live"] }} </td>
+            <td> {{ item["Debug"] }} </td>
+            <td> {{ item["Public Key"] }} </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
 </template>
@@ -112,13 +116,13 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
       }
     })
   },
 
   mounted: function() {
-    this.$emit('view', 'buyers')
+    this.$emit('notify-view', 'buyers')
   },
 
   methods: {

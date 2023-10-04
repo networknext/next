@@ -156,7 +156,7 @@ export default {
   mounted: function () {
     document.getElementById("user-hash-input").value = document.getElementById("user-hash-input").defaultValue = this.data['user_hash']
     document.getElementById("user-hash-input").addEventListener('keyup', this.onKeyUp);
-    this.$emit('view', 'user')
+    this.$emit('notify-view', 'user')
   },
 
   data() {
@@ -187,7 +187,7 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
       }
     })

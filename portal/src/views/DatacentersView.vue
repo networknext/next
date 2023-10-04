@@ -2,46 +2,50 @@
 
 <template>
 
-  <div class="d-xl-none">
-    <table id="datacenter_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Datacenter Name</th>
-          <th>Latitude</th>
-          <th>Longitude</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter Name"] }} </router-link> </td>
-          <td> {{ item["Latitude"] }} </td>
-          <td> {{ item["Longitude"] }} </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <div class="parent" id="parent">
+  
+    <div class="d-xl-none">
+      <table id="datacenter_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Datacenter Name</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter Name"] }} </router-link> </td>
+            <td> {{ item["Latitude"] }} </td>
+            <td> {{ item["Longitude"] }} </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-  <div class="d-none d-xl-block">
-    <table id="datacenter_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Datacenter Name</th>
-          <th>Latitude</th>
-          <th>Longitude</th>
-          <th>Seller</th>
-          <th>Native Name</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter Name"] }} </router-link> </td>
-          <td> {{ item["Latitude"] }} </td>
-          <td> {{ item["Longitude"] }} </td>
-          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller"] }} </router-link> </td>
-          <td> {{ item["Native Name"] }} </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="d-none d-xl-block">
+      <table id="datacenter_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Datacenter Name</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Seller</th>
+            <th>Native Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter Name"] }} </router-link> </td>
+            <td> {{ item["Latitude"] }} </td>
+            <td> {{ item["Longitude"] }} </td>
+            <td> <router-link :to='item["Seller Link"]'> {{ item["Seller"] }} </router-link> </td>
+            <td> {{ item["Native Name"] }} </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
 </template>
@@ -113,13 +117,13 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
       }
     })
   },
 
   mounted: function() {
-    this.$emit('view', 'datacenters')
+    this.$emit('notify-view', 'datacenters')
   },
 
   methods: {

@@ -25,7 +25,7 @@ export default {
   mixins: [update],
 
   mounted: function() {
-    this.$emit('view', 'map')
+    this.$emit('notify-view', 'map')
   },
 
   methods: {
@@ -40,6 +40,7 @@ export default {
         .then(response => response.text())
         .then(data => console.log("got map data (" + data.length + " bytes)"))
         this.updated = true
+        this.$emit('notify-update')
       } catch (error) {
         console.log(error);
       }

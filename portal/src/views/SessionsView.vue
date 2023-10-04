@@ -202,13 +202,13 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
       }
     })
   },
 
   mounted: function() {
-    this.$emit('view', 'sessions')
+    this.$emit('notify-view', 'sessions')
   },
 
   methods: {

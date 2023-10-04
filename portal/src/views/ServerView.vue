@@ -301,7 +301,7 @@ export default {
   mounted: function () {
     document.getElementById("server-input").value = document.getElementById("server-input").defaultValue = this.data['server']
     document.getElementById("server-input").addEventListener('keyup', this.onKeyUp);
-    this.$emit('view', 'server')
+    this.$emit('notify-view', 'server')
   },
 
   data() {
@@ -332,7 +332,7 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
       }
     })

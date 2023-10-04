@@ -173,7 +173,7 @@ export default {
   mounted: function () {
     document.getElementById("seller-input").value = document.getElementById("seller-input").defaultValue = this.data['seller']
     document.getElementById("seller-input").addEventListener('keyup', this.onKeyUp);
-    this.$emit('view', 'seller')
+    this.$emit('notify-view', 'seller')
   },
 
   async beforeRouteEnter (to, from, next) {
@@ -197,7 +197,7 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
       }
     })

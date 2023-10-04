@@ -2,46 +2,50 @@
 
 <template>
 
-  <div class="d-md-none">
-    <table id="servers_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Server Address</th>
-          <th>Current Sessions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td> {{ item["Current Sessions"] }} </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <div class="parent">
 
-  <div class="d-none d-md-block">
-    <table id="servers_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Server Address</th>
-          <th>Current Sessions</th>
-          <th>Uptime</th>
-          <th>SDK Version</th>
-          <th>Buyer</th>
-          <th>Datacenter</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td> {{ item["Current Sessions"] }} </td>
-          <td> {{ item["Uptime"] }} </td>
-          <td> {{ item["SDK Version"] }} </td>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="d-md-none">
+      <table id="servers_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Server Address</th>
+            <th>Current Sessions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td> {{ item["Current Sessions"] }} </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-none d-md-block">
+      <table id="servers_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Server Address</th>
+            <th>Current Sessions</th>
+            <th>Uptime</th>
+            <th>SDK Version</th>
+            <th>Buyer</th>
+            <th>Datacenter</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td> {{ item["Current Sessions"] }} </td>
+            <td> {{ item["Uptime"] }} </td>
+            <td> {{ item["SDK Version"] }} </td>
+            <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
 </template>
@@ -132,13 +136,13 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
       }
     })
   },
 
   mounted: function() {
-    this.$emit('view', 'servers')
+    this.$emit('notify-view', 'servers')
   },
 
   methods: {

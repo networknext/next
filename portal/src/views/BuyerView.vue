@@ -469,7 +469,7 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
       }
     })
@@ -488,7 +488,7 @@ export default {
     document.getElementById("buyer-input").value = document.getElementById("buyer-input").defaultValue = this.data['buyer']
     document.getElementById("buyer-input").addEventListener('keyup', this.onKeyUp);
 
-    this.$emit('view', 'buyer')
+    this.$emit('notify-view', 'buyer')
   },
 
   beforeUnmount() {
@@ -546,7 +546,7 @@ export default {
         this.page = result[1]
         this.num_pages = result[2]
         this.found = result[0]['found']
-        this.$emit('update', this.page, this.num_pages)
+        this.$emit('notify-update', this.page, this.num_pages)
       }
     },
 

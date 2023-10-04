@@ -2,20 +2,24 @@
 
 <template>
 
-  <table id="seller_table" class="table table-striped table-hover">
-    <thead>
-      <tr>
-        <th>Seller Name</th>
-        <th>Seller Code</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="item in data" :key='item'>
-        <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Name"] }} </router-link> </td>
-        <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Code"] }} </router-link> </td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="parent" id="parent">
+
+    <table id="seller_table" class="table table-striped table-hover">
+      <thead>
+        <tr>
+          <th>Seller Name</th>
+          <th>Seller Code</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in data" :key='item'>
+          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Name"] }} </router-link> </td>
+          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Code"] }} </router-link> </td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
 
 </template>
 
@@ -91,7 +95,7 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
       }
     })
   },

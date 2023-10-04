@@ -67,7 +67,7 @@
     </div>
   </nav>
 
-  <router-view id='router' @update="update" @loaded="loaded" @view="view"/>
+  <router-view id='router' @notify-update="onUpdate" @notify-loaded="onLoaded" @notify-view="onView"/>
 
 </template>
 
@@ -101,7 +101,7 @@ export default {
       if (this.current_view != 'map') {
         this.$router.push('/map')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
@@ -109,7 +109,7 @@ export default {
       if (this.current_view != 'sessions') {
         this.$router.push('/sessions')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
@@ -117,7 +117,7 @@ export default {
       if (this.current_view != 'servers') {
         this.$router.push('/servers')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
@@ -125,7 +125,7 @@ export default {
       if (this.current_view != 'relays') {
         this.$router.push('/relays')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
@@ -133,7 +133,7 @@ export default {
       if (this.current_view != 'datacenters') {
         this.$router.push('/datacenters')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
@@ -141,7 +141,7 @@ export default {
       if (this.current_view != 'buyers') {
         this.$router.push('/buyers')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
@@ -149,13 +149,21 @@ export default {
       if (this.current_view != 'sellers') {
         this.$router.push('/sellers')
       } else {
-        this.loaded()
+        this.onLoaded()
       }
     },
 
-    update(page, num_pages) {
+    onUpdate(page, num_pages) {
       this.page = page
       this.num_pages = num_pages
+    },
+
+    onLoaded() {
+      this.visible = false
+    },
+
+    onView(current) {
+      this.current_view = current
     },
 
     prevPage() {
@@ -165,16 +173,6 @@ export default {
     nextPage() {
       emitter.emit('next_page')
     },
-
-    loaded() {
-      console.log('loaded')
-      this.visible = false
-    },
-
-    view(current) {
-      console.log('view -> ' + current)
-      this.current_view = current
-    }
 
   }
 }

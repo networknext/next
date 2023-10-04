@@ -184,7 +184,7 @@ export default {
   mounted: function () {
     document.getElementById("datacenter-input").value = document.getElementById("datacenter-input").defaultValue = this.data['datacenter']
     document.getElementById("datacenter-input").addEventListener('keyup', this.onKeyUp);
-    this.$emit('view', 'datacenter')
+    this.$emit('notify-view', 'datacenter')
   },
 
   async beforeRouteEnter (to, from, next) {
@@ -208,7 +208,7 @@ export default {
         vm.data = result[0]
         vm.page = result[1]
         vm.num_pages = result[2]
-        vm.$emit('update', vm.page, vm.num_pages)
+        vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
       }
     })

@@ -14,15 +14,15 @@ const update = {
     };
   },
 
-  emits: ['update', 'loaded', 'view'],
+  emits: ['notify-update', 'notify-loaded', 'notify-view'],
 
   mounted: function () {
-    this.timer = setInterval(() => { this.update(); this.$emit('update', this.page, this.num_pages) }, 1000)
+    this.timer = setInterval(() => { this.update(); this.$emit('notify-update', this.page, this.num_pages) }, 1000)
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     emitter.on('prev_page', () => this.prevPage() )
     emitter.on('next_page', () => this.nextPage() )
-    this.$emit('loaded')
+    this.$emit('notify-loaded')
   },
 
   beforeUnmount() {
@@ -69,7 +69,7 @@ const update = {
         this.page = result[1]
         this.num_pages = result[2]
       }
-      this.$emit('update', this.page, this.num_pages)
+      this.$emit('notify-update', this.page, this.num_pages)
     },
 
     async nextPage() {
@@ -82,7 +82,7 @@ const update = {
           this.num_pages = result[2]
         }
       }
-      this.$emit('update', this.page, this.num_pages)
+      this.$emit('notify-update', this.page, this.num_pages)
     },
 
     async prevPage() {
@@ -95,7 +95,7 @@ const update = {
           this.num_pages = result[2]
         }
       }
-      this.$emit('update', this.page, this.num_pages)
+      this.$emit('notify-update', this.page, this.num_pages)
     }
   }
 }
