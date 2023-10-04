@@ -55,7 +55,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in data.sessions" :key='item'>
+              <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
                 <td class="green-center" v-if="item.improvement != '--' && item.improvement >= 10"> {{ item.improvement }} ms</td>
                 <td class="orange-center" v-else-if="item.improvement != '--' && item.improvement >= 5"> {{ item.improvement }} ms</td>
@@ -79,7 +79,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in data.sessions" :key='item'>
+              <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
                 <td class="fixed">{{item.user_hash}}</td>
                 <td>{{item.isp}}</td>
@@ -109,7 +109,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in data.sessions" :key='item'>
+              <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
                 <td class="fixed">{{item.user_hash}}</td>
                 <td>{{item.isp}}</td>
@@ -243,8 +243,8 @@ async function getData(page, server) {
     const url = process.env.VUE_APP_API_URL + '/portal/server/' + server + '/' + page
     const res = await axios.get(url);
     let i = 0
-    let data = []
-    console.log(res.data)
+    let data = {}
+    data.server_sessions = []
     if (res.data.server_sessions != null) {
       while (i < res.data.server_sessions.length) {
         const v = res.data.server_sessions[i]
@@ -256,22 +256,22 @@ async function getData(page, server) {
         const platform = getPlatformName(v.platform_type)
         let start_time = new Date(parseInt(v.start_time)).toLocaleString()
         let row = {
-          "Session ID":session_id,
-          "User Hash":user_hash,
-          "ISP":v.isp,
-          "Buyer":v.buyer_name,
-          "Buyer Link":"/buyer/" + v.buyer_code,
-          "Datacenter":v.datacenter_name,
-          "Datacenter Link": "/datacenter/" + v.datacenter_name,
-          "Server Address":v.server_address,
-          "Direct RTT":v.direct_rtt + " ms",
-          "Next RTT":next_rtt,
-          "Improvement":improvement,
-          "Connection":connection,
-          "Platform":platform,
-          "Start Time":start_time,
+          "session_id":session_id,
+          "user_hash":user_hash,
+          "isp":v.isp,
+          "buyer":v.buyer_name,
+          "buyer_link":"/buyer/" + v.buyer_code,
+          "datacenter":v.datacenter_name,
+          "datacenter_link": "/datacenter/" + v.datacenter_name,
+          "server_address":v.server_address,
+          "direct_rtt":v.direct_rtt + " ms",
+          "next_rtt":next_rtt,
+          "improvement":improvement,
+          "connection":connection,
+          "platform":platform,
+          "start_time":start_time,
         }
-        data.push(row)
+        data.server_sessions.push(row)
         i++;
       }
     }

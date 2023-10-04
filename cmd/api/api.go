@@ -264,6 +264,7 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalSessionData struct {
 	SessionId           uint64   `json:"session_id,string"`
+	Score               uint32   `json:"score"`
 	UserHash            uint64   `json:"user_hash,string"`
 	StartTime           uint64   `json:"start_time,string"`
 	ISP                 string   `json:"isp"`
@@ -322,6 +323,7 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 			output.RouteRelayAddresses[i] = relay.PublicAddress.String()
 		}
 	}
+	output.Score = core.GetSessionScore(input.NextRTT > 0, int32(input.DirectRTT), int32(input.NextRTT))
 }
 
 type PortalSessionsResponse struct {
@@ -539,13 +541,14 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerDataResponse{}
 	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverSessions))
-	sort.Slice(serverSessions, func(i, j int) bool { return serverSessions[i].SessionId < serverSessions[j].SessionId })
-	serverSessions = serverSessions[begin:end]
-	upgradePortalServer(database, serverData, &response.ServerData)
 	response.ServerSessions = make([]PortalSessionData, len(serverSessions))
 	for i := range response.ServerSessions {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
+	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId })
+	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].Score < response.ServerSessions[j].Score })
+	response.ServerSessions = response.ServerSessions[begin:end]
+	upgradePortalServer(database, serverData, &response.ServerData)
 	response.OutputPage = outputPage
 	response.NumPages = numPages
 	w.WriteHeader(http.StatusOK)
