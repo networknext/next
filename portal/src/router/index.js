@@ -21,6 +21,11 @@ const routes = [
     component: MapView
   },
   {
+    path: '/map',
+    name: 'map',
+    component: MapView
+  },
+  {
     path: '/sessions/:page?',
     name: 'sessions',
     component: SessionsView,

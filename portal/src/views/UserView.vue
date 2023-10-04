@@ -156,6 +156,7 @@ export default {
   mounted: function () {
     document.getElementById("user-hash-input").value = document.getElementById("user-hash-input").defaultValue = this.data['user_hash']
     document.getElementById("user-hash-input").addEventListener('keyup', this.onKeyUp);
+    this.$emit('view', 'user')
   },
 
   data() {

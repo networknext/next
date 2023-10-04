@@ -483,6 +483,8 @@ export default {
 
     document.getElementById("relay-name-input").value = document.getElementById("relay-name-input").defaultValue = this.data['relay_name']
     document.getElementById("relay-name-input").addEventListener('keyup', this.onKeyUp);
+
+    this.$emit('view', 'relay')
   },
 
   beforeUnmount() {

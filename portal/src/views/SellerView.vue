@@ -173,6 +173,7 @@ export default {
   mounted: function () {
     document.getElementById("seller-input").value = document.getElementById("seller-input").defaultValue = this.data['seller']
     document.getElementById("seller-input").addEventListener('keyup', this.onKeyUp);
+    this.$emit('view', 'seller')
   },
 
   async beforeRouteEnter (to, from, next) {

@@ -118,6 +118,10 @@ export default {
     })
   },
 
+  mounted: function() {
+    this.$emit('view', 'datacenters')
+  },
+
   methods: {
 
     async getData(page) {

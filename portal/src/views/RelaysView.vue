@@ -171,6 +171,10 @@ export default {
     })
   },
 
+  mounted: function() {
+    this.$emit('view', 'relays')
+  },
+
   methods: {
 
     async getData(page) {

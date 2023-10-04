@@ -14,7 +14,7 @@ const update = {
     };
   },
 
-  emits: ['update'],
+  emits: ['update', 'loaded', 'view'],
 
   mounted: function () {
     this.timer = setInterval(() => { this.update(); this.$emit('update', this.page, this.num_pages) }, 1000)
@@ -22,6 +22,7 @@ const update = {
     document.addEventListener('keyup', this.onKeyUp);
     emitter.on('prev_page', () => this.prevPage() )
     emitter.on('next_page', () => this.nextPage() )
+    this.$emit('loaded')
   },
 
   beforeUnmount() {
@@ -100,4 +101,3 @@ const update = {
 }
 
 export default update
-

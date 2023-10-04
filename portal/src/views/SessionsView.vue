@@ -207,6 +207,10 @@ export default {
     })
   },
 
+  mounted: function() {
+    this.$emit('view', 'sessions')
+  },
+
   methods: {
 
     async getData(page) {

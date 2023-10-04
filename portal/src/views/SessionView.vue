@@ -24,6 +24,11 @@
               </tr>
 
               <tr>
+                <td class="bold">Server</td>
+                <td> <router-link :to="'/server/' + this.data['server_address']"> {{ this.data['server_address'] }} </router-link> </td>
+              </tr>
+
+              <tr>
                 <td class="bold">ISP</td>
                 <td> {{ this.data['isp'] }} </td>
               </tr>
@@ -143,6 +148,11 @@
                   <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
                 </tr>
 
+                <tr>
+                  <td class="bold">Server</td>
+                  <td> <router-link :to="'/server/' + this.data['server_address']"> {{ this.data['server_address'] }} </router-link> </td>
+                </tr>
+                
                 <tr>
                   <td class="bold">ISP</td>
                   <td> {{ this.data['isp'] }} </td>
@@ -739,6 +749,8 @@ export default {
 
     document.getElementById("session-id-input").value = document.getElementById("session-id-input").defaultValue = this.data['session_id']
     document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
+
+    this.$emit('view', 'session')
   },
 
   beforeUnmount() {

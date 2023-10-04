@@ -137,6 +137,10 @@ export default {
     })
   },
 
+  mounted: function() {
+    this.$emit('view', 'servers')
+  },
+
   methods: {
 
     async getData(page) {

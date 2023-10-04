@@ -487,6 +487,8 @@ export default {
 
     document.getElementById("buyer-input").value = document.getElementById("buyer-input").defaultValue = this.data['buyer']
     document.getElementById("buyer-input").addEventListener('keyup', this.onKeyUp);
+
+    this.$emit('view', 'buyer')
   },
 
   beforeUnmount() {

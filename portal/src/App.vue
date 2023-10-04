@@ -8,11 +8,11 @@
 
       <div>
         <div class="d-xxl-none">
-          <router-link class="navbar-brand" to="/"><img src="@/assets/n_black.png" style="width: 26.4; height:30px;"/></router-link>
+          <router-link class="navbar-brand" @click="nav_map()" to="/map"><img src="@/assets/n_black.png" style="width: 26.4; height:30px;"/></router-link>
           <SessionCounts/>
         </div>
         <div class="d-none d-xxl-block">
-          <router-link class="navbar-brand" to="/"><img src="@/assets/logo_black.png" style="width: 256.526946075px; height:30px;"/></router-link>
+          <router-link class="navbar-brand" @click="nav_map()" to="/map"><img src="@/assets/logo_black.png" style="width: 256.526946075px; height:30px;"/></router-link>
         </div>
       </div>
 
@@ -21,40 +21,40 @@
         <i class="bi bi-arrow-right-circle material-icons" @click="nextPage()"></i>
       </div>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" @click="visible=!visible">
+      <button class="navbar-toggler" type="button" @click="this.visible=!this.visible">
         <span class="navbar-toggler-icon"></span>
       </button>
 
-      <div class="navbar-collapse" :class="!visible?'collapse':''" id="navbarSupportedContent">
+      <div class="navbar-collapse" :class="!this.visible?'collapse':''" id="navbarSupportedContent">
 
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/" @click="visible=!visible">Map</router-link>
+            <router-link class="nav-link" @click="nav_map()" to="/map">Map</router-link>
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/sessions" @click="visible=!visible">Sessions</router-link>
+            <router-link class="nav-link" @click="nav_sessions()" to="/sessions">Sessions</router-link>
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/servers" @click="visible=!visible">Servers</router-link>
+            <router-link class="nav-link" @click="nav_servers()" to="/servers">Servers</router-link>
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/relays" @click="visible=!visible">Relays</router-link>
+            <router-link class="nav-link" @click="nav_relays()" to="/relays">Relays</router-link>
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/datacenters" @click="visible=!visible">Datacenters</router-link>
+            <router-link class="nav-link" @click="nav_datacenters" to="/datacenters">Datacenters</router-link>
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/buyers" @click="visible=!visible">Buyers</router-link>
+            <router-link class="nav-link" @click="nav_buyers" to="/buyers">Buyers</router-link>
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" to="/sellers" @click="visible=!visible">Sellers</router-link>
+            <router-link class="nav-link" @click="nav_sellers" to="/sellers">Sellers</router-link>
           </li>
 
         </ul>
@@ -67,7 +67,7 @@
     </div>
   </nav>
 
-  <router-view @update="update" />
+  <router-view id='router' @update="update" @loaded="loaded" @view="view"/>
 
 </template>
 
@@ -91,10 +91,67 @@ export default {
       visible: false,
       page: 0,
       num_pages: 1,
+      current_view: 'map',
     }
   },
 
   methods: {
+
+    nav_map() {
+      if (this.current_view != 'map') {
+        this.$router.push('/map')
+      } else {
+        this.loaded()
+      }
+    },
+
+    nav_sessions() {
+      if (this.current_view != 'sessions') {
+        this.$router.push('/sessions')
+      } else {
+        this.loaded()
+      }
+    },
+
+    nav_servers() {
+      if (this.current_view != 'servers') {
+        this.$router.push('/servers')
+      } else {
+        this.loaded()
+      }
+    },
+
+    nav_relays() {
+      if (this.current_view != 'relays') {
+        this.$router.push('/relays')
+      } else {
+        this.loaded()
+      }
+    },
+
+    nav_datacenters() {
+      if (this.current_view != 'datacenters') {
+        this.$router.push('/datacenters')
+      } else {
+        this.loaded()
+      }
+    },
+
+    nav_buyers() {
+      if (this.current_view != 'buyers') {
+        this.$router.push('/buyers')
+      } else {
+        this.loaded()
+      }
+    },
+
+    nav_sellers() {
+      if (this.current_view != 'sellers') {
+        this.$router.push('/sellers')
+      } else {
+        this.loaded()
+      }
+    },
 
     update(page, num_pages) {
       this.page = page
@@ -107,6 +164,16 @@ export default {
 
     nextPage() {
       emitter.emit('next_page')
+    },
+
+    loaded() {
+      console.log('loaded')
+      this.visible = false
+    },
+
+    view(current) {
+      console.log('view -> ' + current)
+      this.current_view = current
     }
 
   }

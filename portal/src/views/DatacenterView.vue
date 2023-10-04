@@ -184,6 +184,7 @@ export default {
   mounted: function () {
     document.getElementById("datacenter-input").value = document.getElementById("datacenter-input").defaultValue = this.data['datacenter']
     document.getElementById("datacenter-input").addEventListener('keyup', this.onKeyUp);
+    this.$emit('view', 'datacenter')
   },
 
   async beforeRouteEnter (to, from, next) {

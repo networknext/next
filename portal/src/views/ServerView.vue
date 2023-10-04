@@ -301,6 +301,7 @@ export default {
   mounted: function () {
     document.getElementById("server-input").value = document.getElementById("server-input").defaultValue = this.data['server']
     document.getElementById("server-input").addEventListener('keyup', this.onKeyUp);
+    this.$emit('view', 'server')
   },
 
   data() {

@@ -96,6 +96,10 @@ export default {
     })
   },
 
+  mounted: function() {
+    this.$emit('view', 'sellers')
+  },
+
   methods: {
 
     async getData(page) {

@@ -24,6 +24,10 @@ export default {
 
   mixins: [update],
 
+  mounted: function() {
+    this.$emit('view', 'map')
+  },
+
   methods: {
 
     async update() {
