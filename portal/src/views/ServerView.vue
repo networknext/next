@@ -193,6 +193,22 @@ function parse_uint64(value) {
   return hex
 }
 
+function nice_uptime(value) {
+  if (isNaN(value)) {
+    return ''
+  }
+  if (value > 86400) {
+    return Math.floor(value/86400).toLocaleString() + "d"
+  }
+  if (value > 3600) {
+    return Math.floor(value/3600).toLocaleString() + "h"
+  }
+  if (value > 60) {
+    return Math.floor(value/60).toLocaleString() + "m"
+  }
+  return value + "s"
+}
+
 function getPlatformName(platformId) {
   switch(platformId) {
   case 1: return "Windows"
@@ -224,47 +240,50 @@ async function getData(page, server) {
     if (page == null) {
       page = 0
     }
-    const url = process.env.VUE_APP_API_URL + '/portal/sessions/' + page
+    const url = process.env.VUE_APP_API_URL + '/portal/server/' + server + '/' + page
     const res = await axios.get(url);
     let i = 0
     let data = []
-    while (i < res.data.sessions.length) {
-      const v = res.data.sessions[i]
-      const session_id = parse_uint64(v.session_id)
-      const user_hash = parse_uint64(v.user_hash)
-      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
-      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
-      const connection = getConnectionName(v.connection_type)
-      const platform = getPlatformName(v.platform_type)
-      let start_time = new Date(parseInt(v.start_time)).toLocaleString()
-      let row = {
-        "Session ID":session_id,
-        "User Hash":user_hash,
-        "ISP":v.isp,
-        "Buyer":v.buyer_name,
-        "Buyer Link":"/buyer/" + v.buyer_code,
-        "Datacenter":v.datacenter_name,
-        "Datacenter Link": "/datacenter/" + v.datacenter_name,
-        "Server Address":v.server_address,
-        "Direct RTT":v.direct_rtt + " ms",
-        "Next RTT":next_rtt,
-        "Improvement":improvement,
-        "Connection":connection,
-        "Platform":platform,
-        "Start Time":start_time,
+    console.log(res.data)
+    if (res.data.server_sessions != null) {
+      while (i < res.data.server_sessions.length) {
+        const v = res.data.server_sessions[i]
+        const session_id = parse_uint64(v.session_id)
+        const user_hash = parse_uint64(v.user_hash)
+        const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
+        const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
+        const connection = getConnectionName(v.connection_type)
+        const platform = getPlatformName(v.platform_type)
+        let start_time = new Date(parseInt(v.start_time)).toLocaleString()
+        let row = {
+          "Session ID":session_id,
+          "User Hash":user_hash,
+          "ISP":v.isp,
+          "Buyer":v.buyer_name,
+          "Buyer Link":"/buyer/" + v.buyer_code,
+          "Datacenter":v.datacenter_name,
+          "Datacenter Link": "/datacenter/" + v.datacenter_name,
+          "Server Address":v.server_address,
+          "Direct RTT":v.direct_rtt + " ms",
+          "Next RTT":next_rtt,
+          "Improvement":improvement,
+          "Connection":connection,
+          "Platform":platform,
+          "Start Time":start_time,
+        }
+        data.push(row)
+        i++;
       }
-      data.push(row)
-      data.found = true
-      data.server = server
-      i++;
     }
+    data.found = true
+    data.server = server
     const outputPage = res.data.output_page
     const numPages = res.data.num_pages
-
-    // todo: mocked
-    data.session_count = 100
     data.datacenter_name = res.data.server_data.datacenter_name
-
+    data.buyer_code = res.data.server_data.buyer_code
+    data.buyer_name = res.data.server_data.buyer_name
+    data.uptime = nice_uptime(res.data.server_data.uptime)
+    data.session_count = res.data.server_data.num_sessions
     return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
