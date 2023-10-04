@@ -511,6 +511,15 @@ let latency_opts = {
       fill: 'rgba(49, 130, 189, 0.1)',
       width: 2,
       label: "Direct",
+      points: {
+        show: (self, si) => {
+          if (is_visible(document.getElementById('right'))) {
+            return self.series[si].width < 100
+          } else {
+            return false
+          }
+        }
+      },
       value: (self, v) => {
         if (v != null) {
           return v + "ms"
@@ -526,6 +535,15 @@ let latency_opts = {
       fill: "rgba(10,100,10,0.1)",
       width: 2,
       label: "Next",
+      points: {
+        show: (self, si) => {
+          if (is_visible(document.getElementById('right'))) {
+            return self.series[si].width < 100
+          } else {
+            return false
+          }
+        }
+      },
       value: (self, v) => {
         if (v != null) {
           return v + "ms"
@@ -541,6 +559,15 @@ let latency_opts = {
       fill: "rgba(100,100,100,0.1)",
       width: 2,
       label: "Predicted",
+      points: {
+        show: (self, si) => {
+          if (is_visible(document.getElementById('right'))) {
+            return self.series[si].width < 100
+          } else {
+            return false
+          }
+        }
+      },
       value: (self, v) => {
         if (v != null) {
           return v + "ms"
@@ -568,10 +595,9 @@ let latency_opts = {
          60 * 30,
          // day divisors
          3600,
-      // ...
       ],
       values: [
-      // tick incr          default           year                             month    day                        hour     min                sec       mode
+        // tick incr        default           year                             month    day                        hour     min                sec       mode
         [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
         [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
         [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
@@ -831,6 +857,7 @@ export default {
       found: false,
       observer: null,
       prevWidth: 0,
+      show_legend: false,
     };
   },
 
@@ -887,12 +914,13 @@ export default {
   methods: {
 
     resize() {
+      const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
         this.prevWidth = width;
         if (this.latency) {
           let graph_width = width
-          if (is_visible(document.getElementById('right'))) {
+          if (right_visible) {
             graph_width -= 550
           } else {
             graph_width -= 30
@@ -910,6 +938,7 @@ export default {
           this.bandwidth.setSize({width: graph_width, height: graph_height})
         }
       }    
+      this.show_legend = right_visible
     },
 
     async getData(page, session_id) {
@@ -956,7 +985,7 @@ export default {
 
 </script>
 
-<style scoped>
+<style>
 
 .fixed {
   font-family: monospace;
@@ -1104,6 +1133,11 @@ button {
 a {
   color: #2c3e50;
   text-decoration: none;
+}
+
+.u-legend {
+  background-color: pink;
+  visibility: v-bind("show_legend ? 'visible' : 'hidden'")
 }
 
 </style>
