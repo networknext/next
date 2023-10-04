@@ -17,7 +17,7 @@ const update = {
   emits: ['notify-update', 'notify-loaded', 'notify-view'],
 
   mounted: function () {
-    this.timer = setInterval(() => { this.update(); this.$emit('notify-update', this.page, this.num_pages) }, 1000)
+    this.timer = setInterval(() => { this.update(); this.updateGraphs(); this.$emit('notify-update', this.page, this.num_pages) }, 1000)
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     emitter.on('prev_page', () => this.prevPage() )
@@ -57,6 +57,10 @@ const update = {
       }
     },
 
+    updateGraphs() {
+      // ...
+    },
+
     async getData() {
       return [null, 0, 1]
     },
@@ -68,6 +72,7 @@ const update = {
         this.data = result[0]
         this.page = result[1]
         this.num_pages = result[2]
+        this.updateGraphs()
       }
       this.$emit('notify-update', this.page, this.num_pages)
     },
@@ -80,6 +85,7 @@ const update = {
           this.data = result[0]
           this.page = result[1]
           this.num_pages = result[2]
+          this.updateGraphs()
         }
       }
       this.$emit('notify-update', this.page, this.num_pages)
@@ -93,6 +99,7 @@ const update = {
           this.data = result[0]
           this.page = result[1]
           this.num_pages = result[2]
+          this.updateGraphs()
         }
       }
       this.$emit('notify-update', this.page, this.num_pages)

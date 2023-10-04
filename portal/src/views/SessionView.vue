@@ -52,15 +52,15 @@
           </table>
         </div>
 
-        <div id="latency" class="graph"/>
+        <div id="latency_graph" class="graph"/>
         
-        <div id="jitter" class="graph"/>
+        <div id="jitter_graph" class="graph"/>
         
-        <div id="packet_loss" class="graph"/>
+        <div id="packet_loss_graph" class="graph"/>
 
-        <div id="out_of_order" class="graph"/>
+        <div id="out_of_order_graph" class="graph"/>
 
-        <div id="bandwidth" class="graph"/>
+        <div id="bandwidth_graph" class="graph"/>
 
         <div class="d-xxl-none">
 
@@ -486,19 +486,102 @@ let latency_opts = {
   width: 0,
   height: 450,
   legend: {
-    show: false
+    show: true,
+  },
+  cursor: {
+    drag: {
+      x: false,
+      y: false,
+    }
   },
   series: [
-    {},
     {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
+      value: (self, v) => {
+        if (v != null) {
+          return new Date(v*1000).toLocaleString()
+        } else if (self._data[0] != null && self._data[0].length > 0) {
+          return new Date((self._data[0][self._data[0].length-1])*1000).toLocaleString()
+        } else {
+          return '--'
+        }
+      }
+    },
+    {
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      width: 2,
+      label: "Direct",
+      value: (self, v) => {
+        if (v != null) {
+          return v + "ms"
+        } else if (self._data[1] != null && self._data[1].length > 0) {
+          return self._data[1][self._data[1].length-1] + 'ms'
+        } else {
+          return '--'
+        }
+      }
+    },
+    {
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      width: 2,
+      label: "Next",
+      value: (self, v) => {
+        if (v != null) {
+          return v + "ms"
+        } else if (self._data[2] != null && self._data[2].length > 0) {
+          return self._data[2][self._data[2].length-1] + 'ms'
+        } else {
+          return '--'
+        }
+      }
+    },
+    {
+      stroke: "orange",
+      fill: "rgba(100,100,100,0.1)",
+      width: 2,
+      label: "Predicted",
+      value: (self, v) => {
+        if (v != null) {
+          return v + "ms"
+        } else if (self._data[3] != null && self._data[3].length > 0) {
+          return self._data[3][self._data[3].length-1] + 'ms'
+        } else {
+          return '--'
+        }
+      }
     }
   ],
   axes: [
-    {},
     {
-      side: 1
+      space: 40,
+      incrs: [
+         // minute divisors (# of secs)
+         10,
+         20,
+         30,
+         // hour divisors
+         60,
+         60 * 5,
+         60 * 10,
+         60 * 15,
+         60 * 30,
+         // day divisors
+         3600,
+      // ...
+      ],
+      values: [
+      // tick incr          default           year                             month    day                        hour     min                sec       mode
+        [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
+        [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+        [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+        [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+        [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+        [1,                 "",               "\n{M}/{D}/{YY} {h}:{mm}{aa}",   null,    "\n{M}/{D} {h}:{mm}{aa}",  null,    "\n{h}:{mm}{aa}",  null,        1],
+      ],
+    },
+    {
+      side: 1,
     }
   ]
 };
@@ -621,24 +704,36 @@ function getConnectionName(connectionType) {
 
 async function getData(page, session_id) {
   try {
+
     if (page == null) {
       page = 0
     }
+  
     const url = process.env.VUE_APP_API_URL + '/portal/session/' + session_id
+  
     const res = await axios.get(url);
+  
     let data = {}
+  
     if (res.data.slice_data !== null) {
-      data['session_id'] = parse_uint64(res.data.session_data.session_id)
-      data["datacenter_name"] = res.data.session_data.datacenter_name
-      data["isp"] = res.data.session_data.isp
-      data["buyer_code"] = res.data.session_data.buyer_code
-      data["buyer_name"] = res.data.session_data.buyer_name
-      data["user_hash"] = parse_uint64(res.data.session_data.user_hash)
-      data["platform"] = getPlatformName(res.data.session_data.platform_type)
-      data["connection"] = getConnectionName(res.data.session_data.connection_type)
-      data["start_time"] = new Date(parseInt(res.data.session_data.start_time)).toLocaleString()
-      data["server_address"] = res.data.session_data.server_address
+
+      // get session data
+
       let session_data = res.data.session_data
+
+      data['session_id'] = parse_uint64(session_data.session_id)
+      data["datacenter_name"] = session_data.datacenter_name
+      data["isp"] = session_data.isp
+      data["buyer_code"] = session_data.buyer_code
+      data["buyer_name"] = session_data.buyer_name
+      data["user_hash"] = session_data.user_hash
+      data["platform"] = getPlatformName(session_data.platform_type)
+      data["connection"] = getConnectionName(session_data.connection_type)
+      data["start_time"] = new Date(parseInt(session_data.start_time)).toLocaleString()
+      data["server_address"] = session_data.server_address
+    
+      // route relays
+
       if (session_data.num_route_relays > 0) {
         let i = 0
         let route_relays = []
@@ -652,6 +747,9 @@ async function getData(page, session_id) {
         }
         data['route_relays'] = route_relays
       }
+
+      // near relays
+  
       let near_relay_data = res.data.near_relay_data
       if (near_relay_data.length > 0) {
         near_relay_data = near_relay_data[near_relay_data.length-1]
@@ -680,15 +778,44 @@ async function getData(page, session_id) {
         })
         data['near_relays'] = near_relays
       }
+
+      // latency graph data
+  
+      let latency_timestamp = []
+      let latency_direct = []
+      let latency_next = []
+      let latency_predicted = []
+      let i = 0
+      while (i < res.data.slice_data.length) {
+        const timestamp = parseInt(res.data.slice_data[i].timestamp)
+        latency_timestamp.push(timestamp)
+        latency_direct.push(res.data.slice_data[i].direct_rtt)
+        latency_next.push(res.data.slice_data[i].next_rtt)
+        latency_predicted.push(res.data.slice_data[i].predicted_rtt)
+        i++
+      }
+
+      data.latency_data = [latency_timestamp, latency_direct, latency_next, latency_predicted]
+
+      // mark data as found
+
       data["found"] = true
     }
+
     return [data, 0, 1]
+
   } catch (error) {
+    
+    // error
+
     console.log(error);
+    
     let data = {}
     data['session_id'] = session_id
     data['found'] = false
+    
     return [data, 0, 1]
+
   }
 }
 
@@ -724,11 +851,11 @@ export default {
 
   mounted: function () {
   
-    this.latency = new uPlot(latency_opts, data, document.getElementById('latency'))
-    this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter'))
-    this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss'))
-    this.out_of_order = new uPlot(out_of_order_opts, data, document.getElementById('out_of_order'))
-    this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
+    this.latency = new uPlot(latency_opts, [[],[],[]], document.getElementById('latency_graph'))
+    this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter_graph'))
+    this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss_graph'))
+    this.out_of_order = new uPlot(out_of_order_opts, data, document.getElementById('out_of_order_graph'))
+    this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth_graph'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -737,6 +864,8 @@ export default {
     document.getElementById("session-id-input").addEventListener('keyup', this.onKeyUp);
 
     this.$emit('notify-view', 'session')
+
+    this.updateGraphs()
   },
 
   beforeUnmount() {
@@ -787,7 +916,9 @@ export default {
       if (session_id == null) {
         session_id = this.$route.params.id
       }
-      return getData(page, session_id)
+      let data = getData(page, session_id)
+      this.updateGraphs()
+      return data
     },
 
     async update() {
@@ -798,6 +929,13 @@ export default {
         this.num_pages = result[2]
         this.found = result[0]['found']
         this.$emit('notify-update', this.page, this.num_pages)
+      }
+      this.updateGraphs()
+    },
+
+    updateGraphs() {
+      if (this.latency != null && this.data.latency_data != null) {
+        this.latency.setData(this.data.latency_data, true)
       }
     },
 
@@ -850,7 +988,7 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 25px;
+  gap: 35px;
   padding-top: 5px;
 }
 
