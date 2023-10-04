@@ -265,7 +265,7 @@ tr {
   flex-direction: column;
   gap: 15px;
   padding: 15px;
-  padding-top: 20px;
+  padding-top: 25px;
 }
 
 .search {
