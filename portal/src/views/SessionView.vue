@@ -52,7 +52,9 @@
           </table>
         </div>
 
-        <div id="latency_graph" class="graph"/>
+        <div class="spacing"/>
+
+        <div id="latency_graph" class="latency_graph"/>
         
         <div id="jitter_graph" class="graph"/>
         
@@ -603,7 +605,7 @@ let latency_opts = {
         [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
         [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
         [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
-        [1,                 "",               "\n{M}/{D}/{YY} {h}:{mm}{aa}",   null,    "\n{M}/{D} {h}:{mm}{aa}",  null,    "\n{h}:{mm}{aa}",  null,        1],
+        [1,                 "",               "{M}/{D}/{YY} {h}:{mm}{aa}",     null,    "{M}/{D} {h}:{mm}{aa}",    null,    "{h}:{mm}{aa}",    null,        1],
       ],
     },
     {
@@ -1017,8 +1019,7 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 35px;
-  padding-top: 5px;
+  gap: v-bind("show_legend ? '35px' : '0px'");
 }
 
 .graph {
@@ -1136,8 +1137,13 @@ a {
 }
 
 .u-legend {
-  background-color: pink;
-  visibility: v-bind("show_legend ? 'visible' : 'hidden'")
+  visibility: v-bind("show_legend ? 'visible' : 'hidden'");
+}
+
+.spacing {
+  height: 30px; 
+  color: white;
+  flex-shrink: 0;
 }
 
 </style>
