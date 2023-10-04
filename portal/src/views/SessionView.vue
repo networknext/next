@@ -483,6 +483,7 @@ const arr = [
 
 let latency_opts = {
   title: "Latency",
+  titleFont: "Arial",
   width: 0,
   height: 450,
   legend: {
@@ -1033,7 +1034,7 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: v-bind("show_legend ? '35px' : '25px'");
+  gap: v-bind("show_legend ? '35px' : '15px'");
   padding-top: v-bind("show_legend ? '10px' : '0px'");
 }
 
@@ -1149,6 +1150,10 @@ button {
 a {
   color: #2c3e50;
   text-decoration: none;
+}
+
+.u-title {
+  font-family: "Montserrat";
 }
 
 </style>
