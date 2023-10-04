@@ -202,7 +202,7 @@ async function getData(page, server) {
         const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
         const connection = getConnectionName(v.connection_type)
         const platform = getPlatformName(v.platform_type)
-        let start_time = new Date(parseInt(v.start_time)).toLocaleString()
+        let start_time = new Date(parseInt(v.start_time*1000)).toLocaleString()
         let row = {
           "session_id":session_id,
           "user_hash":user_hash,

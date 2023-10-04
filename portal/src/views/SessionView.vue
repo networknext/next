@@ -756,7 +756,7 @@ async function getData(page, session_id) {
       data["user_hash"] = session_data.user_hash
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
-      data["start_time"] = new Date(parseInt(session_data.start_time)).toLocaleString()
+      data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()
       data["server_address"] = session_data.server_address
     
       // route relays

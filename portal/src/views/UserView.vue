@@ -87,7 +87,7 @@ async function getData(page, user_hash) {
       const session_id = parse_uint64(v.session_id)
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
-      let start_time = new Date(parseInt(v.start_time)).toLocaleString()
+      let start_time = new Date(parseInt(v.start_time)*1000).toLocaleString()
       let row = {
         "Session ID": session_id,
         "Start Time": start_time,
