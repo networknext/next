@@ -30,17 +30,17 @@
           <tr>
             <th>Session ID</th>
             <th>ISP</th>
-            <th class="right-align">Direct RTT</th>
-            <th class="right-align">Next RTT</th>
-            <th class="right-align">Improvement</th>
+            <th class="right_align">Direct RTT</th>
+            <th class="right_align">Next RTT</th>
+            <th class="right_align">Improvement</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
-            <td class="right-align"> {{ item["Direct RTT"] }} </td>
-            <td class="right-align"> {{ item["Next RTT"] }} </td>
+            <td class="right_align"> {{ item["Direct RTT"] }} </td>
+            <td class="right_align"> {{ item["Next RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -57,9 +57,9 @@
             <th>Session ID</th>
             <th>User Hash</th>
             <th>ISP</th>
-            <th class="right-align">Direct RTT</th>
-            <th class="right-align">Next RTT</th>
-            <th class="right-align">Improvement</th>
+            <th class="right_align">Direct RTT</th>
+            <th class="right_align">Next RTT</th>
+            <th class="right_align">Improvement</th>
           </tr>
         </thead>
         <tbody>
@@ -67,8 +67,8 @@
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
-            <td class="right-align"> {{ item["Direct RTT"] }} </td>
-            <td class="right-align"> {{ item["Next RTT"] }} </td>
+            <td class="right_align"> {{ item["Direct RTT"] }} </td>
+            <td class="right_align"> {{ item["Next RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -88,9 +88,9 @@
             <th>Buyer</th>
             <th>Datacenter</th>
             <th>Server Address</th>
-            <th class="right-align">Direct RTT</th>
-            <th class="right-align">Next RTT</th>
-            <th class="right-align">Improvement</th>
+            <th class="right_align">Direct RTT</th>
+            <th class="right_align">Next RTT</th>
+            <th class="right_align">Improvement</th>
           </tr>
         </thead>
         <tbody>
@@ -101,8 +101,8 @@
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td> <router-link :to='"server/" + item["Server Address"]'> {{ item["Server Address"] }} </router-link> </td>
-            <td class="right-align"> {{ item["Direct RTT"] }} </td>
-            <td class="right-align"> {{ item["Next RTT"] }} </td>
+            <td class="right_align"> {{ item["Direct RTT"] }} </td>
+            <td class="right_align"> {{ item["Next RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -291,6 +291,14 @@ a {
 
 tr {
     white-space: nowrap;
+}
+
+.left_align {
+  text-align: left;
+}
+
+.right_align {
+  text-align: right;
 }
 
 </style>

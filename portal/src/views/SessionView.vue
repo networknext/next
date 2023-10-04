@@ -1155,4 +1155,12 @@ a {
   padding-right: 15px;
 }
 
+.left_align {
+  text-align: left;
+}
+
+.right_align {
+  text-align: right;
+}
+
 </style>

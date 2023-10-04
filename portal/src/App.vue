@@ -234,14 +234,6 @@ html, body {
     font-size: 38px;
 }
 
-.left-align {
-  text-align: left;
-}
-
-.right_align {
-  text-align: right;
-}
-
 </style>
 
 // --------------------------------------------------------------------

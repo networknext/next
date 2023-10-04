@@ -12,7 +12,7 @@
 
     </div>
 
-    <div v-if="this.found" class="bottom">
+    <div v-if="this.found" class="user-bottom">
 
       <div class="d-xxl-none">
     
@@ -289,12 +289,9 @@ tr {
   width: 100%;
 }
 
-.bottom {
+.user-bottom {
+  width: 100%;
   padding: 0px;
-}
-
-.align-left {
-  text-align: left;
 }
 
 </style>
