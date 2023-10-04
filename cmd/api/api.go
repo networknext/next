@@ -152,7 +152,7 @@ func main() {
 
 		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
 		service.Router.HandleFunc("/portal/servers/{page}", isAuthorized(portalServersHandler))
-		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
+		service.Router.HandleFunc("/portal/server/{server_address}/{page}", isAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
 		service.Router.HandleFunc("/portal/relays/{page}", isAuthorized(portalRelaysHandler))
@@ -478,6 +478,28 @@ type PortalServersResponse struct {
 	NumPages   int                `json:"num_pages"`
 }
 
+func upgradePortalServer(database *db.Database, input *portal.ServerData, output *PortalServerData) {
+	output.ServerAddress = input.ServerAddress
+	output.SDKVersion_Major = input.SDKVersion_Major
+	output.SDKVersion_Minor = input.SDKVersion_Minor
+	output.SDKVersion_Patch = input.SDKVersion_Patch
+	output.BuyerId = input.BuyerId
+	output.DatacenterId = input.DatacenterId
+	output.NumSessions = input.NumSessions
+	output.Uptime = input.Uptime
+	if database != nil {
+		buyer := database.GetBuyer(output.BuyerId)
+		if buyer != nil {
+			output.BuyerName = buyer.Name
+			output.BuyerCode = buyer.Code
+		}
+		datacenter := database.GetDatacenter(output.DatacenterId)
+		if datacenter != nil {
+			output.DatacenterName = datacenter.Name
+		}
+	}
+}
+
 func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
@@ -495,25 +517,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	response.NumPages = numPages
 	database := service.Database()
 	for i := range servers {
-		response.Servers[i].ServerAddress = servers[i].ServerAddress
-		response.Servers[i].SDKVersion_Major = servers[i].SDKVersion_Major
-		response.Servers[i].SDKVersion_Minor = servers[i].SDKVersion_Minor
-		response.Servers[i].SDKVersion_Patch = servers[i].SDKVersion_Patch
-		response.Servers[i].BuyerId = servers[i].BuyerId
-		response.Servers[i].DatacenterId = servers[i].DatacenterId
-		response.Servers[i].NumSessions = servers[i].NumSessions
-		response.Servers[i].Uptime = servers[i].Uptime
-		if database != nil {
-			buyer := database.GetBuyer(response.Servers[i].BuyerId)
-			if buyer != nil {
-				response.Servers[i].BuyerName = buyer.Name
-				response.Servers[i].BuyerCode = buyer.Code
-			}
-			datacenter := database.GetDatacenter(response.Servers[i].DatacenterId)
-			if datacenter != nil {
-				response.Servers[i].DatacenterName = datacenter.Name
-			}
-		}
+		upgradePortalServer(database, servers[i], &response.Servers[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -521,15 +525,23 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalServerDataResponse struct {
-	ServerData     *portal.ServerData    `json:"server_data"`
-	ServerSessions []*portal.SessionData `json:"server_sessions"`
+	ServerData     PortalServerData    `json:"server_data"`
+	ServerSessions []PortalSessionData `json:"server_sessions"`
+	OutputPage     int                 `json:"output_page"`
+	NumPages       int                 `json:"num_pages"`
 }
 
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serverAddress := vars["server_address"]
+	database := service.Database()
 	response := PortalServerDataResponse{}
-	response.ServerData, response.ServerSessions = portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
+	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
+	// todo: paginate server sessions	
+	upgradePortalServer(database, serverData, &response.ServerData)
+	for i := range response.ServerSessions {
+		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

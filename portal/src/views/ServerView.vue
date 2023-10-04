@@ -178,12 +178,10 @@
 
 <script>
 
-//import axios from "axios";
+import axios from "axios";
 import utils from '@/utils.js'
 import update from '@/update.js'
 
-// todo
-/*
 import BigNumber from "bignumber.js";
 
 function parse_uint64(value) {
@@ -220,63 +218,54 @@ function getConnectionName(connectionType) {
     return "Unknown"
   }
 }
-*/
 
 async function getData(page, server) {
   try {
     if (page == null) {
       page = 0
     }
-    /*
-    const url = process.env.VUE_APP_API_URL + '/portal/user_sessions/' + user_hash + '/' + page
+    const url = process.env.VUE_APP_API_URL + '/portal/sessions/' + page
     const res = await axios.get(url);
     let i = 0
-    let data = {}
-    data.sessions = []
+    let data = []
     while (i < res.data.sessions.length) {
       const v = res.data.sessions[i]
       const session_id = parse_uint64(v.session_id)
+      const user_hash = parse_uint64(v.user_hash)
+      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
+      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
       let start_time = new Date(parseInt(v.start_time)).toLocaleString()
       let row = {
-        "Session ID": session_id,
-        "Start Time": start_time,
-        "ISP": v.isp,
-        "Connection": connection,
-        "Platform": platform,
-        "Datacenter": v.datacenter_name,
+        "Session ID":session_id,
+        "User Hash":user_hash,
+        "ISP":v.isp,
+        "Buyer":v.buyer_name,
+        "Buyer Link":"/buyer/" + v.buyer_code,
+        "Datacenter":v.datacenter_name,
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
+        "Server Address":v.server_address,
+        "Direct RTT":v.direct_rtt + " ms",
+        "Next RTT":next_rtt,
+        "Improvement":improvement,
+        "Connection":connection,
+        "Platform":platform,
+        "Start Time":start_time,
       }
-      data.sessions.push(row)
+      data.push(row)
       data.found = true
-      data.user_hash = user_hash
+      data.server = server
       i++;
     }
     const outputPage = res.data.output_page
     const numPages = res.data.num_pages
-    return [data, outputPage, numPages]
-    */
 
     // todo: mocked
-    let data = {found: true, server: server, sessions: [], session_count: 16, buyer_name: "Raspberry", buyer_code: "raspberry", "datacenter_name": "google.iowa.1", uptime: "10m"}
-    let i = 0
-    while (i<16) {
-      let row = {
-        "session_id": 0x12341234,
-        "user_hash": 0x11111111,
-        "isp": "Google",
-        "connection": "Wi-Fi",
-        "platform": "Linux",
-        "direct_rtt": 100,
-        "next_rtt": 10,
-        "improvement": 90,
-      }
-      data.sessions.push(row)
-      i++
-    }
-    return [data, 0, 1]    
+    data.session_count = 100
+    data.datacenter_name = res.data.server_data.datacenter_name
 
+    return [data, outputPage,numPages]
   } catch (error) {
     console.log(error);
     let data = {found: false, server: server}
