@@ -182,57 +182,65 @@ export default {
 
 <style lang="scss">
 
-  @import url('https://fonts.googleapis.com/css?family=Montserrat:400,700');
+@import url('https://fonts.googleapis.com/css?family=Montserrat:400,700');
 
-  .navbar a{
-    font-family: "Montserrat" !important;
-    font-weight: 10;
-    font-size: 18px;
-    -webkit-user-drag: none;
-  }
+.navbar a{
+  font-family: "Montserrat" !important;
+  font-weight: 10;
+  font-size: 18px;
+  -webkit-user-drag: none;
+}
 
-  html, body {
-    height: 100%;
-    overflow: hidden;
-    font-family: "Montserrat" !important;
-    font-weight: 400;
-    font-style: normal;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-user-drag: none;
-    font-size: 85%;
-  }
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: "Montserrat" !important;
+  font-weight: 400;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-drag: none;
+  font-size: 85%;
+}
 
-  #app {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    overflow: auto;
-    text-align: center;
-    color: #2c3e50;
-    margin-top: 0px;
-    padding-top: 45px;
-    width: 100%;
-  }
+#app {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: auto;
+  text-align: center;
+  color: #2c3e50;
+  margin-top: 0px;
+  padding-top: 45px;
+  width: 100%;
+}
 
-  .arrows {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: center;
-    height: 10px;
-  }
+.arrows {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+}
 
-  .table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
-    background-color: #439EFF33;
-  }
+.table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
+  background-color: #439EFF33;
+}
 
-  .material-icons {
-      color: #bbbbbbcc;
-      font-size: 38px;
-  }
+.material-icons {
+    color: #bbbbbbcc;
+    font-size: 38px;
+}
+
+.left-align {
+  text-align: left;
+}
+
+.right_align {
+  text-align: right;
+}
 
 </style>
 

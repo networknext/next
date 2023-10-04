@@ -14,8 +14,8 @@
 
       <div id="left" class="left">
 
-        <div class="d-xxl-none">
-          <table id="session_table" class="table table-striped" style="vertical-align: middle;">
+        <div class="d-xxl-none session-info-mobile">
+          <table id="session_table" class="table table-striped" style="vertical-align: middle; padding: 15px;">
             <tbody>
 
               <tr>
@@ -604,7 +604,7 @@ let latency_opts = {
         [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
         [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
         [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
-        [10,                "",               "{M}/{D}/{YY}\n{h}:{mm}{aa}",     null,    "{M}/{D}\n{h}:{mm}{aa}",  null,    "{h}:{mm}{aa}",    null,        1],
+        [10,                "",               "{h}:{mm}{aa}\n{M}/{D}/{YY}",     null,    "{h}:{mm}{aa}\n{M}/{D}",  null,    "{h}:{mm}{aa}",    null,        1],
       ],
     },
     {
@@ -925,13 +925,13 @@ export default {
         if (this.latency) {
           let graph_width = width
           if (right_visible) {
-            graph_width -= 550
+            graph_width -= 540
           } else {
-            graph_width -= 30
+            graph_width -= 10
           }
-          let graph_height = graph_width * 0.333
-          if (graph_height > 450) {
-            graph_height = 450
+          let graph_height = graph_width * 0.4
+          if (graph_height > 500) {
+            graph_height = 500
           } else if (graph_height < 250) {
             graph_height = 250
           }
@@ -1014,7 +1014,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  padding: 15px;
   padding-top: 20px;
 }
 
@@ -1034,13 +1033,13 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: v-bind("show_legend ? '35px' : '15px'");
+  gap: v-bind("show_legend ? '35px' : '20px'");
   padding-top: v-bind("show_legend ? '10px' : '0px'");
 }
 
 .graph {
-  width: 100%;
   height: 100%;
+  overflow: visible;
 }
 
 .right {
@@ -1052,6 +1051,7 @@ export default {
   padding: 0px;
   max-width: 500px;
   min-width: 300px;
+  padding-right: v-bind("show_legend ? '15px' : '0px'");
 }
 
 .search {
@@ -1066,6 +1066,8 @@ export default {
   font-weight: 1;
   font-size: 18px;
   padding: 0px;
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 .text {
@@ -1121,14 +1123,6 @@ export default {
   padding-top: 25px;
 }
 
-.left_align {
-  text-align: left;
-}
-
-.right_align {
-  text-align: right;
-}
-
 .header {
   font-weight: bold;
   font-size: 18px;
@@ -1154,6 +1148,11 @@ a {
 
 .u-title {
   font-family: "Montserrat";
+}
+
+.session-info-mobile {
+  padding-left: 15px;
+  padding-right: 15px;
 }
 
 </style>

@@ -54,7 +54,7 @@ export default {
 
 // ----------------------------------------------------
 
-<style lang="scss">
+<style lang="scss" scoped>
 
 h1 {
   margin: 75px 0 25px;

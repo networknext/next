@@ -201,10 +201,6 @@ export default {
   font-family: monospace;
 }
 
-.right {
-  text-align: right;
-}
-
 .green {
   color: #11AA44;
   font-weight: bold;
