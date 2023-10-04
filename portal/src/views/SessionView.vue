@@ -927,7 +927,7 @@ export default {
           if (right_visible) {
             graph_width -= 540
           } else {
-            graph_width -= 5
+            graph_width += 5
           }
           let graph_height = graph_width * 0.4
           if (graph_height > 500) {
@@ -1039,7 +1039,7 @@ export default {
 
 .graph {
   height: 100%;
-  overflow: visible;
+  margin-left: -10px;
 }
 
 .right {
