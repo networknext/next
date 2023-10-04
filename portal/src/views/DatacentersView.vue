@@ -5,7 +5,7 @@
   <div class="parent" id="parent">
   
     <div class="d-xl-none">
-      <table id="datacenter_table" class="table table-striped table-hover">
+      <table id="datacenter_table" class="table table-striped">
         <thead>
           <tr>
             <th>Datacenter Name</th>

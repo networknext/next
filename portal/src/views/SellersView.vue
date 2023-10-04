@@ -4,20 +4,44 @@
 
   <div class="parent" id="parent">
 
-    <table id="seller_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Seller Name</th>
-          <th>Seller Code</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Name"] }} </router-link> </td>
-          <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Code"] }} </router-link> </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="d-xxl-none">
+
+      <table id="seller_table" class="table table-striped">
+        <thead>
+          <tr>
+            <th>Seller Name</th>
+            <th>Seller Code</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Name"] }} </router-link> </td>
+            <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Code"] }} </router-link> </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+    <div class="d-none d-xxl-block">
+
+      <table id="seller_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Seller Name</th>
+            <th>Seller Code</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Name"] }} </router-link> </td>
+            <td> <router-link :to='item["Seller Link"]'> {{ item["Seller Code"] }} </router-link> </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
 
   </div>
 
@@ -101,7 +125,7 @@ export default {
   },
 
   mounted: function() {
-    this.$emit('view', 'sellers')
+    this.$emit('notify-view', 'sellers')
   },
 
   methods: {

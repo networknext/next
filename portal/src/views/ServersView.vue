@@ -5,7 +5,7 @@
   <div class="parent">
 
     <div class="d-md-none">
-      <table id="servers_table" class="table table-striped table-hover">
+      <table id="servers_table" class="table table-striped">
         <thead>
           <tr>
             <th>Server Address</th>

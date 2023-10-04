@@ -5,7 +5,7 @@
   <div class="parent" id="parent">
 
     <div class="d-md-none">
-      <table id="relays_table" class="table table-striped table-hover">
+      <table id="relays_table" class="table table-striped">
         <thead>
           <tr>
             <th>Relay Name</th>

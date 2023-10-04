@@ -5,7 +5,7 @@
   <div class="parent">
   
     <div class="d-md-none">
-      <table id="sessions_table" class="table table-striped table-hover">
+      <table id="sessions_table" class="table table-striped">
         <thead>
           <tr>
             <th>Session ID</th>

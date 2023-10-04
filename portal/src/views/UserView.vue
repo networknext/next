@@ -16,7 +16,7 @@
 
       <div class="d-xxl-none">
     
-        <table id="sessions_table" class="table table-striped table-hover" style="table-layout:auto;">
+        <table id="sessions_table" class="table table-striped" style="table-layout:auto;">
           <thead>
             <tr>
               <th style="width: 15%">Start Time</th>

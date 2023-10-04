@@ -5,7 +5,7 @@
   <div class="parent" id="parent">
 
     <div class="d-xl-none">
-      <table id="buyer_table" class="table table-striped table-hover">
+      <table id="buyer_table" class="table table-striped">
         <thead>
           <tr>
             <th>Buyer Name</th>
@@ -24,7 +24,7 @@
     </div>
 
     <div class="d-none d-xl-block">
-      <table id="buyer_table" class="table table-striped table-hover">
+      <table id="buyer_table" class="table table-striped">
         <thead>
           <tr>
             <th>Buyer Name</th>

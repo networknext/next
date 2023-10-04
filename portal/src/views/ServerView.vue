@@ -47,7 +47,7 @@
         </div>
 
         <div class="d-md-none">
-          <table id="sessions_table" class="table table-striped table-hover" style="table-layout:auto;">
+          <table id="sessions_table" class="table table-striped" style="table-layout:auto;">
             <thead>
               <tr>
                 <th style="width: 50%">Session ID</th>
