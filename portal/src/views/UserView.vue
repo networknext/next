@@ -306,8 +306,9 @@ tr {
   height: 35px;
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   align-items: center;
+  align-content: center;
+  justify-content: space-between;
   gap: 15px;
   font-weight: 1;
   font-size: 18px;
@@ -318,12 +319,11 @@ tr {
   width: 100%;
   height: 35px;
   font-size: 15px;
-  padding: 5px;
+  padding-left: 5px;
 }
 
 .test-text {
-  width: 10px;
-  flex-grow: 1;
+  width: 100%;
 }
 
 .bottom {
