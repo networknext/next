@@ -334,8 +334,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	response := PortalSessionsResponse{}
 	sessionIds := topSessionsWatcher.GetTopSessions()
@@ -369,8 +368,7 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	response := PortalUserSessionsResponse{}
 	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, 1000)
@@ -504,8 +502,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	serverAddresses := topServersWatcher.GetTopServers()
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverAddresses))
@@ -534,14 +531,22 @@ type PortalServerDataResponse struct {
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	serverAddress := vars["server_address"]
+	page, err := strconv.ParseInt(vars["page"], 10, 64)
+	if err != nil {
+		page = 0
+	}
 	database := service.Database()
 	response := PortalServerDataResponse{}
 	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
-	// todo: paginate server sessions	
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverSessions))
+	sort.Slice(serverSessions, func(i, j int) bool { return serverSessions[i].SessionId < serverSessions[j].SessionId })
+	serverSessions = serverSessions[begin:end]
 	upgradePortalServer(database, serverData, &response.ServerData)
 	for i := range response.ServerSessions {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
+	response.OutputPage = outputPage
+	response.NumPages = numPages
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -615,8 +620,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
 	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
@@ -677,8 +681,7 @@ func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	database := service.Database()
 	if database == nil {
@@ -728,8 +731,7 @@ func portalSellersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	database := service.Database()
 	if database == nil {
@@ -762,8 +764,7 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 	sellerCode := vars["seller_code"]
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	database := service.Database()
 	if database == nil {
@@ -821,8 +822,7 @@ func portalDatacentersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		page = 0
 	}
 	database := service.Database()
 	if database == nil {
