@@ -30,7 +30,7 @@
 
               <tr>
                 <td class="bold">Accelerated</td>
-                <td> {{ this.data.accelerated }}% </td>
+                <td> {{ this.data.accelerated_percent }}% </td>
               </tr>
 
               <tr>
@@ -71,7 +71,7 @@
 
               <tr>
                 <td class="bold">Accelerated</td>
-                <td> {{ this.data.accelerated }}% </td>
+                <td> {{ this.data.accelerated_percent }}% </td>
               </tr>
 
               <tr>
@@ -104,7 +104,7 @@
 
 <script>
 
-//import axios from "axios";
+import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
@@ -409,20 +409,26 @@ const data = arr;
 
 async function getData(page, buyer) {
   try {
-    /*
     if (page == null) {
       page = 0
     }
     const url = process.env.VUE_APP_API_URL + '/portal/buyer/' + buyer
     const res = await axios.get(url);
     let data = {}
-    if (res.data.slice_data !== null) {
-      data['buyer'] = buyer
+    data['buyer'] = buyer
+    if (res.data.buyer_data !== null) {
+      data['live'] = res.data.buyer_data.live
+      data['debug'] = res.data.buyer_data.debug
+      data['total_sessions'] = res.data.buyer_data.total_sessions
+      data['next_sessions'] = res.data.buyer_data.next_sessions
+      data['accelerated_percent'] = '0'
+      if (res.data.buyer_data.total_sessions > 0) {
+        data['accelerated_percent'] = res.data.buyer_data.next_sessions / res.data.buyer_data.total_sessions
+      }
       data["found"] = true
     }
-    */
-    let data = {}
-    data['buyer'] = buyer
+    
+    /*
     // todo: this is mocked
     data['total_sessions'] = 1000
     data['next_sessions'] = 500
@@ -431,6 +437,7 @@ async function getData(page, buyer) {
     data['live'] = true
     data['debug'] = true
     data['found'] = true
+    */
     return [data, 0, 1]
   } catch (error) {
     console.log(error);
