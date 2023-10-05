@@ -30,6 +30,7 @@
             <th>Live</th>
             <th>Debug</th>
             <th>Public Key</th>
+            <th>Server Count</th>
             <th>Accelerated Sessions</th>
           </tr>
         </thead>
@@ -40,6 +41,7 @@
             <td> {{ item["Live"] }} </td>
             <td> {{ item["Debug"] }} </td>
             <td> {{ item["Public Key"] }} </td>
+            <td> {{ item["Server Count"] }} </td>
             <td> {{ item["Next Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
           </tr>
         </tbody>
