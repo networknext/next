@@ -63,4 +63,12 @@ function getConnectionName(connectionType) {
   }
 }
 
-export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName};
+function getAcceleratedPercent(nextSessions, totalSessions) {
+  let acceleratedPercent = 0.0
+  if (totalSessions > 0) {
+    acceleratedPercent = ((nextSessions / totalSessions)*100.0).toFixed(1)
+  }
+  return acceleratedPercent
+}
+
+export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getAcceleratedPercent};

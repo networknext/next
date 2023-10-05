@@ -9,15 +9,13 @@
         <thead>
           <tr>
             <th>Buyer Name</th>
-            <th>Live</th>
-            <th>Debug</th>
+            <th>Accelerated Sessions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
-            <td> {{ item["Live"] }} </td>
-            <td> {{ item["Debug"] }} </td>
+            <td> {{ item["Next Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
           </tr>
         </tbody>
       </table>
@@ -32,6 +30,7 @@
             <th>Live</th>
             <th>Debug</th>
             <th>Public Key</th>
+            <th>Accelerated Sessions</th>
           </tr>
         </thead>
         <tbody>
@@ -41,6 +40,7 @@
             <td> {{ item["Live"] }} </td>
             <td> {{ item["Debug"] }} </td>
             <td> {{ item["Public Key"] }} </td>
+            <td> {{ item["Next Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
           </tr>
         </tbody>
       </table>
@@ -56,6 +56,8 @@
 
 import axios from "axios";
 import update from "@/update.js"
+
+import { getAcceleratedPercent } from '@/utils.js'
 
 async function getData(page) {
   try {
@@ -74,7 +76,10 @@ async function getData(page) {
         "Buyer Link":"/buyer/" + v.code,
         "Live":v.live,
         "Debug":v.debug,
-        "Public Key":v.public_key
+        "Public Key":v.public_key,
+        "Total Sessions":v.total_sessions,
+        "Next Sessions":v.next_sessions,
+        "Accelerated Percent":getAcceleratedPercent(v.next_sessions, v.total_sessions),
       }
       data.push(row)
       i++;

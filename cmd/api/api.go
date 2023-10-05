@@ -795,30 +795,45 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer) {
 }
 
 func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
+	
 	vars := mux.Vars(r)
+	
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
+	
 	database := service.Database()
 	if database == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	
 	database_response := database.GetBuyers()
+
 	buyers := database_response.Buyers
-	sort.Slice(buyers, func(i, j int) bool { return buyers[i].Name < buyers[j].Name })
-	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(buyers))
-	buyers = buyers[begin:end]
+
 	response := PortalBuyersResponse{}
 	response.Buyers = make([]PortalBuyer, len(buyers))
 	for i := range buyers {
 		upgradePortalBuyer(&buyers[i], &response.Buyers[i])
 	}
+
+	sort.Slice(response.Buyers, func(i, j int) bool { return response.Buyers[i].Name < response.Buyers[j].Name })
+	sort.SliceStable(response.Buyers, func(i, j int) bool { return response.Buyers[i].TotalSessions > response.Buyers[j].TotalSessions })
+
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(buyers))
+
+	response.Buyers = response.Buyers[begin:end]
+
 	response.OutputPage = outputPage
+
 	response.NumPages = numPages
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 

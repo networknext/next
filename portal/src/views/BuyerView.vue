@@ -108,7 +108,7 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import { is_visible } from '@/utils.js'
+import { is_visible, getAcceleratedPercent } from '@/utils.js'
 
 const arr = [
   [
@@ -421,10 +421,7 @@ async function getData(page, buyer) {
       data['debug'] = res.data.buyer_data.debug
       data['total_sessions'] = res.data.buyer_data.total_sessions
       data['next_sessions'] = res.data.buyer_data.next_sessions
-      data['accelerated_percent'] = '0.0'
-      if (res.data.buyer_data.total_sessions > 0) {
-        data['accelerated_percent'] = ((res.data.buyer_data.next_sessions / res.data.buyer_data.total_sessions)*100.0).toFixed(1)
-      }
+      data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
       data['servers'] = 0
       data['found'] = true
     }
