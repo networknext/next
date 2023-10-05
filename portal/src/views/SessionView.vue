@@ -199,17 +199,17 @@
             <tbody>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
                 <td class="right_align"> </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
-                <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
                 <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
@@ -481,37 +481,74 @@ const arr = [
   ]
 ];
 
-let latency_opts = {
-  title: "Latency",
-  titleFont: "Arial",
-  width: 0,
-  height: 450,
-  legend: {
-    show: true,
-  },
-  cursor: {
-    drag: {
-      x: false,
-      y: false,
-    }
-  },
-  series: [
-    {
-      value: (self, v) => {
-        if (v != null) {
-          return new Date(v*1000).toLocaleString()
-        } else if (self._data[0] != null && self._data[0].length > 0) {
-          return new Date((self._data[0][self._data[0].length-1])*1000).toLocaleString()
-        } else {
-          return '--'
-        }
+function custom_graph(config) {
+  let opts = {
+    title: config.title,
+    width: 0,
+    height: 0,
+    legend: {
+      show: true,
+    },
+    cursor: {
+      drag: {
+        x: false,
+        y: false,
       }
     },
-    {
-      stroke: 'rgb(49, 130, 189)',
+    series: [
+      {
+        value: (self, v) => {
+          if (v != null) {
+            return new Date(v*1000).toLocaleString()
+          } else if (self._data[0] != null && self._data[0].length > 0) {
+            return new Date((self._data[0][self._data[0].length-1])*1000).toLocaleString()
+          } else {
+            return '--'
+          }
+        }
+      }
+    ],
+    axes: [
+      {
+        space: 40,
+        incrs: [
+           // minute divisors (# of secs)
+           10,
+           20,
+           30,
+           // hour divisors
+           60,
+           60 * 5,
+           60 * 10,
+           60 * 15,
+           60 * 30,
+           // day divisors
+           3600,
+        ],
+        values: [
+          // tick incr        default           year                             month    day                        hour     min                sec       mode
+          [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
+          [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+          [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+          [10,                "",               "{M}/{D}/{YY}",                  null,    "{h}:{mm}{aa}\n{M}/{D}",  null,    "{h}:{mm}{aa}",    null,        1],
+        ],
+      },
+      {
+        side: 1,
+      }
+    ]
+  };
+
+  let i = 0
+  while (i < config.series.length) {
+    let units = config.series[i].units
+    opts.series.push({
+      stroke: config.series[i].stroke,
       fill: 'rgba(49, 130, 189, 0.1)',
       width: 2,
-      label: "Direct",
+      label: config.series[i].name,
       points: {
         show: (self, si) => {
           if (is_visible(document.getElementById('right'))) {
@@ -523,95 +560,42 @@ let latency_opts = {
       },
       value: (self, v) => {
         if (v != null) {
-          return v + "ms"
-        } else if (self._data[1] != null && self._data[1].length > 0) {
-          return self._data[1][self._data[1].length-1] + 'ms'
+          return v + units
+        } else if (self._data[i+1] != null && self._data[i+1].length > 0) {
+          return self._data[i+1][self._data[i+1].length-1] + units
         } else {
           return '--'
         }
       }
+    })
+    i++
+  }
+  return opts
+}
+
+let latency_opts = custom_graph({
+  title: "Latency",
+  series: [
+    { 
+      name: 'Direct',
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(10,100,10,0.1)',
+      units: 'ms',
     },
     {
+      name: 'Next',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
-      width: 2,
-      label: "Next",
-      points: {
-        show: (self, si) => {
-          if (is_visible(document.getElementById('right'))) {
-            return self.series[si].width < 100
-          } else {
-            return false
-          }
-        }
-      },
-      value: (self, v) => {
-        if (v != null) {
-          return v + "ms"
-        } else if (self._data[2] != null && self._data[2].length > 0) {
-          return self._data[2][self._data[2].length-1] + 'ms'
-        } else {
-          return '--'
-        }
-      }
+      units: 'ms',
     },
     {
+      name: 'Predicted',
       stroke: "orange",
       fill: "rgba(100,100,100,0.1)",
-      width: 2,
-      label: "Predicted",
-      points: {
-        show: (self, si) => {
-          if (is_visible(document.getElementById('right'))) {
-            return self.series[si].width < 100
-          } else {
-            return false
-          }
-        }
-      },
-      value: (self, v) => {
-        if (v != null) {
-          return v + "ms"
-        } else if (self._data[3] != null && self._data[3].length > 0) {
-          return self._data[3][self._data[3].length-1] + 'ms'
-        } else {
-          return '--'
-        }
-      }
-    }
-  ],
-  axes: [
-    {
-      space: 40,
-      incrs: [
-         // minute divisors (# of secs)
-         10,
-         20,
-         30,
-         // hour divisors
-         60,
-         60 * 5,
-         60 * 10,
-         60 * 15,
-         60 * 30,
-         // day divisors
-         3600,
-      ],
-      values: [
-        // tick incr        default           year                             month    day                        hour     min                sec       mode
-        [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
-        [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
-        [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
-        [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
-        [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
-        [10,                "",               "{M}/{D}/{YY}",                  null,    "{h}:{mm}{aa}\n{M}/{D}",  null,    "{h}:{mm}{aa}",    null,        1],
-      ],
+      units: "ms",
     },
-    {
-      side: 1,
-    }
   ]
-};
+})
 
 let jitter_opts = {
   title: "Jitter",
