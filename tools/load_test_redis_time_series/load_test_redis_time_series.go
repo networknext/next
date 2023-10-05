@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"sync"
 
 	"github.com/networknext/next/modules/envvar"
+	"github.com/networknext/next/modules/common"
 )
 
 type RedisTimeSeriesConfig struct {
@@ -63,6 +65,38 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 	return publisher, nil
 }
 
+func (publisher *RedisTimeSeriesPublisher) Publish(keys []string, values []float64) {
+	timestamp := uint64(time.Now().Unix())
+	_ = timestamp
+	// todo
+	fmt.Printf("%d: publish %v\n", timestamp, values)
+}
+
+// -------------------------------------------------------------------------------
+
+type RedisTimeSeriesWatcher struct {
+	config RedisTimeSeriesConfig
+	keys []string
+	mutex sync.Mutex
+}
+
+func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesConfig, keys[] string) (*RedisTimeSeriesWatcher, error) {
+
+	watcher := &RedisTimeSeriesWatcher{}
+
+	watcher.config = config
+	watcher.keys = keys
+
+	// todo: create watcher thread
+
+	return watcher, nil 
+}
+
+func (watcher *RedisTimeSeriesWatcher) GetTimeSeries() (keys []string, timestamps []uint64, values [][]float64) {
+	// todo
+	return watcher.keys, []uint64{}, [][]float64{}
+}
+
 // -------------------------------------------------------------------------------
 
 func RunPublisherThread(ctx context.Context, redisHostname string) {
@@ -78,6 +112,10 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 		panic("could not create redis time series publisher")
 	}
 
+	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
+
+	values := make([]float64, len(keys))
+
 	go func() {
 
 		ticker := time.NewTicker(time.Millisecond)
@@ -90,9 +128,10 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 				return
 
 			case <-ticker.C:
-
-				// todo
-				_ = publisher
+				for i := range values {
+					values[i] = float64(common.RandomInt(0,1000000))/10000.0
+				}
+				publisher.Publish(keys, values)
 			}
 		}
 
@@ -102,6 +141,17 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 	fmt.Printf("watcher\n")
+
+	config := RedisTimeSeriesConfig{
+		RedisHostname: redisHostname,
+	}
+
+	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
+
+	watcher, err := CreateRedisTimeSeriesWatcher(context.Background(), config, keys)
+	if err != nil {
+		panic("could not create redis time series watcher")
+	}
 
 	go func() {
 
@@ -118,6 +168,10 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 			case <-ticker.C:
 				fmt.Printf("iteration %d\n", iteration)
+				keys, timestamps, values := watcher.GetTimeSeries()
+				_ = keys
+				_ = timestamps 
+				_ = values
 				iteration++
 			}
 		}
