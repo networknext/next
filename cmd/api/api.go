@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"context"
 	// "strings"
 
 	"github.com/networknext/next/modules/admin"
@@ -42,6 +43,7 @@ var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
 var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
+var timeSeriesWatcher *common.RedisTimeSeriesWatcher
 
 func main() {
 
@@ -139,6 +141,42 @@ func main() {
 		buyerDataWatcher = portal.CreateBuyerDataWatcher(sessionCruncherURL)
 
 		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
+
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisPortalHostname,
+			RedisCluster:  redisPortalCluster,
+		}
+
+		var err error
+		timeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series watcher: %v", err)
+			os.Exit(1)
+		}
+
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(time.Second)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					database := service.Database()
+					if database == nil {
+						break
+					}
+					keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count"}
+					buyerIds := database.GetBuyerIds()
+					for i := range buyerIds {
+						keys = append(keys, fmt.Sprintf("%016x_total_sessions", buyerIds[i]))
+						keys = append(keys, fmt.Sprintf("%016x_next_sessions", buyerIds[i]))
+						keys = append(keys, fmt.Sprintf("%016x_accelerated_percent", buyerIds[i]))
+						keys = append(keys, fmt.Sprintf("%016x_server_count", buyerIds[i]))
+					}
+					timeSeriesWatcher.SetKeys(keys)
+				}
+			}
+		}(service.Context)
 
 		if len(redisPortalCluster) > 0 {
 			redisPortalClient = common.CreateRedisClusterClient(redisPortalCluster)

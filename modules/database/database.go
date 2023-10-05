@@ -407,6 +407,16 @@ func (database *Database) GetBuyerByCode(buyerCode string) *Buyer {
 	return database.BuyerCodeMap[buyerCode]
 }
 
+func (database *Database) GetBuyerIds() []uint64 {
+	buyerIds := make([]uint64, len(database.BuyerMap))
+	index := 0
+	for k := range database.BuyerMap {
+		buyerIds[index] = k
+		index++
+	}
+	return buyerIds
+}
+
 func (database *Database) GetSeller(sellerId uint64) *Seller {
 	return database.SellerMap[sellerId]
 }

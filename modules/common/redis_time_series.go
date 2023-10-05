@@ -150,6 +150,7 @@ type RedisTimeSeriesWatcher struct {
 	config     RedisTimeSeriesConfig
 	mutex      sync.Mutex
 	keys       []string
+	keyToIndex map[string]int
 	timestamps []uint64
 	values     [][]float64
 }
@@ -179,10 +180,25 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 
 	watcher.config = config
 	watcher.keys = []string{}
+	watcher.keyToIndex = make(map[string]int)
 
-	// todo: create watcher thread
+	go watcher.watcherThread(ctx)
 
 	return watcher, nil
+}
+
+func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+
+		case <-ctx.Done():
+			return
+
+		case <-ticker.C:
+			// todo: pump time series from redis
+		}
+	}
 }
 
 func (watcher *RedisTimeSeriesWatcher) SetKeys(keys []string) {
@@ -191,13 +207,13 @@ func (watcher *RedisTimeSeriesWatcher) SetKeys(keys []string) {
 	watcher.mutex.Unlock()
 }
 
-func (watcher *RedisTimeSeriesWatcher) GetTimeSeries() (keys []string, timestamps []uint64, values [][]float64) {
+func (watcher *RedisTimeSeriesWatcher) GetTimeSeries() (keyToIndex map[string]int, timestamps []uint64, values [][]float64) {
 	watcher.mutex.Lock()
-	keys = watcher.keys
+	keyToIndex = watcher.keyToIndex
 	timestamps = watcher.timestamps
 	values = watcher.values
 	watcher.mutex.Unlock()
-	return keys, timestamps, values
+	return keyToIndex, timestamps, values
 }
 
 // -------------------------------------------------------------------------------
