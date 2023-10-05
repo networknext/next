@@ -40,6 +40,7 @@ var serverCruncherURL string
 
 var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
+var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
 
 func main() {
@@ -134,6 +135,8 @@ func main() {
 		topSessionsWatcher = portal.CreateTopSessionsWatcher(sessionCruncherURL)
 
 		topServersWatcher = portal.CreateTopServersWatcher(serverCruncherURL)
+
+		buyerDataWatcher = portal.CreateBuyerDataWatcher(sessionCruncherURL)
 
 		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
 
@@ -545,7 +548,9 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	for i := range response.ServerSessions {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
-	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId })
+	sort.Slice(response.ServerSessions, func(i, j int) bool {
+		return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId
+	})
 	sort.SliceStable(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].Score < response.ServerSessions[j].Score })
 	response.ServerSessions = response.ServerSessions[begin:end]
 	upgradePortalServer(database, serverData, &response.ServerData)
@@ -675,10 +680,39 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+type PortalBuyer struct {
+	Id            uint64           `json:"id,string"`
+	Name          string           `json:"name"`
+	Code          string           `json:"code"`
+	Live          bool             `json:"live"`
+	Debug         bool             `json:"debug"`
+	PublicKey     []byte           `json:"public_key"`
+	RouteShader   core.RouteShader `json:"route_shader"`
+	TotalSessions int              `json:"total_sessions"`
+	NextSessions  int              `json:"next_sessions"`
+	ServerCount   int              `json:"server_count"`
+}
+
 type PortalBuyersResponse struct {
-	Buyers     []db.Buyer `json:"buyers"`
-	OutputPage int        `json:"output_page"`
-	NumPages   int        `json:"num_pages"`
+	Buyers     []PortalBuyer `json:"buyers"`
+	OutputPage int           `json:"output_page"`
+	NumPages   int           `json:"num_pages"`
+}
+
+func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer) {
+	output.Id = input.Id
+	output.Name = input.Name
+	output.Code = input.Code
+	output.Live = input.Live
+	output.Debug = input.Debug
+	output.PublicKey = input.PublicKey
+	output.RouteShader = input.RouteShader
+	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions := buyerDataWatcher.GetBuyerData()
+	index, exists := buyerIdToIndex[output.Id]
+	if exists {
+		output.TotalSessions = int(buyerTotalSessions[index])
+		output.NextSessions = int(buyerNextSessions[index])
+	}
 }
 
 func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
@@ -698,7 +732,10 @@ func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(buyers))
 	buyers = buyers[begin:end]
 	response := PortalBuyersResponse{}
-	response.Buyers = buyers
+	response.Buyers = make([]PortalBuyer, len(buyers))
+	for i := range buyers {
+		upgradePortalBuyer(&buyers[i], &response.Buyers[i])
+	}
 	response.OutputPage = outputPage
 	response.NumPages = numPages
 	w.WriteHeader(http.StatusOK)
@@ -707,7 +744,7 @@ func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalBuyerDataResponse struct {
-	BuyerData *db.Buyer `json:"buyer_data"`
+	BuyerData PortalBuyer `json:"buyer_data"`
 }
 
 func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -716,7 +753,10 @@ func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 	database := service.Database()
 	response := PortalBuyerDataResponse{}
 	if database != nil {
-		response.BuyerData = database.GetBuyerByCode(buyerCode)
+		buyer := database.GetBuyerByCode(buyerCode)
+		if buyer != nil {
+			upgradePortalBuyer(buyer, &response.BuyerData)
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

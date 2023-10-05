@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
-	"sort"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -130,7 +130,7 @@ func TestThread() {
 			batch := make([]SessionUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
-				batch[i].buyerId = uint64(common.RandomInt(0,9))
+				batch[i].buyerId = uint64(common.RandomInt(0, 9))
 				batch[i].next = uint8(i % 2)
 				batch[i].latitude = rand.Float32()
 				batch[i].longitude = rand.Float32()

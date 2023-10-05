@@ -1100,11 +1100,12 @@ func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
 const BuyerSessionDataVersion = uint64(0)
 
 type BuyerDataWatcher struct {
-	sessionUrl    string
-	mutex         sync.RWMutex
-	buyerIds      []uint64
-	nextSessions  []uint32
-	totalSessions []uint32
+	sessionUrl     string
+	mutex          sync.RWMutex
+	buyerIds       []uint64
+	buyerIdToIndex map[uint64]int
+	nextSessions   []uint32
+	totalSessions  []uint32
 }
 
 func CreateBuyerDataWatcher(sessionCruncherURL string) *BuyerDataWatcher {
@@ -1145,9 +1146,11 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 			encoding.ReadUint32(data[:], &index, &numBuyers)
 			if numBuyers > constants.MaxBuyers {
 				core.Error("too many buyers. got %d, max is %d", numBuyers, constants.MaxBuyers)
+				break
 			}
 
 			buyerIds := make([]uint64, numBuyers)
+			buyerIdToIndex := make(map[uint64]int, len(buyerIds))
 			totalSessions := make([]uint32, numBuyers)
 			nextSessions := make([]uint32, numBuyers)
 
@@ -1155,6 +1158,12 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 				encoding.ReadUint64(data[:], &index, &buyerIds[i])
 				encoding.ReadUint32(data[:], &index, &totalSessions[i])
 				encoding.ReadUint32(data[:], &index, &nextSessions[i])
+				buyerIdToIndex[buyerIds[i]] = i
+			}
+
+			if len(buyerIdToIndex) != len(buyerIds) {
+				core.Error("duplicate buyer id detected")
+				break
 			}
 
 			watcher.mutex.Lock()
@@ -1166,9 +1175,10 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 	}
 }
 
-func (watcher *BuyerDataWatcher) GetBuyerData() (buyerIds []uint64, totalSessions []uint32, nextSessions []uint32) {
+func (watcher *BuyerDataWatcher) GetBuyerData() (buyerIds []uint64, buyerIdToIndex map[uint64]int, totalSessions []uint32, nextSessions []uint32) {
 	watcher.mutex.RLock()
 	buyerIds = watcher.buyerIds
+	buyerIdToIndex = watcher.buyerIdToIndex
 	totalSessions = watcher.totalSessions
 	nextSessions = watcher.nextSessions
 	watcher.mutex.RUnlock()
