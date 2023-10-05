@@ -1650,6 +1650,7 @@ func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverAddress
 	serverData.Parse(redis_server_data)
 
 	if serverData.ServerAddress != serverAddress {
+		core.Error("server address mismatch: got '%s', expected '%s'", serverData.ServerAddress, serverAddress)
 		return nil, nil
 	}
 
@@ -1685,6 +1686,9 @@ func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverAddress
 	sort.Slice(serverSessionIds, func(i, j int) bool { return serverSessionIds[i] < serverSessionIds[j] })
 
 	serverSessionData := GetSessionList(ctx, redisClient, serverSessionIds)
+
+	// todo
+	core.Log("got server data successfully")
 
 	return &serverData, serverSessionData
 }

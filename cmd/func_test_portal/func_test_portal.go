@@ -204,7 +204,7 @@ func RunSessionInsertThreads(threadCount int) {
 					sessionData := portal.GenerateRandomSessionData()
 
 					sessionData.SessionId = sessionId
-
+					sessionData.BuyerId = uint64(common.RandomInt(0,9))
 					sessionData.ServerAddress = "127.0.0.1:50000"
 
 					sliceData := portal.GenerateRandomSliceData()
@@ -313,6 +313,13 @@ func Get(url string, object interface{}) {
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	fmt.Printf("status code is %d\n", response.StatusCode)
+
+	if response.StatusCode != 200 {
+		fmt.Sprintf("warning: status code %d for %s", response.StatusCode, url)
+		return
 	}
 
 	body, error := ioutil.ReadAll(response.Body)

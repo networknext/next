@@ -149,24 +149,31 @@ func main() {
 		redisRelayBackendClient = common.CreateRedisClient(redisRelayBackendHostname)
 
 		service.Router.HandleFunc("/portal/session_counts", isAuthorized(portalSessionCountsHandler))
+		service.Router.HandleFunc("/portal/sessions", isAuthorized(portalSessionsHandler))
 		service.Router.HandleFunc("/portal/sessions/{page}", isAuthorized(portalSessionsHandler))
+		service.Router.HandleFunc("/portal/user_sessions/{user_hash}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{page}", isAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isAuthorized(portalSessionDataHandler))
 
 		service.Router.HandleFunc("/portal/server_count", isAuthorized(portalServerCountHandler))
 		service.Router.HandleFunc("/portal/servers/{page}", isAuthorized(portalServersHandler))
+		service.Router.HandleFunc("/portal/server/{server_address}", isAuthorized(portalServerDataHandler))
 		service.Router.HandleFunc("/portal/server/{server_address}/{page}", isAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
+		service.Router.HandleFunc("/portal/relays", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relays/{page}", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
+		service.Router.HandleFunc("/portal/buyers", isAuthorized(portalBuyersHandler))
 		service.Router.HandleFunc("/portal/buyers/{page}", isAuthorized(portalBuyersHandler))
 		service.Router.HandleFunc("/portal/buyer/{buyer_code}", isAuthorized(portalBuyerDataHandler))
 
+		service.Router.HandleFunc("/portal/sellers", isAuthorized(portalSellersHandler))
 		service.Router.HandleFunc("/portal/sellers/{page}", isAuthorized(portalSellersHandler))
 		service.Router.HandleFunc("/portal/seller/{seller_code}/{page}", isAuthorized(portalSellerDataHandler))
 
+		service.Router.HandleFunc("/portal/datacenters", isAuthorized(portalDatacentersHandler))
 		service.Router.HandleFunc("/portal/datacenters/{page}", isAuthorized(portalDatacentersHandler))
 		service.Router.HandleFunc("/portal/datacenter/{datacenter_name}", isAuthorized(portalDatacenterDataHandler))
 
@@ -365,29 +372,49 @@ type PortalUserSessionsResponse struct {
 }
 
 func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	userHash, err := strconv.ParseUint(vars["user_hash"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
+
 	response := PortalUserSessionsResponse{}
+
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, 1000)
+
+	if sessions == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessions))
 	sessions = sessions[begin:end]
 	response.Sessions = make([]PortalSessionData, len(sessions))
 	response.OutputPage = outputPage
 	response.NumPages = numPages
-	database := service.Database()
+
 	for i := range response.Sessions {
 		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
 	}
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -428,22 +455,39 @@ type PortalSessionDataResponse struct {
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	sessionId, err := strconv.ParseUint(vars["session_id"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	response := PortalSessionDataResponse{}
-	sessionData, sliceData, nearRelayData := portal.GetSessionData(service.Context, redisPortalClient, sessionId)
-	if sessionData != nil {
-		database := service.Database()
-		upgradePortalSessionData(database, sessionData, &response.SessionData)
-		response.SliceData = sliceData
-		upgradeNearRelayData(database, nearRelayData, &response.NearRelayData)
+
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	response := PortalSessionDataResponse{}
+
+	sessionData, sliceData, nearRelayData := portal.GetSessionData(service.Context, redisPortalClient, sessionId)
+	if sessionData == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	upgradePortalSessionData(database, sessionData, &response.SessionData)
+
+	response.SliceData = sliceData
+
+	upgradeNearRelayData(database, nearRelayData, &response.NearRelayData)
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -534,30 +578,54 @@ type PortalServerDataResponse struct {
 }
 
 func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	serverAddress := vars["server_address"]
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
+
 	database := service.Database()
-	response := PortalServerDataResponse{}
+	if database == nil {
+		core.Error("database is nil")
+		w.WriteHeader(http.StatusInternalServerError)
+		return		
+	}
+
 	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
+	if serverData == nil {
+		core.Error("server data not found")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverSessions))
+
+	response := PortalServerDataResponse{}
+	
 	response.ServerSessions = make([]PortalSessionData, len(serverSessions))
+
 	for i := range response.ServerSessions {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
-	sort.Slice(response.ServerSessions, func(i, j int) bool {
-		return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId
-	})
+
+	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId})
+
 	sort.SliceStable(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].Score < response.ServerSessions[j].Score })
+
 	response.ServerSessions = response.ServerSessions[begin:end]
+
 	upgradePortalServer(database, serverData, &response.ServerData)
+
 	response.OutputPage = outputPage
 	response.NumPages = numPages
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -655,26 +723,39 @@ type PortalRelayDataResponse struct {
 }
 
 func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	relayName := vars["relay_name"]
+
 	database := service.Database()
-	response := PortalRelayDataResponse{}
-	if database != nil {
-		relay := database.GetRelayByName(relayName)
-		if relay == nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		relayAddress := relay.PublicAddress.String()
-		relayData := portal.GetRelayData(service.Context, redisPortalClient, relayAddress)
-		if relayData == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		upgradePortalRelayData(database, relayData, &response.RelayData)
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	relay := database.GetRelayByName(relayName)
+	if relay == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	response := PortalRelayDataResponse{}
+
+	relayAddress := relay.PublicAddress.String()
+
+	relayData := portal.GetRelayData(service.Context, redisPortalClient, relayAddress)
+	if relayData == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	upgradePortalRelayData(database, relayData, &response.RelayData)
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -749,17 +830,29 @@ type PortalBuyerDataResponse struct {
 
 func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	buyerCode := vars["buyer_code"]
+
 	database := service.Database()
-	response := PortalBuyerDataResponse{}
-	if database != nil {
-		buyer := database.GetBuyerByCode(buyerCode)
-		if buyer != nil {
-			upgradePortalBuyer(buyer, &response.BuyerData)
-		}
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	response := PortalBuyerDataResponse{}
+
+	buyer := database.GetBuyerByCode(buyerCode)
+	if buyer == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	upgradePortalBuyer(buyer, &response.BuyerData)
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -804,17 +897,28 @@ type PortalSellerDataResponse struct {
 }
 
 func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
+	
 	vars := mux.Vars(r)
+	
 	sellerCode := vars["seller_code"]
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
+	
 	database := service.Database()
 	if database == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	response := PortalSellerDataResponse{}
+	response.SellerData = database.GetSellerByCode(sellerCode)
+	if response.SellerData == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
 	rawRelays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
 	relays := make([]portal.RelayData, 0, len(rawRelays))
@@ -828,18 +932,19 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
 	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
 	relays = relays[begin:end]
-	response := PortalSellerDataResponse{}
+
 	response.Relays = make([]PortalRelayData, len(relays))
 	for i := range response.Relays {
 		upgradePortalRelayData(database, &relays[i], &response.Relays[i])
 	}
+
 	response.OutputPage = outputPage
 	response.NumPages = numPages
-	if database != nil {
-		response.SellerData = database.GetSellerByCode(sellerCode)
-	}
+
 	w.WriteHeader(http.StatusOK)
+	
 	w.Header().Set("Content-Type", "application/json")
+	
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -907,51 +1012,65 @@ type PortalDatacenterDataResponse struct {
 }
 
 func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	datacenterName := vars["datacenter_name"]
+
+	database := service.Database()
+	if database == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	datacenter := database.GetDatacenterByName(datacenterName)
+	if datacenter != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	response := PortalDatacenterDataResponse{}
 	response.OutputPage = 0
 	response.NumPages = 1
-	database := service.Database()
-	if database != nil {
-		datacenter := database.GetDatacenterByName(datacenterName)
-		if datacenter != nil {
-			response.DatacenterData.Id = datacenter.Id
-			response.DatacenterData.Name = datacenter.Name
-			response.DatacenterData.Native = datacenter.Native
-			response.DatacenterData.Latitude = datacenter.Latitude
-			response.DatacenterData.Longitude = datacenter.Longitude
-			response.DatacenterData.SellerId = datacenter.SellerId
-			seller := database.GetSeller(datacenter.SellerId)
-			if seller != nil {
-				response.DatacenterData.SellerName = seller.Name
-				response.DatacenterData.SellerCode = seller.Code
-			}
 
-			datacenterRelayIds := database.GetDatacenterRelays(datacenter.Id)
-			datacenterRelays := make([]*db.Relay, len(datacenterRelayIds))
-			for i := range datacenterRelayIds {
-				datacenterRelays[i] = database.GetRelay(datacenterRelayIds[i])
-			}
+	response.DatacenterData.Id = datacenter.Id
+	response.DatacenterData.Name = datacenter.Name
+	response.DatacenterData.Native = datacenter.Native
+	response.DatacenterData.Latitude = datacenter.Latitude
+	response.DatacenterData.Longitude = datacenter.Longitude
+	response.DatacenterData.SellerId = datacenter.SellerId
 
-			datacenterRelayAddresses := make([]string, len(datacenterRelays))
-			for i := range datacenterRelays {
-				datacenterRelayAddresses[i] = datacenterRelays[i].PublicAddress.String()
-			}
-
-			relays := portal.GetRelayList(service.Context, redisPortalClient, datacenterRelayAddresses)
-
-			sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
-			sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
-
-			response.Relays = make([]PortalRelayData, len(datacenterRelays))
-			for i := range datacenterRelays {
-				upgradePortalRelayData(database, relays[i], &response.Relays[i])
-			}
-		}
+	seller := database.GetSeller(datacenter.SellerId)
+	if seller != nil {
+		response.DatacenterData.SellerName = seller.Name
+		response.DatacenterData.SellerCode = seller.Code
 	}
+
+	datacenterRelayIds := database.GetDatacenterRelays(datacenter.Id)
+	datacenterRelays := make([]*db.Relay, len(datacenterRelayIds))
+	for i := range datacenterRelayIds {
+		datacenterRelays[i] = database.GetRelay(datacenterRelayIds[i])
+	}
+
+	datacenterRelayAddresses := make([]string, len(datacenterRelays))
+	for i := range datacenterRelays {
+		datacenterRelayAddresses[i] = datacenterRelays[i].PublicAddress.String()
+	}
+
+	relays := portal.GetRelayList(service.Context, redisPortalClient, datacenterRelayAddresses)
+
+	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
+
+	response.Relays = make([]PortalRelayData, len(datacenterRelays))
+	for i := range datacenterRelays {
+		upgradePortalRelayData(database, relays[i], &response.Relays[i])
+	}
+
 	w.WriteHeader(http.StatusOK)
+
 	w.Header().Set("Content-Type", "application/json")
+
 	json.NewEncoder(w).Encode(response)
 }
 
