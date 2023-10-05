@@ -1168,6 +1168,7 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 
 			watcher.mutex.Lock()
 			watcher.buyerIds = buyerIds
+			watcher.buyerIdToIndex = buyerIdToIndex
 			watcher.totalSessions = totalSessions
 			watcher.nextSessions = nextSessions
 			watcher.mutex.Unlock()

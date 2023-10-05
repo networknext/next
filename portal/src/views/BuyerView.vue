@@ -425,8 +425,11 @@ async function getData(page, buyer) {
       if (res.data.buyer_data.total_sessions > 0) {
         data['accelerated_percent'] = ((res.data.buyer_data.next_sessions / res.data.buyer_data.total_sessions)*100.0).toFixed(1)
       }
-      data["found"] = true
+      data['servers'] = 0
+      data['found'] = true
     }
+
+    console.log(res.data.buyer_data)
     
     /*
     // todo: this is mocked
