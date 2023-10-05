@@ -44,6 +44,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sessionData.SessionId = sessionId
 					sessionData.UserHash = userHash
+					sessionData.BuyerId = uint64(common.RandomInt(0,9))
 
 					sliceData := portal.GenerateRandomSliceData()
 
@@ -150,6 +151,8 @@ func RunPollThread(ctx context.Context) {
 
 		topServersWatcher := portal.CreateTopServersWatcher(ServerCruncherURL)
 
+		buyerDataWatcher := portal.CreateBuyerDataWatcher(SessionCruncherURL)
+
 		mapDataWatcher := portal.CreateMapDataWatcher(SessionCruncherURL)
 
 		for {
@@ -166,6 +169,14 @@ func RunPollThread(ctx context.Context) {
 			sessions := topSessionsWatcher.GetSessions(begin, end)
 
 			fmt.Printf("sessions: %d of %d/%d\n", len(sessions), nextSessions, totalSessions)
+
+			// ------------------------------------------------------------------------------------------
+
+			buyerIds, buyerTotalSessions, buyerNextSessions := buyerDataWatcher.GetBuyerData()
+			fmt.Printf("buyers = %v\n", buyerIds)
+			for i := range buyerIds {
+				fmt.Printf("buyer %d => %d/%d\n", buyerIds[i], buyerNextSessions[i], buyerTotalSessions[i])
+			}
 
 			// ------------------------------------------------------------------------------------------
 

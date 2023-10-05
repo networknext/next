@@ -720,6 +720,7 @@ const NumBuckets = 1000
 
 type SessionCruncherEntry struct {
 	SessionId uint64
+	BuyerId   uint64
 	Score     uint32
 	Next      uint8
 	Latitude  float32
@@ -811,7 +812,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += int(batchSize[i]) * (8 + 1 + 4 + 4)
+		size += int(batchSize[i]) * (8 + 8 + 1 + 4 + 4)
 	}
 
 	data := make([]byte, size)
@@ -824,6 +825,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 		encoding.WriteUint32(data[:], &index, uint32(batchSize[i]))
 		for j := range batch[i] {
 			encoding.WriteUint64(data[:], &index, batch[i][j].SessionId)
+			encoding.WriteUint64(data[:], &index, batch[i][j].BuyerId)
 			encoding.WriteUint8(data[:], &index, batch[i][j].Next)
 			encoding.WriteFloat32(data[:], &index, batch[i][j].Latitude)
 			encoding.WriteFloat32(data[:], &index, batch[i][j].Longitude)
@@ -914,6 +916,7 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	entry := SessionCruncherEntry{
 		SessionId: sessionId,
+		BuyerId:   sessionData.BuyerId,
 		Score:     score,
 		Latitude:  sessionData.Latitude,
 		Longitude: sessionData.Longitude,
@@ -1090,6 +1093,86 @@ func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
 	sessions := watcher.topSessions
 	watcher.mutex.RUnlock()
 	return sessions
+}
+
+// --------------------------------------------------------------------------------------------------
+
+const BuyerSessionDataVersion = uint64(0)
+
+type BuyerDataWatcher struct {
+	sessionUrl    string
+	mutex         sync.RWMutex
+	buyerIds      []uint64
+	nextSessions  []uint32
+	totalSessions []uint32
+}
+
+func CreateBuyerDataWatcher(sessionCruncherURL string) *BuyerDataWatcher {
+	watcher := BuyerDataWatcher{}
+	watcher.sessionUrl = sessionCruncherURL + "/buyer_data"
+	go watcher.watchBuyerData()
+	return &watcher
+}
+
+func (watcher *BuyerDataWatcher) watchBuyerData() {
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+
+		case <-ticker.C:
+
+			data := getBinary(watcher.sessionUrl)
+
+			if data == nil {
+				break
+			}
+
+			if len(data) < 8+4 {
+				core.Error("buyer data response is too small")
+				break
+			}
+
+			index := 0
+
+			var version uint64
+			encoding.ReadUint64(data[:], &index, &version)
+			if version != BuyerSessionDataVersion {
+				core.Error("bad session buyer data version. expected %d, got %d", version, BuyerSessionDataVersion)
+				break
+			}
+
+			var numBuyers uint32
+			encoding.ReadUint32(data[:], &index, &numBuyers)
+			if numBuyers > constants.MaxBuyers {
+				core.Error("too many buyers. got %d, max is %d", numBuyers, constants.MaxBuyers)
+			}
+
+			buyerIds := make([]uint64, numBuyers)
+			totalSessions := make([]uint32, numBuyers)
+			nextSessions := make([]uint32, numBuyers)
+
+			for i := 0; i < int(numBuyers); i++ {
+				encoding.ReadUint64(data[:], &index, &buyerIds[i])
+				encoding.ReadUint32(data[:], &index, &totalSessions[i])
+				encoding.ReadUint32(data[:], &index, &nextSessions[i])
+			}
+
+			watcher.mutex.Lock()
+			watcher.buyerIds = buyerIds
+			watcher.totalSessions = totalSessions
+			watcher.nextSessions = nextSessions
+			watcher.mutex.Unlock()
+		}
+	}
+}
+
+func (watcher *BuyerDataWatcher) GetBuyerData() (buyerIds []uint64, totalSessions []uint32, nextSessions []uint32) {
+	watcher.mutex.RLock()
+	buyerIds = watcher.buyerIds
+	totalSessions = watcher.totalSessions
+	nextSessions = watcher.nextSessions
+	watcher.mutex.RUnlock()
+	return
 }
 
 // --------------------------------------------------------------------------------------------------

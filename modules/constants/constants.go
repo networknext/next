@@ -5,6 +5,8 @@ const (
 	MinorVersion = 0
 	PatchVersion = 0
 
+	MaxBuyers = 1024
+
 	MaxRelays        = 1000
 	NumRelayCounters = 128
 	RelayTimeout     = 10

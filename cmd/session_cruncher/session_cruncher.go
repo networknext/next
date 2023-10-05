@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"sort"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -21,10 +22,13 @@ const SessionBatchVersion = uint64(0)
 
 const TopSessionsVersion = uint64(0)
 
+const BuyerStatsVersion = uint64(0)
+
 const MapPointsVersion = uint64(0)
 
 type SessionUpdate struct {
 	sessionId uint64
+	buyerId   uint64
 	next      uint8
 	latitude  float32
 	longitude float32
@@ -43,6 +47,8 @@ type Bucket struct {
 	sessionUpdateChannel chan []SessionUpdate
 	totalSessions        *SortedSet
 	nextSessions         *SortedSet
+	buyerTotalSessions   map[uint64]map[uint64]bool
+	buyerNextSessions    map[uint64]map[uint64]bool
 	mapEntries           map[uint64]MapEntry
 }
 
@@ -51,6 +57,15 @@ var buckets []Bucket
 var topSessionsMutex sync.Mutex
 var topSessions *TopSessions
 var topSessionsData []byte
+
+type BuyerStats struct {
+	buyerIds      []uint64
+	totalSessions []uint32
+	nextSessions  []uint32
+}
+
+var buyerDataMutex sync.Mutex
+var buyerData []byte
 
 type MapEntry struct {
 	latitude  float32
@@ -79,6 +94,7 @@ func main() {
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
+	service.Router.HandleFunc("/buyer_data", buyerDataHandler).Methods("GET")
 	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
 
 	buckets = make([]Bucket, NumBuckets)
@@ -87,15 +103,19 @@ func main() {
 		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
 		buckets[i].nextSessions = NewSortedSet()
 		buckets[i].totalSessions = NewSortedSet()
+		buckets[i].buyerTotalSessions = make(map[uint64]map[uint64]bool)
+		buckets[i].buyerNextSessions = make(map[uint64]map[uint64]bool)
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
 	}
 
 	UpdateTopSessions(&TopSessions{})
 
+	UpdateBuyerData(&BuyerStats{})
+
 	UpdateMapData(&MapPoints{})
 
-	// go TestThread()
+	//go TestThread()
 
 	go TopSessionsThread()
 
@@ -110,12 +130,13 @@ func TestThread() {
 			batch := make([]SessionUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
+				batch[i].buyerId = uint64(common.RandomInt(0,9))
 				batch[i].next = uint8(i % 2)
 				batch[i].latitude = rand.Float32()
 				batch[i].longitude = rand.Float32()
 			}
 			buckets[index].sessionUpdateChannel <- batch
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(2 * time.Millisecond)
 		}
 	}
 }
@@ -137,10 +158,28 @@ func StartProcessThread(bucket *Bucket) {
 			case batch := <-bucket.sessionUpdateChannel:
 				bucket.mutex.Lock()
 				for i := range batch {
+
 					bucket.totalSessions.Insert(batch[i].sessionId, uint32(bucket.index))
-					if batch[i].next != 0 {
-						bucket.nextSessions.Insert(batch[i].sessionId, uint32(bucket.index))
+
+					buyerTotalSessions, exists := bucket.buyerTotalSessions[batch[i].buyerId]
+					if !exists {
+						buyerTotalSessions = make(map[uint64]bool)
+						bucket.buyerTotalSessions[batch[i].buyerId] = buyerTotalSessions
 					}
+					buyerTotalSessions[batch[i].sessionId] = true
+
+					if batch[i].next != 0 {
+
+						bucket.nextSessions.Insert(batch[i].sessionId, uint32(bucket.index))
+
+						buyerNextSessions, exists := bucket.buyerNextSessions[batch[i].buyerId]
+						if !exists {
+							buyerNextSessions = make(map[uint64]bool)
+							bucket.buyerNextSessions[batch[i].buyerId] = buyerNextSessions
+						}
+						buyerNextSessions[batch[i].sessionId] = true
+					}
+
 					bucket.mapEntries[batch[i].sessionId] = MapEntry{next: batch[i].next, latitude: batch[i].latitude, longitude: batch[i].longitude}
 				}
 				bucket.mutex.Unlock()
@@ -167,6 +206,26 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 	topSessions = newTopSessions
 	topSessionsData = data
 	topSessionsMutex.Unlock()
+}
+
+func UpdateBuyerData(newBuyerStats *BuyerStats) {
+
+	data := make([]byte, 8+4+len(newBuyerStats.buyerIds)*(8+4+4))
+
+	index := 0
+
+	encoding.WriteUint64(data[:], &index, BuyerStatsVersion)
+	encoding.WriteUint32(data[:], &index, uint32(len(newBuyerStats.buyerIds)))
+
+	for i := 0; i < len(newBuyerStats.buyerIds); i++ {
+		encoding.WriteUint64(data[:], &index, newBuyerStats.buyerIds[i])
+		encoding.WriteUint32(data[:], &index, newBuyerStats.totalSessions[i])
+		encoding.WriteUint32(data[:], &index, newBuyerStats.nextSessions[i])
+	}
+
+	buyerDataMutex.Lock()
+	buyerData = data
+	buyerDataMutex.Unlock()
 }
 
 func UpdateMapData(newMapPoints *MapPoints) {
@@ -196,8 +255,12 @@ func TopSessionsThread() {
 		select {
 		case <-ticker.C:
 
+			core.Log("-------------------------------------------------------------------")
+
 			nextSessions := make([]*SortedSet, NumBuckets)
 			totalSessions := make([]*SortedSet, NumBuckets)
+			buyerTotalSessions := make([]map[uint64]map[uint64]bool, NumBuckets)
+			buyerNextSessions := make([]map[uint64]map[uint64]bool, NumBuckets)
 			mapEntries := make([]map[uint64]MapEntry, NumBuckets)
 
 			for i := 0; i < NumBuckets; i++ {
@@ -208,8 +271,12 @@ func TopSessionsThread() {
 				nextSessions[i] = buckets[i].nextSessions
 				totalSessions[i] = buckets[i].totalSessions
 				mapEntries[i] = buckets[i].mapEntries
+				buyerTotalSessions[i] = buckets[i].buyerTotalSessions
+				buyerNextSessions[i] = buckets[i].buyerNextSessions
 				buckets[i].nextSessions = NewSortedSet()
 				buckets[i].totalSessions = NewSortedSet()
+				buckets[i].buyerTotalSessions = make(map[uint64]map[uint64]bool)
+				buckets[i].buyerNextSessions = make(map[uint64]map[uint64]bool)
 				buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 			}
 
@@ -218,6 +285,8 @@ func TopSessionsThread() {
 			}
 
 			start := time.Now()
+
+			// build global top sessions list and total sessions / next sessions counts
 
 			maxNextSessions := 0
 			maxTotalSessions := 0
@@ -268,6 +337,8 @@ func TopSessionsThread() {
 
 			UpdateTopSessions(newTopSessions)
 
+			// build data for the map, derived from the top sessions list
+
 			newMapPoints := MapPoints{}
 			newMapPoints.numMapPoints = len(sessions)
 			for i := range sessions {
@@ -280,6 +351,43 @@ func TopSessionsThread() {
 			}
 
 			UpdateMapData(&newMapPoints)
+
+			// build per-buyer total sessions / next sessions counts
+
+			buyerMap := make(map[uint64]bool)
+
+			for i := 0; i < NumBuckets; i++ {
+				for k := range buyerTotalSessions[i] {
+					buyerMap[k] = true
+				}
+			}
+
+			buyers := make([]uint64, len(buyerMap))
+			index := 0
+			for k := range buyerMap {
+				buyers[index] = k
+				index++
+			}
+
+			sort.Slice(buyers, func(i, j int) bool { return buyers[i] < buyers[j] })
+
+			core.Log("buyers: %v", buyers)
+
+			buyerStats := BuyerStats{}
+			buyerStats.buyerIds = make([]uint64, len(buyers))
+			buyerStats.totalSessions = make([]uint32, len(buyers))
+			buyerStats.nextSessions = make([]uint32, len(buyers))
+
+			for i := range buyers {
+				buyerStats.buyerIds[i] = buyers[i]
+				for j := 0; j < NumBuckets; j++ {
+					buyerStats.totalSessions[i] += uint32(len(buyerTotalSessions[j][buyers[i]]))
+					buyerStats.nextSessions[i] += uint32(len(buyerNextSessions[j][buyers[i]]))
+				}
+				core.Log("buyer %d => %d/%d sessions", buyerStats.buyerIds[i], buyerStats.nextSessions[i], buyerStats.totalSessions[i])
+			}
+
+			UpdateBuyerData(&buyerStats)
 
 			duration := time.Since(start)
 
@@ -323,6 +431,7 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		if numUpdates > 0 {
 			for i := 0; i < int(numUpdates); i++ {
 				encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
+				encoding.ReadUint64(body[:], &index, &batch[i].buyerId)
 				encoding.ReadUint8(body[:], &index, &batch[i].next)
 				encoding.ReadFloat32(body[:], &index, &batch[i].latitude)
 				encoding.ReadFloat32(body[:], &index, &batch[i].longitude)
@@ -336,6 +445,13 @@ func topSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	topSessionsMutex.Lock()
 	data := topSessionsData
 	topSessionsMutex.Unlock()
+	w.Write(data)
+}
+
+func buyerDataHandler(w http.ResponseWriter, r *http.Request) {
+	buyerDataMutex.Lock()
+	data := buyerData
+	buyerDataMutex.Unlock()
 	w.Write(data)
 }
 

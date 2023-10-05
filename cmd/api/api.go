@@ -546,7 +546,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
 	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId })
-	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].Score < response.ServerSessions[j].Score })
+	sort.SliceStable(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].Score < response.ServerSessions[j].Score })
 	response.ServerSessions = response.ServerSessions[begin:end]
 	upgradePortalServer(database, serverData, &response.ServerData)
 	response.OutputPage = outputPage
