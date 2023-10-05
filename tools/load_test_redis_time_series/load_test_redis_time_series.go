@@ -3,13 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"os"
-	"sync/atomic"
 	"time"
 
-	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 )
 
@@ -25,7 +20,7 @@ type RedisTimeSeriesPublisher struct {
 	// redisClient     redis.StreamCmdable
 }
 
-func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeStreamsConfig) (*RedisTimeStreamsPublisher, error) {
+func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesConfig) (*RedisTimeSeriesPublisher, error) {
 
 	/*
 	var redisClient redis.StreamCmdable
@@ -65,37 +60,48 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeStreams
 	go producer.updateMessageChannel(ctx)
 	*/
 
-	return producer, nil
+	return publisher, nil
 }
 
 // -------------------------------------------------------------------------------
 
 func RunPublisherThread(ctx context.Context, redisHostname string) {
 
+	fmt.Printf("publisher\n")
+
 	config := RedisTimeSeriesConfig{
 		RedisHostname: redisHostname,
 	}
 
-	publisher := CreateRedisTimeSeriesPublisher(config)
-
-	ticker := time.NewTicker(time.Millisecond)
-
-	for {
-
-		select {
-
-		case <-ctx.Done():
-			return
-
-		case <-ticker.C:
-
-			// todo
-			_ = publisher
-		}
+	publisher, err := CreateRedisTimeSeriesPublisher(context.Background(), config)
+	if err != nil {
+		panic("could not create redis time series publisher")
 	}
+
+	go func() {
+
+		ticker := time.NewTicker(time.Millisecond)
+
+		for {
+
+			select {
+
+			case <-ctx.Done():
+				return
+
+			case <-ticker.C:
+
+				// todo
+				_ = publisher
+			}
+		}
+
+	}()
 }
 
 func RunWatcherThread(ctx context.Context, redisHostname string) {
+
+	fmt.Printf("watcher\n")
 
 	go func() {
 
@@ -111,7 +117,7 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 				return
 
 			case <-ticker.C:
-				fmt.Printf("iteration %d\n")
+				fmt.Printf("iteration %d\n", iteration)
 				iteration++
 			}
 		}
@@ -124,7 +130,7 @@ func main() {
 
 	RunPublisherThread(context.Background(), redisHostname)
 
-	RunWatcherThread(context.Background(), redisHosthname)
+	RunWatcherThread(context.Background(), redisHostname)
 
 	time.Sleep(time.Minute)
 }
