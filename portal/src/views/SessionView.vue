@@ -544,9 +544,10 @@ function custom_graph(config) {
   let i = 0
   while (i < config.series.length) {
     let units = config.series[i].units
+    let index = i + 1
     opts.series.push({
       stroke: config.series[i].stroke,
-      fill: 'rgba(49, 130, 189, 0.1)',
+      fill: config.series[i].fill,
       width: 2,
       label: config.series[i].name,
       points: {
@@ -561,8 +562,8 @@ function custom_graph(config) {
       value: (self, v) => {
         if (v != null) {
           return v + units
-        } else if (self._data[i+1] != null && self._data[i+1].length > 0) {
-          return self._data[i+1][self._data[i+1].length-1] + units
+        } else if (self._data[index] != null && self._data[index].length > 0) {
+          return self._data[index][self._data[index].length-1] + units
         } else {
           return '--'
         }
@@ -579,7 +580,7 @@ let latency_opts = custom_graph({
     { 
       name: 'Direct',
       stroke: 'rgb(49, 130, 189)',
-      fill: 'rgba(10,100,10,0.1)',
+      fill: 'rgba(49, 130, 189, 0.1)',
       units: 'ms',
     },
     {
@@ -591,33 +592,35 @@ let latency_opts = custom_graph({
     {
       name: 'Predicted',
       stroke: "orange",
-      fill: "rgba(100,100,100,0.1)",
+      fill: "rgba(0,0,0,0)",
       units: "ms",
     },
   ]
 })
 
-let jitter_opts = {
+let jitter_opts = custom_graph({
   title: "Jitter",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
   series: [
-    {},
+    { 
+      name: 'Direct',
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      units: 'ms',
+    },
     {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
+      name: 'Next',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: 'ms',
+    },
     {
-      side: 1
-    }
+      name: 'Real',
+      stroke: "purple",
+      fill: "rgba(10,10,10,0.035)",
+      units: "ms",
+    },
   ]
-};
+})
 
 let packet_loss_opts = {
   title: "Packet Loss",
@@ -790,23 +793,47 @@ async function getData(page, session_id) {
         data['near_relays'] = near_relays
       }
 
-      // latency graph data
+      // timestamps (same for all graphs...)
   
-      let latency_timestamp = []
-      let latency_direct = []
-      let latency_next = []
-      let latency_predicted = []
+      let graph_timestamps = []
       let i = 0
       while (i < res.data.slice_data.length) {
         const timestamp = parseInt(res.data.slice_data[i].timestamp)
-        latency_timestamp.push(timestamp)
+        graph_timestamps.push(timestamp)
+        i++
+      }
+
+      // latency graph data
+  
+      let latency_direct = []
+      let latency_next = []
+      let latency_predicted = []
+      i = 0
+      while (i < res.data.slice_data.length) {
         latency_direct.push(res.data.slice_data[i].direct_rtt)
         latency_next.push(res.data.slice_data[i].next_rtt)
         latency_predicted.push(res.data.slice_data[i].predicted_rtt)
         i++
       }
 
-      data.latency_data = [latency_timestamp, latency_direct, latency_next, latency_predicted]
+      data.latency_data = [graph_timestamps, latency_direct, latency_next, latency_predicted]
+
+      // jitter graph data
+  
+      let jitter_direct = []
+      let jitter_next = []
+      let jitter_real = []
+      i = 0
+      while (i < res.data.slice_data.length) {
+        jitter_direct.push(res.data.slice_data[i].direct_jitter)
+        jitter_next.push(res.data.slice_data[i].next_jitter)
+        jitter_real.push(res.data.slice_data[i].real_jitter)
+        i++
+      }
+
+      console.log(res.data.slice_data[0])
+
+      data.jitter_data = [graph_timestamps, jitter_direct, jitter_next, jitter_real]
 
       // mark data as found
 
@@ -864,7 +891,7 @@ export default {
   mounted: function () {
   
     this.latency = new uPlot(latency_opts, [[],[],[]], document.getElementById('latency_graph'))
-    this.jitter = new uPlot(jitter_opts, data, document.getElementById('jitter_graph'))
+    this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss_graph'))
     this.out_of_order = new uPlot(out_of_order_opts, data, document.getElementById('out_of_order_graph'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth_graph'))
@@ -966,6 +993,9 @@ export default {
     updateGraphs() {
       if (this.latency != null && this.data.latency_data != null) {
         this.latency.setData(this.data.latency_data, true)
+      }
+      if (this.jitter != null && this.data.jitter_data != null) {
+        this.jitter.setData(this.data.jitter_data, true)
       }
     },
 
