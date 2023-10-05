@@ -12,10 +12,10 @@ import (
 )
 
 type RedisTimeSeriesConfig struct {
-	RedisHostname string
-	RedisCluster  []string
-	BatchSize     int
-	BatchDuration time.Duration
+	RedisHostname      string
+	RedisCluster       []string
+	BatchSize          int
+	BatchDuration      time.Duration
 	MessageChannelSize int
 }
 
@@ -26,11 +26,11 @@ type RedisTimeSeriesMessage struct {
 }
 
 type RedisTimeSeriesPublisher struct {
-	config         RedisTimeSeriesConfig
+	config RedisTimeSeriesConfig
 	// redisClient     redis.StreamCmdable
-	mutex          sync.Mutex
-	messageBatch   []*RedisTimeSeriesMessage
-	MessageChannel chan *RedisTimeSeriesMessage	
+	mutex           sync.Mutex
+	messageBatch    []*RedisTimeSeriesMessage
+	MessageChannel  chan *RedisTimeSeriesMessage
 	numMessagesSent int
 	numBatchesSent  int
 }
@@ -108,15 +108,15 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
 	// todo: send time series data batch to redis
 	/*
-	messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
+		messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
 
-	timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
+		timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
 
-	_, err := producer.redisClient.Publish(timeoutContext, producer.config.PubsubChannelName, messageToSend).Result()
-	if err != nil {
-		core.Error("failed to send batched pubsub messages to redis: %v", err)
-		return
-	}
+		_, err := producer.redisClient.Publish(timeoutContext, producer.config.PubsubChannelName, messageToSend).Result()
+		if err != nil {
+			core.Error("failed to send batched pubsub messages to redis: %v", err)
+			return
+		}
 	*/
 
 	batchNumMessages := len(publisher.messageBatch)
@@ -148,12 +148,33 @@ func (publisher *RedisTimeSeriesPublisher) NumBatchesSent() int {
 // -------------------------------------------------------------------------------
 
 type RedisTimeSeriesWatcher struct {
-	config RedisTimeSeriesConfig
-	keys   []string
-	mutex  sync.Mutex
+	config     RedisTimeSeriesConfig
+	mutex      sync.Mutex
+	keys       []string
+	timestamps []uint64
+	values     [][]float64
 }
 
 func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesConfig, keys []string) (*RedisTimeSeriesWatcher, error) {
+
+	/*
+		var redisClient redis.StreamCmdable
+		if len(config.RedisCluster) > 0 {
+			client := CreateRedisClusterClient(config.RedisCluster)
+			_, err := client.Ping(ctx).Result()
+			if err != nil {
+				return nil, err
+			}
+			redisClient = client
+		} else {
+			client := CreateRedisClient(config.RedisHostname)
+			_, err := client.Ping(ctx).Result()
+			if err != nil {
+				return nil, err
+			}
+			redisClient = client
+		}
+	*/
 
 	watcher := &RedisTimeSeriesWatcher{}
 
@@ -166,8 +187,12 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 }
 
 func (watcher *RedisTimeSeriesWatcher) GetTimeSeries() (keys []string, timestamps []uint64, values [][]float64) {
-	// todo
-	return watcher.keys, []uint64{}, [][]float64{}
+	watcher.mutex.Lock()
+	keys = watcher.keys
+	timestamps = watcher.timestamps
+	values = watcher.values
+	watcher.mutex.Unlock()
+	return keys, timestamps, values
 }
 
 // -------------------------------------------------------------------------------
@@ -199,14 +224,13 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 				return
 
 			case <-ticker.C:
-				values := make([]float64, len(keys))
-				for i := range values {
-					values[i] = float64(common.RandomInt(0, 1000000)) / 10000.0
-				}
 				message := RedisTimeSeriesMessage{}
 				message.timestamp = uint64(time.Now().Unix())
 				message.keys = keys
-				message.values = values
+				message.values = make([]float64, len(keys))
+				for i := range message.values {
+					message.values[i] = float64(common.RandomInt(0, 1000000)) / 10000.0
+				}
 				publisher.MessageChannel <- &message
 			}
 		}
