@@ -19,7 +19,7 @@
             <tbody>
 
               <tr>
-                <td class="bold">Accelerated Sessions</td>
+                <td class="bold">Sessions</td>
                 <td> {{ this.data.next_sessions }} / {{ this.data.total_sessions }} ({{ this.data.accelerated_percent }}%) </td>
               </tr>
 
