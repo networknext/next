@@ -19,18 +19,8 @@
             <tbody>
 
               <tr>
-                <td class="bold">Total Sessions</td>
-                <td> {{ this.data.total_sessions}} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Next Sessions</td>
-                <td> {{ this.data.next_sessions}} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Accelerated</td>
-                <td> {{ this.data.accelerated_percent }}% </td>
+                <td class="bold">Accelerated Sessions</td>
+                <td> {{ this.data.next_sessions }} / {{ this.data.total_sessions }} ({{ this.data.accelerated_percent }}%) </td>
               </tr>
 
               <tr>
@@ -60,18 +50,8 @@
             <tbody>
 
               <tr>
-                <td class="bold">Total Sessions</td>
-                <td> {{ this.data.total_sessions}} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Next Sessions</td>
-                <td> {{ this.data.next_sessions}} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Accelerated</td>
-                <td> {{ this.data.accelerated_percent }}% </td>
+                <td class="bold">Accelerated Sessions</td>
+                <td> {{ this.data.next_sessions }} / {{ this.data.total_sessions }} ({{ this.data.accelerated_percent }}%) </td>
               </tr>
 
               <tr>
