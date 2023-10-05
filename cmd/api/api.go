@@ -589,14 +589,12 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	database := service.Database()
 	if database == nil {
-		core.Error("database is nil")
 		w.WriteHeader(http.StatusInternalServerError)
 		return		
 	}
 
 	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
 	if serverData == nil {
-		core.Error("server data not found")
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}

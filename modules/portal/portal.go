@@ -1687,9 +1687,6 @@ func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverAddress
 
 	serverSessionData := GetSessionList(ctx, redisClient, serverSessionIds)
 
-	// todo
-	core.Log("got server data successfully")
-
 	return &serverData, serverSessionData
 }
 
