@@ -421,9 +421,9 @@ async function getData(page, buyer) {
       data['debug'] = res.data.buyer_data.debug
       data['total_sessions'] = res.data.buyer_data.total_sessions
       data['next_sessions'] = res.data.buyer_data.next_sessions
-      data['accelerated_percent'] = '0'
+      data['accelerated_percent'] = '0.0'
       if (res.data.buyer_data.total_sessions > 0) {
-        data['accelerated_percent'] = res.data.buyer_data.next_sessions / res.data.buyer_data.total_sessions
+        data['accelerated_percent'] = ((res.data.buyer_data.next_sessions / res.data.buyer_data.total_sessions)*100.0).toFixed(1)
       }
       data["found"] = true
     }
