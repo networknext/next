@@ -684,8 +684,6 @@ async function getData(page, session_id) {
 
       data.bandwidth_down_data = [graph_timestamps, bandwidth_down_direct, bandwidth_down_next]
 
-      console.log(res.data.slice_data)
-
       // mark data as found
 
       data["found"] = true
