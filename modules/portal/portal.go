@@ -185,7 +185,7 @@ type SliceData struct {
 	InternalEvents   uint64  `json:"internal_events,string"`
 	SessionEvents    uint64  `json:"session_events,string"`
 	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
-	DirectKbpsDown   uint32  `json:"direct_kpps_down"`
+	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
 	NextKbpsUp       uint32  `json:"next_kbps_up"`
 	NextKbpsDown     uint32  `json:"next_kbps_down"`
 	Next             bool    `json:"next"`
