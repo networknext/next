@@ -622,27 +622,29 @@ let jitter_opts = custom_graph({
   ]
 })
 
-let packet_loss_opts = {
+let packet_loss_opts = custom_graph({
   title: "Packet Loss",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
   series: [
-    {},
+    { 
+      name: 'Direct',
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      units: 'ms',
+    },
     {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
+      name: 'Next',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: 'ms',
+    },
     {
-      side: 1
-    }
+      name: 'Real',
+      stroke: "rgb(200,10,10)",
+      fill: "rgba(10,10,10,0.035)",
+      units: "ms",
+    },
   ]
-};
+})
 
 let out_of_order_opts = {
   title: "Out of Order",
@@ -831,9 +833,24 @@ async function getData(page, session_id) {
         i++
       }
 
-      console.log(res.data.slice_data[0])
-
       data.jitter_data = [graph_timestamps, jitter_direct, jitter_next, jitter_real]
+
+      // packet loss graph data
+  
+      let packet_loss_direct = []
+      let packet_loss_next = []
+      let packet_loss_real = []
+      i = 0
+      while (i < res.data.slice_data.length) {
+        packet_loss_direct.push(res.data.slice_data[i].direct_packet_loss)
+        packet_loss_next.push(res.data.slice_data[i].next_packet_loss)
+        packet_loss_real.push(res.data.slice_data[i].real_packet_loss)
+        i++
+      }
+
+      data.packet_loss_data = [graph_timestamps, packet_loss_direct, packet_loss_next, packet_loss_real]
+
+      console.log(res.data.slice_data[0])
 
       // mark data as found
 
@@ -892,7 +909,7 @@ export default {
   
     this.latency = new uPlot(latency_opts, [[],[],[]], document.getElementById('latency_graph'))
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
-    this.packet_loss = new uPlot(packet_loss_opts, data, document.getElementById('packet_loss_graph'))
+    this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
     this.out_of_order = new uPlot(out_of_order_opts, data, document.getElementById('out_of_order_graph'))
     this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth_graph'))
 
@@ -996,6 +1013,9 @@ export default {
       }
       if (this.jitter != null && this.data.jitter_data != null) {
         this.jitter.setData(this.data.jitter_data, true)
+      }
+      if (this.packet_loss != null && this.data.packet_loss_data != null) {
+        this.packet_loss.setData(this.data.packet_loss_data, true)
       }
     },
 
