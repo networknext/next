@@ -671,7 +671,18 @@ async function getData(page, session_id) {
 
       data.bandwidth_up_data = [graph_timestamps, bandwidth_up_direct, bandwidth_up_next]
 
-      console.log(res.data.slice_data[0])
+      // bandwidth down graph data
+  
+      let bandwidth_down_direct = []
+      let bandwidth_down_next = []
+      i = 0
+      while (i < res.data.slice_data.length) {
+        bandwidth_down_direct.push(res.data.slice_data[i].direct_kbps_down)
+        bandwidth_down_next.push(res.data.slice_data[i].next_kbps_down)
+        i++
+      }
+
+      data.bandwidth_down_data = [graph_timestamps, bandwidth_down_direct, bandwidth_down_next]
 
       // mark data as found
 
@@ -847,6 +858,9 @@ export default {
       }
       if (this.bandwidth_up != null && this.data.bandwidth_up_data != null) {
         this.bandwidth_up.setData(this.data.bandwidth_up_data, true)
+      }
+      if (this.bandwidth_down != null && this.data.bandwidth_down_data != null) {
+        this.bandwidth_down.setData(this.data.bandwidth_down_data, true)
       }
     },
 
