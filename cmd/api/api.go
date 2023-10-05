@@ -590,7 +590,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	database := service.Database()
 	if database == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return		
+		return
 	}
 
 	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
@@ -598,18 +598,20 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	
+
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverSessions))
 
 	response := PortalServerDataResponse{}
-	
+
 	response.ServerSessions = make([]PortalSessionData, len(serverSessions))
 
 	for i := range response.ServerSessions {
 		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
 
-	sort.Slice(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId})
+	sort.Slice(response.ServerSessions, func(i, j int) bool {
+		return response.ServerSessions[i].SessionId < response.ServerSessions[j].SessionId
+	})
 
 	sort.SliceStable(response.ServerSessions, func(i, j int) bool { return response.ServerSessions[i].Score < response.ServerSessions[j].Score })
 
@@ -795,20 +797,20 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer) {
 }
 
 func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
-	
+
 	vars := mux.Vars(r)
-	
+
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
-	
+
 	database := service.Database()
 	if database == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	
+
 	database_response := database.GetBuyers()
 
 	buyers := database_response.Buyers
@@ -910,15 +912,15 @@ type PortalSellerDataResponse struct {
 }
 
 func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
-	
+
 	vars := mux.Vars(r)
-	
+
 	sellerCode := vars["seller_code"]
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
-	
+
 	database := service.Database()
 	if database == nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -955,9 +957,9 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 	response.NumPages = numPages
 
 	w.WriteHeader(http.StatusOK)
-	
+
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	json.NewEncoder(w).Encode(response)
 }
 

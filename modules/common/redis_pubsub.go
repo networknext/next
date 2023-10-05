@@ -118,7 +118,7 @@ func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
 	producer.numMessagesSent += batchNumMessages
 	producer.mutex.Unlock()
 
-	producer.messageBatch = [][]byte{}
+	producer.messageBatch = producer.messageBatch[:0]
 
 	// core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
 }

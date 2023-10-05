@@ -44,7 +44,7 @@ func RunSessionInsertThreads(ctx context.Context, threadCount int) {
 
 					sessionData.SessionId = sessionId
 					sessionData.UserHash = userHash
-					sessionData.BuyerId = uint64(common.RandomInt(0, 9))
+					sessionData.BuyerId = uint64(common.RandomInt(0,9))
 
 					sliceData := portal.GenerateRandomSliceData()
 

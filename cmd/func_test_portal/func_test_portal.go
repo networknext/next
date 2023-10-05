@@ -204,7 +204,7 @@ func RunSessionInsertThreads(threadCount int) {
 					sessionData := portal.GenerateRandomSessionData()
 
 					sessionData.SessionId = sessionId
-					sessionData.BuyerId = uint64(common.RandomInt(0,9))
+					sessionData.BuyerId = uint64(common.RandomInt(0, 9))
 					sessionData.ServerAddress = "127.0.0.1:50000"
 
 					sliceData := portal.GenerateRandomSliceData()
