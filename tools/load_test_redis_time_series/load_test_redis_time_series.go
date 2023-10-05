@@ -58,12 +58,14 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 		RedisHostname: redisHostname,
 	}
 
-	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
-
-	watcher, err := common.CreateRedisTimeSeriesWatcher(context.Background(), config, keys)
+	watcher, err := common.CreateRedisTimeSeriesWatcher(context.Background(), config)
 	if err != nil {
 		panic("could not create redis time series watcher")
 	}
+
+	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
+
+	watcher.SetKeys(keys)
 
 	go func() {
 

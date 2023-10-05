@@ -1689,6 +1689,7 @@ module "session_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1

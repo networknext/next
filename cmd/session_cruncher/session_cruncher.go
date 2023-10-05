@@ -8,6 +8,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"fmt"
 	"os"
 
 	"github.com/networknext/next/modules/envvar"
@@ -415,9 +416,35 @@ func TopSessionsThread() {
 
 			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
 
-			// publish time series to redis
+			// publish time series data to redis
 
-			_ = timeSeriesPublisher
+			message := common.RedisTimeSeriesMessage{}
+
+			message.Timestamp = uint64(time.Now().Unix())
+
+			message.Keys = []string{"total_sessions", "next_sessions", "accelerated_percent"}
+
+			acceleratedPercent := 0.0
+			if totalCount > 0 {
+				acceleratedPercent = float64(nextCount / totalCount) * 100.0
+			}
+
+			message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}
+
+			for i := range buyers {
+				message.Keys = append(message.Keys, fmt.Sprintf("%016x_total_sessions", buyers[i]))
+				message.Keys = append(message.Keys, fmt.Sprintf("%016x_next_sessions", buyers[i]))
+				message.Keys = append(message.Keys, fmt.Sprintf("%016x_accelerated_percent", buyers[i]))
+				buyerAcceleratedPercent := 0.0
+				if buyerStats.totalSessions[i] > 0 {
+					buyerAcceleratedPercent = float64(buyerStats.nextSessions[i] / buyerStats.totalSessions[i]) * 100.0
+				}
+				message.Values = append(message.Values, float64(buyerStats.totalSessions[i]))
+				message.Values = append(message.Values, float64(buyerStats.nextSessions[i]))
+				message.Values = append(message.Values, float64(buyerAcceleratedPercent))
+			}
+
+			timeSeriesPublisher.MessageChannel <- &message
 		}
 	}
 }

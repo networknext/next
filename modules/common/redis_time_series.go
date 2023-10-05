@@ -154,7 +154,7 @@ type RedisTimeSeriesWatcher struct {
 	values     [][]float64
 }
 
-func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesConfig, keys []string) (*RedisTimeSeriesWatcher, error) {
+func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesConfig) (*RedisTimeSeriesWatcher, error) {
 
 	/*
 		var redisClient redis.StreamCmdable
@@ -178,11 +178,17 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 	watcher := &RedisTimeSeriesWatcher{}
 
 	watcher.config = config
-	watcher.keys = keys
+	watcher.keys = []string{}
 
 	// todo: create watcher thread
 
 	return watcher, nil
+}
+
+func (watcher *RedisTimeSeriesWatcher) SetKeys(keys []string) {
+	watcher.mutex.Lock()
+	watcher.keys = keys
+	watcher.mutex.Unlock()
 }
 
 func (watcher *RedisTimeSeriesWatcher) GetTimeSeries() (keys []string, timestamps []uint64, values [][]float64) {
