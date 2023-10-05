@@ -12,7 +12,7 @@
 
     </div>
 
-    <div v-if="this.found" class="bottom">
+    <div v-if="this.found" class="bottom-datacenter">
 
       <div v-if="this.data.relays.length > 0" class="sessions">
 
@@ -258,7 +258,7 @@ tr {
   padding-top: 25px;
 }
 
-.bottom {
+.bottom-datacenter {
   width: 100%;
   height: 100%;  
   padding: 0px;

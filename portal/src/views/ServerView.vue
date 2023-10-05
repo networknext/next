@@ -12,7 +12,7 @@
 
     </div>
 
-    <div v-if="this.found" class="bottom">
+    <div v-if="this.found" class="bottom-server">
 
       <div id="left" class="left">
       
@@ -418,7 +418,7 @@ tr {
   width: 100%;
 }
 
-.bottom {
+.bottom-server {
   width: 100%;
   height: 100%;
   display: flex;
@@ -434,7 +434,7 @@ tr {
   display: flex;
   flex-direction: column;
   gap: 25px;
-  padding-top: 5px;
+  margin-top: -10px;
 }
 
 .right {

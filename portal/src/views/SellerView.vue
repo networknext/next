@@ -12,7 +12,7 @@
 
     </div>
 
-    <div v-if="this.found" class="bottom">
+    <div v-if="this.found" class="bottom-seller">
 
       <div class="d-md-none">
         <table id="relays_table" class="table table-striped">
@@ -247,7 +247,7 @@ tr {
     white-space: nowrap;
 }
 
-.bottom {
+.bottom-seller {
   width: 100%;
   height: 100%;  
   padding: 0px;

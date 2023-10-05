@@ -10,7 +10,7 @@
 
     </div>
 
-    <div v-show="this.found" class="bottom">
+    <div v-show="this.found" class="bottom-buyer">
 
       <div id="left" class="left">
 
@@ -579,7 +579,7 @@ export default {
   padding-top: 20px;
 }
 
-.bottom {
+.bottom-buyer {
   height: 100%;  
   display: flex;
   flex-direction: row;
