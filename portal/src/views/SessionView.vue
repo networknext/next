@@ -60,7 +60,9 @@
 
         <div id="out_of_order_graph" class="graph"/>
 
-        <div id="bandwidth_graph" class="graph"/>
+        <div id="bandwidth_up_graph" class="graph"/>
+
+        <div id="bandwidth_down_graph" class="graph"/>
 
         <div class="d-xxl-none">
 
@@ -274,213 +276,6 @@ import uPlot from "uplot";
 
 import {parse_uint64, is_visible} from '@/utils.js'
 
-const arr = [
-  [
-    1585724400,
-    1586156400,
-    1586440800,
-    1586959200,
-    1587452400,
-    1587711600,
-    1588143600,
-    1588600800,
-    1588860000,
-    1589353200,
-    1589785200,
-    1590044400,
-    1590588000,
-    1591020000,
-    1591340400,
-    1591772400,
-    1592204400,
-    1592488800,
-    1592920800,
-    1593180000,
-    1593673200,
-    1594191600,
-    1594648800,
-    1594908000,
-    1595340000,
-    1595833200,
-    1596092400,
-    1596549600,
-    1596808800,
-    1597240800,
-    1597734000,
-    1597993200,
-    1598450400,
-    1598882400,
-    1599141600,
-    1599721200,
-    1600153200,
-    1600437600,
-    1600869600,
-    1601301600,
-    1601622000,
-    1602054000,
-    1602511200,
-    1602770400,
-    1603202400,
-    1603695600,
-    1603954800,
-    1604412000,
-    1604671200,
-    1605103200,
-    1605596400,
-    1605855600,
-    1606287600,
-    1606831200,
-    1607090400,
-    1607583600,
-    1608015600,
-    1608274800,
-    1608732000,
-    1609250400,
-    1609830000,
-    1610089200,
-    1610521200,
-    1611064800,
-    1611324000,
-    1611817200,
-    1612249200,
-    1612508400,
-    1612965600,
-    1613484000,
-    1613977200,
-    1614236400,
-    1614668400,
-    1614952800,
-    1615384800,
-    1615878000,
-    1616137200,
-    1616569200,
-    1617026400,
-    1617285600,
-    1617865200,
-    1618297200,
-    1618556400,
-    1619013600,
-    1619449200,
-    1619712000,
-    1620205200,
-    1620637200,
-    1620972000,
-    1621404000,
-    1621836000,
-    1622120400,
-    1622638800,
-    1623132000,
-    1623391200,
-    1623823200,
-    1624280400,
-    1624539600,
-    1625032800,
-    1625248800
-  ],
-  [
-    0,
-    1.59,
-    10.97,
-    10.41,
-    10.4,
-    12,
-    8.34,
-    11.16,
-    14.47,
-    14.65,
-    14.61,
-    14.98,
-    17.08,
-    15.94,
-    13.88,
-    11.07,
-    13.41,
-    14.3,
-    21.64,
-    15.8,
-    24.42,
-    24.63,
-    23.65,
-    24.4,
-    25.03,
-    15.07,
-    5.21,
-    16.4,
-    17.51,
-    19.66,
-    28.19,
-    19.21,
-    18.51,
-    18.47,
-    18.09,
-    18.83,
-    19.24,
-    17.51,
-    18.35,
-    19.15,
-    18.61,
-    18.72,
-    19.76,
-    18.76,
-    18.66,
-    19.45,
-    20.37,
-    20.98,
-    21.09,
-    21.66,
-    21.86,
-    21.93,
-    22.45,
-    22.34,
-    21.33,
-    21.21,
-    21.08,
-    22.18,
-    22.19,
-    22.88,
-    22.81,
-    23.31,
-    23.72,
-    23.47,
-    24.47,
-    24.38,
-    23.25,
-    27.07,
-    27.55,
-    30.03,
-    28.1,
-    30.6,
-    31.18,
-    24.95,
-    31.62,
-    35.54,
-    34.65,
-    34.45,
-    35.1,
-    35.65,
-    36.38,
-    35.87,
-    36.49,
-    35.65,
-    37.81,
-    38.15,
-    36.13,
-    36.46,
-    32.81,
-    34.92,
-    37.28,
-    38.2,
-    40.38,
-    40.08,
-    39.98,
-    39.35,
-    37.98,
-    41.13,
-    42.74,
-    42.177
-  ]
-];
-
 function custom_graph(config) {
   let opts = {
     title: config.title,
@@ -658,29 +453,41 @@ let out_of_order_opts = custom_graph({
   ]
 })
 
-let bandwidth_opts = {
-  title: "Bandwidth",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
+let bandwidth_up_opts = custom_graph({
+  title: "Bandwidth Up",
   series: [
-    {},
+    { 
+      name: 'Direct',
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      units: 'kbps',
+    },
     {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+      name: 'Next',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: 'kbps',
+    },
   ]
-};
+})
 
-const data = arr;
+let bandwidth_down_opts = custom_graph({
+  title: "Bandwidth Down",
+  series: [
+    { 
+      name: 'Direct',
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      units: 'kbps',
+    },
+    {
+      name: 'Next',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: 'kbps',
+    },
+  ]
+})
 
 function getPlatformName(platformId) {
   switch(platformId) {
@@ -851,6 +658,21 @@ async function getData(page, session_id) {
 
       data.out_of_order_data = [graph_timestamps, out_of_order_real]
 
+      // bandwidth up graph data
+  
+      let bandwidth_up_direct = []
+      let bandwidth_up_next = []
+      i = 0
+      while (i < res.data.slice_data.length) {
+        bandwidth_up_direct.push(res.data.slice_data[i].direct_kbps_up)
+        bandwidth_up_next.push(res.data.slice_data[i].next_kbps_up)
+        i++
+      }
+
+      data.bandwidth_up_data = [graph_timestamps, bandwidth_up_direct, bandwidth_up_next]
+
+      console.log(res.data.slice_data[0])
+
       // mark data as found
 
       data["found"] = true
@@ -910,7 +732,8 @@ export default {
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
     this.out_of_order = new uPlot(out_of_order_opts, [[]], document.getElementById('out_of_order_graph'))
-    this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth_graph'))
+    this.bandwidth_up = new uPlot(bandwidth_up_opts, [[],[]], document.getElementById('bandwidth_up_graph'))
+    this.bandwidth_down = new uPlot(bandwidth_down_opts, [[],[]], document.getElementById('bandwidth_down_graph'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -928,14 +751,16 @@ export default {
     this.jitter.destroy()
     this.packet_loss.destroy()
     this.out_of_order.destroy()
-    this.bandwidth.destroy()
+    this.bandwidth_up.destroy()
+    this.bandwidth_down.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.latency = null
     this.jitter = null
     this.packet_loss = null
     this.out_of_order = null
-    this.bandwidth = null
+    this.bandwidth_up = null
+    this.bandwidth_down = null
     this.observer = null
   },
 
@@ -966,7 +791,8 @@ export default {
           this.jitter.setSize({width: graph_width, height: graph_height})
           this.packet_loss.setSize({width: graph_width, height: graph_height})
           this.out_of_order.setSize({width: graph_width, height: graph_height})
-          this.bandwidth.setSize({width: graph_width, height: graph_height})
+          this.bandwidth_up.setSize({width: graph_width, height: graph_height})
+          this.bandwidth_down.setSize({width: graph_width, height: graph_height})
         }
       }    
 
@@ -1018,6 +844,9 @@ export default {
       }
       if (this.out_of_order != null && this.data.out_of_order_data != null) {
         this.out_of_order.setData(this.data.out_of_order_data, true)
+      }
+      if (this.bandwidth_up != null && this.data.bandwidth_up_data != null) {
+        this.bandwidth_up.setData(this.data.bandwidth_up_data, true)
       }
     },
 
