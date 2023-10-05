@@ -428,19 +428,6 @@ async function getData(page, buyer) {
       data['servers'] = 0
       data['found'] = true
     }
-
-    console.log(res.data.buyer_data)
-    
-    /*
-    // todo: this is mocked
-    data['total_sessions'] = 1000
-    data['next_sessions'] = 500
-    data['accelerated'] = 50
-    data['servers'] = 8
-    data['live'] = true
-    data['debug'] = true
-    data['found'] = true
-    */
     return [data, 0, 1]
   } catch (error) {
     console.log(error);
