@@ -8,7 +8,9 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"os"
 
+	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
@@ -88,7 +90,15 @@ type MapPoints struct {
 var mapDataMutex sync.Mutex
 var mapData []byte
 
+var timeSeriesPublisher *common.RedisTimeSeriesPublisher
+
 func main() {
+
+	redisPortalCluster := envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
+	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+
+	core.Debug("redis portal cluster: %s", redisPortalCluster)
+	core.Debug("redis portal hostname: %s", redisPortalHostname)
 
 	service := common.CreateService("session_cruncher")
 
@@ -107,6 +117,18 @@ func main() {
 		buckets[i].buyerNextSessions = make(map[uint64]map[uint64]bool)
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
+	}
+
+	timeSeriesConfig := common.RedisTimeSeriesConfig{
+		RedisHostname: redisPortalHostname,
+		RedisCluster:  redisPortalCluster,
+	}
+
+	var err error
+	timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+	if err != nil {
+		core.Error("could not create redis time series publisher: %v", err)
+		os.Exit(1)
 	}
 
 	UpdateTopSessions(&TopSessions{})
@@ -392,6 +414,10 @@ func TopSessionsThread() {
 			duration := time.Since(start)
 
 			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
+
+			// publish time series to redis
+
+			_ = timeSeriesPublisher
 		}
 	}
 }
