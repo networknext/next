@@ -68,7 +68,7 @@ resource "google_compute_instance" "service" {
 
 output "address" {
   description = "The internal IP address of the redis server"
-  value = google_compute_instance.network_interface.0.network_ip
+  value = google_compute_instance.service.network_interface.0.network_ip
 }
 
 # ----------------------------------------------------------------------------------------
