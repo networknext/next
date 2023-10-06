@@ -55,6 +55,7 @@ resource "google_compute_instance" "service" {
     apt-get update -y
     apt-get install -y redis-stack-server
     echo "protected-mode no" >> /etc/redis-stack.conf
+    systemctl enable redis-stack-server
     systemctl start redis-stack-server
     EOF
   }
