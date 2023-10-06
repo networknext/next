@@ -260,7 +260,7 @@ module "redis_time_series" {
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
   service_account          = var.google_service_account
-  tags                     = ["allow-redis"]
+  tags                     = ["allow-redis", "allow-ssh"]
 }
 
 output "redis_time_series_address" {
