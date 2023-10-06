@@ -23,15 +23,6 @@ variable "tags" { type = list }
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_compute_address" "internal" {
-  name         = var.service_name
-  region       = var.region
-  address_type = "INTERNAL"
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
 resource "google_compute_instance" "service" {
 
   name         = var.service_name
@@ -78,7 +69,7 @@ resource "google_compute_instance" "service" {
 
 output "address" {
   description = "The internal IP address of the redis server"
-  value = google_compute_address.internal.address
+  value = google_compute_instance.network_interface.0.network_ip
 }
 
 # ----------------------------------------------------------------------------------------

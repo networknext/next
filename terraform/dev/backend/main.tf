@@ -1676,7 +1676,7 @@ module "api" {
     ENV=dev
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}
+    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}:6379"
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
@@ -1728,7 +1728,7 @@ module "session_cruncher" {
     ENV=dev
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}
+    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1765,7 +1765,7 @@ module "server_cruncher" {
     ENV=dev
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}
+    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
