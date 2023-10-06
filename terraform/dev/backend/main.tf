@@ -244,6 +244,16 @@ resource "google_redis_instance" "redis_portal" {
   authorized_network = google_compute_network.development.id
 }
 
+resource "google_redis_instance" "redis_time_series" {
+  name               = "redis-portal"
+  tier               = "BASIC"
+  memory_size_gb     = 1
+  region             = "us-central1"
+  redis_version      = "REDIS_6_X"
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network = google_compute_network.development.id
+}
+
 resource "google_redis_instance" "redis_raspberry" {
   name               = "redis-raspberry"
   tier               = "BASIC"
@@ -285,6 +295,11 @@ resource "google_redis_instance" "redis_server_backend" {
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = google_redis_instance.redis_portal.host
+}
+
+output "redis_time_series_address" {
+  description = "The IP address of the time series redis instance"
+  value       = google_redis_instance.redis_time_series.host
 }
 
 output "redis_raspberry_address" {
@@ -1639,6 +1654,8 @@ module "api" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${google_redis_instance.redis_time_series.host}:6379"
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
@@ -1689,6 +1706,8 @@ module "session_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${google_redis_instance.redis_time_series.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1724,6 +1743,8 @@ module "server_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${google_redis_instance.redis_time_series.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
