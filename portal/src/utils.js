@@ -108,21 +108,20 @@ function custom_graph(config) {
            30,
            // hour divisors
            60,
-           60 * 5,
            60 * 10,
-           60 * 15,
+           60 * 20,
            60 * 30,
            // day divisors
            3600,
         ],
         values: [
-          // tick incr        default           year                             month    day                        hour     min                sec       mode
-          [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
-          [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
-          [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
-          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
-          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
-          [10,                "",               "{M}/{D}/{YY}",                  null,    "{h}:{mm}{aa}\n{M}/{D}",  null,    "{h}:{mm}{aa}",    null,        1],
+          // tick incr        default           year                           month    day                      hour     min                sec       mode
+          [3600 * 24 * 365,   "{YYYY}",         null,                          null,    null,                    null,    null,              null,        1],
+          [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
+          [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
+          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",              null,    "{M}/{D}",               null,    null,              null,        1],
+          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",              null,    "{M}/{D}",               null,    null,              null,        1],
+          [10,                "",               "{M}/{D}/{YY}",                null,    "{h}:{mm}{aa}",          null,    "{h}:{mm}{aa}",    null,        1],
         ],
       },
       {
