@@ -237,7 +237,7 @@ resource "cloudflare_record" "portal_domain" {
 
 module "redis_time_series" {
 
-  source = "../../modules/redis_stack"
+  source = "../modules/redis_stack"
 
   service_name = "redis-time-series"
 
