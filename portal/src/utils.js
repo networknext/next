@@ -71,4 +71,97 @@ function getAcceleratedPercent(nextSessions, totalSessions) {
   return acceleratedPercent
 }
 
-export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getAcceleratedPercent};
+function custom_graph(config) {
+  let opts = {
+    title: config.title,
+    width: 0,
+    height: 0,
+    legend: {
+      show: true,
+    },
+    cursor: {
+      drag: {
+        x: false,
+        y: false,
+      }
+    },
+    series: [
+      {
+        value: (self, v) => {
+          if (v != null) {
+            return new Date(v*1000).toLocaleString()
+          } else if (self._data[0] != null && self._data[0].length > 0) {
+            return new Date((self._data[0][self._data[0].length-1])*1000).toLocaleString()
+          } else {
+            return '--'
+          }
+        }
+      }
+    ],
+    axes: [
+      {
+        space: 40,
+        incrs: [
+           // minute divisors (# of secs)
+           10,
+           20,
+           30,
+           // hour divisors
+           60,
+           60 * 5,
+           60 * 10,
+           60 * 15,
+           60 * 30,
+           // day divisors
+           3600,
+        ],
+        values: [
+          // tick incr        default           year                             month    day                        hour     min                sec       mode
+          [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
+          [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+          [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+          [10,                "",               "{M}/{D}/{YY}",                  null,    "{h}:{mm}{aa}\n{M}/{D}",  null,    "{h}:{mm}{aa}",    null,        1],
+        ],
+      },
+      {
+        side: 1,
+      }
+    ]
+  };
+
+  let i = 0
+  while (i < config.series.length) {
+    let units = config.series[i].units
+    let index = i + 1
+    opts.series.push({
+      stroke: config.series[i].stroke,
+      fill: config.series[i].fill,
+      width: 2,
+      label: config.series[i].name,
+      points: {
+        show: (self, si) => {
+          if (is_visible(document.getElementById('right'))) {
+            return self.series[si].width < 100
+          } else {
+            return false
+          }
+        }
+      },
+      value: (self, v) => {
+        if (v != null) {
+          return v + units
+        } else if (self._data[index] != null && self._data[index].length > 0) {
+          return self._data[index][self._data[index].length-1] + units
+        } else {
+          return '--'
+        }
+      }
+    })
+    i++
+  }
+  return opts
+}
+
+export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getAcceleratedPercent, custom_graph};

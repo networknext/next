@@ -108,7 +108,7 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import { is_visible, getAcceleratedPercent } from '@/utils.js'
+import { is_visible, getAcceleratedPercent, custom_graph } from '@/utils.js'
 
 const arr = [
   [
@@ -317,93 +317,53 @@ const arr = [
   ]
 ];
 
-let total_sessions_opts = {
+let total_sessions_opts = custom_graph({
   title: "Total Sessions",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Total Sessions',
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      units: '',
+    },
   ]
-};
+})
 
-let next_sessions_opts = {
+let next_sessions_opts = custom_graph({
   title: "Next Sessions",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Next Sessions',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: '',
+    },
   ]
-};
+})
 
-let accelerated_opts = {
-  title: "Accelerated",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
+let accelerated_opts = custom_graph({
+  title: "Accelerated Sessions",
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Accelerated',
+      stroke: "#8350ba",
+      fill: "rgba(131, 80, 186,0.1)",
+      units: '%',
+    },
   ]
-};
+})
 
-let servers_opts = {
-  title: "Servers",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
+let servers_opts = custom_graph({
+  title: "Server Count",
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Servers',
+      stroke: "#faac02",
+      fill: "rgba(250, 172, 2,0.075)",
+      units: '',
+    },
   ]
-};
+})
 
 const data = arr;
 
@@ -424,6 +384,9 @@ async function getData(page, buyer) {
       data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
       data['servers'] = res.data.buyer_data.server_count
       data['found'] = true
+
+      // todo
+      console.log(res.data.buyer_data)
     }
     return [data, 0, 1]
   } catch (error) {
