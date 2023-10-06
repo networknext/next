@@ -80,7 +80,9 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 }
 
 func (publisher *RedisTimeSeriesPublisher) updateMessageChannel(ctx context.Context) {
+
 	ticker := time.NewTicker(publisher.config.BatchDuration)
+
 	for {
 		select {
 
@@ -118,7 +120,7 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
 	_, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to add time series batch: %v", err)
+		core.Error("failed to add time series: %v", err)
 	}
 
 	batchNumMessages := len(publisher.messageBatch)
@@ -129,8 +131,6 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 	publisher.mutex.Unlock()
 
 	publisher.messageBatch = publisher.messageBatch[:0]
-
-	core.Log("batch")
 }
 
 func (publisher *RedisTimeSeriesPublisher) NumMessagesSent() int {
@@ -150,38 +150,39 @@ func (publisher *RedisTimeSeriesPublisher) NumBatchesSent() int {
 // -------------------------------------------------------------------------------
 
 type RedisTimeSeriesWatcher struct {
-	redisClient redis.TimeseriesCmdable
-	config      RedisTimeSeriesConfig
-	mutex       sync.Mutex
-	keys        []string
-	keyToIndex  map[string]int
-	timestamps  []uint64
-	values      [][]float64
+	config             RedisTimeSeriesConfig
+	redisClient        *redis.Client
+	redisClusterClient *redis.ClusterClient
+	mutex              sync.Mutex
+	keys               []string
+	keyToIndex         map[string]int
+	timestamps         []uint64
+	values             [][]float64
 }
 
 func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesConfig) (*RedisTimeSeriesWatcher, error) {
 
-	var redisClient redis.TimeseriesCmdable
+	var client *redis.Client
+	var clusterClient *redis.ClusterClient
 	if len(config.RedisCluster) > 0 {
-		client := CreateRedisClusterClient(config.RedisCluster)
-		_, err := client.Ping(ctx).Result()
+		clusterClient = CreateRedisClusterClient(config.RedisCluster)
+		_, err := clusterClient.Ping(ctx).Result()
 		if err != nil {
 			return nil, err
 		}
-		redisClient = client
 	} else {
-		client := CreateRedisClient(config.RedisHostname)
+		client = CreateRedisClient(config.RedisHostname)
 		_, err := client.Ping(ctx).Result()
 		if err != nil {
 			return nil, err
 		}
-		redisClient = client
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}
 
 	watcher.config = config
-	watcher.redisClient = redisClient
+	watcher.redisClient = client
+	watcher.redisClusterClient = clusterClient
 	watcher.keys = []string{}
 	watcher.keyToIndex = make(map[string]int)
 
@@ -199,9 +200,50 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			return
 
 		case <-ticker.C:
-			// todo: pump time series from redis
+
 			watcher.mutex.Lock()
-			// todo: stash data from redis
+			keys := make([]string, len(watcher.keys))
+			copy(keys, watcher.keys)
+			watcher.mutex.Unlock()
+
+			var pipeline redis.Pipeliner
+			if watcher.redisClusterClient != nil {
+				pipeline = watcher.redisClusterClient.Pipeline()
+			} else {
+				pipeline = watcher.redisClient.Pipeline()
+			}
+
+			currentTime := int(time.Now().Unix())
+
+			for i := range keys {
+				pipeline.TSRange(ctx, keys[i], currentTime - 86400, currentTime)
+			}
+
+			cmds, err := pipeline.Exec(ctx)
+			if err != nil {
+				core.Error("failed to get time series: %v", err)
+			}
+
+			keyToIndex := make(map[string]int, len(keys))
+			timestamps := make([]uint64, 0)
+			values := make([][]float64, len(keys))
+
+			for i := range keys {
+				keyToIndex[keys[i]] = i
+			}
+
+			// todo: transform commands -> timestamps
+
+			// todo: transform commands -> values
+			for i := range keys {
+				values[i] = make([]float64, 0)
+				_ = cmds[i]
+			}
+
+			watcher.mutex.Lock()
+			watcher.keyToIndex = keyToIndex
+			watcher.timestamps = timestamps
+			watcher.values = values
 			watcher.mutex.Unlock()
 		}
 	}

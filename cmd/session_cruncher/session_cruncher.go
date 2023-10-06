@@ -93,13 +93,18 @@ var mapData []byte
 
 var timeSeriesPublisher *common.RedisTimeSeriesPublisher
 
+var enableRedisTimeSeries bool
+
 func main() {
 
-	redisPortalCluster := envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
-	redisPortalHostname := envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster := envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname := envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
 
-	core.Debug("redis portal cluster: %s", redisPortalCluster)
-	core.Debug("redis portal hostname: %s", redisPortalHostname)
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
 
 	service := common.CreateService("session_cruncher")
 
@@ -120,16 +125,18 @@ func main() {
 		StartProcessThread(&buckets[i])
 	}
 
-	timeSeriesConfig := common.RedisTimeSeriesConfig{
-		RedisHostname: redisPortalHostname,
-		RedisCluster:  redisPortalCluster,
-	}
+	if enableRedisTimeSeries {
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
 
-	var err error
-	timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
-	if err != nil {
-		core.Error("could not create redis time series publisher: %v", err)
-		os.Exit(1)
+		var err error
+		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	UpdateTopSessions(&TopSessions{})
@@ -418,33 +425,37 @@ func TopSessionsThread() {
 
 			// publish time series data to redis
 
-			message := common.RedisTimeSeriesMessage{}
+			if enableRedisTimeSeries {
 
-			message.Timestamp = uint64(time.Now().Unix())
+				message := common.RedisTimeSeriesMessage{}
 
-			message.Keys = []string{"total_sessions", "next_sessions", "accelerated_percent"}
+				message.Timestamp = uint64(time.Now().Unix())
 
-			acceleratedPercent := 0.0
-			if totalCount > 0 {
-				acceleratedPercent = float64(nextCount/totalCount) * 100.0
-			}
+				message.Keys = []string{"total_sessions", "next_sessions", "accelerated_percent"}
 
-			message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}
-
-			for i := range buyers {
-				message.Keys = append(message.Keys, fmt.Sprintf("%016x_total_sessions", buyers[i]))
-				message.Keys = append(message.Keys, fmt.Sprintf("%016x_next_sessions", buyers[i]))
-				message.Keys = append(message.Keys, fmt.Sprintf("%016x_accelerated_percent", buyers[i]))
-				buyerAcceleratedPercent := 0.0
-				if buyerStats.totalSessions[i] > 0 {
-					buyerAcceleratedPercent = float64(buyerStats.nextSessions[i]/buyerStats.totalSessions[i]) * 100.0
+				acceleratedPercent := 0.0
+				if totalCount > 0 {
+					acceleratedPercent = float64(nextCount/totalCount) * 100.0
 				}
-				message.Values = append(message.Values, float64(buyerStats.totalSessions[i]))
-				message.Values = append(message.Values, float64(buyerStats.nextSessions[i]))
-				message.Values = append(message.Values, float64(buyerAcceleratedPercent))
-			}
 
-			timeSeriesPublisher.MessageChannel <- &message
+				message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}
+
+				for i := range buyers {
+					message.Keys = append(message.Keys, fmt.Sprintf("%016x_total_sessions", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("%016x_next_sessions", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("%016x_accelerated_percent", buyers[i]))
+					buyerAcceleratedPercent := 0.0
+					if buyerStats.totalSessions[i] > 0 {
+						buyerAcceleratedPercent = float64(buyerStats.nextSessions[i]/buyerStats.totalSessions[i]) * 100.0
+					}
+					message.Values = append(message.Values, float64(buyerStats.totalSessions[i]))
+					message.Values = append(message.Values, float64(buyerStats.nextSessions[i]))
+					message.Values = append(message.Values, float64(buyerAcceleratedPercent))
+				}
+
+				timeSeriesPublisher.MessageChannel <- &message
+
+			}
 		}
 	}
 }
