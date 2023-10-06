@@ -54,6 +54,7 @@ resource "google_compute_instance" "service" {
     echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
     apt-get update -y
     apt-get install -y redis-stack-server
+    systemctl start redis-stack-server
     EOF
   }
 
