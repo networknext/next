@@ -45,9 +45,20 @@ var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
 var timeSeriesWatcher *common.RedisTimeSeriesWatcher
 
+var enableRedisTimeSeries bool
+
 func main() {
 
 	service = common.CreateService("api")
+
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster := envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname := envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
 
 	privateKey = envvar.GetString("API_PRIVATE_KEY", "")
 	pgsqlConfig = envvar.GetString("PGSQL_CONFIG", "host=127.0.0.1 port=5432 user=developer password=developer dbname=postgres sslmode=disable")
@@ -142,41 +153,44 @@ func main() {
 
 		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
 
-		timeSeriesConfig := common.RedisTimeSeriesConfig{
-			RedisHostname: redisPortalHostname,
-			RedisCluster:  redisPortalCluster,
-		}
+		if enableRedisTimeSeries {
 
-		var err error
-		timeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
-		if err != nil {
-			core.Error("could not create redis time series watcher: %v", err)
-			os.Exit(1)
-		}
-
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(time.Second)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					database := service.Database()
-					if database == nil {
-						break
-					}
-					keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count"}
-					buyerIds := database.GetBuyerIds()
-					for i := range buyerIds {
-						keys = append(keys, fmt.Sprintf("%016x_total_sessions", buyerIds[i]))
-						keys = append(keys, fmt.Sprintf("%016x_next_sessions", buyerIds[i]))
-						keys = append(keys, fmt.Sprintf("%016x_accelerated_percent", buyerIds[i]))
-						keys = append(keys, fmt.Sprintf("%016x_server_count", buyerIds[i]))
-					}
-					timeSeriesWatcher.SetKeys(keys)
-				}
+			timeSeriesConfig := common.RedisTimeSeriesConfig{
+				RedisHostname: redisTimeSeriesHostname,
+				RedisCluster:  redisTimeSeriesCluster,
 			}
-		}(service.Context)
+
+			var err error
+			timeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+			if err != nil {
+				core.Error("could not create redis time series watcher: %v", err)
+				os.Exit(1)
+			}
+
+			go func(ctx context.Context) {
+				ticker := time.NewTicker(time.Second)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						database := service.Database()
+						if database == nil {
+							break
+						}
+						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count"}
+						buyerIds := database.GetBuyerIds()
+						for i := range buyerIds {
+							keys = append(keys, fmt.Sprintf("%016x_total_sessions", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("%016x_next_sessions", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("%016x_accelerated_percent", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("%016x_server_count", buyerIds[i]))
+						}
+						timeSeriesWatcher.SetKeys(keys)
+					}
+				}
+			}(service.Context)
+		}
 
 		if len(redisPortalCluster) > 0 {
 			redisPortalClient = common.CreateRedisClusterClient(redisPortalCluster)
@@ -843,7 +857,7 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 		output.RouteShader = &input.RouteShader
 	}
 
-	if withTimeSeries {
+	if enableRedisTimeSeries && withTimeSeries {
 		timeSeriesWatcher.Lock()
 		timeSeriesWatcher.GetTimestamps(&output.TimeSeries_Timestamps)
 		timeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions, fmt.Sprintf("%016x_total_sessions", input.Id))
