@@ -37,7 +37,6 @@ resource "google_compute_instance" "service" {
   }
 
   network_interface {
-    network_ip = google_compute_address.internal.address
     network    = var.default_network
     subnetwork = var.default_subnetwork
   }
