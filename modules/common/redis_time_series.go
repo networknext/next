@@ -180,7 +180,7 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 	}
 
 	if config.Window == 0 {
-		config.Window = 86400*1000000		// 24 hours in nanoseconds
+		config.Window = 86400*1000000000		// 24 hours in nanoseconds
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}

@@ -746,8 +746,8 @@ export default {
         this.num_pages = result[2]
         this.found = result[0]['found']
         this.$emit('notify-update', this.page, this.num_pages)
+        this.updateGraphs()
       }
-      this.updateGraphs()
     },
 
     updateGraphs() {

@@ -828,7 +828,7 @@ type PortalBuyer struct {
 	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
 	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
 	TimeSeries_NextSessions_Values           []int             `json:"time_series_next_sessions_values"`
-	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_total_sessions_timestamps,string"`
+	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
 	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
 	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
 	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`

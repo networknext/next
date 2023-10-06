@@ -385,8 +385,21 @@ async function getData(page, buyer) {
       data['servers'] = res.data.buyer_data.server_count
       data['found'] = true
 
-      // todo
+      // next sessions data
+
+      let next_sessions_timestamps = []  
+      let next_sessions_values = []
+      let i = 0
+      while (i < res.data.buyer_data.time_series_next_sessions_timestamps.length) {
+        next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_next_sessions_timestamps[i]) / 1000000000))
+        next_sessions_values.push(parseInt(res.data.buyer_data.time_series_next_sessions_values[i]))
+        i++
+      }
+      data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
+
       console.log(res.data.buyer_data)
+
+      // todo: more graphs
     }
     return [data, 0, 1]
   } catch (error) {
@@ -442,6 +455,8 @@ export default {
     document.getElementById("buyer-input").addEventListener('keyup', this.onKeyUp);
 
     this.$emit('notify-view', 'buyer')
+  
+    this.updateGraphs()
   },
 
   beforeUnmount() {
@@ -489,7 +504,9 @@ export default {
       if (buyer == null) {
         buyer = this.$route.params.id
       }
-      return getData(page, buyer)
+      let data = getData(page, buyer)
+      this.updateGraphs()
+      return data
     },
 
     async update() {
@@ -500,6 +517,13 @@ export default {
         this.num_pages = result[2]
         this.found = result[0]['found']
         this.$emit('notify-update', this.page, this.num_pages)
+        this.updateGraphs()
+      }
+    },
+
+    updateGraphs() {
+      if (this.next_sessions != null && this.data.next_sessions_data != null) {
+        this.next_sessions.setData(this.data.next_sessions_data, true)
       }
     },
 
