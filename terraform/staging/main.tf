@@ -245,8 +245,8 @@ module "redis_time_series" {
   project                  = var.google_project
   region                   = var.google_region
   zone                     = var.google_zone
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
+  default_network          = google_compute_network.staging.id
+  default_subnetwork       = google_compute_subnetwork.staging.id
   service_account          = var.google_service_account
   tags                     = ["allow-redis", "allow-ssh"]
 }
