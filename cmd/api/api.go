@@ -149,7 +149,7 @@ func main() {
 
 		topServersWatcher = portal.CreateTopServersWatcher(serverCruncherURL)
 
-		buyerDataWatcher = portal.CreateBuyerDataWatcher(sessionCruncherURL)
+		buyerDataWatcher = portal.CreateBuyerDataWatcher(sessionCruncherURL, serverCruncherURL)
 
 		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
 
@@ -849,11 +849,12 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	output.Debug = input.Debug
 	output.PublicKey = input.PublicKey
 
-	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions := buyerDataWatcher.GetBuyerData()
+	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions, buyerServerCounts := buyerDataWatcher.GetBuyerData()
 	index, exists := buyerIdToIndex[output.Id]
 	if exists {
 		output.TotalSessions = int(buyerTotalSessions[index])
 		output.NextSessions = int(buyerNextSessions[index])
+		output.ServerCount = int(buyerServerCounts[index])
 	}
 
 	if withRouteShader {

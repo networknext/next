@@ -112,7 +112,7 @@ func main() {
 
 	UpdateBuyerData(&BuyerStats{})
 
-	go TestThread()
+	// go TestThread()
 
 	go TopSessionsThread()
 
@@ -207,7 +207,7 @@ func UpdateBuyerData(newBuyerStats *BuyerStats) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(10 * time.Second) // todo: 60
+	ticker := time.NewTicker(60 * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -268,7 +268,7 @@ func TopSessionsThread() {
 			newTopServers := &TopServers{}
 			newTopServers.serverCount = uint32(serverCount)
 			newTopServers.numTopServers = len(topServers)
-			for i := range servers {
+			for i := range topServers {
 				newTopServers.topServers[i] = topServers[i].serverAddress
 			}
 

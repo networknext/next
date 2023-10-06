@@ -1098,19 +1098,23 @@ func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
 // --------------------------------------------------------------------------------------------------
 
 const BuyerSessionDataVersion = uint64(0)
+const BuyerServerDataVersion = uint64(0)
 
 type BuyerDataWatcher struct {
 	sessionUrl     string
+	serverUrl      string
 	mutex          sync.RWMutex
 	buyerIds       []uint64
 	buyerIdToIndex map[uint64]int
 	nextSessions   []uint32
 	totalSessions  []uint32
+	serverCounts   []uint32
 }
 
-func CreateBuyerDataWatcher(sessionCruncherURL string) *BuyerDataWatcher {
+func CreateBuyerDataWatcher(sessionCruncherURL string, serverCruncherURL string) *BuyerDataWatcher {
 	watcher := BuyerDataWatcher{}
 	watcher.sessionUrl = sessionCruncherURL + "/buyer_data"
+	watcher.serverUrl = serverCruncherURL + "/buyer_data"
 	go watcher.watchBuyerData()
 	return &watcher
 }
@@ -1122,30 +1126,36 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 
 		case <-ticker.C:
 
-			data := getBinary(watcher.sessionUrl)
+			// get buyer data from *both* the session cruncher (total/next session counts, accelerated % per-buyer), and the server cruncher (server count per-buyer)
 
-			if data == nil {
+			sessionData := getBinary(watcher.sessionUrl)
+
+			serverData := getBinary(watcher.serverUrl)
+
+			// process session buyer data
+
+			if sessionData == nil {
 				break
 			}
 
-			if len(data) < 8+4 {
-				core.Error("buyer data response is too small")
+			if len(sessionData) < 8+4 {
+				core.Error("session buyer data response is too small")
 				break
 			}
 
 			index := 0
 
 			var version uint64
-			encoding.ReadUint64(data[:], &index, &version)
+			encoding.ReadUint64(sessionData[:], &index, &version)
 			if version != BuyerSessionDataVersion {
 				core.Error("bad session buyer data version. expected %d, got %d", version, BuyerSessionDataVersion)
 				break
 			}
 
 			var numBuyers uint32
-			encoding.ReadUint32(data[:], &index, &numBuyers)
+			encoding.ReadUint32(sessionData[:], &index, &numBuyers)
 			if numBuyers > constants.MaxBuyers {
-				core.Error("too many buyers. got %d, max is %d", numBuyers, constants.MaxBuyers)
+				core.Error("too many session buyers. got %d, max is %d", numBuyers, constants.MaxBuyers)
 				break
 			}
 
@@ -1155,9 +1165,9 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 			nextSessions := make([]uint32, numBuyers)
 
 			for i := 0; i < int(numBuyers); i++ {
-				encoding.ReadUint64(data[:], &index, &buyerIds[i])
-				encoding.ReadUint32(data[:], &index, &totalSessions[i])
-				encoding.ReadUint32(data[:], &index, &nextSessions[i])
+				encoding.ReadUint64(sessionData[:], &index, &buyerIds[i])
+				encoding.ReadUint32(sessionData[:], &index, &totalSessions[i])
+				encoding.ReadUint32(sessionData[:], &index, &nextSessions[i])
 				buyerIdToIndex[buyerIds[i]] = i
 			}
 
@@ -1166,22 +1176,71 @@ func (watcher *BuyerDataWatcher) watchBuyerData() {
 				break
 			}
 
+			// process the server buyer data
+
+			serverCounts := make([]uint32, len(buyerIds))
+			{
+				if serverData == nil {
+					break
+				}
+
+				if len(serverData) < 8+4 {
+					core.Error("server buyer data response is too small")
+					break
+				}
+
+				index := 0
+
+				var version uint64
+				encoding.ReadUint64(serverData[:], &index, &version)
+				if version != BuyerServerDataVersion {
+					core.Error("bad server buyer data version. expected %d, got %d", version, BuyerServerDataVersion)
+					break
+				}
+
+				var serverNumBuyers uint32
+				encoding.ReadUint32(serverData[:], &index, &serverNumBuyers)
+				if serverNumBuyers > constants.MaxBuyers {
+					core.Error("too many server buyers. got %d, max is %d", serverNumBuyers, constants.MaxBuyers)
+					break
+				}
+
+				serverBuyerIds := make([]uint64, serverNumBuyers)
+				serverBuyerServerCounts := make([]uint32, serverNumBuyers)
+
+				for i := 0; i < int(serverNumBuyers); i++ {
+					encoding.ReadUint64(serverData[:], &index, &serverBuyerIds[i])
+					encoding.ReadUint32(serverData[:], &index, &serverBuyerServerCounts[i])
+				}
+
+				for i := 0; i < int(serverNumBuyers); i++ {
+					index, found := buyerIdToIndex[serverBuyerIds[i]]
+					if found {
+						serverCounts[index] = serverBuyerServerCounts[i]
+					}
+				}
+			}
+
+			// stash the processed data
+
 			watcher.mutex.Lock()
 			watcher.buyerIds = buyerIds
 			watcher.buyerIdToIndex = buyerIdToIndex
 			watcher.totalSessions = totalSessions
 			watcher.nextSessions = nextSessions
+			watcher.serverCounts = serverCounts
 			watcher.mutex.Unlock()
 		}
 	}
 }
 
-func (watcher *BuyerDataWatcher) GetBuyerData() (buyerIds []uint64, buyerIdToIndex map[uint64]int, totalSessions []uint32, nextSessions []uint32) {
+func (watcher *BuyerDataWatcher) GetBuyerData() (buyerIds []uint64, buyerIdToIndex map[uint64]int, totalSessions []uint32, nextSessions []uint32, serverCounts []uint32) {
 	watcher.mutex.RLock()
 	buyerIds = watcher.buyerIds
 	buyerIdToIndex = watcher.buyerIdToIndex
 	totalSessions = watcher.totalSessions
 	nextSessions = watcher.nextSessions
+	serverCounts = watcher.serverCounts
 	watcher.mutex.RUnlock()
 	return
 }
@@ -1435,6 +1494,7 @@ const MaxServerAddressLength = 64
 
 type ServerCruncherEntry struct {
 	ServerAddress string
+	BuyerId       uint64
 	Score         uint32
 }
 
@@ -1523,7 +1583,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += 4 + int(batchSize[i])*MaxServerAddressLength
+		size += 4 + int(batchSize[i])*(MaxServerAddressLength + 8)
 	}
 
 	data := make([]byte, size)
@@ -1535,7 +1595,8 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 	for i := 0; i < NumBuckets; i++ {
 		encoding.WriteUint32(data[:], &index, uint32(batchSize[i]))
 		for j := range batch[i] {
-			encoding.WriteString(data[:], &index, batch[i][j].ServerAddress, MaxServerAddressLength)
+			encoding.WriteString(data, &index, batch[i][j].ServerAddress, MaxServerAddressLength)
+			encoding.WriteUint64(data, &index, batch[i][j].BuyerId)
 		}
 	}
 
@@ -1597,6 +1658,7 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	entry := ServerCruncherEntry{
 		ServerAddress: serverData.ServerAddress,
+		BuyerId:       serverData.BuyerId,
 		Score:         score,
 	}
 

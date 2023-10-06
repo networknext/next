@@ -92,6 +92,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 					id := uint32(iteration + uint64(j))
 
 					serverData.ServerAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
+					serverData.BuyerId = uint64(common.RandomInt(0,9))
 
 					serverInserter.Insert(ctx, serverData)
 				}
@@ -151,7 +152,7 @@ func RunPollThread(ctx context.Context) {
 
 		topServersWatcher := portal.CreateTopServersWatcher(ServerCruncherURL)
 
-		buyerDataWatcher := portal.CreateBuyerDataWatcher(SessionCruncherURL)
+		buyerDataWatcher := portal.CreateBuyerDataWatcher(SessionCruncherURL, ServerCruncherURL)
 
 		mapDataWatcher := portal.CreateMapDataWatcher(SessionCruncherURL)
 
@@ -172,10 +173,10 @@ func RunPollThread(ctx context.Context) {
 
 			// ------------------------------------------------------------------------------------------
 
-			buyerIds, _, buyerTotalSessions, buyerNextSessions := buyerDataWatcher.GetBuyerData()
+			buyerIds, _, buyerTotalSessions, buyerNextSessions, buyerServerCounts := buyerDataWatcher.GetBuyerData()
 			fmt.Printf("buyers = %v\n", buyerIds)
 			for i := range buyerIds {
-				fmt.Printf("buyer %d => %d/%d\n", buyerIds[i], buyerNextSessions[i], buyerTotalSessions[i])
+				fmt.Printf("buyer %d => %d/%d (%d)\n", buyerIds[i], buyerNextSessions[i], buyerTotalSessions[i], buyerServerCounts[i])
 			}
 
 			// ------------------------------------------------------------------------------------------
