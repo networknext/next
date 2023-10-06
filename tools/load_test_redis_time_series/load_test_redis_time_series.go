@@ -37,7 +37,7 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 
 			case <-ticker.C:
 				message := common.RedisTimeSeriesMessage{}
-				message.Timestamp = uint64(time.Now().Unix())
+				message.Timestamp = uint64(time.Now().UnixNano())
 				message.Keys = keys
 				message.Values = make([]float64, len(keys))
 				for i := range message.Values {
@@ -82,10 +82,14 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 			case <-ticker.C:
 				fmt.Printf("iteration %d\n", iteration)
-				keyToIndex, timestamps, values := watcher.GetTimeSeries()
-				_ = keyToIndex
-				_ = timestamps
-				_ = values
+				watcher.Lock()
+				timestamps := make([]uint64, 0)
+				values := make([]int, 0)
+				watcher.GetTimestamps(&timestamps)
+				for i := range keys {
+					watcher.GetIntValues(&values, keys[i])
+				}
+				watcher.Unlock()
 				iteration++
 			}
 		}

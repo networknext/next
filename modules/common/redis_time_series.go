@@ -213,10 +213,10 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 				pipeline = watcher.redisClient.Pipeline()
 			}
 
-			currentTime := int(time.Now().Unix())
+			currentTime := int(time.Now().UnixNano())
 
 			for i := range keys {
-				pipeline.TSRange(ctx, keys[i], currentTime - 86400, currentTime)
+				pipeline.TSRange(ctx, keys[i], currentTime - 86400*1000000, currentTime)
 			}
 
 			cmds, err := pipeline.Exec(ctx)

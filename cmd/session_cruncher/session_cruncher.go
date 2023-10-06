@@ -429,7 +429,7 @@ func TopSessionsThread() {
 
 				message := common.RedisTimeSeriesMessage{}
 
-				message.Timestamp = uint64(time.Now().Unix())
+				message.Timestamp = uint64(time.Now().UnixNano())
 
 				message.Keys = []string{"total_sessions", "next_sessions", "accelerated_percent"}
 
