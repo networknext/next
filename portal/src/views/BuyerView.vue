@@ -422,7 +422,7 @@ async function getData(page, buyer) {
       data['total_sessions'] = res.data.buyer_data.total_sessions
       data['next_sessions'] = res.data.buyer_data.next_sessions
       data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
-      data['servers'] = 0
+      data['servers'] = res.data.buyer_data.server_count
       data['found'] = true
     }
     return [data, 0, 1]
