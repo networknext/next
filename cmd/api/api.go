@@ -902,6 +902,7 @@ type PortalBuyerDataResponse struct {
 }
 
 func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
 
 	buyerCode := vars["buyer_code"]

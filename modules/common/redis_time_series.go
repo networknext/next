@@ -206,6 +206,10 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			copy(keys, watcher.keys)
 			watcher.mutex.Unlock()
 
+			if len(keys) == 0 {
+				break
+			}
+
 			var pipeline redis.Pipeliner
 			if watcher.redisClusterClient != nil {
 				pipeline = watcher.redisClusterClient.Pipeline()
@@ -225,19 +229,28 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			}
 
 			keyToIndex := make(map[string]int, len(keys))
-			timestamps := make([]uint64, 0)
 			values := make([][]float64, len(keys))
 
 			for i := range keys {
 				keyToIndex[keys[i]] = i
 			}
 
-			// todo: transform commands -> timestamps
+			timestamp_data := cmds[0].(*redis.TSTimestampValueSliceCmd).Val()
+			timestamps := make([]uint64, len(timestamp_data))
+			for i := range timestamp_data {
+				timestamps[i] = uint64(timestamp_data[i].Timestamp)
+			}
 
-			// todo: transform commands -> values
 			for i := range keys {
-				values[i] = make([]float64, 0)
-				_ = cmds[i]
+				data := cmds[i].(*redis.TSTimestampValueSliceCmd).Val()
+				if len(data) != len(timestamps) {
+					core.Error("timestamp vs. value mismatch")
+					break
+				}
+				values[i] = make([]float64, len(data))
+				for j := range timestamp_data {
+					values[i][j] = timestamp_data[j].Value
+				}
 			}
 
 			watcher.mutex.Lock()
