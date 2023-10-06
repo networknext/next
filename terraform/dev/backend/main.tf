@@ -245,7 +245,7 @@ resource "google_redis_instance" "redis_portal" {
 }
 
 resource "google_redis_instance" "redis_time_series" {
-  name               = "redis-portal"
+  name               = "redis-time-series"
   tier               = "BASIC"
   memory_size_gb     = 1
   region             = "us-central1"
