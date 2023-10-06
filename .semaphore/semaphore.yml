@@ -87,10 +87,13 @@ blocks:
             - checkout
             - cd portal
             - yarn install
-            - yarn build-${SEMAPHORE_GIT_BRANCH}
-            - cd dist
+            - cd ..
+            - go run tools/build_portal/build_portal.go $SEMAPHORE_GIT_TAG_NAME $SEMAPHORE_GIT_BRANCH
+            - cd portal/dist
             - tar -zcvf portal.tar.gz *
             - artifact push workflow portal.tar.gz --force
+            - cd ../..
+            - artifact push workflow deploy/nginx.conf --force
 
   - name: "Build Artifacts (Golang)"
 
@@ -116,10 +119,15 @@ blocks:
             - make dist/api.tar.gz
             - artifact push workflow dist/api.tar.gz --force
 
-        - name: "Map Cruncher"
+        - name: "Session Cruncher"
           commands:
-            - make dist/map_cruncher.tar.gz
-            - artifact push workflow dist/map_cruncher.tar.gz --force
+            - make dist/session_cruncher.tar.gz
+            - artifact push workflow dist/session_cruncher.tar.gz --force
+
+        - name: "Server Cruncher"
+          commands:
+            - make dist/server_cruncher.tar.gz
+            - artifact push workflow dist/server_cruncher.tar.gz --force
 
         - name: "Portal Cruncher"
           commands:
@@ -199,6 +207,9 @@ promotions:
 
   - name: "Run Tests"
     pipeline_file: test.yml
+
+  - name: "Upload Artifacts"
+    pipeline_file: upload-artifacts.yml
     auto_promote:
       when: "result = 'passed' and tag =~ '.*'"
 

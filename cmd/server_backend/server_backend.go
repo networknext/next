@@ -39,7 +39,7 @@ var enableGooglePubsub bool
 var enableRedisStreams bool
 
 var redisHostname string
-var redisPassword string
+var redisCluster []string
 
 func main() {
 
@@ -56,7 +56,7 @@ func main() {
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
+	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
 
 	core.Debug("channel size: %d", channelSize)
 	core.Debug("max packet size: %d bytes", maxPacketSize)
@@ -64,6 +64,7 @@ func main() {
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 	core.Debug("enable redis streams: %v", enableRedisStreams)
 	core.Debug("redis hostname: %s", redisHostname)
+	core.Debug("redis cluster: %v", redisCluster)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -217,56 +218,61 @@ func locateIP_Local(ip net.IP) (float32, float32) {
 }
 
 func locateIP_Dev(ip net.IP) (float32, float32) {
-	index := common.RandomInt(0, 22)
-	switch index {
-	case 0:
-		return 33.748798, -84.387703 // atlanta
-	case 1:
-		return 32.776699, -96.796997 // dallas
-	case 2:
-		return 40.712799, -74.005997 // new york
-	case 3:
-		return 34.052200, -118.243698 // los angeles
-	case 4:
-		return 25.761700, -80.191803 // miami
-	case 5:
-		return 41.878101, -87.629799 // chicago
-	case 6:
-		return 47.606201, -122.332100 // seattle
-	case 7:
-		return 37.338699, -121.885300 // sanjose
-	case 8:
-		return 39.043800, -77.487396 // virginia
-	case 9:
-		return 42.360100, -71.058899 // boston
-	case 10:
-		return 29.760401, -95.369797 // houston
-	case 11:
-		return 39.099701, -94.578598 // kansas
-	case 12:
-		return 44.977798, -93.264999 // minneapolis
-	case 13:
-		return 39.952599, -75.165199 // philadelphia
-	case 14:
-		return 40.417301, -82.907097 // ohio
-	case 15:
-		return 45.839901, -119.700600 // oregon
-	case 16:
-		return 39.739201, -104.990303 // denver
-	case 17:
-		return 36.171600, -115.139099 // las vegas
-	case 18:
-		return 45.515202, -122.678398 // portland
-	case 19:
-		return 33.448399, -112.073997 // phoenix
-	case 20:
-		return 41.877998, -93.097702 // iowa
-	case 21:
-		return 33.836102, -81.163696 // south carolina
-	case 22:
-		return 40.760799, -111.890999 // salt lake city
+	ipv4 := ip.To4()
+	if ipv4[0] == 34 || ipv4[0] == 35 {
+		// client running in google cloud: mock lat/long of major US cities for testing
+		index := common.RandomInt(0, 22)
+		switch index {
+		case 0:
+			return 33.748798, -84.387703 // atlanta
+		case 1:
+			return 32.776699, -96.796997 // dallas
+		case 2:
+			return 40.712799, -74.005997 // new york
+		case 3:
+			return 34.052200, -118.243698 // los angeles
+		case 4:
+			return 25.761700, -80.191803 // miami
+		case 5:
+			return 41.878101, -87.629799 // chicago
+		case 6:
+			return 47.606201, -122.332100 // seattle
+		case 7:
+			return 37.338699, -121.885300 // sanjose
+		case 8:
+			return 39.043800, -77.487396 // virginia
+		case 9:
+			return 42.360100, -71.058899 // boston
+		case 10:
+			return 29.760401, -95.369797 // houston
+		case 11:
+			return 39.099701, -94.578598 // kansas
+		case 12:
+			return 44.977798, -93.264999 // minneapolis
+		case 13:
+			return 39.952599, -75.165199 // philadelphia
+		case 14:
+			return 40.417301, -82.907097 // ohio
+		case 15:
+			return 45.839901, -119.700600 // oregon
+		case 16:
+			return 39.739201, -104.990303 // denver
+		case 17:
+			return 36.171600, -115.139099 // las vegas
+		case 18:
+			return 45.515202, -122.678398 // portland
+		case 19:
+			return 33.448399, -112.073997 // phoenix
+		case 20:
+			return 41.877998, -93.097702 // iowa
+		case 21:
+			return 33.836102, -81.163696 // south carolina
+		case 22:
+			return 40.760799, -111.890999 // salt lake city
+		}
 	}
-	return 0, 0
+	// likely a real client. do ip2location with maxmind
+	return service.GetLocation(ip)
 }
 
 func locateIP_Real(ip net.IP) (float32, float32) {
@@ -279,7 +285,7 @@ func processPortalMessages_RedisStreams[T messages.Message](service *common.Serv
 
 	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
 		RedisHostname: redisHostname,
-		RedisPassword: redisPassword,
+		RedisCluster:  redisCluster,
 		StreamName:    streamName,
 	})
 
@@ -307,7 +313,7 @@ func processPortalMessages_RedisPubsub[T messages.Message](service *common.Servi
 
 	redisPubsubProducer, err := common.CreateRedisPubsubProducer(service.Context, common.RedisPubsubConfig{
 		RedisHostname:     redisHostname,
-		RedisPassword:     redisPassword,
+		RedisCluster:      redisCluster,
 		PubsubChannelName: channelName,
 	})
 
@@ -346,7 +352,7 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 		config := common.GooglePubsubConfig{
 			ProjectId:          service.GoogleProjectId,
 			Topic:              pubsubTopic,
-			MessageChannelSize: 10 * 1024,
+			MessageChannelSize: 1024 * 1024,
 		}
 
 		var err error

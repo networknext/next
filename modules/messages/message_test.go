@@ -53,7 +53,7 @@ func GenerateRandomAnalyticsRouteMatrixUpdateMessage() messages.AnalyticsRouteMa
 		RTTBucket_45_50ms:       rand.Float32(),
 		RTTBucket_50ms_Plus:     rand.Float32(),
 		CostMatrixSize:          rand.Uint32(),
-		OptimizeTime: 			 rand.Uint32(),
+		OptimizeTime:            rand.Uint32(),
 	}
 
 	if message.Version >= 1 {
@@ -299,6 +299,9 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		RealJitter:       float32(common.RandomInt(0, 1000)),
 		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
 		NumNearRelays:    uint32(common.RandomInt(0, constants.MaxNearRelays)),
+		BestScore:        uint32(common.RandomInt(0, 1000)),
+		BestDirectRTT:    uint32(common.RandomInt(0, 1000)),
+		BestNextRTT:      uint32(common.RandomInt(0, 1000)),
 	}
 
 	message.Next = common.RandomBool()

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -19,7 +19,6 @@ import (
 )
 
 var redisHostname string
-var redisPassword string
 
 var magicUpdateSeconds int
 
@@ -43,15 +42,13 @@ func main() {
 	updateChannel = make(chan *Update, 10*1024)
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPassword = envvar.GetString("REDIS_PASSWORD", "")
 
 	core.Debug("redis hostname: %s", redisHostname)
 
 	ctx := context.Background()
 
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:     redisHostname,
-		Password: redisPassword,
+		Addr: redisHostname,
 	})
 	_, err := redisClient.Ping(ctx).Result()
 	if err != nil {
@@ -136,6 +133,7 @@ func serverUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	core.Debug("server update from %s", address)
 	updateChannel <- &Update{address: address}
 	w.WriteHeader(http.StatusOK)
 }

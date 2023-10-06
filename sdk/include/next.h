@@ -36,8 +36,8 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                               "5.0.0"
-    #define NEXT_VERSION_MAJOR_INT                                5
+    #define NEXT_VERSION_FULL                               "1.0.0"
+    #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                0
     #define NEXT_VERSION_PATCH_INT                                0
 

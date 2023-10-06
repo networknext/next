@@ -217,7 +217,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	body, err := ioutil.ReadAll(request.Body)
 
 	if err != nil {
-		fmt.Printf("could not read body\n")
+		core.Error("could not read body")
 		return
 	}
 

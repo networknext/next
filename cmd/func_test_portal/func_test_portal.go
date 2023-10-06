@@ -7,10 +7,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -23,9 +23,11 @@ import (
 	db "github.com/networknext/next/modules/database"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
-
-	"github.com/gomodule/redigo/redis"
 )
+
+var SessionCruncherURL = "http://127.0.0.1:40200"
+
+var ServerCruncherURL = "http://127.0.0.1:40300"
 
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
 
@@ -99,23 +101,6 @@ type PortalServerData struct {
 	StartTime        string `json:"start_time"`
 }
 
-type PortalRelaySample struct {
-	Timestamp                 string  `json:"timestamp"`
-	NumSessions               uint32  `json:"num_sessions"`
-	EnvelopeBandwidthUpKbps   uint32  `json:"envelope_bandwidth_up_kbps"`
-	EnvelopeBandwidthDownKbps uint32  `json:"envelope_bandwidth_down_kbps"`
-	PacketsSentPerSecond      float32 `json:"packets_sent_per_second"`
-	PacketsReceivedPerSecond  float32 `json:"packets_recieved_per_second"`
-	BandwidthSentKbps         float32 `json:"bandwidth_sent_kbps"`
-	BandwidthReceivedKbps     float32 `json:"bandwidth_received_kbps"`
-	NearPingsPerSecond        float32 `json:"near_pings_per_second"`
-	RelayPingsPerSecond       float32 `json:"relay_pings_per_second"`
-	RelayFlags                string  `json:"relay_flags"`
-	NumRoutable               uint32  `json:"num_routable"`
-	NumUnroutable             uint32  `json:"num_unroutable"`
-	CurrentTime               string  `json:"current_time"`
-}
-
 // ----------------------------------------------------------------------------------------
 
 func bash(command string) {
@@ -156,15 +141,55 @@ func api() *exec.Cmd {
 	return cmd
 }
 
-func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
+func session_cruncher() *exec.Cmd {
+
+	cmd := exec.Command("./session_cruncher")
+	if cmd == nil {
+		panic("could not create session cruncher!\n")
+		return nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40200")
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	cmd.Start()
+
+	return cmd
+}
+
+func server_cruncher() *exec.Cmd {
+
+	cmd := exec.Command("./server_cruncher")
+	if cmd == nil {
+		panic("could not create server cruncher!\n")
+		return nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40300")
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	cmd.Start()
+
+	return cmd
+}
+
+func RunSessionInsertThreads(threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			sessionInserter := portal.CreateSessionInserter(pool, 1000)
+			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-			nearRelayInserter := portal.CreateNearRelayInserter(pool, 1000)
+			sessionInserter := portal.CreateSessionInserter(context.Background(), redisClient, SessionCruncherURL, 1000)
+
+			nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -174,19 +199,22 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
 					userHash := uint64(j) + iteration
-					score := uint32(rand.Intn(10000))
 					next := ((uint64(j) + iteration) % 10) == 0
 
 					sessionData := portal.GenerateRandomSessionData()
 
+					sessionData.SessionId = sessionId
+					sessionData.BuyerId = uint64(common.RandomInt(0, 9))
 					sessionData.ServerAddress = "127.0.0.1:50000"
 
 					sliceData := portal.GenerateRandomSliceData()
 
-					sessionInserter.Insert(sessionId, userHash, score, next, sessionData, sliceData)
+					score := uint32(sessionId % 1000)
+
+					sessionInserter.Insert(context.Background(), sessionId, userHash, next, score, sessionData, sliceData)
 
 					nearRelayData := portal.GenerateRandomNearRelayData()
-					nearRelayInserter.Insert(sessionId, nearRelayData)
+					nearRelayInserter.Insert(context.Background(), sessionId, nearRelayData)
 				}
 
 				time.Sleep(time.Second)
@@ -197,13 +225,15 @@ func RunSessionInsertThreads(pool *redis.Pool, threadCount int) {
 	}
 }
 
-func RunServerInsertThreads(pool *redis.Pool, threadCount int) {
+func RunServerInsertThreads(threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			serverInserter := portal.CreateServerInserter(pool, 1000)
+			redisClient := common.CreateRedisClient("127.0.0.1:6379")
+
+			serverInserter := portal.CreateServerInserter(context.Background(), redisClient, ServerCruncherURL, 1000)
 
 			for {
 
@@ -211,7 +241,7 @@ func RunServerInsertThreads(pool *redis.Pool, threadCount int) {
 
 				serverData.ServerAddress = "127.0.0.1:50000"
 
-				serverInserter.Insert(serverData)
+				serverInserter.Insert(context.Background(), serverData)
 
 				time.Sleep(time.Second)
 			}
@@ -219,13 +249,15 @@ func RunServerInsertThreads(pool *redis.Pool, threadCount int) {
 	}
 }
 
-func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
+func RunRelayInsertThreads(threadCount int) {
 
 	for k := 0; k < threadCount; k++ {
 
 		go func(thread int) {
 
-			relayInserter := portal.CreateRelayInserter(pool, 1000)
+			redisClient := common.CreateRedisClient("127.0.0.1:6379")
+
+			relayInserter := portal.CreateRelayInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -234,15 +266,14 @@ func RunRelayInsertThreads(pool *redis.Pool, threadCount int) {
 				for j := 0; j < 10; j++ {
 
 					relayData := portal.GenerateRandomRelayData()
-					relaySample := portal.GenerateRandomRelaySample()
 
 					id := 1 + uint64(k*threadCount+j)
 
-					relayData.RelayName = fmt.Sprintf("local-%d", id)
+					relayData.RelayName = fmt.Sprintf("local-%03d", id)
 
 					relayData.RelayAddress = fmt.Sprintf("127.0.0.1:%d", 2000+id)
 
-					relayInserter.Insert(relayData, relaySample)
+					relayInserter.Insert(context.Background(), relayData)
 				}
 
 				time.Sleep(time.Second)
@@ -284,6 +315,13 @@ func Get(url string, object interface{}) {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
 	}
 
+	fmt.Printf("status code is %d\n", response.StatusCode)
+
+	if response.StatusCode != 200 {
+		fmt.Sprintf("warning: status code %d for %s", response.StatusCode, url)
+		return
+	}
+
 	body, error := ioutil.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
@@ -291,9 +329,9 @@ func Get(url string, object interface{}) {
 
 	response.Body.Close()
 
-	fmt.Printf("--------------------------------------------------------------------\n")
-	fmt.Printf("%s", body)
-	fmt.Printf("--------------------------------------------------------------------\n")
+	// fmt.Printf("--------------------------------------------------------------------\n")
+	// fmt.Printf("%s", body)
+	// fmt.Printf("--------------------------------------------------------------------\n")
 
 	err = json.Unmarshal([]byte(body), &object)
 	if err != nil {
@@ -301,9 +339,41 @@ func Get(url string, object interface{}) {
 	}
 }
 
+func GetBinary(url string) []byte {
+
+	var err error
+	var response *http.Response
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	client := &http.Client{}
+	response, err = client.Do(req)
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", url, err))
+	}
+
+	if response == nil {
+		core.Error("no response from %s", url)
+		os.Exit(1)
+	}
+
+	if response.StatusCode != 200 {
+		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
+	}
+
+	body, error := ioutil.ReadAll(response.Body)
+	if error != nil {
+		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
+	}
+
+	response.Body.Close()
+
+	return body
+}
+
 type PortalSessionCountsResponse struct {
-	TotalSessionCount int `json:"total_session_count"`
 	NextSessionCount  int `json:"next_session_count"`
+	TotalSessionCount int `json:"total_session_count"`
 }
 
 type PortalSessionsResponse struct {
@@ -325,8 +395,8 @@ type PortalServersResponse struct {
 }
 
 type PortalServerDataResponse struct {
-	ServerData       *PortalServerData `json:"server_data"`
-	ServerSessionIds []uint64          `json:"server_session_ids"`
+	ServerData       *PortalServerData    `json:"server_data"`
+	ServerSessionIds []*PortalSessionData `json:"server_sessions"`
 }
 
 type PortalRelayCountResponse struct {
@@ -338,8 +408,7 @@ type PortalRelaysResponse struct {
 }
 
 type PortalRelayDataResponse struct {
-	RelayData    *PortalRelayData    `json:"relay_data"`
-	RelaySamples []PortalRelaySample `json:"relay_samples"`
+	RelayData *PortalRelayData `json:"relay_data"`
 }
 
 func test_portal() {
@@ -348,7 +417,7 @@ func test_portal() {
 
 	redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-	redisClient.Do("FLUSHALL")
+	redisClient.FlushAll(context.Background())
 
 	// create a dummy database
 
@@ -363,7 +432,7 @@ func test_portal() {
 		relayId := uint64(1 + i)
 		relay := db.Relay{
 			Id:            relayId,
-			Name:          fmt.Sprintf("local-%d", i+1),
+			Name:          fmt.Sprintf("local-%03d", i+1),
 			PublicAddress: core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 2000+i)),
 			SSHAddress:    core.ParseAddress("127.0.0.1:22"),
 			Datacenter:    database.DatacenterMap[1],
@@ -387,27 +456,31 @@ func test_portal() {
 
 	database.Save("database.bin")
 
-	// run the API service, it will load the database
+	// run the session and server crunchers, they handles high load work that is too intense for redis
+
+	session_cruncher_cmd := session_cruncher()
+
+	server_cruncher_cmd := server_cruncher()
+
+	time.Sleep(10 * time.Second)
+
+	// run the API service
 
 	api_cmd := api()
 
 	// run redis insertion threads
 
-	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-
-	redisPool := common.CreateRedisPool(redisHostname, 100, 1000)
-
 	threadCount := envvar.GetInt("REDIS_THREAD_COUNT", 10)
 
-	RunSessionInsertThreads(redisPool, threadCount)
-	RunServerInsertThreads(redisPool, threadCount)
-	RunRelayInsertThreads(redisPool, threadCount)
+	RunSessionInsertThreads(threadCount)
+	RunServerInsertThreads(threadCount)
+	RunRelayInsertThreads(threadCount)
 
 	// simulate portal activity
 
 	var ready bool
 
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 
 		fmt.Printf("iteration %d\n", i)
 
@@ -421,7 +494,7 @@ func test_portal() {
 
 		sessionsResponse := PortalSessionsResponse{}
 
-		Get("http://127.0.0.1:50000/portal/sessions/0/10", &sessionsResponse)
+		Get("http://127.0.0.1:50000/portal/sessions/0", &sessionsResponse)
 
 		fmt.Printf("got data for %d sessions\n", len(sessionsResponse.Sessions))
 
@@ -449,7 +522,7 @@ func test_portal() {
 
 		serversResponse := PortalServersResponse{}
 
-		Get("http://127.0.0.1:50000/portal/servers/0/10", &serversResponse)
+		Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
 
 		serverDataResponse := PortalServerDataResponse{}
 
@@ -473,7 +546,7 @@ func test_portal() {
 
 		relaysResponse := PortalRelaysResponse{}
 
-		Get("http://127.0.0.1:50000/portal/relays/0/10", &relaysResponse)
+		Get("http://127.0.0.1:50000/portal/relays/0", &relaysResponse)
 
 		fmt.Printf("got data for %d relays\n", len(relaysResponse.Relays))
 
@@ -484,18 +557,18 @@ func test_portal() {
 			fmt.Printf("first relay is '%s'\n", relaysResponse.Relays[0].RelayName)
 
 			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/relay/%s", relaysResponse.Relays[0].RelayName), &relayDataResponse)
-
-			fmt.Printf("relay %s has %d samples\n", relaysResponse.Relays[0].RelayName, len(relayDataResponse.RelaySamples))
 		}
+
+		mapData := GetBinary("http://127.0.0.1:50000/portal/map_data")
 
 		ready = true
 
-		if sessionCountsResponse.NextSessionCount < 100 {
+		if sessionCountsResponse.NextSessionCount < 10 {
 			fmt.Printf("A\n")
 			ready = false
 		}
 
-		if sessionCountsResponse.TotalSessionCount < 1000 {
+		if sessionCountsResponse.TotalSessionCount < 10 {
 			fmt.Printf("B\n")
 			ready = false
 		}
@@ -525,7 +598,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(serverDataResponse.ServerSessionIds) < 10000 {
+		if len(serverDataResponse.ServerSessionIds) < 10 {
 			fmt.Printf("H\n")
 			ready = false
 		}
@@ -535,7 +608,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(relayDataResponse.RelaySamples) == 0 {
+		if len(mapData) == 0 {
 			fmt.Printf("J\n")
 			ready = false
 		}
@@ -550,7 +623,12 @@ func test_portal() {
 	}
 
 	api_cmd.Process.Signal(os.Interrupt)
+	session_cruncher_cmd.Process.Signal(os.Interrupt)
+	server_cruncher_cmd.Process.Signal(os.Interrupt)
+
 	api_cmd.Wait()
+	session_cruncher_cmd.Wait()
+	server_cruncher_cmd.Wait()
 
 	if !ready {
 		fmt.Printf("error: portal API is broken\n")

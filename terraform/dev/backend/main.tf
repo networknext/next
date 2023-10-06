@@ -69,6 +69,63 @@ provider "cloudflare" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_compute_managed_ssl_certificate" "api-dev" {
+  name = "api-dev"
+  managed {
+    domains = ["api-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "relay-dev" {
+  name = "relay-dev"
+  managed {
+    domains = ["relay-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "portal-dev" {
+  name = "portal-dev"
+  managed {
+    domains = ["portal-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
+  name = "raspberry-dev"
+  managed {
+    domains = ["raspberry-dev.${var.cloudflare_domain}"]
+  }
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_network" "development" {
+  name                    = "development"
+  project                 = var.google_project
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "development" {
+  name                     = "development"
+  project                  = var.google_project
+  ip_cidr_range            = "10.0.0.0/16"
+  region                   = var.google_region
+  network                  = google_compute_network.development.id
+  private_ip_google_access = true
+}
+
+resource "google_compute_subnetwork" "internal_http_load_balancer" {
+  name          = "internal-http-load-balancer"
+  project       = var.google_project
+  region        = var.google_region
+  purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
+  role          = "ACTIVE"
+  network       = google_compute_network.development.id
+  ip_cidr_range = "10.1.0.0/16"
+}
+
+# ----------------------------------------------------------------------------------------
+
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-dev"
@@ -101,42 +158,12 @@ resource "cloudflare_record" "raspberry_domain" {
   proxied = false
 }
 
-// todo: portal domain here
-/*
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-dev"
   value   = module.portal.address
   type    = "A"
   proxied = false
-}
-*/
-
-# ----------------------------------------------------------------------------------------
-
-resource "google_compute_network" "development" {
-  name                    = "development"
-  project                 = var.google_project
-  auto_create_subnetworks = false
-}
-
-resource "google_compute_subnetwork" "development" {
-  name                     = "development"
-  project                  = var.google_project
-  ip_cidr_range            = "10.0.0.0/16"
-  region                   = var.google_region
-  network                  = google_compute_network.development.id
-  private_ip_google_access = true
-}
-
-resource "google_compute_subnetwork" "internal_http_load_balancer" {
-  name          = "internal-http-load-balancer"
-  project       = var.google_project
-  region        = var.google_region
-  purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
-  role          = "ACTIVE"
-  network       = google_compute_network.development.id
-  ip_cidr_range = "10.1.0.0/16"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -180,6 +207,19 @@ resource "google_compute_firewall" "allow_https" {
   target_tags = ["allow-https"]
 }
 
+resource "google_compute_firewall" "allow_redis" {
+  name          = "allow-redis"
+  project       = var.google_project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "tcp"
+    ports    = ["6379"]
+  }
+  target_tags = ["allow-redis"]
+}
+
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
   project       = var.google_project
@@ -207,18 +247,31 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_redis_instance" "redis_portal" {
-  name               = "redis-portal"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
+module "redis_time_series" {
+
+  source = "../../modules/redis_stack"
+
+  service_name = "redis-time-series"
+
+  machine_type             = "n1-standard-1"
+  project                  = var.google_project
+  region                   = var.google_region
+  zone                     = var.google_zone
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-redis", "allow-ssh"]
 }
 
-resource "google_redis_instance" "redis_map_cruncher" {
-  name               = "redis-map-cruncher"
+output "redis_time_series_address" {
+  description = "The IP address of the redis time series database"
+  value       = module.redis_time_series.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_redis_instance" "redis_portal" {
+  name               = "redis-portal"
   tier               = "BASIC"
   memory_size_gb     = 1
   region             = "us-central1"
@@ -268,11 +321,6 @@ resource "google_redis_instance" "redis_server_backend" {
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = google_redis_instance.redis_portal.host
-}
-
-output "redis_map_cruncher_address" {
-  description = "The IP address of the map cruncher redis instance"
-  value       = google_redis_instance.redis_map_cruncher.host
 }
 
 output "redis_raspberry_address" {
@@ -1504,6 +1552,7 @@ module "relay_gateway" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "relay-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.relay-dev.id
 }
 
 output "relay_gateway_address" {
@@ -1626,8 +1675,12 @@ module "api" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
@@ -1639,22 +1692,97 @@ module "api" {
     sudo systemctl start app.service
   EOF1
 
-  tag                      = var.tag
-  extra                    = var.extra
-  machine_type             = var.google_machine_type
-  project                  = var.google_project
-  region                   = var.google_region
-  zones                    = var.google_zones
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
-  tags                     = ["allow-ssh", "allow-http", "allow-https"]
-  domain                   = "api-dev.${var.cloudflare_domain}"
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "g1-small"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.development.id
+  default_subnetwork         = google_compute_subnetwork.development.id
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http", "allow-https"]
+  domain                     = "api-dev.${var.cloudflare_domain}"
+  certificate                = google_compute_managed_ssl_certificate.api-dev.id
 }
 
 output "api_address" {
   description = "The IP address of the api load balancer"
   value       = module.api.address
+}
+
+// ---------------------------------------------------------------------------------------
+
+module "session_cruncher" {
+
+  source = "../../modules/internal_http_service"
+
+  service_name = "session-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "n1-standard-2"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.development.id
+  default_subnetwork         = google_compute_subnetwork.development.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
+}
+
+// ---------------------------------------------------------------------------------------
+
+module "server_cruncher" {
+
+  source = "../../modules/internal_http_service"
+
+  service_name = "server-cruncher"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "n1-standard-2"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.development.id
+  default_subnetwork         = google_compute_subnetwork.development.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1676,6 +1804,8 @@ module "portal_cruncher" {
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
@@ -1683,7 +1813,7 @@ module "portal_cruncher" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "n1-standard-1"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1692,40 +1822,6 @@ module "portal_cruncher" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-http"]
   target_size        = 2
-}
-
-// ---------------------------------------------------------------------------------------
-
-module "map_cruncher" {
-
-  source = "../../modules/internal_mig_with_health_check"
-
-  service_name = "map-cruncher"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a map_cruncher.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis_map_cruncher.host}:6379"
-    REDIS_SERVER_BACKEND_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
-    EOF
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = var.google_machine_type
-  project            = var.google_project
-  region             = var.google_region
-  zones              = var.google_zones
-  default_network    = google_compute_network.development.id
-  default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-http"]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1764,7 +1860,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "n1-standard-1"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1815,6 +1911,7 @@ module "raspberry_backend" {
   service_account          = var.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
 }
 
 output "raspberry_backend_address" {
@@ -1932,6 +2029,52 @@ module "ip2location" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 1
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "portal" {
+
+  source = "../../modules/nginx"
+
+  service_name = "portal"
+
+  artifact                 = "${var.google_artifacts_bucket}/${var.tag}/portal.tar.gz"
+  config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
+  tag                      = var.tag
+  extra                    = var.extra
+  machine_type             = var.google_machine_type
+  project                  = var.google_project
+  region                   = var.google_region
+  zones                    = var.google_zones
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "portal-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.portal-dev.id
+}
+
+output "portal_address" {
+  description = "The IP address of the portal load balancer"
+  value       = module.portal.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_router" "router" {
+  name    = "router-to-internet"
+  network = google_compute_network.development.id
+  project = var.google_project
+  region  = var.google_region
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "nat"
+  router                             = google_compute_router.router.name
+  region                             = var.google_region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
 
 # ----------------------------------------------------------------------------------------

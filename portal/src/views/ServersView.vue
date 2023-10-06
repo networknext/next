@@ -2,46 +2,50 @@
 
 <template>
 
-  <div class="d-md-none">
-    <table id="servers_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Server Address</th>
-          <th>Current Sessions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td> {{ item["Current Sessions"] }} </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <div class="parent">
 
-  <div class="d-none d-md-block">
-    <table id="servers_table" class="table table-striped table-hover">
-      <thead>
-        <tr>
-          <th>Server Address</th>
-          <th>Current Sessions</th>
-          <th>Uptime</th>
-          <th>SDK Version</th>
-          <th>Buyer</th>
-          <th>Datacenter</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in data" :key='item'>
-          <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
-          <td> {{ item["Current Sessions"] }} </td>
-          <td> {{ item["Uptime"] }} </td>
-          <td> {{ item["SDK Version"] }} </td>
-          <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
-          <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="d-md-none">
+      <table id="servers_table" class="table table-striped">
+        <thead>
+          <tr>
+            <th>Server Address</th>
+            <th>Current Sessions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td> {{ item["Current Sessions"] }} </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-none d-md-block">
+      <table id="servers_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Server Address</th>
+            <th>Current Sessions</th>
+            <th>Uptime</th>
+            <th>SDK Version</th>
+            <th>Buyer</th>
+            <th>Datacenter</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td> {{ item["Current Sessions"] }} </td>
+            <td> {{ item["Uptime"] }} </td>
+            <td> {{ item["SDK Version"] }} </td>
+            <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
 </template>
@@ -69,19 +73,23 @@ function nice_uptime(value) {
   return value + "s"
 }
 
-async function getData() {
+async function getData(page) {
   try {
-    const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/servers/0/100');
+    if (page == null) {
+      page = 0
+    }
+    const url = process.env.VUE_APP_API_URL + '/portal/servers/' + page
+    const res = await axios.get(url);
     let i = 0;
     let data = []
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
-      const datacenterLink = v.datacenter_name != "" ? "datacenter/" + v.datacenter_name : ""
+      const datacenterLink = v.datacenter_name != "" ? "/datacenter/" + v.datacenter_name : ""
       let row = {
         "Server Address":v.server_address,
         "Server Link":"server/" + v.server_address,
         "Buyer":"Raspberry",
-        "Buyer Link":"buyer/" + v.buyer_code,
+        "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link":datacenterLink,
         "Current Sessions":v.num_sessions.toLocaleString(),
@@ -91,7 +99,9 @@ async function getData() {
       data.push(row)
       i++;
     }
-    return data
+    const outputPage = res.data.output_page
+    const numPages = res.data.num_pages
+    return [data, outputPage, numPages]
   } catch (error) {
     console.log(error);
     return null
@@ -111,16 +121,43 @@ export default {
   },
 
   async beforeRouteEnter (to, from, next) {
-    var data = await getData()
+    let values = to.path.split("/")
+    let page = 0
+    if (values.length > 0) {
+      let value = values[values.length-1]
+      page = parseInt(value)
+      if (isNaN(page)) {
+        page = 0
+      }
+    }
+    let result = await getData(page)
     next(vm => {
-      vm.data = data
+      if (result != null) {
+        vm.data = result[0]
+        vm.page = result[1]
+        vm.num_pages = result[2]
+        vm.$emit('notify-update', vm.page, vm.num_pages)
+      }
     })
+  },
+
+  mounted: function() {
+    this.$emit('notify-view', 'servers')
   },
 
   methods: {
 
+    async getData(page) {
+      return getData(page)
+    },
+
     async update() {
-      this.data = await getData()
+      let result = await getData(this.page)
+      if (result != null) {
+        this.data = result[0]
+        this.page = result[1]
+        this.num_pages = result[2]
+      }
     }
 
   }
@@ -132,6 +169,12 @@ export default {
 // -----------------------------------------------------------------------------------------
 
 <style scoped>
+
+.parent {
+  width: 100%;
+  height: 100%;
+  padding-top: 10px;
+}
 
 a {
   color: #2c3e50;

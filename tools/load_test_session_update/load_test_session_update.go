@@ -90,7 +90,7 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 				for j := 0; j < NumSessions; j++ {
 
 					packet := packets.SDK_SessionUpdateRequestPacket{
-						Version:           packets.SDKVersion{5, 0, 0},
+						Version:           packets.SDKVersion{1, 0, 0},
 						BuyerId:           BuyerId,
 						DatacenterId:      uint64(j),
 						SessionId:         SessionId,

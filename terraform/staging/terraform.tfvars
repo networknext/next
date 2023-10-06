@@ -3,9 +3,9 @@ extra = ""
 
 vpn_address = "45.79.157.168"
 
-google_service_account      = "terraform@staging-398017.iam.gserviceaccount.com"
+google_service_account      = "terraform@staging-399912.iam.gserviceaccount.com"
 google_credentials          = "~/secrets/terraform-staging.json"
-google_project              = "staging-398017"
+google_project              = "staging-399912"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
@@ -13,10 +13,9 @@ google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"
 google_artifacts_bucket     = "gs://test_network_next_backend_artifacts"
 google_database_bucket      = "gs://test_network_next_database_files"
 
-cloudflare_api_token              = "~/secrets/terraform-cloudflare.txt"
-cloudflare_zone_id_api            = "eba5d882ea2aa23f92dfb50fbf7e3cf4" # -> virtualgo.net
-cloudflare_zone_id_relay_backend  = "4690b11494ddc59f6fdf514780d24e0a" # -> losangelesfreewaysatnight.com
-cloudflare_zone_id_server_backend = "d74db52c8b51a2b80a76f736713e3edd" # -> spacecats.net
+cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
+cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
+cloudflare_domain           = "virtualgo.net"
 
 relay_backend_public_key    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 relay_backend_private_key   = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
@@ -29,4 +28,4 @@ customer_private_key        = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkE
 
 maxmind_license_key = "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"
 
-ip2location_bucket_name = "test_network_next_staging"
+ip2location_bucket_name = "test_network_next_staging_ip2location"

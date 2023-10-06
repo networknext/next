@@ -141,7 +141,7 @@ type SDK_ServerUpdateRequestPacket struct {
 	DatacenterId  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
-	StartTime     uint64
+	Uptime        uint64
 }
 
 func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -151,7 +151,7 @@ func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) e
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
-	stream.SerializeUint64(&packet.StartTime)
+	stream.SerializeUint64(&packet.Uptime)
 	return stream.Error()
 }
 
@@ -356,6 +356,9 @@ func GenerateRandomSessionData() SDK_SessionData {
 		StartTimestamp:                rand.Uint64(),
 		DurationOnNext:                rand.Uint32(),
 		Error:                         rand.Uint64(),
+		BestScore:                     uint32(common.RandomInt(0, 999)),
+		BestDirectRTT:                 uint32(common.RandomInt(0, 500)),
+		BestNextRTT:                   uint32(common.RandomInt(0, 500)),
 	}
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
@@ -491,6 +494,9 @@ type SDK_SessionData struct {
 	DurationOnNext                      uint32
 	StartTimestamp                      uint64
 	Error                               uint64
+	BestScore                           uint32
+	BestDirectRTT                       uint32
+	BestNextRTT                         uint32
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -567,6 +573,10 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&sessionData.DurationOnNext)
 	stream.SerializeUint64(&sessionData.StartTimestamp)
 	stream.SerializeUint64(&sessionData.Error)
+
+	stream.SerializeBits(&sessionData.BestScore, 10)
+	stream.SerializeBits(&sessionData.BestDirectRTT, 10)
+	stream.SerializeBits(&sessionData.BestNextRTT, 10)
 
 	return stream.Error()
 }

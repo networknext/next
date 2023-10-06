@@ -5,18 +5,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
 )
 
-// IMPORTANT: In redis pubsub, each consumer gets a full set of messages produced by all producers.
-// this is different to streams and google pubsub where messages are load balanced across consumers
+// IMPORTANT: In redis pubsub each consumer gets a full set of messages produced by all producers.
 
 type RedisPubsubConfig struct {
 	RedisHostname      string
-	RedisPassword      string
+	RedisCluster       []string
 	PubsubChannelName  string
 	BatchSize          int
 	BatchDuration      time.Duration
@@ -27,7 +26,7 @@ type RedisPubsubProducer struct {
 	MessageChannel  chan []byte
 	config          RedisPubsubConfig
 	mutex           sync.RWMutex
-	redisClient     *redis.Client
+	redisClient     redis.PubSubCmdable
 	messageBatch    [][]byte
 	batchStartTime  time.Time
 	numMessagesSent int
@@ -35,18 +34,26 @@ type RedisPubsubProducer struct {
 }
 
 func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubProducer, error) {
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		core.Error("failed to create pubsub client: %v", err)
-		return nil, err
+
+	var redisClient redis.PubSubCmdable
+	if len(config.RedisCluster) > 0 {
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
+	} else {
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -54,7 +61,7 @@ func CreateRedisPubsubProducer(ctx context.Context, config RedisPubsubConfig) (*
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	producer := &RedisPubsubProducer{}
@@ -111,7 +118,7 @@ func (producer *RedisPubsubProducer) sendBatch(ctx context.Context) {
 	producer.numMessagesSent += batchNumMessages
 	producer.mutex.Unlock()
 
-	producer.messageBatch = [][]byte{}
+	producer.messageBatch = producer.messageBatch[:0]
 
 	// core.Debug("sent batch %d containing %d messages (%d bytes)", batchId, batchNumMessages, len(messageToSend))
 }
@@ -153,6 +160,7 @@ type RedisPubsubConsumer struct {
 	MessageChannel      chan []byte
 	config              RedisPubsubConfig
 	redisClient         *redis.Client
+	redisClusterClient  *redis.ClusterClient
 	pubsubSubscription  *redis.PubSub
 	pubsubChannel       <-chan *redis.Message
 	mutex               sync.RWMutex
@@ -162,25 +170,36 @@ type RedisPubsubConsumer struct {
 
 func CreateRedisPubsubConsumer(ctx context.Context, config RedisPubsubConfig) (*RedisPubsubConsumer, error) {
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
+	var redisClient *redis.Client
+	var redisClusterClient *redis.ClusterClient
+	if len(config.RedisCluster) > 0 {
+		redisClusterClient = CreateRedisClusterClient(config.RedisCluster)
+		_, err := redisClusterClient.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		redisClient = CreateRedisClient(config.RedisHostname)
+		_, err := redisClient.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 10 * 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	consumer := &RedisPubsubConsumer{}
 
 	consumer.config = config
 	consumer.redisClient = redisClient
-	consumer.pubsubSubscription = consumer.redisClient.Subscribe(ctx, config.PubsubChannelName)
+	consumer.redisClusterClient = redisClusterClient
+	if consumer.redisClusterClient != nil {
+		consumer.pubsubSubscription = consumer.redisClusterClient.Subscribe(ctx, config.PubsubChannelName)
+	} else {
+		consumer.pubsubSubscription = consumer.redisClient.Subscribe(ctx, config.PubsubChannelName)
+	}
 	consumer.pubsubChannel = consumer.pubsubSubscription.Channel()
 	consumer.MessageChannel = make(chan []byte, config.MessageChannelSize)
 

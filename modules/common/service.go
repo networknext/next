@@ -24,11 +24,11 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/ip2location"
 
-	"github.com/gomodule/redigo/redis"
+	"cloud.google.com/go/profiler"
 	"github.com/gorilla/mux"
 	"github.com/oschwald/maxminddb-golang"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
-    "cloud.google.com/go/profiler"
 )
 
 var (
@@ -145,15 +145,15 @@ func CreateService(serviceName string) *Service {
 
 		core.Log("profiler is enabled")
 
-	    profilerConfig := profiler.Config{
-	    	Service: 		serviceName,
-	        ServiceVersion: tag,
-	    }
+		profilerConfig := profiler.Config{
+			Service:        serviceName,
+			ServiceVersion: tag,
+		}
 
-	    if err := profiler.Start(profilerConfig); err != nil {
+		if err := profiler.Start(profilerConfig); err != nil {
 			core.Error("could not start profiler")
 			os.Exit(1)
-	    }
+		}
 	}
 
 	service.Router.HandleFunc("/version", versionHandlerFunc(buildTime, commitMessage, commitHash, tag, []string{}))
@@ -457,37 +457,16 @@ func (service *Service) StartUDPServer(packetHandler func(conn *net.UDPConn, fro
 	service.udpServer = CreateUDPServer(service.Context, config, packetHandler)
 }
 
-func CreateRedisClient(hostname string) redis.Conn {
-	redisClient, err := redis.Dial("tcp", hostname)
-	if err != nil {
-		panic(err)
-	}
-	redisClient.Send("PING")
-	redisClient.Flush()
-	pong, err := redisClient.Receive()
-	if err != nil || pong != "PONG" {
-		panic(err)
-	}
-	return redisClient
+func CreateRedisClient(hostname string) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr: hostname,
+	})
 }
 
-func CreateRedisPool(hostname string, active int, idle int) *redis.Pool {
-	pool := redis.Pool{
-		MaxActive:   active,
-		MaxIdle:     idle,
-		IdleTimeout: 60 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", hostname)
-		},
-	}
-	redisClient := pool.Get()
-	redisClient.Send("PING")
-	redisClient.Flush()
-	pong, err := redisClient.Receive()
-	if err != nil || pong != "PONG" {
-		panic(err)
-	}
-	return &pool
+func CreateRedisClusterClient(redisNodes []string) *redis.ClusterClient {
+	clusterOptions := redis.ClusterOptions{Addrs: redisNodes}
+	redisClient := redis.NewClusterClient(&clusterOptions)
+	return redisClient
 }
 
 func (service *Service) LeaderElection() {
@@ -495,17 +474,15 @@ func (service *Service) LeaderElection() {
 	core.Log("started leader election")
 
 	redisHostname := envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPoolActive := envvar.GetInt("REDIS_POOL_ACTIVE", 100)
-	redisPoolIdle := envvar.GetInt("REDIS_POOL_IDLE", 1000)
 
-	pool := CreateRedisPool(redisHostname, redisPoolActive, redisPoolIdle)
+	redisClient := CreateRedisClient(redisHostname)
 
 	config := RedisLeaderElectionConfig{}
 	config.Timeout = time.Second * 10
 	config.ServiceName = service.ServiceName
 
 	var err error
-	service.leaderElection, err = CreateRedisLeaderElection(pool, config)
+	service.leaderElection, err = CreateRedisLeaderElection(redisClient, config)
 	if err != nil {
 		core.Error("could not create redis leader election: %v")
 		os.Exit(1)
@@ -628,6 +605,7 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 }
 
 func (service *Service) IsLeader() bool {
+	return true
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
 	}

@@ -110,8 +110,10 @@ func main() {
 		api()
 	} else if command == "portal-cruncher" {
 		portal_cruncher()
-	} else if command == "map-cruncher" {
-		map_cruncher()
+	} else if command == "session-cruncher" {
+		session_cruncher()
+	} else if command == "server-cruncher" {
+		server_cruncher()
 	} else if command == "relay" {
 		relay()
 	} else if command == "server-backend" {
@@ -168,16 +170,16 @@ func main() {
 		func_client()
 	} else if command == "func-backend" {
 		func_backend()
-	} else if command == "load-test-redis-portal" {
-		load_test_redis_portal()
+	} else if command == "load-test-portal" {
+		load_test_portal()
 	} else if command == "load-test-redis-data" {
 		load_test_redis_data()
 	} else if command == "load-test-redis-pubsub" {
 		load_test_redis_pubsub()
 	} else if command == "load-test-redis-streams" {
 		load_test_redis_streams()
-	} else if command == "load-test-map" {
-		load_test_map()
+	} else if command == "load-test-redis-time-series" {
+		load_test_redis_time_series()
 	} else if command == "load-test-optimize" {
 		load_test_optimize()
 	} else if command == "load-test-route-matrix" {
@@ -216,6 +218,10 @@ func main() {
 		load_test_servers()
 	} else if command == "load-test-sessions" {
 		load_test_sessions()
+	} else if command == "redis-cluster" {
+		redis_cluster()
+	} else if command == "redis-time-series" {
+		redis_time_series()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -287,10 +293,6 @@ func server_backend() {
 	bash("HTTP_PORT=40000 ./dist/server_backend")
 }
 
-func website_cruncher() {
-	bash("HTTP_PORT=40010 ./dist/website_cruncher")
-}
-
 func portal_cruncher() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
@@ -299,12 +301,20 @@ func portal_cruncher() {
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
 }
 
-func map_cruncher() {
+func session_cruncher() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
-		httpPort = "40100"
+		httpPort = "40200"
 	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/map_cruncher", httpPort))
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/session_cruncher", httpPort))
+}
+
+func server_cruncher() {
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "40300"
+	}
+	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/server_cruncher", httpPort))
 }
 
 func happy_path() {
@@ -476,12 +486,12 @@ func load_test_redis_streams() {
 	bash("go run tools/load_test_redis_streams/load_test_redis_streams.go")
 }
 
-func load_test_redis_portal() {
-	bash("go run tools/load_test_redis_portal/load_test_redis_portal.go")
+func load_test_redis_time_series() {
+	bash("go run tools/load_test_redis_time_series/load_test_redis_time_series.go")
 }
 
-func load_test_map() {
-	bash("go run tools/load_test_map/load_test_map.go")
+func load_test_portal() {
+	bash("go run tools/load_test_portal/load_test_portal.go")
 }
 
 func load_test_optimize() {
@@ -593,4 +603,12 @@ func load_test_servers() {
 
 func load_test_sessions() {
 	bash("cd dist && ./load_test_sessions")
+}
+
+func redis_cluster() {
+	bash("go run tools/redis_cluster/redis_cluster.go")
+}
+
+func redis_time_series() {
+	bash("docker run -p 6379:6379 --rm redis/redis-stack-server:latest")
 }

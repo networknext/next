@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -126,15 +127,17 @@ func SimulateServers() {
 
 func RunServer(index int) {
 
-	time.Sleep(time.Duration(common.RandomInt(0, 10000)) * time.Millisecond)
+	var r = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
+
+	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", serverAddress, 10000+index))
 
 	var requestId uint64
 
 	datacenterId := common.DatacenterId(fmt.Sprintf("test.%03d", index%numRelays))
-
-	startTime := uint64(time.Now().Unix())
 
 	bindAddress := fmt.Sprintf("0.0.0.0:%d", 10000+index)
 
@@ -182,7 +185,7 @@ func RunServer(index int) {
 					DatacenterId:  datacenterId,
 					NumSessions:   uint32(common.RandomInt(100, 200)),
 					ServerAddress: address,
-					StartTime:     startTime,
+					Uptime:        uint64(requestId * 10),
 				}
 
 				requestId += 1

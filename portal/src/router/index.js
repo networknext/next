@@ -17,14 +17,18 @@ import SellerView from '../views/SellerView.vue'
 const routes = [
   {
     path: '/',
+    name: 'index',
+    component: MapView
+  },
+  {
+    path: '/map',
     name: 'map',
     component: MapView
   },
   {
-    path: '/sessions',
+    path: '/sessions/:page?',
     name: 'sessions',
     component: SessionsView,
-    meta: { transition: 'slide-left' },
   },
   {
     path: '/session/:id', 
@@ -32,12 +36,12 @@ const routes = [
     component: SessionView 
   },    
   {
-    path: '/user/:id', 
+    path: '/user/:id/:page?', 
     name: 'user',
     component: UserView 
   },    
   {
-    path: '/servers',
+    path: '/servers/:page?',
     name: 'servers',
     component: ServersView
   },
@@ -47,7 +51,7 @@ const routes = [
     component: ServerView
   },    
   {
-    path: '/relays',
+    path: '/relays/:page?',
     name: 'relays',
     component: RelaysView
   },
@@ -57,7 +61,7 @@ const routes = [
     component: RelayView
   },
   {
-    path: '/datacenters',
+    path: '/datacenters/:page?',
     name: 'datacenters',
     component: DatacentersView
   },
@@ -67,7 +71,7 @@ const routes = [
     component: DatacenterView
   },    
   {
-    path: '/buyers',
+    path: '/buyers/:page?',
     name: 'buyers',
     component: BuyersView
   },
@@ -77,7 +81,7 @@ const routes = [
     component: BuyerView
   },    
   {
-    path: '/sellers',
+    path: '/sellers/:page?',
     name: 'sellers',
     component: SellersView
   },

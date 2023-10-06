@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v9"
 	"github.com/google/uuid"
 	"github.com/networknext/next/modules/core"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisStreamsConfig struct {
 	RedisHostname      string
-	RedisPassword      string
+	RedisCluster       []string
 	StreamName         string
 	ConsumerGroup      string
 	BatchSize          int
@@ -24,7 +24,7 @@ type RedisStreamsConfig struct {
 type RedisStreamsProducer struct {
 	MessageChannel  chan []byte
 	config          RedisStreamsConfig
-	redisClient     *redis.Client
+	redisClient     redis.StreamCmdable
 	messageBatch    [][]byte
 	batchStartTime  time.Time
 	mutex           sync.RWMutex
@@ -34,19 +34,27 @@ type RedisStreamsProducer struct {
 
 func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) (*RedisStreamsProducer, error) {
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
+	var redisClient redis.StreamCmdable
+	if len(config.RedisCluster) > 0 {
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
+	} else {
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
 	}
 
 	producer := &RedisStreamsProducer{}
 
 	if config.MessageChannelSize == 0 {
-		config.MessageChannelSize = 1024
+		config.MessageChannelSize = 1024 * 1024
 	}
 
 	if config.BatchDuration == 0 {
@@ -54,7 +62,7 @@ func CreateRedisStreamsProducer(ctx context.Context, config RedisStreamsConfig) 
 	}
 
 	if config.BatchSize == 0 {
-		config.BatchSize = 1000
+		config.BatchSize = 10000
 	}
 
 	producer.config = config
@@ -120,7 +128,7 @@ func (producer *RedisStreamsProducer) sendBatch(ctx context.Context) {
 	producer.numMessagesSent += batchNumMessages
 	producer.mutex.Unlock()
 
-	producer.messageBatch = [][]byte{}
+	producer.messageBatch = producer.messageBatch[:0]
 
 	// core.Debug("sent batch %d containing %d messages (%d bytes)", producer.numBatchesSent - 1, batchNumMessages, len(messageToSend))
 }
@@ -145,7 +153,7 @@ type RedisStreamsConsumer struct {
 	MessageChannel      chan []byte
 	config              RedisStreamsConfig
 	consumerId          string
-	redisClient         *redis.Client
+	redisClient         redis.StreamCmdable
 	mutex               sync.RWMutex
 	numMessagesReceived int
 	numBatchesReceived  int
@@ -153,20 +161,28 @@ type RedisStreamsConsumer struct {
 
 func CreateRedisStreamsConsumer(ctx context.Context, config RedisStreamsConfig) (*RedisStreamsConsumer, error) {
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     config.RedisHostname,
-		Password: config.RedisPassword,
-	})
-	_, err := redisClient.Ping(ctx).Result()
-	if err != nil {
-		return nil, err
+	var redisClient redis.StreamCmdable
+	if len(config.RedisCluster) > 0 {
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
+	} else {
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
 	}
 
 	consumerId := uuid.New().String()
 
 	// core.Debug("redis streams: stream name = %s, consumer id = %s, consumer group = %s", config.StreamName, consumerId, config.ConsumerGroup)
 
-	_, err = redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "$").Result()
+	_, err := redisClient.XGroupCreateMkStream(ctx, config.StreamName, config.ConsumerGroup, "$").Result()
 	if err != nil {
 		if strings.Contains(err.Error(), "BUSYGROUP") {
 			// core.Debug("consumer group %v already exists", config.ConsumerGroup)

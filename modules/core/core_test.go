@@ -5267,3 +5267,119 @@ func TestPingTokenSignatures(t *testing.T) {
 		assert.True(t, crypto.Auth_Verify(data[:length], key, pingTokens[i*constants.PingTokenBytes:]))
 	}
 }
+
+func TestSessionScore(t *testing.T) {
+
+	// biggest next improvement should be 0 (lowest score)
+
+	assert.True(t, core.GetSessionScore(true, 254, 0) == uint32(0))
+
+	// no next improvement should be 254 (no improvement)
+
+	assert.True(t, core.GetSessionScore(true, 0, 0) == uint32(254))
+
+	// next is worse than direct is still no improvement
+
+	assert.True(t, core.GetSessionScore(true, 100, 200) == uint32(254))
+
+	// biggest direct RTT values come first, after next values with no improvement
+
+	assert.True(t, core.GetSessionScore(false, 1000, 0) == uint32(255))
+
+	// lowest direct RTT values are last
+
+	assert.True(t, core.GetSessionScore(false, 0, 0) == uint32(999))
+
+	// test random direct sessions
+
+	for i := 0; i < 10000; i++ {
+		score := core.GetSessionScore(false, int32(rand.Intn(5000)-2000), int32(rand.Intn(5000)-2000))
+		assert.True(t, score <= 999)
+	}
+
+	// test random next sessions
+
+	for i := 0; i < 10000; i++ {
+		score := core.GetSessionScore(true, int32(rand.Intn(5000)-2000), int32(rand.Intn(5000)-2000))
+		assert.True(t, score <= 999)
+	}
+}
+
+func TestPagination(t *testing.T) {
+
+	t.Parallel()
+
+	// if there is nothing in the list, then we should always get page 0 [0,0]
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(100, 0)
+		assert.True(t, begin == 0)
+		assert.True(t, end == 0)
+		assert.True(t, outputPage == 0)
+		assert.True(t, numPages == 0)
+	}
+
+	// if the list is less than 100 long, then we should always get page 0 [0,length]
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(100, 15)
+		assert.True(t, begin == 0)
+		fmt.Printf("end = %d\n", end)
+		assert.True(t, end == 15)
+		assert.True(t, outputPage == 0)
+		assert.True(t, numPages == 1)
+	}
+
+	// if the list is not evenly dividable by 100, we get an extra page at the end
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(0, 1001)
+		assert.True(t, begin == 0)
+		assert.True(t, end == 100)
+		assert.True(t, outputPage == 0)
+		assert.True(t, numPages == 11)
+	}
+
+	// regular positive get page cases (relative to beginning of list)
+
+	for i := 0; i < 100; i++ {
+		begin, end, outputPage, numPages := core.DoPagination(i, 100000)
+		assert.True(t, begin == i*100)
+		assert.True(t, end == (i+1)*100)
+		assert.True(t, outputPage == i)
+		assert.True(t, numPages == 1000)
+	}
+
+	// regular negative page cases (relative to end of list)
+
+	{
+		for i := 1; i < 100; i++ {
+			begin, end, outputPage, numPages := core.DoPagination(-i, 100000)
+			assert.True(t, end == 100000-(i*100))
+			assert.True(t, begin == end-100)
+			assert.True(t, outputPage == -i)
+			assert.True(t, numPages == 1000)
+		}
+	}
+
+	// positive pages that go past end, should clamp to page -1
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(100, 1000)
+		assert.True(t, begin == 900)
+		assert.True(t, end == 1000)
+		assert.True(t, outputPage == -1)
+		assert.True(t, numPages == 10)
+	}
+
+	// negative pages that go past beginning, should clamp to page 0
+
+	{
+		begin, end, outputPage, numPages := core.DoPagination(-100, 1000)
+		assert.True(t, begin == 0)
+		assert.True(t, end == 100)
+		assert.True(t, outputPage == 0)
+		assert.True(t, numPages == 10)
+	}
+
+}

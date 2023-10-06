@@ -10,8 +10,6 @@ DONE
 
 	Rebuild analytics service	
 
-	Rebuild portal cruncher -> redis cruncher / map cruncher.
-
 	API service with REST API to drive the portal functionality.
 
 	API service with REST API to drive admin functionality (talk to the postgres database, eg. CRUD)
@@ -64,9 +62,23 @@ DONE
 
 	Secure with HTTPS
 
-TODO
+	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
+
+	Load test to 1000 relays, 100k servers and 100k sessions.
 
 	Load test to 1000 relays, 100k servers, and 1M sessions
+
+	Load test to 5M sessions
+
+	Load test to 10M sessions
+
+TODO
+
+	Finalize portal
+
+	-----------
+
+	Load test to 1K relays, 1M servers and 10M sessions.
 
 	-----------
 
@@ -74,11 +86,7 @@ TODO
 
 	-----------
 
-	Rebuild portal (second half)
-
-	-----------
-
-	Deploy portal and test across iphones, ipads, mac laptops, desktops and PCs
+	Finalize SDK and UE5 plugin
 
 	-----------
 

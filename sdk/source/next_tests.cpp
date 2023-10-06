@@ -3752,15 +3752,13 @@ void test_server_update_packet()
         uint16_t from_port = uint16_t( i + 1000000 );
         uint16_t to_port = uint16_t( i + 5000 );
 
-        const uint64_t current_time = time( NULL );
-
         static NextBackendServerUpdateRequestPacket in, out;
         in.request_id = next_random_uint64();
         in.customer_id = next_random_uint64();
         in.datacenter_id = next_random_uint64();
         in.num_sessions = 1000;
         next_address_parse( &in.server_address, "127.0.0.1:40000" );
-        in.start_time = current_time;
+        in.uptime = 0x12345;
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -3784,7 +3782,7 @@ void test_server_update_packet()
         next_check( in.datacenter_id == out.datacenter_id );
         next_check( in.num_sessions == out.num_sessions );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
-        next_check( in.start_time == out.start_time );
+        next_check( in.uptime == out.uptime );
     }
 }
 

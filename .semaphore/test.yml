@@ -1092,7 +1092,7 @@ blocks:
 
 # ------------------------------------------------------------------------------------------------------------
 
-  - name: "Build Functional Tests (portal)"
+  - name: "Build and Run Functional Tests (portal)"
     dependencies: []
     task:
 
@@ -1102,57 +1102,23 @@ blocks:
           os_image: ubuntu2004
 
       jobs:
-        - name: "Build"
+        - name: "test_portal"
           commands:
 
             - cache restore golang
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo apt-get install -y libsodium-dev redis-server
 
             - checkout
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/api dist/func_test_portal
-
-            - tar -zcvf functional_test_portal.tar.gz dist/api dist/func_test_portal
-
-            - artifact push workflow functional_test_portal.tar.gz --force
-
-  - name: "Run Functional Tests (portal)"
-    dependencies: ["Build Functional Tests (portal)"]
-    task:
-
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
-
-      prologue:
-        commands:
-
-            - sem-service start redis 7
-            - sem-service status redis
-
-            - sudo apt-get install -y libsodium-dev
-
-            - artifact pull workflow functional_test_portal.tar.gz
-
-            - tar -zxf functional_test_portal.tar.gz
-
-            - chmod +x ./dist/api
-            - chmod +x ./dist/func_test_portal
-
-      epilogue:
-        commands:
+            - make -j dist/api dist/session_cruncher dist/server_cruncher dist/func_test_portal 
+            - cd ./dist && ./func_test_portal test_portal
 
             - killall api || true
-
-      jobs:
-
-        - name: "test_portal"
-          commands:
-            - cd ./dist && ./func_test_portal test_portal
+            - killall session_cruncher || true
+            - killall server_cruncher || true
 
 # ------------------------------------------------------------------------------------------------------------
 
@@ -1276,13 +1242,9 @@ blocks:
 
       jobs:
 
-        - name: "Load Test Map"
+        - name: "Load Test Portal"
           commands:
-            - ./run load-test-map
-
-        - name: "Load Test Redis Portal"
-          commands:
-            - ./run load-test-redis-portal
+            - ./run load-test-portal
 
         - name: "Load Test Redis Data"
           commands:

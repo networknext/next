@@ -145,6 +145,32 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	}
 
 	/*
+		Update scores
+
+		We track the best score seen per-session to keep scores (and session ordering in portal) stable.
+
+		The lowest scores are the best scores, so we check if the new score is lower than the current best score.
+	*/
+
+	score := core.GetSessionScore(state.Request.Next, int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
+
+	if state.Request.SliceNumber >= 1 {
+		if uint32(score) < state.Input.BestScore {
+			state.Input.BestScore = uint32(score)
+			state.Input.BestDirectRTT = uint32(state.Request.DirectRTT)
+			state.Input.BestNextRTT = uint32(state.Request.NextRTT)
+			if state.Input.BestDirectRTT > 1000 {
+				state.Input.BestDirectRTT = 1000
+			}
+			if state.Input.BestNextRTT > 1000 {
+				state.Input.BestNextRTT = 1000
+			}
+		}
+	} else {
+		state.Input.BestScore = uint32(999)
+	}
+
+	/*
 		Fallback to direct is a state where the SDK has met some fatal error condition.
 
 		When this happens, the session will go direct from this point forward.
@@ -152,7 +178,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.FallbackToDirect {
 		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
-			core.Error("fallback to direct")
+			core.Error("fallback to direct [%016x]", state.Request.SessionId)
 			state.Error |= constants.SessionError_FallbackToDirect
 		}
 		return true
@@ -906,9 +932,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		if routeCost != 0 {
 			*state.Debug += fmt.Sprintf("route cost is %d\n", routeCost)
 		}
-		if state.Response.Multipath {
-			*state.Debug += "multipath\n"
-		}
 	}
 
 	state.Output.RouteCost = routeCost
@@ -1091,8 +1114,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendPortalNearRelayUpdateMessage(state)
 
-		sendPortalMapUpdateMessage(state)
-
 		sendAnalyticsSessionUpdateMessage(state)
 
 		sendAnalyticsSessionSummaryMessage(state)
@@ -1170,6 +1191,10 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
 		message.NearRelayRoutable[i] = state.Request.NearRelayRTT[i] != 255
 	}
+
+	message.BestScore = state.Output.BestScore
+	message.BestDirectRTT = state.Output.BestDirectRTT
+	message.BestNextRTT = state.Output.BestNextRTT
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message

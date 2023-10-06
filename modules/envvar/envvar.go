@@ -22,6 +22,14 @@ func GetString(name string, defaultValue string) string {
 	return value
 }
 
+func GetStringArray(name string, defaultValue []string) []string {
+	value, ok := os.LookupEnv(name)
+	if !ok {
+		return defaultValue
+	}
+	return strings.Split(value, " ,")
+}
+
 func GetList(name string, defaultValue []string) []string {
 	valueStrings, ok := os.LookupEnv(name)
 	if !ok {

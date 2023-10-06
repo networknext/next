@@ -2869,6 +2869,10 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
     return true;
 }
 
+#if NEXT_DEVELOPMENT
+bool raspberry_fake_latency = false;
+#endif // #if NEXT_DEVELOPMENT
+
 void next_server_internal_update_init( next_server_internal_t * server )
 {
     next_server_internal_verify_sentinels( server );
@@ -3092,7 +3096,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
-        packet.start_time = server->start_time;
+        packet.uptime = uint64_t( time(NULL) - server->start_time );
 
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
@@ -3269,6 +3273,24 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             session->session_update_request_packet = packet;
 
+#if NEXT_DEVELOPMENT
+            // This is used by the raspberry pi clients in dev to give a normal distribution of latencies across all sessions, so I can test the portal
+            if ( raspberry_fake_latency )
+            {
+                packet.next = ( session->session_id % 2 ) == 0;
+                if ( packet.next )
+                {
+                    packet.direct_rtt = 100 + ( session->session_id % 100 );
+                    packet.next_rtt = 1 + ( session->session_id % 79 );
+                }
+                else
+                {
+                    packet.direct_rtt = ( session->session_id % 500 );
+                    packet.next_rtt = 0;
+                }
+            }
+#endif // #if NEXT_DEVELOPMENT
+
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );
 
@@ -3312,9 +3334,18 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->stats_client_bandwidth_over_limit = false;
             session->stats_server_bandwidth_over_limit = false;
 
-            session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
-
-            session->waiting_for_update_response = true;
+            if ( !session->stats_fallback_to_direct )
+            {
+                session->waiting_for_update_response = true;
+                session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
+            }
+            else
+            {
+                // IMPORTANT: don't send session update retries if we have fallen back to direct
+                // otherwise, we swamp the server backend with increased load for the rest of the session
+                session->waiting_for_update_response = false;
+                session->next_session_update_time = -1.0;
+            }
         }
 
         if ( session->waiting_for_update_response && session->next_session_resend_time <= current_time )
@@ -3343,7 +3374,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &session->session_update_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update request packet for backend" );
                 return;
             }
 
