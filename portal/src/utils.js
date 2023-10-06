@@ -142,7 +142,7 @@ function custom_graph(config) {
       points: {
         show: (self, si) => {
           if (is_visible(document.getElementById('right'))) {
-            return self.series[si].width < 100
+            return self.data[si][0].length > 50
           } else {
             return false
           }
