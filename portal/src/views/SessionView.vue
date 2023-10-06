@@ -894,6 +894,7 @@ export default {
   flex-direction: column;
   gap: 15px;
   padding-top: 20px;
+  padding-bottom: 50px;
 }
 
 .bottom {
