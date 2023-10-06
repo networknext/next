@@ -126,6 +126,7 @@ func main() {
 	}
 
 	if enableRedisTimeSeries {
+
 		timeSeriesConfig := common.RedisTimeSeriesConfig{
 			RedisHostname: redisTimeSeriesHostname,
 			RedisCluster:  redisTimeSeriesCluster,

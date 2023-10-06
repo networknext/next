@@ -5,9 +5,13 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
+	"fmt"
+	"os"
 
+	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
@@ -23,12 +27,15 @@ const ServerBatchVersion = uint64(0)
 
 const TopServersVersion = uint64(0)
 
+const BuyerStatsVersion = uint64(0)
+
 type ServerUpdate struct {
 	serverAddress string
+	buyerId uint64
 }
 
 type TopServers struct {
-	totalServerCount uint32
+	serverCount      uint32
 	numTopServers    int
 	topServers       [TopServersCount]string
 }
@@ -37,7 +44,8 @@ type Bucket struct {
 	index               int
 	mutex               sync.Mutex
 	serverUpdateChannel chan []ServerUpdate
-	totalServers        *SortedSet
+	servers             *SortedSet
+	buyerServers        map[uint64]map[string]bool
 }
 
 var buckets []Bucket
@@ -46,24 +54,65 @@ var topServersMutex sync.Mutex
 var topServers *TopServers
 var topServersData []byte
 
+type BuyerStats struct {
+	buyerIds      []uint64
+	serverCounts  []uint32
+}
+
+var buyerDataMutex sync.Mutex
+var buyerData []byte
+
+var timeSeriesPublisher *common.RedisTimeSeriesPublisher
+
+var enableRedisTimeSeries bool
+
 func main() {
+
+	// todo
+	enableRedisTimeSeries = true // envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster := envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname := envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
 
 	service := common.CreateService("server_cruncher")
 
 	service.Router.HandleFunc("/server_batch", serverBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_servers", topServersHandler).Methods("GET")
+	service.Router.HandleFunc("/buyer_data", buyerDataHandler).Methods("GET")
+
+	if enableRedisTimeSeries {
+
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+
+		var err error
+		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
+	}
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
 		buckets[i].index = i
 		buckets[i].serverUpdateChannel = make(chan []ServerUpdate, 1000000)
-		buckets[i].totalServers = NewSortedSet()
+		buckets[i].servers = NewSortedSet()
+		buckets[i].buyerServers = make(map[uint64]map[string]bool)
 		StartProcessThread(&buckets[i])
 	}
 
 	UpdateTopServers(&TopServers{})
 
-	// go TestThread()
+	UpdateBuyerData(&BuyerStats{})
+
+	go TestThread()
 
 	go TopSessionsThread()
 
@@ -79,8 +128,10 @@ func TestThread() {
 			for i := 0; i < len(batch); i++ {
 				serverAddress := common.RandomAddress()
 				batch[i].serverAddress = serverAddress.String()
+				batch[i].buyerId = uint64(common.RandomInt(0,9))
 			}
 			buckets[index].serverUpdateChannel <- batch
+			time.Sleep(time.Millisecond)
 		}
 	}
 }
@@ -102,7 +153,13 @@ func StartProcessThread(bucket *Bucket) {
 			case batch := <-bucket.serverUpdateChannel:
 				bucket.mutex.Lock()
 				for i := range batch {
-					bucket.totalServers.Insert(batch[i].serverAddress, uint32(bucket.index))
+					bucket.servers.Insert(batch[i].serverAddress, uint32(bucket.index))
+					buyerServers, exists := bucket.buyerServers[batch[i].buyerId]
+					if !exists {
+						buyerServers = make(map[string]bool)
+						bucket.buyerServers[batch[i].buyerId] = buyerServers
+					}
+					buyerServers[batch[i].serverAddress] = true
 				}
 				bucket.mutex.Unlock()
 			}
@@ -117,7 +174,7 @@ func UpdateTopServers(newTopServers *TopServers) {
 	index := 0
 
 	encoding.WriteUint64(data[:], &index, TopServersVersion)
-	encoding.WriteUint32(data[:], &index, newTopServers.totalServerCount)
+	encoding.WriteUint32(data[:], &index, newTopServers.serverCount)
 	encoding.WriteUint32(data[:], &index, uint32(newTopServers.numTopServers))
 
 	for i := 0; i < newTopServers.numTopServers; i++ {
@@ -130,21 +187,45 @@ func UpdateTopServers(newTopServers *TopServers) {
 	topServersMutex.Unlock()
 }
 
+func UpdateBuyerData(newBuyerStats *BuyerStats) {
+
+	data := make([]byte, 8+4+len(newBuyerStats.buyerIds)*(8+4))
+
+	index := 0
+
+	encoding.WriteUint64(data[:], &index, BuyerStatsVersion)
+	encoding.WriteUint32(data[:], &index, uint32(len(newBuyerStats.buyerIds)))
+
+	for i := 0; i < len(newBuyerStats.buyerIds); i++ {
+		encoding.WriteUint64(data[:], &index, newBuyerStats.buyerIds[i])
+		encoding.WriteUint32(data[:], &index, newBuyerStats.serverCounts[i])
+	}
+
+	buyerDataMutex.Lock()
+	buyerData = data
+	buyerDataMutex.Unlock()
+}
+
 func TopSessionsThread() {
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(10 * time.Second) // todo: 60
 	for {
 		select {
 		case <-ticker.C:
 
-			totalServers := make([]*SortedSet, NumBuckets)
+			core.Log("-------------------------------------------------------------------")
+
+			servers := make([]*SortedSet, NumBuckets)
+			buyerServers := make([]map[uint64]map[string]bool, NumBuckets)
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Lock()
 			}
 
 			for i := 0; i < NumBuckets; i++ {
-				totalServers[i] = buckets[i].totalServers
-				buckets[i].totalServers = NewSortedSet()
+				servers[i] = buckets[i].servers
+				buyerServers[i] = buckets[i].buyerServers
+				buckets[i].servers = NewSortedSet()
+				buckets[i].buyerServers = make(map[uint64]map[string]bool)
 			}
 
 			for i := 0; i < NumBuckets; i++ {
@@ -153,47 +234,105 @@ func TopSessionsThread() {
 
 			start := time.Now()
 
-			maxTotalServers := 0
+			// calculate server count and the set of top servers
+
+			maxServers := 0
 
 			for i := 0; i < NumBuckets; i++ {
-				maxTotalServers += totalServers[i].GetCount()
+				maxServers += servers[i].GetCount()
 			}
 
-			totalServersMap := make(map[string]bool, maxTotalServers)
+			serversMap := make(map[string]bool, maxServers)
 
 			type Server struct {
 				serverAddress string
 				score         uint32
 			}
 
-			servers := make([]Server, 0, TopServersCount)
+			topServers := make([]Server, 0, TopServersCount)
 
 			for i := 0; i < NumBuckets; i++ {
-				bucketTotalServers := totalServers[i].GetByRankRange(1, -1)
-				for j := range bucketTotalServers {
-					if _, exists := totalServersMap[bucketTotalServers[j].Key]; !exists {
-						totalServersMap[bucketTotalServers[j].Key] = true
-						if len(servers) < TopServersCount {
-							servers = append(servers, Server{serverAddress: bucketTotalServers[j].Key, score: bucketTotalServers[j].Score})
+				bucketServers := servers[i].GetByRankRange(1, -1)
+				for j := range bucketServers {
+					if _, exists := serversMap[bucketServers[j].Key]; !exists {
+						serversMap[bucketServers[j].Key] = true
+						if len(topServers) < TopServersCount {
+							topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
 						}
 					}
 				}
 			}
 
-			totalServerCount := len(totalServersMap)
+			serverCount := len(serversMap)
 
 			newTopServers := &TopServers{}
-			newTopServers.totalServerCount = uint32(totalServerCount)
-			newTopServers.numTopServers = len(servers)
+			newTopServers.serverCount = uint32(serverCount)
+			newTopServers.numTopServers = len(topServers)
 			for i := range servers {
-				newTopServers.topServers[i] = servers[i].serverAddress
+				newTopServers.topServers[i] = topServers[i].serverAddress
 			}
 
 			UpdateTopServers(newTopServers)
 
+			// build per-buyer server counts
+
+			buyerMap := make(map[uint64]bool)
+
+			for i := 0; i < NumBuckets; i++ {
+				for k := range buyerServers[i] {
+					buyerMap[k] = true
+				}
+			}
+
+			buyers := make([]uint64, len(buyerMap))
+			index := 0
+			for k := range buyerMap {
+				buyers[index] = k
+				index++
+			}
+
+			sort.Slice(buyers, func(i, j int) bool { return buyers[i] < buyers[j] })
+
+			core.Log("buyers: %v", buyers)
+
+			buyerStats := BuyerStats{}
+			buyerStats.buyerIds = make([]uint64, len(buyers))
+			buyerStats.serverCounts = make([]uint32, len(buyers))
+
+			for i := range buyers {
+				buyerStats.buyerIds[i] = buyers[i]
+				for j := 0; j < NumBuckets; j++ {
+					buyerStats.serverCounts[i] += uint32(len(buyerServers[j][buyers[i]]))
+				}
+				core.Log("buyer %d => %d servers", buyerStats.buyerIds[i], buyerStats.serverCounts[i])
+			}
+
+			UpdateBuyerData(&buyerStats)
+
 			duration := time.Since(start)
 
-			core.Log("top %d of %d servers (%.6fms)", len(servers), totalServerCount, float64(duration.Nanoseconds())/1000000.0)
+			core.Log("top %d of %d servers (%.6fms)", len(servers), serverCount, float64(duration.Nanoseconds())/1000000.0)
+
+			// publish time series data to redis
+
+			if enableRedisTimeSeries {
+
+				message := common.RedisTimeSeriesMessage{}
+
+				message.Timestamp = uint64(time.Now().UnixNano())
+
+				message.Keys = []string{"server_count"}
+
+				message.Values = []float64{float64(serverCount)}
+
+				for i := range buyers {
+					message.Keys = append(message.Keys, fmt.Sprintf("%016x_server_count", buyers[i]))
+					message.Values = append(message.Values, float64(buyerStats.serverCounts[i]))
+				}
+
+				timeSeriesPublisher.MessageChannel <- &message
+
+			}
 		}
 	}
 }
@@ -232,7 +371,8 @@ func serverBatchHandler(w http.ResponseWriter, r *http.Request) {
 		batch := make([]ServerUpdate, numUpdates)
 		if numUpdates > 0 {
 			for i := 0; i < int(numUpdates); i++ {
-				encoding.ReadString(body[:], &index, &batch[i].serverAddress, MaxServerAddressLength)
+				encoding.ReadString(body, &index, &batch[i].serverAddress, MaxServerAddressLength)
+				encoding.ReadUint64(body, &index, &batch[i].buyerId)
 			}
 			buckets[j].serverUpdateChannel <- batch
 		}
@@ -243,6 +383,13 @@ func topServersHandler(w http.ResponseWriter, r *http.Request) {
 	topServersMutex.Lock()
 	data := topServersData
 	topServersMutex.Unlock()
+	w.Write(data)
+}
+
+func buyerDataHandler(w http.ResponseWriter, r *http.Request) {
+	buyerDataMutex.Lock()
+	data := buyerData
+	buyerDataMutex.Unlock()
 	w.Write(data)
 }
 
