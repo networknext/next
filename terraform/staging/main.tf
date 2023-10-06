@@ -236,6 +236,29 @@ resource "cloudflare_record" "portal_domain" {
 
 # ----------------------------------------------------------------------------------------
 
+module "redis_time_series" {
+
+  source = "../../modules/redis_stack"
+
+  service_name = "redis-time-series"
+
+  machine_type             = "n1-standard-1"
+  project                  = var.google_project
+  region                   = var.google_region
+  zone                     = var.google_zone
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-redis", "allow-ssh"]
+}
+
+output "redis_time_series_address" {
+  description = "The IP address of the redis time series database"
+  value       = module.redis_time_series.address
+}
+
+# ----------------------------------------------------------------------------------------
+
 locals {
   redis_portal_address = "10.0.0.51:6379"
   redis_server_backend_address = "10.0.0.47:6379"
@@ -1626,6 +1649,8 @@ module "api" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
@@ -1678,6 +1703,8 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1712,6 +1739,8 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
