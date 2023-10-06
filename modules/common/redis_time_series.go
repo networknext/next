@@ -27,32 +27,32 @@ type RedisTimeSeriesMessage struct {
 }
 
 type RedisTimeSeriesPublisher struct {
-	config          RedisTimeSeriesConfig
-	redisClient     redis.TimeseriesCmdable
-	mutex           sync.Mutex
-	messageBatch    []*RedisTimeSeriesMessage
-	numMessagesSent int
-	numBatchesSent  int
-	MessageChannel  chan *RedisTimeSeriesMessage
+	config             RedisTimeSeriesConfig
+	redisClient        *redis.Client
+	redisClusterClient *redis.ClusterClient
+	mutex              sync.Mutex
+	messageBatch       []*RedisTimeSeriesMessage
+	numMessagesSent    int
+	numBatchesSent     int
+	MessageChannel     chan *RedisTimeSeriesMessage
 }
 
 func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesConfig) (*RedisTimeSeriesPublisher, error) {
 
-	var redisClient redis.TimeseriesCmdable
+	var client *redis.Client
+	var clusterClient *redis.ClusterClient
 	if len(config.RedisCluster) > 0 {
-		client := CreateRedisClusterClient(config.RedisCluster)
-		_, err := client.Ping(ctx).Result()
+		clusterClient = CreateRedisClusterClient(config.RedisCluster)
+		_, err := clusterClient.Ping(ctx).Result()
 		if err != nil {
 			return nil, err
 		}
-		redisClient = client
 	} else {
-		client := CreateRedisClient(config.RedisHostname)
+		client = CreateRedisClient(config.RedisHostname)
 		_, err := client.Ping(ctx).Result()
 		if err != nil {
 			return nil, err
 		}
-		redisClient = client
 	}
 
 	publisher := &RedisTimeSeriesPublisher{}
@@ -71,7 +71,8 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 
 	publisher.config = config
 	publisher.MessageChannel = make(chan *RedisTimeSeriesMessage, config.MessageChannelSize)
-	publisher.redisClient = redisClient
+	publisher.redisClient = client
+	publisher.redisClusterClient = clusterClient
 
 	go publisher.updateMessageChannel(ctx)
 
@@ -102,18 +103,23 @@ func (publisher *RedisTimeSeriesPublisher) updateMessageChannel(ctx context.Cont
 
 func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
-	// todo: send time series data batch to redis
-	/*
-		messageToSend := batchMessages(producer.numBatchesSent, producer.messageBatch)
+	var pipeline redis.Pipeliner
+	if publisher.redisClusterClient != nil {
+		pipeline = publisher.redisClusterClient.Pipeline()
+	} else {
+		pipeline = publisher.redisClient.Pipeline()
+	}
 
-		timeoutContext, _ := context.WithTimeout(ctx, time.Duration(time.Second))
-
-		_, err := producer.redisClient.Publish(timeoutContext, producer.config.PubsubChannelName, messageToSend).Result()
-		if err != nil {
-			core.Error("failed to send batched pubsub messages to redis: %v", err)
-			return
+	for i := range publisher.messageBatch {
+		for j := range publisher.messageBatch[i].Keys {
+			pipeline.TSAdd(ctx, publisher.messageBatch[i].Keys[j], publisher.messageBatch[i].Timestamp, publisher.messageBatch[i].Values[j])
 		}
-	*/
+	}
+
+	_, err := pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("failed to add time series batch: %v", err)
+	}
 
 	batchNumMessages := len(publisher.messageBatch)
 
@@ -194,6 +200,9 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 
 		case <-ticker.C:
 			// todo: pump time series from redis
+			watcher.mutex.Lock()
+			// todo: stash data from redis
+			watcher.mutex.Unlock()
 		}
 	}
 }
