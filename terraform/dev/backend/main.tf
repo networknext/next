@@ -207,6 +207,19 @@ resource "google_compute_firewall" "allow_https" {
   target_tags = ["allow-https"]
 }
 
+resource "google_compute_firewall" "allow_redis" {
+  name          = "allow-redis"
+  project       = var.google_project
+  direction     = "INGRESS"
+  network       = google_compute_network.development.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "tcp"
+    ports    = ["6379"]
+  }
+  target_tags = ["allow-redis"]
+}
+
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
   project       = var.google_project
@@ -234,18 +247,31 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_redis_instance" "redis_portal" {
-  name               = "redis-portal"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
+module "redis_time_series" {
+
+  source = "../../modules/redis_stack"
+
+  service_name = "redis-time-series"
+
+  machine_type             = var.google_machine_type
+  project                  = var.google_project
+  region                   = var.google_region
+  zone                     = var.google_zone
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-redis"]
 }
 
-resource "google_redis_instance" "redis_time_series" {
-  name               = "redis-time-series"
+output "redis_time_series_address" {
+  description = "The IP address of the redis time series database"
+  value       = module.redis_time_series.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_redis_instance" "redis_portal" {
+  name               = "redis-portal"
   tier               = "BASIC"
   memory_size_gb     = 1
   region             = "us-central1"
@@ -295,11 +321,6 @@ resource "google_redis_instance" "redis_server_backend" {
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = google_redis_instance.redis_portal.host
-}
-
-output "redis_time_series_address" {
-  description = "The IP address of the time series redis instance"
-  value       = google_redis_instance.redis_time_series.host
 }
 
 output "redis_raspberry_address" {
@@ -1655,7 +1676,7 @@ module "api" {
     ENV=dev
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${google_redis_instance.redis_time_series.host}:6379"
+    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
@@ -1707,7 +1728,7 @@ module "session_cruncher" {
     ENV=dev
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${google_redis_instance.redis_time_series.host}:6379"
+    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1744,7 +1765,7 @@ module "server_cruncher" {
     ENV=dev
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${google_redis_instance.redis_time_series.host}:6379"
+    REDIS_TIME_SERIES_HOSTNAME="{redis_stack.redis_time_series.host}
     EOF
     sudo systemctl start app.service
   EOF1
