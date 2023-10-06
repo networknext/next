@@ -2,19 +2,19 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"time"
-	"fmt"
-	"os"
 
-	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
+	"github.com/networknext/next/modules/envvar"
 )
 
 const TopSessionsCount = 10000
@@ -426,7 +426,7 @@ func TopSessionsThread() {
 
 			acceleratedPercent := 0.0
 			if totalCount > 0 {
-				acceleratedPercent = float64(nextCount / totalCount) * 100.0
+				acceleratedPercent = float64(nextCount/totalCount) * 100.0
 			}
 
 			message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}
@@ -437,7 +437,7 @@ func TopSessionsThread() {
 				message.Keys = append(message.Keys, fmt.Sprintf("%016x_accelerated_percent", buyers[i]))
 				buyerAcceleratedPercent := 0.0
 				if buyerStats.totalSessions[i] > 0 {
-					buyerAcceleratedPercent = float64(buyerStats.nextSessions[i] / buyerStats.totalSessions[i]) * 100.0
+					buyerAcceleratedPercent = float64(buyerStats.nextSessions[i]/buyerStats.totalSessions[i]) * 100.0
 				}
 				message.Values = append(message.Values, float64(buyerStats.totalSessions[i]))
 				message.Values = append(message.Values, float64(buyerStats.nextSessions[i]))

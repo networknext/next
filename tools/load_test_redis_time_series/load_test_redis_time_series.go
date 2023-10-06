@@ -82,8 +82,8 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 			case <-ticker.C:
 				fmt.Printf("iteration %d\n", iteration)
-				keys, timestamps, values := watcher.GetTimeSeries()
-				_ = keys
+				keyToIndex, timestamps, values := watcher.GetTimeSeries()
+				_ = keyToIndex
 				_ = timestamps
 				_ = values
 				iteration++

@@ -207,13 +207,41 @@ func (watcher *RedisTimeSeriesWatcher) SetKeys(keys []string) {
 	watcher.mutex.Unlock()
 }
 
-func (watcher *RedisTimeSeriesWatcher) GetTimeSeries() (keyToIndex map[string]int, timestamps []uint64, values [][]float64) {
+func (watcher *RedisTimeSeriesWatcher) Lock() {
 	watcher.mutex.Lock()
-	keyToIndex = watcher.keyToIndex
-	timestamps = watcher.timestamps
-	values = watcher.values
+}
+
+func (watcher *RedisTimeSeriesWatcher) GetTimestamps(timestamps *[]uint64) {
+	*timestamps = make([]uint64, len(watcher.timestamps))
+	copy(*timestamps, watcher.timestamps)
+}
+
+func (watcher *RedisTimeSeriesWatcher) GetIntValues(values *[]int, key string) {
+	index, exists := watcher.keyToIndex[key]
+	if exists {
+		*values = make([]int, len(watcher.values[index]))
+		for i := range watcher.values[index] {
+			(*values)[i] = int(watcher.values[index][i])
+		}
+	} else {
+		*values = nil
+	}
+}
+
+func (watcher *RedisTimeSeriesWatcher) GetFloat32Values(values *[]float32, key string) {
+	index, exists := watcher.keyToIndex[key]
+	if exists {
+		*values = make([]float32, len(watcher.values[index]))
+		for i := range watcher.values[index] {
+			(*values)[i] = float32(watcher.values[index][i])
+		}
+	} else {
+		*values = nil
+	}
+}
+
+func (watcher *RedisTimeSeriesWatcher) Unlock() {
 	watcher.mutex.Unlock()
-	return keyToIndex, timestamps, values
 }
 
 // -------------------------------------------------------------------------------

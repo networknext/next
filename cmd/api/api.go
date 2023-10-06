@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"time"
-	"context"
 	// "strings"
 
 	"github.com/networknext/next/modules/admin"
@@ -800,16 +800,21 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalBuyer struct {
-	Id            uint64           `json:"id,string"`
-	Name          string           `json:"name"`
-	Code          string           `json:"code"`
-	Live          bool             `json:"live"`
-	Debug         bool             `json:"debug"`
-	PublicKey     []byte           `json:"public_key"`
-	RouteShader   core.RouteShader `json:"route_shader"`
-	TotalSessions int              `json:"total_sessions"`
-	NextSessions  int              `json:"next_sessions"`
-	ServerCount   int              `json:"server_count"`
+	Id                            uint64           `json:"id,string"`
+	Name                          string           `json:"name"`
+	Code                          string           `json:"code"`
+	Live                          bool             `json:"live"`
+	Debug                         bool             `json:"debug"`
+	PublicKey                     []byte           `json:"public_key"`
+	RouteShader                   *core.RouteShader`json:"route_shader"`
+	TotalSessions                 int              `json:"total_sessions"`
+	NextSessions                  int              `json:"next_sessions"`
+	ServerCount                   int              `json:"server_count"`
+	TimeSeries_Timestamps         []uint64         `json:"time_series_timestamps,string"`
+	TimeSeries_TotalSessions      []int            `json:"time_series_total_sessions"`
+	TimeSeries_NextSessions       []int            `json:"time_series_next_sessions"`
+	TimeSeries_AcceleratedPercent []float32        `json:"time_series_accelerated_percent"`
+	TimeSeries_ServerCount        []int            `json:"time_series_accelerated_percent"`
 }
 
 type PortalBuyersResponse struct {
@@ -818,19 +823,34 @@ type PortalBuyersResponse struct {
 	NumPages   int           `json:"num_pages"`
 }
 
-func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer) {
+func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bool, withTimeSeries bool) {
+	
 	output.Id = input.Id
 	output.Name = input.Name
 	output.Code = input.Code
 	output.Live = input.Live
 	output.Debug = input.Debug
 	output.PublicKey = input.PublicKey
-	output.RouteShader = input.RouteShader
+	
 	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions := buyerDataWatcher.GetBuyerData()
 	index, exists := buyerIdToIndex[output.Id]
 	if exists {
 		output.TotalSessions = int(buyerTotalSessions[index])
 		output.NextSessions = int(buyerNextSessions[index])
+	}
+
+	if withRouteShader {
+		output.RouteShader = &input.RouteShader
+	}
+
+	if withTimeSeries {
+		timeSeriesWatcher.Lock()
+		timeSeriesWatcher.GetTimestamps(&output.TimeSeries_Timestamps)
+		timeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions, fmt.Sprintf("%016x_total_sessions", input.Id))
+		timeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions, fmt.Sprintf("%016x_next_sessions", input.Id))
+		timeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent, fmt.Sprintf("%016x_accelerated_percent", input.Id))
+		timeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount, fmt.Sprintf("%016x_server_count", input.Id))
+		timeSeriesWatcher.Unlock()
 	}
 }
 
@@ -856,7 +876,7 @@ func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalBuyersResponse{}
 	response.Buyers = make([]PortalBuyer, len(buyers))
 	for i := range buyers {
-		upgradePortalBuyer(&buyers[i], &response.Buyers[i])
+		upgradePortalBuyer(&buyers[i], &response.Buyers[i], false, false)
 	}
 
 	sort.Slice(response.Buyers, func(i, j int) bool { return response.Buyers[i].Name < response.Buyers[j].Name })
@@ -900,7 +920,7 @@ func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upgradePortalBuyer(buyer, &response.BuyerData)
+	upgradePortalBuyer(buyer, &response.BuyerData, true, true)
 
 	w.WriteHeader(http.StatusOK)
 
