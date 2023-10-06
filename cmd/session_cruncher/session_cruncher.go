@@ -436,7 +436,7 @@ func TopSessionsThread() {
 
 				acceleratedPercent := 0.0
 				if totalCount > 0 {
-					acceleratedPercent = float64(nextCount/totalCount) * 100.0
+					acceleratedPercent = float64(nextCount)/float64(totalCount) * 100.0
 				}
 
 				message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}

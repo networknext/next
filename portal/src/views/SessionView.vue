@@ -685,6 +685,7 @@ export default {
   methods: {
 
     resize() {
+
       const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {

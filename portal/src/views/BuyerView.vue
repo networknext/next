@@ -46,9 +46,9 @@
         
         <div id="next_sessions" class="graph"/>
         
-        <div id="accelerated" class="graph"/>
+        <div id="accelerated_percent" class="graph"/>
 
-        <div id="servers" class="graph"/>
+        <div id="server_count" class="graph"/>
 
       </div>
 
@@ -110,213 +110,6 @@ import uPlot from "uplot";
 
 import { is_visible, getAcceleratedPercent, custom_graph } from '@/utils.js'
 
-const arr = [
-  [
-    1585724400,
-    1586156400,
-    1586440800,
-    1586959200,
-    1587452400,
-    1587711600,
-    1588143600,
-    1588600800,
-    1588860000,
-    1589353200,
-    1589785200,
-    1590044400,
-    1590588000,
-    1591020000,
-    1591340400,
-    1591772400,
-    1592204400,
-    1592488800,
-    1592920800,
-    1593180000,
-    1593673200,
-    1594191600,
-    1594648800,
-    1594908000,
-    1595340000,
-    1595833200,
-    1596092400,
-    1596549600,
-    1596808800,
-    1597240800,
-    1597734000,
-    1597993200,
-    1598450400,
-    1598882400,
-    1599141600,
-    1599721200,
-    1600153200,
-    1600437600,
-    1600869600,
-    1601301600,
-    1601622000,
-    1602054000,
-    1602511200,
-    1602770400,
-    1603202400,
-    1603695600,
-    1603954800,
-    1604412000,
-    1604671200,
-    1605103200,
-    1605596400,
-    1605855600,
-    1606287600,
-    1606831200,
-    1607090400,
-    1607583600,
-    1608015600,
-    1608274800,
-    1608732000,
-    1609250400,
-    1609830000,
-    1610089200,
-    1610521200,
-    1611064800,
-    1611324000,
-    1611817200,
-    1612249200,
-    1612508400,
-    1612965600,
-    1613484000,
-    1613977200,
-    1614236400,
-    1614668400,
-    1614952800,
-    1615384800,
-    1615878000,
-    1616137200,
-    1616569200,
-    1617026400,
-    1617285600,
-    1617865200,
-    1618297200,
-    1618556400,
-    1619013600,
-    1619449200,
-    1619712000,
-    1620205200,
-    1620637200,
-    1620972000,
-    1621404000,
-    1621836000,
-    1622120400,
-    1622638800,
-    1623132000,
-    1623391200,
-    1623823200,
-    1624280400,
-    1624539600,
-    1625032800,
-    1625248800
-  ],
-  [
-    0,
-    1.59,
-    10.97,
-    10.41,
-    10.4,
-    12,
-    8.34,
-    11.16,
-    14.47,
-    14.65,
-    14.61,
-    14.98,
-    17.08,
-    15.94,
-    13.88,
-    11.07,
-    13.41,
-    14.3,
-    21.64,
-    15.8,
-    24.42,
-    24.63,
-    23.65,
-    24.4,
-    25.03,
-    15.07,
-    5.21,
-    16.4,
-    17.51,
-    19.66,
-    28.19,
-    19.21,
-    18.51,
-    18.47,
-    18.09,
-    18.83,
-    19.24,
-    17.51,
-    18.35,
-    19.15,
-    18.61,
-    18.72,
-    19.76,
-    18.76,
-    18.66,
-    19.45,
-    20.37,
-    20.98,
-    21.09,
-    21.66,
-    21.86,
-    21.93,
-    22.45,
-    22.34,
-    21.33,
-    21.21,
-    21.08,
-    22.18,
-    22.19,
-    22.88,
-    22.81,
-    23.31,
-    23.72,
-    23.47,
-    24.47,
-    24.38,
-    23.25,
-    27.07,
-    27.55,
-    30.03,
-    28.1,
-    30.6,
-    31.18,
-    24.95,
-    31.62,
-    35.54,
-    34.65,
-    34.45,
-    35.1,
-    35.65,
-    36.38,
-    35.87,
-    36.49,
-    35.65,
-    37.81,
-    38.15,
-    36.13,
-    36.46,
-    32.81,
-    34.92,
-    37.28,
-    38.2,
-    40.38,
-    40.08,
-    39.98,
-    39.35,
-    37.98,
-    41.13,
-    42.74,
-    42.177
-  ]
-];
-
 let total_sessions_opts = custom_graph({
   title: "Total Sessions",
   series: [
@@ -341,8 +134,8 @@ let next_sessions_opts = custom_graph({
   ]
 })
 
-let accelerated_opts = custom_graph({
-  title: "Accelerated Sessions",
+let accelerated_percent_opts = custom_graph({
+  title: "Accelerated Percent",
   series: [
     { 
       name: 'Accelerated',
@@ -353,7 +146,7 @@ let accelerated_opts = custom_graph({
   ]
 })
 
-let servers_opts = custom_graph({
+let server_count_opts = custom_graph({
   title: "Server Count",
   series: [
     { 
@@ -365,31 +158,50 @@ let servers_opts = custom_graph({
   ]
 })
 
-const data = arr;
-
 async function getData(page, buyer) {
+
   try {
+
     if (page == null) {
       page = 0
     }
+
     const url = process.env.VUE_APP_API_URL + '/portal/buyer/' + buyer
+
     const res = await axios.get(url);
+
     let data = {}
+
     data['buyer'] = buyer
+
     if (res.data.buyer_data !== null) {
+
+      // buyer data
+
       data['live'] = res.data.buyer_data.live
       data['debug'] = res.data.buyer_data.debug
       data['total_sessions'] = res.data.buyer_data.total_sessions
       data['next_sessions'] = res.data.buyer_data.next_sessions
       data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
       data['servers'] = res.data.buyer_data.server_count
-      data['found'] = true
+
+      // total sessions data
+
+      let total_sessions_timestamps = []  
+      let total_sessions_values = []
+      let i = 0
+      while (i < res.data.buyer_data.time_series_total_sessions_timestamps.length) {
+        total_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_total_sessions_timestamps[i]) / 1000000000))
+        total_sessions_values.push(parseInt(res.data.buyer_data.time_series_total_sessions_values[i]))
+        i++
+      }
+      data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
 
       // next sessions data
 
       let next_sessions_timestamps = []  
       let next_sessions_values = []
-      let i = 0
+      i = 0
       while (i < res.data.buyer_data.time_series_next_sessions_timestamps.length) {
         next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_next_sessions_timestamps[i]) / 1000000000))
         next_sessions_values.push(parseInt(res.data.buyer_data.time_series_next_sessions_values[i]))
@@ -397,9 +209,31 @@ async function getData(page, buyer) {
       }
       data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
 
-      console.log(res.data.buyer_data)
+      // accelerated percent data
 
-      // todo: more graphs
+      let accelerated_percent_timestamps = []  
+      let accelerated_percent_values = []
+      i = 0
+      while (i < res.data.buyer_data.time_series_accelerated_percent_timestamps.length) {
+        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_accelerated_percent_timestamps[i]) / 1000000000))
+        accelerated_percent_values.push(parseInt(res.data.buyer_data.time_series_accelerated_percent_values[i]))
+        i++
+      }
+      data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
+
+      // server count data
+
+      let server_count_timestamps = []  
+      let server_count_values = []
+      i = 0
+      while (i < res.data.buyer_data.time_series_server_count_timestamps.length) {
+        server_count_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_server_count_timestamps[i]) / 1000000000))
+        server_count_values.push(parseInt(res.data.buyer_data.time_series_server_count_values[i]))
+        i++
+      }
+      data.server_count_data = [server_count_timestamps, server_count_values]
+
+      data['found'] = true
     }
     return [data, 0, 1]
   } catch (error) {
@@ -423,6 +257,7 @@ export default {
       found: false,
       observer: null,
       prevWidth: 0,
+      show_legend: false,
     };
   },
 
@@ -443,10 +278,10 @@ export default {
 
   mounted: function () {
   
-    this.total_sessions = new uPlot(total_sessions_opts, data, document.getElementById('total_sessions'))
-    this.next_sessions = new uPlot(next_sessions_opts, data, document.getElementById('next_sessions'))
-    this.accelerated = new uPlot(accelerated_opts, data, document.getElementById('accelerated'))
-    this.servers = new uPlot(servers_opts, data, document.getElementById('servers'))
+    this.total_sessions = new uPlot(total_sessions_opts, [[],[]], document.getElementById('total_sessions'))
+    this.next_sessions = new uPlot(next_sessions_opts, [[],[]], document.getElementById('next_sessions'))
+    this.accelerated_percent = new uPlot(accelerated_percent_opts, [[],[]], document.getElementById('accelerated_percent'))
+    this.server_count = new uPlot(server_count_opts, [[],[]], document.getElementById('server_count'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -462,8 +297,8 @@ export default {
   beforeUnmount() {
     this.total_sessions.destroy()
     this.next_sessions.destroy()
-    this.accelerated.destroy()
-    this.servers.destroy()
+    this.accelerated_percent.destroy()
+    this.server_count.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.total_sessions = null
@@ -476,12 +311,17 @@ export default {
   methods: {
 
     resize() {
+
+      const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
+
+        // resize graphs to match page width
+
         this.prevWidth = width;
         if (this.total_sessions) {
           let graph_width = width
-          if (is_visible(document.getElementById('right'))) {
+          if (right_visible) {
             graph_width -= 550
           } else {
             graph_width -= 30
@@ -494,8 +334,22 @@ export default {
           }
           this.total_sessions.setSize({width: graph_width, height: graph_height})
           this.next_sessions.setSize({width: graph_width, height: graph_height})
-          this.accelerated.setSize({width: graph_width, height: graph_height})
-          this.servers.setSize({width: graph_width, height: graph_height})
+          this.accelerated_percent.setSize({width: graph_width, height: graph_height})
+          this.server_count.setSize({width: graph_width, height: graph_height})
+        }
+
+        // show legends in desktop, hide them in mobile layout
+
+        this.show_legend = right_visible
+        var elements = document.getElementsByClassName('u-legend');
+        let i = 0;
+        while (i < elements.length) {
+          if (this.show_legend) {
+            elements[i].style.display = 'block';
+          } else {
+            elements[i].style.display = 'none';
+          }
+          i++;
         }
       }    
     },
@@ -522,8 +376,17 @@ export default {
     },
 
     updateGraphs() {
+      if (this.total_sessions != null && this.data.total_sessions_data != null) {
+        this.total_sessions.setData(this.data.total_sessions_data, true)
+      }
       if (this.next_sessions != null && this.data.next_sessions_data != null) {
         this.next_sessions.setData(this.data.next_sessions_data, true)
+      }
+      if (this.accelerated_percent != null && this.data.accelerated_percent_data != null) {
+        this.accelerated_percent.setData(this.data.accelerated_percent_data, true)
+      }
+      if (this.server_count != null && this.data.server_count_data != null) {
+        this.server_count.setData(this.data.server_count_data, true)
       }
     },
 
@@ -544,7 +407,7 @@ export default {
 
 </script>
 
-<style scoped>
+<style>
 
 .fixed {
   font-family: monospace;
@@ -681,6 +544,10 @@ button {
 a {
   color: #2c3e50;
   text-decoration: none;
+}
+
+.u-title {
+  font-family: "Montserrat";
 }
 
 </style>
