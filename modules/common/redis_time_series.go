@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/core"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisTimeSeriesConfig struct {
@@ -25,8 +27,8 @@ type RedisTimeSeriesMessage struct {
 }
 
 type RedisTimeSeriesPublisher struct {
-	config RedisTimeSeriesConfig
-	// redisClient     redis.StreamCmdable
+	config          RedisTimeSeriesConfig
+	redisClient     redis.TimeseriesCmdable
 	mutex           sync.Mutex
 	messageBatch    []*RedisTimeSeriesMessage
 	numMessagesSent int
@@ -36,24 +38,22 @@ type RedisTimeSeriesPublisher struct {
 
 func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesConfig) (*RedisTimeSeriesPublisher, error) {
 
-	/*
-		var redisClient redis.StreamCmdable
-		if len(config.RedisCluster) > 0 {
-			client := CreateRedisClusterClient(config.RedisCluster)
-			_, err := client.Ping(ctx).Result()
-			if err != nil {
-				return nil, err
-			}
-			redisClient = client
-		} else {
-			client := CreateRedisClient(config.RedisHostname)
-			_, err := client.Ping(ctx).Result()
-			if err != nil {
-				return nil, err
-			}
-			redisClient = client
+	var redisClient redis.TimeseriesCmdable
+	if len(config.RedisCluster) > 0 {
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
 		}
-	*/
+		redisClient = client
+	} else {
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
+	}
 
 	publisher := &RedisTimeSeriesPublisher{}
 
@@ -71,10 +71,7 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 
 	publisher.config = config
 	publisher.MessageChannel = make(chan *RedisTimeSeriesMessage, config.MessageChannelSize)
-
-	/*
-		publisher.redisClient = redisClient
-	*/
+	publisher.redisClient = redisClient
 
 	go publisher.updateMessageChannel(ctx)
 
@@ -147,38 +144,38 @@ func (publisher *RedisTimeSeriesPublisher) NumBatchesSent() int {
 // -------------------------------------------------------------------------------
 
 type RedisTimeSeriesWatcher struct {
-	config     RedisTimeSeriesConfig
-	mutex      sync.Mutex
-	keys       []string
-	keyToIndex map[string]int
-	timestamps []uint64
-	values     [][]float64
+	redisClient redis.TimeseriesCmdable
+	config      RedisTimeSeriesConfig
+	mutex       sync.Mutex
+	keys        []string
+	keyToIndex  map[string]int
+	timestamps  []uint64
+	values      [][]float64
 }
 
 func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesConfig) (*RedisTimeSeriesWatcher, error) {
 
-	/*
-		var redisClient redis.StreamCmdable
-		if len(config.RedisCluster) > 0 {
-			client := CreateRedisClusterClient(config.RedisCluster)
-			_, err := client.Ping(ctx).Result()
-			if err != nil {
-				return nil, err
-			}
-			redisClient = client
-		} else {
-			client := CreateRedisClient(config.RedisHostname)
-			_, err := client.Ping(ctx).Result()
-			if err != nil {
-				return nil, err
-			}
-			redisClient = client
+	var redisClient redis.TimeseriesCmdable
+	if len(config.RedisCluster) > 0 {
+		client := CreateRedisClusterClient(config.RedisCluster)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
 		}
-	*/
+		redisClient = client
+	} else {
+		client := CreateRedisClient(config.RedisHostname)
+		_, err := client.Ping(ctx).Result()
+		if err != nil {
+			return nil, err
+		}
+		redisClient = client
+	}
 
 	watcher := &RedisTimeSeriesWatcher{}
 
 	watcher.config = config
+	watcher.redisClient = redisClient
 	watcher.keys = []string{}
 	watcher.keyToIndex = make(map[string]int)
 

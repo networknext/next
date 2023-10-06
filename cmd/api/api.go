@@ -800,21 +800,21 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalBuyer struct {
-	Id                            uint64           `json:"id,string"`
-	Name                          string           `json:"name"`
-	Code                          string           `json:"code"`
-	Live                          bool             `json:"live"`
-	Debug                         bool             `json:"debug"`
-	PublicKey                     []byte           `json:"public_key"`
-	RouteShader                   *core.RouteShader`json:"route_shader"`
-	TotalSessions                 int              `json:"total_sessions"`
-	NextSessions                  int              `json:"next_sessions"`
-	ServerCount                   int              `json:"server_count"`
-	TimeSeries_Timestamps         []uint64         `json:"time_series_timestamps,string"`
-	TimeSeries_TotalSessions      []int            `json:"time_series_total_sessions"`
-	TimeSeries_NextSessions       []int            `json:"time_series_next_sessions"`
-	TimeSeries_AcceleratedPercent []float32        `json:"time_series_accelerated_percent"`
-	TimeSeries_ServerCount        []int            `json:"time_series_accelerated_percent"`
+	Id                            uint64            `json:"id,string"`
+	Name                          string            `json:"name"`
+	Code                          string            `json:"code"`
+	Live                          bool              `json:"live"`
+	Debug                         bool              `json:"debug"`
+	PublicKey                     []byte            `json:"public_key"`
+	RouteShader                   *core.RouteShader `json:"route_shader"`
+	TotalSessions                 int               `json:"total_sessions"`
+	NextSessions                  int               `json:"next_sessions"`
+	ServerCount                   int               `json:"server_count"`
+	TimeSeries_Timestamps         []uint64          `json:"time_series_timestamps,string"`
+	TimeSeries_TotalSessions      []int             `json:"time_series_total_sessions"`
+	TimeSeries_NextSessions       []int             `json:"time_series_next_sessions"`
+	TimeSeries_AcceleratedPercent []float32         `json:"time_series_accelerated_percent"`
+	TimeSeries_ServerCount        []int             `json:"time_series_accelerated_percent"`
 }
 
 type PortalBuyersResponse struct {
@@ -824,14 +824,14 @@ type PortalBuyersResponse struct {
 }
 
 func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bool, withTimeSeries bool) {
-	
+
 	output.Id = input.Id
 	output.Name = input.Name
 	output.Code = input.Code
 	output.Live = input.Live
 	output.Debug = input.Debug
 	output.PublicKey = input.PublicKey
-	
+
 	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions := buyerDataWatcher.GetBuyerData()
 	index, exists := buyerIdToIndex[output.Id]
 	if exists {
