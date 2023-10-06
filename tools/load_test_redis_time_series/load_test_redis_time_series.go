@@ -26,7 +26,7 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 
 	go func() {
 
-		ticker := time.NewTicker(time.Millisecond)
+		ticker := time.NewTicker(time.Second)
 
 		for {
 
@@ -56,6 +56,7 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 	config := common.RedisTimeSeriesConfig{
 		RedisHostname: redisHostname,
+		Window:        5000000000,			// 5 second window in nanoseconds
 	}
 
 	watcher, err := common.CreateRedisTimeSeriesWatcher(context.Background(), config)
@@ -81,13 +82,13 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 				return
 
 			case <-ticker.C:
-				fmt.Printf("iteration %d\n", iteration)
+				fmt.Printf("--------------------------------------------------------\n")
 				watcher.Lock()
-				timestamps := make([]uint64, 0)
-				values := make([]int, 0)
-				watcher.GetTimestamps(&timestamps)
 				for i := range keys {
-					watcher.GetIntValues(&values, keys[i])
+					values := make([]int, 0)
+					timestamps := make([]uint64, 0)
+					watcher.GetIntValues(&timestamps, &values, keys[i])
+					fmt.Printf("%s: %v => %v\n", keys[i], timestamps, values)
 				}
 				watcher.Unlock()
 				iteration++

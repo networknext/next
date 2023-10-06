@@ -814,21 +814,24 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalBuyer struct {
-	Id                            uint64            `json:"id,string"`
-	Name                          string            `json:"name"`
-	Code                          string            `json:"code"`
-	Live                          bool              `json:"live"`
-	Debug                         bool              `json:"debug"`
-	PublicKey                     []byte            `json:"public_key"`
-	RouteShader                   *core.RouteShader `json:"route_shader"`
-	TotalSessions                 int               `json:"total_sessions"`
-	NextSessions                  int               `json:"next_sessions"`
-	ServerCount                   int               `json:"server_count"`
-	TimeSeries_Timestamps         []uint64          `json:"time_series_timestamps,string"`
-	TimeSeries_TotalSessions      []int             `json:"time_series_total_sessions"`
-	TimeSeries_NextSessions       []int             `json:"time_series_next_sessions"`
-	TimeSeries_AcceleratedPercent []float32         `json:"time_series_accelerated_percent"`
-	TimeSeries_ServerCount        []int             `json:"time_series_accelerated_percent"`
+	Id                                       uint64            `json:"id,string"`
+	Name                                     string            `json:"name"`
+	Code                                     string            `json:"code"`
+	Live                                     bool              `json:"live"`
+	Debug                                    bool              `json:"debug"`
+	PublicKey                                []byte            `json:"public_key"`
+	RouteShader                              *core.RouteShader `json:"route_shader"`
+	TotalSessions                            int               `json:"total_sessions"`
+	NextSessions                             int               `json:"next_sessions"`
+	ServerCount                              int               `json:"server_count"`
+	TimeSeries_TotalSessions_Timestamps      []uint64          `json:"time_series_total_sessions_timestamps,string"`
+	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
+	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
+	TimeSeries_NextSessions_Values           []int             `json:"time_series_next_sessions_values"`
+	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_total_sessions_timestamps,string"`
+	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
+	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
+	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
 }
 
 type PortalBuyersResponse struct {
@@ -859,11 +862,10 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 
 	if enableRedisTimeSeries && withTimeSeries {
 		timeSeriesWatcher.Lock()
-		timeSeriesWatcher.GetTimestamps(&output.TimeSeries_Timestamps)
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions, fmt.Sprintf("%016x_total_sessions", input.Id))
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions, fmt.Sprintf("%016x_next_sessions", input.Id))
-		timeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent, fmt.Sprintf("%016x_accelerated_percent", input.Id))
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount, fmt.Sprintf("%016x_server_count", input.Id))
+		timeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("%016x_total_sessions", input.Id))
+		timeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("%016x_next_sessions", input.Id))
+		timeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("%016x_accelerated_percent", input.Id))
+		timeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("%016x_server_count", input.Id))
 		timeSeriesWatcher.Unlock()
 	}
 }

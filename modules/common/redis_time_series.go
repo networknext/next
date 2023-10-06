@@ -16,6 +16,7 @@ type RedisTimeSeriesConfig struct {
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
+	Window             int  // IMPORTANT: in timestamp units, how far back in time from present to gather samples from
 }
 
 // -------------------------------------------------------------------------------
@@ -156,7 +157,7 @@ type RedisTimeSeriesWatcher struct {
 	mutex              sync.Mutex
 	keys               []string
 	keyToIndex         map[string]int
-	timestamps         []uint64
+	timestamps         [][]uint64
 	values             [][]float64
 }
 
@@ -176,6 +177,10 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if config.Window == 0 {
+		config.Window = 86400*1000000		// 24 hours in nanoseconds
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}
@@ -220,7 +225,7 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			currentTime := int(time.Now().UnixNano())
 
 			for i := range keys {
-				pipeline.TSRange(ctx, keys[i], currentTime - 86400*1000000, currentTime)
+				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.Window, currentTime)
 			}
 
 			cmds, err := pipeline.Exec(ctx)
@@ -229,27 +234,20 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			}
 
 			keyToIndex := make(map[string]int, len(keys))
+			timestamps := make([][]uint64, len(keys))
 			values := make([][]float64, len(keys))
 
 			for i := range keys {
 				keyToIndex[keys[i]] = i
 			}
 
-			timestamp_data := cmds[0].(*redis.TSTimestampValueSliceCmd).Val()
-			timestamps := make([]uint64, len(timestamp_data))
-			for i := range timestamp_data {
-				timestamps[i] = uint64(timestamp_data[i].Timestamp)
-			}
-
 			for i := range keys {
 				data := cmds[i].(*redis.TSTimestampValueSliceCmd).Val()
-				if len(data) != len(timestamps) {
-					core.Error("timestamp vs. value mismatch")
-					break
-				}
+				timestamps[i] = make([]uint64, len(data))
 				values[i] = make([]float64, len(data))
-				for j := range timestamp_data {
-					values[i][j] = timestamp_data[j].Value
+				for j := range data {
+					timestamps[i][j] = uint64(data[j].Timestamp)
+					values[i][j] = data[j].Value
 				}
 			}
 
@@ -272,31 +270,32 @@ func (watcher *RedisTimeSeriesWatcher) Lock() {
 	watcher.mutex.Lock()
 }
 
-func (watcher *RedisTimeSeriesWatcher) GetTimestamps(timestamps *[]uint64) {
-	*timestamps = make([]uint64, len(watcher.timestamps))
-	copy(*timestamps, watcher.timestamps)
-}
-
-func (watcher *RedisTimeSeriesWatcher) GetIntValues(values *[]int, key string) {
+func (watcher *RedisTimeSeriesWatcher) GetIntValues(timestamps *[]uint64, values *[]int, key string) {
 	index, exists := watcher.keyToIndex[key]
 	if exists {
+		*timestamps = make([]uint64, len(watcher.timestamps[index]))
 		*values = make([]int, len(watcher.values[index]))
+		copy(*timestamps, watcher.timestamps[index])
 		for i := range watcher.values[index] {
 			(*values)[i] = int(watcher.values[index][i])
 		}
 	} else {
+		*timestamps = nil
 		*values = nil
 	}
 }
 
-func (watcher *RedisTimeSeriesWatcher) GetFloat32Values(values *[]float32, key string) {
+func (watcher *RedisTimeSeriesWatcher) GetFloat32Values(timestamps *[]uint64, values *[]float32, key string) {
 	index, exists := watcher.keyToIndex[key]
 	if exists {
+		*timestamps = make([]uint64, len(watcher.timestamps[index]))
 		*values = make([]float32, len(watcher.values[index]))
+		copy(*timestamps, watcher.timestamps[index])
 		for i := range watcher.values[index] {
 			(*values)[i] = float32(watcher.values[index][i])
 		}
 	} else {
+		*timestamps = nil
 		*values = nil
 	}
 }
