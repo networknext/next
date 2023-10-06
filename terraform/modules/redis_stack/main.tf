@@ -30,6 +30,8 @@ resource "google_compute_instance" "service" {
   zone         = var.zone
   tags         = var.tags
 
+  allow_stopping_for_update = true
+
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
