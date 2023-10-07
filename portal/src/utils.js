@@ -140,15 +140,19 @@ function custom_graph(config) {
       width: 2,
       label: config.series[i].name,
       points: {
-        show: () => {
-          return false
+        show: (self, si) => {
+          if (is_visible(document.getElementById('right'))) {
+            return self.data[si].length < 50
+          } else {
+            return false
+          }
         }
       },
       value: (self, v) => {
         if (v != null) {
-          return v.toLocaleString() + units
+          return v + units
         } else if (self._data[index] != null && self._data[index].length > 0) {
-          return self._data[index][self._data[index].length-1].toLocaleString() + units
+          return self._data[index][self._data[index].length-1] + units
         } else {
           return '--'
         }

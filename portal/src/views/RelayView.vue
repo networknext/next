@@ -116,8 +116,19 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import { nice_uptime } from '@/utils.js'
-import { is_visible } from '@/utils.js'
+import {nice_uptime, is_visible, custom_graph} from '@/utils.js'
+
+let sessions_opts = custom_graph({
+  title: "Sessions",
+  series: [
+    { 
+      name: 'Sessions',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: '',
+    },
+  ]
+})
 
 const arr = [
   [
@@ -326,28 +337,6 @@ const arr = [
   ]
 ];
 
-let sessions_opts = {
-  title: "Sessions",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
-  series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
-  ]
-};
-
 let bandwidth_opts = {
   title: "Bandwidth",
   width: 0,
@@ -395,15 +384,23 @@ let packets_opts = {
 const data = arr;
 
 async function getData(page, relay_name) {
+
   try {
+
     if (page == null) {
       page = 0
     }
+
     const url = process.env.VUE_APP_API_URL + '/portal/relay/' + relay_name
+
     const res = await axios.get(url);
+
     let data = {}
     data['relay_name'] = relay_name
     if (res.data.relay_data !== null) {
+
+      // relay data
+
       data["sessions"] = res.data.relay_data.num_sessions
       data["seller_name"] = res.data.relay_data.seller_name
       data["seller_code"] = res.data.relay_data.seller_code
@@ -412,9 +409,26 @@ async function getData(page, relay_name) {
       data["uptime"] = nice_uptime(res.data.relay_data.uptime)     
       data["latitude"] = res.data.relay_data.latitude              
       data["longitude"] = res.data.relay_data.longitude            
+
+      // sessions data
+
+      let sessions_timestamps = []  
+      let sessions_values = []
+      let i = 0
+      while (i < res.data.relay_data.time_series_session_count_timestamps.length) {
+        sessions_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_session_count_timestamps[i]) / 1000000000))
+        sessions_values.push(parseInt(res.data.relay_data.time_series_session_count_values[i]))
+        i++
+      }
+      data.sessions_data = [sessions_timestamps, sessions_values]
+
+      console.log(res.data.relay_data)
+
       data["found"] = true
     }
+
     return [data, 0, 1]
+
   } catch (error) {
     console.log(error);
     let data = {}
@@ -466,6 +480,8 @@ export default {
     document.getElementById("relay-name-input").addEventListener('keyup', this.onKeyUp);
 
     this.$emit('notify-view', 'relay')
+
+      this.updateGraphs()
   },
 
   beforeUnmount() {
@@ -509,7 +525,9 @@ export default {
       if (relay_name == null) {
         relay_name = this.$route.params.id
       }
-      return getData(page, relay_name)
+      let data = getData(page, relay_name)
+      this.updateGraphs()
+      return data
     },
 
     async update() {
@@ -520,6 +538,13 @@ export default {
         this.num_pages = result[2]
         this.found = result[0]['found']
         this.$emit('notify-update', this.page, this.num_pages)
+        this.updateGraphs()
+      }
+    },
+
+    updateGraphs() {
+      if (this.sessions != null && this.data.sessions_data != null) {
+        this.sessions.setData(this.data.sessions_data, true)
       }
     },
 

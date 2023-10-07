@@ -196,6 +196,8 @@ func main() {
 
 			// create relay time series watcher
 
+			timeSeriesConfig.Window = 3600 * 1000000000 // 1 hour in nanoseconds
+
 			relayTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
 			if err != nil {
 				core.Error("could not create relay time series watcher: %v", err)
@@ -728,24 +730,32 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayData struct {
-	RelayName                          string   `json:"relay_name"`
-	RelayId                            uint64   `json:"relay_id,string"`
-	RelayAddress                       string   `json:"relay_address"`
-	NumSessions                        uint32   `json:"num_sessions"`
-	MaxSessions                        uint32   `json:"max_sessions"`
-	StartTime                          uint64   `json:"start_time,string"`
-	RelayFlags                         uint64   `json:"relay_flags,string"`
-	RelayVersion                       string   `json:"relay_version"`
-	SellerId                           uint64   `json:"seller_id,string"`
-	SellerName                         string   `json:"seller_name"`
-	SellerCode                         string   `json:"seller_code"`
-	DatacenterId                       uint64   `json:"datacenter_id,string"`
-	DatacenterName                     string   `json:"datacenter_name"`
-	Uptime                             uint64   `json:"uptime,string"`
-	Latitude                           float32  `json:"latitude"`
-	Longitude                          float32  `json:"longitude"`
-	TimeSeries_SessionCount_Timestamps []uint64 `json:"time_series_session_count_timestamps,string"`
-	TimeSeries_SessionCount_Values     []int    `json:"time_series_session_count_values"`
+	RelayName                                      string   `json:"relay_name"`
+	RelayId                                        uint64   `json:"relay_id,string"`
+	RelayAddress                                   string   `json:"relay_address"`
+	NumSessions                                    uint32   `json:"num_sessions"`
+	MaxSessions                                    uint32   `json:"max_sessions"`
+	StartTime                                      uint64   `json:"start_time,string"`
+	RelayFlags                                     uint64   `json:"relay_flags,string"`
+	RelayVersion                                   string   `json:"relay_version"`
+	SellerId                                       uint64   `json:"seller_id,string"`
+	SellerName                                     string   `json:"seller_name"`
+	SellerCode                                     string   `json:"seller_code"`
+	DatacenterId                                   uint64   `json:"datacenter_id,string"`
+	DatacenterName                                 string   `json:"datacenter_name"`
+	Uptime                                         uint64   `json:"uptime,string"`
+	Latitude                                       float32  `json:"latitude"`
+	Longitude                                      float32  `json:"longitude"`
+	TimeSeries_SessionCount_Timestamps             []uint64 `json:"time_series_session_count_timestamps,string"`
+	TimeSeries_SessionCount_Values                 []int    `json:"time_series_session_count_values"`
+	TimeSeries_PacketsSentPerSecond_Timestamps     []uint64 `json:"time_series_packets_sent_per_second_timestamps,string"`
+	TimeSeries_PacketsSentPerSecond_Values         []int    `json:"time_series_packets_sent_per_second_values"`
+	TimeSeries_PacketsReceivedPerSecond_Timestamps []uint64 `json:"time_series_packets_received_per_second_timestamps,string"`
+	TimeSeries_PacketsReceivedPerSecond_Values     []int    `json:"time_series_packets_received_per_second_values"`
+	TimeSeries_NearPingsPerSecond_Timestamps       []uint64 `json:"time_series_near_pings_per_second_timestamps,string"`
+	TimeSeries_NearPingsPerSecond_Values           []int    `json:"time_series_near_pings_per_second_values"`
+	TimeSeries_RelayPingsPerSecond_Timestamps      []uint64 `json:"time_series_relay_pings_per_second_timestamps,string"`
+	TimeSeries_RelayPingsPerSecond_Values          []int    `json:"time_series_relay_pings_per_second_values"`
 }
 
 func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
@@ -774,6 +784,10 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 	if withTimeSeries {
 		relayTimeSeriesWatcher.Lock()
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_SessionCount_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsSentPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsReceivedPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NearPingsPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_RelayPingsPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
 		relayTimeSeriesWatcher.Unlock()
 	}
 }
