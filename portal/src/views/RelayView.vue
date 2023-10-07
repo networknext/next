@@ -143,8 +143,8 @@ let bandwidth_sent_opts = custom_graph({
   series: [
     { 
       name: 'Bandwidth Sent',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
+      stroke: "orange",
+      fill: "rgba(255, 128, 0,0.1)",
       units: 'kbps',
     },
   ]
@@ -155,8 +155,8 @@ let bandwidth_received_opts = custom_graph({
   series: [
     { 
       name: 'Bandwidth Received',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
+      stroke: "#f5d742",
+      fill: "rgba(245, 215, 60, 0.1)",
       units: 'kbps',
     },
   ]
@@ -167,8 +167,8 @@ let packets_sent_opts = custom_graph({
   series: [
     { 
       name: 'Packets Sent',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
+      stroke: "rgb(54, 141, 227)",
+      fill: "rgba(54, 141, 227,0.1)",
       units: ' per-second',
     },
   ]
@@ -179,8 +179,8 @@ let packets_received_opts = custom_graph({
   series: [
     { 
       name: 'Packets Received',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
+      stroke: "rgb(115, 158, 201)",
+      fill: "rgba(115, 158, 201,0.1)",
       units: ' per-second',
     },
   ]
@@ -191,8 +191,8 @@ let near_pings_opts = custom_graph({
   series: [
     { 
       name: 'Near Pings',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
+      stroke: "rgb(146, 81, 181)",
+      fill: "rgba(146, 81, 181,0.1)",
       units: ' per-second',
     },
   ]
@@ -203,8 +203,8 @@ let relay_pings_opts = custom_graph({
   series: [
     { 
       name: 'Relay Pings',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
+      stroke: "rgb(100, 179, 134)",
+      fill: "rgba(100, 179, 134,0.1)",
       units: ' per-second',
     },
   ]
