@@ -1583,7 +1583,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 
 	size := 8 + 4*NumBuckets
 	for i := range batchSize {
-		size += 4 + int(batchSize[i])*(MaxServerAddressLength + 8)
+		size += 4 + int(batchSize[i])*(MaxServerAddressLength+8)
 	}
 
 	data := make([]byte, size)

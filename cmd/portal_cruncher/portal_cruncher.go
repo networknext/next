@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"

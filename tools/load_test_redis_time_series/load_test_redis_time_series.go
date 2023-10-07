@@ -56,7 +56,7 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 	config := common.RedisTimeSeriesConfig{
 		RedisHostname: redisHostname,
-		Window:        5000000000,			// 5 second window in nanoseconds
+		Window:        5000000000, // 5 second window in nanoseconds
 	}
 
 	watcher, err := common.CreateRedisTimeSeriesWatcher(context.Background(), config)

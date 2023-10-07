@@ -728,25 +728,27 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayData struct {
-	RelayName      string  `json:"relay_name"`
-	RelayId        uint64  `json:"relay_id,string"`
-	RelayAddress   string  `json:"relay_address"`
-	NumSessions    uint32  `json:"num_sessions"`
-	MaxSessions    uint32  `json:"max_sessions"`
-	StartTime      uint64  `json:"start_time,string"`
-	RelayFlags     uint64  `json:"relay_flags,string"`
-	RelayVersion   string  `json:"relay_version"`
-	SellerId       uint64  `json:"seller_id,string"`
-	SellerName     string  `json:"seller_name"`
-	SellerCode     string  `json:"seller_code"`
-	DatacenterId   uint64  `json:"datacenter_id,string"`
-	DatacenterName string  `json:"datacenter_name"`
-	Uptime         uint64  `json:"uptime,string"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
+	RelayName                          string   `json:"relay_name"`
+	RelayId                            uint64   `json:"relay_id,string"`
+	RelayAddress                       string   `json:"relay_address"`
+	NumSessions                        uint32   `json:"num_sessions"`
+	MaxSessions                        uint32   `json:"max_sessions"`
+	StartTime                          uint64   `json:"start_time,string"`
+	RelayFlags                         uint64   `json:"relay_flags,string"`
+	RelayVersion                       string   `json:"relay_version"`
+	SellerId                           uint64   `json:"seller_id,string"`
+	SellerName                         string   `json:"seller_name"`
+	SellerCode                         string   `json:"seller_code"`
+	DatacenterId                       uint64   `json:"datacenter_id,string"`
+	DatacenterName                     string   `json:"datacenter_name"`
+	Uptime                             uint64   `json:"uptime,string"`
+	Latitude                           float32  `json:"latitude"`
+	Longitude                          float32  `json:"longitude"`
+	TimeSeries_SessionCount_Timestamps []uint64 `json:"time_series_session_count_timestamps,string"`
+	TimeSeries_SessionCount_Values     []int    `json:"time_series_session_count_values"`
 }
 
-func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData) {
+func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
 	output.RelayName = input.RelayName
 	output.RelayId = input.RelayId
 	output.RelayAddress = input.RelayAddress
@@ -768,6 +770,11 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 			output.Latitude = relay.Datacenter.Latitude
 			output.Longitude = relay.Datacenter.Longitude
 		}
+	}
+	if withTimeSeries {
+		relayTimeSeriesWatcher.Lock()
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_SessionCount_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
+		relayTimeSeriesWatcher.Unlock()
 	}
 }
 
@@ -795,7 +802,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	response.OutputPage = outputPage
 	response.NumPages = numPages
 	for i := range response.Relays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i])
+		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -834,7 +841,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upgradePortalRelayData(database, relayData, &response.RelayData)
+	upgradePortalRelayData(database, relayData, &response.RelayData, true)
 
 	w.WriteHeader(http.StatusOK)
 
@@ -895,10 +902,10 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 
 	if enableRedisTimeSeries && withTimeSeries {
 		buyerTimeSeriesWatcher.Lock()
-		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("%016x_total_sessions", input.Id))
-		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("%016x_next_sessions", input.Id))
-		buyerTimeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("%016x_accelerated_percent", input.Id))
-		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("%016x_server_count", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("buyer_%016x_total_sessions", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("buyer_%016x_next_sessions", input.Id))
+		buyerTimeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("buyer_%016x_accelerated_percent", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("buyer_%016x_server_count", input.Id))
 		buyerTimeSeriesWatcher.Unlock()
 	}
 }
@@ -1058,7 +1065,7 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Relays = make([]PortalRelayData, len(relays))
 	for i := range response.Relays {
-		upgradePortalRelayData(database, &relays[i], &response.Relays[i])
+		upgradePortalRelayData(database, &relays[i], &response.Relays[i], false)
 	}
 
 	response.OutputPage = outputPage
@@ -1187,7 +1194,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Relays = make([]PortalRelayData, len(datacenterRelays))
 	for i := range datacenterRelays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i])
+		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
 	}
 
 	w.WriteHeader(http.StatusOK)
