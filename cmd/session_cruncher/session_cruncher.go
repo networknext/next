@@ -442,9 +442,9 @@ func TopSessionsThread() {
 				message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}
 
 				for i := range buyers {
-					message.Keys = append(message.Keys, fmt.Sprintf("%016x_total_sessions", buyers[i]))
-					message.Keys = append(message.Keys, fmt.Sprintf("%016x_next_sessions", buyers[i]))
-					message.Keys = append(message.Keys, fmt.Sprintf("%016x_accelerated_percent", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_total_sessions", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_next_sessions", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyers[i]))
 					buyerAcceleratedPercent := 0.0
 					if buyerStats.totalSessions[i] > 0 {
 						buyerAcceleratedPercent = float64(buyerStats.nextSessions[i])/float64(buyerStats.totalSessions[i]) * 100.0

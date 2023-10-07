@@ -43,7 +43,8 @@ var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
 var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
-var timeSeriesWatcher *common.RedisTimeSeriesWatcher
+var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
+var relayTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 
 var enableRedisTimeSeries bool
 
@@ -155,15 +156,17 @@ func main() {
 
 		if enableRedisTimeSeries {
 
+			// create buyer time series watcher
+
 			timeSeriesConfig := common.RedisTimeSeriesConfig{
 				RedisHostname: redisTimeSeriesHostname,
 				RedisCluster:  redisTimeSeriesCluster,
 			}
 
 			var err error
-			timeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+			buyerTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
 			if err != nil {
-				core.Error("could not create redis time series watcher: %v", err)
+				core.Error("could not create buyer time series watcher: %v", err)
 				os.Exit(1)
 			}
 
@@ -181,12 +184,41 @@ func main() {
 						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count"}
 						buyerIds := database.GetBuyerIds()
 						for i := range buyerIds {
-							keys = append(keys, fmt.Sprintf("%016x_total_sessions", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("%016x_next_sessions", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("%016x_accelerated_percent", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("%016x_server_count", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_total_sessions", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_next_sessions", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_server_count", buyerIds[i]))
 						}
-						timeSeriesWatcher.SetKeys(keys)
+						buyerTimeSeriesWatcher.SetKeys(keys)
+					}
+				}
+			}(service.Context)
+
+			// create relay time series watcher
+
+			relayTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+			if err != nil {
+				core.Error("could not create relay time series watcher: %v", err)
+				os.Exit(1)
+			}
+
+			go func(ctx context.Context) {
+				ticker := time.NewTicker(time.Second)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						database := service.Database()
+						if database == nil {
+							break
+						}
+						keys := []string{}
+						relayIds := database.GetRelayIds()
+						for i := range relayIds {
+							keys = append(keys, fmt.Sprintf("relay_%016x_session_count", relayIds[i]))
+						}
+						relayTimeSeriesWatcher.SetKeys(keys)
 					}
 				}
 			}(service.Context)
@@ -862,12 +894,12 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	}
 
 	if enableRedisTimeSeries && withTimeSeries {
-		timeSeriesWatcher.Lock()
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("%016x_total_sessions", input.Id))
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("%016x_next_sessions", input.Id))
-		timeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("%016x_accelerated_percent", input.Id))
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("%016x_server_count", input.Id))
-		timeSeriesWatcher.Unlock()
+		buyerTimeSeriesWatcher.Lock()
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("%016x_total_sessions", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("%016x_next_sessions", input.Id))
+		buyerTimeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("%016x_accelerated_percent", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("%016x_server_count", input.Id))
+		buyerTimeSeriesWatcher.Unlock()
 	}
 }
 

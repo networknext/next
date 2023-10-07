@@ -326,7 +326,7 @@ func TopSessionsThread() {
 				message.Values = []float64{float64(serverCount)}
 
 				for i := range buyers {
-					message.Keys = append(message.Keys, fmt.Sprintf("%016x_server_count", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_server_count", buyers[i]))
 					message.Values = append(message.Values, float64(buyerStats.serverCounts[i]))
 				}
 
