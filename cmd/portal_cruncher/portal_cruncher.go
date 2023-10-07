@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -24,7 +25,20 @@ var redisRelayBackendHostname string
 var sessionCruncherURL string
 var serverCruncherURL string
 
+var enableRedisTimeSeries bool
+var redisTimeSeriesCluster []string
+var redisTimeSeriesHostname string
+
 func main() {
+
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
 
 	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
@@ -351,19 +365,34 @@ func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, ba
 		os.Exit(1)
 	}
 
+	var timeSeriesPublisher *common.RedisTimeSeriesPublisher
+
+	if enableRedisTimeSeries {
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		var err error
+		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessRelayUpdate(messageData, relayInserter)
+				ProcessRelayUpdate(messageData, relayInserter, timeSeriesPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter) {
+func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter, timeSeriesPublisher *common.RedisTimeSeriesPublisher) {
 
 	message := messages.PortalRelayUpdateMessage{}
 	err := message.Read(messageData)
@@ -386,26 +415,43 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter)
 	}
 
 	relayInserter.Insert(service.Context, &relayData)
+
+	if enableRedisTimeSeries {
+
+		timeSeriesMessage := common.RedisTimeSeriesMessage{}
+
+		timeSeriesMessage.Timestamp = uint64(time.Now().UnixNano())
+
+		timeSeriesMessage.Keys = []string{
+			fmt.Sprintf("relay_%016x_session_count", message.RelayId),
+			fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.EnvelopeBandwidthUpKbps),
+			fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.EnvelopeBandwidthDownKbps),
+			fmt.Sprintf("relay_%016x_packets_sent_per_second", message.PacketsSentPerSecond),
+			fmt.Sprintf("relay_%016x_packets_received_per_second", message.PacketsReceivedPerSecond),
+			fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.BandwidthSentKbps),
+			fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.BandwidthReceivedKbps),
+			fmt.Sprintf("relay_%016x_near_pings_per_second", message.NearPingsPerSecond),
+			fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayPingsPerSecond),
+			fmt.Sprintf("relay_%016x_num_routable", message.NumRoutable),
+			fmt.Sprintf("relay_%016x_num_unroutable", message.NumUnroutable),
+		}
+
+		timeSeriesMessage.Values = []float64{
+			float64(message.SessionCount),
+			float64(message.EnvelopeBandwidthUpKbps),
+			float64(message.EnvelopeBandwidthDownKbps),
+			float64(message.PacketsSentPerSecond),
+			float64(message.PacketsReceivedPerSecond),
+			float64(message.BandwidthSentKbps),
+			float64(message.BandwidthReceivedKbps),
+			float64(message.NearPingsPerSecond),
+			float64(message.RelayPingsPerSecond),
+			float64(message.NumRoutable),
+			float64(message.NumUnroutable),
+		}
+
+		timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
+	}
 }
 
 // -------------------------------------------------------------------------------
-
-/*
-	// todo: this should be time series
-	// relaySample := portal.RelaySample{
-	// 	Timestamp:                 message.Timestamp,
-	// 	NumSessions:               message.SessionCount,
-	// 	EnvelopeBandwidthUpKbps:   message.EnvelopeBandwidthUpKbps,
-	// 	EnvelopeBandwidthDownKbps: message.EnvelopeBandwidthDownKbps,
-	// 	PacketsSentPerSecond:      message.PacketsSentPerSecond,
-	// 	PacketsReceivedPerSecond:  message.PacketsReceivedPerSecond,
-	// 	BandwidthSentKbps:         message.BandwidthSentKbps,
-	// 	BandwidthReceivedKbps:     message.BandwidthReceivedKbps,
-	// 	NearPingsPerSecond:        message.NearPingsPerSecond,
-	// 	RelayPingsPerSecond:       message.RelayPingsPerSecond,
-	// 	RelayFlags:                message.RelayFlags,
-	// 	NumRoutable:               message.NumRoutable,
-	// 	NumUnroutable:             message.NumUnroutable,
-	// 	CurrentTime:               message.CurrentTime,
-	// }
-*/
