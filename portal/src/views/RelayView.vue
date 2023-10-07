@@ -49,9 +49,9 @@
 
         <div id="sessions" class="graph"/>
         
-        <div id="bandwidth_up" class="graph"/>
+        <div id="bandwidth_sent" class="graph"/>
 
-        <div id="bandwidth_down" class="graph"/>
+        <div id="bandwidth_received" class="graph"/>
 
         <div id="packets_sent" class="graph"/>
 
@@ -134,11 +134,11 @@ let sessions_opts = custom_graph({
   ]
 })
 
-let bandwidth_up_opts = custom_graph({
-  title: "Bandwidth Up",
+let bandwidth_sent_opts = custom_graph({
+  title: "Bandwidth Sent",
   series: [
     { 
-      name: 'Bandwidth Up',
+      name: 'Bandwidth Sent',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
       units: 'kbps',
@@ -146,11 +146,11 @@ let bandwidth_up_opts = custom_graph({
   ]
 })
 
-let bandwidth_down_opts = custom_graph({
-  title: "Bandwidth Down",
+let bandwidth_received_opts = custom_graph({
+  title: "Bandwidth Received",
   series: [
     { 
-      name: 'Bandwidth Down',
+      name: 'Bandwidth Received',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
       units: 'kbps',
@@ -177,7 +177,7 @@ let packets_received_opts = custom_graph({
       name: 'Packets Received',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
-      units: '',
+      units: ' per-second',
     },
   ]
 })
@@ -247,7 +247,7 @@ async function getData(page, relay_name) {
         bandwidth_received_values.push(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_values[i]))
         i++
       }
-      data.bandwidth_sent_data = [bandwidth_sent_timestamps, bandwidth_sent_values]
+      data.bandwidth_received_data = [bandwidth_received_timestamps, bandwidth_received_values]
 
       // packets sent per-second
 
@@ -323,8 +323,8 @@ export default {
   mounted: function () {
   
     this.sessions = new uPlot(sessions_opts, [[],[]], document.getElementById('sessions'))
-    this.bandwidth_up = new uPlot(bandwidth_up_opts, [[],[]], document.getElementById('bandwidth_up'))
-    this.bandwidth_down = new uPlot(bandwidth_down_opts, [[],[]], document.getElementById('bandwidth_down'))
+    this.bandwidth_sent = new uPlot(bandwidth_sent_opts, [[],[]], document.getElementById('bandwidth_sent'))
+    this.bandwidth_received = new uPlot(bandwidth_received_opts, [[],[]], document.getElementById('bandwidth_received'))
     this.packets_sent = new uPlot(packets_sent_opts, [[],[]], document.getElementById('packets_sent'))
     this.packets_received = new uPlot(packets_received_opts, [[],[]], document.getElementById('packets_received'))
 
@@ -341,14 +341,14 @@ export default {
 
   beforeUnmount() {
     this.sessions.destroy()
-    this.bandwidth_up.destroy()
-    this.bandwidth_down.destroy()
+    this.bandwidth_sent.destroy()
+    this.bandwidth_received.destroy()
     this.packets_sent.destroy()
     this.packets_received.destroy()
     this.prevWidth = 0
     this.sessions = null
-    this.bandwidth_up = null
-    this.bandwidth_down = null
+    this.bandwidth_sent = null
+    this.bandwidth_received = null
     this.packets_sent = null
     this.packets_received = null
     this.observer = null
@@ -374,8 +374,8 @@ export default {
             graph_height = 250
           }
           this.sessions.setSize({width: graph_width, height: graph_height})
-          this.bandwidth_up.setSize({width: graph_width, height: graph_height})
-          this.bandwidth_down.setSize({width: graph_width, height: graph_height})
+          this.bandwidth_sent.setSize({width: graph_width, height: graph_height})
+          this.bandwidth_received.setSize({width: graph_width, height: graph_height})
           this.packets_sent.setSize({width: graph_width, height: graph_height})
           this.packets_received.setSize({width: graph_width, height: graph_height})
         }
@@ -407,16 +407,16 @@ export default {
       if (this.sessions != null && this.data.sessions_data != null) {
         this.sessions.setData(this.data.sessions_data, true)
       }
-      if (this.bandwidth_up != null && this.data.bandwidth_data != null) {
-        this.bandwidth_up.setData(this.data.bandwidth_up_data, true)
+      if (this.bandwidth_sent != null && this.data.bandwidth_sent_data != null) {
+        this.bandwidth_sent.setData(this.data.bandwidth_sent_data, true)
       }
-      if (this.bandwidth_down != null && this.data.bandwidth_down != null) {
-        this.bandwidth_down.setData(this.data.bandwidth_down_data, true)
+      if (this.bandwidth_received != null && this.data.bandwidth_received_data != null) {
+        this.bandwidth_received.setData(this.data.bandwidth_received_data, true)
       }
-      if (this.packets_sent != null && this.data.packets_sent != null) {
+      if (this.packets_sent != null && this.data.packets_sent_data != null) {
         this.packets_sent.setData(this.data.packets_sent_data, true)
       }
-      if (this.packets_received != null && this.data.packets_received != null) {
+      if (this.packets_received != null && this.data.packets_received_data != null) {
         this.packets_received.setData(this.data.packets_received_data, true)
       }
     },
