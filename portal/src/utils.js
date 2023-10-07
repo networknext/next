@@ -140,12 +140,8 @@ function custom_graph(config) {
       width: 2,
       label: config.series[i].name,
       points: {
-        show: (self, si) => {
-          if (is_visible(document.getElementById('right'))) {
-            return self.data[si][0].length > 50
-          } else {
-            return false
-          }
+        show: () => {
+          return false
         }
       },
       value: (self, v) => {
