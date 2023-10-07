@@ -219,6 +219,16 @@ func main() {
 						relayIds := database.GetRelayIds()
 						for i := range relayIds {
 							keys = append(keys, fmt.Sprintf("relay_%016x_session_count", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_packets_sent_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_packets_received_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_near_pings_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_relay_pings_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_num_routable", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_num_unroutable", relayIds[i]))
 						}
 						relayTimeSeriesWatcher.SetKeys(keys)
 					}
@@ -756,6 +766,10 @@ type PortalRelayData struct {
 	TimeSeries_NearPingsPerSecond_Values           []int    `json:"time_series_near_pings_per_second_values"`
 	TimeSeries_RelayPingsPerSecond_Timestamps      []uint64 `json:"time_series_relay_pings_per_second_timestamps,string"`
 	TimeSeries_RelayPingsPerSecond_Values          []int    `json:"time_series_relay_pings_per_second_values"`
+	TimeSeries_NumRoutable_Timestamps              []uint64 `json:"time_series_num_routable_timestamps,string"`
+	TimeSeries_NumRoutable_Values                  []int    `json:"time_series_num_routable_values"`
+	TimeSeries_NumUnroutable_Timestamps            []uint64 `json:"time_series_num_unroutable_timestamps,string"`
+	TimeSeries_NumUnroutable_Values                []int    `json:"time_series_num_unroutable_values"`
 }
 
 func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
@@ -784,10 +798,13 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 	if withTimeSeries {
 		relayTimeSeriesWatcher.Lock()
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_SessionCount_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsSentPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsReceivedPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NearPingsPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_RelayPingsPerSecond_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsSentPerSecond_Timestamps, &output.TimeSeries_PacketsSentPerSecond_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsReceivedPerSecond_Timestamps, &output.TimeSeries_PacketsReceivedPerSecond_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NearPingsPerSecond_Timestamps, &output.TimeSeries_NearPingsPerSecond_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_RelayPingsPerSecond_Timestamps, &output.TimeSeries_RelayPingsPerSecond_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumRoutable_Timestamps, &output.TimeSeries_NumRoutable_Values, fmt.Sprintf("relay_%016x_num_routable", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumUnroutable_Timestamps, &output.TimeSeries_NumUnroutable_Values, fmt.Sprintf("relay_%016x_num_unroutable", input.RelayId))
+
 		relayTimeSeriesWatcher.Unlock()
 	}
 }

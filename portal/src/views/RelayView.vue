@@ -412,6 +412,7 @@ async function getData(page, relay_name) {
 
       // sessions data
 
+      /*
       let sessions_timestamps = []  
       let sessions_values = []
       let i = 0
@@ -421,6 +422,7 @@ async function getData(page, relay_name) {
         i++
       }
       data.sessions_data = [sessions_timestamps, sessions_values]
+      */
 
       console.log(res.data.relay_data)
 
