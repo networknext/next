@@ -424,16 +424,16 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter,
 
 		timeSeriesMessage.Keys = []string{
 			fmt.Sprintf("relay_%016x_session_count", message.RelayId),
-			fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.EnvelopeBandwidthUpKbps),
-			fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.EnvelopeBandwidthDownKbps),
-			fmt.Sprintf("relay_%016x_packets_sent_per_second", message.PacketsSentPerSecond),
-			fmt.Sprintf("relay_%016x_packets_received_per_second", message.PacketsReceivedPerSecond),
-			fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.BandwidthSentKbps),
-			fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.BandwidthReceivedKbps),
-			fmt.Sprintf("relay_%016x_near_pings_per_second", message.NearPingsPerSecond),
-			fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayPingsPerSecond),
-			fmt.Sprintf("relay_%016x_num_routable", message.NumRoutable),
-			fmt.Sprintf("relay_%016x_num_unroutable", message.NumUnroutable),
+			fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_near_pings_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_num_routable", message.RelayId),
+			fmt.Sprintf("relay_%016x_num_unroutable", message.RelayId),
 		}
 
 		timeSeriesMessage.Values = []float64{

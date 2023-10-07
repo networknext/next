@@ -758,6 +758,10 @@ type PortalRelayData struct {
 	Longitude                                      float32  `json:"longitude"`
 	TimeSeries_SessionCount_Timestamps             []uint64 `json:"time_series_session_count_timestamps,string"`
 	TimeSeries_SessionCount_Values                 []int    `json:"time_series_session_count_values"`
+	TimeSeries_BandwidthSentKbps_Timestamps        []uint64 `json:"time_series_bandwidth_sent_kbps_timestamps,string"`
+	TimeSeries_BandwidthSentKbps_Values            []int    `json:"time_series_bandwidth_sent_kbps_values"`
+	TimeSeries_BandwidthReceivedKbps_Timestamps    []uint64 `json:"time_series_bandwidth_received_kbps_timestamps,string"`
+	TimeSeries_BandwidthReceivedKbps_Values        []int    `json:"time_series_bandwidth_received_kbps_values"`
 	TimeSeries_PacketsSentPerSecond_Timestamps     []uint64 `json:"time_series_packets_sent_per_second_timestamps,string"`
 	TimeSeries_PacketsSentPerSecond_Values         []int    `json:"time_series_packets_sent_per_second_values"`
 	TimeSeries_PacketsReceivedPerSecond_Timestamps []uint64 `json:"time_series_packets_received_per_second_timestamps,string"`
@@ -798,13 +802,14 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 	if withTimeSeries {
 		relayTimeSeriesWatcher.Lock()
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_SessionCount_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_BandwidthSentKbps_Timestamps, &output.TimeSeries_BandwidthSentKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_BandwidthReceivedKbps_Timestamps, &output.TimeSeries_BandwidthReceivedKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsSentPerSecond_Timestamps, &output.TimeSeries_PacketsSentPerSecond_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsReceivedPerSecond_Timestamps, &output.TimeSeries_PacketsReceivedPerSecond_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NearPingsPerSecond_Timestamps, &output.TimeSeries_NearPingsPerSecond_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_RelayPingsPerSecond_Timestamps, &output.TimeSeries_RelayPingsPerSecond_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumRoutable_Timestamps, &output.TimeSeries_NumRoutable_Values, fmt.Sprintf("relay_%016x_num_routable", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumUnroutable_Timestamps, &output.TimeSeries_NumUnroutable_Values, fmt.Sprintf("relay_%016x_num_unroutable", input.RelayId))
-
 		relayTimeSeriesWatcher.Unlock()
 	}
 }
