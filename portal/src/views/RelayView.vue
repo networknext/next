@@ -57,6 +57,10 @@
 
         <div id="packets_received" class="graph"/>
 
+        <div id="near_pings" class="graph"/>
+
+        <div id="relay_pings" class="graph"/>
+
       </div>
 
       <div id="right" class="right d-none d-xxl-block">
@@ -182,6 +186,30 @@ let packets_received_opts = custom_graph({
   ]
 })
 
+let near_pings_opts = custom_graph({
+  title: "Near Pings",
+  series: [
+    { 
+      name: 'Near Pings',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: ' per-second',
+    },
+  ]
+})
+
+let relay_pings_opts = custom_graph({
+  title: "Relay Pings",
+  series: [
+    { 
+      name: 'Relay Pings',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: ' per-second',
+    },
+  ]
+})
+
 async function getData(page, relay_name) {
 
   try {
@@ -223,8 +251,6 @@ async function getData(page, relay_name) {
 
       // bandwidth sent per-second
 
-      console.log(res.data.relay_data)
-
       let bandwidth_sent_timestamps = []  
       let bandwidth_sent_values = []
       i = 0
@@ -236,8 +262,6 @@ async function getData(page, relay_name) {
       data.bandwidth_sent_data = [bandwidth_sent_timestamps, bandwidth_sent_values]
 
       // bandwidth received per-second
-
-      console.log(res.data.relay_data)
 
       let bandwidth_received_timestamps = []  
       let bandwidth_received_values = []
@@ -251,8 +275,6 @@ async function getData(page, relay_name) {
 
       // packets sent per-second
 
-      console.log(res.data.relay_data)
-
       let packets_sent_timestamps = []  
       let packets_sent_values = []
       i = 0
@@ -265,8 +287,6 @@ async function getData(page, relay_name) {
 
       // packets received per-second
 
-      console.log(res.data.relay_data)
-
       let packets_received_timestamps = []  
       let packets_received_values = []
       i = 0
@@ -276,6 +296,30 @@ async function getData(page, relay_name) {
         i++
       }
       data.packets_received_data = [packets_received_timestamps, packets_received_values]
+
+      // near pings per-second
+
+      let near_pings_timestamps = []  
+      let near_pings_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_near_pings_per_second_timestamps.length) {
+        near_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_near_pings_per_second_timestamps[i]) / 1000000000))
+        near_pings_values.push(parseInt(res.data.relay_data.time_series_near_pings_per_second_values[i]))
+        i++
+      }
+      data.near_pings_data = [near_pings_timestamps, near_pings_values]
+
+      // relay pings per-second
+
+      let relay_pings_timestamps = []  
+      let relay_pings_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_relay_pings_per_second_timestamps.length) {
+        relay_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_relay_pings_per_second_timestamps[i]) / 1000000000))
+        relay_pings_values.push(parseInt(res.data.relay_data.time_series_relay_pings_per_second_values[i]))
+        i++
+      }
+      data.relay_pings_data = [relay_pings_timestamps, relay_pings_values]
 
       data["found"] = true
     }
@@ -327,6 +371,8 @@ export default {
     this.bandwidth_received = new uPlot(bandwidth_received_opts, [[],[]], document.getElementById('bandwidth_received'))
     this.packets_sent = new uPlot(packets_sent_opts, [[],[]], document.getElementById('packets_sent'))
     this.packets_received = new uPlot(packets_received_opts, [[],[]], document.getElementById('packets_received'))
+    this.near_pings = new uPlot(near_pings_opts, [[],[]], document.getElementById('near_pings'))
+    this.relay_pings = new uPlot(relay_pings_opts, [[],[]], document.getElementById('relay_pings'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -345,12 +391,16 @@ export default {
     this.bandwidth_received.destroy()
     this.packets_sent.destroy()
     this.packets_received.destroy()
+    this.near_pings.destroy()
+    this.relay_pings.destroy()
     this.prevWidth = 0
     this.sessions = null
     this.bandwidth_sent = null
     this.bandwidth_received = null
     this.packets_sent = null
     this.packets_received = null
+    this.near_pings = null
+    this.relay_pings = null
     this.observer = null
   },
 
@@ -378,6 +428,8 @@ export default {
           this.bandwidth_received.setSize({width: graph_width, height: graph_height})
           this.packets_sent.setSize({width: graph_width, height: graph_height})
           this.packets_received.setSize({width: graph_width, height: graph_height})
+          this.near_pings.setSize({width: graph_width, height: graph_height})
+          this.relay_pings.setSize({width: graph_width, height: graph_height})
         }
       }    
     },
@@ -418,6 +470,12 @@ export default {
       }
       if (this.packets_received != null && this.data.packets_received_data != null) {
         this.packets_received.setData(this.data.packets_received_data, true)
+      }
+      if (this.near_pings != null && this.data.near_pings_data != null) {
+        this.near_pings.setData(this.data.near_pings_data, true)
+      }
+      if (this.relay_pings != null && this.data.relay_pings_data != null) {
+        this.relay_pings.setData(this.data.relay_pings_data, true)
       }
     },
 

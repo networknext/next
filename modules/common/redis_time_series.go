@@ -16,6 +16,7 @@ type RedisTimeSeriesConfig struct {
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
+	Retention          int
 	Window             int // IMPORTANT: in timestamp units, how far back in time from present to gather samples from
 }
 
@@ -32,6 +33,7 @@ type RedisTimeSeriesPublisher struct {
 	redisClient        *redis.Client
 	redisClusterClient *redis.ClusterClient
 	mutex              sync.Mutex
+	keys               map[string]bool
 	messageBatch       []*RedisTimeSeriesMessage
 	numMessagesSent    int
 	numBatchesSent     int
@@ -70,7 +72,12 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 		config.BatchSize = 10000
 	}
 
+	if config.Retention == 0 {
+		config.Retention = 86400 * 1000000000 // 24 hours in nanoseconds
+	}
+
 	publisher.config = config
+	publisher.keys = make(map[string]bool)
 	publisher.MessageChannel = make(chan *RedisTimeSeriesMessage, config.MessageChannelSize)
 	publisher.redisClient = client
 	publisher.redisClusterClient = clusterClient
@@ -106,6 +113,12 @@ func (publisher *RedisTimeSeriesPublisher) updateMessageChannel(ctx context.Cont
 
 func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
+	publisher.mutex.Lock()
+	keys := publisher.keys
+	publisher.mutex.Unlock()
+
+	newKeys := make([]string, 0)
+
 	var pipeline redis.Pipeliner
 	if publisher.redisClusterClient != nil {
 		pipeline = publisher.redisClusterClient.Pipeline()
@@ -116,7 +129,17 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 	for i := range publisher.messageBatch {
 		for j := range publisher.messageBatch[i].Keys {
 			pipeline.TSAdd(ctx, publisher.messageBatch[i].Keys[j], publisher.messageBatch[i].Timestamp, publisher.messageBatch[i].Values[j])
+			_, exists := keys[publisher.messageBatch[i].Keys[j]]
+			if !exists {
+				newKeys = append(newKeys, publisher.messageBatch[i].Keys[j])
+			}
 		}
+	}
+
+	for i := range newKeys {
+		options := redis.TSOptions{}
+		options.Retention = publisher.config.Retention
+		pipeline.TSCreateWithArgs(ctx, newKeys[i], &options)
 	}
 
 	_, err := pipeline.Exec(ctx)
@@ -129,6 +152,9 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 	publisher.mutex.Lock()
 	publisher.numBatchesSent++
 	publisher.numMessagesSent += batchNumMessages
+	for i := range newKeys {
+		publisher.keys[newKeys[i]] = true
+	}
 	publisher.mutex.Unlock()
 
 	publisher.messageBatch = publisher.messageBatch[:0]
