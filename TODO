@@ -1,0 +1,290 @@
+DONE
+
+	Verify the accelerated % fix in dev
+
+	Take the new code to staging and load test it at 1M
+
+	Check the portal is working OK while the load test
+
+	Check the CPU and memory on the crunchers is still good post-buyer stuff
+
+	Implement relay graphs using time series
+
+	Sketch out a few last graphs, most likely for debugging only -- to see that they are correct
+
+	Set appropriate retention (24 hours by default) on the time series
+
+		TS.CREATE sensor1 RETENTION 2678400000
+
+TODO
+
+	Stop work and get ready for Lisbon trip!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
+	Bring across the styling for mobile to widen the graphs
+
+	--------------
+
+	Add route shader to buyer data
+
+	--------------
+
+	Implement relay page graphs
+
+	--------------
+
+	Implement the small map in the sidebar
+
+	--------------
+
+	Implement the large map in the main page
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+Extra work found when finishing portal:
+
+	--------------
+
+	Need to double check that we remove event listeners on unmount
+
+	--------------
+
+	Connection type detection needs to be brought back for all platforms in the SDK. On linux, connection type was 0 -> "Unknown"
+
+	--------------
+
+	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
+
+	--------------
+
+	Session counts on relays being 8 when relay backend restarts seems a bit suspicious. Are we not decrementing session counts somewhere?
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+Finalize load test:
+
+	-----------------
+
+	Change analytics to perform bulk inserts instead of streaming inserts.
+
+	Bulk inserts are free.
+	
+	https://cloud.google.com/bigquery/docs/write-api-batch
+
+	-------------------
+
+	Setup google beta provider and set the tier 1 bandwidth on the server backend.
+
+		network_performance_config {
+			total_egress_bandwidth_tier = "TIER_1"
+		}
+
+	-------------------
+
+	*** Why are sessions not taking network next in load test? ***
+
+	------------------
+
+	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Terraform project setup:
+
+	-----------------------
+
+	Enable:
+
+		Compute Engine API
+		Cloud Resource Manager API
+		Google Cloud Memorystore for Redis API
+		Service Networking API
+		Cloud SQL API
+
+	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
+
+	Pain point around SQL, we should try to create the database inside terrafrom ideally. It has problems destroying:
+
+		 Error: Error when reading or editing Database: googleapi: Error 400: Invalid request: failed to delete database "database". Detail: pq: database "database" is being accessed by other users. (Please use psql client to delete database that is not owned by "cloudsqlsuperuser")., invalid
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Finalize SDK and UE5 plugin:
+
+	------------------
+
+	Update to latest PS4 and PS5 SDK on Windows PC
+
+	Verify that we can build, link and run across PS4
+
+	Verify that we can build, link and run across PS5
+
+	------------------
+
+	Update to latest XDK
+
+	Verify that we can build, link and run across XBoxOne
+
+	Verify that we can build, link and run across SeriesX
+
+	------------------
+
+	Setup PS4 compilation with custom agents
+
+	Setup PS5 compilation with custom agents
+
+	Setup XBoxOne compilation with custom agents
+
+	Setup Series X compilation with custom agents
+
+	------------------
+
+	Get the UE5 plugin back up
+
+	Make sure to include Flush on the server before the server is destroyed
+
+	------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
