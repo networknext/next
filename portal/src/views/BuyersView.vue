@@ -79,9 +79,9 @@ async function getData(page) {
         "Live":v.live,
         "Debug":v.debug,
         "Public Key":v.public_key,
-        "Server Count":v.server_count,
-        "Total Sessions":v.total_sessions,
-        "Next Sessions":v.next_sessions,
+        "Server Count":v.server_count.toLocaleString(),
+        "Total Sessions":v.total_sessions.toLocaleString(),
+        "Next Sessions":v.next_sessions.toLocaleString(),
         "Accelerated Percent":getAcceleratedPercent(v.next_sessions, v.total_sessions),
       }
       data.push(row)

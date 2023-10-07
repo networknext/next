@@ -146,9 +146,9 @@ function custom_graph(config) {
       },
       value: (self, v) => {
         if (v != null) {
-          return v + units
+          return v.toLocaleString() + units
         } else if (self._data[index] != null && self._data[index].length > 0) {
-          return self._data[index][self._data[index].length-1] + units
+          return self._data[index][self._data[index].length-1].toLocaleString() + units
         } else {
           return '--'
         }

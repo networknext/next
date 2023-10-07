@@ -20,12 +20,12 @@
 
               <tr>
                 <td class="bold">Total Sessions</td>
-                <td> {{ this.data.total_sessions}} </td>
+                <td> {{ this.data.total_sessions }} </td>
               </tr>
 
               <tr>
                 <td class="bold">Next Sessions</td>
-                <td> {{ this.data.next_sessions}} </td>
+                <td> {{ this.data.next_sessions }} </td>
               </tr>
 
               <tr>
@@ -180,10 +180,10 @@ async function getData(page, buyer) {
 
       data['live'] = res.data.buyer_data.live
       data['debug'] = res.data.buyer_data.debug
-      data['total_sessions'] = res.data.buyer_data.total_sessions
-      data['next_sessions'] = res.data.buyer_data.next_sessions
+      data['total_sessions'] = res.data.buyer_data.total_sessions.toLocaleString()
+      data['next_sessions'] = res.data.buyer_data.next_sessions.toLocaleString()
       data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
-      data['servers'] = res.data.buyer_data.server_count
+      data['servers'] = res.data.buyer_data.server_count.toLocaleString()
 
       // total sessions data
 
