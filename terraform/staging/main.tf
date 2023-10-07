@@ -174,6 +174,19 @@ resource "google_compute_firewall" "allow_http" {
   target_tags = ["allow-http"]
 }
 
+resource "google_compute_firewall" "allow_redis" {
+  name          = "allow-redis"
+  project       = var.google_project
+  direction     = "INGRESS"
+  network       = google_compute_network.staging.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "tcp"
+    ports    = ["6379"]
+  }
+  target_tags = ["allow-redis"]
+}
+
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
   project       = var.google_project
