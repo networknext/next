@@ -16,15 +16,39 @@ DONE
 
 		TS.CREATE sensor1 RETENTION 2678400000
 
-TODO
-
 	Admin page with more graphs
 
 	total sessions, next sessions, accel %, server count
 
+TODO
+
+	*** COUNTERS ***
+
 	retries
 
 	fallback to direct
+
+	long session update
+
+	no route
+
+	unknown datacenter
+
+	datacenter not enabled
+
+	stale route matrix
+
+	aborted
+
+	no relays in datacenter
+
+	no near relays
+
+	no route relays
+
+	route relay no longer exists
+
+	route no longer exists
 
 	cost matrix size
 
