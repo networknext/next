@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 	"time"
-
+	
 	"github.com/networknext/next/modules/core"
 
 	"github.com/redis/go-redis/v9"
@@ -128,7 +128,6 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
 	for i := range publisher.messageBatch {
 		for j := range publisher.messageBatch[i].Keys {
-			pipeline.TSAdd(ctx, publisher.messageBatch[i].Keys[j], publisher.messageBatch[i].Timestamp, publisher.messageBatch[i].Values[j])
 			_, exists := keys[publisher.messageBatch[i].Keys[j]]
 			if !exists {
 				newKeys = append(newKeys, publisher.messageBatch[i].Keys[j])
@@ -140,6 +139,12 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 		options := redis.TSOptions{}
 		options.Retention = publisher.config.Retention
 		pipeline.TSCreateWithArgs(ctx, newKeys[i], &options)
+	}
+
+	for i := range publisher.messageBatch {
+		for j := range publisher.messageBatch[i].Keys {
+			pipeline.TSAdd(ctx, publisher.messageBatch[i].Keys[j], publisher.messageBatch[i].Timestamp, publisher.messageBatch[i].Values[j])
+		}
 	}
 
 	_, err := pipeline.Exec(ctx)

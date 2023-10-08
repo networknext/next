@@ -1,28 +1,18 @@
 DONE
 
-	Verify the accelerated % fix in dev
+	Sketch out redis counters
 
-	Take the new code to staging and load test it at 1M
-
-	Check the portal is working OK while the load test
-
-	Check the CPU and memory on the crunchers is still good post-buyer stuff
-
-	Implement relay graphs using time series
-
-	Sketch out a few last graphs, most likely for debugging only -- to see that they are correct
-
-	Set appropriate retention (24 hours by default) on the time series
-
-		TS.CREATE sensor1 RETENTION 2678400000
-
-	Admin page with more graphs
-
-	total sessions, next sessions, accel %, server count
+	Make sure the duplicate timestamp policy is set to allow (if possible...)
 
 TODO
 
-	*** COUNTERS ***
+	Optimize insertion of counters by summing values per-publisher, and only actually sending a message once per-second
+
+	Implement counters for server updates and session updates per-minute (divide by 60 when presenting...)
+
+	Verify redis counters are working in dev by showing server updates and session updates
+
+	----------------
 
 	retries
 
@@ -49,10 +39,6 @@ TODO
 	route relay no longer exists
 
 	route no longer exists
-
-	cost matrix size
-
-	route matrix size
 
 	-----------
 
@@ -182,6 +168,10 @@ Extra work found when finishing portal:
 
 Finalize load test:
 
+	-------------------
+
+	*** Why are sessions not taking network next in load test? ***
+
 	-----------------
 
 	Change analytics to perform bulk inserts instead of streaming inserts.
@@ -198,13 +188,13 @@ Finalize load test:
 			total_egress_bandwidth_tier = "TIER_1"
 		}
 
-	-------------------
+	------------------
 
-	*** Why are sessions not taking network next in load test? ***
+	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in staging and prod
 
 	------------------
 
-	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
+	Test if the server backend scales better with goroutine per-packet or not
 
 	------------------
 

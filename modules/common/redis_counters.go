@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"time"
+	"fmt"
 
 	"github.com/networknext/next/modules/core"
 
@@ -13,19 +14,18 @@ import (
 type RedisCountersConfig struct {
 	RedisHostname      string
 	RedisCluster       []string
-	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
 	Retention          int
-	Window             int // IMPORTANT: in timestamp units, how far back in time from present to gather samples from
+	SumWindow          int // in timestamp units, the time period to aggregate into a single sum sample. default is 60 seconds
+	DisplayWindow      int // in timestamp units, how far back from current time to query summed samples
 }
 
 // -------------------------------------------------------------------------------
 
 type RedisCountersMessage struct {
-	Timestamp uint64
-	Keys      []string
-	Values    []float64
+	Key     string
+	Counter float64
 }
 
 type RedisCountersPublisher struct {
@@ -34,9 +34,6 @@ type RedisCountersPublisher struct {
 	redisClusterClient *redis.ClusterClient
 	mutex              sync.Mutex
 	keys               map[string]bool
-	messageBatch       []*RedisCountersMessage
-	numMessagesSent    int
-	numBatchesSent     int
 	MessageChannel     chan *RedisCountersMessage
 }
 
@@ -68,12 +65,12 @@ func CreateRedisCountersPublisher(ctx context.Context, config RedisCountersConfi
 		config.BatchDuration = time.Second
 	}
 
-	if config.BatchSize == 0 {
-		config.BatchSize = 10000
-	}
-
 	if config.Retention == 0 {
 		config.Retention = 86400 * 1000000000 // 24 hours in nanoseconds
+	}
+
+	if config.SumWindow == 0 {
+		config.Retention = 60 * 1000000000 // 60 seconds in nanoseconds
 	}
 
 	publisher.config = config
@@ -91,6 +88,9 @@ func (publisher *RedisCountersPublisher) updateMessageChannel(ctx context.Contex
 
 	ticker := time.NewTicker(publisher.config.BatchDuration)
 
+	newKeys := make(map[string]bool)
+	counters := make(map[string]uint64, 64)
+
 	for {
 		select {
 
@@ -98,26 +98,27 @@ func (publisher *RedisCountersPublisher) updateMessageChannel(ctx context.Contex
 			return
 
 		case <-ticker.C:
-			if len(publisher.messageBatch) > 0 {
-				publisher.sendBatch(ctx)
+			publisher.sendBatch(ctx, counters, newKeys);
+			for k, _ := range counters {
+				counters[k] = 0
+			}
+			if len(newKeys) > 0 {
+				newKeys = make(map[string]bool)
 			}
 
 		case message := <-publisher.MessageChannel:
-			publisher.messageBatch = append(publisher.messageBatch, message)
-			if len(publisher.messageBatch) >= publisher.config.BatchSize {
-				publisher.sendBatch(ctx)
+			counter, exists := counters[message.Key]
+			if !exists {
+				newKeys[message.Key] = true
 			}
+			counters[message.Key] = counter + 1
 		}
 	}
 }
 
-func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context) {
+func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters map[string]uint64, newKeys map[string]bool) {
 
-	publisher.mutex.Lock()
-	keys := publisher.keys
-	publisher.mutex.Unlock()
-
-	newKeys := make([]string, 0)
+	timestamp := time.Now().UnixNano()
 
 	var pipeline redis.Pipeliner
 	if publisher.redisClusterClient != nil {
@@ -126,52 +127,22 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context) {
 		pipeline = publisher.redisClient.Pipeline()
 	}
 
-	for i := range publisher.messageBatch {
-		for j := range publisher.messageBatch[i].Keys {
-			pipeline.TSAdd(ctx, publisher.messageBatch[i].Keys[j], publisher.messageBatch[i].Timestamp, publisher.messageBatch[i].Values[j])
-			_, exists := keys[publisher.messageBatch[i].Keys[j]]
-			if !exists {
-				newKeys = append(newKeys, publisher.messageBatch[i].Keys[j])
-			}
-		}
-	}
-
-	for i := range newKeys {
+	for k, _ := range newKeys {
 		options := redis.TSOptions{}
 		options.Retention = publisher.config.Retention
-		pipeline.TSCreateWithArgs(ctx, newKeys[i], &options)
+		options.DuplicatePolicy = "SUM"
+		pipeline.TSCreateWithArgs(ctx, fmt.Sprintf("%s-internal", k), &options)
+		pipeline.TSCreateRule(ctx, fmt.Sprintf("%s-internal", k), k, redis.Sum, publisher.config.SumWindow)
+	}
+
+	for k, v := range counters {
+		pipeline.TSAdd(ctx, k, timestamp, float64(v))
 	}
 
 	_, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to add time series: %v", err)
+		core.Error("failed to add counters: %v", err)
 	}
-
-	batchNumMessages := len(publisher.messageBatch)
-
-	publisher.mutex.Lock()
-	publisher.numBatchesSent++
-	publisher.numMessagesSent += batchNumMessages
-	for i := range newKeys {
-		publisher.keys[newKeys[i]] = true
-	}
-	publisher.mutex.Unlock()
-
-	publisher.messageBatch = publisher.messageBatch[:0]
-}
-
-func (publisher *RedisCountersPublisher) NumMessagesSent() int {
-	publisher.mutex.Lock()
-	numMessagesSent := publisher.numMessagesSent
-	publisher.mutex.Unlock()
-	return numMessagesSent
-}
-
-func (publisher *RedisCountersPublisher) NumBatchesSent() int {
-	publisher.mutex.Lock()
-	numBatchesSent := publisher.numBatchesSent
-	publisher.mutex.Unlock()
-	return numBatchesSent
 }
 
 // -------------------------------------------------------------------------------
@@ -205,8 +176,8 @@ func CreateRedisCountersWatcher(ctx context.Context, config RedisCountersConfig)
 		}
 	}
 
-	if config.Window == 0 {
-		config.Window = 86400 * 1000000000 // 24 hours in nanoseconds
+	if config.DisplayWindow == 0 {
+		config.DisplayWindow = 86400 * 1000000000 // 24 hours in nanoseconds
 	}
 
 	watcher := &RedisCountersWatcher{}
@@ -251,7 +222,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 			currentTime := int(time.Now().UnixNano())
 
 			for i := range keys {
-				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.Window, currentTime)
+				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.DisplayWindow, currentTime)
 			}
 
 			cmds, err := pipeline.Exec(ctx)
