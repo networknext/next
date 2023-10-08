@@ -1,4 +1,4 @@
-s<template>
+<template>
 
   <div class="parent" id="parent">
   
@@ -24,8 +24,7 @@ s<template>
 
 <script>
 
-// todo
-//import axios from "axios";
+import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
@@ -81,76 +80,64 @@ let server_count_opts = custom_graph({
 
 async function getData() {
 
-  /*
   try {
 
-    const url = process.env.VUE_APP_API_URL + '/portal/admin'
+    const url = process.env.VUE_APP_API_URL + '/portal/admin_data'
 
     const res = await axios.get(url);
 
     let data = {}
 
-    if (res.data.buyer_data !== null) {
+    // total sessions data
 
-      // buyer data
-
-      data['live'] = res.data.buyer_data.live
-      data['debug'] = res.data.buyer_data.debug
-      data['total_sessions'] = res.data.buyer_data.total_sessions.toLocaleString()
-      data['next_sessions'] = res.data.buyer_data.next_sessions.toLocaleString()
-      data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
-      data['servers'] = res.data.buyer_data.server_count.toLocaleString()
-
-      // total sessions data
-
-      let total_sessions_timestamps = []  
-      let total_sessions_values = []
-      let i = 0
-      while (i < res.data.buyer_data.time_series_total_sessions_timestamps.length) {
-        total_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_total_sessions_timestamps[i]) / 1000000000))
-        total_sessions_values.push(parseInt(res.data.buyer_data.time_series_total_sessions_values[i]))
-        i++
-      }
-      data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
-
-      // next sessions data
-
-      let next_sessions_timestamps = []  
-      let next_sessions_values = []
-      i = 0
-      while (i < res.data.buyer_data.time_series_next_sessions_timestamps.length) {
-        next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_next_sessions_timestamps[i]) / 1000000000))
-        next_sessions_values.push(parseInt(res.data.buyer_data.time_series_next_sessions_values[i]))
-        i++
-      }
-      data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
-
-      // accelerated percent data
-
-      let accelerated_percent_timestamps = []  
-      let accelerated_percent_values = []
-      i = 0
-      while (i < res.data.buyer_data.time_series_accelerated_percent_timestamps.length) {
-        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_accelerated_percent_timestamps[i]) / 1000000000))
-        accelerated_percent_values.push(parseInt(res.data.buyer_data.time_series_accelerated_percent_values[i]))
-        i++
-      }
-      data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
-
-      // server count data
-
-      let server_count_timestamps = []  
-      let server_count_values = []
-      i = 0
-      while (i < res.data.buyer_data.time_series_server_count_timestamps.length) {
-        server_count_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_server_count_timestamps[i]) / 1000000000))
-        server_count_values.push(parseInt(res.data.buyer_data.time_series_server_count_values[i]))
-        i++
-      }
-      data.server_count_data = [server_count_timestamps, server_count_values]
-
-      data['found'] = true
+    let total_sessions_timestamps = []  
+    let total_sessions_values = []
+    let i = 0
+    while (i < res.data.time_series_total_sessions_timestamps.length) {
+      total_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_total_sessions_timestamps[i]) / 1000000000))
+      total_sessions_values.push(parseInt(res.data.time_series_total_sessions_values[i]))
+      i++
     }
+    data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
+
+    // next sessions data
+
+    let next_sessions_timestamps = []  
+    let next_sessions_values = []
+    i = 0
+    while (i < res.data.time_series_next_sessions_timestamps.length) {
+      next_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_next_sessions_timestamps[i]) / 1000000000))
+      next_sessions_values.push(parseInt(res.data.time_series_next_sessions_values[i]))
+      i++
+    }
+    data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
+
+    // accelerated percent data
+
+    let accelerated_percent_timestamps = []  
+    let accelerated_percent_values = []
+    i = 0
+    while (i < res.data.time_series_accelerated_percent_timestamps.length) {
+      accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.time_series_accelerated_percent_timestamps[i]) / 1000000000))
+      accelerated_percent_values.push(parseInt(res.data.time_series_accelerated_percent_values[i]))
+      i++
+    }
+    data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
+
+    // server count data
+
+    let server_count_timestamps = []  
+    let server_count_values = []
+    i = 0
+    while (i < res.data.time_series_server_count_timestamps.length) {
+      server_count_timestamps.push(Math.floor(parseInt(res.data.time_series_server_count_timestamps[i]) / 1000000000))
+      server_count_values.push(parseInt(res.data.time_series_server_count_values[i]))
+      i++
+    }
+    data.server_count_data = [server_count_timestamps, server_count_values]
+
+    data['found'] = true
+
     return [data, 0, 1]
   } catch (error) {
     console.log(error);
@@ -158,12 +145,6 @@ async function getData() {
     data['found'] = false
     return [data, 0, 1]
   }
-  */
-
-  // todo
-  let data = {}
-  data['found'] = false
-  return [data, 0, 1]
 }
 
 export default {
@@ -227,7 +208,6 @@ export default {
   methods: {
 
     resize() {
-
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
 
@@ -265,14 +245,14 @@ export default {
       }    
     },
 
-    async getData(page) {
-      let data = getData(page)
-      this.updateGraphs()
+    async getData() {
+      let data = getData()
+      this.updateGraphs()           // todo: data is actually out of date here (delayed...)
       return data
     },
 
     async update() {
-      let result = await getData(this.page)
+      let result = await getData()
       if (result != null) {
         this.data = result[0]
         this.page = result[1]
@@ -304,7 +284,7 @@ export default {
 
 </script>
 
-<style>
+<style scoped>
 
 .fixed {
   font-family: monospace;
@@ -339,10 +319,6 @@ export default {
 .graph {
   width: 100%;
   height: 100%;
-}
-
-.u-title {
-  font-family: "Montserrat";
 }
 
 </style>

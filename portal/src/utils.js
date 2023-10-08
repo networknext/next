@@ -141,7 +141,8 @@ function custom_graph(config) {
       label: config.series[i].name,
       points: {
         show: (self, si) => {
-          if (is_visible(document.getElementById('right'))) {
+          let element = document.getElementById('right')
+          if (element != null && is_visible(element)) {
             return self.data[si].length < 50
           } else {
             return false
