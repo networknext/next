@@ -156,7 +156,7 @@ async function getData() {
     let session_update_values = []
     i = 0
     while (i < res.data.counters_session_update_timestamps.length) {
-      session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i])))
+      session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000))
       session_update_values.push(parseInt(res.data.counters_session_update_values[i]))
       i++
     }
