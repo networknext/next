@@ -127,11 +127,12 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters
 		options.Retention = publisher.config.Retention
 		options.DuplicatePolicy = "SUM"
 		pipeline.TSCreateWithArgs(ctx, fmt.Sprintf("%s-internal", k), &options)
+		pipeline.TSCreateWithArgs(ctx, fmt.Sprintf("%s", k), &options)
 		pipeline.TSCreateRule(ctx, fmt.Sprintf("%s-internal", k), k, redis.Sum, publisher.config.SumWindow)
 	}
 
 	for k, v := range counters {
-		pipeline.TSAdd(ctx, k, timestamp, float64(v))
+		pipeline.TSAdd(ctx, fmt.Sprintf("%s-internal", k), timestamp, float64(v))
 	}
 
 	_, err := pipeline.Exec(ctx)
