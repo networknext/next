@@ -136,6 +136,9 @@ async function getData() {
     }
     data.server_count_data = [server_count_timestamps, server_count_values]
 
+    // todo
+    console.log(res.data)
+
     data['found'] = true
 
     return [data, 0, 1]

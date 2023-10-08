@@ -1309,7 +1309,7 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		buyerTimeSeriesWatcher.Unlock()
 
 		countersWatcher.Lock()
-		buyerTimeSeriesWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
+		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
 		countersWatcher.Unlock()
 	}
 
