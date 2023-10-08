@@ -45,6 +45,7 @@ var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
 var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var relayTimeSeriesWatcher *common.RedisTimeSeriesWatcher
+var countersWatcher *common.RedisCountersWatcher
 
 var enableRedisTimeSeries bool
 
@@ -234,6 +235,25 @@ func main() {
 					}
 				}
 			}(service.Context)
+
+			// create the counters watcher
+
+			countersConfig := common.RedisCountersConfig{
+				RedisHostname: redisTimeSeriesHostname,
+				RedisCluster:  redisTimeSeriesCluster,
+			}
+
+			countersWatcher, err = common.CreateRedisCountersWatcher(service.Context, countersConfig)
+			if err != nil {
+				core.Error("could not create counters watcher: %v", err)
+				os.Exit(1)
+			}
+
+			keys := []string{
+				"session_update",
+			}
+
+			countersWatcher.SetKeys(keys)
 		}
 
 		if len(redisPortalCluster) > 0 {
@@ -1271,6 +1291,8 @@ type PortalAdminDataResponse struct {
 	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
 	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
 	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
+	Counters_SessionUpdate_Timestamps        []uint64          `json:"counters_session_update_timestamps,string"`
+	Counters_SessionUpdate_Values            []int             `json:"counters_session_update_values"`
 }
 
 func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -1278,12 +1300,17 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalAdminDataResponse{}
 
 	if enableRedisTimeSeries {
+
 		buyerTimeSeriesWatcher.Lock()
 		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalSessions_Timestamps, &response.TimeSeries_TotalSessions_Values, "total_sessions")
 		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
 		buyerTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
 		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
 		buyerTimeSeriesWatcher.Unlock()
+
+		countersWatcher.Lock()
+		buyerTimeSeriesWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
+		countersWatcher.Unlock()
 	}
 
 	w.WriteHeader(http.StatusOK)
