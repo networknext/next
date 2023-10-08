@@ -17,8 +17,8 @@ type RedisCountersConfig struct {
 	BatchDuration      time.Duration
 	MessageChannelSize int
 	Retention          int
-	SumWindow          int // in timestamp units, the time period to sum into a single sample. default is 1 minute.
-	DisplayWindow      int // in timestamp units, how far back from current time to query summed samples. default is 24 hours.
+	SumWindow          int // the time period to sum into a single sample in milliseconds. default is 1 minute.
+	DisplayWindow      int // how far back from current time to query summed samples in milliseconds. default is 24 hours.
 }
 
 // -------------------------------------------------------------------------------
@@ -61,11 +61,11 @@ func CreateRedisCountersPublisher(ctx context.Context, config RedisCountersConfi
 	}
 
 	if config.Retention == 0 {
-		config.Retention = 86400 * 1000000000 // 24 hours in nanoseconds
+		config.Retention = 86400 * 1000 // 24 hours in milliseconds
 	}
 
 	if config.SumWindow == 0 {
-		config.Retention = 60 * 1000000000 // 60 seconds in nanoseconds
+		config.Retention = 60 * 1000 // 60 seconds in milliseconds
 	}
 
 	publisher.config = config
@@ -113,7 +113,7 @@ func (publisher *RedisCountersPublisher) updateMessageChannel(ctx context.Contex
 
 func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters map[string]uint64, newKeys map[string]bool) {
 
-	timestamp := time.Now().UnixNano()
+	timestamp := time.Now().UnixNano() / 1000000
 
 	var pipeline redis.Pipeliner
 	if publisher.redisClusterClient != nil {
@@ -127,7 +127,7 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters
 		options.Retention = publisher.config.Retention
 		options.DuplicatePolicy = "SUM"
 		pipeline.TSCreateWithArgs(ctx, fmt.Sprintf("%s-internal", k), &options)
-		pipeline.TSCreateWithArgs(ctx, fmt.Sprintf("%s", k), &options)
+		pipeline.TSCreateWithArgs(ctx, k, &options)
 		pipeline.TSCreateRule(ctx, fmt.Sprintf("%s-internal", k), k, redis.Sum, publisher.config.SumWindow)
 	}
 
@@ -173,7 +173,7 @@ func CreateRedisCountersWatcher(ctx context.Context, config RedisCountersConfig)
 	}
 
 	if config.DisplayWindow == 0 {
-		config.DisplayWindow = 86400 * 1000000000 // 24 hours in nanoseconds
+		config.DisplayWindow = 86400 * 1000 // 24 hours in milliseconds
 	}
 
 	watcher := &RedisCountersWatcher{}
@@ -215,7 +215,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 				pipeline = watcher.redisClient.Pipeline()
 			}
 
-			currentTime := int(time.Now().UnixNano())
+			currentTime := int(time.Now().UnixNano()) / 1000000
 
 			for i := range keys {
 				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.DisplayWindow, currentTime)

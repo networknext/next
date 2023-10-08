@@ -8,13 +8,17 @@ DONE
 
 	Implement counters for session updates per-minute
 
-TODO
-
 	Add a watcher for counters in api.go
 
 	Add the counters to the admin data returned to portal
 
 	Verify redis counters are working in dev by session updates per-second graph (divide by 60 when presenting)
+
+TODO
+
+	Fix issues with nano timestamps and aggregation
+
+	Convert time series to millisecond timestamps with duplicate rule
 
 	----------------
 
