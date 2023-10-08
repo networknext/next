@@ -276,6 +276,8 @@ func main() {
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
 		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
+
+		service.Router.HandleFunc("/portal/admin_data", isAuthorized(portalAdminDataHandler))
 	}
 
 	if enableDatabase {
@@ -1256,6 +1258,39 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	data := common.LoadMasterServiceData(service.Context, redisRelayBackendClient, "relay_backend", "cost_matrix")
 	w.Write(data)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalAdminDataResponse struct {
+	TimeSeries_TotalSessions_Timestamps      []uint64          `json:"time_series_total_sessions_timestamps,string"`
+	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
+	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
+	TimeSeries_NextSessions_Values           []int             `json:"time_series_next_sessions_values"`
+	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
+	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
+	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
+	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
+}
+
+func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
+
+	response := PortalAdminDataResponse{}
+
+	if enableRedisTimeSeries {
+		buyerTimeSeriesWatcher.Lock()
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalSessions_Timestamps, &response.TimeSeries_TotalSessions_Values, "total_sessions")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
+		buyerTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
+		buyerTimeSeriesWatcher.Unlock()
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(response)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
