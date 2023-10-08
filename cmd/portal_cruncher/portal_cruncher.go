@@ -367,7 +367,10 @@ func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, ba
 
 	var timeSeriesPublisher *common.RedisTimeSeriesPublisher
 
+	var countersPublisher *common.RedisCountersPublisher
+
 	if enableRedisTimeSeries {
+
 		timeSeriesConfig := common.RedisTimeSeriesConfig{
 			RedisHostname: redisTimeSeriesHostname,
 			RedisCluster:  redisTimeSeriesCluster,
@@ -378,6 +381,16 @@ func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, ba
 			core.Error("could not create redis time series publisher: %v", err)
 			os.Exit(1)
 		}
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	go func() {
@@ -386,13 +399,13 @@ func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, ba
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessRelayUpdate(messageData, relayInserter, timeSeriesPublisher)
+				ProcessRelayUpdate(messageData, relayInserter, timeSeriesPublisher, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter, timeSeriesPublisher *common.RedisTimeSeriesPublisher) {
+func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter, timeSeriesPublisher *common.RedisTimeSeriesPublisher, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalRelayUpdateMessage{}
 	err := message.Read(messageData)
@@ -417,6 +430,8 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter,
 	relayInserter.Insert(service.Context, &relayData)
 
 	if enableRedisTimeSeries {
+
+		// send time series to redis
 
 		timeSeriesMessage := common.RedisTimeSeriesMessage{}
 
@@ -451,6 +466,10 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter,
 		}
 
 		timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
+
+		// send counters to redis
+
+		countersPublisher.MessageChannel <- "session_update"
 	}
 }
 

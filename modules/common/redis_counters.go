@@ -17,16 +17,11 @@ type RedisCountersConfig struct {
 	BatchDuration      time.Duration
 	MessageChannelSize int
 	Retention          int
-	SumWindow          int // in timestamp units, the time period to aggregate into a single sum sample. default is 60 seconds
-	DisplayWindow      int // in timestamp units, how far back from current time to query summed samples
+	SumWindow          int // in timestamp units, the time period to sum into a single sample. default is 1 minute.
+	DisplayWindow      int // in timestamp units, how far back from current time to query summed samples. default is 24 hours.
 }
 
 // -------------------------------------------------------------------------------
-
-type RedisCountersMessage struct {
-	Key     string
-	Counter float64
-}
 
 type RedisCountersPublisher struct {
 	config             RedisCountersConfig
@@ -34,7 +29,7 @@ type RedisCountersPublisher struct {
 	redisClusterClient *redis.ClusterClient
 	mutex              sync.Mutex
 	keys               map[string]bool
-	MessageChannel     chan *RedisCountersMessage
+	MessageChannel     chan string
 }
 
 func CreateRedisCountersPublisher(ctx context.Context, config RedisCountersConfig) (*RedisCountersPublisher, error) {
@@ -75,7 +70,7 @@ func CreateRedisCountersPublisher(ctx context.Context, config RedisCountersConfi
 
 	publisher.config = config
 	publisher.keys = make(map[string]bool)
-	publisher.MessageChannel = make(chan *RedisCountersMessage, config.MessageChannelSize)
+	publisher.MessageChannel = make(chan string, config.MessageChannelSize)
 	publisher.redisClient = client
 	publisher.redisClusterClient = clusterClient
 
@@ -106,12 +101,12 @@ func (publisher *RedisCountersPublisher) updateMessageChannel(ctx context.Contex
 				newKeys = make(map[string]bool)
 			}
 
-		case message := <-publisher.MessageChannel:
-			counter, exists := counters[message.Key]
+		case key := <-publisher.MessageChannel:
+			counter, exists := counters[key]
 			if !exists {
-				newKeys[message.Key] = true
+				newKeys[key] = true
 			}
-			counters[message.Key] = counter + 1
+			counters[key] = counter + 1
 		}
 	}
 }

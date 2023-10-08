@@ -4,41 +4,33 @@ DONE
 
 	Make sure the duplicate timestamp policy is set to allow (if possible...)
 
-TODO
-
 	Optimize insertion of counters by summing values per-publisher, and only actually sending a message once per-second
 
-	Implement counters for server updates and session updates per-minute (divide by 60 when presenting...)
+	Implement counters for session updates per-minute
 
-	Verify redis counters are working in dev by showing server updates and session updates
+TODO
+
+	Add a watcher for counters in api.go
+
+	Add the counters to the admin data returned to portal
+
+	Verify redis counters are working in dev by session updates per-second graph (divide by 60 when presenting)
+
+	----------------
+
+	Extend to support server updates per-second
 
 	----------------
 
 	retries
 
+	----------------
+
 	fallback to direct
 
+	----------------
+
 	long session update
-
-	no route
-
-	unknown datacenter
-
-	datacenter not enabled
-
-	stale route matrix
-
-	aborted
-
-	no relays in datacenter
-
-	no near relays
-
-	no route relays
-
-	route relay no longer exists
-
-	route no longer exists
 
 	-----------
 
@@ -100,11 +92,37 @@ TODO
 
 
 
+	--------------
 
+	Extend the admin page to collapse from two columns down to one column on mobile	
 
 	--------------
 
-	Bring across the styling for mobile to widen the graphs
+	Add more admin counters
+
+		unknown datacenter
+
+		datacenter not enabled
+
+		no route
+
+		stale route matrix
+
+		aborted
+
+		no relays in datacenter
+
+		no near relays
+
+		no route relays
+
+		route relay no longer exists
+
+		route no longer exists
+
+	--------------
+
+	Bring across the styling to widen the graphs in buyer, relay and admin pages on mobile
 
 	--------------
 
