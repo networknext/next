@@ -1293,6 +1293,8 @@ type PortalAdminDataResponse struct {
 	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
 	Counters_SessionUpdate_Timestamps        []uint64          `json:"counters_session_update_timestamps,string"`
 	Counters_SessionUpdate_Values            []int             `json:"counters_session_update_values"`
+	Counters_ServerUpdate_Timestamps         []uint64          `json:"counters_server_update_timestamps,string"`
+	Counters_ServerUpdate_Values             []int             `json:"counters_server_update_values"`
 }
 
 func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -1310,6 +1312,7 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		countersWatcher.Lock()
 		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
+		countersWatcher.GetIntValues(&response.Counters_ServerUpdate_Timestamps, &response.Counters_ServerUpdate_Values, "server_update")
 		countersWatcher.Unlock()
 	}
 

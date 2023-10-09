@@ -18,6 +18,10 @@ DONE
 
 TODO
 
+	Debug why summed session counts are not correct.
+
+	----------------
+
 	Convert time series to millisecond timestamps with duplicate rule
 
 	----------------

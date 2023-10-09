@@ -117,19 +117,34 @@ func ProcessSessionUpdateMessages(service *common.Service, batchSize int) {
 		os.Exit(1)
 	}
 
+	var countersPublisher *common.RedisCountersPublisher
+
+	if enableRedisTimeSeries {
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessSessionUpdate(messageData, sessionInserter)
+				ProcessSessionUpdate(messageData, sessionInserter, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionInserter) {
+func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionInserter, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalSessionUpdateMessage{}
 	err := message.Read(messageData)
@@ -197,6 +212,10 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	}
 
 	sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+
+	if enableRedisTimeSeries {
+		countersPublisher.MessageChannel <- "session_update"
+	}
 }
 
 // -------------------------------------------------------------------------------
@@ -230,19 +249,34 @@ func ProcessServerUpdateMessages(service *common.Service, batchSize int) {
 		os.Exit(1)
 	}
 
+	var countersPublisher *common.RedisCountersPublisher
+
+	if enableRedisTimeSeries {
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessServerUpdate(messageData, serverInserter)
+				ProcessServerUpdate(messageData, serverInserter, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInserter) {
+func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInserter, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalServerUpdateMessage{}
 	err := message.Read(messageData)
@@ -265,6 +299,10 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 	}
 
 	serverInserter.Insert(service.Context, &serverData)
+
+	if enableRedisTimeSeries {
+		countersPublisher.MessageChannel <- "server_update"
+	}
 }
 
 // -------------------------------------------------------------------------------
@@ -469,7 +507,7 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter,
 
 		// send counters to redis
 
-		countersPublisher.MessageChannel <- "session_update"
+		countersPublisher.MessageChannel <- "relay_update"
 	}
 }
 

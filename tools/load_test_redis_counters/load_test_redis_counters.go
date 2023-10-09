@@ -13,20 +13,21 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 
 	fmt.Printf("publisher\n")
 
-	config := common.RedisTimeSeriesConfig{
+	config := common.RedisCountersConfig{
 		RedisHostname: redisHostname,
+		SumWindow: 1000,
 	}
 
-	publisher, err := common.CreateRedisTimeSeriesPublisher(context.Background(), config)
+	publisher, err := common.CreateRedisCountersPublisher(context.Background(), config)
 	if err != nil {
-		panic("could not create redis time series publisher")
+		panic("could not create redis counters publisher")
 	}
 
 	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
 
 	go func() {
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(time.Millisecond*10)
 
 		for {
 
@@ -36,14 +37,9 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 				return
 
 			case <-ticker.C:
-				message := common.RedisTimeSeriesMessage{}
-				message.Timestamp = uint64(time.Now().UnixNano())
-				message.Keys = keys
-				message.Values = make([]float64, len(keys))
-				for i := range message.Values {
-					message.Values[i] = float64(common.RandomInt(0, 1000000)) / 10000.0
+				for i := range keys {
+					publisher.MessageChannel <- keys[i]
 				}
-				publisher.MessageChannel <- &message
 			}
 		}
 
@@ -54,14 +50,14 @@ func RunWatcherThread(ctx context.Context, redisHostname string) {
 
 	fmt.Printf("watcher\n")
 
-	config := common.RedisTimeSeriesConfig{
+	config := common.RedisCountersConfig{
 		RedisHostname: redisHostname,
-		Window:        5000000000, // 5 second window in nanoseconds
+		DisplayWindow: 5000, // 5 second window in milliseconds
 	}
 
-	watcher, err := common.CreateRedisTimeSeriesWatcher(context.Background(), config)
+	watcher, err := common.CreateRedisCountersWatcher(context.Background(), config)
 	if err != nil {
-		panic("could not create redis time series watcher")
+		panic("could not create redis counters watcher")
 	}
 
 	keys := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"}
