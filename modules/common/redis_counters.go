@@ -1,4 +1,4 @@
-_uwpackage common
+package common
 
 import (
 	"context"
