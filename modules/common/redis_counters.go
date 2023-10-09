@@ -1,4 +1,4 @@
-package common
+_uwpackage common
 
 import (
 	"context"
@@ -172,6 +172,10 @@ func CreateRedisCountersWatcher(ctx context.Context, config RedisCountersConfig)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if config.SumWindow == 0 {
+		config.SumWindow = 60 * 1000 // 60 seconds in milliseconds
 	}
 
 	if config.DisplayWindow == 0 {
