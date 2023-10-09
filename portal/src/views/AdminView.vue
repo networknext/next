@@ -117,7 +117,7 @@ let retry_opts = custom_graph({
       name: 'Retries',
       stroke: "#faac02",
       fill: "rgba(250, 172, 2,0.075)",
-      units: ' per-second',
+      units: '',
     },
   ]
 })
@@ -129,7 +129,7 @@ let fallback_to_direct_opts = custom_graph({
       name: 'Fallbacks',
       stroke: "#faac02",
       fill: "rgba(250, 172, 2,0.075)",
-      units: ' per-second',
+      units: '',
     },
   ]
 })
@@ -228,7 +228,7 @@ async function getData() {
       i = 0
       while (i < res.data.counters_retry_timestamps.length) {
         retry_timestamps.push(Math.floor(parseInt(res.data.counters_retry_timestamps[i]) / 1000))
-        retry_values.push((parseInt(res.data.counters_retry_values[i]) / 60.0).toFixed(1))
+        retry_values.push(parseInt(res.data.counters_retry_values[i]))
         i++
       }
       data.retry_data = [retry_timestamps, retry_values]
@@ -242,7 +242,7 @@ async function getData() {
       i = 0
       while (i < res.data.counters_fallback_to_direct_timestamps.length) {
         fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.counters_fallback_to_direct_timestamps[i]) / 1000))
-        fallback_to_direct_values.push((parseInt(res.data.counters_fallback_to_direct_values[i]) / 60.0).toFixed(1))
+        fallback_to_direct_values.push(parseInt(res.data.counters_fallback_to_direct_values[i]))
         i++
       }
       data.fallback_to_direct_data = [fallback_to_direct_timestamps, fallback_to_direct_values]

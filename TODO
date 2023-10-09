@@ -32,15 +32,25 @@ DONE
 
 	Maybe there should be server backend, and session backend?
 
-TODO
-
 	Scale up again in staging and verify that I see retries and fallback to directs
+
+	Verified retries.
+
+	Fallback to direct verified.
+
+TODO
 
 	----------------
 
 	The counter graphs are going to need some adjustment when they are infrequent
 
 	When no counters occur, the graphs stops updating...
+
+	----------------
+
+	For some reason the session updates graph consistently doesn't grow y axis when scaling up, but the rest of the graphs do?
+
+	Eventually it catches up though. uPlot is probably just being lazy...
 
 	----------------
 
