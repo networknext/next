@@ -18,6 +18,8 @@
     
       <div id="server_count" class="graph"/>
 
+      <div id="server_update" class="graph"/>
+
     </div>
 
   </div>
@@ -92,6 +94,18 @@ let session_update_opts = custom_graph({
   ]
 })
 
+let server_update_opts = custom_graph({
+  title: "Server Updates",
+  series: [
+    { 
+      name: 'Server Updates',
+      stroke: "#faac02",
+      fill: "rgba(250, 172, 2,0.075)",
+      units: ' per-second',
+    },
+  ]
+})
+
 async function getData() {
 
   try {
@@ -152,15 +166,31 @@ async function getData() {
 
     // session update data
 
-    let session_update_timestamps = []  
-    let session_update_values = []
-    i = 0
-    while (i < res.data.counters_session_update_timestamps.length) {
-      session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000))
-      session_update_values.push((parseInt(res.data.counters_session_update_values[i]) / 60.0).toFixed(1))
-      i++
+    if (res.data.counters_session_update_timestamps != null) {
+      let session_update_timestamps = []  
+      let session_update_values = []
+      i = 0
+      while (i < res.data.counters_session_update_timestamps.length) {
+        session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000))
+        session_update_values.push((parseInt(res.data.counters_session_update_values[i]) / 60.0).toFixed(1))
+        i++
+      }
+      data.session_update_data = [session_update_timestamps, session_update_values]
     }
-    data.session_update_data = [session_update_timestamps, session_update_values]
+
+    // server update data
+
+    if (res.data.counters_server_update_timestamps != null) {
+      let server_update_timestamps = []  
+      let server_update_values = []
+      i = 0
+      while (i < res.data.counters_server_update_timestamps.length) {
+        server_update_timestamps.push(Math.floor(parseInt(res.data.counters_server_update_timestamps[i]) / 1000))
+        server_update_values.push((parseInt(res.data.counters_server_update_values[i]) / 60.0).toFixed(1))
+        i++
+      }
+      data.server_update_data = [server_update_timestamps, server_update_values]
+    }
 
     data['found'] = true
 
@@ -209,6 +239,7 @@ export default {
     this.accelerated_percent = new uPlot(accelerated_percent_opts, [[],[]], document.getElementById('accelerated_percent'))
     this.server_count = new uPlot(server_count_opts, [[],[]], document.getElementById('server_count'))
     this.session_update = new uPlot(session_update_opts, [[],[]], document.getElementById('session_update'))
+    this.server_update = new uPlot(server_update_opts, [[],[]], document.getElementById('server_update'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -224,6 +255,7 @@ export default {
     this.accelerated_percent.destroy()
     this.server_count.destroy()
     this.session_update.destroy()
+    this.server_update.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.total_sessions = null
@@ -231,6 +263,7 @@ export default {
     this.accelerated_percent = null
     this.server_count = null
     this.session_update = null
+    this.server_update = null
     this.observer = null
   },
 
@@ -257,6 +290,7 @@ export default {
           this.accelerated_percent.setSize({width: graph_width, height: graph_height})
           this.server_count.setSize({width: graph_width, height: graph_height})
           this.session_update.setSize({width: graph_width, height: graph_height})
+          this.server_update.setSize({width: graph_width, height: graph_height})
         }
 
         // show legends in desktop, hide them in mobile layout
@@ -308,6 +342,9 @@ export default {
       }
       if (this.session_update != null && this.data.session_update_data != null) {
         this.session_update.setData(this.data.session_update_data, true)
+      }
+      if (this.server_update != null && this.data.server_update_data != null) {
+        this.server_update.setData(this.data.server_update_data, true)
       }
     },
 

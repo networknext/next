@@ -251,6 +251,7 @@ func main() {
 
 			keys := []string{
 				"session_update",
+				"server_update",
 			}
 
 			countersWatcher.SetKeys(keys)
