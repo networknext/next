@@ -1320,6 +1320,8 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		countersWatcher.Lock()
 		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
 		countersWatcher.GetIntValues(&response.Counters_ServerUpdate_Timestamps, &response.Counters_ServerUpdate_Values, "server_update")
+		countersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
+		countersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
 		countersWatcher.Unlock()
 	}
 
