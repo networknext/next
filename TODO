@@ -46,12 +46,6 @@ TODO
 
 	----------------
 
-	For some reason the session updates graph consistently doesn't grow y axis when scaling up, but the rest of the graphs do?
-
-	Eventually it catches up though. uPlot is probably just being lazy...
-
-	----------------
-
 	Convert time series to millisecond timestamps with duplicate rule
 
 	----------------
