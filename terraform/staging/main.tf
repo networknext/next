@@ -89,7 +89,6 @@ resource "google_compute_managed_ssl_certificate" "portal" {
   }
 }
 
-/*
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_network" "staging" {
@@ -2059,4 +2058,3 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
-*/
