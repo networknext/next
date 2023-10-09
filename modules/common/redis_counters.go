@@ -267,11 +267,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 						timestamps[i] = append(timestamps[i], timestamp)
 						values[i] = append(values[i], 0.0)
 					}
-				} 
-
-				// todo: needs unit testing
-				/*
-				else {
+				} else {
 
 					// fill any space in front of samples zeros
 					{
@@ -284,6 +280,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 							}
 							new_timestamps = append(new_timestamps, timestamp)
 							new_values = append(new_values, 0.0)
+							timestamp += uint64(watcher.config.SumWindow)
 						}
 						if len(new_timestamps) > 0 {
 							timestamps[i] = append(timestamps[i], new_timestamps...)
@@ -299,7 +296,6 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 						}
 					}
 				}
-				*/
 			}
 
 			watcher.mutex.Lock()
