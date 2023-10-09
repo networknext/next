@@ -255,7 +255,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "n1-standard-1"
+  machine_type             = "n1-standard-2"
   project                  = var.google_project
   region                   = var.google_region
   zone                     = var.google_zone
@@ -1788,6 +1788,8 @@ module "portal_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     FORCE_REDIS_PORTAL_CLUSTER_SETTINGS=true
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
