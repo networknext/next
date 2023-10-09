@@ -16,31 +16,23 @@ DONE
 
 	Fix issues with nano timestamps and aggregation
 
+	Debug why summed session counts are not correct.
+
+	Extend to support server updates per-second
+
 TODO
 
-	Debug why summed session counts are not correct.
+	Take to staging and verify we see retries and fallback to direct counters
+
+	----------------
+
+	Dynamically show and hide error graphs when there are no errors in last 24hrs!
 
 	----------------
 
 	Convert time series to millisecond timestamps with duplicate rule
 
 	----------------
-
-	Extend to support server updates per-second
-
-	----------------
-
-	retries
-
-	----------------
-
-	fallback to direct
-
-	----------------
-
-	long session update
-
-	-----------
 
 	Stop work and get ready for Lisbon trip!
 
@@ -108,6 +100,8 @@ TODO
 
 	Add more admin counters
 
+		long session update
+
 		unknown datacenter
 
 		datacenter not enabled
@@ -127,6 +121,8 @@ TODO
 		route relay no longer exists
 
 		route no longer exists
+
+		(what about mispredict, latency too high, veto etc?)
 
 	--------------
 

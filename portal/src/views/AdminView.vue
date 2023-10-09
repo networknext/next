@@ -10,6 +10,8 @@
 
       <div id="session_update" class="graph"/>
 
+      <div id="retry" class="graph"/>
+
     </div>
 
     <div class="right">
@@ -19,6 +21,8 @@
       <div id="server_count" class="graph"/>
 
       <div id="server_update" class="graph"/>
+
+      <div id="fallback_to_direct" class="graph"/>
 
     </div>
 
@@ -99,6 +103,30 @@ let server_update_opts = custom_graph({
   series: [
     { 
       name: 'Server Updates',
+      stroke: "#faac02",
+      fill: "rgba(250, 172, 2,0.075)",
+      units: ' per-second',
+    },
+  ]
+})
+
+let retry_opts = custom_graph({
+  title: "Retries",
+  series: [
+    { 
+      name: 'Retries',
+      stroke: "#faac02",
+      fill: "rgba(250, 172, 2,0.075)",
+      units: ' per-second',
+    },
+  ]
+})
+
+let fallback_to_direct_opts = custom_graph({
+  title: "Fallback to Direct",
+  series: [
+    { 
+      name: 'Fallbacks',
       stroke: "#faac02",
       fill: "rgba(250, 172, 2,0.075)",
       units: ' per-second',
@@ -192,6 +220,34 @@ async function getData() {
       data.server_update_data = [server_update_timestamps, server_update_values]
     }
 
+    // retry data
+
+    if (res.data.counters_retry_timestamps != null) {
+      let retry_timestamps = []  
+      let retry_values = []
+      i = 0
+      while (i < res.data.counters_retry_timestamps.length) {
+        retry_timestamps.push(Math.floor(parseInt(res.data.counters_retry_timestamps[i]) / 1000))
+        retry_values.push((parseInt(res.data.counters_retry_values[i]) / 60.0).toFixed(1))
+        i++
+      }
+      data.retry_data = [retry_timestamps, retry_values]
+    }
+
+    // fallback to direct data
+
+    if (res.data.counters_fallback_to_direct_timestamps != null) {
+      let fallback_to_direct_timestamps = []  
+      let fallback_to_direct_values = []
+      i = 0
+      while (i < res.data.counters_fallback_to_direct_timestamps.length) {
+        fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.counters_fallback_to_direct_timestamps[i]) / 1000))
+        fallback_to_direct_values.push((parseInt(res.data.counters_fallback_to_direct_values[i]) / 60.0).toFixed(1))
+        i++
+      }
+      data.fallback_to_direct_data = [fallback_to_direct_timestamps, fallback_to_direct_values]
+    }
+
     data['found'] = true
 
     return [data, 0, 1]
@@ -240,6 +296,8 @@ export default {
     this.server_count = new uPlot(server_count_opts, [[],[]], document.getElementById('server_count'))
     this.session_update = new uPlot(session_update_opts, [[],[]], document.getElementById('session_update'))
     this.server_update = new uPlot(server_update_opts, [[],[]], document.getElementById('server_update'))
+    this.retry = new uPlot(retry_opts, [[],[]], document.getElementById('retry'))
+    this.fallback_to_direct = new uPlot(fallback_to_direct_opts, [[],[]], document.getElementById('fallback_to_direct'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -256,6 +314,8 @@ export default {
     this.server_count.destroy()
     this.session_update.destroy()
     this.server_update.destroy()
+    this.retry.destroy()
+    this.fallback_to_direct.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.total_sessions = null
@@ -264,6 +324,8 @@ export default {
     this.server_count = null
     this.session_update = null
     this.server_update = null
+    this.retry = null
+    this.fallback_to_direct = null
     this.observer = null
   },
 
@@ -291,6 +353,8 @@ export default {
           this.server_count.setSize({width: graph_width, height: graph_height})
           this.session_update.setSize({width: graph_width, height: graph_height})
           this.server_update.setSize({width: graph_width, height: graph_height})
+          this.retry.setSize({width: graph_width, height: graph_height})
+          this.fallback_to_direct.setSize({width: graph_width, height: graph_height})
         }
 
         // show legends in desktop, hide them in mobile layout
@@ -345,6 +409,12 @@ export default {
       }
       if (this.server_update != null && this.data.server_update_data != null) {
         this.server_update.setData(this.data.server_update_data, true)
+      }
+      if (this.retry != null && this.data.retry_data != null) {
+        this.retry.setData(this.data.retry_data, true)
+      }
+      if (this.fallback_to_direct != null && this.data.fallback_to_direct_data != null) {
+        this.fallback_to_direct.setData(this.data.fallback_to_direct_data, true)
       }
     },
 
