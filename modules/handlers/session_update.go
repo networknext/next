@@ -1200,9 +1200,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.BestDirectRTT = state.Output.BestDirectRTT
 	message.BestNextRTT = state.Output.BestNextRTT
 
-	// todo
-	message.Retry = true // state.Request.RetryNumber != 0
-	message.FallbackToDirect = true // state.FallbackToDirect
+	message.Retry = state.Request.RetryNumber != 0
+	message.FallbackToDirect = state.FallbackToDirect
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message

@@ -222,8 +222,6 @@ async function getData() {
 
     // retry data
 
-    console.log(res.data)
-
     if (res.data.counters_retry_timestamps != null) {
       let retry_timestamps = []  
       let retry_values = []
