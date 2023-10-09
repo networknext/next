@@ -15,7 +15,7 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 
 	config := common.RedisCountersConfig{
 		RedisHostname: redisHostname,
-		SumWindow: 1000,
+		SumWindow:     1000,
 	}
 
 	publisher, err := common.CreateRedisCountersPublisher(context.Background(), config)
@@ -27,7 +27,7 @@ func RunPublisherThread(ctx context.Context, redisHostname string) {
 
 	go func() {
 
-		ticker := time.NewTicker(time.Millisecond*10)
+		ticker := time.NewTicker(time.Millisecond * 10)
 
 		for {
 

@@ -67,6 +67,9 @@ type PortalSessionUpdateMessage struct {
 	BestScore     uint32
 	BestDirectRTT uint32
 	BestNextRTT   uint32
+
+	Retry            bool
+	FallbackToDirect bool
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {
@@ -139,6 +142,9 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.BestScore)
 	encoding.WriteUint32(buffer, &index, message.BestDirectRTT)
 	encoding.WriteUint32(buffer, &index, message.BestNextRTT)
+
+	encoding.WriteBool(buffer, &index, message.Retry)
+	encoding.WriteBool(buffer, &index, message.FallbackToDirect)
 
 	return buffer[:index]
 }
@@ -338,6 +344,14 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint32(buffer, &index, &message.BestNextRTT) {
 		return fmt.Errorf("failed to read best next rtt")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Retry) {
+		return fmt.Errorf("failed to read retry")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+		return fmt.Errorf("failed to read fallback to direct")
 	}
 
 	return nil

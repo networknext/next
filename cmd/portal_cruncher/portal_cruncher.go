@@ -215,6 +215,12 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	if enableRedisTimeSeries {
 		countersPublisher.MessageChannel <- "session_update"
+		if message.Retry {
+			countersPublisher.MessageChannel <- "retry"
+		}
+		if message.FallbackToDirect {
+			countersPublisher.MessageChannel <- "fallback_to_direct"
+		}
 	}
 }
 

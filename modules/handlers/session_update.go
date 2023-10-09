@@ -72,6 +72,9 @@ type SessionUpdateState struct {
 	Latitude  float32
 	Longitude float32
 
+	// for session update message
+	FallbackToDirect bool
+
 	// codepath flags (for unit testing etc...)
 	ClientPingTimedOut                        bool
 	AnalysisOnly                              bool
@@ -180,6 +183,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
 			core.Error("fallback to direct [%016x]", state.Request.SessionId)
 			state.Error |= constants.SessionError_FallbackToDirect
+			state.FallbackToDirect = true
 		}
 		return true
 	}
@@ -1195,6 +1199,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.BestScore = state.Output.BestScore
 	message.BestDirectRTT = state.Output.BestDirectRTT
 	message.BestNextRTT = state.Output.BestNextRTT
+
+	message.Retry = state.Request.RetryNumber != 0
+	message.FallbackToDirect = state.FallbackToDirect
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message

@@ -252,6 +252,8 @@ func main() {
 			keys := []string{
 				"session_update",
 				"server_update",
+				"retry",
+				"fallback_to_direct",
 			}
 
 			countersWatcher.SetKeys(keys)
@@ -1296,6 +1298,10 @@ type PortalAdminDataResponse struct {
 	Counters_SessionUpdate_Values            []int             `json:"counters_session_update_values"`
 	Counters_ServerUpdate_Timestamps         []uint64          `json:"counters_server_update_timestamps,string"`
 	Counters_ServerUpdate_Values             []int             `json:"counters_server_update_values"`
+	Counters_Retry_Timestamps                []uint64          `json:"counters_retry_timestamps,string"`
+	Counters_Retry_Values                    []int             `json:"counters_retry_update_values"`
+	Counters_FallbackToDirect_Timestamps     []uint64          `json:"counters_fallback_to_direct_timestamps,string"`
+	Counters_FallbackToDirect_Values         []int             `json:"counters_fallback_to_direct_update_values"`
 }
 
 func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {

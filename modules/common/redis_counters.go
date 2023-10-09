@@ -2,9 +2,9 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
-	"fmt"
 
 	"github.com/networknext/next/modules/core"
 
@@ -93,8 +93,8 @@ func (publisher *RedisCountersPublisher) updateMessageChannel(ctx context.Contex
 			return
 
 		case <-ticker.C:
-			publisher.sendBatch(ctx, counters, newKeys);
-			for k, _ := range counters {
+			publisher.sendBatch(ctx, counters, newKeys)
+			for k := range counters {
 				counters[k] = 0
 			}
 			if len(newKeys) > 0 {
@@ -122,7 +122,7 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters
 		pipeline = publisher.redisClient.Pipeline()
 	}
 
-	for k, _ := range newKeys {
+	for k := range newKeys {
 		options := redis.TSOptions{}
 		options.Retention = publisher.config.Retention
 		options.DuplicatePolicy = "SUM"
