@@ -22,50 +22,9 @@ DONE
 
 	Take to staging and verify we see retries and fallback to direct counters
 
-TODO
-
-	Stop work and get ready for Lisbon trip!
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	I did not actually see any retries or fallback to directs triggering. Why not?
+
+	(counters were not setup properly)
 
 	But I did see the number of server updates tank, and some servers fall back to dircet, effectively.
 
@@ -73,13 +32,27 @@ TODO
 
 	Maybe there should be server backend, and session backend?
 
+TODO
+
+	Scale up again in staging and verify that I see retries and fallback to directs
+
 	----------------
 
-	Dynamically show and hide error graphs when there are no errors in last 24hrs!
+	The counter graphs are going to need some adjustment when they are infrequent
+
+	When no counters occur, the graphs stops updating...
 
 	----------------
 
 	Convert time series to millisecond timestamps with duplicate rule
+
+	----------------
+
+	Finalize graph colors on admin page
+
+	----------------
+
+	Fix up layout on mobile for admin page
 
 	----------------
 
