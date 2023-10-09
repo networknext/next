@@ -20,9 +20,58 @@ DONE
 
 	Extend to support server updates per-second
 
+	Take to staging and verify we see retries and fallback to direct counters
+
 TODO
 
-	Take to staging and verify we see retries and fallback to direct counters
+	Stop work and get ready for Lisbon trip!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	I did not actually see any retries or fallback to directs triggering. Why not?
+
+	But I did see the number of server updates tank, and some servers fall back to dircet, effectively.
+
+	It seems that too many sessions starves IO, and thus stops server updates getting processed.
+
+	Maybe there should be server backend, and session backend?
 
 	----------------
 
@@ -34,7 +83,6 @@ TODO
 
 	----------------
 
-	Stop work and get ready for Lisbon trip!
 
 
 
