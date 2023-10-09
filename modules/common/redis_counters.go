@@ -132,7 +132,9 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters
 	}
 
 	for k, v := range counters {
-		pipeline.TSAdd(ctx, fmt.Sprintf("%s-internal", k), timestamp, float64(v))
+		if v > 0 {
+			pipeline.TSAdd(ctx, fmt.Sprintf("%s-internal", k), timestamp, float64(v))
+		}
 	}
 
 	_, err := pipeline.Exec(ctx)

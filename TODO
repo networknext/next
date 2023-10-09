@@ -14,9 +14,9 @@ DONE
 
 	Verify redis counters are working in dev by session updates per-second graph (divide by 60 when presenting)
 
-TODO
-
 	Fix issues with nano timestamps and aggregation
+
+TODO
 
 	Convert time series to millisecond timestamps with duplicate rule
 

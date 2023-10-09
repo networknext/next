@@ -157,7 +157,7 @@ async function getData() {
     i = 0
     while (i < res.data.counters_session_update_timestamps.length) {
       session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000))
-      session_update_values.push(parseInt(res.data.counters_session_update_values[i]))
+      session_update_values.push((parseInt(res.data.counters_session_update_values[i]) / 60.0).toFixed(1))
       i++
     }
     data.session_update_data = [session_update_timestamps, session_update_values]
