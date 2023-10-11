@@ -98,11 +98,13 @@ function custom_graph(config) {
         }
       }
     ],
+    /*
     axes: [
       {
-        space: 40,
+        space: 60,
         incrs: [
            // minute divisors (# of secs)
+           5,
            10,
            20,
            30,
@@ -112,15 +114,15 @@ function custom_graph(config) {
            60 * 20,
            60 * 30,
            // day divisors
-           3600,
+           60 * 60,
         ],
         values: [
           // tick incr        default           year                           month    day                      hour     min                sec       mode
           [3600 * 24 * 365,   "{YYYY}",         null,                          null,    null,                    null,    null,              null,        1],
           [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
           [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
-          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",              null,    "{M}/{D}",               null,    null,              null,        1],
-          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",              null,    "{M}/{D}",               null,    null,              null,        1],
+          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",              null,    "\n{M}/{D}",             null,    null,              null,        1],
+          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",              null,    "\n{M}/{D}",             null,    null,              null,        1],
           [10,                "",               "{M}/{D}/{YY}",                null,    "{h}:{mm}{aa}",          null,    "{h}:{mm}{aa}",    null,        1],
         ],
       },
@@ -128,6 +130,43 @@ function custom_graph(config) {
         side: 1,
       }
     ]
+    */
+    axes: [
+      {
+        space: 60,
+        incrs: [
+           // minute divisors (# of secs)
+           1,
+           5,
+           10,
+           15,
+           30,
+           // hour divisors
+           60,
+           60 * 5,
+           60 * 10,
+           60 * 15,
+           60 * 30,
+           // day divisors
+           3600,
+        // ...
+        ],
+        // [0]:   minimum num secs in found axis split (tick incr)
+        // [1]:   default tick format
+        // [2-7]: rollover tick formats
+        // [8]:   mode: 0: replace [1] -> [2-7], 1: concat [1] + [2-7]
+        values: [
+        // tick incr          default           year                             month    day                        hour     min                sec       mode
+          [3600 * 24 * 365,   "{YYYY}",         null,                            null,    null,                      null,    null,              null,        1],
+          [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+          [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                      null,    null,                      null,    null,              null,        1],
+          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",                null,    "\n{M}/{D}",               null,    null,              null,        1],
+          [1,                 ":{ss}",          "\n{M}/{D}/{YY} {h}:{mm}{aa}",   null,    "\n{M}/{D} {h}:{mm}{aa}",  null,    "\n{h}:{mm}{aa}",  null,        1],
+          [0.001,             ":{ss}.{fff}",    "\n{M}/{D}/{YY} {h}:{mm}{aa}",   null,    "\n{M}/{D} {h}:{mm}{aa}",  null,    "\n{h}:{mm}{aa}",  null,        1],
+        ],
+      }
+    ],
   };
 
   let i = 0

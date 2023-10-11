@@ -61,7 +61,7 @@ func CreateRedisCountersPublisher(ctx context.Context, config RedisCountersConfi
 	}
 
 	if config.Retention == 0 {
-		config.Retention = 86400 * 1000 // 24 hours in milliseconds
+		config.Retention = 60 * 60 * 1000 // 1 hour in milliseconds
 	}
 
 	if config.SumWindow == 0 {
