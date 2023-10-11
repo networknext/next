@@ -179,7 +179,7 @@ func CreateRedisCountersWatcher(ctx context.Context, config RedisCountersConfig)
 	}
 
 	if config.DisplayWindow == 0 {
-		config.DisplayWindow = 86400 * 1000 // 24 hours in milliseconds
+		config.DisplayWindow = 3600 * 1000 // 24 hours in milliseconds
 	}
 
 	watcher := &RedisCountersWatcher{}

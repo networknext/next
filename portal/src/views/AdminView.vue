@@ -87,8 +87,8 @@ let session_update_opts = custom_graph({
   series: [
     { 
       name: 'Session Updates',
-      stroke: "#faac02",
-      fill: "rgba(250, 172, 2,0.075)",
+      stroke: "rgb(94, 201, 255)",
+      fill: "rgba(94, 201, 255,0.075)",
       units: ' per-second',
     },
   ]
@@ -99,8 +99,8 @@ let server_update_opts = custom_graph({
   series: [
     { 
       name: 'Server Updates',
-      stroke: "#faac02",
-      fill: "rgba(250, 172, 2,0.075)",
+      stroke: "rgb(119, 212, 179)",
+      fill: "rgba(119, 212, 179,0.075)",
       units: ' per-second',
     },
   ]
@@ -111,8 +111,8 @@ let retry_opts = custom_graph({
   series: [
     { 
       name: 'Retries',
-      stroke: "#faac02",
-      fill: "rgba(250, 172, 2,0.075)",
+      stroke: "rgb(250, 123, 32)",
+      fill: "rgba(250, 123, 32,0.075)",
       units: '',
     },
   ]
@@ -123,8 +123,8 @@ let fallback_to_direct_opts = custom_graph({
   series: [
     { 
       name: 'Fallbacks',
-      stroke: "#faac02",
-      fill: "rgba(250, 172, 2,0.075)",
+      stroke: "rgb(252, 50, 40)",
+      fill: "rgba(252, 50, 40,0.075)",
       units: '',
     },
   ]
@@ -441,7 +441,7 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 50px;
 }
 
 .graph {
