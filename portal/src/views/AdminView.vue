@@ -150,7 +150,7 @@ async function getData() {
     let total_sessions_values = []
     let i = 0
     while (i < res.data.time_series_total_sessions_timestamps.length) {
-      total_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_total_sessions_timestamps[i]) / 1000000000))
+      total_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_total_sessions_timestamps[i]) / 1000.0))
       total_sessions_values.push(parseInt(res.data.time_series_total_sessions_values[i]))
       i++
     }
@@ -162,7 +162,7 @@ async function getData() {
     let next_sessions_values = []
     i = 0
     while (i < res.data.time_series_next_sessions_timestamps.length) {
-      next_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_next_sessions_timestamps[i]) / 1000000000))
+      next_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_next_sessions_timestamps[i]) / 1000.0))
       next_sessions_values.push(parseInt(res.data.time_series_next_sessions_values[i]))
       i++
     }
@@ -174,7 +174,7 @@ async function getData() {
     let accelerated_percent_values = []
     i = 0
     while (i < res.data.time_series_accelerated_percent_timestamps.length) {
-      accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.time_series_accelerated_percent_timestamps[i]) / 1000000000))
+      accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.time_series_accelerated_percent_timestamps[i]) / 1000.0))
       accelerated_percent_values.push(parseInt(res.data.time_series_accelerated_percent_values[i]))
       i++
     }
@@ -186,7 +186,7 @@ async function getData() {
     let server_count_values = []
     i = 0
     while (i < res.data.time_series_server_count_timestamps.length) {
-      server_count_timestamps.push(Math.floor(parseInt(res.data.time_series_server_count_timestamps[i]) / 1000000000))
+      server_count_timestamps.push(Math.floor(parseInt(res.data.time_series_server_count_timestamps[i]) / 1000.0))
       server_count_values.push(parseInt(res.data.time_series_server_count_values[i]))
       i++
     }

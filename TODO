@@ -1,176 +1,20 @@
 DONE
 
-	Sketch out redis counters
-
-	Make sure the duplicate timestamp policy is set to allow (if possible...)
-
-	Optimize insertion of counters by summing values per-publisher, and only actually sending a message once per-second
-
-	Implement counters for session updates per-minute
-
-	Add a watcher for counters in api.go
-
-	Add the counters to the admin data returned to portal
-
-	Verify redis counters are working in dev by session updates per-second graph (divide by 60 when presenting)
-
-	Fix issues with nano timestamps and aggregation
-
-	Debug why summed session counts are not correct.
-
-	Extend to support server updates per-second
-
-	Take to staging and verify we see retries and fallback to direct counters
+	Convert time series to millisecond timestamps with duplicate rule
 
 TODO
 
-	Stop work and get ready for Lisbon trip!
+	Need to also insert zeros between samples in the redis counters
 
+	So it's now more like, fill all minutes in the window with 0.0, unless there is a sample for that minute already
 
+	Do a hash table indexed by minute, then from the hash table write out the values to an array w. timestamps
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	I did not actually see any retries or fallback to directs triggering. Why not?
-
-	But I did see the number of server updates tank, and some servers fall back to dircet, effectively.
-
-	It seems that too many sessions starves IO, and thus stops server updates getting processed.
-
-	Maybe there should be server backend, and session backend?
-
-	----------------
-
-	Dynamically show and hide error graphs when there are no errors in last 24hrs!
-
-	----------------
-
-	Convert time series to millisecond timestamps with duplicate rule
-
-	----------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	This way I can merge
 
 	--------------
 
 	Extend the admin page to collapse from two columns down to one column on mobile	
-
-	--------------
-
-	Add more admin counters
-
-		long session update
-
-		unknown datacenter
-
-		datacenter not enabled
-
-		no route
-
-		stale route matrix
-
-		aborted
-
-		no relays in datacenter
-
-		no near relays
-
-		no route relays
-
-		route relay no longer exists
-
-		route no longer exists
-
-		(what about mispredict, latency too high, veto etc?)
 
 	--------------
 
@@ -179,10 +23,6 @@ TODO
 	--------------
 
 	Add route shader to buyer data
-
-	--------------
-
-	Implement relay page graphs
 
 	--------------
 
@@ -260,11 +100,7 @@ Finalize load test:
 
 	------------------
 
-	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in staging and prod
-
-	------------------
-
-	Test if the server backend scales better with goroutine per-packet or not
+	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
 
 	------------------
 

@@ -2044,7 +2044,7 @@ output "portal_address" {
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_router" "router" {
-  name    = "router-to-internet"
+  name    = "router-to-internet" 
   network = google_compute_network.staging.id
   project = var.google_project
   region  = var.google_region

@@ -319,7 +319,7 @@ func TopSessionsThread() {
 
 				message := common.RedisTimeSeriesMessage{}
 
-				message.Timestamp = uint64(time.Now().UnixNano())
+				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
 
 				message.Keys = []string{"server_count"}
 

@@ -302,6 +302,8 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		BestScore:        uint32(common.RandomInt(0, 1000)),
 		BestDirectRTT:    uint32(common.RandomInt(0, 1000)),
 		BestNextRTT:      uint32(common.RandomInt(0, 1000)),
+		Retry:            common.RandomBool(),
+		FallbackToDirect: common.RandomBool(),
 	}
 
 	message.Next = common.RandomBool()

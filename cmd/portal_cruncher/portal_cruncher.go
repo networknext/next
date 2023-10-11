@@ -479,7 +479,7 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter,
 
 		timeSeriesMessage := common.RedisTimeSeriesMessage{}
 
-		timeSeriesMessage.Timestamp = uint64(time.Now().UnixNano())
+		timeSeriesMessage.Timestamp = uint64(time.Now().UnixNano() / 1000000)
 
 		timeSeriesMessage.Keys = []string{
 			fmt.Sprintf("relay_%016x_session_count", message.RelayId),

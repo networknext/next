@@ -17,7 +17,7 @@ type RedisTimeSeriesConfig struct {
 	BatchDuration      time.Duration
 	MessageChannelSize int
 	Retention          int
-	Window             int // IMPORTANT: in timestamp units, how far back in time from present to gather samples from
+	DisplayWindow      int
 }
 
 // -------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 	}
 
 	if config.Retention == 0 {
-		config.Retention = 86400 * 1000000000 // 24 hours in nanoseconds
+		config.Retention = 86400 * 1000 // 24 hours in milliseconds
 	}
 
 	publisher.config = config
@@ -138,6 +138,7 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 	for i := range newKeys {
 		options := redis.TSOptions{}
 		options.Retention = publisher.config.Retention
+		options.DuplicatePolicy = "MAX"
 		pipeline.TSCreateWithArgs(ctx, newKeys[i], &options)
 	}
 
@@ -210,8 +211,8 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 		}
 	}
 
-	if config.Window == 0 {
-		config.Window = 86400 * 1000000000 // 24 hours in nanoseconds
+	if config.DisplayWindow == 0 {
+		config.DisplayWindow = 86400 * 1000 // 24 hours in milliseconds
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}
@@ -253,10 +254,10 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 				pipeline = watcher.redisClient.Pipeline()
 			}
 
-			currentTime := int(time.Now().UnixNano())
+			currentTime := int(time.Now().UnixNano() / 1000000)
 
 			for i := range keys {
-				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.Window, currentTime)
+				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.DisplayWindow, currentTime)
 			}
 
 			cmds, err := pipeline.Exec(ctx)
