@@ -1,34 +1,14 @@
 DONE
 
-	Convert time series to millisecond timestamps with duplicate rule
-
-	Need to also insert zeros between samples in the redis counters
-
-	So it's now more like, fill all minutes in the window with 0.0, unless there is a sample for that minute already
-
-	Do a hash table indexed by minute, then from the hash table write out the values to an array w. timestamps
-
-	This way I can merge
-
-	Made sure to remove event listeners for views before unmount
-
-	Extend the admin page to collapse from two columns down to one column on mobile	
-
-	(just go with one column, uniformly for now...)
-
-	Buyer graphs are also broken.
-
-	Fixed buyer graphs.
-
-	Relay view graphs seem to be broken...
-
-	Relay graphs were just running out of space. flushdb fixed it.
-
-	Remove legend on relay page in mobile
-
 TODO
 
-	Fix the very slight layout issue on session view on iphone
+	User hash page seems to be broken
+
+	(because user hash is not printed as hex in session view...)
+
+	--------------
+
+	Datacenter page seems to be broken
 	
 	--------------
 
@@ -63,6 +43,10 @@ Extra work found when finishing portal:
 	--------------
 
 	Session counts on relays being 8 when relay backend restarts seems a bit suspicious. Are we not decrementing session counts somewhere?
+
+	--------------
+
+	dev relays need to also be setup to use cloud storage for tf state?
 
 	--------------
 
@@ -146,10 +130,6 @@ Terraform project setup:
 		Cloud SQL API
 
 	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
-
-	Pain point around SQL, we should try to create the database inside terrafrom ideally. It has problems destroying:
-
-		 Error: Error when reading or editing Database: googleapi: Error 400: Invalid request: failed to delete database "database". Detail: pq: database "database" is being accessed by other users. (Please use psql client to delete database that is not owned by "cloudsqlsuperuser")., invalid
 
 	-----------------------
 

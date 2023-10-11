@@ -446,7 +446,7 @@ async function getData(page, session_id) {
       data["isp"] = session_data.isp
       data["buyer_code"] = session_data.buyer_code
       data["buyer_name"] = session_data.buyer_name
-      data["user_hash"] = session_data.user_hash
+      data["user_hash"] = parse_uint64(session_data.user_hash)
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
       data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()
