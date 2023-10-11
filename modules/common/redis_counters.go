@@ -246,9 +246,11 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 				
 				startTimestamp := uint64(currentTime) - uint64(watcher.config.DisplayWindow)
 				startTimestamp -= startTimestamp % uint64(watcher.config.SumWindow)
+				startTimestamp += uint64(watcher.config.SumWindow)
 
 				endTimestamp := startTimestamp + uint64(watcher.config.DisplayWindow)
 				endTimestamp -= endTimestamp % uint64(watcher.config.SumWindow)
+				endTimestamp -= uint64(watcher.config.SumWindow)
 
 				valueMap := make(map[uint64]float64)
 
