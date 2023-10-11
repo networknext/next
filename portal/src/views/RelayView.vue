@@ -386,6 +386,7 @@ export default {
   },
 
   beforeUnmount() {
+    document.getElementById("relay-name-input").removeEventListener('keyup', this.onKeyUp);
     this.sessions.destroy()
     this.bandwidth_sent.destroy()
     this.bandwidth_received.destroy()

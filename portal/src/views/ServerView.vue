@@ -252,6 +252,10 @@ export default {
     this.$emit('notify-view', 'server')
   },
 
+  beforeUnmount() {
+    document.getElementById("server-input").removeEventListener('keyup', this.onKeyUp);
+  },
+
   data() {
     return {
       data: [],

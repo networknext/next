@@ -199,7 +199,7 @@ async function getData() {
       let session_update_values = []
       i = 0
       while (i < res.data.counters_session_update_timestamps.length) {
-        session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000))
+        session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000.0))
         session_update_values.push((parseInt(res.data.counters_session_update_values[i]) / 60.0).toFixed(1))
         i++
       }
@@ -213,7 +213,7 @@ async function getData() {
       let server_update_values = []
       i = 0
       while (i < res.data.counters_server_update_timestamps.length) {
-        server_update_timestamps.push(Math.floor(parseInt(res.data.counters_server_update_timestamps[i]) / 1000))
+        server_update_timestamps.push(Math.floor(parseInt(res.data.counters_server_update_timestamps[i]) / 1000.0))
         server_update_values.push((parseInt(res.data.counters_server_update_values[i]) / 60.0).toFixed(1))
         i++
       }
@@ -227,7 +227,7 @@ async function getData() {
       let retry_values = []
       i = 0
       while (i < res.data.counters_retry_timestamps.length) {
-        retry_timestamps.push(Math.floor(parseInt(res.data.counters_retry_timestamps[i]) / 1000))
+        retry_timestamps.push(Math.floor(parseInt(res.data.counters_retry_timestamps[i]) / 1000.0))
         retry_values.push(parseInt(res.data.counters_retry_values[i]))
         i++
       }
@@ -241,7 +241,7 @@ async function getData() {
       let fallback_to_direct_values = []
       i = 0
       while (i < res.data.counters_fallback_to_direct_timestamps.length) {
-        fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.counters_fallback_to_direct_timestamps[i]) / 1000))
+        fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.counters_fallback_to_direct_timestamps[i]) / 1000.0))
         fallback_to_direct_values.push(parseInt(res.data.counters_fallback_to_direct_values[i]))
         i++
       }

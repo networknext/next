@@ -665,6 +665,7 @@ export default {
   },
 
   beforeUnmount() {
+    document.getElementById("session-id-input").removeEventListener('keyup', this.onKeyUp);
     this.latency.destroy()
     this.jitter.destroy()
     this.packet_loss.destroy()

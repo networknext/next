@@ -295,6 +295,7 @@ export default {
   },
 
   beforeUnmount() {
+    document.getElementById("buyer-input").removeEventListener('keyup', this.onKeyUp);
     this.total_sessions.destroy()
     this.next_sessions.destroy()
     this.accelerated_percent.destroy()

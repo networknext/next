@@ -2,8 +2,6 @@ DONE
 
 	Convert time series to millisecond timestamps with duplicate rule
 
-TODO
-
 	Need to also insert zeros between samples in the redis counters
 
 	So it's now more like, fill all minutes in the window with 0.0, unless there is a sample for that minute already
@@ -12,7 +10,9 @@ TODO
 
 	This way I can merge
 
-	--------------
+	Made sure to remove event listeners for views before unmount
+
+TODO
 
 	Extend the admin page to collapse from two columns down to one column on mobile	
 
@@ -45,10 +45,6 @@ TODO
 
 
 Extra work found when finishing portal:
-
-	--------------
-
-	Need to double check that we remove event listeners on unmount
 
 	--------------
 
