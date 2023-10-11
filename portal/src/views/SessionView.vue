@@ -326,6 +326,7 @@ let jitter_opts = custom_graph({
 
 let packet_loss_opts = custom_graph({
   title: "Packet Loss",
+  percent: true,
   series: [
     { 
       name: 'Direct',
@@ -350,6 +351,7 @@ let packet_loss_opts = custom_graph({
 
 let out_of_order_opts = custom_graph({
   title: "Out of Order",
+  percent: true,
   series: [
     {
       name: 'Real',

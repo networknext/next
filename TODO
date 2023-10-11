@@ -2,16 +2,6 @@ DONE
 
 TODO
 
-	User hash page seems to be broken
-
-	(because user hash is not printed as hex in session view...)
-
-	--------------
-
-	Datacenter page seems to be broken
-	
-	--------------
-
 	Implement the small map in the sidebar for buyer and relay pages
 
 	--------------
@@ -31,6 +21,10 @@ TODO
 
 
 Extra work found when finishing portal:
+
+	--------------
+
+	Most amazon relays are down. Why?
 
 	--------------
 

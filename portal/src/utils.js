@@ -72,6 +72,9 @@ function getAcceleratedPercent(nextSessions, totalSessions) {
 }
 
 function custom_graph(config) {
+
+  let percent = config.percent
+
   let opts = {
     title: config.title,
     width: 0,
@@ -129,6 +132,17 @@ function custom_graph(config) {
         side: 1,
       }
     ],
+    scales: {
+      y: {
+        range: (u, dataMin, dataMax) => {
+          if (percent) {
+            return [0, 100];
+          } else {
+            return [0, dataMax*1.1]
+          }
+        }
+      },
+    },
   };
 
   let i = 0
@@ -140,18 +154,6 @@ function custom_graph(config) {
       fill: config.series[i].fill,
       width: 2,
       label: config.series[i].name,
-      scales: {
-        range: {
-          min: {
-            mode: 1,
-            soft: 0,
-            hard: 0,
-          },
-          max: {
-            pad: 0.05
-          }
-        }
-      },
       points: {
         show: (self, si) => {
           let element = document.getElementById('right')

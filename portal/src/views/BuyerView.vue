@@ -136,6 +136,7 @@ let next_sessions_opts = custom_graph({
 
 let accelerated_percent_opts = custom_graph({
   title: "Accelerated Percent",
+  percent: true,
   series: [
     { 
       name: 'Accelerated',
