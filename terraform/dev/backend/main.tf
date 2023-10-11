@@ -253,7 +253,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "n1-standard-1"
+  machine_type             = "g1-small"
   project                  = var.google_project
   region                   = var.google_region
   zone                     = var.google_zone
@@ -1737,7 +1737,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"
+  machine_type               = "n1-standard-1"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1774,7 +1774,7 @@ module "server_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"
+  machine_type               = "n1-standard-1"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1825,7 +1825,7 @@ module "portal_cruncher" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-http"]
-  target_size        = 2
+  target_size        = 1
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1873,7 +1873,7 @@ module "server_backend" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-http", "allow-udp-40000"]
-  target_size        = 2
+  target_size        = 1
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
