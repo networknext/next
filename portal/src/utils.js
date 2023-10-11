@@ -140,6 +140,18 @@ function custom_graph(config) {
       fill: config.series[i].fill,
       width: 2,
       label: config.series[i].name,
+      scales: {
+        range: {
+          min: {
+            mode: 1,
+            soft: 0,
+            hard: 0,
+          },
+          max: {
+            pad: 0.05
+          }
+        }
+      },
       points: {
         show: (self, si) => {
           let element = document.getElementById('right')
