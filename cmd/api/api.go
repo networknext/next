@@ -197,8 +197,6 @@ func main() {
 
 			// create relay time series watcher
 
-			timeSeriesConfig.DisplayWindow = 3600 * 1000 // 1 hour in milliseconds
-
 			relayTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
 			if err != nil {
 				core.Error("could not create relay time series watcher: %v", err)

@@ -73,7 +73,7 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 	}
 
 	if config.Retention == 0 {
-		config.Retention = 86400 * 1000 // 24 hours in milliseconds
+		config.Retention = 3600 * 1000 // 1 hour in milliseconds
 	}
 
 	publisher.config = config
@@ -212,7 +212,7 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 	}
 
 	if config.DisplayWindow == 0 {
-		config.DisplayWindow = 86400 * 1000 // 24 hours in milliseconds
+		config.DisplayWindow = 3600 * 1000 // 1 hour in milliseconds
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}

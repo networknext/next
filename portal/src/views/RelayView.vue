@@ -382,7 +382,7 @@ export default {
 
     this.$emit('notify-view', 'relay')
 
-      this.updateGraphs()
+    this.updateGraphs()
   },
 
   beforeUnmount() {

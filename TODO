@@ -18,8 +18,12 @@ DONE
 
 TODO
 
-	Bring across the styling to widen the graphs in buyer, relay and admin pages on mobile
+	Relay view graphs seem to be broken...
 
+	Buyer graphs are also broken.
+
+	Why are these broken, but the graphs inside admin page work fine?
+	
 	--------------
 
 	Implement the small map in the sidebar for buyer and relay pages
