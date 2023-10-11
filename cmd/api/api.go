@@ -1213,7 +1213,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	datacenter := database.GetDatacenterByName(datacenterName)
-	if datacenter != nil {
+	if datacenter == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
