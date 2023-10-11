@@ -828,6 +828,7 @@ export default {
 
 .graph {
   height: 100%;
+  margin-left: v-bind("show_legend ? '0px' : '-20px'")
 }
 
 .right {
