@@ -408,12 +408,13 @@ export default {
   methods: {
 
     resize() {
+      const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
         this.prevWidth = width;
         if (this.sessions) {
           let graph_width = width
-          if (is_visible(document.getElementById('right'))) {
+          if (right_visible) {
             graph_width -= 550
           } else {
             graph_width -= 30
@@ -431,6 +432,20 @@ export default {
           this.packets_received.setSize({width: graph_width, height: graph_height})
           this.near_pings.setSize({width: graph_width, height: graph_height})
           this.relay_pings.setSize({width: graph_width, height: graph_height})
+        }
+
+        // show legends in desktop, hide them in mobile layout
+
+        this.show_legend = right_visible
+        var elements = document.getElementsByClassName('u-legend');
+        let i = 0;
+        while (i < elements.length) {
+          if (this.show_legend) {
+            elements[i].style.display = 'block';
+          } else {
+            elements[i].style.display = 'none';
+          }
+          i++;
         }
       }    
     },
