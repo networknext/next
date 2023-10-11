@@ -122,7 +122,7 @@ function custom_graph(config) {
           [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
           [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",              null,    "\n{M}/{D}",             null,    null,              null,        1],
           [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",              null,    "\n{M}/{D}",             null,    null,              null,        1],
-          [10,                "",               "{h}:{mm}{aa}\n{M}/{D}/{YY}",              null,    "{h}:{mm}{aa}",          null,    "{h}:{mm}{aa}",    null,        1],
+          [10,                "",               "{h}:{mm}{aa}\n{M}/{D}/{YY}",  null,    "{h}:{mm}{aa}",          null,    "{h}:{mm}{aa}",    null,        1],
         ],
       },
       {

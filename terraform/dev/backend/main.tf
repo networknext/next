@@ -1505,6 +1505,7 @@ module "magic_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
 }
 
 output "magic_backend_address" {
@@ -1553,6 +1554,7 @@ module "relay_gateway" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "relay-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay-dev.id
+  target_size              = 1
 }
 
 output "relay_gateway_address" {
@@ -1602,6 +1604,7 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1652,6 +1655,7 @@ module "analytics" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
+  target_size                = 1
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1706,6 +1710,7 @@ module "api" {
   tags                       = ["allow-ssh", "allow-http", "allow-https"]
   domain                     = "api-dev.${var.cloudflare_domain}"
   certificate                = google_compute_managed_ssl_certificate.api-dev.id
+  target_size                = 1
 }
 
 output "api_address" {
@@ -1916,6 +1921,7 @@ module "raspberry_backend" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
+  target_size              = 1
 }
 
 output "raspberry_backend_address" {
@@ -2057,6 +2063,7 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal-dev.id
+  target_size              = 1
 }
 
 output "portal_address" {
