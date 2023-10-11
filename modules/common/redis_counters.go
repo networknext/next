@@ -261,7 +261,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 				timestamps[i] = make([]uint64, 0)
 				values[i] = make([]float64, 0)
 
-				for timestamp := startTimestamp; timestamp <= endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
+				for timestamp := startTimestamp; timestamp < endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
 					timestamps[i] = append(timestamps[i], timestamp)
 					value, exists := valueMap[timestamp]
 					if exists {
