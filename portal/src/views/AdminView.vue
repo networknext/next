@@ -2,28 +2,24 @@
 
   <div class="parent" id="parent">
   
-    <div class="left">
-
+    <div class="column">
+      
       <div id="total_sessions" class="graph"/>
     
+      <div id="next_sessions" class="graph"/>
+
+      <div id="server_count" class="graph"/>
+
       <div id="accelerated_percent" class="graph"/>
+
+      <div id="server_update" class="graph"/>
 
       <div id="session_update" class="graph"/>
 
       <div id="retry" class="graph"/>
 
-    </div>
-
-    <div class="right">
-
-      <div id="next_sessions" class="graph"/>
-    
-      <div id="server_count" class="graph"/>
-
-      <div id="server_update" class="graph"/>
-
       <div id="fallback_to_direct" class="graph"/>
-
+    
     </div>
 
   </div>
@@ -339,7 +335,7 @@ export default {
 
         this.prevWidth = width;
         if (this.total_sessions) {
-          let graph_width = width / 2
+          let graph_width = width; //width / 2
           graph_width -= 30
           let graph_height = graph_width * 0.333
           if (graph_height > 450) {
@@ -440,16 +436,8 @@ export default {
   padding-top: 35px;
 }
 
-.left {
-  width: 50%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.right {
-  width: 50%;
+.column {
+  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
