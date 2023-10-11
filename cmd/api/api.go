@@ -1299,9 +1299,9 @@ type PortalAdminDataResponse struct {
 	Counters_ServerUpdate_Timestamps         []uint64          `json:"counters_server_update_timestamps,string"`
 	Counters_ServerUpdate_Values             []int             `json:"counters_server_update_values"`
 	Counters_Retry_Timestamps                []uint64          `json:"counters_retry_timestamps,string"`
-	Counters_Retry_Values                    []int             `json:"counters_retry_update_values"`
+	Counters_Retry_Values                    []int             `json:"counters_retry_values"`
 	Counters_FallbackToDirect_Timestamps     []uint64          `json:"counters_fallback_to_direct_timestamps,string"`
-	Counters_FallbackToDirect_Values         []int             `json:"counters_fallback_to_direct_update_values"`
+	Counters_FallbackToDirect_Values         []int             `json:"counters_fallback_to_direct_values"`
 }
 
 func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -1320,6 +1320,8 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		countersWatcher.Lock()
 		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
 		countersWatcher.GetIntValues(&response.Counters_ServerUpdate_Timestamps, &response.Counters_ServerUpdate_Values, "server_update")
+		countersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
+		countersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
 		countersWatcher.Unlock()
 	}
 
