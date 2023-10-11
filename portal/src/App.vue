@@ -58,7 +58,7 @@
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" @click="nav_admin" to="/sellers">Admin</router-link>
+            <router-link class="nav-link" @click="nav_admin" to="/admin">Admin</router-link>
           </li>
 
         </ul>
