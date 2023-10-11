@@ -197,7 +197,7 @@ func main() {
 
 			// create relay time series watcher
 
-			timeSeriesConfig.Window = 3600 * 1000000000 // 1 hour in nanoseconds
+			timeSeriesConfig.DisplayWindow = 3600 * 1000 // 1 hour in milliseconds
 
 			relayTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
 			if err != nil {

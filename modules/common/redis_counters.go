@@ -244,58 +244,28 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 
 				data := cmds[i].(*redis.TSTimestampValueSliceCmd).Val()
 				
-				timestamps[i] = make([]uint64, len(data))
-				values[i] = make([]float64, len(data))
-				
-				for j := range data {
-					timestamps[i][j] = uint64(data[j].Timestamp)
-					values[i][j] = data[j].Value
-				}
-
-				// counters don't get filled if none have fired, so if it is empty, fill it with zeros in the display window
-
 				startTimestamp := uint64(currentTime) - uint64(watcher.config.DisplayWindow)
 				startTimestamp -= startTimestamp % uint64(watcher.config.SumWindow)
 
 				endTimestamp := startTimestamp + uint64(watcher.config.DisplayWindow)
 				endTimestamp -= endTimestamp % uint64(watcher.config.SumWindow)
 
-				if len(timestamps[i]) == 0 {
+				valueMap := make(map[uint64]float64)
 
-					timestamps[i] = make([]uint64, 0)
-					values[i] = make([]float64, 0)
-					for timestamp := startTimestamp; timestamp <= endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
-						timestamps[i] = append(timestamps[i], timestamp)
+				for j := range data {
+					valueMap[uint64(data[j].Timestamp)] = data[j].Value
+				}
+
+				timestamps[i] = make([]uint64, 0)
+				values[i] = make([]float64, 0)
+
+				for timestamp := startTimestamp; timestamp <= endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
+					timestamps[i] = append(timestamps[i], timestamp)
+					value, exists := valueMap[timestamp]
+					if exists {
+						values[i] = append(values[i], value)
+					} else {
 						values[i] = append(values[i], 0.0)
-					}
-
-				} else {
-
-					// fill any space in front of samples with zeros
-					{
-						timestamp := startTimestamp
-						new_timestamps := make([]uint64, 0)
-						new_values := make([]float64, 0)
-						for {
-							if timestamp >= timestamps[i][0] {
-								break
-							}
-							new_timestamps = append(new_timestamps, timestamp)
-							new_values = append(new_values, 0.0)
-							timestamp += uint64(watcher.config.SumWindow)
-						}
-						if len(new_timestamps) > 0 {
-							timestamps[i] = append(new_timestamps, timestamps[i]...)
-							values[i] = append(new_values, values[i]...)
-						}
-					}
-
-					// fill any space after the samples with zeros
-					{
-						for timestamp := timestamps[i][len(timestamps[i])-1] + uint64(watcher.config.SumWindow); timestamp <= endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
-							timestamps[i] = append(timestamps[i], timestamp)
-							values[i] = append(values[i], 0.0)							
-						}
 					}
 				}
 			}
