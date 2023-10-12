@@ -140,17 +140,3 @@ VALUES(
    8.682100,
    (select seller_id from sellers where seller_name = 'akamai')
 );
-
-INSERT INTO datacenters(
-	datacenter_name,
-	native_name,
-	latitude,
-	longitude,
-	seller_id)
-VALUES(
-   'akamai.tokyo',
-   'ap-northeast',
-   35.676201,
-   139.650299,
-   (select seller_id from sellers where seller_name = 'akamai')
-);
