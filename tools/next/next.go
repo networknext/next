@@ -660,8 +660,16 @@ func GetJSON(url string, object interface{}) {
 		panic(fmt.Sprintf("failed to read %s: %v", url, err))
 	}
 
+	if response == nil {
+		core.Error("no response for %s", url)
+		fmt.Printf("\n")
+		os.Exit(1)
+	}
+
 	if response.Body == nil {
-		panic("nil response body")
+		core.Error("no response body for %s", url)
+		fmt.Printf("\n")
+		os.Exit(1)
 	}
 
 	body, error := ioutil.ReadAll(response.Body)

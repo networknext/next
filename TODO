@@ -2,9 +2,17 @@ DONE
 
 	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
 
-TODO
+	Remove load test services from production
 
 	Setup the production environment
+
+TODO
+
+	Setup redis clusters in the production environment
+
+	--------------
+
+	Setup relays in prod, modelled after dev...
 
 	--------------
 
