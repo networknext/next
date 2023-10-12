@@ -1,12 +1,44 @@
 DONE
 
+	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
+
 TODO
 
 	Setup the production environment
 
 	--------------
 
+	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
+
+	--------------
+
+	Setup google beta provider and set the tier 1 bandwidth on the server backend.
+
+		network_performance_config {
+			total_egress_bandwidth_tier = "TIER_1"
+		}
+
+	--------------
+
 	Debug why sessions aren't taking network next in load test.
+
+	-----------------
+
+	Change analytics to perform bulk inserts instead of streaming inserts.
+
+	Bulk inserts are free.
+	
+	https://cloud.google.com/bigquery/docs/write-api-batch
+
+	--------------
+
+	Setup projects and service accounts directly in terraform
+
+	--------------
+
+	Have a config script that sets all configs as needed to work, no manual editing of configs to get up and started
+
+	(eg. roll new keys... whatever)
 
 	--------------
 	
@@ -40,10 +72,6 @@ Extra work found when finishing portal:
 
 	--------------
 
-	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
-
-	--------------
-
 	Session counts on relays being 8 when relay backend restarts seems a bit suspicious. Are we not decrementing session counts somewhere?
 
 	--------------
@@ -64,33 +92,6 @@ Extra work found when finishing portal:
 
 
 
-Finalize load test:
-
-	-------------------
-
-	*** Why are sessions not taking network next in load test? ***
-
-	-----------------
-
-	Change analytics to perform bulk inserts instead of streaming inserts.
-
-	Bulk inserts are free.
-	
-	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	-------------------
-
-	Setup google beta provider and set the tier 1 bandwidth on the server backend.
-
-		network_performance_config {
-			total_egress_bandwidth_tier = "TIER_1"
-		}
-
-	------------------
-
-	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
-
-	------------------
 
 
 
@@ -108,35 +109,7 @@ Finalize load test:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-Terraform project setup:
-
-	-----------------------
-
-	Enable:
-
-		Compute Engine API
-		Cloud Resource Manager API
-		Google Cloud Memorystore for Redis API
-		Service Networking API
-		Cloud SQL API
-
-	There's a chicken and egg that needs to be fixed around the sql files, the database.bin and the "next tool" not being able to select the env until both the sql and database.bin are up.
-
-	-----------------------
-
-
-
+HI
 
 
 
