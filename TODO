@@ -6,21 +6,46 @@ DONE
 
 	Setup the production environment
 
-TODO
-
 	Setup redis clusters in the production environment
-
-	--------------
 
 	Setup google to create relays
 
-	--------------
+	"run config-google"
 
-	Setup relays in prod, modelled after dev...
+	Setup relays in prod with tf
+
+TODO
+
+	Configure relays and make sure "next relays" in prod is clear.
 
 	--------------
 
 	Add test raspberry clients / servers / backends to production
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
+	There will be a challenge getting prod relays up in AWS vs. dev. There are no projects to segregate?
+
+	Might need to create a separate project, or distinguish resources with naming convention.
+
+	--------------
+
+	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
 
 	--------------
 
@@ -33,10 +58,6 @@ TODO
 		network_performance_config {
 			total_egress_bandwidth_tier = "TIER_1"
 		}
-
-	--------------
-
-	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
 
 	--------------
 

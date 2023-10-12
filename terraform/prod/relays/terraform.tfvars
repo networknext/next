@@ -21,6 +21,6 @@ raspberry_datacenters = [
 
 sellers = {
 	"Akamai" = "akamai"
-	"Amazon" = "amazon"
+//	"Amazon" = "amazon"
 	"Google" = "google"
 }

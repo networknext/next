@@ -262,7 +262,7 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 
 			cmds, err := pipeline.Exec(ctx)
 			if err != nil {
-				core.Error("failed to get time series: %v", err)
+				break
 			}
 
 			keyToIndex := make(map[string]int, len(keys))
