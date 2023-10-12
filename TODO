@@ -2,6 +2,14 @@ DONE
 
 TODO
 
+	Setup the production environment
+
+	--------------
+
+	Debug why sessions aren't taking network next in load test.
+
+	--------------
+	
 	Implement the small map in the sidebar for buyer and relay pages
 
 	--------------
@@ -182,19 +190,3 @@ Finalize SDK and UE5 plugin:
 	Make sure to include Flush on the server before the server is destroyed
 
 	------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
