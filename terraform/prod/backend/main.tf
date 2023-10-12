@@ -89,6 +89,13 @@ resource "google_compute_managed_ssl_certificate" "portal" {
   }
 }
 
+resource "google_compute_managed_ssl_certificate" "raspberry" {
+  name = "raspberry"
+  managed {
+    domains = ["raspberry.${var.cloudflare_domain}"]
+  }
+}
+
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_network" "production" {
