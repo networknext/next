@@ -14,11 +14,9 @@ DONE
 
 	Setup relays in prod with tf
 
-TODO
-
 	Configure relays and make sure "next relays" in prod is clear.
 
-	--------------
+TODO
 
 	Add test raspberry clients / servers / backends to production
 

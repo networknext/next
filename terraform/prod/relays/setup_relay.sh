@@ -10,7 +10,7 @@ sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 sudo NEEDRESTART_SUSPEND=1 apt update -y
 sudo NEEDRESTART_SUSPEND=1 apt upgrade -y
 sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
-sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential -y
+sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential vim -y
 sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
 tar -zxf libsodium-1.0.18.tar.gz

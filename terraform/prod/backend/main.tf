@@ -246,6 +246,14 @@ resource "cloudflare_record" "portal_domain" {
   proxied = false
 }
 
+resource "cloudflare_record" "raspberry_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "raspberry"
+  value   = module.raspberry_backend.address
+  type    = "A"
+  proxied = false
+}
+
 # ----------------------------------------------------------------------------------------
 
 module "redis_time_series" {
@@ -296,6 +304,16 @@ resource "google_redis_instance" "redis_analytics" {
   authorized_network      = google_compute_network.production.id
 }
 
+resource "google_redis_instance" "redis_raspberry" {
+  name               = "redis-raspberry"
+  tier               = "STANDARD_HA"
+  memory_size_gb     = 2
+  region             = "us-central1"
+  redis_version      = "REDIS_7_0"
+  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  authorized_network = google_compute_network.production.id
+}
+
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = local.redis_portal_address
@@ -314,6 +332,11 @@ output "redis_relay_backend_address" {
 output "redis_analytics_address" {
   description = "The IP address of the analytics redis instance"
   value       = google_redis_instance.redis_analytics.host
+}
+
+output "redis_raspberry_address" {
+  description = "The IP address of the raspberry redis instance"
+  value       = google_redis_instance.redis_raspberry.host
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1956,6 +1979,125 @@ resource "google_compute_router_nat" "nat" {
   region                             = var.google_region
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "raspberry_backend" {
+
+  source = "../../modules/external_http_service"
+
+  service_name = "raspberry-backend"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    DEBUG_LOGS=1
+    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                      = var.tag
+  extra                    = var.extra
+  machine_type             = "n1-standard-2"
+  project                  = var.google_project
+  region                   = var.google_region
+  zones                    = var.google_zones
+  default_network          = google_compute_network.production.id
+  default_subnetwork       = google_compute_subnetwork.production.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "raspberry.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.raspberry.id
+  target_size              = 3
+}
+
+output "raspberry_backend_address" {
+  description = "The IP address of the raspberry backend load balancer"
+  value       = module.raspberry_backend.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "raspberry_server" {
+
+  source = "../../modules/external_mig_without_health_check"
+
+  service_name = "raspberry-server"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    DEBUG_LOGS=1
+    NEXT_LOG_LEVEL=4
+    NEXT_DATACENTER=cloud
+    NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
+    RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
+    EOF
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
+    sudo ldconfig
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = "n1-standard-2"
+  project            = var.google_project
+  region             = var.google_region
+  zones              = var.google_zones
+  default_network    = google_compute_network.production.id
+  default_subnetwork = google_compute_subnetwork.production.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh", "allow-udp-all"]
+  target_size        = 8
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "raspberry_client" {
+
+  source = "../../modules/external_mig_without_health_check"
+
+  service_name = "raspberry-client"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    DEBUG_LOGS=1
+    NEXT_LOG_LEVEL=4
+    NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
+    RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
+    RASPBERRY_NUM_CLIENTS=1024
+    EOF
+    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
+    sudo ldconfig
+    sudo systemctl start app.service
+  EOF1
+
+  tag                = var.tag
+  extra              = var.extra
+  machine_type       = "n1-standard-2"
+  project            = var.google_project
+  region             = var.google_region
+  zones              = var.google_zones
+  default_network    = google_compute_network.production.id
+  default_subnetwork = google_compute_subnetwork.production.id
+  service_account    = var.google_service_account
+  tags               = ["allow-ssh"]
+  target_size        = 16
 }
 
 # ----------------------------------------------------------------------------------------
