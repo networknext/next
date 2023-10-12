@@ -8,7 +8,11 @@ TODO
 
 	--------------
 
-	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
+	Add test raspberry clients / servers / backends to production
+
+	--------------
+
+	Create the redis clusters in production via terraform
 
 	--------------
 
@@ -17,6 +21,10 @@ TODO
 		network_performance_config {
 			total_egress_bandwidth_tier = "TIER_1"
 		}
+
+	--------------
+
+	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
 
 	--------------
 

@@ -2035,6 +2035,7 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
+  target_size              = 3
 }
 
 output "portal_address" {
