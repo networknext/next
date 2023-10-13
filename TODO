@@ -2,6 +2,8 @@ DONE
 
 TODO
 
+	Seems that dev is a bit underpowered somewhere. It keeps dropping to 0 sessions over and over.
+
 	--------------
 
 	Debug why sessions aren't taking network next in load test.
