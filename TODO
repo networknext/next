@@ -22,6 +22,10 @@ TODO
 
 	--------------
 
+	When I deploy to dev, the admin view graphs go away for an extended period of time, which is frustrating
+
+	--------------
+
 	Debug why sessions aren't taking network next in load test.
 
 	--------------

@@ -138,7 +138,7 @@ function custom_graph(config) {
           if (percent) {
             return [0, 100];
           } else {
-            return [0, Math.max(dataMax*1.1, 100)]
+            return [0, Math.max(dataMax*1.1, 1)]
           }
         }
       },
