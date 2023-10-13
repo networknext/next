@@ -2,8 +2,6 @@ DONE
 
 TODO
 
-	Make sure in production we can scale down the server backends and not fallback to direct
-
 	--------------
 
 	Debug why sessions aren't taking network next in load test.
@@ -36,6 +34,12 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	Make sure in production we can scale down the server backends and not fallback to direct
+
+	(I have confirmed that I can reproduce this in production with 100k sessions, going from 10 server backends to 1 = 20k fallback to direct)
 
 	--------------
 
