@@ -2097,7 +2097,7 @@ module "raspberry_client" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-2"
+  machine_type       = "n1-standard-4"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones

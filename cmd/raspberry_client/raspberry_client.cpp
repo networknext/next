@@ -76,11 +76,6 @@ void client_thread_function( void * data )
     if ( user_id != 0 )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
-        srand( (unsigned int) user_id );
-    }
-    else
-    {
-        srand( (unsigned int) time(NULL) );
     }
 
     next_platform_sleep( rand() % 120 );
