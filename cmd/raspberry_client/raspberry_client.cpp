@@ -83,6 +83,8 @@ void client_thread_function( void * data )
         srand( (unsigned int) time(NULL) );
     }
 
+    next_platform_sleep( rand() % 300 );
+
     const int MaxServers = 256;
 
     int num_servers = 0;
