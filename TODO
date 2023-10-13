@@ -1,45 +1,43 @@
 DONE
 
-	Make sure that MAX_JITTER and MAX_PACKET_LOSS are set to a low values in prod
-
-	Remove load test services from production
-
-	Setup the production environment
-
-	Setup redis clusters in the production environment
-
-	Setup google to create relays
-
-	"run config-google"
-
-	Setup relays in prod with tf
-
-	Configure relays and make sure "next relays" in prod is clear.
-
-	Add test raspberry clients / servers / backends to production
-
-	Scale up to as many raspberry clients as we can do with n1-standard-4 (1000 per)
-
 TODO
-
-	Debug why sessions are scaling up then going down...
-
-	--------
-
-	Scale up to 10k real clients.
-
-
-
-
-
-
-
-
-
 
 	--------------
 
-	Fallback to direct and retries graphs are not showing properly again. WTF
+	Debug why sessions aren't taking network next in load test.
+
+	--------------
+
+	Change analytics to perform bulk inserts instead of streaming inserts.
+
+	Bulk inserts are free.
+	
+	https://cloud.google.com/bigquery/docs/write-api-batch
+
+	--------------
+
+	Setup projects and service accounts with terraform
+
+	--------------
+
+	Make sure in production we can scale down the server backends and not fallback to direct
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Small things:
 
 	--------------
 
@@ -65,66 +63,6 @@ TODO
 
 	--------------
 
-	Create the redis clusters in production via terraform
-
-	--------------
-
-	Setup google beta provider and set the tier 1 bandwidth on the server backend.
-
-		network_performance_config {
-			total_egress_bandwidth_tier = "TIER_1"
-		}
-
-	--------------
-
-	Debug why sessions aren't taking network next in load test.
-
-	-----------------
-
-	Change analytics to perform bulk inserts instead of streaming inserts.
-
-	Bulk inserts are free.
-	
-	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	--------------
-
-	Setup projects and service accounts directly in terraform
-
-	--------------
-
-	Have a config script that sets all configs as needed to work, no manual editing of configs to get up and started
-
-	(eg. roll new keys... whatever)
-
-	--------------
-	
-	Implement the small map in the sidebar for buyer and relay pages
-
-	--------------
-
-	Implement the large map in the main page
-
-	--------------
-
-
-
-
-
-
-
-
-
-
-
-Extra work found when finishing portal:
-
-	--------------
-
-	Most amazon relays are down. Why?
-
-	--------------
-
 	Connection type detection needs to be brought back for all platforms in the SDK. On linux, connection type was 0 -> "Unknown"
 
 	--------------
@@ -137,39 +75,11 @@ Extra work found when finishing portal:
 
 	--------------
 
+	Probably good to provide a way to disable the high priority threads on server with env var.
 
+	When many server instances are running on one server, this can cause problems. eg. thread starvation
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-HI
-
-
-
+	--------------
 
 
 
