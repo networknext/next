@@ -10,6 +10,14 @@ TODO
 
 	--------------
 
+	Dev generally seems like it randomly falls over
+
+	eg. no sessions
+
+	I think it is the session cruncher going down, and restarting...
+
+	--------------
+
 	Smooth out the session counts by standardizing raspberry client session length and randomizing start time against that length
 
 	--------------
