@@ -78,7 +78,7 @@ void client_thread_function( void * data )
         next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
     }
 
-    const int GameLength = 300;
+    const int GameLength = 360;
 
     const int MaxServers = 256;
 
