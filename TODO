@@ -16,11 +16,11 @@ DONE
 
 	Configure relays and make sure "next relays" in prod is clear.
 
-TODO
-
 	Add test raspberry clients / servers / backends to production
 
-	--------------
+TODO
+
+	Scale up to as many raspberry clients as we can do with n1-standard-2
 
 
 
