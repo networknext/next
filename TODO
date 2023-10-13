@@ -1,10 +1,10 @@
 DONE
 
-TODO
-
 	Bring production back up
 
-	Make sure in production we can scale up and down the server backends and not fallback to direct
+	Make sure in production I can reproduce fallback to direct when scale down the server backend
+
+TODO
 
 	--------------
 
