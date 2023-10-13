@@ -78,8 +78,6 @@ void client_thread_function( void * data )
         next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
     }
 
-    next_platform_sleep( rand() % 120 );
-
     const int MaxServers = 256;
 
     int num_servers = 0;

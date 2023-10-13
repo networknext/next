@@ -22,6 +22,10 @@ DONE
 
 TODO
 
+	Debug why sessions are scaling up then going down...
+
+	--------
+
 	Scale up to 10k real clients.
 
 
