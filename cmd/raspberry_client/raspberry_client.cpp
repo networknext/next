@@ -78,17 +78,19 @@ void client_thread_function( void * data )
         next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
     }
 
+    const int GameLength = 300;
+
     const int MaxServers = 256;
 
-    int num_servers = 0;
-    next_address_t server_addresses[MaxServers];
-    memset( server_addresses, 0, sizeof( server_addresses ) );
+    next_platform_sleep( rand() % GameLength );
 
     while ( !quit )
     {
         // update list of server addresses
 
-        num_servers = 0;
+        int num_servers = 0;
+        next_address_t server_addresses[MaxServers];
+        memset( server_addresses, 0, sizeof( server_addresses ) );
 
         char cmd[2048];
         snprintf( cmd, sizeof(cmd), "curl -s %s/servers --max-time 10 2>/dev/null", raspberry_backend_url );
@@ -161,15 +163,13 @@ void client_thread_function( void * data )
 
         double connect_time = next_platform_time();
 
-        double game_length = 240 + rand() % 120;
-
         while ( !quit )
         {
             next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
             next_client_update( client );
 
-            if ( next_platform_time() > connect_time + game_length )
+            if ( next_platform_time() > connect_time + GameLength )
             {
                 printf( "game has finished. reconnecting...\n");
                 break;

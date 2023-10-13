@@ -4,6 +4,8 @@ DONE
 
 	Make sure in production I can reproduce fallback to direct when scale down the server backend
 
+	Smooth out session counts by standardizing raspberry client session length
+
 TODO
 
 	--------------
