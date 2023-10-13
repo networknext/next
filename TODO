@@ -2,6 +2,10 @@ DONE
 
 TODO
 
+	Bring production back up
+
+	Make sure in production we can scale up and down the server backends and not fallback to direct
+
 	--------------
 
 	Debug why sessions aren't taking network next in load test.

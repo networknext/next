@@ -1987,7 +1987,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
-    RASPBERRY_NUM_CLIENTS=64
+    RASPBERRY_NUM_CLIENTS=256
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
@@ -1996,7 +1996,7 @@ module "raspberry_client" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "n1-standard-2"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -2004,7 +2004,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 16
+  target_size        = 4
 }
 
 # ----------------------------------------------------------------------------------------
