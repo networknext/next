@@ -22,6 +22,7 @@ TODO
 
 	Scale up to as many raspberry clients as we can do with n1-standard-2
 
+	Scale up to 10k real clients.
 
 
 
@@ -32,7 +33,15 @@ TODO
 
 
 
+	--------------
 
+	Fallback to direct and retries graphs are not showing properly again. WTF
+
+	--------------
+
+	uPlot graphs really need to calculate the real maximum from the data passed in
+
+	In so many cases, they fail to calculate it. It's extremely annoying.
 
 	--------------
 
