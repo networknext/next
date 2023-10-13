@@ -2003,7 +2003,6 @@ module "raspberry_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    DEBUG_LOGS=1
     REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
     EOF
     sudo systemctl start app.service
@@ -2044,8 +2043,6 @@ module "raspberry_server" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    DEBUG_LOGS=1
-    NEXT_LOG_LEVEL=4
     NEXT_DATACENTER=cloud
     NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
     NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"
@@ -2066,7 +2063,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 8
+  target_size        = 32
 }
 
 # ----------------------------------------------------------------------------------------
@@ -2084,8 +2081,6 @@ module "raspberry_client" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    DEBUG_LOGS=1
-    NEXT_LOG_LEVEL=4
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=1000
@@ -2105,7 +2100,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 1
+  target_size        = 10
 }
 
 # ----------------------------------------------------------------------------------------
