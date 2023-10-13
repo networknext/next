@@ -18,7 +18,7 @@ type RedisCountersConfig struct {
 	MessageChannelSize int
 	Retention          int
 	SumWindow          int // the time period to sum into a single sample in milliseconds. default is 1 minute.
-	DisplayWindow      int // how far back from current time to query summed samples in milliseconds. default is 1 hour.
+	DisplayWindow      int // how far back from current time to query summed samples in milliseconds. default is 24 hours.
 }
 
 // -------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ func CreateRedisCountersPublisher(ctx context.Context, config RedisCountersConfi
 	}
 
 	if config.Retention == 0 {
-		config.Retention = 3600 * 1000 // 1 hour in milliseconds
+		config.Retention = 86400 * 1000 // 24 hours in milliseconds
 	}
 
 	if config.SumWindow == 0 {
@@ -179,7 +179,7 @@ func CreateRedisCountersWatcher(ctx context.Context, config RedisCountersConfig)
 	}
 
 	if config.DisplayWindow == 0 {
-		config.DisplayWindow = 3600 * 1000 // 1 hour in milliseconds
+		config.DisplayWindow = 86400 * 1000 // 24 hours in milliseconds
 	}
 
 	watcher := &RedisCountersWatcher{}
