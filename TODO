@@ -2,7 +2,9 @@ DONE
 
 TODO
 
-	Seems that dev is a bit underpowered somewhere. It keeps dropping to 0 sessions over and over.
+	Bring production back up
+
+	Make sure in production we can scale up and down the server backends and not fallback to direct
 
 	--------------
 
@@ -22,10 +24,6 @@ TODO
 
 	--------------
 
-	Make sure in production we can scale down the server backends and not fallback to direct
-
-	--------------
-
 
 
 
@@ -40,6 +38,10 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	In mobile, the graphs in buyer and admin and relays should probably go back only 1hr, but in PC they can go back 24 hours?
 
 	--------------
 
