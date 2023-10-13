@@ -2,6 +2,8 @@ DONE
 
 TODO
 
+	Make sure in production we can scale down the server backends and not fallback to direct
+
 	--------------
 
 	Debug why sessions aren't taking network next in load test.
@@ -17,10 +19,6 @@ TODO
 	--------------
 
 	Setup projects and service accounts with terraform
-
-	--------------
-
-	Make sure in production we can scale down the server backends and not fallback to direct
 
 	--------------
 
