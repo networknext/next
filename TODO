@@ -8,6 +8,10 @@ TODO
 
 	--------------
 
+	Smooth out the session counts by standardizing raspberry client session length and randomizing start time against that length
+
+	--------------
+
 	Debug why sessions aren't taking network next in load test.
 
 	--------------
