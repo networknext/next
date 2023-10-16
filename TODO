@@ -18,11 +18,9 @@ DONE
 
 	Verify session ramp up is now smooth
 
-TODO
-
 	Update staging so we create the server backend with tier 1 bandwidth in tf
 
-	--------------
+TODO
 
 	Update staging so we create the redis cluster instances with tf
 

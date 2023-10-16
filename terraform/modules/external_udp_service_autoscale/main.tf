@@ -6,6 +6,10 @@ terraform {
       source = "hashicorp/google"
       version = "4.51.0"
     }
+    google-beta = {
+      source = "hashicorp/google-beta"
+      version = "4.51.0"
+    }
   }
 }
 
@@ -63,6 +67,9 @@ resource "google_compute_region_backend_service" "service" {
 }
 
 resource "google_compute_instance_template" "service" {
+
+  provider     = google-beta
+
   name         = "${var.service_name}-${var.tag}${var.extra}"
   machine_type = var.machine_type
 
