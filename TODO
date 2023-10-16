@@ -26,9 +26,19 @@ DONE
 
 	Debug why the route matrix is all red in staging. Was just not using https to talk to relay backend... so dumb.
 
-TODO
-
 	Debug why we still don't see a green route matrix...
+
+	Why are we only seeing the first 100 relays online?
+
+	This lends to the idea that maybe there is something with with the %03d relay number somewhere?
+
+	Review the staging.sql being used...
+
+	I can't see anything wrong with staging.sql
+
+	The relay backend is getting killed over and over. It doesn't have enough memory. This explains why there is no quality route matrix. It's not alive long enough to create one that is valid past history buffer size.
+
+TODO
 
 	--------------
 

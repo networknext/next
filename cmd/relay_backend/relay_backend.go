@@ -669,7 +669,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 				// todo
 				core.Debug("update has %d samples:", numSamples)
 				for i := 0; i < numSamples; i++ {
-					core.Debug("%d: id = %016x, rtt = %d, jitter = %d, pl = %.1f", i, relayUpdateRequest.SampleRelayId[i], relayUpdateRequest.SampleRTT[i], relayUpdateRequest.SampleJitter[i], relayUpdateRequest.SamplePacketLoss[i] / 65535.0)
+					core.Debug("%d: id = %016x, rtt = %d", i, relayUpdateRequest.SampleRelayId[i], relayUpdateRequest.SampleRTT[i])
 				}
 
 				// todo
