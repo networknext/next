@@ -72,6 +72,10 @@ resource "google_compute_instance_template" "service" {
     access_config {}
   }
 
+  network_performance_config {
+    total_egress_bandwidth_tier = "TIER_1"
+  }
+
   tags = var.tags
 
   disk {

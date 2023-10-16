@@ -20,6 +20,14 @@ DONE
 
 TODO
 
+	Update staging so we create the server backend with tier 1 bandwidth in tf
+
+	--------------
+
+	Update staging so we create the redis cluster instances with tf
+
+	--------------
+
 	Debug why sessions aren't taking network next in load test.
 
 	--------------
@@ -34,8 +42,6 @@ TODO
 
 	Change analytics to perform bulk inserts instead of streaming inserts.
 
-	Bulk inserts are free.
-	
 	https://cloud.google.com/bigquery/docs/write-api-batch
 
 	--------------
@@ -58,12 +64,6 @@ TODO
 
 
 Small things:
-
-	--------------
-
-	Make sure in production we can scale down the server backends and not fallback to direct
-
-	(I have confirmed that I can reproduce this in production with 100k sessions, going from 10 server backends to 1 = 20k fallback to direct)
 
 	--------------
 
@@ -97,7 +97,7 @@ Small things:
 
 	--------------
 
-	dev relays need to also be setup to use cloud storage for tf state?
+	Relays need to be setup to use cloud storage for tf state
 
 	--------------
 
