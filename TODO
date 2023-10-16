@@ -16,17 +16,19 @@ DONE
 
 	Smooth out the session counts by standardizing raspberry client session length and randomizing start time against that length
 
-TODO
-
 	Verify session ramp up is now smooth
 
-	--------------
-
-	When I deploy to dev, the admin view graphs go away for an extended period of time, which is frustrating
-
-	--------------
+TODO
 
 	Debug why sessions aren't taking network next in load test.
+
+	--------------
+
+	Extend load test up to 10M with next sessions, now that 
+
+	--------------
+
+	Fix the fallback to direct when scaling down server backend instances.
 
 	--------------
 
