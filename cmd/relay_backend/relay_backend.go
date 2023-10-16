@@ -121,6 +121,7 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
 	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
+	service.Router.HandleFunc("/costs", costsHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy, ready(service))
 
@@ -135,6 +136,33 @@ func main() {
 	UpdateInitialDelayState(service)
 
 	service.WaitForShutdown()
+}
+
+func costsHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		costMatrixMutex.RLock()
+		data := costMatrixData
+		costMatrixMutex.RUnlock()
+		costMatrix := common.CostMatrix{}
+		err := costMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no cost matrix: %v\n", err)
+			return
+		}
+		for i := range costMatrix.RelayNames {
+			fmt.Fprintf(w, "%s: ", costMatrix.RelayNames[i])
+			for j := range costMatrix.RelayNames {
+				if i == j {
+					continue
+				}
+				index := core.TriMatrixIndex(i, j)
+				cost := costMatrix.Costs[index]
+				fmt.Fprintf(w, "%d,", cost)
+			}
+			fmt.Fprintf(w, "\n")
+		}
+	}
 }
 
 func relayManagerHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
