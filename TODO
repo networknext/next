@@ -1,44 +1,40 @@
 DONE
 
-	Bring production back up
-
-	Make sure in production I can reproduce fallback to direct when scale down the server backend
-
-	Smooth out session counts by standardizing raspberry client session length
-
-	Dev generally seems like it randomly falls over
-
-	eg. no sessions
-
-	I think it is the session cruncher going down, and restarting...
-
-	Confirmed. Fixed by bumping up to n1-standard-2.
-
-	Smooth out the session counts by standardizing raspberry client session length and randomizing start time against that length
-
-	Verify session ramp up is now smooth
-
-	Update staging so we create the server backend with tier 1 bandwidth in tf
-
-	Update staging so we create the redis cluster instances with tf
-
-	Get staging back up and working with redis tf and tier 1 bw
-
-	Debug why the route matrix is all red in staging. Was just not using https to talk to relay backend... so dumb.
-
-	Debug why we still don't see a green route matrix...
-
-	Why are we only seeing the first 100 relays online?
-
-	This lends to the idea that maybe there is something with with the %03d relay number somewhere?
-
-	Review the staging.sql being used...
-
-	I can't see anything wrong with staging.sql
-
-	The relay backend is getting killed over and over. It doesn't have enough memory. This explains why there is no quality route matrix. It's not alive long enough to create one that is valid past history buffer size.
-
 TODO
+
+	Theory. Route costs are so random that the route optimization just can't hold any steady routes.
+
+	Instead of randomizing costs, make the cost a function of the hash between the two relay ids.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
+	Debug what's going on with next sessions in staging
 
 	--------------
 

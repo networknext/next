@@ -530,6 +530,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
 			if relayData.DestRelays[i] {
 				relayJSON.DestRelays[i] = "1"
+				relayJSON.DestRelayNames = append(relayJSON.DestRelayNames, relayData.RelayNames[i])
 			} else {
 				relayJSON.DestRelays[i] = "0"
 			}
@@ -659,21 +660,9 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				// process samples in the relay update (this drives the cost matrix...)
 
-				// todo
-				core.Debug("=================================================================================")
-
 				core.Debug("[%s] received update for %s [%016x]", relayAddress.String(), relayName, relayId)
 
 				numSamples := int(relayUpdateRequest.NumSamples)
-
-				// todo
-				core.Debug("update has %d samples:", numSamples)
-				for i := 0; i < numSamples; i++ {
-					core.Debug("%d: id = %016x, rtt = %d", i, relayUpdateRequest.SampleRelayId[i], relayUpdateRequest.SampleRTT[i])
-				}
-
-				// todo
-				core.Debug("=================================================================================")
 
 				currentTime := time.Now().Unix()
 
