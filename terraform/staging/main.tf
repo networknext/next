@@ -1987,7 +1987,7 @@ module "load_test_relays" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-2"
+  machine_type       = "n1-highcpu-16"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
