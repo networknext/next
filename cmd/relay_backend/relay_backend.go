@@ -122,6 +122,7 @@ func main() {
 	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 	service.Router.HandleFunc("/costs", costsHandler(service, relayManager))
+	service.Router.HandleFunc("/active_relays", activeRelaysHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy, ready(service))
 
@@ -136,6 +137,16 @@ func main() {
 	UpdateInitialDelayState(service)
 
 	service.WaitForShutdown()
+}
+
+func activeRelaysHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		activeRelays := relayManager.GetActiveRelays(time.Now().Unix())
+		for i := range activeRelays {
+			fmt.Fprintf(w, "%s, ", activeRelays[i].Name)
+		}
+		fmt.Fprintf(w, "\n")
+	}
 }
 
 func costsHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
