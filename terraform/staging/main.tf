@@ -212,7 +212,6 @@ resource "google_compute_firewall" "allow_udp_all" {
   target_tags = ["allow-udp-all"]
 }
 
-/*
 # ----------------------------------------------------------------------------------------
 
 resource "cloudflare_record" "api_domain" {
@@ -2059,4 +2058,3 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
-*/
