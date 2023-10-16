@@ -110,7 +110,7 @@ func RunRelay(service *common.Service, index int) {
 				for i := 0; i < int(packet.NumSamples); i++ {
 					combo := fmt.Sprintf("%s-%d-%d", address, index, i)
 					hash := common.HashString(combo)
-					packet.SampleRTT[i] = uint8(hash % 100)
+					packet.SampleRTT[i] = uint8(hash % 10)
 				}
 
 				// write relay update packet

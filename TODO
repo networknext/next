@@ -1,40 +1,14 @@
 DONE
 
-TODO
-
 	Theory. Route costs are so random that the route optimization just can't hold any steady routes.
 
 	Instead of randomizing costs, make the cost a function of the hash between the two relay ids.
 
+	This should fix everything.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Debug what's going on with next sessions in staging
+TODO
+	
+	Verify next sessions fix
 
 	--------------
 
@@ -70,6 +44,10 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	We need a non-paginated way to get set of database relays for "next relays"
 
 	--------------
 
