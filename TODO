@@ -20,17 +20,15 @@ DONE
 
 	Update staging so we create the server backend with tier 1 bandwidth in tf
 
-TODO
-
 	Update staging so we create the redis cluster instances with tf
 
-	--------------
+	Get staging back up and working with redis tf and tier 1 bw
 
-	Debug why sessions aren't taking network next in load test.
+	Debug why the route matrix is all red in staging. Was just not using https to talk to relay backend... so dumb.
 
-	--------------
+TODO
 
-	Extend load test up to 10M with next sessions, now that 
+	Extend load test up to 10M with next sessions, now that we have next sessions *and* we have tier 1 networking *and* the c3 quota has been increased.
 
 	--------------
 
@@ -62,6 +60,10 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	Current sessions on server doesn't seem to be correct, or at least, it is 181 when it should be just 1...
 
 	--------------
 

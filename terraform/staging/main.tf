@@ -1978,7 +1978,7 @@ module "load_test_relays" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_relays.tar.gz
     cat <<EOF > /app/app.env
-    RELAY_BACKEND_HOSTNAME=http://${module.relay_gateway.address}
+    RELAY_BACKEND_HOSTNAME="https://relay-staging.${var.cloudflare_domain}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
     EOF

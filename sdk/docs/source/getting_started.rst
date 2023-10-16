@@ -95,13 +95,13 @@ The server output should look like this:
 	root@linux:~/sdk# ./bin/upgraded_server
 	0.000317: info: customer private key override
 	0.000342: info: found valid customer private key
-	0.000347: info: override next hostname: 'prod.spacecats.net'
+	0.000347: info: override next hostname: 'server.virtualgo.net'
 	0.000368: info: server sdk version is 4.0.16
 	0.000377: info: server address override: '173.255.241.176:50000'
 	0.000387: info: server datacenter is 'linode.fremont'
 	0.000419: info: server bound to 0.0.0.0:50000
 	0.001378: info: server started on 173.255.241.176:50000
-	0.001445: info: server resolving backend hostname 'prod.spacecats.net'
+	0.001445: info: server resolving backend hostname 'server.virtualgo.net'
 	0.001572: info: server increased thread priority
 	0.103092: info: server resolved backend hostname to 34.121.72.52:40000
 	1.085716: info: server received init response from backend
