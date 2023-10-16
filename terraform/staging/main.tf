@@ -1614,6 +1614,7 @@ module "relay_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    DEBUG_LOGS=1
     GOOGLE_PROJECT_ID=${var.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"

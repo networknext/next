@@ -659,9 +659,21 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				// process samples in the relay update (this drives the cost matrix...)
 
+				// todo
+				core.Debug("=================================================================================")
+
 				core.Debug("[%s] received update for %s [%016x]", relayAddress.String(), relayName, relayId)
 
 				numSamples := int(relayUpdateRequest.NumSamples)
+
+				// todo
+				core.Debug("update has %d samples:", numSamples)
+				for i := 0; i < numSamples; i++ {
+					core.Debug("%d: id = %016x, rtt = %d, jitter = %d, pl = %.1f", i, relayUpdateRequest.SampleRelayId[i], relayUpdateRequest.SampleRTT[i], relayUpdateRequest.SampleJitter[i], relayUpdateRequest.SamplePacketLoss[i] / 65535.0)
+				}
+
+				// todo
+				core.Debug("=================================================================================")
 
 				currentTime := time.Now().Unix()
 

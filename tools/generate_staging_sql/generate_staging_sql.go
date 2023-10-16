@@ -75,7 +75,7 @@ INSERT INTO relays(
 VALUES(
 	'test.%03d',
 	'127.0.0.1',
-	%03d,
+	%d,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
 	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
 	(select datacenter_id from datacenters where datacenter_name = 'test.%03d')

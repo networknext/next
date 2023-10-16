@@ -28,6 +28,10 @@ DONE
 
 TODO
 
+	Debug why we still don't see a green route matrix...
+
+	--------------
+
 	Extend load test up to 10M with next sessions, now that we have next sessions *and* we have tier 1 networking *and* the c3 quota has been increased.
 
 	--------------
