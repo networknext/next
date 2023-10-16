@@ -42,7 +42,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "4.51.0"
+      version = "~> 5.0.0"
+    }
+    google-beta = {
+      source = "hashicorp/google-beta"
+      version = "~> 5.0.0"
     }
     cloudflare = {
       source  = "cloudflare/cloudflare"
@@ -56,6 +60,13 @@ terraform {
 }
 
 provider "google" {
+  credentials = file(var.google_credentials)
+  project     = var.google_project
+  region      = var.google_region
+  zone        = var.google_zone
+}
+
+provider "google-beta" {
   credentials = file(var.google_credentials)
   project     = var.google_project
   region      = var.google_region
@@ -271,9 +282,53 @@ output "redis_time_series_address" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_redis_cluster" "portal" {
+  provider       = google-beta
+  name           = "portal"
+  shard_count    = 10
+  psc_configs {
+    network = google_compute_network.staging.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
+  ]
+}
+
+resource "google_redis_cluster" "server_backend" {
+  provider       = google-beta
+  name           = "server-backend"
+  shard_count    = 10
+  psc_configs {
+    network = google_compute_network.staging.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
+  ]
+}
+
+resource "google_network_connectivity_service_connection_policy" "default" {
+  provider = google-beta
+  name = "redis"
+  location = "us-central1"
+  service_class = "gcp-memorystore-redis"
+  description   = "redis cluster service connection policy"
+  network = google_compute_network.staging.id
+  psc_config {
+    subnetworks = [google_compute_subnetwork.staging.id]
+  }
+}
+
 locals {
-  redis_portal_address = "10.0.0.52:6379"
-  redis_server_backend_address = "10.0.0.66:6379"
+  redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
+  redis_server_backend_address = "${google_redis_cluster.server_backend.discovery_endpoints[0].address}:6379"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
