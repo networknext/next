@@ -1592,6 +1592,10 @@ module "relay_gateway" {
   target_cpu               = 60
   domain                   = "relay-staging.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
+
+  depends_on = [
+    google_redis_instance.redis_relay_backend
+  ]
 }
 
 output "relay_gateway_address" {
@@ -1642,7 +1646,12 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    google_redis_instance.redis_relay_backend,
+    module.redis_time_series
+  ]
 }
 
 output "relay_backend_address" {
@@ -1695,7 +1704,10 @@ module "analytics" {
   max_size                   = 64
   target_cpu                 = 90
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic,
+    google_pubsub_subscription.pubsub_subscription
+  ]
 }
 
 output "analytics_address" {
@@ -1750,6 +1762,11 @@ module "api" {
   target_cpu               = 60
   domain                   = "api-staging.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
+
+  depends_on = [
+    google_redis_instance.redis_relay_backend,
+    google_sql_database_instance.postgres,
+  ]
 }
 
 output "api_address" {
@@ -1791,6 +1808,10 @@ module "session_cruncher" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
+
+  depends_on = [
+    module.redis_time_series
+  ]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1827,6 +1848,10 @@ module "server_cruncher" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
+
+  depends_on = [
+    module.redis_time_series
+  ]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1871,6 +1896,11 @@ module "portal_cruncher" {
   min_size           = 3
   max_size           = 64
   target_cpu         = 25
+
+  depends_on = [
+    module.redis_time_series,
+    google_redis_cluster.portal
+  ]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1924,7 +1954,11 @@ module "server_backend" {
   max_size           = 64
   target_cpu         = 25
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    google_redis_cluster.server_backend
+  ]
 }
 
 output "server_backend_address" {
@@ -1999,6 +2033,12 @@ module "load_test_relays" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 1
+
+  depends_on = [
+    google_redis_cluster.portal,
+    google_redis_cluster.server_backend,
+    google_sql_database_instance.postgres
+  ]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -2034,6 +2074,12 @@ module "load_test_servers" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 2
+
+  depends_on = [
+    google_redis_cluster.portal,
+    google_redis_cluster.server_backend,
+    google_sql_database_instance.postgres
+  ]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -2069,6 +2115,12 @@ module "load_test_sessions" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 2
+
+  depends_on = [
+    google_redis_cluster.portal,
+    google_redis_cluster.server_backend,
+    google_sql_database_instance.postgres
+  ]
 }
 
 # ----------------------------------------------------------------------------------------

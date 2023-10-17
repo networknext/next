@@ -1,142 +1,6 @@
 DONE
 
-	Seems like we really need to capture timestamp for portal session update at the time of processing (eg. start of session update), not at the time the portal cruncher processes it
-
-	This way we don't get time stretch and squeeze if the portal cruncher gets overloaded -- the data just comes in a bit late.
-
-	We need a non-paginated way to get set of database relays for "next relays"
-
-	Track number of routes in route matrix via counters sent from leader relay backend
-
-	Track most of relay analysis and relevant data in redis time series.
-
-	Grab key data like, total routes, optimize_ms and stash in admin as time series.
-
-	Display total routes, optimize_ms graphs in admin page in portal
-
-		"route_matrix_total_routes",
-		"route_matrix_bytes",
-		"route_matrix_optimize_ms",
-
-	Verify route matrix graphs are working in staging
-
-	Verify that we can scale up to 10M sessions, this time redis should not break (25 shards...)
-
-	Seeing some breakage, eg. spaced apart dots, but the data is eventually getting in, and it is not shifted left/right in time.
-
-	Some retries, but not a single fallback to direct as I ramped up past 10M sessions. Fantastic!
-
-	Seems like API crashed during the scale up. Sessions were not viewable for a period. Investigate by looking at api logs...
-
-	When I click on a server @ 10M I don't see any sessions on that server. Is this part broken at scale?
-
-	Relay graphs are fine.
-
-	Admin graphs are fine.
-
-	Map data is fine.
-
-	Check redis cluster loads...
-
-	Check portal cruncher loads
-
-	Check server backend loads
-
-	Check relay backend loads
-
-	Check session cruncher load
-
-	Check server cruncher load
-	
-	Check API logs to see why sessions were blind for a minute during ramp up. I suspect a crash...
-
-	I see this:
-
-		Oct 17 16:06:22 api-k6k3 app[1540]: error: got 504 response for http://10.0.0.2/top_servers
-		Oct 17 16:06:25 api-k6k3 app[1540]: error: got 504 response for http://10.0.0.4/top_sessions
-		Oct 17 16:06:25 api-k6k3 app[1540]: error: got 504 response for http://10.0.0.4/map_data
-		Oct 17 16:50:26 api-k6k3 app[1540]: error: failed to get server list: i/o timeout
-		Oct 17 16:50:27 api-k6k3 app[1540]: error: failed to get session list: i/o timeout
-		Oct 17 16:50:35 api-k6k3 app[1540]: error: failed to get session list: i/o timeout
-		Oct 17 16:50:45 api-k6k3 app[1540]: error: failed to get session list: i/o timeout
-		Oct 17 16:50:55 api-k6k3 app[1540]: error: failed to get server list: i/o timeout
-		Oct 17 16:50:55 api-k6k3 app[1540]: error: failed to get session list: dial tcp 10.0.0.24:11013: i/o timeout
-		Oct 17 16:50:55 api-k6k3 app[1540]: error: failed to get session list: dial tcp 10.0.0.24:11013: i/o timeout
-
-	Why would both server list and session list time out? They are totally separate services...
-
-		Oct 17 16:50:40 api-lt9b app[1537]: error: failed to get session list: dial tcp 10.0.0.25:6379: i/o timeout
-		Oct 17 16:50:59 api-lt9b app[1537]: error: failed to get session list: dial tcp 10.0.0.24:11013: i/o timeout
-
-	OK it is redis being overloaded primarily, during scale up, but then it normalizes....
-
-	I think the 504 is the session cruncher crashing at some point...
-
-	I have disabled all load test sessions
-
-	But I still see 5m sessions in session cruncher, and in portal
-
-	What in the actual fuck is going on?
-
-	I'm starting to suspect that the portal cruncher is getting behind at 10M and is a serious problem that needs to be solved.
-
-	The portal cruncher is so backed up, it is still grabbing data from redis for slice data and inserting, and it is making it look like we have ghost sessions... WOW
-
-	I had to restart the session cruncher service just to make session counts go back to zero. What the hell could be going on here?
-
 TODO
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Tasks from load test:
 
 	--------------
 
@@ -145,22 +9,16 @@ Tasks from load test:
 	Right now they are created, run without redis, don't work, and I have to deploy a second time when I first bring staging up.
 
 	--------------
-	
-	There seems to be a load related issue @ 1000 relays.
+
+	I would like to see active relay count in time series in admin view
 
 	--------------
 
-	Fix the fallback to direct when scaling down server backend instances.
+	Being able to see portal cruncher processing counts per-second would be useful, this way we can see if the portal cruncher is a bottleneck
 
 	--------------
 
-	Change analytics to perform bulk inserts instead of streaming inserts.
-
-	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	--------------
-
-	Setup projects and service accounts with terraform
+	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
 
 	--------------
 
@@ -182,6 +40,33 @@ Tasks from load test:
 
 	--------------
 
+	Still getting some data holes in session slices @ 10M. Which part is getting overloaded? Portal cruncher? Redis?
+
+	--------------
+
+	There seems to be rapid leader flapping in relay backend on deploy. You can see this by looking at oscillations in route matrix size and total routes in admin view.
+
+	Maybe modify the code so you cannot be a leader until you have a route matrix with > 0 routes?
+
+	ps. Perhaps less leader flapping, and more -- two instances both think they are the leader. Maybe this was because of the crashing though. Deploy again and see if they flap... ?
+
+	--------------
+
+	There seems to be a load related issue @ 1000 relays.
+
+	--------------
+
+	Fix the fallback to direct when scaling down server backend instances.
+
+	--------------
+
+	Change analytics to perform bulk inserts instead of streaming inserts.
+
+	https://cloud.google.com/bigquery/docs/write-api-batch
+
+	--------------
+
+
 
 
 
@@ -195,30 +80,6 @@ Tasks from load test:
 
 
 Small things:
-
-	--------------
-
-	Still getting some data holes in session slices @ 10M. Which part is getting overloaded? Portal cruncher? Redis?
-
-	--------------
-
-	I would like to see active relay count in time series in admin view
-
-	--------------
-
-	Being able to see portal cruncher processing counts per-second would be useful, this way we can see if the portal cruncher is a bottleneck
-
-	--------------
-
-	Admin message throughput as well would be interesting for sessions
-
-	--------------
-
-	There seems to be rapid leader flapping in relay backend on deploy. You can see this by looking at oscillations in route matrix size and total routes in admin view.
-
-	Maybe modify the code so you cannot be a leader until you have a route matrix with > 0 routes?
-
-	ps. Perhaps less leader flapping, and more -- two instances both think they are the leader. Maybe this was because of the crashing though. Deploy again and see if they flap... ?
 
 	--------------
 
@@ -252,19 +113,11 @@ Small things:
 
 	--------------
 
-	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
-
-	--------------
-
 	Connection type detection needs to be brought back for all platforms in the SDK. On linux, connection type was 0 -> "Unknown"
 
 	--------------
 
 	Session counts on relays being 8 when relay backend restarts seems a bit suspicious. Are we not decrementing session counts somewhere?
-
-	--------------
-
-	Relays need to be setup to use cloud storage for tf state
 
 	--------------
 
@@ -280,6 +133,18 @@ Small things:
 
 
 
+
+
+
+Finalize terraform and document:
+
+	Setup projects and service accounts with terraform
+
+	--------------
+
+	Relays need to be setup to use cloud storage for tf state
+
+	--------------
 
 
 
