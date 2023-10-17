@@ -48,8 +48,6 @@ DONE
 
 	Check server cruncher load
 	
-TODO
-
 	Check API logs to see why sessions were blind for a minute during ramp up. I suspect a crash...
 
 	I see this:
@@ -74,26 +72,21 @@ TODO
 
 	I think the 504 is the session cruncher crashing at some point...
 
-	------------------
-
 	I have disabled all load test sessions
 
 	But I still see 5m sessions in session cruncher, and in portal
 
 	What in the actual fuck is going on?
 
-	------------------
-
 	I'm starting to suspect that the portal cruncher is getting behind at 10M and is a serious problem that needs to be solved.
 
 	The portal cruncher is so backed up, it is still grabbing data from redis for slice data and inserting, and it is making it look like we have ghost sessions... WOW
 
-	------------------
-
 	I had to restart the session cruncher service just to make session counts go back to zero. What the hell could be going on here?
 
-	------------------
-	
+TODO
+
+
 
 
 
