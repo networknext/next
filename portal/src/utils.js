@@ -72,6 +72,9 @@ function getAcceleratedPercent(nextSessions, totalSessions) {
 }
 
 function custom_graph(config) {
+
+  let percent = config.percent
+
   let opts = {
     title: config.title,
     width: 0,
@@ -100,9 +103,10 @@ function custom_graph(config) {
     ],
     axes: [
       {
-        space: 40,
+        space: 60,
         incrs: [
            // minute divisors (# of secs)
+           5,
            10,
            20,
            30,
@@ -112,22 +116,33 @@ function custom_graph(config) {
            60 * 20,
            60 * 30,
            // day divisors
-           3600,
+           60 * 60,
         ],
         values: [
           // tick incr        default           year                           month    day                      hour     min                sec       mode
           [3600 * 24 * 365,   "{YYYY}",         null,                          null,    null,                    null,    null,              null,        1],
           [3600 * 24 * 28,    "{MMM}",          "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
           [3600 * 24,         "{M}/{D}",        "\n{YYYY}",                    null,    null,                    null,    null,              null,        1],
-          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",              null,    "{M}/{D}",               null,    null,              null,        1],
-          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",              null,    "{M}/{D}",               null,    null,              null,        1],
-          [10,                "",               "{M}/{D}/{YY}",                null,    "{h}:{mm}{aa}",          null,    "{h}:{mm}{aa}",    null,        1],
+          [3600,              "{h}{aa}",        "\n{M}/{D}/{YY}",              null,    "\n{M}/{D}",             null,    null,              null,        1],
+          [60,                "{h}:{mm}{aa}",   "\n{M}/{D}/{YY}",              null,    "\n{M}/{D}",             null,    null,              null,        1],
+          [10,                "",               "{h}:{mm}{aa}\n{M}/{D}/{YY}",  null,    "{h}:{mm}{aa}",          null,    "{h}:{mm}{aa}",    null,        1],
         ],
       },
       {
         side: 1,
       }
-    ]
+    ],
+    scales: {
+      y: {
+        range: (u, dataMin, dataMax) => {
+          if (percent) {
+            return [0, 100];
+          } else {
+            return [0, Math.max(dataMax*1.1, 1)]
+          }
+        }
+      },
+    },
   };
 
   let i = 0
@@ -141,8 +156,9 @@ function custom_graph(config) {
       label: config.series[i].name,
       points: {
         show: (self, si) => {
-          if (is_visible(document.getElementById('right'))) {
-            return self.series[si].width < 100
+          let element = document.getElementById('right')
+          if (element != null && is_visible(element)) {
+            return self.data[si].length < 50
           } else {
             return false
           }
@@ -150,9 +166,9 @@ function custom_graph(config) {
       },
       value: (self, v) => {
         if (v != null) {
-          return v + units
+          return v.toLocaleString() + units
         } else if (self._data[index] != null && self._data[index].length > 0) {
-          return self._data[index][self._data[index].length-1] + units
+          return (self._data[index][self._data[index].length-1]).toLocaleString() + units
         } else {
           return '--'
         }

@@ -223,15 +223,15 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 		costs[i] = 255
 	}
 
-	activeRelayHash := relayManager.GetActiveRelayHash(currentTime)
+	activeRelayMap := relayManager.GetActiveRelayMap(currentTime)
 
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
-		_, sourceActive := activeRelayHash[sourceRelayId]
+		_, sourceActive := activeRelayMap[sourceRelayId]
 		if sourceActive {
 			for j := 0; j < i; j++ {
 				destRelayId := uint64(relayIds[j])
-				_, destActive := activeRelayHash[destRelayId]
+				_, destActive := activeRelayMap[destRelayId]
 				if destActive {
 					relayManager.mutex.RLock()
 					rtt, jitter, packetLoss := relayManager.getSample(currentTime, sourceRelayId, destRelayId)
@@ -387,16 +387,16 @@ func (relayManager *RelayManager) GetActiveRelays(currentTime int64) []Relay {
 	return activeRelays
 }
 
-func (relayManager *RelayManager) GetActiveRelayHash(currentTime int64) map[uint64]Relay {
+func (relayManager *RelayManager) GetActiveRelayMap(currentTime int64) map[uint64]Relay {
 
 	activeRelays := relayManager.GetActiveRelays(currentTime)
 
-	activeRelayHash := make(map[uint64]Relay)
+	activeRelayMap := make(map[uint64]Relay)
 	for i := range activeRelays {
-		activeRelayHash[activeRelays[i].Id] = activeRelays[i]
+		activeRelayMap[activeRelays[i].Id] = activeRelays[i]
 	}
 
-	return activeRelayHash
+	return activeRelayMap
 }
 
 func (relayManager *RelayManager) GetRelaysCSV(currentTime int64, relayIds []uint64, relayNames []string, relayAddresses []net.UDPAddr) []byte {

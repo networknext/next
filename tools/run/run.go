@@ -180,6 +180,8 @@ func main() {
 		load_test_redis_streams()
 	} else if command == "load-test-redis-time-series" {
 		load_test_redis_time_series()
+	} else if command == "load-test-redis-counters" {
+		load_test_redis_counters()
 	} else if command == "load-test-optimize" {
 		load_test_optimize()
 	} else if command == "load-test-route-matrix" {
@@ -488,6 +490,10 @@ func load_test_redis_streams() {
 
 func load_test_redis_time_series() {
 	bash("go run tools/load_test_redis_time_series/load_test_redis_time_series.go")
+}
+
+func load_test_redis_counters() {
+	bash("go run tools/load_test_redis_counters/load_test_redis_counters.go")
 }
 
 func load_test_portal() {

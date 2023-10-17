@@ -20,12 +20,12 @@
 
               <tr>
                 <td class="bold">Total Sessions</td>
-                <td> {{ this.data.total_sessions}} </td>
+                <td> {{ this.data.total_sessions }} </td>
               </tr>
 
               <tr>
                 <td class="bold">Next Sessions</td>
-                <td> {{ this.data.next_sessions}} </td>
+                <td> {{ this.data.next_sessions }} </td>
               </tr>
 
               <tr>
@@ -136,6 +136,7 @@ let next_sessions_opts = custom_graph({
 
 let accelerated_percent_opts = custom_graph({
   title: "Accelerated Percent",
+  percent: true,
   series: [
     { 
       name: 'Accelerated',
@@ -180,10 +181,10 @@ async function getData(page, buyer) {
 
       data['live'] = res.data.buyer_data.live
       data['debug'] = res.data.buyer_data.debug
-      data['total_sessions'] = res.data.buyer_data.total_sessions
-      data['next_sessions'] = res.data.buyer_data.next_sessions
+      data['total_sessions'] = res.data.buyer_data.total_sessions.toLocaleString()
+      data['next_sessions'] = res.data.buyer_data.next_sessions.toLocaleString()
       data['accelerated_percent'] = getAcceleratedPercent(res.data.buyer_data.next_sessions, res.data.buyer_data.total_sessions)
-      data['servers'] = res.data.buyer_data.server_count
+      data['servers'] = res.data.buyer_data.server_count.toLocaleString()
 
       // total sessions data
 
@@ -191,7 +192,7 @@ async function getData(page, buyer) {
       let total_sessions_values = []
       let i = 0
       while (i < res.data.buyer_data.time_series_total_sessions_timestamps.length) {
-        total_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_total_sessions_timestamps[i]) / 1000000000))
+        total_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_total_sessions_timestamps[i]) / 1000))
         total_sessions_values.push(parseInt(res.data.buyer_data.time_series_total_sessions_values[i]))
         i++
       }
@@ -203,7 +204,7 @@ async function getData(page, buyer) {
       let next_sessions_values = []
       i = 0
       while (i < res.data.buyer_data.time_series_next_sessions_timestamps.length) {
-        next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_next_sessions_timestamps[i]) / 1000000000))
+        next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_next_sessions_timestamps[i]) / 1000))
         next_sessions_values.push(parseInt(res.data.buyer_data.time_series_next_sessions_values[i]))
         i++
       }
@@ -215,7 +216,7 @@ async function getData(page, buyer) {
       let accelerated_percent_values = []
       i = 0
       while (i < res.data.buyer_data.time_series_accelerated_percent_timestamps.length) {
-        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_accelerated_percent_timestamps[i]) / 1000000000))
+        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_accelerated_percent_timestamps[i]) / 1000))
         accelerated_percent_values.push(parseInt(res.data.buyer_data.time_series_accelerated_percent_values[i]))
         i++
       }
@@ -227,7 +228,7 @@ async function getData(page, buyer) {
       let server_count_values = []
       i = 0
       while (i < res.data.buyer_data.time_series_server_count_timestamps.length) {
-        server_count_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_server_count_timestamps[i]) / 1000000000))
+        server_count_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_server_count_timestamps[i]) / 1000))
         server_count_values.push(parseInt(res.data.buyer_data.time_series_server_count_values[i]))
         i++
       }
@@ -295,6 +296,7 @@ export default {
   },
 
   beforeUnmount() {
+    document.getElementById("buyer-input").removeEventListener('keyup', this.onKeyUp);
     this.total_sessions.destroy()
     this.next_sessions.destroy()
     this.accelerated_percent.destroy()
@@ -337,21 +339,21 @@ export default {
           this.accelerated_percent.setSize({width: graph_width, height: graph_height})
           this.server_count.setSize({width: graph_width, height: graph_height})
         }
-
-        // show legends in desktop, hide them in mobile layout
-
-        this.show_legend = right_visible
-        var elements = document.getElementsByClassName('u-legend');
-        let i = 0;
-        while (i < elements.length) {
-          if (this.show_legend) {
-            elements[i].style.display = 'block';
-          } else {
-            elements[i].style.display = 'none';
-          }
-          i++;
-        }
       }    
+
+      // show legends in desktop, hide them in mobile layout
+
+      this.show_legend = right_visible
+      var elements = document.getElementsByClassName('u-legend');
+      let i = 0;
+      while (i < elements.length) {
+        if (this.show_legend) {
+          elements[i].style.display = 'block';
+        } else {
+          elements[i].style.display = 'none';
+        }
+        i++;
+      }
     },
 
     async getData(page, buyer) {

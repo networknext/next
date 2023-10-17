@@ -43,7 +43,9 @@ var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
 var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
-var timeSeriesWatcher *common.RedisTimeSeriesWatcher
+var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
+var relayTimeSeriesWatcher *common.RedisTimeSeriesWatcher
+var countersWatcher *common.RedisCountersWatcher
 
 var enableRedisTimeSeries bool
 
@@ -155,15 +157,17 @@ func main() {
 
 		if enableRedisTimeSeries {
 
+			// create buyer time series watcher
+
 			timeSeriesConfig := common.RedisTimeSeriesConfig{
 				RedisHostname: redisTimeSeriesHostname,
 				RedisCluster:  redisTimeSeriesCluster,
 			}
 
 			var err error
-			timeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+			buyerTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
 			if err != nil {
-				core.Error("could not create redis time series watcher: %v", err)
+				core.Error("could not create buyer time series watcher: %v", err)
 				os.Exit(1)
 			}
 
@@ -178,18 +182,79 @@ func main() {
 						if database == nil {
 							break
 						}
-						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count"}
+						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
 						buyerIds := database.GetBuyerIds()
 						for i := range buyerIds {
-							keys = append(keys, fmt.Sprintf("%016x_total_sessions", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("%016x_next_sessions", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("%016x_accelerated_percent", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("%016x_server_count", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_total_sessions", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_next_sessions", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("buyer_%016x_server_count", buyerIds[i]))
 						}
-						timeSeriesWatcher.SetKeys(keys)
+						buyerTimeSeriesWatcher.SetKeys(keys)
 					}
 				}
 			}(service.Context)
+
+			// create relay time series watcher
+
+			relayTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+			if err != nil {
+				core.Error("could not create relay time series watcher: %v", err)
+				os.Exit(1)
+			}
+
+			go func(ctx context.Context) {
+				ticker := time.NewTicker(time.Second)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						database := service.Database()
+						if database == nil {
+							break
+						}
+						keys := []string{}
+						relayIds := database.GetRelayIds()
+						for i := range relayIds {
+							keys = append(keys, fmt.Sprintf("relay_%016x_session_count", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_packets_sent_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_packets_received_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_near_pings_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_relay_pings_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_num_routable", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_num_unroutable", relayIds[i]))
+						}
+						relayTimeSeriesWatcher.SetKeys(keys)
+					}
+				}
+			}(service.Context)
+
+			// create the counters watcher
+
+			countersConfig := common.RedisCountersConfig{
+				RedisHostname: redisTimeSeriesHostname,
+				RedisCluster:  redisTimeSeriesCluster,
+			}
+
+			countersWatcher, err = common.CreateRedisCountersWatcher(service.Context, countersConfig)
+			if err != nil {
+				core.Error("could not create counters watcher: %v", err)
+				os.Exit(1)
+			}
+
+			keys := []string{
+				"session_update",
+				"server_update",
+				"retry",
+				"fallback_to_direct",
+			}
+
+			countersWatcher.SetKeys(keys)
 		}
 
 		if len(redisPortalCluster) > 0 {
@@ -215,6 +280,7 @@ func main() {
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
 		service.Router.HandleFunc("/portal/relays", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relays/{page}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/all_relays", isAuthorized(portalAllRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/buyers", isAuthorized(portalBuyersHandler))
@@ -232,6 +298,8 @@ func main() {
 		service.Router.HandleFunc("/portal/map_data", isAuthorized(portalMapDataHandler))
 
 		service.Router.HandleFunc("/portal/cost_matrix", isAuthorized(portalCostMatrixHandler))
+
+		service.Router.HandleFunc("/portal/admin_data", isAuthorized(portalAdminDataHandler))
 	}
 
 	if enableDatabase {
@@ -696,25 +764,43 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayData struct {
-	RelayName      string  `json:"relay_name"`
-	RelayId        uint64  `json:"relay_id,string"`
-	RelayAddress   string  `json:"relay_address"`
-	NumSessions    uint32  `json:"num_sessions"`
-	MaxSessions    uint32  `json:"max_sessions"`
-	StartTime      uint64  `json:"start_time,string"`
-	RelayFlags     uint64  `json:"relay_flags,string"`
-	RelayVersion   string  `json:"relay_version"`
-	SellerId       uint64  `json:"seller_id,string"`
-	SellerName     string  `json:"seller_name"`
-	SellerCode     string  `json:"seller_code"`
-	DatacenterId   uint64  `json:"datacenter_id,string"`
-	DatacenterName string  `json:"datacenter_name"`
-	Uptime         uint64  `json:"uptime,string"`
-	Latitude       float32 `json:"latitude"`
-	Longitude      float32 `json:"longitude"`
+	RelayName                                      string   `json:"relay_name"`
+	RelayId                                        uint64   `json:"relay_id,string"`
+	RelayAddress                                   string   `json:"relay_address"`
+	NumSessions                                    uint32   `json:"num_sessions"`
+	MaxSessions                                    uint32   `json:"max_sessions"`
+	StartTime                                      uint64   `json:"start_time,string"`
+	RelayFlags                                     uint64   `json:"relay_flags,string"`
+	RelayVersion                                   string   `json:"relay_version"`
+	SellerId                                       uint64   `json:"seller_id,string"`
+	SellerName                                     string   `json:"seller_name"`
+	SellerCode                                     string   `json:"seller_code"`
+	DatacenterId                                   uint64   `json:"datacenter_id,string"`
+	DatacenterName                                 string   `json:"datacenter_name"`
+	Uptime                                         uint64   `json:"uptime,string"`
+	Latitude                                       float32  `json:"latitude"`
+	Longitude                                      float32  `json:"longitude"`
+	TimeSeries_SessionCount_Timestamps             []uint64 `json:"time_series_session_count_timestamps,string"`
+	TimeSeries_SessionCount_Values                 []int    `json:"time_series_session_count_values"`
+	TimeSeries_BandwidthSentKbps_Timestamps        []uint64 `json:"time_series_bandwidth_sent_kbps_timestamps,string"`
+	TimeSeries_BandwidthSentKbps_Values            []int    `json:"time_series_bandwidth_sent_kbps_values"`
+	TimeSeries_BandwidthReceivedKbps_Timestamps    []uint64 `json:"time_series_bandwidth_received_kbps_timestamps,string"`
+	TimeSeries_BandwidthReceivedKbps_Values        []int    `json:"time_series_bandwidth_received_kbps_values"`
+	TimeSeries_PacketsSentPerSecond_Timestamps     []uint64 `json:"time_series_packets_sent_per_second_timestamps,string"`
+	TimeSeries_PacketsSentPerSecond_Values         []int    `json:"time_series_packets_sent_per_second_values"`
+	TimeSeries_PacketsReceivedPerSecond_Timestamps []uint64 `json:"time_series_packets_received_per_second_timestamps,string"`
+	TimeSeries_PacketsReceivedPerSecond_Values     []int    `json:"time_series_packets_received_per_second_values"`
+	TimeSeries_NearPingsPerSecond_Timestamps       []uint64 `json:"time_series_near_pings_per_second_timestamps,string"`
+	TimeSeries_NearPingsPerSecond_Values           []int    `json:"time_series_near_pings_per_second_values"`
+	TimeSeries_RelayPingsPerSecond_Timestamps      []uint64 `json:"time_series_relay_pings_per_second_timestamps,string"`
+	TimeSeries_RelayPingsPerSecond_Values          []int    `json:"time_series_relay_pings_per_second_values"`
+	TimeSeries_NumRoutable_Timestamps              []uint64 `json:"time_series_num_routable_timestamps,string"`
+	TimeSeries_NumRoutable_Values                  []int    `json:"time_series_num_routable_values"`
+	TimeSeries_NumUnroutable_Timestamps            []uint64 `json:"time_series_num_unroutable_timestamps,string"`
+	TimeSeries_NumUnroutable_Values                []int    `json:"time_series_num_unroutable_values"`
 }
 
-func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData) {
+func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
 	output.RelayName = input.RelayName
 	output.RelayId = input.RelayId
 	output.RelayAddress = input.RelayAddress
@@ -736,6 +822,19 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 			output.Latitude = relay.Datacenter.Latitude
 			output.Longitude = relay.Datacenter.Longitude
 		}
+	}
+	if withTimeSeries {
+		relayTimeSeriesWatcher.Lock()
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_SessionCount_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_BandwidthSentKbps_Timestamps, &output.TimeSeries_BandwidthSentKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_BandwidthReceivedKbps_Timestamps, &output.TimeSeries_BandwidthReceivedKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsSentPerSecond_Timestamps, &output.TimeSeries_PacketsSentPerSecond_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsReceivedPerSecond_Timestamps, &output.TimeSeries_PacketsReceivedPerSecond_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NearPingsPerSecond_Timestamps, &output.TimeSeries_NearPingsPerSecond_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_RelayPingsPerSecond_Timestamps, &output.TimeSeries_RelayPingsPerSecond_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumRoutable_Timestamps, &output.TimeSeries_NumRoutable_Values, fmt.Sprintf("relay_%016x_num_routable", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumUnroutable_Timestamps, &output.TimeSeries_NumUnroutable_Values, fmt.Sprintf("relay_%016x_num_unroutable", input.RelayId))
+		relayTimeSeriesWatcher.Unlock()
 	}
 }
 
@@ -763,7 +862,23 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	response.OutputPage = outputPage
 	response.NumPages = numPages
 	for i := range response.Relays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i])
+		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func portalAllRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
+	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
+	response := PortalRelaysResponse{}
+	database := service.Database()
+	response.Relays = make([]PortalRelayData, len(relays))
+	for i := range response.Relays {
+		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -802,7 +917,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upgradePortalRelayData(database, relayData, &response.RelayData)
+	upgradePortalRelayData(database, relayData, &response.RelayData, true)
 
 	w.WriteHeader(http.StatusOK)
 
@@ -862,12 +977,12 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	}
 
 	if enableRedisTimeSeries && withTimeSeries {
-		timeSeriesWatcher.Lock()
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("%016x_total_sessions", input.Id))
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("%016x_next_sessions", input.Id))
-		timeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("%016x_accelerated_percent", input.Id))
-		timeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("%016x_server_count", input.Id))
-		timeSeriesWatcher.Unlock()
+		buyerTimeSeriesWatcher.Lock()
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("buyer_%016x_total_sessions", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("buyer_%016x_next_sessions", input.Id))
+		buyerTimeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("buyer_%016x_accelerated_percent", input.Id))
+		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("buyer_%016x_server_count", input.Id))
+		buyerTimeSeriesWatcher.Unlock()
 	}
 }
 
@@ -1026,7 +1141,7 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Relays = make([]PortalRelayData, len(relays))
 	for i := range response.Relays {
-		upgradePortalRelayData(database, &relays[i], &response.Relays[i])
+		upgradePortalRelayData(database, &relays[i], &response.Relays[i], false)
 	}
 
 	response.OutputPage = outputPage
@@ -1115,7 +1230,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	datacenter := database.GetDatacenterByName(datacenterName)
-	if datacenter != nil {
+	if datacenter == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -1155,7 +1270,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Relays = make([]PortalRelayData, len(datacenterRelays))
 	for i := range datacenterRelays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i])
+		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -1181,6 +1296,66 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	data := common.LoadMasterServiceData(service.Context, redisRelayBackendClient, "relay_backend", "cost_matrix")
 	w.Write(data)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+type PortalAdminDataResponse struct {
+
+	TimeSeries_TotalSessions_Timestamps      []uint64          `json:"time_series_total_sessions_timestamps,string"`
+	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
+	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
+	TimeSeries_NextSessions_Values           []int             `json:"time_series_next_sessions_values"`
+	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
+	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
+	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
+	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
+	TimeSeries_TotalRoutes_Timestamps        []uint64          `json:"time_series_total_routes_timestamps,string"`
+	TimeSeries_TotalRoutes_Values            []int             `json:"time_series_total_routes_values"`
+	TimeSeries_RouteMatrixBytes_Timestamps   []uint64          `json:"time_series_route_matrix_bytes_timestamps,string"`
+	TimeSeries_RouteMatrixBytes_Values       []int             `json:"time_series_route_matrix_bytes_values"`
+	TimeSeries_OptimizeMs_Timestamps         []uint64          `json:"time_series_optimize_ms_timestamps,string"`
+	TimeSeries_OptimizeMs_Values             []int             `json:"time_series_optimize_ms_values"`
+
+	Counters_SessionUpdate_Timestamps        []uint64          `json:"counters_session_update_timestamps,string"`
+	Counters_SessionUpdate_Values            []int             `json:"counters_session_update_values"`
+	Counters_ServerUpdate_Timestamps         []uint64          `json:"counters_server_update_timestamps,string"`
+	Counters_ServerUpdate_Values             []int             `json:"counters_server_update_values"`
+	Counters_Retry_Timestamps                []uint64          `json:"counters_retry_timestamps,string"`
+	Counters_Retry_Values                    []int             `json:"counters_retry_values"`
+	Counters_FallbackToDirect_Timestamps     []uint64          `json:"counters_fallback_to_direct_timestamps,string"`
+	Counters_FallbackToDirect_Values         []int             `json:"counters_fallback_to_direct_values"`
+}
+
+func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
+
+	response := PortalAdminDataResponse{}
+
+	if enableRedisTimeSeries {
+
+		buyerTimeSeriesWatcher.Lock()
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalSessions_Timestamps, &response.TimeSeries_TotalSessions_Values, "total_sessions")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
+		buyerTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalRoutes_Timestamps, &response.TimeSeries_TotalRoutes_Values, "route_matrix_total_routes")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_RouteMatrixBytes_Timestamps, &response.TimeSeries_RouteMatrixBytes_Values, "route_matrix_bytes")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_OptimizeMs_Timestamps, &response.TimeSeries_OptimizeMs_Values, "route_matrix_optimize_ms")
+		buyerTimeSeriesWatcher.Unlock()
+
+		countersWatcher.Lock()
+		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
+		countersWatcher.GetIntValues(&response.Counters_ServerUpdate_Timestamps, &response.Counters_ServerUpdate_Values, "server_update")
+		countersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
+		countersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
+		countersWatcher.Unlock()
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(response)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

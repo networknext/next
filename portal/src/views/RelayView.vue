@@ -49,9 +49,17 @@
 
         <div id="sessions" class="graph"/>
         
-        <div id="bandwidth" class="graph"/>
-        
-        <div id="packets" class="graph"/>
+        <div id="bandwidth_sent" class="graph"/>
+
+        <div id="bandwidth_received" class="graph"/>
+
+        <div id="packets_sent" class="graph"/>
+
+        <div id="packets_received" class="graph"/>
+
+        <div id="near_pings" class="graph"/>
+
+        <div id="relay_pings" class="graph"/>
 
       </div>
 
@@ -116,294 +124,110 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import { nice_uptime } from '@/utils.js'
-import { is_visible } from '@/utils.js'
+import {nice_uptime, is_visible, custom_graph} from '@/utils.js'
 
-const arr = [
-  [
-    1585724400,
-    1586156400,
-    1586440800,
-    1586959200,
-    1587452400,
-    1587711600,
-    1588143600,
-    1588600800,
-    1588860000,
-    1589353200,
-    1589785200,
-    1590044400,
-    1590588000,
-    1591020000,
-    1591340400,
-    1591772400,
-    1592204400,
-    1592488800,
-    1592920800,
-    1593180000,
-    1593673200,
-    1594191600,
-    1594648800,
-    1594908000,
-    1595340000,
-    1595833200,
-    1596092400,
-    1596549600,
-    1596808800,
-    1597240800,
-    1597734000,
-    1597993200,
-    1598450400,
-    1598882400,
-    1599141600,
-    1599721200,
-    1600153200,
-    1600437600,
-    1600869600,
-    1601301600,
-    1601622000,
-    1602054000,
-    1602511200,
-    1602770400,
-    1603202400,
-    1603695600,
-    1603954800,
-    1604412000,
-    1604671200,
-    1605103200,
-    1605596400,
-    1605855600,
-    1606287600,
-    1606831200,
-    1607090400,
-    1607583600,
-    1608015600,
-    1608274800,
-    1608732000,
-    1609250400,
-    1609830000,
-    1610089200,
-    1610521200,
-    1611064800,
-    1611324000,
-    1611817200,
-    1612249200,
-    1612508400,
-    1612965600,
-    1613484000,
-    1613977200,
-    1614236400,
-    1614668400,
-    1614952800,
-    1615384800,
-    1615878000,
-    1616137200,
-    1616569200,
-    1617026400,
-    1617285600,
-    1617865200,
-    1618297200,
-    1618556400,
-    1619013600,
-    1619449200,
-    1619712000,
-    1620205200,
-    1620637200,
-    1620972000,
-    1621404000,
-    1621836000,
-    1622120400,
-    1622638800,
-    1623132000,
-    1623391200,
-    1623823200,
-    1624280400,
-    1624539600,
-    1625032800,
-    1625248800
-  ],
-  [
-    0,
-    1.59,
-    10.97,
-    10.41,
-    10.4,
-    12,
-    8.34,
-    11.16,
-    14.47,
-    14.65,
-    14.61,
-    14.98,
-    17.08,
-    15.94,
-    13.88,
-    11.07,
-    13.41,
-    14.3,
-    21.64,
-    15.8,
-    24.42,
-    24.63,
-    23.65,
-    24.4,
-    25.03,
-    15.07,
-    5.21,
-    16.4,
-    17.51,
-    19.66,
-    28.19,
-    19.21,
-    18.51,
-    18.47,
-    18.09,
-    18.83,
-    19.24,
-    17.51,
-    18.35,
-    19.15,
-    18.61,
-    18.72,
-    19.76,
-    18.76,
-    18.66,
-    19.45,
-    20.37,
-    20.98,
-    21.09,
-    21.66,
-    21.86,
-    21.93,
-    22.45,
-    22.34,
-    21.33,
-    21.21,
-    21.08,
-    22.18,
-    22.19,
-    22.88,
-    22.81,
-    23.31,
-    23.72,
-    23.47,
-    24.47,
-    24.38,
-    23.25,
-    27.07,
-    27.55,
-    30.03,
-    28.1,
-    30.6,
-    31.18,
-    24.95,
-    31.62,
-    35.54,
-    34.65,
-    34.45,
-    35.1,
-    35.65,
-    36.38,
-    35.87,
-    36.49,
-    35.65,
-    37.81,
-    38.15,
-    36.13,
-    36.46,
-    32.81,
-    34.92,
-    37.28,
-    38.2,
-    40.38,
-    40.08,
-    39.98,
-    39.35,
-    37.98,
-    41.13,
-    42.74,
-    42.177
-  ]
-];
-
-let sessions_opts = {
+let sessions_opts = custom_graph({
   title: "Sessions",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Sessions',
+      stroke: "#11AA44",
+      fill: "rgba(10,100,10,0.1)",
+      units: '',
+    },
   ]
-};
+})
 
-let bandwidth_opts = {
-  title: "Bandwidth",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
+let bandwidth_sent_opts = custom_graph({
+  title: "Bandwidth Sent",
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Bandwidth Sent',
+      stroke: "orange",
+      fill: "rgba(255, 128, 0,0.1)",
+      units: 'kbps',
+    },
   ]
-};
+})
 
-let packets_opts = {
-  title: "Packets",
-  width: 0,
-  height: 450,
-  legend: {
-    show: false
-  },
+let bandwidth_received_opts = custom_graph({
+  title: "Bandwidth Received",
   series: [
-    {},
-    {
-      stroke: "green",
-      fill: "rgba(100,100,100,0.1)"
-    }
-  ],
-  axes: [
-    {},
-    {
-      side: 1
-    }
+    { 
+      name: 'Bandwidth Received',
+      stroke: "#f5d742",
+      fill: "rgba(245, 215, 60, 0.1)",
+      units: 'kbps',
+    },
   ]
-};
+})
 
-const data = arr;
+let packets_sent_opts = custom_graph({
+  title: "Packets Sent",
+  series: [
+    { 
+      name: 'Packets Sent',
+      stroke: "rgb(54, 141, 227)",
+      fill: "rgba(54, 141, 227,0.1)",
+      units: ' per-second',
+    },
+  ]
+})
+
+let packets_received_opts = custom_graph({
+  title: "Packets Received",
+  series: [
+    { 
+      name: 'Packets Received',
+      stroke: "rgb(115, 158, 201)",
+      fill: "rgba(115, 158, 201,0.1)",
+      units: ' per-second',
+    },
+  ]
+})
+
+let near_pings_opts = custom_graph({
+  title: "Near Pings",
+  series: [
+    { 
+      name: 'Near Pings',
+      stroke: "rgb(146, 81, 181)",
+      fill: "rgba(146, 81, 181,0.1)",
+      units: ' per-second',
+    },
+  ]
+})
+
+let relay_pings_opts = custom_graph({
+  title: "Relay Pings",
+  series: [
+    { 
+      name: 'Relay Pings',
+      stroke: "rgb(100, 179, 134)",
+      fill: "rgba(100, 179, 134,0.1)",
+      units: ' per-second',
+    },
+  ]
+})
 
 async function getData(page, relay_name) {
+
   try {
+
     if (page == null) {
       page = 0
     }
+
     const url = process.env.VUE_APP_API_URL + '/portal/relay/' + relay_name
+
     const res = await axios.get(url);
+
     let data = {}
     data['relay_name'] = relay_name
     if (res.data.relay_data !== null) {
+
+      // relay data
+
       data["sessions"] = res.data.relay_data.num_sessions
       data["seller_name"] = res.data.relay_data.seller_name
       data["seller_code"] = res.data.relay_data.seller_code
@@ -412,9 +236,96 @@ async function getData(page, relay_name) {
       data["uptime"] = nice_uptime(res.data.relay_data.uptime)     
       data["latitude"] = res.data.relay_data.latitude              
       data["longitude"] = res.data.relay_data.longitude            
+
+      // session count
+
+      let sessions_timestamps = []  
+      let sessions_values = []
+      let i = 0
+      while (i < res.data.relay_data.time_series_session_count_timestamps.length) {
+        sessions_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_session_count_timestamps[i]) / 1000.0))
+        sessions_values.push(parseInt(res.data.relay_data.time_series_session_count_values[i]))
+        i++
+      }
+      data.sessions_data = [sessions_timestamps, sessions_values]
+
+      // bandwidth sent per-second
+
+      let bandwidth_sent_timestamps = []  
+      let bandwidth_sent_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps.length) {
+        bandwidth_sent_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps[i]) / 1000.0))
+        bandwidth_sent_values.push(parseInt(res.data.relay_data.time_series_bandwidth_sent_kbps_values[i]))
+        i++
+      }
+      data.bandwidth_sent_data = [bandwidth_sent_timestamps, bandwidth_sent_values]
+
+      // bandwidth received per-second
+
+      let bandwidth_received_timestamps = []  
+      let bandwidth_received_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_bandwidth_received_kbps_timestamps.length) {
+        bandwidth_received_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_timestamps[i]) / 1000.0))
+        bandwidth_received_values.push(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_values[i]))
+        i++
+      }
+      data.bandwidth_received_data = [bandwidth_received_timestamps, bandwidth_received_values]
+
+      // packets sent per-second
+
+      let packets_sent_timestamps = []  
+      let packets_sent_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_packets_sent_per_second_timestamps.length) {
+        packets_sent_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_packets_sent_per_second_timestamps[i]) / 1000.0))
+        packets_sent_values.push(parseInt(res.data.relay_data.time_series_packets_sent_per_second_values[i]))
+        i++
+      }
+      data.packets_sent_data = [packets_sent_timestamps, packets_sent_values]
+
+      // packets received per-second
+
+      let packets_received_timestamps = []  
+      let packets_received_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_packets_received_per_second_timestamps.length) {
+        packets_received_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_packets_received_per_second_timestamps[i]) / 1000.0))
+        packets_received_values.push(parseInt(res.data.relay_data.time_series_packets_received_per_second_values[i]))
+        i++
+      }
+      data.packets_received_data = [packets_received_timestamps, packets_received_values]
+
+      // near pings per-second
+
+      let near_pings_timestamps = []  
+      let near_pings_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_near_pings_per_second_timestamps.length) {
+        near_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_near_pings_per_second_timestamps[i]) / 1000.0))
+        near_pings_values.push(parseInt(res.data.relay_data.time_series_near_pings_per_second_values[i]))
+        i++
+      }
+      data.near_pings_data = [near_pings_timestamps, near_pings_values]
+
+      // relay pings per-second
+
+      let relay_pings_timestamps = []  
+      let relay_pings_values = []
+      i = 0
+      while (i < res.data.relay_data.time_series_relay_pings_per_second_timestamps.length) {
+        relay_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_relay_pings_per_second_timestamps[i]) / 1000.0))
+        relay_pings_values.push(parseInt(res.data.relay_data.time_series_relay_pings_per_second_values[i]))
+        i++
+      }
+      data.relay_pings_data = [relay_pings_timestamps, relay_pings_values]
+
       data["found"] = true
     }
+
     return [data, 0, 1]
+
   } catch (error) {
     console.log(error);
     let data = {}
@@ -455,9 +366,13 @@ export default {
 
   mounted: function () {
   
-    this.sessions = new uPlot(sessions_opts, data, document.getElementById('sessions'))
-    this.bandwidth = new uPlot(bandwidth_opts, data, document.getElementById('bandwidth'))
-    this.packets = new uPlot(packets_opts, data, document.getElementById('packets'))
+    this.sessions = new uPlot(sessions_opts, [[],[]], document.getElementById('sessions'))
+    this.bandwidth_sent = new uPlot(bandwidth_sent_opts, [[],[]], document.getElementById('bandwidth_sent'))
+    this.bandwidth_received = new uPlot(bandwidth_received_opts, [[],[]], document.getElementById('bandwidth_received'))
+    this.packets_sent = new uPlot(packets_sent_opts, [[],[]], document.getElementById('packets_sent'))
+    this.packets_received = new uPlot(packets_received_opts, [[],[]], document.getElementById('packets_received'))
+    this.near_pings = new uPlot(near_pings_opts, [[],[]], document.getElementById('near_pings'))
+    this.relay_pings = new uPlot(relay_pings_opts, [[],[]], document.getElementById('relay_pings'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -466,28 +381,40 @@ export default {
     document.getElementById("relay-name-input").addEventListener('keyup', this.onKeyUp);
 
     this.$emit('notify-view', 'relay')
+
+    this.updateGraphs()
   },
 
   beforeUnmount() {
+    document.getElementById("relay-name-input").removeEventListener('keyup', this.onKeyUp);
     this.sessions.destroy()
-    this.bandwidth.destroy()
-    this.packets.destroy()
+    this.bandwidth_sent.destroy()
+    this.bandwidth_received.destroy()
+    this.packets_sent.destroy()
+    this.packets_received.destroy()
+    this.near_pings.destroy()
+    this.relay_pings.destroy()
     this.prevWidth = 0
     this.sessions = null
-    this.bandwidth = null
-    this.packets = null
+    this.bandwidth_sent = null
+    this.bandwidth_received = null
+    this.packets_sent = null
+    this.packets_received = null
+    this.near_pings = null
+    this.relay_pings = null
     this.observer = null
   },
 
   methods: {
 
     resize() {
+      const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
         this.prevWidth = width;
         if (this.sessions) {
           let graph_width = width
-          if (is_visible(document.getElementById('right'))) {
+          if (right_visible) {
             graph_width -= 550
           } else {
             graph_width -= 30
@@ -499,8 +426,26 @@ export default {
             graph_height = 250
           }
           this.sessions.setSize({width: graph_width, height: graph_height})
-          this.bandwidth.setSize({width: graph_width, height: graph_height})
-          this.packets.setSize({width: graph_width, height: graph_height})
+          this.bandwidth_sent.setSize({width: graph_width, height: graph_height})
+          this.bandwidth_received.setSize({width: graph_width, height: graph_height})
+          this.packets_sent.setSize({width: graph_width, height: graph_height})
+          this.packets_received.setSize({width: graph_width, height: graph_height})
+          this.near_pings.setSize({width: graph_width, height: graph_height})
+          this.relay_pings.setSize({width: graph_width, height: graph_height})
+        }
+
+        // show legends in desktop, hide them in mobile layout
+
+        this.show_legend = right_visible
+        var elements = document.getElementsByClassName('u-legend');
+        let i = 0;
+        while (i < elements.length) {
+          if (this.show_legend) {
+            elements[i].style.display = 'block';
+          } else {
+            elements[i].style.display = 'none';
+          }
+          i++;
         }
       }    
     },
@@ -509,7 +454,9 @@ export default {
       if (relay_name == null) {
         relay_name = this.$route.params.id
       }
-      return getData(page, relay_name)
+      let data = getData(page, relay_name)
+      this.updateGraphs()
+      return data
     },
 
     async update() {
@@ -520,6 +467,31 @@ export default {
         this.num_pages = result[2]
         this.found = result[0]['found']
         this.$emit('notify-update', this.page, this.num_pages)
+        this.updateGraphs()
+      }
+    },
+
+    updateGraphs() {
+      if (this.sessions != null && this.data.sessions_data != null) {
+        this.sessions.setData(this.data.sessions_data, true)
+      }
+      if (this.bandwidth_sent != null && this.data.bandwidth_sent_data != null) {
+        this.bandwidth_sent.setData(this.data.bandwidth_sent_data, true)
+      }
+      if (this.bandwidth_received != null && this.data.bandwidth_received_data != null) {
+        this.bandwidth_received.setData(this.data.bandwidth_received_data, true)
+      }
+      if (this.packets_sent != null && this.data.packets_sent_data != null) {
+        this.packets_sent.setData(this.data.packets_sent_data, true)
+      }
+      if (this.packets_received != null && this.data.packets_received_data != null) {
+        this.packets_received.setData(this.data.packets_received_data, true)
+      }
+      if (this.near_pings != null && this.data.near_pings_data != null) {
+        this.near_pings.setData(this.data.near_pings_data, true)
+      }
+      if (this.relay_pings != null && this.data.relay_pings_data != null) {
+        this.relay_pings.setData(this.data.relay_pings_data, true)
       }
     },
 

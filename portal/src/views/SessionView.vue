@@ -326,6 +326,7 @@ let jitter_opts = custom_graph({
 
 let packet_loss_opts = custom_graph({
   title: "Packet Loss",
+  percent: true,
   series: [
     { 
       name: 'Direct',
@@ -350,6 +351,7 @@ let packet_loss_opts = custom_graph({
 
 let out_of_order_opts = custom_graph({
   title: "Out of Order",
+  percent: true,
   series: [
     {
       name: 'Real',
@@ -446,7 +448,7 @@ async function getData(page, session_id) {
       data["isp"] = session_data.isp
       data["buyer_code"] = session_data.buyer_code
       data["buyer_name"] = session_data.buyer_name
-      data["user_hash"] = session_data.user_hash
+      data["user_hash"] = parse_uint64(session_data.user_hash)
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
       data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()
@@ -665,6 +667,7 @@ export default {
   },
 
   beforeUnmount() {
+    document.getElementById("session-id-input").removeEventListener('keyup', this.onKeyUp);
     this.latency.destroy()
     this.jitter.destroy()
     this.packet_loss.destroy()
@@ -698,7 +701,7 @@ export default {
           if (right_visible) {
             graph_width -= 540
           } else {
-            graph_width -= 5
+            graph_width -= 25
           }
           let graph_height = graph_width * 0.4
           if (graph_height > 500) {

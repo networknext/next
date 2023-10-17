@@ -4,7 +4,11 @@ terraform {
   required_providers {
     google = {
       source = "hashicorp/google"
-      version = "4.51.0"
+      version = "~> 5.0.0"
+    }
+    google-beta = {
+      source = "hashicorp/google-beta"
+      version = "~> 5.0.0"
     }
   }
 }
@@ -63,6 +67,9 @@ resource "google_compute_region_backend_service" "service" {
 }
 
 resource "google_compute_instance_template" "service" {
+
+  provider     = google-beta
+
   name         = "${var.service_name}-${var.tag}${var.extra}"
   machine_type = var.machine_type
 
@@ -70,6 +77,10 @@ resource "google_compute_instance_template" "service" {
     network    = var.default_network
     subnetwork = var.default_subnetwork
     access_config {}
+  }
+
+  network_performance_config {
+    total_egress_bandwidth_tier = "TIER_1"
   }
 
   tags = var.tags

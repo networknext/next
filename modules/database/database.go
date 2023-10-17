@@ -399,6 +399,16 @@ func (database *Database) GetRelayByName(relayName string) *Relay {
 	return database.RelayNameMap[relayName]
 }
 
+func (database *Database) GetRelayIds() []uint64 {
+	relayIds := make([]uint64, len(database.RelayMap))
+	index := 0
+	for k := range database.RelayMap {
+		relayIds[index] = k
+		index++
+	}
+	return relayIds
+}
+
 func (database *Database) GetBuyer(buyerId uint64) *Buyer {
 	return database.BuyerMap[buyerId]
 }

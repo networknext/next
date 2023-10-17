@@ -2,19 +2,19 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"time"
-	"fmt"
-	"os"
 
-	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
+	"github.com/networknext/next/modules/envvar"
 )
 
 const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
@@ -31,13 +31,13 @@ const BuyerStatsVersion = uint64(0)
 
 type ServerUpdate struct {
 	serverAddress string
-	buyerId uint64
+	buyerId       uint64
 }
 
 type TopServers struct {
-	serverCount      uint32
-	numTopServers    int
-	topServers       [TopServersCount]string
+	serverCount   uint32
+	numTopServers int
+	topServers    [TopServersCount]string
 }
 
 type Bucket struct {
@@ -55,8 +55,8 @@ var topServers *TopServers
 var topServersData []byte
 
 type BuyerStats struct {
-	buyerIds      []uint64
-	serverCounts  []uint32
+	buyerIds     []uint64
+	serverCounts []uint32
 }
 
 var buyerDataMutex sync.Mutex
@@ -128,7 +128,7 @@ func TestThread() {
 			for i := 0; i < len(batch); i++ {
 				serverAddress := common.RandomAddress()
 				batch[i].serverAddress = serverAddress.String()
-				batch[i].buyerId = uint64(common.RandomInt(0,9))
+				batch[i].buyerId = uint64(common.RandomInt(0, 9))
 			}
 			buckets[index].serverUpdateChannel <- batch
 			time.Sleep(time.Millisecond)
@@ -319,14 +319,14 @@ func TopSessionsThread() {
 
 				message := common.RedisTimeSeriesMessage{}
 
-				message.Timestamp = uint64(time.Now().UnixNano())
+				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
 
 				message.Keys = []string{"server_count"}
 
 				message.Values = []float64{float64(serverCount)}
 
 				for i := range buyers {
-					message.Keys = append(message.Keys, fmt.Sprintf("%016x_server_count", buyers[i]))
+					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_server_count", buyers[i]))
 					message.Values = append(message.Values, float64(buyerStats.serverCounts[i]))
 				}
 

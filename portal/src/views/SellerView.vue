@@ -161,6 +161,10 @@ export default {
     this.$emit('notify-view', 'seller')
   },
 
+  beforeUnmount() {
+    document.getElementById("seller-input").removeEventListener('keyup', this.onKeyUp);
+  },
+
   async beforeRouteEnter (to, from, next) {
     let values = to.path.split("/")
     let seller = 0

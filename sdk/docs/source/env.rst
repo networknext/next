@@ -100,7 +100,7 @@ Overrides the server backend hostname in *next_config_t*.
 
 .. code-block:: console
 
-	$ export NEXT_SERVER_BACKEND_HOSTNAME=prod.spacecats.net
+	$ export NEXT_SERVER_BACKEND_HOSTNAME=server.virtualgo.net
 
 NEXT_SERVER_ADDRESS
 -------------------

@@ -42,7 +42,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "4.51.0"
+      version = "~> 5.0.0"
+    }
+    google-beta = {
+      source = "hashicorp/google-beta"
+      version = "~> 5.0.0"
     }
     cloudflare = {
       source  = "cloudflare/cloudflare"
@@ -56,6 +60,13 @@ terraform {
 }
 
 provider "google" {
+  credentials = file(var.google_credentials)
+  project     = var.google_project
+  region      = var.google_region
+  zone        = var.google_zone
+}
+
+provider "google-beta" {
   credentials = file(var.google_credentials)
   project     = var.google_project
   region      = var.google_region
@@ -174,6 +185,19 @@ resource "google_compute_firewall" "allow_http" {
   target_tags = ["allow-http"]
 }
 
+resource "google_compute_firewall" "allow_redis" {
+  name          = "allow-redis"
+  project       = var.google_project
+  direction     = "INGRESS"
+  network       = google_compute_network.staging.id
+  source_ranges = ["0.0.0.0/0"]
+  allow {
+    protocol = "tcp"
+    ports    = ["6379"]
+  }
+  target_tags = ["allow-redis"]
+}
+
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
   project       = var.google_project
@@ -201,7 +225,6 @@ resource "google_compute_firewall" "allow_udp_all" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
@@ -236,9 +259,76 @@ resource "cloudflare_record" "portal_domain" {
 
 # ----------------------------------------------------------------------------------------
 
+module "redis_time_series" {
+
+  source = "../modules/redis_stack"
+
+  service_name = "redis-time-series"
+
+  machine_type             = "n1-standard-2"
+  project                  = var.google_project
+  region                   = var.google_region
+  zone                     = var.google_zone
+  default_network          = google_compute_network.staging.id
+  default_subnetwork       = google_compute_subnetwork.staging.id
+  service_account          = var.google_service_account
+  tags                     = ["allow-redis", "allow-ssh"]
+}
+
+output "redis_time_series_address" {
+  description = "The IP address of the redis time series database"
+  value       = module.redis_time_series.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_redis_cluster" "portal" {
+  provider       = google-beta
+  name           = "portal"
+  shard_count    = 25
+  psc_configs {
+    network = google_compute_network.staging.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
+  ]
+}
+
+resource "google_redis_cluster" "server_backend" {
+  provider       = google-beta
+  name           = "server-backend"
+  shard_count    = 25
+  psc_configs {
+    network = google_compute_network.staging.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
+  ]
+}
+
+resource "google_network_connectivity_service_connection_policy" "default" {
+  provider = google-beta
+  name = "redis"
+  location = "us-central1"
+  service_class = "gcp-memorystore-redis"
+  description   = "redis cluster service connection policy"
+  network = google_compute_network.staging.id
+  psc_config {
+    subnetworks = [google_compute_subnetwork.staging.id]
+  }
+}
+
 locals {
-  redis_portal_address = "10.0.0.51:6379"
-  redis_server_backend_address = "10.0.0.47:6379"
+  redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
+  redis_server_backend_address = "${google_redis_cluster.server_backend.discovery_endpoints[0].address}:6379"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
@@ -1531,6 +1621,8 @@ module "relay_backend" {
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1538,7 +1630,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-4"
+  machine_type               = "c3-highcpu-22"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1626,6 +1718,8 @@ module "api" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
@@ -1678,6 +1772,8 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1712,6 +1808,8 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1746,6 +1844,8 @@ module "portal_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     FORCE_REDIS_PORTAL_CLUSTER_SETTINGS=true
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
@@ -1770,7 +1870,7 @@ module "portal_cruncher" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 60
+  target_cpu         = 25
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1822,7 +1922,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 60
+  target_cpu         = 25
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -1880,16 +1980,17 @@ module "load_test_relays" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_relays.tar.gz
     cat <<EOF > /app/app.env
-    RELAY_BACKEND_HOSTNAME=http://${module.relay_gateway.address}
+    RELAY_BACKEND_HOSTNAME="https://relay-staging.${var.cloudflare_domain}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+    NUM_RELAYS=10
     EOF
     sudo systemctl start app.service
   EOF1
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-2"
+  machine_type       = "n1-highcpu-16"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1914,6 +2015,7 @@ module "load_test_servers" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
     cat <<EOF > /app/app.env
+    NUM_RELAYS=10
     NUM_SERVERS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
@@ -1948,6 +2050,7 @@ module "load_test_sessions" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
     cat <<EOF > /app/app.env
+    NUM_RELAYS=10
     NUM_SESSIONS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
@@ -1990,6 +2093,7 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-staging.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
+  target_size              = 3
 }
 
 output "portal_address" {
@@ -2000,7 +2104,7 @@ output "portal_address" {
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_router" "router" {
-  name    = "router-to-internet"
+  name    = "router-to-internet" 
   network = google_compute_network.staging.id
   project = var.google_project
   region  = var.google_region
@@ -2015,4 +2119,3 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
-*/

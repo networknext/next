@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -24,7 +25,20 @@ var redisRelayBackendHostname string
 var sessionCruncherURL string
 var serverCruncherURL string
 
+var enableRedisTimeSeries bool
+var redisTimeSeriesCluster []string
+var redisTimeSeriesHostname string
+
 func main() {
+
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
 
 	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
@@ -103,19 +117,34 @@ func ProcessSessionUpdateMessages(service *common.Service, batchSize int) {
 		os.Exit(1)
 	}
 
+	var countersPublisher *common.RedisCountersPublisher
+
+	if enableRedisTimeSeries {
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessSessionUpdate(messageData, sessionInserter)
+				ProcessSessionUpdate(messageData, sessionInserter, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionInserter) {
+func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionInserter, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalSessionUpdateMessage{}
 	err := message.Read(messageData)
@@ -161,7 +190,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	}
 
 	sliceData := portal.SliceData{
-		Timestamp:        uint64(time.Now().Unix()),
+		Timestamp:        message.Timestamp,
 		SliceNumber:      message.SliceNumber,
 		DirectRTT:        uint32(message.DirectRTT),
 		NextRTT:          uint32(message.NextRTT),
@@ -183,6 +212,16 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	}
 
 	sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+
+	if enableRedisTimeSeries {
+		countersPublisher.MessageChannel <- "session_update"
+		if message.Retry {
+			countersPublisher.MessageChannel <- "retry"
+		}
+		if message.FallbackToDirect {
+			countersPublisher.MessageChannel <- "fallback_to_direct"
+		}
+	}
 }
 
 // -------------------------------------------------------------------------------
@@ -216,19 +255,34 @@ func ProcessServerUpdateMessages(service *common.Service, batchSize int) {
 		os.Exit(1)
 	}
 
+	var countersPublisher *common.RedisCountersPublisher
+
+	if enableRedisTimeSeries {
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessServerUpdate(messageData, serverInserter)
+				ProcessServerUpdate(messageData, serverInserter, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInserter) {
+func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInserter, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalServerUpdateMessage{}
 	err := message.Read(messageData)
@@ -251,6 +305,10 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 	}
 
 	serverInserter.Insert(service.Context, &serverData)
+
+	if enableRedisTimeSeries {
+		countersPublisher.MessageChannel <- "server_update"
+	}
 }
 
 // -------------------------------------------------------------------------------
@@ -310,7 +368,7 @@ func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRe
 	sessionId := message.SessionId
 
 	nearRelayData := portal.NearRelayData{
-		Timestamp:           uint64(time.Now().Unix()),
+		Timestamp:           message.Timestamp,
 		NumNearRelays:       message.NumNearRelays,
 		NearRelayId:         message.NearRelayId,
 		NearRelayRTT:        message.NearRelayRTT,
@@ -351,19 +409,47 @@ func ProcessRelayUpdateMessages(service *common.Service, redisStreams string, ba
 		os.Exit(1)
 	}
 
+	var timeSeriesPublisher *common.RedisTimeSeriesPublisher
+
+	var countersPublisher *common.RedisCountersPublisher
+
+	if enableRedisTimeSeries {
+
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		var err error
+		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessRelayUpdate(messageData, relayInserter)
+				ProcessRelayUpdate(messageData, relayInserter, timeSeriesPublisher, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter) {
+func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter, timeSeriesPublisher *common.RedisTimeSeriesPublisher, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalRelayUpdateMessage{}
 	err := message.Read(messageData)
@@ -386,26 +472,49 @@ func ProcessRelayUpdate(messageData []byte, relayInserter *portal.RelayInserter)
 	}
 
 	relayInserter.Insert(service.Context, &relayData)
+
+	if enableRedisTimeSeries {
+
+		// send time series to redis
+
+		timeSeriesMessage := common.RedisTimeSeriesMessage{}
+
+		timeSeriesMessage.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+
+		timeSeriesMessage.Keys = []string{
+			fmt.Sprintf("relay_%016x_session_count", message.RelayId),
+			fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
+			fmt.Sprintf("relay_%016x_near_pings_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayId),
+			fmt.Sprintf("relay_%016x_num_routable", message.RelayId),
+			fmt.Sprintf("relay_%016x_num_unroutable", message.RelayId),
+		}
+
+		timeSeriesMessage.Values = []float64{
+			float64(message.SessionCount),
+			float64(message.EnvelopeBandwidthUpKbps),
+			float64(message.EnvelopeBandwidthDownKbps),
+			float64(message.PacketsSentPerSecond),
+			float64(message.PacketsReceivedPerSecond),
+			float64(message.BandwidthSentKbps),
+			float64(message.BandwidthReceivedKbps),
+			float64(message.NearPingsPerSecond),
+			float64(message.RelayPingsPerSecond),
+			float64(message.NumRoutable),
+			float64(message.NumUnroutable),
+		}
+
+		timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
+
+		// send counters to redis
+
+		countersPublisher.MessageChannel <- "relay_update"
+	}
 }
 
 // -------------------------------------------------------------------------------
-
-/*
-	// todo: this should be time series
-	// relaySample := portal.RelaySample{
-	// 	Timestamp:                 message.Timestamp,
-	// 	NumSessions:               message.SessionCount,
-	// 	EnvelopeBandwidthUpKbps:   message.EnvelopeBandwidthUpKbps,
-	// 	EnvelopeBandwidthDownKbps: message.EnvelopeBandwidthDownKbps,
-	// 	PacketsSentPerSecond:      message.PacketsSentPerSecond,
-	// 	PacketsReceivedPerSecond:  message.PacketsReceivedPerSecond,
-	// 	BandwidthSentKbps:         message.BandwidthSentKbps,
-	// 	BandwidthReceivedKbps:     message.BandwidthReceivedKbps,
-	// 	NearPingsPerSecond:        message.NearPingsPerSecond,
-	// 	RelayPingsPerSecond:       message.RelayPingsPerSecond,
-	// 	RelayFlags:                message.RelayFlags,
-	// 	NumRoutable:               message.NumRoutable,
-	// 	NumUnroutable:             message.NumUnroutable,
-	// 	CurrentTime:               message.CurrentTime,
-	// }
-*/

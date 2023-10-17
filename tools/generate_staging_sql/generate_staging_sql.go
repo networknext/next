@@ -7,7 +7,7 @@ import (
 	"github.com/networknext/next/modules/common"
 )
 
-const NumRelays = 1000
+const NumRelays = 10
 
 func main() {
 
@@ -75,7 +75,7 @@ INSERT INTO relays(
 VALUES(
 	'test.%03d',
 	'127.0.0.1',
-	%03d,
+	%d,
 	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
 	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
 	(select datacenter_id from datacenters where datacenter_name = 'test.%03d')
@@ -94,7 +94,7 @@ INSERT INTO buyer_datacenter_settings VALUES(
 );
 `
 
-	for i := 0; i < NumRelays; i += 10 {
+	for i := 0; i < NumRelays; i++ {
 		fmt.Fprintf(file, settings_format, i)
 	}
 

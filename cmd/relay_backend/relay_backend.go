@@ -58,6 +58,12 @@ var startTime time.Time
 
 var counterNames [constants.NumRelayCounters]string
 
+var enableRedisTimeSeries bool
+var redisTimeSeriesCluster []string
+var redisTimeSeriesHostname string
+
+var timeSeriesPublisher *common.RedisTimeSeriesPublisher
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -85,6 +91,15 @@ func main() {
 
 	startTime = time.Now()
 
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
+
 	core.Debug("max jitter: %d", maxJitter)
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
 	core.Debug("route matrix interval: %s", routeMatrixInterval)
@@ -107,6 +122,20 @@ func main() {
 
 	core.Debug("start time: %s", startTime.String())
 
+	if enableRedisTimeSeries {
+
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		var err error
+		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	service.LoadDatabase()
 
 	initCounterNames()
@@ -121,6 +150,8 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
 	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
+	service.Router.HandleFunc("/costs", costsHandler(service, relayManager))
+	service.Router.HandleFunc("/active_relays", activeRelaysHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy, ready(service))
 
@@ -135,6 +166,50 @@ func main() {
 	UpdateInitialDelayState(service)
 
 	service.WaitForShutdown()
+}
+
+func activeRelaysHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		activeRelays := relayManager.GetActiveRelays(time.Now().Unix())
+		for i := range activeRelays {
+			fmt.Fprintf(w, "%s, ", activeRelays[i].Name)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+}
+
+func costsHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		costMatrixMutex.RLock()
+		data := costMatrixData
+		costMatrixMutex.RUnlock()
+		costMatrix := common.CostMatrix{}
+		err := costMatrix.Read(data)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintf(w, "no cost matrix: %v\n", err)
+			return
+		}
+		activeRelayMap := relayManager.GetActiveRelayMap(time.Now().Unix())
+		for i := range costMatrix.RelayNames {
+			if _, exists := activeRelayMap[costMatrix.RelayIds[i]]; !exists {
+				continue
+			}
+			fmt.Fprintf(w, "%s: ", costMatrix.RelayNames[i])
+			for j := range costMatrix.RelayNames {
+				if _, exists := activeRelayMap[costMatrix.RelayIds[j]]; !exists {
+					continue
+				}
+				if i == j {
+					continue
+				}
+				index := core.TriMatrixIndex(i, j)
+				cost := costMatrix.Costs[index]
+				fmt.Fprintf(w, "%d,", cost)
+			}
+			fmt.Fprintf(w, "\n")
+		}
+	}
 }
 
 func relayManagerHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
@@ -530,6 +605,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 			relayJSON.RelayDatacenterIds[i] = fmt.Sprintf("%016x", relayData.RelayDatacenterIds[i])
 			if relayData.DestRelays[i] {
 				relayJSON.DestRelays[i] = "1"
+				relayJSON.DestRelayNames = append(relayJSON.DestRelayNames, relayData.RelayNames[i])
 			} else {
 				relayJSON.DestRelays[i] = "0"
 			}
@@ -918,6 +994,48 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					routeMatrixDataNew = service.Load("route_matrix")
 					if routeMatrixDataNew == nil {
 						continue
+					}
+				}
+
+				// analyze route matrix and send time series data to redis if leader
+
+				if enableRedisTimeSeries {
+
+					analysis := routeMatrixNew.Analyze()
+
+					keys := []string{
+						"route_matrix_total_routes",
+						"route_matrix_average_num_routes",
+						"route_matrix_average_route_length",
+						"route_matrix_no_route_percent",
+						"route_matrix_one_route_percent",
+						"route_matrix_no_direct_route_percent",
+						"route_matrix_database_bytes",
+						"route_matrix_cost_matrix_bytes",
+						"route_matrix_bytes",
+						"route_matrix_optimize_ms",
+					}
+
+					values := []float64{
+						float64(analysis.TotalRoutes),
+						float64(analysis.AverageNumRoutes),
+						float64(analysis.AverageRouteLength),
+						float64(analysis.NoRoutePercent),
+						float64(analysis.OneRoutePercent),
+						float64(analysis.NoDirectRoutePercent),
+						float64(len(relayData.DatabaseBinFile)),
+						float64(len(costMatrixDataNew)),
+						float64(len(routeMatrixDataNew)),
+						float64(optimizeDuration.Milliseconds()),
+					}
+
+					message := common.RedisTimeSeriesMessage{}
+					message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+					message.Keys = keys
+					message.Values = values
+
+					if service.IsLeader() {
+						timeSeriesPublisher.MessageChannel <- &message
 					}
 				}
 

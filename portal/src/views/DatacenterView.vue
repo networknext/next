@@ -172,6 +172,10 @@ export default {
     this.$emit('notify-view', 'datacenter')
   },
 
+  beforeUnmount() {
+    document.getElementById("datacenter-input").removeEventListener('keyup', this.onKeyUp);
+  },
+
   async beforeRouteEnter (to, from, next) {
     let values = to.path.split("/")
     let datacenter = 0

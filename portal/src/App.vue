@@ -57,6 +57,10 @@
             <router-link class="nav-link" @click="nav_sellers" to="/sellers">Sellers</router-link>
           </li>
 
+          <li class="nav-item">
+            <router-link class="nav-link" @click="nav_admin" to="/admin">Admin</router-link>
+          </li>
+
         </ul>
 
         <div class="d-none d-xxl-block">
@@ -148,6 +152,14 @@ export default {
     nav_sellers() {
       if (this.current_view != 'sellers') {
         this.$router.push('/sellers')
+      } else {
+        this.onLoaded()
+      }
+    },
+
+    nav_admin() {
+      if (this.current_view != 'admin') {
+        this.$router.push('/admin')
       } else {
         this.onLoaded()
       }

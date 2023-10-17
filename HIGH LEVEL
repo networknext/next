@@ -72,21 +72,21 @@ DONE
 
 	Load test to 10M sessions
 
+	Finalize portal layout and contents
+
+	Setup prod environment
+
 TODO
-
-	Finalize portal
-
-	-----------
 
 	Load test to 1K relays, 1M servers and 10M sessions.
 
 	-----------
 
-	Setup prod environment
-
+	Portal map
+	
 	-----------
 
-	Finalize SDK and UE5 plugin
+	Optimize the setup process by automating creation of projects, service accounts and permissions
 
 	-----------
 
@@ -98,7 +98,7 @@ TODO
 
 	-----------
 
-	Optimize the setup process by automating creation of projects, service accounts and permissions
+	Finalize SDK and UE5 plugin
 
 	-----------
 

@@ -124,6 +124,10 @@ export default {
     this.$emit('notify-view', 'user')
   },
 
+  beforeUnmount() {
+    document.getElementById("user-hash-input").removeEventListener('keyup', this.onKeyUp);
+  },
+
   data() {
     return {
       data: [],

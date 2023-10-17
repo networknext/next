@@ -13,6 +13,7 @@ import BuyersView from '../views/BuyersView.vue'
 import BuyerView from '../views/BuyerView.vue'
 import SellersView from '../views/SellersView.vue'
 import SellerView from '../views/SellerView.vue'
+import AdminView from '../views/AdminView.vue'
 
 const routes = [
   {
@@ -89,6 +90,11 @@ const routes = [
     path: '/seller/:id', 
     name: 'seller',
     component: SellerView
+  },    
+  {
+    path: '/admin', 
+    name: 'admin',
+    component: AdminView
   },    
 ]
 

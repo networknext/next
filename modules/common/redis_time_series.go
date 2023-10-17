@@ -16,7 +16,8 @@ type RedisTimeSeriesConfig struct {
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
-	Window             int  // IMPORTANT: in timestamp units, how far back in time from present to gather samples from
+	Retention          int
+	DisplayWindow      int
 }
 
 // -------------------------------------------------------------------------------
@@ -32,6 +33,7 @@ type RedisTimeSeriesPublisher struct {
 	redisClient        *redis.Client
 	redisClusterClient *redis.ClusterClient
 	mutex              sync.Mutex
+	keys               map[string]bool
 	messageBatch       []*RedisTimeSeriesMessage
 	numMessagesSent    int
 	numBatchesSent     int
@@ -70,7 +72,12 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 		config.BatchSize = 10000
 	}
 
+	if config.Retention == 0 {
+		config.Retention = 3600 * 1000 // 1 hour in milliseconds
+	}
+
 	publisher.config = config
+	publisher.keys = make(map[string]bool)
 	publisher.MessageChannel = make(chan *RedisTimeSeriesMessage, config.MessageChannelSize)
 	publisher.redisClient = client
 	publisher.redisClusterClient = clusterClient
@@ -106,11 +113,33 @@ func (publisher *RedisTimeSeriesPublisher) updateMessageChannel(ctx context.Cont
 
 func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
+	publisher.mutex.Lock()
+	keys := publisher.keys
+	publisher.mutex.Unlock()
+
+	newKeys := make([]string, 0)
+
 	var pipeline redis.Pipeliner
 	if publisher.redisClusterClient != nil {
 		pipeline = publisher.redisClusterClient.Pipeline()
 	} else {
 		pipeline = publisher.redisClient.Pipeline()
+	}
+
+	for i := range publisher.messageBatch {
+		for j := range publisher.messageBatch[i].Keys {
+			_, exists := keys[publisher.messageBatch[i].Keys[j]]
+			if !exists {
+				newKeys = append(newKeys, publisher.messageBatch[i].Keys[j])
+			}
+		}
+	}
+
+	for i := range newKeys {
+		options := redis.TSOptions{}
+		options.Retention = publisher.config.Retention
+		options.DuplicatePolicy = "MAX"
+		pipeline.TSCreateWithArgs(ctx, newKeys[i], &options)
 	}
 
 	for i := range publisher.messageBatch {
@@ -129,6 +158,9 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 	publisher.mutex.Lock()
 	publisher.numBatchesSent++
 	publisher.numMessagesSent += batchNumMessages
+	for i := range newKeys {
+		publisher.keys[newKeys[i]] = true
+	}
 	publisher.mutex.Unlock()
 
 	publisher.messageBatch = publisher.messageBatch[:0]
@@ -179,8 +211,8 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 		}
 	}
 
-	if config.Window == 0 {
-		config.Window = 86400*1000000000		// 24 hours in nanoseconds
+	if config.DisplayWindow == 0 {
+		config.DisplayWindow = 3600 * 1000 // 1 hour in milliseconds
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}
@@ -222,15 +254,15 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 				pipeline = watcher.redisClient.Pipeline()
 			}
 
-			currentTime := int(time.Now().UnixNano())
+			currentTime := int(time.Now().UnixNano() / 1000000)
 
 			for i := range keys {
-				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.Window, currentTime)
+				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.DisplayWindow, currentTime)
 			}
 
 			cmds, err := pipeline.Exec(ctx)
 			if err != nil {
-				core.Error("failed to get time series: %v", err)
+				break
 			}
 
 			keyToIndex := make(map[string]int, len(keys))

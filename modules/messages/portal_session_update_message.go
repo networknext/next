@@ -17,6 +17,8 @@ const (
 type PortalSessionUpdateMessage struct {
 	Version byte
 
+	Timestamp uint64
+
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
@@ -67,6 +69,9 @@ type PortalSessionUpdateMessage struct {
 	BestScore     uint32
 	BestDirectRTT uint32
 	BestNextRTT   uint32
+
+	Retry            bool
+	FallbackToDirect bool
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {
@@ -82,6 +87,8 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
+
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
 
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
@@ -140,6 +147,9 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	encoding.WriteUint32(buffer, &index, message.BestDirectRTT)
 	encoding.WriteUint32(buffer, &index, message.BestNextRTT)
 
+	encoding.WriteBool(buffer, &index, message.Retry)
+	encoding.WriteBool(buffer, &index, message.FallbackToDirect)
+
 	return buffer[:index]
 }
 
@@ -153,6 +163,10 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if message.Version < PortalSessionUpdateMessageVersion_Min || message.Version > PortalSessionUpdateMessageVersion_Max {
 		return fmt.Errorf("invalid portal session update message version %d", message.Version)
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read timestamp")
 	}
 
 	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
@@ -338,6 +352,14 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadUint32(buffer, &index, &message.BestNextRTT) {
 		return fmt.Errorf("failed to read best next rtt")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.Retry) {
+		return fmt.Errorf("failed to read retry")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
+		return fmt.Errorf("failed to read fallback to direct")
 	}
 
 	return nil

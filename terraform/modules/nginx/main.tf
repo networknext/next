@@ -4,7 +4,7 @@ terraform {
   required_providers {
     google = {
       source = "hashicorp/google"
-      version = "4.51.0"
+      version = "~> 5.0.0"
     }
   }
 }
@@ -26,6 +26,7 @@ variable "service_account" { type = string }
 variable "tags" { type = list }
 variable "domain" { type = string }
 variable "certificate" { type = string }
+variable "target_size" { type = number }
 
 # ----------------------------------------------------------------------------------------
 
@@ -163,7 +164,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     name              = "primary"
   }
   base_instance_name = var.service_name
-  target_size        = 3
+  target_size        = var.target_size
   auto_healing_policies {
     health_check      = google_compute_health_check.service_vm.id
     initial_delay_sec = 120

@@ -11,7 +11,7 @@ global_job_config:
   secrets:
     - name: company-name
     - name: google-cloud-platform
-    - name: terraform-staging
+    - name: terraform-production
     - name: terraform-cloudflare
 
 blocks:
@@ -29,6 +29,6 @@ blocks:
             - echo $SEMAPHORE_GIT_BRANCH
             - echo $SEMAPHORE_WORKFLOW_NUMBER
             - checkout
-            - cd terraform/prod
+            - cd terraform/prod/backend
             - terraform init
             - terraform apply -var="tag=${SEMAPHORE_GIT_TAG_NAME}" -var="extra=-${SEMAPHORE_WORKFLOW_NUMBER}" -auto-approve -lock=false

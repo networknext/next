@@ -92,7 +92,7 @@ func RunServerInsertThreads(ctx context.Context, threadCount int) {
 					id := uint32(iteration + uint64(j))
 
 					serverData.ServerAddress = fmt.Sprintf("%d.%d.%d.%d:%d", id&0xFF, (id>>8)&0xFF, (id>>16)&0xFF, (id>>24)&0xFF, uint64(thread))
-					serverData.BuyerId = uint64(common.RandomInt(0,9))
+					serverData.BuyerId = uint64(common.RandomInt(0, 9))
 
 					serverInserter.Insert(ctx, serverData)
 				}
