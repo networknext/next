@@ -161,9 +161,16 @@ func costsHandler(service *common.Service, relayManager *common.RelayManager) fu
 			fmt.Fprintf(w, "no cost matrix: %v\n", err)
 			return
 		}
+		activeRelayMap := relayManager.GetActiveRelayMap(time.Now().Unix())
 		for i := range costMatrix.RelayNames {
+			if _, exists := activeRelayMap[costMatrix.RelayIds[i]]; !exists {
+				continue
+			}
 			fmt.Fprintf(w, "%s: ", costMatrix.RelayNames[i])
 			for j := range costMatrix.RelayNames {
+				if _, exists := activeRelayMap[costMatrix.RelayIds[j]]; !exists {
+					continue
+				}
 				if i == j {
 					continue
 				}
