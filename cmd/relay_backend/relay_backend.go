@@ -58,6 +58,12 @@ var startTime time.Time
 
 var counterNames [constants.NumRelayCounters]string
 
+var enableRedisTimeSeries bool
+var redisTimeSeriesCluster []string
+var redisTimeSeriesHostname string
+
+var timeSeriesPublisher *common.RedisTimeSeriesPublisher
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -85,6 +91,15 @@ func main() {
 
 	startTime = time.Now()
 
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
+
 	core.Debug("max jitter: %d", maxJitter)
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
 	core.Debug("route matrix interval: %s", routeMatrixInterval)
@@ -106,6 +121,20 @@ func main() {
 	core.Debug("initial delay: %s", initialDelay.String())
 
 	core.Debug("start time: %s", startTime.String())
+
+	if enableRedisTimeSeries {
+
+		timeSeriesConfig := common.RedisTimeSeriesConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		var err error
+		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+		if err != nil {
+			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
+	}
 
 	service.LoadDatabase()
 
@@ -966,6 +995,45 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					if routeMatrixDataNew == nil {
 						continue
 					}
+				}
+
+				// analyze route matrix and send time series data to redis if leader
+
+				analysis := routeMatrixNew.Analyze()
+
+				keys := []string{
+					"route_matrix_total_routes",
+					"route_matrix_average_num_routes",
+					"route_matrix_average_route_length",
+					"route_matrix_no_route_percent",
+					"route_matrix_one_route_percent",
+					"route_matrix_no_direct_route_percent",
+					"route_matrix_database_bytes",
+					"route_matrix_cost_matrix_bytes",
+					"route_matrix_bytes",
+					"route_matrix_optimize_ms",
+				}
+
+				values := []float64{
+					float64(analysis.TotalRoutes),
+					float64(analysis.AverageNumRoutes),
+					float64(analysis.AverageRouteLength),
+					float64(analysis.NoRoutePercent),
+					float64(analysis.OneRoutePercent),
+					float64(analysis.NoDirectRoutePercent),
+					float64(len(relayData.DatabaseBinFile)),
+					float64(len(costMatrixDataNew)),
+					float64(len(routeMatrixDataNew)),
+					float64(optimizeDuration.Milliseconds()),
+				}
+
+				message := common.RedisTimeSeriesMessage{}
+				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+				message.Keys = keys
+				message.Values = values
+
+				if service.IsLeader() {
+					timeSeriesPublisher.MessageChannel <- &message
 				}
 
 				// serve up as official data

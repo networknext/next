@@ -285,7 +285,7 @@ output "redis_time_series_address" {
 resource "google_redis_cluster" "portal" {
   provider       = google-beta
   name           = "portal"
-  shard_count    = 10
+  shard_count    = 25
   psc_configs {
     network = google_compute_network.staging.id
   }
@@ -301,7 +301,7 @@ resource "google_redis_cluster" "portal" {
 resource "google_redis_cluster" "server_backend" {
   provider       = google-beta
   name           = "server-backend"
-  shard_count    = 10
+  shard_count    = 25
   psc_configs {
     network = google_compute_network.staging.id
   }
@@ -1868,7 +1868,7 @@ module "portal_cruncher" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 60
+  target_cpu         = 25
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1920,7 +1920,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 60
+  target_cpu         = 25
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }

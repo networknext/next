@@ -944,9 +944,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	portalRelaysResponse := PortalRelaysResponse{}
 
 	GetJSON(fmt.Sprintf("%s/admin/relays", env.API_URL), &adminRelaysResponse)
-	GetJSON(fmt.Sprintf("%s/portal/relays", env.API_URL), &portalRelaysResponse)
-
-	// todo: we need a way to get all portal relays above, not just the first page
+	GetJSON(fmt.Sprintf("%s/portal/all_relays", env.API_URL), &portalRelaysResponse)
 
 	type RelayRow struct {
 		Name            string

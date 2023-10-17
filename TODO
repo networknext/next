@@ -1,98 +1,82 @@
 DONE
 
-	Theory. Route costs are so random that the route optimization just can't hold any steady routes.
+	Seems like we really need to capture timestamp for portal session update at the time of processing (eg. start of session update), not at the time the portal cruncher processes it
 
-	Instead of randomizing costs, make the cost a function of the hash between the two relay ids.
+	This way we don't get time stretch and squeeze if the portal cruncher gets overloaded -- the data just comes in a bit late.
 
-	This should fix everything.
+	We need a non-paginated way to get set of database relays for "next relays"
 
-	Narrator: It did not fix everything.
+	Track number of routes in route matrix via counters sent from leader relay backend
+
+	Track most of relay analysis and relevant data in redis time series.
 
 TODO
 
-	Trying a strategy where I reduce the number of relays to see if it's somehow load related.
+	Grab key data like, total routes, optimize_ms and stash in admin as time series.
 
-	I think it IS load related, I'm seeing a good quality route matrix with just 10 relays really quickly:
+	Display total routes, optimize_ms graphs in admin page in portal
 
-		test.000: 7,5,9,7,5,9,8,9,9,
-		test.001: 7,9,8,6,4,8,6,5,8,
-		test.002: 5,9,2,5,7,9,9,9,2,
-		test.003: 9,8,2,5,6,7,8,8,6,
-		test.004: 7,6,5,5,1,9,8,5,5,
-		test.005: 5,4,7,6,1,4,2,7,6,
-		test.006: 9,8,9,7,9,4,5,7,7,
-		test.007: 8,6,9,8,8,2,5,9,8,
-		test.008: 9,5,9,8,5,7,7,9,7,
-		test.009: 9,8,2,6,5,6,7,8,7,
-
-	-----------
-
-	We definitely need some visibility into the number of routes in the route matrix.
-
-	This can be sent via the leader relay backend using redis counters.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+		"route_matrix_total_routes",
+		"route_matrix_bytes",
+		"route_matrix_optimize_ms",
 	
-	Verify next sessions fix
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Tasks from load test:
 
 	--------------
-
-	Extend load test up to 10M with next sessions, now that we have next sessions *and* we have tier 1 networking *and* the c3 quota has been increased.
+	
+	There seems to be a load related issue @ 1000 relays.
 
 	--------------
 
@@ -127,7 +111,11 @@ Small things:
 
 	--------------
 
-	We need a non-paginated way to get set of database relays for "next relays"
+	The sort order for sessions appears incorrect according to score... not sure why.
+
+	--------------
+
+	Y axis labels spill over the right side when they get up to 100,000, 1,000,000 etc... convert to 500K, 1M, 2M?
 
 	--------------
 

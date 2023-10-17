@@ -280,6 +280,7 @@ func main() {
 		service.Router.HandleFunc("/portal/relay_count", isAuthorized(portalRelayCountHandler))
 		service.Router.HandleFunc("/portal/relays", isAuthorized(portalRelaysHandler))
 		service.Router.HandleFunc("/portal/relays/{page}", isAuthorized(portalRelaysHandler))
+		service.Router.HandleFunc("/portal/all_relays", isAuthorized(portalAllRelaysHandler))
 		service.Router.HandleFunc("/portal/relay/{relay_name}", isAuthorized(portalRelayDataHandler))
 
 		service.Router.HandleFunc("/portal/buyers", isAuthorized(portalBuyersHandler))
@@ -868,6 +869,22 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func portalAllRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
+	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
+	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
+	response := PortalRelaysResponse{}
+	database := service.Database()
+	response.Relays = make([]PortalRelayData, len(relays))
+	for i := range response.Relays {
+		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 type PortalRelayDataResponse struct {
 	RelayData PortalRelayData `json:"relay_data"`
 }
@@ -1284,6 +1301,7 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalAdminDataResponse struct {
+
 	TimeSeries_TotalSessions_Timestamps      []uint64          `json:"time_series_total_sessions_timestamps,string"`
 	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
 	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
@@ -1292,6 +1310,13 @@ type PortalAdminDataResponse struct {
 	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
 	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
 	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
+	TimeSeries_TotalRoutes_Timestamps        []uint64          `json:"time_series_total_routes_timestamps,string"`
+	TimeSeries_TotalRoutes_Values            []int             `json:"time_series_total_routes_values"`
+	TimeSeries_RouteMatrixBytes_Timestamps   []uint64          `json:"time_series_route_matrix_bytes_timestamps,string"`
+	TimeSeries_RouteMatrixBytes_Values       []int             `json:"time_series_route_matrix_bytes_values"`
+	TimeSeries_OptimizeMs_Timestamps         []uint64          `json:"time_series_optimize_ms_timestamps,string"`
+	TimeSeries_OptimizeMs_Values             []int             `json:"time_series_optimize_ms_values"`
+
 	Counters_SessionUpdate_Timestamps        []uint64          `json:"counters_session_update_timestamps,string"`
 	Counters_SessionUpdate_Values            []int             `json:"counters_session_update_values"`
 	Counters_ServerUpdate_Timestamps         []uint64          `json:"counters_server_update_timestamps,string"`
@@ -1313,6 +1338,9 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
 		buyerTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
 		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalRoutes_Timestamps, &response.TimeSeries_TotalRoutes_Values, "route_matrix_total_routes")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_RouteMatrixBytes_Timestamps, &response.TimeSeries_RouteMatrixBytes_Values, "route_matrix_bytes")
+		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_OptimizeMs_Timestamps, &response.TimeSeries_OptimizeMs_Values, "route_matrix_optimize_ms")
 		buyerTimeSeriesWatcher.Unlock()
 
 		countersWatcher.Lock()
