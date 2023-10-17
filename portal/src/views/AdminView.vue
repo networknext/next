@@ -183,6 +183,8 @@ async function getData() {
 
     let data = {}
 
+    console.log(res.data)
+
     // total sessions data
 
     let total_sessions_timestamps = []  
@@ -287,6 +289,7 @@ async function getData() {
       data.fallback_to_direct_data = [fallback_to_direct_timestamps, fallback_to_direct_values]
     }
 
+/*
     // total routes data
 
     let total_routes_timestamps = []  
@@ -322,6 +325,7 @@ async function getData() {
       i++
     }
     data.route_matrix_size_data = [route_matrix_size_timestamps, route_matrix_size_values]
+*/
 
     data['found'] = true
 
