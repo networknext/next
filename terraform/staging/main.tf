@@ -1621,6 +1621,7 @@ module "relay_backend" {
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=15s
     ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service

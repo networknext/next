@@ -999,41 +999,44 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// analyze route matrix and send time series data to redis if leader
 
-				analysis := routeMatrixNew.Analyze()
+				if enableRedisTimeSeries {
 
-				keys := []string{
-					"route_matrix_total_routes",
-					"route_matrix_average_num_routes",
-					"route_matrix_average_route_length",
-					"route_matrix_no_route_percent",
-					"route_matrix_one_route_percent",
-					"route_matrix_no_direct_route_percent",
-					"route_matrix_database_bytes",
-					"route_matrix_cost_matrix_bytes",
-					"route_matrix_bytes",
-					"route_matrix_optimize_ms",
-				}
+					analysis := routeMatrixNew.Analyze()
 
-				values := []float64{
-					float64(analysis.TotalRoutes),
-					float64(analysis.AverageNumRoutes),
-					float64(analysis.AverageRouteLength),
-					float64(analysis.NoRoutePercent),
-					float64(analysis.OneRoutePercent),
-					float64(analysis.NoDirectRoutePercent),
-					float64(len(relayData.DatabaseBinFile)),
-					float64(len(costMatrixDataNew)),
-					float64(len(routeMatrixDataNew)),
-					float64(optimizeDuration.Milliseconds()),
-				}
+					keys := []string{
+						"route_matrix_total_routes",
+						"route_matrix_average_num_routes",
+						"route_matrix_average_route_length",
+						"route_matrix_no_route_percent",
+						"route_matrix_one_route_percent",
+						"route_matrix_no_direct_route_percent",
+						"route_matrix_database_bytes",
+						"route_matrix_cost_matrix_bytes",
+						"route_matrix_bytes",
+						"route_matrix_optimize_ms",
+					}
 
-				message := common.RedisTimeSeriesMessage{}
-				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
-				message.Keys = keys
-				message.Values = values
+					values := []float64{
+						float64(analysis.TotalRoutes),
+						float64(analysis.AverageNumRoutes),
+						float64(analysis.AverageRouteLength),
+						float64(analysis.NoRoutePercent),
+						float64(analysis.OneRoutePercent),
+						float64(analysis.NoDirectRoutePercent),
+						float64(len(relayData.DatabaseBinFile)),
+						float64(len(costMatrixDataNew)),
+						float64(len(routeMatrixDataNew)),
+						float64(optimizeDuration.Milliseconds()),
+					}
 
-				if service.IsLeader() {
-					timeSeriesPublisher.MessageChannel <- &message
+					message := common.RedisTimeSeriesMessage{}
+					message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+					message.Keys = keys
+					message.Values = values
+
+					if service.IsLeader() {
+						timeSeriesPublisher.MessageChannel <- &message
+					}
 				}
 
 				// serve up as official data

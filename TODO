@@ -10,8 +10,6 @@ DONE
 
 	Track most of relay analysis and relevant data in redis time series.
 
-TODO
-
 	Grab key data like, total routes, optimize_ms and stash in admin as time series.
 
 	Display total routes, optimize_ms graphs in admin page in portal
@@ -19,6 +17,16 @@ TODO
 		"route_matrix_total_routes",
 		"route_matrix_bytes",
 		"route_matrix_optimize_ms",
+
+TODO
+
+	Verify route matrix graphs are working in staging
+
+	Style the route matrix graphs with color
+
+	Verify that we can scale up to 10M sessions, this time redis should not break (25 shards...)
+
+
 	
 
 
@@ -73,6 +81,12 @@ TODO
 
 
 Tasks from load test:
+
+	--------------
+
+	We need to put dependencies on redis, so the redis instances get created first, then all the instance groups do.
+
+	Right now they are created, run without redis, don't work, and I have to deploy a second time when I first bring staging up.
 
 	--------------
 	
