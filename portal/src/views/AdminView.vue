@@ -185,58 +185,66 @@ async function getData() {
 
     // total sessions data
 
-    let total_sessions_timestamps = []  
-    let total_sessions_values = []
-    let i = 0
-    while (i < res.data.time_series_total_sessions_timestamps.length) {
-      total_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_total_sessions_timestamps[i]) / 1000.0))
-      total_sessions_values.push(parseInt(res.data.time_series_total_sessions_values[i]))
-      i++
+    if (res.data.time_series_total_sessions_timestamps != null) {
+      let total_sessions_timestamps = []  
+      let total_sessions_values = []
+      let i = 0
+      while (i < res.data.time_series_total_sessions_timestamps.length) {
+        total_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_total_sessions_timestamps[i]) / 1000.0))
+        total_sessions_values.push(parseInt(res.data.time_series_total_sessions_values[i]))
+        i++
+      }
+      data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
     }
-    data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
 
     // next sessions data
 
-    let next_sessions_timestamps = []  
-    let next_sessions_values = []
-    i = 0
-    while (i < res.data.time_series_next_sessions_timestamps.length) {
-      next_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_next_sessions_timestamps[i]) / 1000.0))
-      next_sessions_values.push(parseInt(res.data.time_series_next_sessions_values[i]))
-      i++
+    if (res.data.time_series_next_sessions_timestamps != null) {
+      let next_sessions_timestamps = []  
+      let next_sessions_values = []
+      let i = 0
+      while (i < res.data.time_series_next_sessions_timestamps.length) {
+        next_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_next_sessions_timestamps[i]) / 1000.0))
+        next_sessions_values.push(parseInt(res.data.time_series_next_sessions_values[i]))
+        i++
+      }
+      data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
     }
-    data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
 
     // accelerated percent data
 
-    let accelerated_percent_timestamps = []  
-    let accelerated_percent_values = []
-    i = 0
-    while (i < res.data.time_series_accelerated_percent_timestamps.length) {
-      accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.time_series_accelerated_percent_timestamps[i]) / 1000.0))
-      accelerated_percent_values.push(parseInt(res.data.time_series_accelerated_percent_values[i]))
-      i++
+    if (res.data.time_series_accelerated_percent_timestamps != null) {
+      let accelerated_percent_timestamps = []  
+      let accelerated_percent_values = []
+      let i = 0
+      while (i < res.data.time_series_accelerated_percent_timestamps.length) {
+        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.time_series_accelerated_percent_timestamps[i]) / 1000.0))
+        accelerated_percent_values.push(parseInt(res.data.time_series_accelerated_percent_values[i]))
+        i++
+      }
+      data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
     }
-    data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
 
     // server count data
 
-    let server_count_timestamps = []  
-    let server_count_values = []
-    i = 0
-    while (i < res.data.time_series_server_count_timestamps.length) {
-      server_count_timestamps.push(Math.floor(parseInt(res.data.time_series_server_count_timestamps[i]) / 1000.0))
-      server_count_values.push(parseInt(res.data.time_series_server_count_values[i]))
-      i++
+    if (res.data.time_series_server_count_timestamps != null) {
+      let server_count_timestamps = []  
+      let server_count_values = []
+      let i = 0
+      while (i < res.data.time_series_server_count_timestamps.length) {
+        server_count_timestamps.push(Math.floor(parseInt(res.data.time_series_server_count_timestamps[i]) / 1000.0))
+        server_count_values.push(parseInt(res.data.time_series_server_count_values[i]))
+        i++
+      }
+      data.server_count_data = [server_count_timestamps, server_count_values]
     }
-    data.server_count_data = [server_count_timestamps, server_count_values]
 
     // session update data
 
     if (res.data.counters_session_update_timestamps != null) {
       let session_update_timestamps = []  
       let session_update_values = []
-      i = 0
+      let i = 0
       while (i < res.data.counters_session_update_timestamps.length) {
         session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000.0))
         session_update_values.push((parseInt(res.data.counters_session_update_values[i]) / 60.0).toFixed(1))
@@ -250,7 +258,7 @@ async function getData() {
     if (res.data.counters_server_update_timestamps != null) {
       let server_update_timestamps = []  
       let server_update_values = []
-      i = 0
+      let i = 0
       while (i < res.data.counters_server_update_timestamps.length) {
         server_update_timestamps.push(Math.floor(parseInt(res.data.counters_server_update_timestamps[i]) / 1000.0))
         server_update_values.push((parseInt(res.data.counters_server_update_values[i]) / 60.0).toFixed(1))
@@ -264,7 +272,7 @@ async function getData() {
     if (res.data.counters_retry_timestamps != null) {
       let retry_timestamps = []  
       let retry_values = []
-      i = 0
+      let i = 0
       while (i < res.data.counters_retry_timestamps.length) {
         retry_timestamps.push(Math.floor(parseInt(res.data.counters_retry_timestamps[i]) / 1000.0))
         retry_values.push(parseInt(res.data.counters_retry_values[i]))
@@ -278,7 +286,7 @@ async function getData() {
     if (res.data.counters_fallback_to_direct_timestamps != null) {
       let fallback_to_direct_timestamps = []  
       let fallback_to_direct_values = []
-      i = 0
+      let i = 0
       while (i < res.data.counters_fallback_to_direct_timestamps.length) {
         fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.counters_fallback_to_direct_timestamps[i]) / 1000.0))
         fallback_to_direct_values.push(parseInt(res.data.counters_fallback_to_direct_values[i]))
@@ -289,39 +297,45 @@ async function getData() {
 
     // total routes data
 
-    let total_routes_timestamps = []  
-    let total_routes_values = []
-    i = 0
-    while (i < res.data.time_series_total_routes_timestamps.length) {
-      total_routes_timestamps.push(Math.floor(parseInt(res.data.time_series_total_routes_timestamps[i]) / 1000.0))
-      total_routes_values.push(parseInt(res.data.time_series_total_routes_values[i]))
-      i++
+    if (res.data.time_series_total_routes_timestamps != null) {
+      let total_routes_timestamps = []  
+      let total_routes_values = []
+      let i = 0
+      while (i < res.data.time_series_total_routes_timestamps.length) {
+        total_routes_timestamps.push(Math.floor(parseInt(res.data.time_series_total_routes_timestamps[i]) / 1000.0))
+        total_routes_values.push(parseInt(res.data.time_series_total_routes_values[i]))
+        i++
+      }
+      data.total_routes_data = [total_routes_timestamps, total_routes_values]
     }
-    data.total_routes_data = [total_routes_timestamps, total_routes_values]
 
     // optimize time
 
-    let optimize_time_timestamps = []  
-    let optimize_time_values = []
-    i = 0
-    while (i < res.data.time_series_optimize_ms_timestamps.length) {
-      optimize_time_timestamps.push(Math.floor(parseInt(res.data.time_series_optimize_ms_timestamps[i]) / 1000.0))
-      optimize_time_values.push(parseInt(res.data.time_series_optimize_ms_values[i]))
-      i++
+    if (res.data.time_series_optimize_ms_timestamps != null) {
+      let optimize_time_timestamps = []  
+      let optimize_time_values = []
+      let i = 0
+      while (i < res.data.time_series_optimize_ms_timestamps.length) {
+        optimize_time_timestamps.push(Math.floor(parseInt(res.data.time_series_optimize_ms_timestamps[i]) / 1000.0))
+        optimize_time_values.push(parseInt(res.data.time_series_optimize_ms_values[i]))
+        i++
+      }
+      data.optimize_time_data = [optimize_time_timestamps, optimize_time_values]
     }
-    data.optimize_time_data = [optimize_time_timestamps, optimize_time_values]
 
     // route matrix size
 
-    let route_matrix_size_timestamps = []  
-    let route_matrix_size_values = []
-    i = 0
-    while (i < res.data.time_series_route_matrix_bytes_timestamps.length) {
-      route_matrix_size_timestamps.push(Math.floor(parseInt(res.data.time_series_route_matrix_bytes_timestamps[i]) / 1000.0))
-      route_matrix_size_values.push(parseInt(res.data.time_series_route_matrix_bytes_values[i]))
-      i++
+    if (res.data.time_series_route_matrix_bytes_timestamps != null) {
+      let route_matrix_size_timestamps = []  
+      let route_matrix_size_values = []
+      let i = 0
+      while (i < res.data.time_series_route_matrix_bytes_timestamps.length) {
+        route_matrix_size_timestamps.push(Math.floor(parseInt(res.data.time_series_route_matrix_bytes_timestamps[i]) / 1000.0))
+        route_matrix_size_values.push(parseInt(res.data.time_series_route_matrix_bytes_values[i]))
+        i++
+      }
+      data.route_matrix_size_data = [route_matrix_size_timestamps, route_matrix_size_values]
     }
-    data.route_matrix_size_data = [route_matrix_size_timestamps, route_matrix_size_values]
 
     data['found'] = true
 

@@ -6,9 +6,30 @@ DONE
 
 	Add active relays time series in relay backend
 
+	Hook up active relays to admin view
+
 TODO
 
-	Hook up active relays to admin view
+	And now it seems like all time series data is null in dev, but all counters are fine?! What is going on?
+
+	All time series are uniformly boned. What broke? Buyer graphs, relay graphs, admin graphs... all getting nulls?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 

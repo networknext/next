@@ -239,87 +239,101 @@ async function getData(page, relay_name) {
 
       // session count
 
-      let sessions_timestamps = []  
-      let sessions_values = []
-      let i = 0
-      while (i < res.data.relay_data.time_series_session_count_timestamps.length) {
-        sessions_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_session_count_timestamps[i]) / 1000.0))
-        sessions_values.push(parseInt(res.data.relay_data.time_series_session_count_values[i]))
-        i++
+      if (res.data.relay_data.time_series_session_count_timestamps != null) {
+        let sessions_timestamps = []  
+        let sessions_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_session_count_timestamps.length) {
+          sessions_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_session_count_timestamps[i]) / 1000.0))
+          sessions_values.push(parseInt(res.data.relay_data.time_series_session_count_values[i]))
+          i++
+        }
+        data.sessions_data = [sessions_timestamps, sessions_values]
       }
-      data.sessions_data = [sessions_timestamps, sessions_values]
 
-      // bandwidth sent per-second
+      // bandwidth sent kbps
 
-      let bandwidth_sent_timestamps = []  
-      let bandwidth_sent_values = []
-      i = 0
-      while (i < res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps.length) {
-        bandwidth_sent_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps[i]) / 1000.0))
-        bandwidth_sent_values.push(parseInt(res.data.relay_data.time_series_bandwidth_sent_kbps_values[i]))
-        i++
+      if (res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps != null) {
+        let bandwidth_sent_timestamps = []  
+        let bandwidth_sent_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps.length) {
+          bandwidth_sent_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_bandwidth_sent_kbps_timestamps[i]) / 1000.0))
+          bandwidth_sent_values.push(parseInt(res.data.relay_data.time_series_bandwidth_sent_kbps_values[i]))
+          i++
+        }
+        data.bandwidth_sent_data = [bandwidth_sent_timestamps, bandwidth_sent_values]
       }
-      data.bandwidth_sent_data = [bandwidth_sent_timestamps, bandwidth_sent_values]
 
-      // bandwidth received per-second
+      // bandwidth received kbps
 
-      let bandwidth_received_timestamps = []  
-      let bandwidth_received_values = []
-      i = 0
-      while (i < res.data.relay_data.time_series_bandwidth_received_kbps_timestamps.length) {
-        bandwidth_received_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_timestamps[i]) / 1000.0))
-        bandwidth_received_values.push(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_values[i]))
-        i++
+      if (res.data.relay_data.time_series_bandwidth_received_kbps_timestamps != null) {
+        let bandwidth_received_timestamps = []  
+        let bandwidth_received_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_bandwidth_received_kbps_timestamps.length) {
+          bandwidth_received_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_timestamps[i]) / 1000.0))
+          bandwidth_received_values.push(parseInt(res.data.relay_data.time_series_bandwidth_received_kbps_values[i]))
+          i++
+        }
+        data.bandwidth_received_data = [bandwidth_received_timestamps, bandwidth_received_values]
       }
-      data.bandwidth_received_data = [bandwidth_received_timestamps, bandwidth_received_values]
 
       // packets sent per-second
 
-      let packets_sent_timestamps = []  
-      let packets_sent_values = []
-      i = 0
-      while (i < res.data.relay_data.time_series_packets_sent_per_second_timestamps.length) {
-        packets_sent_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_packets_sent_per_second_timestamps[i]) / 1000.0))
-        packets_sent_values.push(parseInt(res.data.relay_data.time_series_packets_sent_per_second_values[i]))
-        i++
+      if (res.data.relay_data.time_series_packets_sent_per_second_timestamps != null) {
+        let packets_sent_timestamps = []  
+        let packets_sent_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_packets_sent_per_second_timestamps.length) {
+          packets_sent_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_packets_sent_per_second_timestamps[i]) / 1000.0))
+          packets_sent_values.push(parseInt(res.data.relay_data.time_series_packets_sent_per_second_values[i]))
+          i++
+        }
+        data.packets_sent_data = [packets_sent_timestamps, packets_sent_values]
       }
-      data.packets_sent_data = [packets_sent_timestamps, packets_sent_values]
 
       // packets received per-second
 
-      let packets_received_timestamps = []  
-      let packets_received_values = []
-      i = 0
-      while (i < res.data.relay_data.time_series_packets_received_per_second_timestamps.length) {
-        packets_received_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_packets_received_per_second_timestamps[i]) / 1000.0))
-        packets_received_values.push(parseInt(res.data.relay_data.time_series_packets_received_per_second_values[i]))
-        i++
+      if (res.data.relay_data.time_series_packets_received_per_second_timestamps != null) {
+        let packets_received_timestamps = []  
+        let packets_received_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_packets_received_per_second_timestamps.length) {
+          packets_received_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_packets_received_per_second_timestamps[i]) / 1000.0))
+          packets_received_values.push(parseInt(res.data.relay_data.time_series_packets_received_per_second_values[i]))
+          i++
+        }
+        data.packets_received_data = [packets_received_timestamps, packets_received_values]
       }
-      data.packets_received_data = [packets_received_timestamps, packets_received_values]
 
       // near pings per-second
 
-      let near_pings_timestamps = []  
-      let near_pings_values = []
-      i = 0
-      while (i < res.data.relay_data.time_series_near_pings_per_second_timestamps.length) {
-        near_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_near_pings_per_second_timestamps[i]) / 1000.0))
-        near_pings_values.push(parseInt(res.data.relay_data.time_series_near_pings_per_second_values[i]))
-        i++
+      if (res.data.relay_data.time_series_near_pings_per_second_timestamps != null) {
+        let near_pings_timestamps = []  
+        let near_pings_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_near_pings_per_second_timestamps.length) {
+          near_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_near_pings_per_second_timestamps[i]) / 1000.0))
+          near_pings_values.push(parseInt(res.data.relay_data.time_series_near_pings_per_second_values[i]))
+          i++
+        }
+        data.near_pings_data = [near_pings_timestamps, near_pings_values]
       }
-      data.near_pings_data = [near_pings_timestamps, near_pings_values]
 
       // relay pings per-second
 
-      let relay_pings_timestamps = []  
-      let relay_pings_values = []
-      i = 0
-      while (i < res.data.relay_data.time_series_relay_pings_per_second_timestamps.length) {
-        relay_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_relay_pings_per_second_timestamps[i]) / 1000.0))
-        relay_pings_values.push(parseInt(res.data.relay_data.time_series_relay_pings_per_second_values[i]))
-        i++
+      if (res.data.relay_data.time_series_relay_pings_per_second_timestamps != null) {
+        let relay_pings_timestamps = []  
+        let relay_pings_values = []
+        let i = 0
+        while (i < res.data.relay_data.time_series_relay_pings_per_second_timestamps.length) {
+          relay_pings_timestamps.push(Math.floor(parseInt(res.data.relay_data.time_series_relay_pings_per_second_timestamps[i]) / 1000.0))
+          relay_pings_values.push(parseInt(res.data.relay_data.time_series_relay_pings_per_second_values[i]))
+          i++
+        }
+        data.relay_pings_data = [relay_pings_timestamps, relay_pings_values]
       }
-      data.relay_pings_data = [relay_pings_timestamps, relay_pings_values]
 
       data["found"] = true
     }
