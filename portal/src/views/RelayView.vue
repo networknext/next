@@ -223,7 +223,9 @@ async function getData(page, relay_name) {
     const res = await axios.get(url);
 
     let data = {}
+    
     data['relay_name'] = relay_name
+
     if (res.data.relay_data !== null) {
 
       // relay data
