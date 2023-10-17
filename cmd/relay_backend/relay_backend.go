@@ -898,6 +898,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// build the cost matrix
 
+				activeRelays := relayManager.GetActiveRelays(currentTime)
+
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, float32(maxJitter), maxPacketLoss)
 
 				costMatrixNew := &common.CostMatrix{
@@ -1004,6 +1006,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					analysis := routeMatrixNew.Analyze()
 
 					keys := []string{
+						"active_relays",
+						"total_relays",
 						"route_matrix_total_routes",
 						"route_matrix_average_num_routes",
 						"route_matrix_average_route_length",
@@ -1017,6 +1021,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					}
 
 					values := []float64{
+						float64(len(activeRelays)),
+						float64(len(routeMatrixNew.RelayIds)),
 						float64(analysis.TotalRoutes),
 						float64(analysis.AverageNumRoutes),
 						float64(analysis.AverageRouteLength),

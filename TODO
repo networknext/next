@@ -1,20 +1,45 @@
 DONE
 
-TODO
-
-	--------------
-
 	We need to put dependencies on redis, so the redis instances get created first, then all the instance groups do.
 
 	Right now they are created, run without redis, don't work, and I have to deploy a second time when I first bring staging up.
 
+	Add active relays time series in relay backend
+
+TODO
+
+	Hook up active relays to admin view
+
 	--------------
 
-	I would like to see active relay count in time series in admin view
+	Add sessions crunched per-second to admin view. Lets me see if portal cruncher is overloaded @ 10M
 
 	--------------
 
-	Being able to see portal cruncher processing counts per-second would be useful, this way we can see if the portal cruncher is a bottleneck
+	There seems to be rapid leader flapping in relay backend on deploy. You can see this by looking at oscillations in route matrix size and total routes in admin view.
+
+	Can I reproduce this in dev? If I can reproduce, then I can fix it in dev.
+
+	(Perhaps a fix could be, don't consider yourself a leader until you have a > 0 routes in the route matrix?)
+
+	--------------
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 
@@ -41,14 +66,6 @@ TODO
 	--------------
 
 	Still getting some data holes in session slices @ 10M. Which part is getting overloaded? Portal cruncher? Redis?
-
-	--------------
-
-	There seems to be rapid leader flapping in relay backend on deploy. You can see this by looking at oscillations in route matrix size and total routes in admin view.
-
-	Maybe modify the code so you cannot be a leader until you have a route matrix with > 0 routes?
-
-	ps. Perhaps less leader flapping, and more -- two instances both think they are the leader. Maybe this was because of the crashing though. Deploy again and see if they flap... ?
 
 	--------------
 
