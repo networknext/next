@@ -190,7 +190,7 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	}
 
 	sliceData := portal.SliceData{
-		Timestamp:        uint64(time.Now().Unix()),
+		Timestamp:        message.Timestamp,
 		SliceNumber:      message.SliceNumber,
 		DirectRTT:        uint32(message.DirectRTT),
 		NextRTT:          uint32(message.NextRTT),
@@ -368,7 +368,7 @@ func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRe
 	sessionId := message.SessionId
 
 	nearRelayData := portal.NearRelayData{
-		Timestamp:           uint64(time.Now().Unix()),
+		Timestamp:           message.Timestamp,
 		NumNearRelays:       message.NumNearRelays,
 		NearRelayId:         message.NearRelayId,
 		NearRelayRTT:        message.NearRelayRTT,

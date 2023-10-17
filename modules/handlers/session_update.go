@@ -73,6 +73,7 @@ type SessionUpdateState struct {
 	Longitude float32
 
 	// for session update message
+	StartTimestamp   uint64
 	FallbackToDirect bool
 
 	// codepath flags (for unit testing etc...)
@@ -136,6 +137,8 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 }
 
 func SessionUpdate_Pre(state *SessionUpdateState) bool {
+
+	state.StartTimestamp = uint64(time.Now().Unix())
 
 	/*
 		Read session data first
@@ -1142,6 +1145,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Version = messages.PortalSessionUpdateMessageVersion_Write
 
+	message.Timestamp = state.StartTimestamp
+
 	message.ClientAddress = state.Request.ClientAddress
 	message.ServerAddress = state.Request.ServerAddress
 
@@ -1218,7 +1223,7 @@ func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 	message := messages.PortalNearRelayUpdateMessage{}
 
 	message.Version = messages.PortalNearRelayUpdateMessageVersion_Write
-	message.Timestamp = uint64(time.Now().Unix())
+	message.Timestamp = state.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId
 	message.NumNearRelays = uint32(state.Request.NumNearRelays)

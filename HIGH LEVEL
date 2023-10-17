@@ -78,12 +78,12 @@ DONE
 
 TODO
 
-	Portal map
-	
-	-----------
-
 	Load test to 1K relays, 1M servers and 10M sessions.
 
+	-----------
+
+	Portal map
+	
 	-----------
 
 	Optimize the setup process by automating creation of projects, service accounts and permissions

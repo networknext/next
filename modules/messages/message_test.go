@@ -276,6 +276,7 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 	message := messages.PortalSessionUpdateMessage{
 		Version: byte(common.RandomInt(messages.PortalSessionUpdateMessageVersion_Min, messages.PortalSessionUpdateMessageVersion_Max)),
 
+		Timestamp:        rand.Uint64(),
 		SDKVersion_Major: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Minor: uint8(common.RandomInt(0, 255)),
 		SDKVersion_Patch: uint8(common.RandomInt(0, 255)),

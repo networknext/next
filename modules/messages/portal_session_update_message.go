@@ -17,6 +17,8 @@ const (
 type PortalSessionUpdateMessage struct {
 	Version byte
 
+	Timestamp uint64
+
 	SDKVersion_Major byte
 	SDKVersion_Minor byte
 	SDKVersion_Patch byte
@@ -85,6 +87,8 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 	}
 
 	encoding.WriteUint8(buffer, &index, message.Version)
+
+	encoding.WriteUint64(buffer, &index, message.Timestamp)
 
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Major)
 	encoding.WriteUint8(buffer, &index, message.SDKVersion_Minor)
@@ -159,6 +163,10 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if message.Version < PortalSessionUpdateMessageVersion_Min || message.Version > PortalSessionUpdateMessageVersion_Max {
 		return fmt.Errorf("invalid portal session update message version %d", message.Version)
+	}
+
+	if !encoding.ReadUint64(buffer, &index, &message.Timestamp) {
+		return fmt.Errorf("failed to read timestamp")
 	}
 
 	if !encoding.ReadUint8(buffer, &index, &message.SDKVersion_Major) {
