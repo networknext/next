@@ -183,8 +183,6 @@ async function getData() {
 
     let data = {}
 
-    console.log(res.data)
-
     // total sessions data
 
     let total_sessions_timestamps = []  
@@ -289,7 +287,6 @@ async function getData() {
       data.fallback_to_direct_data = [fallback_to_direct_timestamps, fallback_to_direct_values]
     }
 
-/*
     // total routes data
 
     let total_routes_timestamps = []  
@@ -307,7 +304,7 @@ async function getData() {
     let optimize_time_timestamps = []  
     let optimize_time_values = []
     i = 0
-    while (i < res.data.time_series_optimize_time_timestamps.length) {
+    while (i < res.data.time_series_optimize_ms_timestamps.length) {
       optimize_time_timestamps.push(Math.floor(parseInt(res.data.time_series_optimize_ms_timestamps[i]) / 1000.0))
       optimize_time_values.push(parseInt(res.data.time_series_optimize_ms_values[i]))
       i++
@@ -319,13 +316,12 @@ async function getData() {
     let route_matrix_size_timestamps = []  
     let route_matrix_size_values = []
     i = 0
-    while (i < res.data.time_series_route_matrix_size_timestamps.length) {
+    while (i < res.data.time_series_route_matrix_bytes_timestamps.length) {
       route_matrix_size_timestamps.push(Math.floor(parseInt(res.data.time_series_route_matrix_bytes_timestamps[i]) / 1000.0))
       route_matrix_size_values.push(parseInt(res.data.time_series_route_matrix_bytes_values[i]))
       i++
     }
     data.route_matrix_size_data = [route_matrix_size_timestamps, route_matrix_size_values]
-*/
 
     data['found'] = true
 
@@ -513,8 +509,8 @@ export default {
       if (this.optimize_time != null && this.data.optimize_time_data != null) {
         this.optimize_time.setData(this.data.optimize_time_data, true)
       }
-      if (this.route_matrix_bytes != null && this.data.route_matrix_bytes != null) {
-        this.route_matrix_bytes.setData(this.data.route_matrix_bytes, true)
+      if (this.route_matrix_size != null && this.data.route_matrix_size_data != null) {
+        this.route_matrix_size.setData(this.data.route_matrix_size_data, true)
       }
     },
 
