@@ -20,6 +20,12 @@
 
       <div id="fallback_to_direct" class="graph"/>
     
+      <div id="total_routes" class="graph"/>
+
+      <div id="optimize_time" class="graph"/>
+
+      <div id="route_matrix_size" class="graph"/>
+
     </div>
 
   </div>
@@ -127,6 +133,42 @@ let fallback_to_direct_opts = custom_graph({
       stroke: "rgb(252, 50, 40)",
       fill: "rgba(252, 50, 40,0.075)",
       units: '',
+    },
+  ]
+})
+
+let total_routes_opts = custom_graph({
+  title: "Total Routes",
+  series: [
+    { 
+      name: 'Total Routes',
+      stroke: "rgb(94, 201, 255)",
+      fill: "rgba(94, 201, 255,0.075)",
+      units: '',
+    },
+  ]
+})
+
+let optimize_time_opts = custom_graph({
+  title: "Optimize Time",
+  series: [
+    { 
+      name: 'Optimize Time',
+      stroke: "rgb(94, 201, 255)",
+      fill: "rgba(94, 201, 255,0.075)",
+      units: 'ms',
+    },
+  ]
+})
+
+let route_matrix_size_opts = custom_graph({
+  title: "Route Matrix Size",
+  series: [
+    { 
+      name: 'Size',
+      stroke: "rgb(94, 201, 255)",
+      fill: "rgba(94, 201, 255,0.075)",
+      units: ' bytes',
     },
   ]
 })
@@ -245,6 +287,42 @@ async function getData() {
       data.fallback_to_direct_data = [fallback_to_direct_timestamps, fallback_to_direct_values]
     }
 
+    // total routes data
+
+    let total_routes_timestamps = []  
+    let total_routes_values = []
+    i = 0
+    while (i < res.data.time_series_total_routes_timestamps.length) {
+      total_routes_timestamps.push(Math.floor(parseInt(res.data.time_series_total_routes_timestamps[i]) / 1000.0))
+      total_routes_values.push(parseInt(res.data.time_series_total_routes_values[i]))
+      i++
+    }
+    data.total_routes_data = [total_routes_timestamps, total_routes_values]
+
+    // optimize time
+
+    let optimize_time_timestamps = []  
+    let optimize_time_values = []
+    i = 0
+    while (i < res.data.time_series_optimize_time_timestamps.length) {
+      optimize_time_timestamps.push(Math.floor(parseInt(res.data.time_series_optimize_ms_timestamps[i]) / 1000.0))
+      optimize_time_values.push(parseInt(res.data.time_series_optimize_ms_values[i]))
+      i++
+    }
+    data.optimize_time_data = [optimize_time_timestamps, optimize_time_values]
+
+    // route matrix size
+
+    let route_matrix_size_timestamps = []  
+    let route_matrix_size_values = []
+    i = 0
+    while (i < res.data.time_series_route_matrix_size_timestamps.length) {
+      route_matrix_size_timestamps.push(Math.floor(parseInt(res.data.time_series_route_matrix_bytes_timestamps[i]) / 1000.0))
+      route_matrix_size_values.push(parseInt(res.data.time_series_route_matrix_bytes_values[i]))
+      i++
+    }
+    data.route_matrix_size_data = [route_matrix_size_timestamps, route_matrix_size_values]
+
     data['found'] = true
 
     return [data, 0, 1]
@@ -295,6 +373,9 @@ export default {
     this.server_update = new uPlot(server_update_opts, [[],[]], document.getElementById('server_update'))
     this.retry = new uPlot(retry_opts, [[],[]], document.getElementById('retry'))
     this.fallback_to_direct = new uPlot(fallback_to_direct_opts, [[],[]], document.getElementById('fallback_to_direct'))
+    this.total_routes = new uPlot(total_routes_opts, [[],[]], document.getElementById('total_routes'))
+    this.optimize_time = new uPlot(optimize_time_opts, [[],[]], document.getElementById('optimize_time'))
+    this.route_matrix_size = new uPlot(route_matrix_size_opts, [[],[]], document.getElementById('route_matrix_size'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -313,6 +394,9 @@ export default {
     this.server_update.destroy()
     this.retry.destroy()
     this.fallback_to_direct.destroy()
+    this.total_routes.destroy()
+    this.optimize_time.destroy()
+    this.route_matrix_size.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.total_sessions = null
@@ -323,6 +407,9 @@ export default {
     this.server_update = null
     this.retry = null
     this.fallback_to_direct = null
+    this.total_routes = null
+    this.optimize_time = null
+    this.route_matrix_size = null
     this.observer = null
   },
 
@@ -352,6 +439,9 @@ export default {
           this.server_update.setSize({width: graph_width, height: graph_height})
           this.retry.setSize({width: graph_width, height: graph_height})
           this.fallback_to_direct.setSize({width: graph_width, height: graph_height})
+          this.total_routes.setSize({width: graph_width, height: graph_height})
+          this.optimize_time.setSize({width: graph_width, height: graph_height})
+          this.route_matrix_size.setSize({width: graph_width, height: graph_height})
         }
 
         // show legends in desktop, hide them in mobile layout
@@ -412,6 +502,15 @@ export default {
       }
       if (this.fallback_to_direct != null && this.data.fallback_to_direct_data != null) {
         this.fallback_to_direct.setData(this.data.fallback_to_direct_data, true)
+      }
+      if (this.total_routes != null && this.data.total_routes_data != null) {
+        this.total_routes.setData(this.data.total_routes_data, true)
+      }
+      if (this.optimize_time != null && this.data.optimize_time_data != null) {
+        this.optimize_time.setData(this.data.optimize_time_data, true)
+      }
+      if (this.route_matrix_bytes != null && this.data.route_matrix_bytes != null) {
+        this.route_matrix_bytes.setData(this.data.route_matrix_bytes, true)
       }
     },
 
