@@ -8,7 +8,92 @@ TODO
 
 	Verify the shutting down detection in dev
 
+	Nope. It doesn't work, the stopping state comes to the VM too late.
+
+	Moving to the managed instance group:
+
+		gcloud compute instance-groups managed list-instances server-backend --region us-central1
+
+	I believe the instance group will list the VM as stopping early, so I can key off this.
+
+	To grab this I need to first woerk 
+
+
+	-----------------------
+
+	Verify early stopping detection in dev
+
+	-----------------------
+
 	Take code to staging and verify that no fallback to directs occur when scaling down server backend instances
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	---------------
 

@@ -221,16 +221,16 @@ func Bash(command string) (bool, string) {
 
 func updateShuttingDown() {
 
-	// grab google cloud instance id from metadata
+	// grab google cloud instance name from metadata
 
-	result, instanceId := Bash("curl -s http://metadata/computeMetadata/v1/instance/id -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
 	if !result {
 		return	// not in google cloud
 	}
 
-	instanceId = strings.TrimSuffix(instanceId, "\n")
+	instanceName = strings.TrimSuffix(instanceName, "\n")
 	
-	core.Log("google cloud instance id is '%s'", instanceId)
+	core.Log("google cloud instance name is '%s'", instanceName)
 
 	// grab google cloud zone from metadata
 
@@ -248,6 +248,14 @@ func updateShuttingDown() {
 
 	core.Log("google cloud zone is '%s'", zone)
 
+	// turn zone into region
+
+	tokens = strings.Split(zone, "-")
+
+	region := strings.Join(tokens[:len(tokens)-1], "-")
+
+	core.Log("google cloud region is '%s'", region)
+
 	// tell the load balancer not to send traffic to us while we are shutting down
 	// without this manual step, traffic will continue to be sent to this VM right up 
 	// to the point where the VM is terminated!
@@ -264,29 +272,20 @@ func updateShuttingDown() {
 
 			case <-ticker.C:
 
-				// method 1: check via VM status in descrption
+				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
 
-				_, output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceId, zone))
+				lines := strings.Split(output, "\r\n")
 
-				if strings.Contains(output, "status: STOPPING") || strings.Contains(output, "status: SUSPENDING") {
-					shuttingDownMutex.Lock()
-					if !shuttingDown {
-						core.Log("*** SHUTTING DOWN ***")
-						shuttingDown = true
+				for i := range lines {
+					if strings.Contains(lines[i], instanceName) && (strings.Contains(lines[i], "STOPPING") || strings.Contains(lines[i], "SUSPENDING")) {
+						shuttingDownMutex.Lock()
+						if !shuttingDown {
+							core.Log("*** SHUTTING DOWN ***")
+							shuttingDown = true
+							break
+						}
+						shuttingDownMutex.Unlock()
 					}
-					shuttingDownMutex.Unlock()
-				}
-
-				// method 2: check preempted status
-
-				_, preempted := Bash("curl -s http://metadata/computeMetadata/v1/instance/preempted -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
-				if strings.Contains(preempted, "TRUE") {
-					shuttingDownMutex.Lock()
-					if !shuttingDown {
-						core.Log("*** PREEMPTED ***")
-						shuttingDown = true
-					}
-					shuttingDownMutex.Unlock()
 				}
 			}
 		}
