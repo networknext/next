@@ -64,6 +64,8 @@ type Service struct {
 	Tag           string
 	Local         bool
 
+	ConnectionDrain bool
+
 	Router mux.Router
 
 	Context           context.Context
@@ -635,6 +637,11 @@ func (service *Service) WaitForShutdown() {
 		service.ip2location_isp_db = nil
 	}
 	service.ip2location_mutex.Unlock()
+
+	if service.ConnectionDrain {
+		core.Log("connection drain...")
+		time.Sleep(60*time.Second)
+	}
 
 	core.Log("successfully shutdown")
 }

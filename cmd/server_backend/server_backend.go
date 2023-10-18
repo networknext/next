@@ -53,6 +53,8 @@ func main() {
 
 	service = common.CreateService("server_backend")
 
+	service.ConnectionDrain = true
+
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 
 	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024)
