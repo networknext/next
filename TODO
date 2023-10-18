@@ -1,26 +1,77 @@
 DONE
 
-	We need to put dependencies on redis, so the redis instances get created first, then all the instance groups do.
-
-	Right now they are created, run without redis, don't work, and I have to deploy a second time when I first bring staging up.
-
-	Add active relays time series in relay backend
-
-	Hook up active relays to admin view
-
-	Added time series setup to relay backend
-
-	Separate admin time series from buyer time series
-
-	Do what is necessary to get relay time series working again
-
-	I think what we need to do is to first run a pipeline to see if the keys exist, then only for existing keys, get time series data.
-
-	Verify time series fix on relay graphs
-
-	Apply same exists strategy to counters
-
 TODO
+
+	When the server backend is in the stopping or suspending state, set the lb_health check to false.
+
+	curl http://metadata.google.internal/computeMetadata/v1/instance/id -H Metadata-Flavor:Google
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Set initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had at least a full minute.
 

@@ -3,7 +3,12 @@ package main
 import (
 	"net"
 	"os"
+	"sync"
+	"time"
 	"strings"
+	"os/exec"
+	"bufio"
+	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -40,6 +45,9 @@ var enableRedisStreams bool
 
 var redisHostname string
 var redisCluster []string
+
+var shuttingDownMutex sync.Mutex
+var shuttingDown bool
 
 func main() {
 
@@ -146,6 +154,8 @@ func main() {
 
 	// start the service
 
+	updateShuttingDown()
+
 	service.UpdateRouteMatrix()
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy, ready)
@@ -163,9 +173,127 @@ func main() {
 	service.WaitForShutdown()
 }
 
+func RunCommand(command string, args []string) (bool, string) {
+
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func Bash(command string) (bool, string) {
+	return RunCommand("bash", []string{"-c", command})
+}
+
+func updateShuttingDown() {
+
+	// grab google cloud instance id from metadata
+
+	result, instanceId := Bash("curl -s http://metadata/computeMetadata/v1/instance/id -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	if !result {
+		return	// not in google cloud
+	}
+
+	instanceId = strings.TrimSuffix(instanceId, "\n")
+	
+	core.Log("google cloud instance id is '%s'", instanceId)
+
+	// grab google cloud zone from metadata
+
+	var zone string
+	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	if !result {
+		return // not in google cloud
+	}
+
+	zone = strings.TrimSuffix(zone, "\n")
+
+	tokens := strings.Split(zone, "/")
+	
+	zone = tokens[len(tokens)-1]
+
+	core.Log("google cloud zone is '%s'", zone)
+
+	// check every second to see if we are in 'SHUTTING DOWN' or 'SUSPENDING' state
+	// we use this to stop UDP traffic being sent to us from the load balancer while we are
+	// shutting down. without this manual step, traffic will continue to be sent to this VM 
+	// right up to the point where the VM is terminated!
+
+	go func() {
+
+		ticker := time.NewTicker(time.Second)
+		
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				cmd := fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceId, zone)
+
+				core.Log(cmd)
+
+				_, output := Bash(cmd)
+
+				if strings.Contains(output, "status: STOPPING") || strings.Contains(output, "status: SUSPENDING") {
+					shuttingDownMutex.Lock()
+					if !shuttingDown {
+						core.Log("*** SHUTTING DOWN ***")
+						shuttingDown = true
+					}
+					shuttingDownMutex.Unlock()
+				}
+			}
+		}
+	}()
+}
+
+func isShuttingDown() bool {
+	shuttingDownMutex.Lock()
+	value := shuttingDown
+	shuttingDownMutex.Unlock()
+	return value
+}
+
 func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return routeMatrix != nil && database != nil
+	return routeMatrix != nil && database != nil && !isShuttingDown()
 }
 
 func machineIsHealthy() bool {
