@@ -55,7 +55,6 @@ resource "google_compute_region_backend_service" "service" {
   protocol              = "UDP"
   port_name             = "udp"
   load_balancing_scheme = "EXTERNAL"
-  timeout_sec           = 10
   health_checks         = [google_compute_region_health_check.service_lb.id]
   backend {
     group           = google_compute_region_instance_group_manager.service.instance_group
@@ -84,6 +83,7 @@ resource "google_compute_instance_template" "service" {
 
   metadata = {
     startup-script = replace(var.startup_script, "##########", google_compute_address.service.address)
+    shutdown-script = "#! /bin/bash sleep 60"
   }
 
   service_account {
@@ -100,8 +100,8 @@ resource "google_compute_region_health_check" "service_lb" {
   name                = "${var.service_name}-lb"
   timeout_sec         = 1
   check_interval_sec  = 1
-  healthy_threshold   = 5
-  unhealthy_threshold = 2
+  healthy_threshold   = 10
+  unhealthy_threshold = 1
   project             = var.project
   region              = var.region
   http_health_check {
@@ -115,7 +115,7 @@ resource "google_compute_health_check" "service_vm" {
   check_interval_sec  = 5
   timeout_sec         = 5
   healthy_threshold   = 2
-  unhealthy_threshold = 10
+  unhealthy_threshold = 1
   http_health_check {
     request_path = "/vm_health"
     port         = "80"

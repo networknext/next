@@ -14,23 +14,35 @@ DONE
 
 	I believe the instance group will list the VM as stopping early, so I can key off this.
 
-TODO
-
 	Verify early stopping detection in dev. Nope.
 
 	Try again... watch the MIG with console manually while it is stopping...
 
+	Add manual connection drain post-SIGTERM.
+
+	Increase rate of checking for DELETING status.
+
+	Take code to staging and verify that no fallback to directs occur when scaling down server backend instances
+
+	It seems mostly effective, but sometimes fallback to directs get through. sometimes no retries happen. sometimes retries happen, but no fallback to direct.
+
+TODO
+
+	Ideally, what I need to do is set a cooldown period or connection drain.
+
 	-----------------------
 
-	Set a dependency for the raspberry client, server and backend on the server backend.
+	Set a dependency for the raspberry client, server and backend on the server backend in dev.
 
 	This way it won't start up until the new server backend is ready.
 
 	-----------------------
 
-	Take code to staging and verify that no fallback to directs occur when scaling down server backend instances
+	Set server backend to have a dependency on the database, and redis instances in staging
 
+	Set load tests to have a dependency on server backend, this way they don't start up until everything is ready.
 
+	-----------------------
 
 
 
