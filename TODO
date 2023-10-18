@@ -18,15 +18,19 @@ DONE
 
 	Verify time series fix on relay graphs
 
+	Apply same exists strategy to counters
+
 TODO
 
-	Apply same exists strategy to counters
+	Set initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had at least a full minute.
+
+	The test to see if this fix works, will be that the session counts won't flap between 0,0 and old session counts when a deploy happens.
 
 	--------------
 
-	Add "portal_cruncher_sessions" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
+	Add "portal_cruncher" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
 
-	Add "session_cruncher_sessions" counter. We need to see the input to the session cruncher.
+	Add "session_cruncher" counter. We need to see the input to the session cruncher.
 
 	--------------
 
@@ -57,10 +61,6 @@ TODO
 
 
 
-
-	--------------
-
-	Extend initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had a full minute + to calculate sessions
 
 	--------------
 
