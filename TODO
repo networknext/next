@@ -12,46 +12,21 @@ DONE
 
 	Separate admin time series from buyer time series
 
-TODO
-
 	Do what is necessary to get relay time series working again
 
 	I think what we need to do is to first run a pipeline to see if the keys exist, then only for existing keys, get time series data.
+
+	Verify time series fix on relay graphs
+
+TODO
+
+	Apply same exists strategy to counters
 
 	--------------
 
 	Add "portal_cruncher_sessions" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
 
 	Add "session_cruncher_sessions" counter. We need to see the input to the session cruncher.
-
-	--------------
-
-	Add option to specify that only sessions with improvement > X get sent to the portal.
-
-	This option would make it possible to significantly reduce the cost of running redis for the portal.
-
-	If this option is set, session counts need to be grabbed from the redis counters, not the session cruncher (as it will be inaccurate)
-
-
-	--------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Add sessions crunched per-second to admin view. Lets me see if portal cruncher is overloaded @ 10M
 
 	--------------
 
@@ -63,6 +38,9 @@ TODO
 
 	--------------
 
+	Number of routes is going up/down a lot even in dev. Is the minute history buffer long enough?
+
+	--------------
 	
 
 
@@ -122,6 +100,13 @@ TODO
 
 	--------------
 
+	Add option to specify that only sessions with improvement > X get sent to the portal.
+
+	This option would make it possible to significantly reduce the cost of running redis for the portal.
+
+	If this option is set, session counts need to be grabbed from the redis counters, not the session cruncher (as it will be inaccurate)
+
+	--------------
 
 
 

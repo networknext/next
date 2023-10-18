@@ -214,7 +214,35 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 				break
 			}
 
+			// first, work out which time series keys exist
+
 			var pipeline redis.Pipeliner
+			if watcher.redisClusterClient != nil {
+				pipeline = watcher.redisClusterClient.Pipeline()
+			} else {
+				pipeline = watcher.redisClient.Pipeline()
+			}
+
+			for i := range keys {
+				pipeline.Exists(ctx, keys[i])
+			}
+
+			cmds, err := pipeline.Exec(ctx)
+			if err != nil {
+				core.Error("failed to check existing counters keys: %v", err)
+				break
+			}
+
+			exists := make([]bool, len(keys))
+
+			for i := range exists {
+				if cmds[i].(*redis.IntCmd).Val() > 0 {
+					exists[i] = true
+				}
+			}
+
+			// get counter data for existing keys
+
 			if watcher.redisClusterClient != nil {
 				pipeline = watcher.redisClusterClient.Pipeline()
 			} else {
@@ -224,11 +252,14 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 			currentTime := int(time.Now().UnixNano()) / 1000000
 
 			for i := range keys {
-				pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.DisplayWindow, currentTime)
+				if exists[i] {
+					pipeline.TSRange(ctx, keys[i], currentTime-watcher.config.DisplayWindow, currentTime)
+				}
 			}
 
-			cmds, err := pipeline.Exec(ctx)
+			cmds, err = pipeline.Exec(ctx)
 			if err != nil {
+				core.Error("failed to get counters data: %v", err)
 				break
 			}
 
@@ -237,12 +268,20 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 			values := make([][]float64, len(keys))
 
 			for i := range keys {
-				keyToIndex[keys[i]] = i
+				if exists[i] {
+					keyToIndex[keys[i]] = i
+				}
 			}
+
+			index := 0
 
 			for i := range keys {
 
-				data := cmds[i].(*redis.TSTimestampValueSliceCmd).Val()
+				if !exists[i] {
+					continue
+				}
+
+				data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
 				
 				startTimestamp := uint64(currentTime) - uint64(watcher.config.DisplayWindow)
 				startTimestamp -= startTimestamp % uint64(watcher.config.SumWindow)
@@ -270,6 +309,8 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 						values[i] = append(values[i], 0.0)
 					}
 				}
+
+				index++
 			}
 
 			watcher.mutex.Lock()
