@@ -43,6 +43,7 @@ var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
 var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
+var adminTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var relayTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var countersWatcher *common.RedisCountersWatcher
@@ -157,7 +158,7 @@ func main() {
 
 		if enableRedisTimeSeries {
 
-			// create buyer time series watcher
+			// create admin time series watcher
 
 			timeSeriesConfig := common.RedisTimeSeriesConfig{
 				RedisHostname: redisTimeSeriesHostname,
@@ -165,6 +166,18 @@ func main() {
 			}
 
 			var err error
+			adminTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
+			if err != nil {
+				core.Error("could not create admin time series watcher: %v", err)
+				os.Exit(1)
+			}
+
+			keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count", "active_relays", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
+
+			adminTimeSeriesWatcher.SetKeys(keys)
+
+			// create buyer time series watcher
+
 			buyerTimeSeriesWatcher, err = common.CreateRedisTimeSeriesWatcher(service.Context, timeSeriesConfig)
 			if err != nil {
 				core.Error("could not create buyer time series watcher: %v", err)
@@ -182,9 +195,7 @@ func main() {
 						if database == nil {
 							break
 						}
-						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count", "active_relays", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
-						// todo: try reducing set of keys
-						/*
+						keys := []string{}
 						buyerIds := database.GetBuyerIds()
 						for i := range buyerIds {
 							keys = append(keys, fmt.Sprintf("buyer_%016x_total_sessions", buyerIds[i]))
@@ -192,7 +203,6 @@ func main() {
 							keys = append(keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyerIds[i]))
 							keys = append(keys, fmt.Sprintf("buyer_%016x_server_count", buyerIds[i]))
 						}
-						*/
 						buyerTimeSeriesWatcher.SetKeys(keys)
 					}
 				}
@@ -250,7 +260,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			keys := []string{
+			keys = []string{
 				"session_update",
 				"server_update",
 				"retry",
@@ -1338,16 +1348,16 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	if enableRedisTimeSeries {
 
-		buyerTimeSeriesWatcher.Lock()
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalSessions_Timestamps, &response.TimeSeries_TotalSessions_Values, "total_sessions")
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
-		buyerTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ActiveRelays_Timestamps, &response.TimeSeries_ActiveRelays_Values, "active_relays")
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalRoutes_Timestamps, &response.TimeSeries_TotalRoutes_Values, "route_matrix_total_routes")
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_RouteMatrixBytes_Timestamps, &response.TimeSeries_RouteMatrixBytes_Values, "route_matrix_bytes")
-		buyerTimeSeriesWatcher.GetIntValues(&response.TimeSeries_OptimizeMs_Timestamps, &response.TimeSeries_OptimizeMs_Values, "route_matrix_optimize_ms")
-		buyerTimeSeriesWatcher.Unlock()
+		adminTimeSeriesWatcher.Lock()
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalSessions_Timestamps, &response.TimeSeries_TotalSessions_Values, "total_sessions")
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
+		adminTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ActiveRelays_Timestamps, &response.TimeSeries_ActiveRelays_Values, "active_relays")
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalRoutes_Timestamps, &response.TimeSeries_TotalRoutes_Values, "route_matrix_total_routes")
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_RouteMatrixBytes_Timestamps, &response.TimeSeries_RouteMatrixBytes_Values, "route_matrix_bytes")
+		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_OptimizeMs_Timestamps, &response.TimeSeries_OptimizeMs_Values, "route_matrix_optimize_ms")
+		adminTimeSeriesWatcher.Unlock()
 
 		countersWatcher.Lock()
 		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
