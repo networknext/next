@@ -61,7 +61,6 @@ resource "google_compute_region_backend_service" "service" {
     group           = google_compute_region_instance_group_manager.service.instance_group
     balancing_mode  = "CONNECTION"
   }
-  connection_draining_timeout_sec = 300
 }
 
 resource "google_compute_instance_template" "service" {

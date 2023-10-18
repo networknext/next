@@ -22,6 +22,12 @@ TODO
 
 	-----------------------
 
+	Set a dependency for the raspberry client, server and backend on the server backend.
+
+	This way it won't start up until the new server backend is ready.
+
+	-----------------------
+
 	Take code to staging and verify that no fallback to directs occur when scaling down server backend instances
 
 
