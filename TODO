@@ -4,8 +4,6 @@ DONE
 
 	curl http://metadata.google.internal/computeMetadata/v1/instance/id -H Metadata-Flavor:Google
 
-TODO
-
 	Verify the shutting down detection in dev
 
 	Nope. It doesn't work, the stopping state comes to the VM too late.
@@ -16,12 +14,11 @@ TODO
 
 	I believe the instance group will list the VM as stopping early, so I can key off this.
 
-	To grab this I need to first woerk 
+TODO
 
+	Verify early stopping detection in dev. Nope.
 
-	-----------------------
-
-	Verify early stopping detection in dev
+	Try again... watch the MIG with console manually while it is stopping...
 
 	-----------------------
 

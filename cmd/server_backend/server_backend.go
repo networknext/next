@@ -278,10 +278,10 @@ func updateShuttingDown() {
 
 				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
 
-				lines := strings.Split(output, "\r\n")
+				lines := strings.Split(output, "\n")
 
 				for i := range lines {
-					if strings.Contains(lines[i], instanceName) && (strings.Contains(lines[i], "STOPPING") || strings.Contains(lines[i], "SUSPENDING")) {
+					if strings.Contains(lines[i], instanceName) && (strings.Contains(lines[i], "STOPPING") || strings.Contains(lines[i], "DELETING")) {
 						shuttingDownMutex.Lock()
 						if !shuttingDown {
 							core.Log("*** SHUTTING DOWN ***")
