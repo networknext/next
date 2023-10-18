@@ -247,6 +247,9 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 				break
 			}
 
+			// todo
+			core.Log("keys: %v", keys)
+
 			var pipeline redis.Pipeliner
 			if watcher.redisClusterClient != nil {
 				pipeline = watcher.redisClusterClient.Pipeline()
@@ -263,7 +266,7 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			cmds, err := pipeline.Exec(ctx)
 			if err != nil {
 				// todo
-				core.Warn("redis error getting time series: %v", err)
+				core.Warn("error getting time series: %v", err)
 				break
 			}
 
@@ -314,8 +317,6 @@ func (watcher *RedisTimeSeriesWatcher) GetIntValues(timestamps *[]uint64, values
 			(*values)[i] = int(watcher.values[index][i])
 		}
 	} else {
-		// todo
-		core.Warn("GetIntValues = key '%s' does not exist", key)
 		*timestamps = nil
 		*values = nil
 	}
