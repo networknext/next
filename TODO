@@ -26,9 +26,11 @@ DONE
 
 	It seems mostly effective, but sometimes fallback to directs get through. sometimes no retries happen. sometimes retries happen, but no fallback to direct.
 
-TODO
-
 	Ideally, what I need to do is set a cooldown period or connection drain.
+
+	Tried to set a shutdown script, but is it really having any effect?
+
+TODO
 
 	-----------------------
 
@@ -184,7 +186,11 @@ TODO
 
 
 
+	--------------
 
+	It seems that redis time series is quite underpowered in staging. With only 1M sessions, it has a very long delay (minutes) for counter aggregation.
+
+	It needs more CPU. How to sort this out?
 
 	--------------
 

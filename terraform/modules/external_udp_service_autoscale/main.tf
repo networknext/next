@@ -93,7 +93,10 @@ resource "google_compute_instance_template" "service" {
 
   metadata = {
     startup-script = replace(var.startup_script, "##########", google_compute_address.service.address)
-    shutdown-script = "#! /bin/bash sleep 60"
+    shutdown-script = <<EOF
+      #!/bin/bash
+      systemctl stop app
+    EOF
   }
 
   service_account {

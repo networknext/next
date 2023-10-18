@@ -65,6 +65,7 @@ type Service struct {
 	Local         bool
 
 	ConnectionDrain bool
+	Stopping        bool
 
 	Router mux.Router
 
@@ -626,6 +627,8 @@ func (service *Service) WaitForShutdown() {
 	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 	<-termChan
 	core.Log("received shutdown signal")
+
+	service.Stopping = true
 
 	service.ip2location_mutex.Lock()
 	if service.ip2location_city_db != nil {

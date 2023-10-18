@@ -303,7 +303,7 @@ func isShuttingDown() bool {
 
 func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return routeMatrix != nil && database != nil && !isShuttingDown()
+	return routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
 }
 
 func machineIsHealthy() bool {
