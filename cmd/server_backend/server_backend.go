@@ -262,13 +262,9 @@ func updateShuttingDown() {
 
 	core.Log("google cloud region is '%s'", region)
 
-	// tell the load balancer not to send traffic to us while we are shutting down
-	// without this manual step, traffic will continue to be sent to this VM right up 
-	// to the point where the VM is terminated!
-
 	go func() {
 
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(100*time.Millisecond)
 		
 		for {
 			select {
