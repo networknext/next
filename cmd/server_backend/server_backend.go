@@ -229,6 +229,10 @@ func updateShuttingDown() {
 	}
 
 	instanceName = strings.TrimSuffix(instanceName, "\n")
+
+	tokens := strings.Split(instanceName, ".")
+
+	instanceName = tokens[0]
 	
 	core.Log("google cloud instance name is '%s'", instanceName)
 
@@ -242,7 +246,7 @@ func updateShuttingDown() {
 
 	zone = strings.TrimSuffix(zone, "\n")
 
-	tokens := strings.Split(zone, "/")
+	tokens = strings.Split(zone, "/")
 	
 	zone = tokens[len(tokens)-1]
 
