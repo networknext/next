@@ -182,7 +182,9 @@ func main() {
 						if database == nil {
 							break
 						}
-						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
+						keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count", "active_relays", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
+						// todo: try reducing set of keys
+						/*
 						buyerIds := database.GetBuyerIds()
 						for i := range buyerIds {
 							keys = append(keys, fmt.Sprintf("buyer_%016x_total_sessions", buyerIds[i]))
@@ -190,6 +192,7 @@ func main() {
 							keys = append(keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyerIds[i]))
 							keys = append(keys, fmt.Sprintf("buyer_%016x_server_count", buyerIds[i]))
 						}
+						*/
 						buyerTimeSeriesWatcher.SetKeys(keys)
 					}
 				}
