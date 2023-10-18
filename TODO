@@ -1,16 +1,20 @@
 DONE
 
-TODO
-
 	When the server backend is in the stopping or suspending state, set the lb_health check to false.
 
 	curl http://metadata.google.internal/computeMetadata/v1/instance/id -H Metadata-Flavor:Google
 
+TODO
 
+	Verify the shutting down detection in dev
 
+	Take code to staging and verify that no fallback to directs occur when scaling down server backend instances
 
+	---------------
 
+	We need to see a steady route matrix across deploys. Work out what is going on with leader election and the new instance sending time series and counter data
 
+	---------------
 
 
 
@@ -47,7 +51,6 @@ TODO
 
 
 
-s
 
 
 
@@ -73,9 +76,15 @@ s
 
 
 
-	Set initial delay on server cruncher and session cruncher for 120. This will delay them from becoming active until they have had at least a full minute.
 
-	The test to see if this fix works, will be that the session counts won't flap between 0,0 and old session counts when a deploy happens.
+
+
+
+
+
+
+
+
 
 	--------------
 

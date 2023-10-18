@@ -248,10 +248,9 @@ func updateShuttingDown() {
 
 	core.Log("google cloud zone is '%s'", zone)
 
-	// check every second to see if we are in 'SHUTTING DOWN' or 'SUSPENDING' state
-	// we use this to stop UDP traffic being sent to us from the load balancer while we are
-	// shutting down. without this manual step, traffic will continue to be sent to this VM 
-	// right up to the point where the VM is terminated!
+	// tell the load balancer not to send traffic to us while we are shutting down
+	// without this manual step, traffic will continue to be sent to this VM right up 
+	// to the point where the VM is terminated!
 
 	go func() {
 
@@ -265,16 +264,26 @@ func updateShuttingDown() {
 
 			case <-ticker.C:
 
-				cmd := fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceId, zone)
+				// method 1: check via VM status in descrption
 
-				core.Log(cmd)
-
-				_, output := Bash(cmd)
+				_, output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceId, zone))
 
 				if strings.Contains(output, "status: STOPPING") || strings.Contains(output, "status: SUSPENDING") {
 					shuttingDownMutex.Lock()
 					if !shuttingDown {
 						core.Log("*** SHUTTING DOWN ***")
+						shuttingDown = true
+					}
+					shuttingDownMutex.Unlock()
+				}
+
+				// method 2: check preempted status
+
+				_, preempted := Bash("curl -s http://metadata/computeMetadata/v1/instance/preempted -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+				if strings.Contains(preempted, "TRUE") {
+					shuttingDownMutex.Lock()
+					if !shuttingDown {
+						core.Log("*** PREEMPTED ***")
 						shuttingDown = true
 					}
 					shuttingDownMutex.Unlock()
