@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"sort"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -245,6 +246,9 @@ func TopSessionsThread() {
 					break
 				}
 			}
+
+			sort.Slice(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
+			sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score > sessions[j].score })
 
 			newTopSessions := &TopSessions{}
 			newTopSessions.numTopSessions = len(sessions)

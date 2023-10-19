@@ -12,10 +12,6 @@
 
       <div id="accelerated_percent" class="graph"/>
 
-      <div id="server_update" class="graph"/>
-
-      <div id="session_update" class="graph"/>
-
       <div id="retry" class="graph"/>
 
       <div id="fallback_to_direct" class="graph"/>
@@ -89,29 +85,7 @@ let server_count_opts = custom_graph({
   ]
 })
 
-let session_update_opts = custom_graph({
-  title: "Session Updates",
-  series: [
-    { 
-      name: 'Session Updates',
-      stroke: "rgb(94, 201, 255)",
-      fill: "rgba(94, 201, 255,0.075)",
-      units: ' per-second',
-    },
-  ]
-})
-
-let server_update_opts = custom_graph({
-  title: "Server Updates",
-  series: [
-    { 
-      name: 'Server Updates',
-      stroke: "rgb(119, 212, 179)",
-      fill: "rgba(119, 212, 179,0.075)",
-      units: ' per-second',
-    },
-  ]
-})
+// todo: active relays
 
 let retry_opts = custom_graph({
   title: "Retries",
@@ -239,34 +213,6 @@ async function getData() {
       data.server_count_data = [server_count_timestamps, server_count_values]
     }
 
-    // session update data
-
-    if (res.data.counters_session_update_timestamps != null) {
-      let session_update_timestamps = []  
-      let session_update_values = []
-      let i = 0
-      while (i < res.data.counters_session_update_timestamps.length) {
-        session_update_timestamps.push(Math.floor(parseInt(res.data.counters_session_update_timestamps[i]) / 1000.0))
-        session_update_values.push((parseInt(res.data.counters_session_update_values[i]) / 60.0).toFixed(1))
-        i++
-      }
-      data.session_update_data = [session_update_timestamps, session_update_values]
-    }
-
-    // server update data
-
-    if (res.data.counters_server_update_timestamps != null) {
-      let server_update_timestamps = []  
-      let server_update_values = []
-      let i = 0
-      while (i < res.data.counters_server_update_timestamps.length) {
-        server_update_timestamps.push(Math.floor(parseInt(res.data.counters_server_update_timestamps[i]) / 1000.0))
-        server_update_values.push((parseInt(res.data.counters_server_update_values[i]) / 60.0).toFixed(1))
-        i++
-      }
-      data.server_update_data = [server_update_timestamps, server_update_values]
-    }
-
     // retry data
 
     if (res.data.counters_retry_timestamps != null) {
@@ -383,8 +329,6 @@ export default {
     this.next_sessions = new uPlot(next_sessions_opts, [[],[]], document.getElementById('next_sessions'))
     this.accelerated_percent = new uPlot(accelerated_percent_opts, [[],[]], document.getElementById('accelerated_percent'))
     this.server_count = new uPlot(server_count_opts, [[],[]], document.getElementById('server_count'))
-    this.session_update = new uPlot(session_update_opts, [[],[]], document.getElementById('session_update'))
-    this.server_update = new uPlot(server_update_opts, [[],[]], document.getElementById('server_update'))
     this.retry = new uPlot(retry_opts, [[],[]], document.getElementById('retry'))
     this.fallback_to_direct = new uPlot(fallback_to_direct_opts, [[],[]], document.getElementById('fallback_to_direct'))
     this.total_routes = new uPlot(total_routes_opts, [[],[]], document.getElementById('total_routes'))
@@ -404,8 +348,6 @@ export default {
     this.next_sessions.destroy()
     this.accelerated_percent.destroy()
     this.server_count.destroy()
-    this.session_update.destroy()
-    this.server_update.destroy()
     this.retry.destroy()
     this.fallback_to_direct.destroy()
     this.total_routes.destroy()
@@ -417,8 +359,6 @@ export default {
     this.next_sessions = null
     this.accelerated_percent = null
     this.server_count = null
-    this.session_update = null
-    this.server_update = null
     this.retry = null
     this.fallback_to_direct = null
     this.total_routes = null
@@ -449,8 +389,6 @@ export default {
           this.next_sessions.setSize({width: graph_width, height: graph_height})
           this.accelerated_percent.setSize({width: graph_width, height: graph_height})
           this.server_count.setSize({width: graph_width, height: graph_height})
-          this.session_update.setSize({width: graph_width, height: graph_height})
-          this.server_update.setSize({width: graph_width, height: graph_height})
           this.retry.setSize({width: graph_width, height: graph_height})
           this.fallback_to_direct.setSize({width: graph_width, height: graph_height})
           this.total_routes.setSize({width: graph_width, height: graph_height})
@@ -504,12 +442,6 @@ export default {
       }
       if (this.server_count != null && this.data.server_count_data != null) {
         this.server_count.setData(this.data.server_count_data, true)
-      }
-      if (this.session_update != null && this.data.session_update_data != null) {
-        this.session_update.setData(this.data.session_update_data, true)
-      }
-      if (this.server_update != null && this.data.server_update_data != null) {
-        this.server_update.setData(this.data.server_update_data, true)
       }
       if (this.retry != null && this.data.retry_data != null) {
         this.retry.setData(this.data.retry_data, true)

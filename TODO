@@ -20,9 +20,13 @@ DONE
 
 	Simplify session cruncher so it no longer tracks next sessions
 
+	Verify in dev that we have next and total session counts
+
+	Fix the session sort issue in highest score bucket
+
 TODO
 
-	Verify in dev that we have next and total session counts
+	Remove the graphs for "Server Updates" and "Session Updates"
 
 	-----------------------
 
@@ -51,43 +55,6 @@ TODO
 	-----------------------
 
 	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
-
-	-----------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 	-----------------------
 
@@ -235,12 +202,6 @@ TODO
 
 	--------------
 
-	It seems that redis time series is quite underpowered in staging. With only 1M sessions, it has a very long delay (minutes) for counter aggregation.
-
-	It needs more CPU. How to sort this out?
-
-	--------------
-
 	Add "portal_cruncher" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
 
 	Add "session_cruncher" counter. We need to see the input to the session cruncher.
@@ -277,47 +238,13 @@ TODO
 
 	--------------
 
-	Could I be creating too many insertion connections into redis and making it not scale as well as it could? Tuning is probably required here.
-
-	--------------
-
-	Is there something I can do to ensure that all data for a session ends up on the same redis cluster?
-
-	Slice data is what needs to be looked at very closely...
-
-	--------------
-
-	The server sessions not working @ 10M needs to be looked at closely
-
-	It is most likely that too many sessions are locally created per-server, and thus, the overload occurred with the minute, minute - 1 stuff.
-
-	But it is an average of only 100 sessions per-server, which is totally ordinary and to be expected with modern games....
-
-	--------------
-
-	Still getting some data holes in session slices @ 10M. Which part is getting overloaded? Portal cruncher? Redis?
-
-	--------------
-
 	There seems to be a load related issue @ 1000 relays.
-
-	--------------
-
-	Fix the fallback to direct when scaling down server backend instances.
 
 	--------------
 
 	Change analytics to perform bulk inserts instead of streaming inserts.
 
 	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	--------------
-
-	Add option to specify that only sessions with improvement > X get sent to the portal.
-
-	This option would make it possible to significantly reduce the cost of running redis for the portal.
-
-	If this option is set, session counts need to be grabbed from the redis counters, not the session cruncher (as it will be inaccurate)
 
 	--------------
 
@@ -340,10 +267,6 @@ Small things:
 	If a single time series or counter key does not exist, all data for the "set" of pipelined ts.range will fail.
 
 	This seems really bad. You'd expect that it would fail to execute only for the cmds that don't have keys.
-
-	--------------
-
-	The sort order for sessions appears incorrect according to score... not sure why.
 
 	--------------
 
