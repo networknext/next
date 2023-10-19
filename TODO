@@ -184,7 +184,9 @@ TODO
 
 
 
+	--------------
 
+	Fallback to direct is weird. It semes like I see repeated fallback to direct in server backends perpetually, almost like they are triggering fallback to direct over and over.
 
 	--------------
 
