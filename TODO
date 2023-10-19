@@ -24,9 +24,77 @@ DONE
 
 	Fix the session sort issue in highest score bucket
 
+	Remove the graphs for "Server Updates" and "Session Updates
+
+	Update admin graphs to use the new 
+
 TODO
 
-	Remove the graphs for "Server Updates" and "Session Updates"
+	Test that we have 10% of sessions on next in staging
+
+	Scale up to 1M in staging with 10% next
+
+	Scale up to 10M in staging with 10% next
+
+	Verify that portal crunchers and redis have much smaller load
+
+	Verify that we don't see any redis time series stretched dots @ 10M
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
 
 	-----------------------
 
