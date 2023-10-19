@@ -42,9 +42,17 @@ DONE
 
 	Yes, it seemed to work.
 
+	It seems the shutdown script is running when I have a regular VM
+
+		sudo journalctl -fu google-shutdown-scripts.service
+
+	However, when it runs it doesn't wait 60 seconds for the app service to stop...
+
+	Leading me to believe that the app service is stopped more aggressively than SIGTERM (?!) when the system is stopped, and THEN the shutdown script is called.
+
 TODO
 
-	Now try in dev with new scale down...
+	Seems like just putting the sleep in there makes it work.
 
 	-----------------------
 
