@@ -2,19 +2,15 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
-	"sort"
 	"sync"
 	"time"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
-	"github.com/networknext/next/modules/envvar"
 )
 
 const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
@@ -62,42 +58,13 @@ type BuyerStats struct {
 var buyerDataMutex sync.Mutex
 var buyerData []byte
 
-var timeSeriesPublisher *common.RedisTimeSeriesPublisher
-
-var enableRedisTimeSeries bool
-
 func main() {
-
-	// todo
-	enableRedisTimeSeries = true // envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
-	redisTimeSeriesCluster := envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
-	redisTimeSeriesHostname := envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
-
-	if enableRedisTimeSeries {
-		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
-		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
-	}
 
 	service := common.CreateService("server_cruncher")
 
 	service.Router.HandleFunc("/server_batch", serverBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_servers", topServersHandler).Methods("GET")
 	service.Router.HandleFunc("/buyer_data", buyerDataHandler).Methods("GET")
-
-	if enableRedisTimeSeries {
-
-		timeSeriesConfig := common.RedisTimeSeriesConfig{
-			RedisHostname: redisTimeSeriesHostname,
-			RedisCluster:  redisTimeSeriesCluster,
-		}
-
-		var err error
-		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
-		if err != nil {
-			core.Error("could not create redis time series publisher: %v", err)
-			os.Exit(1)
-		}
-	}
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
@@ -236,13 +203,7 @@ func TopSessionsThread() {
 
 			// calculate server count and the set of top servers
 
-			maxServers := 0
-
-			for i := 0; i < NumBuckets; i++ {
-				maxServers += servers[i].GetCount()
-			}
-
-			serversMap := make(map[string]bool, maxServers)
+			serversMap := make(map[string]bool, TopServersCount)
 
 			type Server struct {
 				serverAddress string
@@ -256,17 +217,15 @@ func TopSessionsThread() {
 				for j := range bucketServers {
 					if _, exists := serversMap[bucketServers[j].Key]; !exists {
 						serversMap[bucketServers[j].Key] = true
-						if len(topServers) < TopServersCount {
-							topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
-						}
+						topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
 					}
+				}
+				if len(topServers) >= TopServersCount {
+					break
 				}
 			}
 
-			serverCount := len(serversMap)
-
 			newTopServers := &TopServers{}
-			newTopServers.serverCount = uint32(serverCount)
 			newTopServers.numTopServers = len(topServers)
 			for i := range topServers {
 				newTopServers.topServers[i] = topServers[i].serverAddress
@@ -274,65 +233,9 @@ func TopSessionsThread() {
 
 			UpdateTopServers(newTopServers)
 
-			// build per-buyer server counts
-
-			buyerMap := make(map[uint64]bool)
-
-			for i := 0; i < NumBuckets; i++ {
-				for k := range buyerServers[i] {
-					buyerMap[k] = true
-				}
-			}
-
-			buyers := make([]uint64, len(buyerMap))
-			index := 0
-			for k := range buyerMap {
-				buyers[index] = k
-				index++
-			}
-
-			sort.Slice(buyers, func(i, j int) bool { return buyers[i] < buyers[j] })
-
-			core.Log("buyers: %v", buyers)
-
-			buyerStats := BuyerStats{}
-			buyerStats.buyerIds = make([]uint64, len(buyers))
-			buyerStats.serverCounts = make([]uint32, len(buyers))
-
-			for i := range buyers {
-				buyerStats.buyerIds[i] = buyers[i]
-				for j := 0; j < NumBuckets; j++ {
-					buyerStats.serverCounts[i] += uint32(len(buyerServers[j][buyers[i]]))
-				}
-				core.Log("buyer %d => %d servers", buyerStats.buyerIds[i], buyerStats.serverCounts[i])
-			}
-
-			UpdateBuyerData(&buyerStats)
-
 			duration := time.Since(start)
 
-			core.Log("top %d of %d servers (%.6fms)", len(servers), serverCount, float64(duration.Nanoseconds())/1000000.0)
-
-			// publish time series data to redis
-
-			if enableRedisTimeSeries {
-
-				message := common.RedisTimeSeriesMessage{}
-
-				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
-
-				message.Keys = []string{"server_count"}
-
-				message.Values = []float64{float64(serverCount)}
-
-				for i := range buyers {
-					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_server_count", buyers[i]))
-					message.Values = append(message.Values, float64(buyerStats.serverCounts[i]))
-				}
-
-				timeSeriesPublisher.MessageChannel <- &message
-
-			}
+			core.Log("top %d servers (%.6fms)", len(servers), float64(duration.Nanoseconds())/1000000.0)
 		}
 	}
 }

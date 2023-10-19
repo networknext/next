@@ -60,6 +60,8 @@ type SDK_Handler struct {
 	Events                  [SDK_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
 
+	PortalNextSessionsOnly bool
+
 	PortalServerUpdateMessageChannel    chan<- *messages.PortalServerUpdateMessage
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
@@ -423,6 +425,8 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 		SliceNumber: state.Request.SliceNumber,
 		RouteType:   packets.SDK_RouteTypeDirect,
 	}
+
+	state.PortalNextSessionsOnly = handler.PortalNextSessionsOnly
 
 	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
 	state.PortalNearRelayUpdateMessageChannel = handler.PortalNearRelayUpdateMessageChannel

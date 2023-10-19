@@ -76,6 +76,9 @@ type SessionUpdateState struct {
 	StartTimestamp   uint64
 	FallbackToDirect bool
 
+	// if true, only network next sessions are sent to portal
+	PortalNextSessionsOnly bool	
+
 	// codepath flags (for unit testing etc...)
 	ClientPingTimedOut                        bool
 	AnalysisOnly                              bool
@@ -1138,6 +1141,10 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	}
 
 	if state.Request.ClientPingTimedOut {
+		return
+	}
+
+	if state.PortalNextSessionsOnly && state.Output.DurationOnNext == 0 {
 		return
 	}
 

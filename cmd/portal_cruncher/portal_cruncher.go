@@ -215,6 +215,9 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 
 	if enableRedisTimeSeries {
 		countersPublisher.MessageChannel <- "session_update"
+		if message.Next {
+			countersPublisher.MessageChannel <- "next_session_update"
+		}
 		if message.Retry {
 			countersPublisher.MessageChannel <- "retry"
 		}

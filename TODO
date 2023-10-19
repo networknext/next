@@ -1,115 +1,77 @@
 DONE
 
-	When the server backend is in the stopping or suspending state, set the lb_health check to false.
+	Modify staging so only 10% of sessions take network next
 
-	curl http://metadata.google.internal/computeMetadata/v1/instance/id -H Metadata-Flavor:Google
+	Add a flag to only send next sessions to portal
 
-	Verify the shutting down detection in dev
+	Make API get next and total session counts from counters instead of session cruncher
 
-	Nope. It doesn't work, the stopping state comes to the VM too late.
+	Extend portal cruncher to also send next_session_update counter
 
-	Moving to the managed instance group:
-
-		gcloud compute instance-groups managed list-instances server-backend --region us-central1
-
-	I believe the instance group will list the VM as stopping early, so I can key off this.
-
-	Verify early stopping detection in dev. Nope.
-
-	Try again... watch the MIG with console manually while it is stopping...
-
-	Add manual connection drain post-SIGTERM.
-
-	Increase rate of checking for DELETING status.
-
-	Take code to staging and verify that no fallback to directs occur when scaling down server backend instances
-
-	It seems mostly effective, but sometimes fallback to directs get through. sometimes no retries happen. sometimes retries happen, but no fallback to direct.
-
-	Ideally, what I need to do is set a cooldown period or connection drain.
-
-	Tried to set a shutdown script, but is it really having any effect?
-
-	I think the heredoc syntax was off, trying again...
-
-	Set a dependency for the raspberry client, server and backend on the server backend in dev.
-
-	This way it won't start up until the new server backend is ready.
-
-	Can we stop the server backend service manually with systemctl stop, and not have fallback to direct?
-
-	If so, then it should be possible.
-
-	Yes, it seemed to work.
-
-	It seems the shutdown script is running when I have a regular VM
-
-		sudo journalctl -fu google-shutdown-scripts.service
-
-	However, when it runs it doesn't wait 60 seconds for the app service to stop...
-
-	Leading me to believe that the app service is stopped more aggressively than SIGTERM (?!) when the system is stopped, and THEN the shutdown script is called.
-
-	Seems like just putting the sleep in there makes it work.
-
-	Works in dev.
-
-TODO
-
-	Speed up things. Once we have > 10k sessions, theoretically we can just get smart and only put accelerated sessions in the portal.
-
-	This drastically reduces the redis load, and we're not going to show any of those sessions on the map or top sessions list anyway at this point.
-
-	Session counts can be approximated with the counters.
-
-	Money can be saved by reducing the beef of redis and 
-
-	Extend session load test to hit 10% of sessions on next only.
-
-	To go even further, a setting can be made to only send sessions to the portal if they have improvement > X
-
-	-----------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------------
+	Increase CPU power and memory for time series redis stack
 
 	Set server backend to have a dependency on the database, and redis instances in staging
 
 	Set load tests to have a dependency on server backend, this way they don't start up until everything is ready.
+
+	Simplify session cruncher so it no longer does counts
+
+	Simplify server crouncher so it no longer does counts
+
+TODO
+
+	Simplify session cruncher so it no longer tracks next sessions
+
+	Verify in staging that we have next and total session counts
+
+	-----------------------
+
+	Adjust session cruncher so it doesn't count sessions
+
+	-----------------------
+
+	Adjust server cruncher so it doesn't count servers
+
+	-----------------------
+
+	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------------
 

@@ -49,6 +49,8 @@ var redisCluster []string
 var shuttingDownMutex sync.Mutex
 var shuttingDown bool
 
+var portalNextSessionsOnly bool
+
 func main() {
 
 	service = common.CreateService("server_backend")
@@ -67,6 +69,7 @@ func main() {
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
+	portalNextSessionsOnly = envvar.GetBool("PORTAL_NEXT_SESSIONS_ONLY", false)
 
 	core.Debug("channel size: %d", channelSize)
 	core.Debug("max packet size: %d bytes", maxPacketSize)
@@ -75,6 +78,7 @@ func main() {
 	core.Debug("enable redis streams: %v", enableRedisStreams)
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis cluster: %v", redisCluster)
+	core.Debug("portal next sessions only: %v", portalNextSessionsOnly)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -318,6 +322,8 @@ func ready() bool {
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	handler := handlers.SDK_Handler{}
+
+	handler.PortalNextSessionsOnly = portalNextSessionsOnly
 
 	handler.PingKey = pingKey
 	handler.ServerBackendAddress = serverBackendAddress
