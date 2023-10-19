@@ -1736,8 +1736,6 @@ module "session_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1773,8 +1771,6 @@ module "server_cruncher" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
