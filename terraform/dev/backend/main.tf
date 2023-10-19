@@ -1924,6 +1924,10 @@ module "raspberry_backend" {
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
   target_size              = 1
+
+  depends_on = [
+    module.server_backend
+  ]
 }
 
 output "raspberry_backend_address" {
@@ -1968,6 +1972,10 @@ module "raspberry_server" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 8
+
+  depends_on = [
+    module.server_backend
+  ]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -2007,6 +2015,10 @@ module "raspberry_client" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh"]
   target_size        = 4
+
+  depends_on = [
+    module.server_backend
+  ]
 }
 
 # ----------------------------------------------------------------------------------------
