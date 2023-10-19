@@ -28,7 +28,9 @@ DONE
 
 	Update admin graphs to use the new 
 
-	Test that we have 10% of sessions on next in staging
+	Verify we have 10% of sessions on next in staging
+
+	Do something special to avoid sending near relay data for sessions unless on next, when the only next sessions on portal flag is set
 
 TODO
 
@@ -36,7 +38,7 @@ TODO
 
 	Scale up to 10M in staging with 10% next
 
-	Verify that portal crunchers and redis have much smaller load
+	Scale up to 25M in staging with 10% next
 
 	Verify that we don't see any redis time series stretched dots @ 10M
 

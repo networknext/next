@@ -285,7 +285,7 @@ output "redis_time_series_address" {
 resource "google_redis_cluster" "portal" {
   provider       = google-beta
   name           = "portal"
-  shard_count    = 3
+  shard_count    = 10
   psc_configs {
     network = google_compute_network.staging.id
   }
@@ -301,7 +301,7 @@ resource "google_redis_cluster" "portal" {
 resource "google_redis_cluster" "server_backend" {
   provider       = google-beta
   name           = "server-backend"
-  shard_count    = 3
+  shard_count    = 10
   psc_configs {
     network = google_compute_network.staging.id
   }

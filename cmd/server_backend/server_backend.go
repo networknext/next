@@ -32,7 +32,6 @@ var relayBackendPrivateKey []byte
 var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
 var portalServerUpdateMessageChannel chan *messages.PortalServerUpdateMessage
 var portalNearRelayUpdateMessageChannel chan *messages.PortalNearRelayUpdateMessage
-var portalMapUpdateMessageChannel chan *messages.PortalMapUpdateMessage
 
 var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
@@ -137,12 +136,10 @@ func main() {
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
 	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
 	portalNearRelayUpdateMessageChannel = make(chan *messages.PortalNearRelayUpdateMessage, channelSize)
-	portalMapUpdateMessageChannel = make(chan *messages.PortalMapUpdateMessage, channelSize)
 
 	processPortalMessages_RedisStreams[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
 	processPortalMessages_RedisStreams[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
 	processPortalMessages_RedisStreams[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
-	processPortalMessages_RedisPubsub[*messages.PortalMapUpdateMessage](service, "map update", portalMapUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -339,7 +336,6 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
 	handler.PortalServerUpdateMessageChannel = portalServerUpdateMessageChannel
 	handler.PortalNearRelayUpdateMessageChannel = portalNearRelayUpdateMessageChannel
-	handler.PortalMapUpdateMessageChannel = portalMapUpdateMessageChannel
 
 	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel

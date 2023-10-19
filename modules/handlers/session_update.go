@@ -95,7 +95,6 @@ type SessionUpdateState struct {
 	NotUpdatingNearRelaysDatacenterNotEnabled bool
 	SentPortalSessionUpdateMessage            bool
 	SentPortalNearRelayUpdateMessage          bool
-	SentPortalMapUpdateMessage                bool
 	SentAnalyticsNearRelayPingMessage         bool
 	SentAnalyticsSessionUpdateMessage         bool
 	SentAnalyticsSessionSummaryMessage        bool
@@ -106,7 +105,6 @@ type SessionUpdateState struct {
 
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
-	PortalMapUpdateMessageChannel       chan<- *messages.PortalMapUpdateMessage
 
 	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
 	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
@@ -965,6 +963,19 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
+		Logic for sending near relay messages to portal
+		This is somewhat complicated because at scale we usually only send next sessions to the portal
+		Thus, we send it right away if that flag is off, OR, if we are at scale, we must remember to send it only once
+		the first slice we are on next.
+	*/
+
+	shouldSendNearRelays := state.Input.SliceNumber >= 1 && ( !state.PortalNextSessionsOnly || state.Output.RouteState.Next )
+
+	if !state.Input.SentNearRelaysToPortal && shouldSendNearRelays {
+		state.Output.SentNearRelaysToPortal = true
+	}
+
+	/*
 		Accumulate error flags from input state, and from this session update, then write it to output.
 
 		This lets us write error flags in the session summary only, and we capture all errors that occurred for a session.
@@ -1223,7 +1234,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 
-	if state.Request.SliceNumber != 1 {
+	if !(state.Input.SentNearRelaysToPortal == false && state.Output.SentNearRelaysToPortal == true) {
 		return
 	}
 
@@ -1244,22 +1255,6 @@ func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 	if state.PortalNearRelayUpdateMessageChannel != nil {
 		state.PortalNearRelayUpdateMessageChannel <- &message
 		state.SentPortalNearRelayUpdateMessage = true
-	}
-}
-
-func sendPortalMapUpdateMessage(state *SessionUpdateState) {
-
-	message := messages.PortalMapUpdateMessage{}
-
-	message.Version = messages.PortalMapUpdateMessageVersion_Write
-	message.SessionId = state.Output.SessionId
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
-	message.Next = state.Output.RouteState.Next
-
-	if state.PortalMapUpdateMessageChannel != nil {
-		state.PortalMapUpdateMessageChannel <- &message
-		state.SentPortalMapUpdateMessage = true
 	}
 }
 

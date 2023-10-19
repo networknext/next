@@ -351,6 +351,7 @@ func GenerateRandomSessionData() SDK_SessionData {
 		PrevPacketsLostServerToClient: rand.Uint64(),
 		WriteSummary:                  common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
+		SentNearRelaysToPortal:        common.RandomBool(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
 		StartTimestamp:                rand.Uint64(),
@@ -483,6 +484,7 @@ type SDK_SessionData struct {
 	RouteState                          core.RouteState
 	WriteSummary                        bool
 	WroteSummary                        bool
+	SentNearRelaysToPortal              bool
 	PrevPacketsSentClientToServer       uint64
 	PrevPacketsSentServerToClient       uint64
 	PrevPacketsLostClientToServer       uint64
@@ -568,6 +570,7 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 	stream.SerializeBool(&sessionData.WriteSummary)
 	stream.SerializeBool(&sessionData.WroteSummary)
+	stream.SerializeBool(&sessionData.SentNearRelaysToPortal)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 	stream.SerializeUint32(&sessionData.DurationOnNext)
