@@ -362,6 +362,15 @@ func (watcher *RedisCountersWatcher) GetFloat32Values(timestamps *[]uint64, valu
 	}
 }
 
+func (watcher *RedisCountersWatcher) GetFloatValue(key string) float64 {
+	index, exists := watcher.keyToIndex[key]
+	if exists {
+		return watcher.values[index][len(watcher.values[index])-1]
+	} else {
+		return 0.0
+	}
+}
+
 func (watcher *RedisCountersWatcher) Unlock() {
 	watcher.mutex.Unlock()
 }

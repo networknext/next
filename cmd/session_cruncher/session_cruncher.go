@@ -2,19 +2,15 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"os"
-	"sort"
 	"sync"
 	"time"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
-	"github.com/networknext/next/modules/envvar"
 )
 
 const TopSessionsCount = 10000
@@ -31,15 +27,15 @@ const MapPointsVersion = uint64(0)
 
 type SessionUpdate struct {
 	sessionId uint64
-	buyerId   uint64
+	buyerId   uint64				// todo: remove
 	next      uint8
 	latitude  float32
 	longitude float32
 }
 
 type TopSessions struct {
-	nextSessions   uint32
-	totalSessions  uint32
+	nextSessions   uint32			// todo: remove
+	totalSessions  uint32           // todo: remove
 	numTopSessions int
 	topSessions    [TopSessionsCount]uint64
 }
@@ -49,9 +45,6 @@ type Bucket struct {
 	mutex                sync.Mutex
 	sessionUpdateChannel chan []SessionUpdate
 	totalSessions        *SortedSet
-	nextSessions         *SortedSet
-	buyerTotalSessions   map[uint64]map[uint64]bool
-	buyerNextSessions    map[uint64]map[uint64]bool
 	mapEntries           map[uint64]MapEntry
 }
 
@@ -61,12 +54,7 @@ var topSessionsMutex sync.Mutex
 var topSessions *TopSessions
 var topSessionsData []byte
 
-type BuyerStats struct {
-	buyerIds      []uint64
-	totalSessions []uint32
-	nextSessions  []uint32
-}
-
+// todo: remove
 var buyerDataMutex sync.Mutex
 var buyerData []byte
 
@@ -91,20 +79,7 @@ type MapPoints struct {
 var mapDataMutex sync.Mutex
 var mapData []byte
 
-var timeSeriesPublisher *common.RedisTimeSeriesPublisher
-
-var enableRedisTimeSeries bool
-
 func main() {
-
-	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
-	redisTimeSeriesCluster := envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
-	redisTimeSeriesHostname := envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
-
-	if enableRedisTimeSeries {
-		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
-		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
-	}
 
 	service := common.CreateService("session_cruncher")
 
@@ -117,32 +92,12 @@ func main() {
 	for i := range buckets {
 		buckets[i].index = i
 		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
-		buckets[i].nextSessions = NewSortedSet()
 		buckets[i].totalSessions = NewSortedSet()
-		buckets[i].buyerTotalSessions = make(map[uint64]map[uint64]bool)
-		buckets[i].buyerNextSessions = make(map[uint64]map[uint64]bool)
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
 	}
 
-	if enableRedisTimeSeries {
-
-		timeSeriesConfig := common.RedisTimeSeriesConfig{
-			RedisHostname: redisTimeSeriesHostname,
-			RedisCluster:  redisTimeSeriesCluster,
-		}
-
-		var err error
-		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
-		if err != nil {
-			core.Error("could not create redis time series publisher: %v", err)
-			os.Exit(1)
-		}
-	}
-
 	UpdateTopSessions(&TopSessions{})
-
-	UpdateBuyerData(&BuyerStats{})
 
 	UpdateMapData(&MapPoints{})
 
@@ -189,28 +144,7 @@ func StartProcessThread(bucket *Bucket) {
 			case batch := <-bucket.sessionUpdateChannel:
 				bucket.mutex.Lock()
 				for i := range batch {
-
 					bucket.totalSessions.Insert(batch[i].sessionId, uint32(bucket.index))
-
-					buyerTotalSessions, exists := bucket.buyerTotalSessions[batch[i].buyerId]
-					if !exists {
-						buyerTotalSessions = make(map[uint64]bool)
-						bucket.buyerTotalSessions[batch[i].buyerId] = buyerTotalSessions
-					}
-					buyerTotalSessions[batch[i].sessionId] = true
-
-					if batch[i].next != 0 {
-
-						bucket.nextSessions.Insert(batch[i].sessionId, uint32(bucket.index))
-
-						buyerNextSessions, exists := bucket.buyerNextSessions[batch[i].buyerId]
-						if !exists {
-							buyerNextSessions = make(map[uint64]bool)
-							bucket.buyerNextSessions[batch[i].buyerId] = buyerNextSessions
-						}
-						buyerNextSessions[batch[i].sessionId] = true
-					}
-
 					bucket.mapEntries[batch[i].sessionId] = MapEntry{next: batch[i].next, latitude: batch[i].latitude, longitude: batch[i].longitude}
 				}
 				bucket.mutex.Unlock()
@@ -226,8 +160,8 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 	index := 0
 
 	encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)
-	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)
+	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)						// todo: remove
+	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)						// todo: remove
 
 	for i := 0; i < newTopSessions.numTopSessions; i++ {
 		encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
@@ -237,26 +171,6 @@ func UpdateTopSessions(newTopSessions *TopSessions) {
 	topSessions = newTopSessions
 	topSessionsData = data
 	topSessionsMutex.Unlock()
-}
-
-func UpdateBuyerData(newBuyerStats *BuyerStats) {
-
-	data := make([]byte, 8+4+len(newBuyerStats.buyerIds)*(8+4+4))
-
-	index := 0
-
-	encoding.WriteUint64(data[:], &index, BuyerStatsVersion)
-	encoding.WriteUint32(data[:], &index, uint32(len(newBuyerStats.buyerIds)))
-
-	for i := 0; i < len(newBuyerStats.buyerIds); i++ {
-		encoding.WriteUint64(data[:], &index, newBuyerStats.buyerIds[i])
-		encoding.WriteUint32(data[:], &index, newBuyerStats.totalSessions[i])
-		encoding.WriteUint32(data[:], &index, newBuyerStats.nextSessions[i])
-	}
-
-	buyerDataMutex.Lock()
-	buyerData = data
-	buyerDataMutex.Unlock()
 }
 
 func UpdateMapData(newMapPoints *MapPoints) {
@@ -288,10 +202,7 @@ func TopSessionsThread() {
 
 			core.Log("-------------------------------------------------------------------")
 
-			nextSessions := make([]*SortedSet, NumBuckets)
 			totalSessions := make([]*SortedSet, NumBuckets)
-			buyerTotalSessions := make([]map[uint64]map[uint64]bool, NumBuckets)
-			buyerNextSessions := make([]map[uint64]map[uint64]bool, NumBuckets)
 			mapEntries := make([]map[uint64]MapEntry, NumBuckets)
 
 			for i := 0; i < NumBuckets; i++ {
@@ -299,16 +210,10 @@ func TopSessionsThread() {
 			}
 
 			for i := 0; i < NumBuckets; i++ {
-				nextSessions[i] = buckets[i].nextSessions
 				totalSessions[i] = buckets[i].totalSessions
 				mapEntries[i] = buckets[i].mapEntries
-				buyerTotalSessions[i] = buckets[i].buyerTotalSessions
-				buyerNextSessions[i] = buckets[i].buyerNextSessions
-				buckets[i].nextSessions = NewSortedSet()
 				buckets[i].totalSessions = NewSortedSet()
-				buckets[i].buyerTotalSessions = make(map[uint64]map[uint64]bool)
-				buckets[i].buyerNextSessions = make(map[uint64]map[uint64]bool)
-				buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
+				buckets[i].mapEntries = make(map[uint64]MapEntry, TopSessionsCount)
 			}
 
 			for i := 0; i < NumBuckets; i++ {
@@ -317,18 +222,9 @@ func TopSessionsThread() {
 
 			start := time.Now()
 
-			// build global top sessions list and total sessions / next sessions counts
+			// build top sessions list
 
-			maxNextSessions := 0
-			maxTotalSessions := 0
-
-			for i := 0; i < NumBuckets; i++ {
-				maxNextSessions += nextSessions[i].GetCount()
-				maxTotalSessions += totalSessions[i].GetCount()
-			}
-
-			nextSessionsMap := make(map[uint64]bool, maxNextSessions)
-			totalSessionsMap := make(map[uint64]bool, maxTotalSessions)
+			totalSessionsMap := make(map[uint64]bool, TopSessionsCount)
 
 			type Session struct {
 				sessionId uint64
@@ -338,29 +234,19 @@ func TopSessionsThread() {
 			sessions := make([]Session, 0, TopSessionsCount)
 
 			for i := 0; i < NumBuckets; i++ {
-				bucketNextSessions := nextSessions[i].GetByRankRange(1, -1)
 				bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
-				for j := range bucketNextSessions {
-					if _, exists := nextSessionsMap[bucketNextSessions[j].Key]; !exists {
-						nextSessionsMap[bucketNextSessions[j].Key] = true
-					}
-				}
 				for j := range bucketTotalSessions {
 					if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
 						totalSessionsMap[bucketTotalSessions[j].Key] = true
-						if len(sessions) < TopSessionsCount {
-							sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
-						}
+						sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
 					}
+				}
+				if len(sessions) >= TopSessionsCount {
+					break
 				}
 			}
 
-			nextCount := len(nextSessionsMap)
-			totalCount := len(totalSessionsMap)
-
 			newTopSessions := &TopSessions{}
-			newTopSessions.nextSessions = uint32(nextCount)
-			newTopSessions.totalSessions = uint32(totalCount)
 			newTopSessions.numTopSessions = len(sessions)
 			for i := range sessions {
 				newTopSessions.topSessions[i] = sessions[i].sessionId
@@ -383,80 +269,9 @@ func TopSessionsThread() {
 
 			UpdateMapData(&newMapPoints)
 
-			// build per-buyer total sessions / next sessions counts
-
-			buyerMap := make(map[uint64]bool)
-
-			for i := 0; i < NumBuckets; i++ {
-				for k := range buyerTotalSessions[i] {
-					buyerMap[k] = true
-				}
-			}
-
-			buyers := make([]uint64, len(buyerMap))
-			index := 0
-			for k := range buyerMap {
-				buyers[index] = k
-				index++
-			}
-
-			sort.Slice(buyers, func(i, j int) bool { return buyers[i] < buyers[j] })
-
-			core.Log("buyers: %v", buyers)
-
-			buyerStats := BuyerStats{}
-			buyerStats.buyerIds = make([]uint64, len(buyers))
-			buyerStats.totalSessions = make([]uint32, len(buyers))
-			buyerStats.nextSessions = make([]uint32, len(buyers))
-
-			for i := range buyers {
-				buyerStats.buyerIds[i] = buyers[i]
-				for j := 0; j < NumBuckets; j++ {
-					buyerStats.totalSessions[i] += uint32(len(buyerTotalSessions[j][buyers[i]]))
-					buyerStats.nextSessions[i] += uint32(len(buyerNextSessions[j][buyers[i]]))
-				}
-				core.Log("buyer %d => %d/%d sessions", buyerStats.buyerIds[i], buyerStats.nextSessions[i], buyerStats.totalSessions[i])
-			}
-
-			UpdateBuyerData(&buyerStats)
-
 			duration := time.Since(start)
 
-			core.Log("top %d of %d/%d sessions (%.6fms)", len(sessions), nextCount, totalCount, float64(duration.Nanoseconds())/1000000.0)
-
-			// publish time series data to redis
-
-			if enableRedisTimeSeries {
-
-				message := common.RedisTimeSeriesMessage{}
-
-				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
-
-				message.Keys = []string{"total_sessions", "next_sessions", "accelerated_percent"}
-
-				acceleratedPercent := 0.0
-				if totalCount > 0 {
-					acceleratedPercent = float64(nextCount) / float64(totalCount) * 100.0
-				}
-
-				message.Values = []float64{float64(totalCount), float64(nextCount), acceleratedPercent}
-
-				for i := range buyers {
-					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_total_sessions", buyers[i]))
-					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_next_sessions", buyers[i]))
-					message.Keys = append(message.Keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyers[i]))
-					buyerAcceleratedPercent := 0.0
-					if buyerStats.totalSessions[i] > 0 {
-						buyerAcceleratedPercent = float64(buyerStats.nextSessions[i]) / float64(buyerStats.totalSessions[i]) * 100.0
-					}
-					message.Values = append(message.Values, float64(buyerStats.totalSessions[i]))
-					message.Values = append(message.Values, float64(buyerStats.nextSessions[i]))
-					message.Values = append(message.Values, float64(buyerAcceleratedPercent))
-				}
-
-				timeSeriesPublisher.MessageChannel <- &message
-
-			}
+			core.Log("top %d sessions (%.6fms)", len(sessions), float64(duration.Nanoseconds())/1000000.0)
 		}
 	}
 }

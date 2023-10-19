@@ -265,7 +265,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "n1-standard-2"
+  machine_type             = "c3-highmem-8"
   project                  = var.google_project
   region                   = var.google_region
   zone                     = var.google_zone
@@ -285,7 +285,7 @@ output "redis_time_series_address" {
 resource "google_redis_cluster" "portal" {
   provider       = google-beta
   name           = "portal"
-  shard_count    = 25
+  shard_count    = 3
   psc_configs {
     network = google_compute_network.staging.id
   }
@@ -301,7 +301,7 @@ resource "google_redis_cluster" "portal" {
 resource "google_redis_cluster" "server_backend" {
   provider       = google-beta
   name           = "server-backend"
-  shard_count    = 25
+  shard_count    = 3
   psc_configs {
     network = google_compute_network.staging.id
   }
@@ -1789,8 +1789,6 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1808,10 +1806,6 @@ module "session_cruncher" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
-
-  depends_on = [
-    module.redis_time_series
-  ]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1829,8 +1823,6 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1848,10 +1840,6 @@ module "server_cruncher" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
-
-  depends_on = [
-    module.redis_time_series
-  ]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -2037,7 +2025,8 @@ module "load_test_relays" {
   depends_on = [
     google_redis_cluster.portal,
     google_redis_cluster.server_backend,
-    google_sql_database_instance.postgres
+    google_sql_database_instance.postgres,
+    module.server_backend
   ]
 }
 
@@ -2078,7 +2067,8 @@ module "load_test_servers" {
   depends_on = [
     google_redis_cluster.portal,
     google_redis_cluster.server_backend,
-    google_sql_database_instance.postgres
+    google_sql_database_instance.postgres,
+    module.server_backend
   ]
 }
 
@@ -2119,7 +2109,8 @@ module "load_test_sessions" {
   depends_on = [
     google_redis_cluster.portal,
     google_redis_cluster.server_backend,
-    google_sql_database_instance.postgres
+    google_sql_database_instance.postgres,
+    module.server_backend
   ]
 }
 

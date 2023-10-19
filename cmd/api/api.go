@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
-	// "strings"
+	"math"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -262,6 +262,7 @@ func main() {
 
 			keys = []string{
 				"session_update",
+				"next_session_update",
 				"server_update",
 				"retry",
 				"fallback_to_direct",
@@ -399,7 +400,12 @@ type PortalSessionCountsResponse struct {
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	response.NextSessionCount, response.TotalSessionCount = topSessionsWatcher.GetSessionCounts()
+	countersWatcher.Lock()
+	sessionUpdate := countersWatcher.GetFloatValue("session_update")
+	nextSessionUpdate := countersWatcher.GetFloatValue("next_session_update")
+	countersWatcher.Unlock()
+	response.TotalSessionCount = int(math.Ceil(sessionUpdate*10))
+	response.NextSessionCount = int(math.Ceil(nextSessionUpdate*10))
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
