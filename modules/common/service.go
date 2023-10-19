@@ -624,7 +624,7 @@ func (service *Service) IsReady() bool {
 
 func (service *Service) WaitForShutdown() {
 	termChan := make(chan os.Signal, 1)
-	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	<-termChan
 	core.Log("received shutdown signal")
 
