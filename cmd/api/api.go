@@ -1321,14 +1321,8 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 type PortalAdminDataResponse struct {
 
-	TimeSeries_TotalSessions_Timestamps      []uint64          `json:"time_series_total_sessions_timestamps,string"`
-	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
-	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
-	TimeSeries_NextSessions_Values           []int             `json:"time_series_next_sessions_values"`
 	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
 	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
-	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
-	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
 	TimeSeries_ActiveRelays_Timestamps       []uint64          `json:"time_series_active_relays_timestamps,string"`
 	TimeSeries_ActiveRelays_Values           []int             `json:"time_series_active_relays_values"`
 	TimeSeries_TotalRoutes_Timestamps        []uint64          `json:"time_series_total_routes_timestamps,string"`
@@ -1338,10 +1332,12 @@ type PortalAdminDataResponse struct {
 	TimeSeries_OptimizeMs_Timestamps         []uint64          `json:"time_series_optimize_ms_timestamps,string"`
 	TimeSeries_OptimizeMs_Values             []int             `json:"time_series_optimize_ms_values"`
 
-	Counters_SessionUpdate_Timestamps        []uint64          `json:"counters_session_update_timestamps,string"`
-	Counters_SessionUpdate_Values            []int             `json:"counters_session_update_values"`
-	Counters_ServerUpdate_Timestamps         []uint64          `json:"counters_server_update_timestamps,string"`
-	Counters_ServerUpdate_Values             []int             `json:"counters_server_update_values"`
+	Counters_TotalSessions_Timestamps        []uint64          `json:"counters_total_sessions_timestamps,string"`
+	Counters_TotalSessions_Values            []float32         `json:"counters_total_sessions_values"`
+	Counters_NextSessions_Timestamps         []uint64          `json:"counters_next_sessions_timestamps,string"`
+	Counters_NextSessions_Values             []float32         `json:"counters_next_sessions_values"`
+	Counters_ServerCount_Timestamps          []uint64          `json:"counters_server_count_timestamps,string"`
+	Counters_ServerCount_Values              []float32         `json:"counters_server_count_values"`
 	Counters_Retry_Timestamps                []uint64          `json:"counters_retry_timestamps,string"`
 	Counters_Retry_Values                    []int             `json:"counters_retry_values"`
 	Counters_FallbackToDirect_Timestamps     []uint64          `json:"counters_fallback_to_direct_timestamps,string"`
@@ -1355,10 +1351,8 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 	if enableRedisTimeSeries {
 
 		adminTimeSeriesWatcher.Lock()
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalSessions_Timestamps, &response.TimeSeries_TotalSessions_Values, "total_sessions")
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_NextSessions_Timestamps, &response.TimeSeries_NextSessions_Values, "next_sessions")
-		adminTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ServerCount_Timestamps, &response.TimeSeries_ServerCount_Values, "server_count")
+		// todo: bring back accelerated percent
+		// adminTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
 		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ActiveRelays_Timestamps, &response.TimeSeries_ActiveRelays_Values, "active_relays")
 		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalRoutes_Timestamps, &response.TimeSeries_TotalRoutes_Values, "route_matrix_total_routes")
 		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_RouteMatrixBytes_Timestamps, &response.TimeSeries_RouteMatrixBytes_Values, "route_matrix_bytes")
@@ -1366,11 +1360,24 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		adminTimeSeriesWatcher.Unlock()
 
 		countersWatcher.Lock()
-		countersWatcher.GetIntValues(&response.Counters_SessionUpdate_Timestamps, &response.Counters_SessionUpdate_Values, "session_update")
-		countersWatcher.GetIntValues(&response.Counters_ServerUpdate_Timestamps, &response.Counters_ServerUpdate_Values, "server_update")
+		countersWatcher.GetFloat32Values(&response.Counters_TotalSessions_Timestamps, &response.Counters_TotalSessions_Values, "session_update")
+		countersWatcher.GetFloat32Values(&response.Counters_NextSessions_Timestamps, &response.Counters_NextSessions_Values, "next_session_update")
+		countersWatcher.GetFloat32Values(&response.Counters_ServerCount_Timestamps, &response.Counters_ServerCount_Values, "server_update")
 		countersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
 		countersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
 		countersWatcher.Unlock()
+
+		for i := range response.Counters_TotalSessions_Values {
+			response.Counters_TotalSessions_Values[i] *= 10.0 / 60.0
+		}
+
+		for i := range response.Counters_NextSessions_Values {
+			response.Counters_NextSessions_Values[i] *= 10.0 / 60.0
+		}
+
+		for i := range response.Counters_ServerCount_Values {
+			response.Counters_ServerCount_Values[i] *= 10.0 / 60.0
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

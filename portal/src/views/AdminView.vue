@@ -159,13 +159,13 @@ async function getData() {
 
     // total sessions data
 
-    if (res.data.time_series_total_sessions_timestamps != null) {
+    if (res.data.counters_total_sessions_timestamps != null) {
       let total_sessions_timestamps = []  
       let total_sessions_values = []
       let i = 0
-      while (i < res.data.time_series_total_sessions_timestamps.length) {
-        total_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_total_sessions_timestamps[i]) / 1000.0))
-        total_sessions_values.push(parseInt(res.data.time_series_total_sessions_values[i]))
+      while (i < res.data.counters_total_sessions_timestamps.length) {
+        total_sessions_timestamps.push(Math.floor(parseInt(res.data.counters_total_sessions_timestamps[i]) / 1000.0))
+        total_sessions_values.push(parseInt(res.data.counters_total_sessions_values[i]))
         i++
       }
       data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
@@ -173,13 +173,13 @@ async function getData() {
 
     // next sessions data
 
-    if (res.data.time_series_next_sessions_timestamps != null) {
+    if (res.data.counters_next_sessions_timestamps != null) {
       let next_sessions_timestamps = []  
       let next_sessions_values = []
       let i = 0
-      while (i < res.data.time_series_next_sessions_timestamps.length) {
-        next_sessions_timestamps.push(Math.floor(parseInt(res.data.time_series_next_sessions_timestamps[i]) / 1000.0))
-        next_sessions_values.push(parseInt(res.data.time_series_next_sessions_values[i]))
+      while (i < res.data.counters_next_sessions_timestamps.length) {
+        next_sessions_timestamps.push(Math.floor(parseInt(res.data.counters_next_sessions_timestamps[i]) / 1000.0))
+        next_sessions_values.push(parseInt(res.data.counters_next_sessions_values[i]))
         i++
       }
       data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
@@ -201,13 +201,13 @@ async function getData() {
 
     // server count data
 
-    if (res.data.time_series_server_count_timestamps != null) {
+    if (res.data.counters_server_count_timestamps != null) {
       let server_count_timestamps = []  
       let server_count_values = []
       let i = 0
-      while (i < res.data.time_series_server_count_timestamps.length) {
-        server_count_timestamps.push(Math.floor(parseInt(res.data.time_series_server_count_timestamps[i]) / 1000.0))
-        server_count_values.push(parseInt(res.data.time_series_server_count_values[i]))
+      while (i < res.data.counters_server_count_timestamps.length) {
+        server_count_timestamps.push(Math.floor(parseInt(res.data.counters_server_count_timestamps[i]) / 1000.0))
+        server_count_values.push(parseInt(res.data.counters_server_count_values[i]))
         i++
       }
       data.server_count_data = [server_count_timestamps, server_count_values]
