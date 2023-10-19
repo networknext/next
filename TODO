@@ -56,6 +56,12 @@ DONE
 
 TODO
 
+	-----------------------
+
+	Modify staging so only 10% of sessions take network next
+
+	-----------------------
+
 	Speed up things. Once we have > 10k sessions, theoretically we can just get smart and only put accelerated sessions in the portal.
 
 	This drastically reduces the redis load, and we're not going to show any of those sessions on the map or top sessions list anyway at this point.
