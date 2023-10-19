@@ -30,7 +30,7 @@ TODO
 
 	Make sure load test portal works
 
-	MAke sure func test portal works
+	Make sure func test portal works
 
 	-----------------------
 
@@ -41,6 +41,12 @@ TODO
 	Remove cruft in api related to buyer session and server counts
 
 	Bring back the accelerated percent graph
+
+	-----------------------
+
+	Make sure all admin graphs work in dev
+
+	Make sure all buyer graphs work in dev
 
 	-----------------------
 
