@@ -3277,7 +3277,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             // This is used by the raspberry pi clients in dev to give a normal distribution of latencies across all sessions, so I can test the portal
             if ( raspberry_fake_latency )
             {
-                packet.next = ( session->session_id % 2 ) == 0;
+                packet.next = ( session->session_id % 10 ) == 0;
                 if ( packet.next )
                 {
                     packet.direct_rtt = 100 + ( session->session_id % 100 );
