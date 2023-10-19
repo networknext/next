@@ -50,9 +50,23 @@ DONE
 
 	Leading me to believe that the app service is stopped more aggressively than SIGTERM (?!) when the system is stopped, and THEN the shutdown script is called.
 
+	Seems like just putting the sleep in there makes it work.
+
+	Works in dev.
+
 TODO
 
-	Seems like just putting the sleep in there makes it work.
+	Speed up things. Once we have > 10k sessions, theoretically we can just get smart and only put accelerated sessions in the portal.
+
+	This drastically reduces the redis load, and we're not going to show any of those sessions on the map or top sessions list anyway at this point.
+
+	Session counts can be approximated with the counters.
+
+	Money can be saved by reducing the beef of redis and 
+
+	Extend session load test to hit 10% of sessions on next only.
+
+	To go even further, a setting can be made to only send sessions to the portal if they have improvement > X
 
 	-----------------------
 
