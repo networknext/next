@@ -28,9 +28,9 @@ DONE
 
 	Update admin graphs to use the new 
 
-TODO
-
 	Test that we have 10% of sessions on next in staging
+
+TODO
 
 	Scale up to 1M in staging with 10% next
 

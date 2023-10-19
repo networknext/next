@@ -246,7 +246,7 @@ func RunSession(index int) {
 							packet.NumNearRelays = numNearRelays
 							copy(packet.NearRelayIds[:], nearRelayIds[:])
 							for i := range packet.NearRelayRTT {
-								packet.NearRelayRTT[i] = int32((sessionId ^ nearRelayIds[i]) % 10)
+								packet.NearRelayRTT[i] = 10 + int32((sessionId ^ nearRelayIds[i]) % 10)
 							}
 						}
 
