@@ -5,4 +5,5 @@ Description=Network Next App Server
 ExecStart=/app/app
 EnvironmentFile=/app/app.env
 Restart=always
-RestartSec=3
+RestartSec=30
+TimeoutStopSec=90

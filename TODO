@@ -30,13 +30,58 @@ DONE
 
 	Tried to set a shutdown script, but is it really having any effect?
 
-TODO
-
-	-----------------------
+	I think the heredoc syntax was off, trying again...
 
 	Set a dependency for the raspberry client, server and backend on the server backend in dev.
 
 	This way it won't start up until the new server backend is ready.
+
+	Can we stop the server backend service manually with systemctl stop, and not have fallback to direct?
+
+	If so, then it should be possible.
+
+	Yes, it seemed to work.
+
+TODO
+
+	Now try in dev with new scale down...
+
+	-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	-----------------------
 

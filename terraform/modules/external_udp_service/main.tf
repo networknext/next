@@ -115,10 +115,10 @@ resource "google_compute_region_health_check" "service_lb" {
 
 resource "google_compute_health_check" "service_vm" {
   name                = "${var.service_name}-vm"
-  check_interval_sec  = 5
+  check_interval_sec  = 10
   timeout_sec         = 5
-  healthy_threshold   = 2
-  unhealthy_threshold = 1
+  healthy_threshold   = 3
+  unhealthy_threshold = 6
   http_health_check {
     request_path = "/vm_health"
     port         = "80"
