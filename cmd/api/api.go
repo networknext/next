@@ -46,6 +46,7 @@ var adminTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var relayTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var adminCountersWatcher *common.RedisCountersWatcher
+var buyerCountersWatcher *common.RedisCountersWatcher
 
 var enableRedisTimeSeries bool
 
@@ -266,6 +267,37 @@ func main() {
 			}
 
 			adminCountersWatcher.SetKeys(keys)
+
+			// create the buyer counters watcher
+
+			buyerCountersWatcher, err = common.CreateRedisCountersWatcher(service.Context, countersConfig)
+			if err != nil {
+				core.Error("could not create buyer counters watcher: %v", err)
+				os.Exit(1)
+			}
+
+			go func(ctx context.Context) {
+				ticker := time.NewTicker(time.Second)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						database := service.Database()
+						if database == nil {
+							break
+						}
+						keys := []string{}
+						buyerIds := database.GetBuyerIds()
+						for i := range buyerIds {
+							keys = append(keys, fmt.Sprintf("session_update_%016x", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("server_update_%016x", buyerIds[i]))
+						}
+						buyerCountersWatcher.SetKeys(keys)
+					}
+				}
+			}(service.Context)
 		}
 
 		if len(redisPortalCluster) > 0 {
