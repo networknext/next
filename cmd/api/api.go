@@ -1429,7 +1429,7 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for i := range response.ActiveRelays_Values {
-			response.ActiveRelays_Values[i] *= 10.0 / 60.0
+			response.ActiveRelays_Values[i] /= 60.0
 		}
 	}
 
