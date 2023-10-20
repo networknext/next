@@ -199,6 +199,8 @@ async function getData() {
 
     // accelerated percent data
 
+    console.log(res.data)
+
     if (res.data.accelerated_percent_timestamps != null) {
       let accelerated_percent_timestamps = []  
       let accelerated_percent_values = []
