@@ -41,7 +41,6 @@ var serverCruncherURL string
 
 var topSessionsWatcher *portal.TopSessionsWatcher
 var topServersWatcher *portal.TopServersWatcher
-var buyerDataWatcher *portal.BuyerDataWatcher
 var mapDataWatcher *portal.MapDataWatcher
 var adminTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
@@ -151,8 +150,6 @@ func main() {
 		topSessionsWatcher = portal.CreateTopSessionsWatcher(sessionCruncherURL)
 
 		topServersWatcher = portal.CreateTopServersWatcher(serverCruncherURL)
-
-		buyerDataWatcher = portal.CreateBuyerDataWatcher(sessionCruncherURL, serverCruncherURL)
 
 		mapDataWatcher = portal.CreateMapDataWatcher(sessionCruncherURL)
 
@@ -638,7 +635,10 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
+	// todo: get server count from counters
+	/*
 	response.ServerCount = topServersWatcher.GetServerCount()
+	*/
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -983,6 +983,8 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	output.Debug = input.Debug
 	output.PublicKey = input.PublicKey
 
+	// todo: get buyer data from counters
+	/*
 	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions, buyerServerCounts := buyerDataWatcher.GetBuyerData()
 	index, exists := buyerIdToIndex[output.Id]
 	if exists {
@@ -990,6 +992,7 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 		output.NextSessions = int(buyerNextSessions[index])
 		output.ServerCount = int(buyerServerCounts[index])
 	}
+	*/
 
 	if withRouteShader {
 		output.RouteShader = &input.RouteShader

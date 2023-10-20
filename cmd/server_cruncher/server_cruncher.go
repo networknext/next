@@ -23,15 +23,11 @@ const ServerBatchVersion = uint64(0)
 
 const TopServersVersion = uint64(0)
 
-const BuyerStatsVersion = uint64(0)
-
 type ServerUpdate struct {
 	serverAddress string
-	buyerId       uint64
 }
 
 type TopServers struct {
-	serverCount   uint32
 	numTopServers int
 	topServers    [TopServersCount]string
 }
@@ -41,7 +37,6 @@ type Bucket struct {
 	mutex               sync.Mutex
 	serverUpdateChannel chan []ServerUpdate
 	servers             *SortedSet
-	buyerServers        map[uint64]map[string]bool
 }
 
 var buckets []Bucket
@@ -50,34 +45,22 @@ var topServersMutex sync.Mutex
 var topServers *TopServers
 var topServersData []byte
 
-type BuyerStats struct {
-	buyerIds     []uint64
-	serverCounts []uint32
-}
-
-var buyerDataMutex sync.Mutex
-var buyerData []byte
-
 func main() {
 
 	service := common.CreateService("server_cruncher")
 
 	service.Router.HandleFunc("/server_batch", serverBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_servers", topServersHandler).Methods("GET")
-	service.Router.HandleFunc("/buyer_data", buyerDataHandler).Methods("GET")
 
 	buckets = make([]Bucket, NumBuckets)
 	for i := range buckets {
 		buckets[i].index = i
 		buckets[i].serverUpdateChannel = make(chan []ServerUpdate, 1000000)
 		buckets[i].servers = NewSortedSet()
-		buckets[i].buyerServers = make(map[uint64]map[string]bool)
 		StartProcessThread(&buckets[i])
 	}
 
 	UpdateTopServers(&TopServers{})
-
-	UpdateBuyerData(&BuyerStats{})
 
 	// go TestThread()
 
@@ -95,7 +78,6 @@ func TestThread() {
 			for i := 0; i < len(batch); i++ {
 				serverAddress := common.RandomAddress()
 				batch[i].serverAddress = serverAddress.String()
-				batch[i].buyerId = uint64(common.RandomInt(0, 9))
 			}
 			buckets[index].serverUpdateChannel <- batch
 			time.Sleep(time.Millisecond)
@@ -121,12 +103,6 @@ func StartProcessThread(bucket *Bucket) {
 				bucket.mutex.Lock()
 				for i := range batch {
 					bucket.servers.Insert(batch[i].serverAddress, uint32(bucket.index))
-					buyerServers, exists := bucket.buyerServers[batch[i].buyerId]
-					if !exists {
-						buyerServers = make(map[string]bool)
-						bucket.buyerServers[batch[i].buyerId] = buyerServers
-					}
-					buyerServers[batch[i].serverAddress] = true
 				}
 				bucket.mutex.Unlock()
 			}
@@ -136,12 +112,11 @@ func StartProcessThread(bucket *Bucket) {
 
 func UpdateTopServers(newTopServers *TopServers) {
 
-	data := make([]byte, 8+4+4+newTopServers.numTopServers*(4+MaxServerAddressLength))
+	data := make([]byte, 8+4+newTopServers.numTopServers*MaxServerAddressLength)
 
 	index := 0
 
 	encoding.WriteUint64(data[:], &index, TopServersVersion)
-	encoding.WriteUint32(data[:], &index, newTopServers.serverCount)
 	encoding.WriteUint32(data[:], &index, uint32(newTopServers.numTopServers))
 
 	for i := 0; i < newTopServers.numTopServers; i++ {
@@ -154,25 +129,6 @@ func UpdateTopServers(newTopServers *TopServers) {
 	topServersMutex.Unlock()
 }
 
-func UpdateBuyerData(newBuyerStats *BuyerStats) {
-
-	data := make([]byte, 8+4+len(newBuyerStats.buyerIds)*(8+4))
-
-	index := 0
-
-	encoding.WriteUint64(data[:], &index, BuyerStatsVersion)
-	encoding.WriteUint32(data[:], &index, uint32(len(newBuyerStats.buyerIds)))
-
-	for i := 0; i < len(newBuyerStats.buyerIds); i++ {
-		encoding.WriteUint64(data[:], &index, newBuyerStats.buyerIds[i])
-		encoding.WriteUint32(data[:], &index, newBuyerStats.serverCounts[i])
-	}
-
-	buyerDataMutex.Lock()
-	buyerData = data
-	buyerDataMutex.Unlock()
-}
-
 func TopSessionsThread() {
 	ticker := time.NewTicker(60 * time.Second)
 	for {
@@ -182,7 +138,6 @@ func TopSessionsThread() {
 			core.Log("-------------------------------------------------------------------")
 
 			servers := make([]*SortedSet, NumBuckets)
-			buyerServers := make([]map[uint64]map[string]bool, NumBuckets)
 
 			for i := 0; i < NumBuckets; i++ {
 				buckets[i].mutex.Lock()
@@ -190,9 +145,7 @@ func TopSessionsThread() {
 
 			for i := 0; i < NumBuckets; i++ {
 				servers[i] = buckets[i].servers
-				buyerServers[i] = buckets[i].buyerServers
 				buckets[i].servers = NewSortedSet()
-				buckets[i].buyerServers = make(map[uint64]map[string]bool)
 			}
 
 			for i := 0; i < NumBuckets; i++ {
@@ -213,15 +166,18 @@ func TopSessionsThread() {
 			topServers := make([]Server, 0, TopServersCount)
 
 			for i := 0; i < NumBuckets; i++ {
+				if len(topServers) == TopServersCount {
+					break
+				}
 				bucketServers := servers[i].GetByRankRange(1, -1)
 				for j := range bucketServers {
 					if _, exists := serversMap[bucketServers[j].Key]; !exists {
 						serversMap[bucketServers[j].Key] = true
 						topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
+						if len(topServers) == TopServersCount {
+							break
+						}
 					}
-				}
-				if len(topServers) >= TopServersCount {
-					break
 				}
 			}
 
@@ -275,7 +231,6 @@ func serverBatchHandler(w http.ResponseWriter, r *http.Request) {
 		if numUpdates > 0 {
 			for i := 0; i < int(numUpdates); i++ {
 				encoding.ReadString(body, &index, &batch[i].serverAddress, MaxServerAddressLength)
-				encoding.ReadUint64(body, &index, &batch[i].buyerId)
 			}
 			buckets[j].serverUpdateChannel <- batch
 		}
@@ -286,13 +241,6 @@ func topServersHandler(w http.ResponseWriter, r *http.Request) {
 	topServersMutex.Lock()
 	data := topServersData
 	topServersMutex.Unlock()
-	w.Write(data)
-}
-
-func buyerDataHandler(w http.ResponseWriter, r *http.Request) {
-	buyerDataMutex.Lock()
-	data := buyerData
-	buyerDataMutex.Unlock()
 	w.Write(data)
 }
 

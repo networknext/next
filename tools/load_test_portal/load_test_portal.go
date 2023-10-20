@@ -152,8 +152,6 @@ func RunPollThread(ctx context.Context) {
 
 		topServersWatcher := portal.CreateTopServersWatcher(ServerCruncherURL)
 
-		buyerDataWatcher := portal.CreateBuyerDataWatcher(SessionCruncherURL, ServerCruncherURL)
-
 		mapDataWatcher := portal.CreateMapDataWatcher(SessionCruncherURL)
 
 		for {
@@ -162,22 +160,12 @@ func RunPollThread(ctx context.Context) {
 
 			fmt.Printf("------------------------------------------------------------------------------------------------\n")
 
-			nextSessions, totalSessions := topSessionsWatcher.GetSessionCounts()
-
 			begin := 0
 			end := 1000
 
 			sessions := topSessionsWatcher.GetSessions(begin, end)
 
-			fmt.Printf("sessions: %d of %d/%d\n", len(sessions), nextSessions, totalSessions)
-
-			// ------------------------------------------------------------------------------------------
-
-			buyerIds, _, buyerTotalSessions, buyerNextSessions, buyerServerCounts := buyerDataWatcher.GetBuyerData()
-			fmt.Printf("buyers = %v\n", buyerIds)
-			for i := range buyerIds {
-				fmt.Printf("buyer %d => %d/%d (%d)\n", buyerIds[i], buyerNextSessions[i], buyerTotalSessions[i], buyerServerCounts[i])
-			}
+			fmt.Printf("top sessions: %d\n", len(sessions))
 
 			// ------------------------------------------------------------------------------------------
 
@@ -219,9 +207,9 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			serverCount := topServersWatcher.GetServerCount()
+			servers := topServersWatcher.GetTopServers()
 
-			fmt.Printf("servers: %d (%.3fms)\n", serverCount, float64(time.Since(start).Milliseconds()))
+			fmt.Printf("top servers: %d (%.3fms)\n", len(servers), float64(time.Since(start).Milliseconds()))
 
 			// ------------------------------------------------------------------------------------------
 

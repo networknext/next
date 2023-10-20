@@ -28,15 +28,12 @@ const MapPointsVersion = uint64(0)
 
 type SessionUpdate struct {
 	sessionId uint64
-	buyerId   uint64				// todo: remove
 	next      uint8
 	latitude  float32
 	longitude float32
 }
 
 type TopSessions struct {
-	nextSessions   uint32			// todo: remove
-	totalSessions  uint32           // todo: remove
 	numTopSessions int
 	topSessions    [TopSessionsCount]uint64
 }
@@ -54,10 +51,6 @@ var buckets []Bucket
 var topSessionsMutex sync.Mutex
 var topSessions *TopSessions
 var topSessionsData []byte
-
-// todo: remove
-var buyerDataMutex sync.Mutex
-var buyerData []byte
 
 type MapEntry struct {
 	latitude  float32
@@ -86,7 +79,6 @@ func main() {
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
-	service.Router.HandleFunc("/buyer_data", buyerDataHandler).Methods("GET")
 	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
 
 	buckets = make([]Bucket, NumBuckets)
@@ -117,7 +109,6 @@ func TestThread() {
 			batch := make([]SessionUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
-				batch[i].buyerId = uint64(common.RandomInt(0, 9))
 				batch[i].next = uint8(i % 2)
 				batch[i].latitude = rand.Float32()
 				batch[i].longitude = rand.Float32()
@@ -156,13 +147,11 @@ func StartProcessThread(bucket *Bucket) {
 
 func UpdateTopSessions(newTopSessions *TopSessions) {
 
-	data := make([]byte, 8+4+4+4+8*newTopSessions.numTopSessions)
+	data := make([]byte, 8+8*newTopSessions.numTopSessions)
 
 	index := 0
 
 	encoding.WriteUint64(data[:], &index, TopSessionsVersion)
-	encoding.WriteUint32(data[:], &index, newTopSessions.nextSessions)						// todo: remove
-	encoding.WriteUint32(data[:], &index, newTopSessions.totalSessions)						// todo: remove
 
 	for i := 0; i < newTopSessions.numTopSessions; i++ {
 		encoding.WriteUint64(data[:], &index, newTopSessions.topSessions[i])
@@ -235,15 +224,18 @@ func TopSessionsThread() {
 			sessions := make([]Session, 0, TopSessionsCount)
 
 			for i := 0; i < NumBuckets; i++ {
+				if len(sessions) == TopSessionsCount {
+					break
+				}
 				bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
 				for j := range bucketTotalSessions {
 					if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
 						totalSessionsMap[bucketTotalSessions[j].Key] = true
 						sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
+						if len(sessions) == TopSessionsCount {
+							break
+						}
 					}
-				}
-				if len(sessions) >= TopSessionsCount {
-					break
 				}
 			}
 
@@ -315,7 +307,6 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 		if numUpdates > 0 {
 			for i := 0; i < int(numUpdates); i++ {
 				encoding.ReadUint64(body[:], &index, &batch[i].sessionId)
-				encoding.ReadUint64(body[:], &index, &batch[i].buyerId)
 				encoding.ReadUint8(body[:], &index, &batch[i].next)
 				encoding.ReadFloat32(body[:], &index, &batch[i].latitude)
 				encoding.ReadFloat32(body[:], &index, &batch[i].longitude)
@@ -329,13 +320,6 @@ func topSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	topSessionsMutex.Lock()
 	data := topSessionsData
 	topSessionsMutex.Unlock()
-	w.Write(data)
-}
-
-func buyerDataHandler(w http.ResponseWriter, r *http.Request) {
-	buyerDataMutex.Lock()
-	data := buyerData
-	buyerDataMutex.Unlock()
 	w.Write(data)
 }
 

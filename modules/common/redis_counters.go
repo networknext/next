@@ -365,7 +365,19 @@ func (watcher *RedisCountersWatcher) GetFloat32Values(timestamps *[]uint64, valu
 func (watcher *RedisCountersWatcher) GetFloatValue(key string) float64 {
 	index, exists := watcher.keyToIndex[key]
 	if exists {
-		return watcher.values[index][len(watcher.values[index])-1]
+		// IMPORTANT: Sometimes redis counters hasn't processed the most recent sample yet and it is zero
+		// In this wase, walk back up to 5 samples to find a non-zero sample and return that. Without this
+		// the session counts in the portal (driven by counters) flicker to zero occasionally.
+		lastIndex := len(watcher.values[index])-1			
+		for i := 0; i < 5; i++ {
+			if lastIndex - i < 0 {
+				break
+			}
+			if watcher.values[index][lastIndex-i] != 0 {
+				return watcher.values[index][lastIndex-i]
+			}
+		}
+		return watcher.values[index][lastIndex]
 	} else {
 		return 0.0
 	}

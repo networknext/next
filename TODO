@@ -32,87 +32,23 @@ DONE
 
 	Do something special to avoid sending near relay data for sessions unless on next, when the only next sessions on portal flag is set
 
-TODO
-
-	Scale up to 1M in staging with 10% next
-
-	Scale up to 10M in staging with 10% next
-
-	Scale up to 25M in staging with 10% next
-
-	Verify that we don't see any redis time series stretched dots @ 10M
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-	-----------------------
+	Fix the flicker on session counts going to zero from most recent counters being zero, eg. walk back a few samples to find a non-zero sample as needed.
 
 	Simplify the top sessions and top server outputs
 
 	Make sure load test portal works
 
-	Make sure func test portal works
+	Remove buyer watcher cruft in api related to buyer session and server counts
 
-	-----------------------
+	Clean up buyer stuff in server cruncher
+
+TODO
 
 	Implement counters for buyer servers and buyer sessions
 
 	Update API to get all buyer related server and session counts from counters
 
-	Remove cruft in api related to buyer session and server counts
+	-----------------------
 
 	Bring back the accelerated percent graph
 
@@ -122,77 +58,21 @@ TODO
 
 	Make sure all buyer graphs work in dev
 
+	Make sure all relay graphs work in dev
+
 	-----------------------
 
 	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
 
 	-----------------------
 
+	Scale up to 1M in staging with 10% next
 
+	Scale up to 10M in staging with 10% next
 
+	Scale up to 25M in staging with 10% next
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Verify that we don't see any redis time series stretched dots @ 10M
 
 	---------------
 
@@ -268,21 +148,9 @@ TODO
 
 	--------------
 
-	Fallback to direct is weird. It semes like I see repeated fallback to direct in server backends perpetually, almost like they are triggering fallback to direct over and over.
-
-	--------------
-
 	Add "portal_cruncher" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
 
 	Add "session_cruncher" counter. We need to see the input to the session cruncher.
-
-	--------------
-
-	There seems to be rapid leader flapping in relay backend on deploy. You can see this by looking at oscillations in route matrix size and total routes in admin view.
-
-	Can I reproduce this in dev? If I can reproduce, then I can fix it in dev.
-
-	(Perhaps a fix could be, don't consider yourself a leader until you have a > 0 routes in the route matrix?)
 
 	--------------
 
