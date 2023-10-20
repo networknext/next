@@ -667,10 +667,10 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
-	// todo: get server count from counters
-	/*
-	response.ServerCount = topServersWatcher.GetServerCount()
-	*/
+	adminCountersWatcher.Lock()
+	serverUpdate := adminCountersWatcher.GetFloatValue("server_update")
+	adminCountersWatcher.Unlock()
+	response.ServerCount = int(math.Ceil(serverUpdate * 10.0 / 60.0))
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
