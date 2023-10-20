@@ -173,6 +173,7 @@ func UpdateAcceleratedPercent(service *common.Service) {
 					acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
 					keys = append(keys, "accelerated_percent")
 					values = append(values, acceleratedPercent)
+					core.Log("update accelerated percent: %f", acceleratedPercent)
 				}
 
 				buyerIds := database.GetBuyerIds()
@@ -183,6 +184,7 @@ func UpdateAcceleratedPercent(service *common.Service) {
 						acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
 						keys = append(keys, fmt.Sprintf("accelerated_percent_%016x", buyerIds[i]))
 						values = append(values, acceleratedPercent)
+						core.Log("update accelerated percent: %f [%016x]", acceleratedPercent, buyerIds[i])
 					}
 				}
 
@@ -191,8 +193,6 @@ func UpdateAcceleratedPercent(service *common.Service) {
 				message.Keys = keys
 				message.Values = values
 				timeSeriesPublisher.MessageChannel <- &message
-
-				core.Log("update accelerated percent")
 			}
 		}
 	}(service.Context)
