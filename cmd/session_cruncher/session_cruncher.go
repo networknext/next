@@ -186,7 +186,6 @@ func UpdateAcceleratedPercent(service *common.Service) {
 					acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
 					keys = append(keys, "accelerated_percent")
 					values = append(values, acceleratedPercent)
-					core.Log("update accelerated percent: %f", acceleratedPercent)
 				}
 
 				for i := range buyerIds {
@@ -196,7 +195,6 @@ func UpdateAcceleratedPercent(service *common.Service) {
 						acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
 						keys = append(keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyerIds[i]))
 						values = append(values, acceleratedPercent)
-						core.Log("update accelerated percent: %f [%016x]", acceleratedPercent, buyerIds[i])
 					}
 				}
 
