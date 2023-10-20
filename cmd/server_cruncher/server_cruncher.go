@@ -166,20 +166,19 @@ func TopSessionsThread() {
 			topServers := make([]Server, 0, TopServersCount)
 
 			for i := 0; i < NumBuckets; i++ {
-				if len(topServers) == TopServersCount {
-					break
-				}
 				bucketServers := servers[i].GetByRankRange(1, -1)
 				for j := range bucketServers {
 					if _, exists := serversMap[bucketServers[j].Key]; !exists {
 						serversMap[bucketServers[j].Key] = true
 						topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
-						if len(topServers) == TopServersCount {
-							break
+						if len(topServers) >= TopServersCount {
+							goto done;
 						}
 					}
 				}
 			}
+
+		done:
 
 			newTopServers := &TopServers{}
 			newTopServers.numTopServers = len(topServers)
@@ -191,7 +190,7 @@ func TopSessionsThread() {
 
 			duration := time.Since(start)
 
-			core.Log("top %d servers (%.6fms)", len(servers), float64(duration.Nanoseconds())/1000000.0)
+			core.Log("top %d servers (%.6fms)", len(topServers), float64(duration.Nanoseconds())/1000000.0)
 		}
 	}
 }

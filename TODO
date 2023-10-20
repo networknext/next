@@ -1,48 +1,78 @@
 DONE
 
-	Modify staging so only 10% of sessions take network next
-
-	Add a flag to only send next sessions to portal
-
-	Make API get next and total session counts from counters instead of session cruncher
-
-	Extend portal cruncher to also send next_session_update counter
-
-	Increase CPU power and memory for time series redis stack
-
-	Set server backend to have a dependency on the database, and redis instances in staging
-
-	Set load tests to have a dependency on server backend, this way they don't start up until everything is ready.
-
-	Simplify session cruncher so it no longer does counts
-
-	Simplify server crouncher so it no longer does counts
-
-	Simplify session cruncher so it no longer tracks next sessions
-
-	Verify in dev that we have next and total session counts
-
-	Fix the session sort issue in highest score bucket
-
-	Remove the graphs for "Server Updates" and "Session Updates
-
-	Update admin graphs to use the new 
-
-	Verify we have 10% of sessions on next in staging
-
-	Do something special to avoid sending near relay data for sessions unless on next, when the only next sessions on portal flag is set
-
-	Fix the flicker on session counts going to zero from most recent counters being zero, eg. walk back a few samples to find a non-zero sample as needed.
-
-	Simplify the top sessions and top server outputs
-
-	Make sure load test portal works
-
-	Remove buyer watcher cruft in api related to buyer session and server counts
-
-	Clean up buyer stuff in server cruncher
-
 TODO
+
+	Top sessions and servers seem a bit busted up. Check everything and fix
+
+	Make sure load test portal is working correctly
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	-----------------------
 
 	Implement counters for buyer servers and buyer sessions
 

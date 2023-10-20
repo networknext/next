@@ -224,20 +224,19 @@ func TopSessionsThread() {
 			sessions := make([]Session, 0, TopSessionsCount)
 
 			for i := 0; i < NumBuckets; i++ {
-				if len(sessions) == TopSessionsCount {
-					break
-				}
 				bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
 				for j := range bucketTotalSessions {
 					if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
 						totalSessionsMap[bucketTotalSessions[j].Key] = true
 						sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
-						if len(sessions) == TopSessionsCount {
-							break
+						if len(sessions) >= TopSessionsCount {
+							goto done;
 						}
 					}
 				}
 			}
+
+		done:
 
 			sort.Slice(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
 			sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score > sessions[j].score })
