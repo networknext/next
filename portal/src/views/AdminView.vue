@@ -12,6 +12,8 @@
 
       <div id="server_count" class="graph"/>
 
+      <div id="active_relays" class="graph"/>
+
       <div id="retry" class="graph"/>
 
       <div id="fallback_to_direct" class="graph"/>
@@ -85,7 +87,17 @@ let server_count_opts = custom_graph({
   ]
 })
 
-// todo: active relays
+let active_relays_opts = custom_graph({
+  title: "Active Relays",
+  series: [
+    { 
+      name: 'Relays',
+      stroke: "#faac02",
+      fill: "rgba(250, 172, 2,0.075)",
+      units: '',
+    },
+  ]
+})
 
 let retry_opts = custom_graph({
   title: "Retries",
@@ -213,6 +225,19 @@ async function getData() {
       data.server_count_data = [server_count_timestamps, server_count_values]
     }
 
+    // active relays data
+
+    if (res.data.active_relays_timestamps != null) {
+      let active_relays_timestamps = []  
+      let active_relays_values = []
+      let i = 0
+      while (i < res.data.active_relays_timestamps.length) {
+        active_relays_timestamps.push(Math.floor(parseInt(res.data.active_relays_timestamps[i]) / 1000.0))
+        active_relays_values.push(parseInt(res.data.active_relays_values[i]))
+        i++
+      }
+      data.active_relays_data = [active_relays_timestamps, active_relays_values]
+    }
     // retry data
 
     if (res.data.retry_timestamps != null) {
@@ -329,6 +354,7 @@ export default {
     this.next_sessions = new uPlot(next_sessions_opts, [[],[]], document.getElementById('next_sessions'))
     this.accelerated_percent = new uPlot(accelerated_percent_opts, [[],[]], document.getElementById('accelerated_percent'))
     this.server_count = new uPlot(server_count_opts, [[],[]], document.getElementById('server_count'))
+    this.active_relays = new uPlot(active_relays_opts, [[],[]], document.getElementById('active_relays'))
     this.retry = new uPlot(retry_opts, [[],[]], document.getElementById('retry'))
     this.fallback_to_direct = new uPlot(fallback_to_direct_opts, [[],[]], document.getElementById('fallback_to_direct'))
     this.total_routes = new uPlot(total_routes_opts, [[],[]], document.getElementById('total_routes'))
@@ -348,6 +374,7 @@ export default {
     this.next_sessions.destroy()
     this.accelerated_percent.destroy()
     this.server_count.destroy()
+    this.active_relays.destroy()
     this.retry.destroy()
     this.fallback_to_direct.destroy()
     this.total_routes.destroy()
@@ -359,6 +386,7 @@ export default {
     this.next_sessions = null
     this.accelerated_percent = null
     this.server_count = null
+    this.active_relays = null
     this.retry = null
     this.fallback_to_direct = null
     this.total_routes = null
@@ -389,6 +417,7 @@ export default {
           this.next_sessions.setSize({width: graph_width, height: graph_height})
           this.accelerated_percent.setSize({width: graph_width, height: graph_height})
           this.server_count.setSize({width: graph_width, height: graph_height})
+          this.active_relays.setSize({width: graph_width, height: graph_height})
           this.retry.setSize({width: graph_width, height: graph_height})
           this.fallback_to_direct.setSize({width: graph_width, height: graph_height})
           this.total_routes.setSize({width: graph_width, height: graph_height})
@@ -442,6 +471,9 @@ export default {
       }
       if (this.server_count != null && this.data.server_count_data != null) {
         this.server_count.setData(this.data.server_count_data, true)
+      }
+      if (this.active_relays != null && this.data.active_relays_data != null) {
+        this.active_relays.setData(this.data.active_relays_data, true)
       }
       if (this.retry != null && this.data.retry_data != null) {
         this.retry.setData(this.data.retry_data, true)

@@ -1371,8 +1371,6 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 type PortalAdminDataResponse struct {
 	AcceleratedPercent_Timestamps []uint64  `json:"accelerated_percent_timestamps,string"`
 	AcceleratedPercent_Values     []float32 `json:"accelerated_percent_values"`
-	ActiveRelays_Timestamps       []uint64  `json:"active_relays_timestamps,string"`
-	ActiveRelays_Values           []int     `json:"active_relays_values"`
 	TotalRoutes_Timestamps        []uint64  `json:"total_routes_timestamps,string"`
 	TotalRoutes_Values            []int     `json:"total_routes_values"`
 	RouteMatrixBytes_Timestamps   []uint64  `json:"route_matrix_bytes_timestamps,string"`
@@ -1386,6 +1384,8 @@ type PortalAdminDataResponse struct {
 	NextSessions_Values         []float32 `json:"next_sessions_values"`
 	ServerCount_Timestamps      []uint64  `json:"server_count_timestamps,string"`
 	ServerCount_Values          []float32 `json:"server_count_values"`
+	ActiveRelays_Timestamps     []uint64  `json:"active_relays_timestamps,string"`
+	ActiveRelays_Values         []float32 `json:"active_relays_values"`
 	Retry_Timestamps            []uint64  `json:"retry_timestamps,string"`
 	Retry_Values                []int     `json:"retry_values"`
 	FallbackToDirect_Timestamps []uint64  `json:"fallback_to_direct_timestamps,string"`
@@ -1401,7 +1401,6 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		adminTimeSeriesWatcher.Lock()
 		// todo: bring back accelerated percent
 		// adminTimeSeriesWatcher.GetFloat32Values(&response.AcceleratedPercent_Timestamps, &response.AcceleratedPercent_Values, "accelerated_percent")
-		adminTimeSeriesWatcher.GetIntValues(&response.ActiveRelays_Timestamps, &response.ActiveRelays_Values, "active_relays")
 		adminTimeSeriesWatcher.GetIntValues(&response.TotalRoutes_Timestamps, &response.TotalRoutes_Values, "route_matrix_total_routes")
 		adminTimeSeriesWatcher.GetIntValues(&response.RouteMatrixBytes_Timestamps, &response.RouteMatrixBytes_Values, "route_matrix_bytes")
 		adminTimeSeriesWatcher.GetIntValues(&response.OptimizeMs_Timestamps, &response.OptimizeMs_Values, "route_matrix_optimize_ms")
@@ -1411,6 +1410,7 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		adminCountersWatcher.GetFloat32Values(&response.TotalSessions_Timestamps, &response.TotalSessions_Values, "session_update")
 		adminCountersWatcher.GetFloat32Values(&response.NextSessions_Timestamps, &response.NextSessions_Values, "next_session_update")
 		adminCountersWatcher.GetFloat32Values(&response.ServerCount_Timestamps, &response.ServerCount_Values, "server_update")
+		adminCountersWatcher.GetFloat32Values(&response.ActiveRelays_Timestamps, &response.ActiveRelays_Values, "relay_update")
 		adminCountersWatcher.GetIntValues(&response.Retry_Timestamps, &response.Retry_Values, "retry")
 		adminCountersWatcher.GetIntValues(&response.FallbackToDirect_Timestamps, &response.FallbackToDirect_Values, "fallback_to_direct")
 		adminCountersWatcher.Unlock()
@@ -1425,6 +1425,10 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		for i := range response.ServerCount_Values {
 			response.ServerCount_Values[i] *= 10.0 / 60.0
+		}
+
+		for i := range response.ActiveRelays_Values {
+			response.ActiveRelays_Values[i] *= 10.0 / 60.0
 		}
 	}
 
