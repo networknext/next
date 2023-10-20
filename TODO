@@ -2,78 +2,6 @@ DONE
 
 TODO
 
-	Top sessions and servers seem a bit busted up. Check everything and fix
-
-	Make sure load test portal is working correctly
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	-----------------------
-
 	Implement counters for buyer servers and buyer sessions
 
 	Update API to get all buyer related server and session counts from counters
@@ -100,9 +28,13 @@ TODO
 
 	Scale up to 10M in staging with 10% next
 
+	Verify that we don't see any redis time series stretched dots @ 10M
+
 	Scale up to 25M in staging with 10% next
 
-	Verify that we don't see any redis time series stretched dots @ 10M
+	Verify that we don't see any redis time series stretched dots @ 25M
+
+	Verify we can scale down sessions and they don't get stuck up high
 
 	---------------
 
@@ -180,8 +112,6 @@ TODO
 
 	Add "portal_cruncher" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
 
-	Add "session_cruncher" counter. We need to see the input to the session cruncher.
-
 	--------------
 
 	Number of routes is going up/down a lot even in dev. Is the minute history buffer long enough?
@@ -229,12 +159,6 @@ TODO
 
 
 Small things:
-
-	--------------
-
-	If a single time series or counter key does not exist, all data for the "set" of pipelined ts.range will fail.
-
-	This seems really bad. You'd expect that it would fail to execute only for the cmds that don't have keys.
 
 	--------------
 
@@ -288,6 +212,8 @@ Small things:
 
 
 Finalize terraform and document:
+
+	--------------
 
 	Setup projects and service accounts with terraform
 

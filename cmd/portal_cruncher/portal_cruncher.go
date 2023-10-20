@@ -214,10 +214,18 @@ func ProcessSessionUpdate(messageData []byte, sessionInserter *portal.SessionIns
 	sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
 
 	if enableRedisTimeSeries {
+
 		countersPublisher.MessageChannel <- "session_update"
+
 		if message.Next {
 			countersPublisher.MessageChannel <- "next_session_update"
 		}
+
+		countersPublisher.MessageChannel <- fmt.Sprintf("session_update_%016x", message.BuyerId)
+		if message.Next {
+			countersPublisher.MessageChannel <- fmt.Sprintf("next_session_update_%016x", message.BuyerId)
+		}
+
 		if message.Retry {
 			countersPublisher.MessageChannel <- "retry"
 		}
@@ -310,7 +318,10 @@ func ProcessServerUpdate(messageData []byte, serverInserter *portal.ServerInsert
 	serverInserter.Insert(service.Context, &serverData)
 
 	if enableRedisTimeSeries {
+
 		countersPublisher.MessageChannel <- "server_update"
+
+		countersPublisher.MessageChannel <- fmt.Sprintf("server_update_%016x", message.BuyerId)
 	}
 }
 
@@ -345,19 +356,34 @@ func ProcessNearRelayUpdateMessages(service *common.Service, batchSize int) {
 		os.Exit(1)
 	}
 
+	var countersPublisher *common.RedisCountersPublisher
+
+	if enableRedisTimeSeries {
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	go func() {
 		for {
 			select {
 			case <-service.Context.Done():
 				return
 			case messageData := <-consumer.MessageChannel:
-				ProcessNearRelayUpdate(messageData, nearRelayInserter)
+				ProcessNearRelayUpdate(messageData, nearRelayInserter, countersPublisher)
 			}
 		}
 	}()
 }
 
-func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRelayInserter) {
+func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRelayInserter, countersPublisher *common.RedisCountersPublisher) {
 
 	message := messages.PortalNearRelayUpdateMessage{}
 	err := message.Read(messageData)
@@ -380,6 +406,11 @@ func ProcessNearRelayUpdate(messageData []byte, nearRelayInserter *portal.NearRe
 	}
 
 	nearRelayInserter.Insert(service.Context, sessionId, &nearRelayData)
+
+	if enableRedisTimeSeries {
+
+		countersPublisher.MessageChannel <- "near_relay_update"
+	}
 }
 
 // -------------------------------------------------------------------------------
