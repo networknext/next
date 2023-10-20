@@ -1738,6 +1738,7 @@ module "session_cruncher" {
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    GOOGLE_PROJECT_ID=${var.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     EOF
