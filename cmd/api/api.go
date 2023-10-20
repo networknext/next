@@ -45,7 +45,7 @@ var mapDataWatcher *portal.MapDataWatcher
 var adminTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var buyerTimeSeriesWatcher *common.RedisTimeSeriesWatcher
 var relayTimeSeriesWatcher *common.RedisTimeSeriesWatcher
-var countersWatcher *common.RedisCountersWatcher
+var adminCountersWatcher *common.RedisCountersWatcher
 
 var enableRedisTimeSeries bool
 
@@ -244,16 +244,16 @@ func main() {
 				}
 			}(service.Context)
 
-			// create the counters watcher
+			// create the admin counters watcher
 
 			countersConfig := common.RedisCountersConfig{
 				RedisHostname: redisTimeSeriesHostname,
 				RedisCluster:  redisTimeSeriesCluster,
 			}
 
-			countersWatcher, err = common.CreateRedisCountersWatcher(service.Context, countersConfig)
+			adminCountersWatcher, err = common.CreateRedisCountersWatcher(service.Context, countersConfig)
 			if err != nil {
-				core.Error("could not create counters watcher: %v", err)
+				core.Error("could not create admin counters watcher: %v", err)
 				os.Exit(1)
 			}
 
@@ -265,7 +265,7 @@ func main() {
 				"fallback_to_direct",
 			}
 
-			countersWatcher.SetKeys(keys)
+			adminCountersWatcher.SetKeys(keys)
 		}
 
 		if len(redisPortalCluster) > 0 {
@@ -397,10 +397,10 @@ type PortalSessionCountsResponse struct {
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	countersWatcher.Lock()
-	sessionUpdate := countersWatcher.GetFloatValue("session_update")
-	nextSessionUpdate := countersWatcher.GetFloatValue("next_session_update")
-	countersWatcher.Unlock()
+	adminCountersWatcher.Lock()
+	sessionUpdate := adminCountersWatcher.GetFloatValue("session_update")
+	nextSessionUpdate := adminCountersWatcher.GetFloatValue("next_session_update")
+	adminCountersWatcher.Unlock()
 	response.TotalSessionCount = int(math.Ceil(sessionUpdate*10.0/60.0))
 	response.NextSessionCount = int(math.Ceil(nextSessionUpdate*10.0/60.0))
 	w.WriteHeader(http.StatusOK)
@@ -1362,13 +1362,13 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_OptimizeMs_Timestamps, &response.TimeSeries_OptimizeMs_Values, "route_matrix_optimize_ms")
 		adminTimeSeriesWatcher.Unlock()
 
-		countersWatcher.Lock()
-		countersWatcher.GetFloat32Values(&response.Counters_TotalSessions_Timestamps, &response.Counters_TotalSessions_Values, "session_update")
-		countersWatcher.GetFloat32Values(&response.Counters_NextSessions_Timestamps, &response.Counters_NextSessions_Values, "next_session_update")
-		countersWatcher.GetFloat32Values(&response.Counters_ServerCount_Timestamps, &response.Counters_ServerCount_Values, "server_update")
-		countersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
-		countersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
-		countersWatcher.Unlock()
+		adminCountersWatcher.Lock()
+		adminCountersWatcher.GetFloat32Values(&response.Counters_TotalSessions_Timestamps, &response.Counters_TotalSessions_Values, "session_update")
+		adminCountersWatcher.GetFloat32Values(&response.Counters_NextSessions_Timestamps, &response.Counters_NextSessions_Values, "next_session_update")
+		adminCountersWatcher.GetFloat32Values(&response.Counters_ServerCount_Timestamps, &response.Counters_ServerCount_Values, "server_update")
+		adminCountersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
+		adminCountersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
+		adminCountersWatcher.Unlock()
 
 		for i := range response.Counters_TotalSessions_Values {
 			response.Counters_TotalSessions_Values[i] *= 10.0 / 60.0
