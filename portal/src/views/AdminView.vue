@@ -227,8 +227,6 @@ async function getData() {
 
     // active relays data
 
-    console.log(res.data)
-
     if (res.data.active_relays_timestamps != null) {
       let active_relays_timestamps = []  
       let active_relays_values = []
