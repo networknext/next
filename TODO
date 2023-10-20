@@ -16,7 +16,13 @@ DONE
 
 	Need to do something about counters graphs showing zeros
 
+	Add the active relays graph
+
 TODO
+
+	Verify active relays graph in dev
+
+	-----------------------
 
 	Bring back the accelerated percent graph (admin)
 

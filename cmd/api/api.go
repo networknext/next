@@ -170,7 +170,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			keys := []string{"total_sessions", "next_sessions", "accelerated_percent", "server_count", "active_relays", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
+			keys := []string{"accelerated_percent", "route_matrix_total_routes", "route_matrix_bytes", "route_matrix_optimize_ms"}
 
 			adminTimeSeriesWatcher.SetKeys(keys)
 
@@ -262,6 +262,7 @@ func main() {
 				"session_update",
 				"next_session_update",
 				"server_update",
+				"relay_update",
 				"retry",
 				"fallback_to_direct",
 			}
