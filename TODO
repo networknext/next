@@ -2,25 +2,21 @@ DONE
 
 	Implement counters for buyer servers and buyer sessions
 
-TODO
-
 	Update API to get all buyer related server and session counts from counters
 
-	-----------------------
-
-	Bring back the accelerated percent graph
-
-	-----------------------
+TODO
 
 	Make sure all admin graphs work in dev
 
-	Make sure all buyer graphs work in dev
+	Make sure all buyer counts work in dev
 
 	Make sure all relay graphs work in dev
 
 	-----------------------
 
-	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
+	Bring back the accelerated percent graph
+
+	Verify accelerated percent graph in dev
 
 	-----------------------
 
@@ -35,6 +31,10 @@ TODO
 	Verify that we don't see any redis time series stretched dots @ 25M
 
 	Verify we can scale down sessions and they don't get stuck up high
+
+	-----------------------
+
+	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
 
 	---------------
 

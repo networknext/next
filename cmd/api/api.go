@@ -1015,16 +1015,17 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	output.Debug = input.Debug
 	output.PublicKey = input.PublicKey
 
-	// todo: get buyer data from counters
-	/*
-	_, buyerIdToIndex, buyerTotalSessions, buyerNextSessions, buyerServerCounts := buyerDataWatcher.GetBuyerData()
-	index, exists := buyerIdToIndex[output.Id]
-	if exists {
-		output.TotalSessions = int(buyerTotalSessions[index])
-		output.NextSessions = int(buyerNextSessions[index])
-		output.ServerCount = int(buyerServerCounts[index])
+	if enableRedisTimeSeries {
+		buyerCountersWatcher.Lock()
+		sessionUpdates := buyerCountersWatcher.GetFloatValue(fmt.Sprintf("session_update_%016x", input.Id))
+		nextSessionUpdates := buyerCountersWatcher.GetFloatValue(fmt.Sprintf("next_session_update_%016x", input.Id))
+		serverUpdates := buyerCountersWatcher.GetFloatValue(fmt.Sprintf("server_update_%016x", input.Id))
+		buyerCountersWatcher.Unlock()
+
+		output.TotalSessions = int(math.Ceil(sessionUpdates * 10.0 / 60.0))
+		output.NextSessions = int(math.Ceil(nextSessionUpdates * 10.0 / 60.0))
+		output.ServerCount = int(math.Ceil(serverUpdates * 10.0 / 60.0))
 	}
-	*/
 
 	if withRouteShader {
 		output.RouteShader = &input.RouteShader
