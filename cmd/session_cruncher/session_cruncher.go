@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
-	"sort"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
@@ -230,7 +230,7 @@ func TopSessionsThread() {
 						totalSessionsMap[bucketTotalSessions[j].Key] = true
 						sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
 						if len(sessions) >= TopSessionsCount {
-							goto done;
+							goto done
 						}
 					}
 				}

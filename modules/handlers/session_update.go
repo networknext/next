@@ -77,7 +77,7 @@ type SessionUpdateState struct {
 	FallbackToDirect bool
 
 	// if true, only network next sessions are sent to portal
-	PortalNextSessionsOnly bool	
+	PortalNextSessionsOnly bool
 
 	// codepath flags (for unit testing etc...)
 	ClientPingTimedOut                        bool
@@ -969,7 +969,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		the first slice we are on next.
 	*/
 
-	shouldSendNearRelays := state.Input.SliceNumber >= 1 && ( !state.PortalNextSessionsOnly || state.Output.RouteState.Next )
+	shouldSendNearRelays := state.Input.SliceNumber >= 1 && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next)
 
 	if !state.Input.SentNearRelaysToPortal && shouldSendNearRelays {
 		state.Output.SentNearRelaysToPortal = true

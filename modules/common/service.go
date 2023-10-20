@@ -643,7 +643,7 @@ func (service *Service) WaitForShutdown() {
 
 	if service.ConnectionDrain {
 		core.Log("connection drain...")
-		time.Sleep(60*time.Second)
+		time.Sleep(60 * time.Second)
 	}
 
 	core.Log("successfully shutdown")

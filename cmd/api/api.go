@@ -5,13 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"time"
-	"math"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -433,8 +433,8 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	sessionUpdate := adminCountersWatcher.GetFloatValue("session_update")
 	nextSessionUpdate := adminCountersWatcher.GetFloatValue("next_session_update")
 	adminCountersWatcher.Unlock()
-	response.TotalSessionCount = int(math.Ceil(sessionUpdate*10.0/60.0))
-	response.NextSessionCount = int(math.Ceil(nextSessionUpdate*10.0/60.0))
+	response.TotalSessionCount = int(math.Ceil(sessionUpdate * 10.0 / 60.0))
+	response.NextSessionCount = int(math.Ceil(nextSessionUpdate * 10.0 / 60.0))
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -815,40 +815,40 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalRelayData struct {
-	RelayName                                      string   `json:"relay_name"`
-	RelayId                                        uint64   `json:"relay_id,string"`
-	RelayAddress                                   string   `json:"relay_address"`
-	NumSessions                                    uint32   `json:"num_sessions"`
-	MaxSessions                                    uint32   `json:"max_sessions"`
-	StartTime                                      uint64   `json:"start_time,string"`
-	RelayFlags                                     uint64   `json:"relay_flags,string"`
-	RelayVersion                                   string   `json:"relay_version"`
-	SellerId                                       uint64   `json:"seller_id,string"`
-	SellerName                                     string   `json:"seller_name"`
-	SellerCode                                     string   `json:"seller_code"`
-	DatacenterId                                   uint64   `json:"datacenter_id,string"`
-	DatacenterName                                 string   `json:"datacenter_name"`
-	Uptime                                         uint64   `json:"uptime,string"`
-	Latitude                                       float32  `json:"latitude"`
-	Longitude                                      float32  `json:"longitude"`
-	TimeSeries_SessionCount_Timestamps             []uint64 `json:"time_series_session_count_timestamps,string"`
-	TimeSeries_SessionCount_Values                 []int    `json:"time_series_session_count_values"`
-	TimeSeries_BandwidthSentKbps_Timestamps        []uint64 `json:"time_series_bandwidth_sent_kbps_timestamps,string"`
-	TimeSeries_BandwidthSentKbps_Values            []int    `json:"time_series_bandwidth_sent_kbps_values"`
-	TimeSeries_BandwidthReceivedKbps_Timestamps    []uint64 `json:"time_series_bandwidth_received_kbps_timestamps,string"`
-	TimeSeries_BandwidthReceivedKbps_Values        []int    `json:"time_series_bandwidth_received_kbps_values"`
-	TimeSeries_PacketsSentPerSecond_Timestamps     []uint64 `json:"time_series_packets_sent_per_second_timestamps,string"`
-	TimeSeries_PacketsSentPerSecond_Values         []int    `json:"time_series_packets_sent_per_second_values"`
-	TimeSeries_PacketsReceivedPerSecond_Timestamps []uint64 `json:"time_series_packets_received_per_second_timestamps,string"`
-	TimeSeries_PacketsReceivedPerSecond_Values     []int    `json:"time_series_packets_received_per_second_values"`
-	TimeSeries_NearPingsPerSecond_Timestamps       []uint64 `json:"time_series_near_pings_per_second_timestamps,string"`
-	TimeSeries_NearPingsPerSecond_Values           []int    `json:"time_series_near_pings_per_second_values"`
-	TimeSeries_RelayPingsPerSecond_Timestamps      []uint64 `json:"time_series_relay_pings_per_second_timestamps,string"`
-	TimeSeries_RelayPingsPerSecond_Values          []int    `json:"time_series_relay_pings_per_second_values"`
-	TimeSeries_NumRoutable_Timestamps              []uint64 `json:"time_series_num_routable_timestamps,string"`
-	TimeSeries_NumRoutable_Values                  []int    `json:"time_series_num_routable_values"`
-	TimeSeries_NumUnroutable_Timestamps            []uint64 `json:"time_series_num_unroutable_timestamps,string"`
-	TimeSeries_NumUnroutable_Values                []int    `json:"time_series_num_unroutable_values"`
+	RelayName                           string   `json:"relay_name"`
+	RelayId                             uint64   `json:"relay_id,string"`
+	RelayAddress                        string   `json:"relay_address"`
+	NumSessions                         uint32   `json:"num_sessions"`
+	MaxSessions                         uint32   `json:"max_sessions"`
+	StartTime                           uint64   `json:"start_time,string"`
+	RelayFlags                          uint64   `json:"relay_flags,string"`
+	RelayVersion                        string   `json:"relay_version"`
+	SellerId                            uint64   `json:"seller_id,string"`
+	SellerName                          string   `json:"seller_name"`
+	SellerCode                          string   `json:"seller_code"`
+	DatacenterId                        uint64   `json:"datacenter_id,string"`
+	DatacenterName                      string   `json:"datacenter_name"`
+	Uptime                              uint64   `json:"uptime,string"`
+	Latitude                            float32  `json:"latitude"`
+	Longitude                           float32  `json:"longitude"`
+	SessionCount_Timestamps             []uint64 `json:"session_count_timestamps,string"`
+	SessionCount_Values                 []int    `json:"session_count_values"`
+	BandwidthSentKbps_Timestamps        []uint64 `json:"bandwidth_sent_kbps_timestamps,string"`
+	BandwidthSentKbps_Values            []int    `json:"bandwidth_sent_kbps_values"`
+	BandwidthReceivedKbps_Timestamps    []uint64 `json:"bandwidth_received_kbps_timestamps,string"`
+	BandwidthReceivedKbps_Values        []int    `json:"bandwidth_received_kbps_values"`
+	PacketsSentPerSecond_Timestamps     []uint64 `json:"packets_sent_per_second_timestamps,string"`
+	PacketsSentPerSecond_Values         []int    `json:"packets_sent_per_second_values"`
+	PacketsReceivedPerSecond_Timestamps []uint64 `json:"packets_received_per_second_timestamps,string"`
+	PacketsReceivedPerSecond_Values     []int    `json:"packets_received_per_second_values"`
+	NearPingsPerSecond_Timestamps       []uint64 `json:"near_pings_per_second_timestamps,string"`
+	NearPingsPerSecond_Values           []int    `json:"near_pings_per_second_values"`
+	RelayPingsPerSecond_Timestamps      []uint64 `json:"relay_pings_per_second_timestamps,string"`
+	RelayPingsPerSecond_Values          []int    `json:"relay_pings_per_second_values"`
+	NumRoutable_Timestamps              []uint64 `json:"num_routable_timestamps,string"`
+	NumRoutable_Values                  []int    `json:"num_routable_values"`
+	NumUnroutable_Timestamps            []uint64 `json:"num_unroutable_timestamps,string"`
+	NumUnroutable_Values                []int    `json:"num_unroutable_values"`
 }
 
 func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
@@ -876,15 +876,15 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 	}
 	if withTimeSeries {
 		relayTimeSeriesWatcher.Lock()
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_SessionCount_Timestamps, &output.TimeSeries_SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_BandwidthSentKbps_Timestamps, &output.TimeSeries_BandwidthSentKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_BandwidthReceivedKbps_Timestamps, &output.TimeSeries_BandwidthReceivedKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsSentPerSecond_Timestamps, &output.TimeSeries_PacketsSentPerSecond_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_PacketsReceivedPerSecond_Timestamps, &output.TimeSeries_PacketsReceivedPerSecond_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NearPingsPerSecond_Timestamps, &output.TimeSeries_NearPingsPerSecond_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_RelayPingsPerSecond_Timestamps, &output.TimeSeries_RelayPingsPerSecond_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumRoutable_Timestamps, &output.TimeSeries_NumRoutable_Values, fmt.Sprintf("relay_%016x_num_routable", input.RelayId))
-		relayTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NumUnroutable_Timestamps, &output.TimeSeries_NumUnroutable_Values, fmt.Sprintf("relay_%016x_num_unroutable", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.SessionCount_Timestamps, &output.SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.BandwidthSentKbps_Timestamps, &output.BandwidthSentKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.BandwidthReceivedKbps_Timestamps, &output.BandwidthReceivedKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.PacketsSentPerSecond_Timestamps, &output.PacketsSentPerSecond_Values, fmt.Sprintf("relay_%016x_packets_sent_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.PacketsReceivedPerSecond_Timestamps, &output.PacketsReceivedPerSecond_Values, fmt.Sprintf("relay_%016x_packets_received_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.NearPingsPerSecond_Timestamps, &output.NearPingsPerSecond_Values, fmt.Sprintf("relay_%016x_near_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.RelayPingsPerSecond_Timestamps, &output.RelayPingsPerSecond_Values, fmt.Sprintf("relay_%016x_relay_pings_per_second", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.NumRoutable_Timestamps, &output.NumRoutable_Values, fmt.Sprintf("relay_%016x_num_routable", input.RelayId))
+		relayTimeSeriesWatcher.GetIntValues(&output.NumUnroutable_Timestamps, &output.NumUnroutable_Values, fmt.Sprintf("relay_%016x_num_unroutable", input.RelayId))
 		relayTimeSeriesWatcher.Unlock()
 	}
 }
@@ -980,24 +980,24 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalBuyer struct {
-	Id                                       uint64            `json:"id,string"`
-	Name                                     string            `json:"name"`
-	Code                                     string            `json:"code"`
-	Live                                     bool              `json:"live"`
-	Debug                                    bool              `json:"debug"`
-	PublicKey                                []byte            `json:"public_key"`
-	RouteShader                              *core.RouteShader `json:"route_shader"`
-	TotalSessions                            int               `json:"total_sessions"`
-	NextSessions                             int               `json:"next_sessions"`
-	ServerCount                              int               `json:"server_count"`
-	Counters_TotalSessions_Timestamps        []uint64          `json:"time_series_total_sessions_timestamps,string"`
-	Counters_TotalSessions_Values            []float32         `json:"time_series_total_sessions_values"`
-	Counters_NextSessions_Timestamps         []uint64          `json:"time_series_next_sessions_timestamps,string"`
-	Counters_NextSessions_Values             []float32         `json:"time_series_next_sessions_values"`
-	Counters_AcceleratedPercent_Timestamps   []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
-	Counters_AcceleratedPercent_Values       []float32         `json:"time_series_accelerated_percent_values"`
-	Counters_ServerCount_Timestamps          []uint64          `json:"time_series_server_count_timestamps,string"`
-	Counters_ServerCount_Values              []float32         `json:"time_series_server_count_values"`
+	Id                            uint64            `json:"id,string"`
+	Name                          string            `json:"name"`
+	Code                          string            `json:"code"`
+	Live                          bool              `json:"live"`
+	Debug                         bool              `json:"debug"`
+	PublicKey                     []byte            `json:"public_key"`
+	RouteShader                   *core.RouteShader `json:"route_shader"`
+	TotalSessions                 int               `json:"total_sessions"`
+	NextSessions                  int               `json:"next_sessions"`
+	ServerCount                   int               `json:"server_count"`
+	TotalSessions_Timestamps      []uint64          `json:"total_sessions_timestamps,string"`
+	TotalSessions_Values          []float32         `json:"total_sessions_values"`
+	NextSessions_Timestamps       []uint64          `json:"next_sessions_timestamps,string"`
+	NextSessions_Values           []float32         `json:"next_sessions_values"`
+	AcceleratedPercent_Timestamps []uint64          `json:"accelerated_percent_timestamps,string"`
+	AcceleratedPercent_Values     []float32         `json:"accelerated_percent_values"`
+	ServerCount_Timestamps        []uint64          `json:"server_count_timestamps,string"`
+	ServerCount_Values            []float32         `json:"server_count_values"`
 }
 
 type PortalBuyersResponse struct {
@@ -1034,22 +1034,22 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	if enableRedisTimeSeries && withTimeSeries {
 
 		adminCountersWatcher.Lock()
-		adminCountersWatcher.GetFloat32Values(&output.Counters_TotalSessions_Timestamps, &output.Counters_TotalSessions_Values, "session_update")
-		adminCountersWatcher.GetFloat32Values(&output.Counters_NextSessions_Timestamps, &output.Counters_NextSessions_Values, "next_session_update")
-		adminCountersWatcher.GetFloat32Values(&output.Counters_ServerCount_Timestamps, &output.Counters_ServerCount_Values, "server_update")
+		adminCountersWatcher.GetFloat32Values(&output.TotalSessions_Timestamps, &output.TotalSessions_Values, "session_update")
+		adminCountersWatcher.GetFloat32Values(&output.NextSessions_Timestamps, &output.NextSessions_Values, "next_session_update")
+		adminCountersWatcher.GetFloat32Values(&output.ServerCount_Timestamps, &output.ServerCount_Values, "server_update")
 		// todo: accelerated percent for buyer
 		adminCountersWatcher.Unlock()
 
-		for i := range output.Counters_TotalSessions_Values {
-			output.Counters_TotalSessions_Values[i] *= 10.0 / 60.0
+		for i := range output.TotalSessions_Values {
+			output.TotalSessions_Values[i] *= 10.0 / 60.0
 		}
 
-		for i := range output.Counters_NextSessions_Values {
-			output.Counters_NextSessions_Values[i] *= 10.0 / 60.0
+		for i := range output.NextSessions_Values {
+			output.NextSessions_Values[i] *= 10.0 / 60.0
 		}
 
-		for i := range output.Counters_ServerCount_Values {
-			output.Counters_ServerCount_Values[i] *= 10.0 / 60.0
+		for i := range output.ServerCount_Values {
+			output.ServerCount_Values[i] *= 10.0 / 60.0
 		}
 	}
 }
@@ -1369,28 +1369,27 @@ func portalCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------------------------------------------------------------
 
 type PortalAdminDataResponse struct {
+	AcceleratedPercent_Timestamps []uint64  `json:"accelerated_percent_timestamps,string"`
+	AcceleratedPercent_Values     []float32 `json:"accelerated_percent_values"`
+	ActiveRelays_Timestamps       []uint64  `json:"active_relays_timestamps,string"`
+	ActiveRelays_Values           []int     `json:"active_relays_values"`
+	TotalRoutes_Timestamps        []uint64  `json:"total_routes_timestamps,string"`
+	TotalRoutes_Values            []int     `json:"total_routes_values"`
+	RouteMatrixBytes_Timestamps   []uint64  `json:"route_matrix_bytes_timestamps,string"`
+	RouteMatrixBytes_Values       []int     `json:"route_matrix_bytes_values"`
+	OptimizeMs_Timestamps         []uint64  `json:"optimize_ms_timestamps,string"`
+	OptimizeMs_Values             []int     `json:"optimize_ms_values"`
 
-	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
-	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
-	TimeSeries_ActiveRelays_Timestamps       []uint64          `json:"time_series_active_relays_timestamps,string"`
-	TimeSeries_ActiveRelays_Values           []int             `json:"time_series_active_relays_values"`
-	TimeSeries_TotalRoutes_Timestamps        []uint64          `json:"time_series_total_routes_timestamps,string"`
-	TimeSeries_TotalRoutes_Values            []int             `json:"time_series_total_routes_values"`
-	TimeSeries_RouteMatrixBytes_Timestamps   []uint64          `json:"time_series_route_matrix_bytes_timestamps,string"`
-	TimeSeries_RouteMatrixBytes_Values       []int             `json:"time_series_route_matrix_bytes_values"`
-	TimeSeries_OptimizeMs_Timestamps         []uint64          `json:"time_series_optimize_ms_timestamps,string"`
-	TimeSeries_OptimizeMs_Values             []int             `json:"time_series_optimize_ms_values"`
-
-	Counters_TotalSessions_Timestamps        []uint64          `json:"counters_total_sessions_timestamps,string"`
-	Counters_TotalSessions_Values            []float32         `json:"counters_total_sessions_values"`
-	Counters_NextSessions_Timestamps         []uint64          `json:"counters_next_sessions_timestamps,string"`
-	Counters_NextSessions_Values             []float32         `json:"counters_next_sessions_values"`
-	Counters_ServerCount_Timestamps          []uint64          `json:"counters_server_count_timestamps,string"`
-	Counters_ServerCount_Values              []float32         `json:"counters_server_count_values"`
-	Counters_Retry_Timestamps                []uint64          `json:"counters_retry_timestamps,string"`
-	Counters_Retry_Values                    []int             `json:"counters_retry_values"`
-	Counters_FallbackToDirect_Timestamps     []uint64          `json:"counters_fallback_to_direct_timestamps,string"`
-	Counters_FallbackToDirect_Values         []int             `json:"counters_fallback_to_direct_values"`
+	TotalSessions_Timestamps    []uint64  `json:"total_sessions_timestamps,string"`
+	TotalSessions_Values        []float32 `json:"total_sessions_values"`
+	NextSessions_Timestamps     []uint64  `json:"next_sessions_timestamps,string"`
+	NextSessions_Values         []float32 `json:"next_sessions_values"`
+	ServerCount_Timestamps      []uint64  `json:"server_count_timestamps,string"`
+	ServerCount_Values          []float32 `json:"server_count_values"`
+	Retry_Timestamps            []uint64  `json:"retry_timestamps,string"`
+	Retry_Values                []int     `json:"retry_values"`
+	FallbackToDirect_Timestamps []uint64  `json:"fallback_to_direct_timestamps,string"`
+	FallbackToDirect_Values     []int     `json:"fallback_to_direct_values"`
 }
 
 func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -1401,31 +1400,31 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 
 		adminTimeSeriesWatcher.Lock()
 		// todo: bring back accelerated percent
-		// adminTimeSeriesWatcher.GetFloat32Values(&response.TimeSeries_AcceleratedPercent_Timestamps, &response.TimeSeries_AcceleratedPercent_Values, "accelerated_percent")
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_ActiveRelays_Timestamps, &response.TimeSeries_ActiveRelays_Values, "active_relays")
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_TotalRoutes_Timestamps, &response.TimeSeries_TotalRoutes_Values, "route_matrix_total_routes")
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_RouteMatrixBytes_Timestamps, &response.TimeSeries_RouteMatrixBytes_Values, "route_matrix_bytes")
-		adminTimeSeriesWatcher.GetIntValues(&response.TimeSeries_OptimizeMs_Timestamps, &response.TimeSeries_OptimizeMs_Values, "route_matrix_optimize_ms")
+		// adminTimeSeriesWatcher.GetFloat32Values(&response.AcceleratedPercent_Timestamps, &response.AcceleratedPercent_Values, "accelerated_percent")
+		adminTimeSeriesWatcher.GetIntValues(&response.ActiveRelays_Timestamps, &response.ActiveRelays_Values, "active_relays")
+		adminTimeSeriesWatcher.GetIntValues(&response.TotalRoutes_Timestamps, &response.TotalRoutes_Values, "route_matrix_total_routes")
+		adminTimeSeriesWatcher.GetIntValues(&response.RouteMatrixBytes_Timestamps, &response.RouteMatrixBytes_Values, "route_matrix_bytes")
+		adminTimeSeriesWatcher.GetIntValues(&response.OptimizeMs_Timestamps, &response.OptimizeMs_Values, "route_matrix_optimize_ms")
 		adminTimeSeriesWatcher.Unlock()
 
 		adminCountersWatcher.Lock()
-		adminCountersWatcher.GetFloat32Values(&response.Counters_TotalSessions_Timestamps, &response.Counters_TotalSessions_Values, "session_update")
-		adminCountersWatcher.GetFloat32Values(&response.Counters_NextSessions_Timestamps, &response.Counters_NextSessions_Values, "next_session_update")
-		adminCountersWatcher.GetFloat32Values(&response.Counters_ServerCount_Timestamps, &response.Counters_ServerCount_Values, "server_update")
-		adminCountersWatcher.GetIntValues(&response.Counters_Retry_Timestamps, &response.Counters_Retry_Values, "retry")
-		adminCountersWatcher.GetIntValues(&response.Counters_FallbackToDirect_Timestamps, &response.Counters_FallbackToDirect_Values, "fallback_to_direct")
+		adminCountersWatcher.GetFloat32Values(&response.TotalSessions_Timestamps, &response.TotalSessions_Values, "session_update")
+		adminCountersWatcher.GetFloat32Values(&response.NextSessions_Timestamps, &response.NextSessions_Values, "next_session_update")
+		adminCountersWatcher.GetFloat32Values(&response.ServerCount_Timestamps, &response.ServerCount_Values, "server_update")
+		adminCountersWatcher.GetIntValues(&response.Retry_Timestamps, &response.Retry_Values, "retry")
+		adminCountersWatcher.GetIntValues(&response.FallbackToDirect_Timestamps, &response.FallbackToDirect_Values, "fallback_to_direct")
 		adminCountersWatcher.Unlock()
 
-		for i := range response.Counters_TotalSessions_Values {
-			response.Counters_TotalSessions_Values[i] *= 10.0 / 60.0
+		for i := range response.TotalSessions_Values {
+			response.TotalSessions_Values[i] *= 10.0 / 60.0
 		}
 
-		for i := range response.Counters_NextSessions_Values {
-			response.Counters_NextSessions_Values[i] *= 10.0 / 60.0
+		for i := range response.NextSessions_Values {
+			response.NextSessions_Values[i] *= 10.0 / 60.0
 		}
 
-		for i := range response.Counters_ServerCount_Values {
-			response.Counters_ServerCount_Values[i] *= 10.0 / 60.0
+		for i := range response.ServerCount_Values {
+			response.ServerCount_Values[i] *= 10.0 / 60.0
 		}
 	}
 

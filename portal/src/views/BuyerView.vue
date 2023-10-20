@@ -188,13 +188,13 @@ async function getData(page, buyer) {
 
       // total sessions data
 
-      if (res.data.buyer_data.time_series_total_sessions_timestamps != null) {
+      if (res.data.buyer_data.total_sessions_timestamps != null) {
         let total_sessions_timestamps = []  
         let total_sessions_values = []
         let i = 0
-        while (i < res.data.buyer_data.time_series_total_sessions_timestamps.length) {
-          total_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_total_sessions_timestamps[i]) / 1000))
-          total_sessions_values.push(parseInt(res.data.buyer_data.time_series_total_sessions_values[i]))
+        while (i < res.data.buyer_data.total_sessions_timestamps.length) {
+          total_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.total_sessions_timestamps[i]) / 1000))
+          total_sessions_values.push(parseInt(res.data.buyer_data.total_sessions_values[i]))
           i++
         }
         data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
@@ -202,13 +202,13 @@ async function getData(page, buyer) {
 
       // next sessions data
 
-      if (res.data.buyer_data.time_series_next_sessions_timestamps != null) {
+      if (res.data.buyer_data.next_sessions_timestamps != null) {
         let next_sessions_timestamps = []  
         let next_sessions_values = []
         let i = 0
-        while (i < res.data.buyer_data.time_series_next_sessions_timestamps.length) {
-          next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_next_sessions_timestamps[i]) / 1000))
-          next_sessions_values.push(parseInt(res.data.buyer_data.time_series_next_sessions_values[i]))
+        while (i < res.data.buyer_data.next_sessions_timestamps.length) {
+          next_sessions_timestamps.push(Math.floor(parseInt(res.data.buyer_data.next_sessions_timestamps[i]) / 1000))
+          next_sessions_values.push(parseInt(res.data.buyer_data.next_sessions_values[i]))
           i++
         }
         data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
@@ -216,13 +216,13 @@ async function getData(page, buyer) {
 
       // accelerated percent data
 
-      if (res.data.buyer_data.time_series_accelerated_percent_timestamps != null) {
+      if (res.data.buyer_data.accelerated_percent_timestamps != null) {
         let accelerated_percent_timestamps = []  
         let accelerated_percent_values = []
         let i = 0
-        while (i < res.data.buyer_data.time_series_accelerated_percent_timestamps.length) {
-          accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_accelerated_percent_timestamps[i]) / 1000))
-          accelerated_percent_values.push(parseInt(res.data.buyer_data.time_series_accelerated_percent_values[i]))
+        while (i < res.data.buyer_data.accelerated_percent_timestamps.length) {
+          accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.buyer_data.accelerated_percent_timestamps[i]) / 1000))
+          accelerated_percent_values.push(parseInt(res.data.buyer_data.accelerated_percent_values[i]))
           i++
         }
         data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
@@ -230,13 +230,13 @@ async function getData(page, buyer) {
 
       // server count data
 
-      if (res.data.buyer_data.time_series_server_count_timestamps != null) {
+      if (res.data.buyer_data.server_count_timestamps != null) {
         let server_count_timestamps = []  
         let server_count_values = []
         let i = 0
-        while (i < res.data.buyer_data.time_series_server_count_timestamps.length) {
-          server_count_timestamps.push(Math.floor(parseInt(res.data.buyer_data.time_series_server_count_timestamps[i]) / 1000))
-          server_count_values.push(parseInt(res.data.buyer_data.time_series_server_count_values[i]))
+        while (i < res.data.buyer_data.server_count_timestamps.length) {
+          server_count_timestamps.push(Math.floor(parseInt(res.data.buyer_data.server_count_timestamps[i]) / 1000))
+          server_count_values.push(parseInt(res.data.buyer_data.server_count_values[i]))
           i++
         }
         data.server_count_data = [server_count_timestamps, server_count_values]

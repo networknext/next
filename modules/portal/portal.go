@@ -965,9 +965,9 @@ func (inserter *SessionInserter) Flush(ctx context.Context) {
 const TopSessionsVersion = uint64(0)
 
 type TopSessionsWatcher struct {
-	url           string
-	mutex         sync.RWMutex
-	topSessions   []uint64
+	url         string
+	mutex       sync.RWMutex
+	topSessions []uint64
 }
 
 func CreateTopSessionsWatcher(sessionCruncherURL string) *TopSessionsWatcher {
@@ -1619,9 +1619,9 @@ func GetServerList(ctx context.Context, redisClient redis.Cmdable, serverAddress
 const TopServersVersion = uint64(0)
 
 type TopServersWatcher struct {
-	url              string
-	mutex            sync.RWMutex
-	topServers       []string
+	url        string
+	mutex      sync.RWMutex
+	topServers []string
 }
 
 func CreateTopServersWatcher(serverCruncherURL string) *TopServersWatcher {

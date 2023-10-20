@@ -159,13 +159,13 @@ async function getData() {
 
     // total sessions data
 
-    if (res.data.counters_total_sessions_timestamps != null) {
+    if (res.data.total_sessions_timestamps != null) {
       let total_sessions_timestamps = []  
       let total_sessions_values = []
       let i = 0
-      while (i < res.data.counters_total_sessions_timestamps.length) {
-        total_sessions_timestamps.push(Math.floor(parseInt(res.data.counters_total_sessions_timestamps[i]) / 1000.0))
-        total_sessions_values.push(parseInt(res.data.counters_total_sessions_values[i]))
+      while (i < res.data.total_sessions_timestamps.length) {
+        total_sessions_timestamps.push(Math.floor(parseInt(res.data.total_sessions_timestamps[i]) / 1000.0))
+        total_sessions_values.push(parseInt(res.data.total_sessions_values[i]))
         i++
       }
       data.total_sessions_data = [total_sessions_timestamps, total_sessions_values]
@@ -173,13 +173,13 @@ async function getData() {
 
     // next sessions data
 
-    if (res.data.counters_next_sessions_timestamps != null) {
+    if (res.data.next_sessions_timestamps != null) {
       let next_sessions_timestamps = []  
       let next_sessions_values = []
       let i = 0
-      while (i < res.data.counters_next_sessions_timestamps.length) {
-        next_sessions_timestamps.push(Math.floor(parseInt(res.data.counters_next_sessions_timestamps[i]) / 1000.0))
-        next_sessions_values.push(parseInt(res.data.counters_next_sessions_values[i]))
+      while (i < res.data.next_sessions_timestamps.length) {
+        next_sessions_timestamps.push(Math.floor(parseInt(res.data.next_sessions_timestamps[i]) / 1000.0))
+        next_sessions_values.push(parseInt(res.data.next_sessions_values[i]))
         i++
       }
       data.next_sessions_data = [next_sessions_timestamps, next_sessions_values]
@@ -187,13 +187,13 @@ async function getData() {
 
     // accelerated percent data
 
-    if (res.data.time_series_accelerated_percent_timestamps != null) {
+    if (res.data.accelerated_percent_timestamps != null) {
       let accelerated_percent_timestamps = []  
       let accelerated_percent_values = []
       let i = 0
-      while (i < res.data.time_series_accelerated_percent_timestamps.length) {
-        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.time_series_accelerated_percent_timestamps[i]) / 1000.0))
-        accelerated_percent_values.push(parseInt(res.data.time_series_accelerated_percent_values[i]))
+      while (i < res.data.accelerated_percent_timestamps.length) {
+        accelerated_percent_timestamps.push(Math.floor(parseInt(res.data.accelerated_percent_timestamps[i]) / 1000.0))
+        accelerated_percent_values.push(parseInt(res.data.accelerated_percent_values[i]))
         i++
       }
       data.accelerated_percent_data = [accelerated_percent_timestamps, accelerated_percent_values]
@@ -201,13 +201,13 @@ async function getData() {
 
     // server count data
 
-    if (res.data.counters_server_count_timestamps != null) {
+    if (res.data.server_count_timestamps != null) {
       let server_count_timestamps = []  
       let server_count_values = []
       let i = 0
-      while (i < res.data.counters_server_count_timestamps.length) {
-        server_count_timestamps.push(Math.floor(parseInt(res.data.counters_server_count_timestamps[i]) / 1000.0))
-        server_count_values.push(parseInt(res.data.counters_server_count_values[i]))
+      while (i < res.data.server_count_timestamps.length) {
+        server_count_timestamps.push(Math.floor(parseInt(res.data.server_count_timestamps[i]) / 1000.0))
+        server_count_values.push(parseInt(res.data.server_count_values[i]))
         i++
       }
       data.server_count_data = [server_count_timestamps, server_count_values]
@@ -215,13 +215,13 @@ async function getData() {
 
     // retry data
 
-    if (res.data.counters_retry_timestamps != null) {
+    if (res.data.retry_timestamps != null) {
       let retry_timestamps = []  
       let retry_values = []
       let i = 0
-      while (i < res.data.counters_retry_timestamps.length) {
-        retry_timestamps.push(Math.floor(parseInt(res.data.counters_retry_timestamps[i]) / 1000.0))
-        retry_values.push(parseInt(res.data.counters_retry_values[i]))
+      while (i < res.data.retry_timestamps.length) {
+        retry_timestamps.push(Math.floor(parseInt(res.data.retry_timestamps[i]) / 1000.0))
+        retry_values.push(parseInt(res.data.retry_values[i]))
         i++
       }
       data.retry_data = [retry_timestamps, retry_values]
@@ -229,13 +229,13 @@ async function getData() {
 
     // fallback to direct data
 
-    if (res.data.counters_fallback_to_direct_timestamps != null) {
+    if (res.data.fallback_to_direct_timestamps != null) {
       let fallback_to_direct_timestamps = []  
       let fallback_to_direct_values = []
       let i = 0
-      while (i < res.data.counters_fallback_to_direct_timestamps.length) {
-        fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.counters_fallback_to_direct_timestamps[i]) / 1000.0))
-        fallback_to_direct_values.push(parseInt(res.data.counters_fallback_to_direct_values[i]))
+      while (i < res.data.fallback_to_direct_timestamps.length) {
+        fallback_to_direct_timestamps.push(Math.floor(parseInt(res.data.fallback_to_direct_timestamps[i]) / 1000.0))
+        fallback_to_direct_values.push(parseInt(res.data.fallback_to_direct_values[i]))
         i++
       }
       data.fallback_to_direct_data = [fallback_to_direct_timestamps, fallback_to_direct_values]
@@ -243,13 +243,13 @@ async function getData() {
 
     // total routes data
 
-    if (res.data.time_series_total_routes_timestamps != null) {
+    if (res.data.total_routes_timestamps != null) {
       let total_routes_timestamps = []  
       let total_routes_values = []
       let i = 0
-      while (i < res.data.time_series_total_routes_timestamps.length) {
-        total_routes_timestamps.push(Math.floor(parseInt(res.data.time_series_total_routes_timestamps[i]) / 1000.0))
-        total_routes_values.push(parseInt(res.data.time_series_total_routes_values[i]))
+      while (i < res.data.total_routes_timestamps.length) {
+        total_routes_timestamps.push(Math.floor(parseInt(res.data.total_routes_timestamps[i]) / 1000.0))
+        total_routes_values.push(parseInt(res.data.total_routes_values[i]))
         i++
       }
       data.total_routes_data = [total_routes_timestamps, total_routes_values]
@@ -257,13 +257,13 @@ async function getData() {
 
     // optimize time
 
-    if (res.data.time_series_optimize_ms_timestamps != null) {
+    if (res.data.optimize_ms_timestamps != null) {
       let optimize_time_timestamps = []  
       let optimize_time_values = []
       let i = 0
-      while (i < res.data.time_series_optimize_ms_timestamps.length) {
-        optimize_time_timestamps.push(Math.floor(parseInt(res.data.time_series_optimize_ms_timestamps[i]) / 1000.0))
-        optimize_time_values.push(parseInt(res.data.time_series_optimize_ms_values[i]))
+      while (i < res.data.optimize_ms_timestamps.length) {
+        optimize_time_timestamps.push(Math.floor(parseInt(res.data.optimize_ms_timestamps[i]) / 1000.0))
+        optimize_time_values.push(parseInt(res.data.optimize_ms_values[i]))
         i++
       }
       data.optimize_time_data = [optimize_time_timestamps, optimize_time_values]
@@ -271,13 +271,13 @@ async function getData() {
 
     // route matrix size
 
-    if (res.data.time_series_route_matrix_bytes_timestamps != null) {
+    if (res.data.route_matrix_bytes_timestamps != null) {
       let route_matrix_size_timestamps = []  
       let route_matrix_size_values = []
       let i = 0
-      while (i < res.data.time_series_route_matrix_bytes_timestamps.length) {
-        route_matrix_size_timestamps.push(Math.floor(parseInt(res.data.time_series_route_matrix_bytes_timestamps[i]) / 1000.0))
-        route_matrix_size_values.push(parseInt(res.data.time_series_route_matrix_bytes_values[i]))
+      while (i < res.data.route_matrix_bytes_timestamps.length) {
+        route_matrix_size_timestamps.push(Math.floor(parseInt(res.data.route_matrix_bytes_timestamps[i]) / 1000.0))
+        route_matrix_size_values.push(parseInt(res.data.route_matrix_bytes_values[i]))
         i++
       }
       data.route_matrix_size_data = [route_matrix_size_timestamps, route_matrix_size_values]

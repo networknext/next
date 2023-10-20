@@ -172,7 +172,7 @@ func TopSessionsThread() {
 						serversMap[bucketServers[j].Key] = true
 						topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
 						if len(topServers) >= TopServersCount {
-							goto done;
+							goto done
 						}
 					}
 				}

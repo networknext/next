@@ -282,7 +282,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 				}
 
 				data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
-				
+
 				startTimestamp := uint64(currentTime) - uint64(watcher.config.DisplayWindow)
 				startTimestamp -= startTimestamp % uint64(watcher.config.SumWindow)
 				startTimestamp += uint64(watcher.config.SumWindow)
@@ -368,9 +368,9 @@ func (watcher *RedisCountersWatcher) GetFloatValue(key string) float64 {
 		// IMPORTANT: Sometimes redis counters hasn't processed the most recent sample yet and it is zero
 		// In this wase, walk back up to 5 samples to find a non-zero sample and return that. Without this
 		// the session counts in the portal (driven by counters) flicker to zero occasionally.
-		lastIndex := len(watcher.values[index])-1			
+		lastIndex := len(watcher.values[index]) - 1
 		for i := 0; i < 5; i++ {
-			if lastIndex - i < 0 {
+			if lastIndex-i < 0 {
 				break
 			}
 			if watcher.values[index][lastIndex-i] != 0 {
