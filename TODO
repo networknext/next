@@ -18,17 +18,13 @@ DONE
 
 	Add the active relays graph
 
-TODO
-
 	Verify active relays graph in dev
 
-	-----------------------
+TODO
 
-	Bring back the accelerated percent graph (admin)
+	Verify active relays graph in admin
 
-	Bring back the accelerated percent graph (buyer)
-
-	Verify accelerated percent graph in dev
+	Verify active relays graph in buyer view
 
 	-----------------------
 

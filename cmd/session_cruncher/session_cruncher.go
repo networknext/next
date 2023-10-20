@@ -94,6 +94,8 @@ func main() {
 
 	service := common.CreateService("session_cruncher")
 
+	service.LoadDatabase()
+
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
 	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
@@ -158,6 +160,7 @@ func UpdateAcceleratedPercent(service *common.Service) {
 
 				database := service.Database()
 				if database == nil {
+					core.Error("database is nil")
 					break
 				}
 
@@ -188,6 +191,8 @@ func UpdateAcceleratedPercent(service *common.Service) {
 				message.Keys = keys
 				message.Values = values
 				timeSeriesPublisher.MessageChannel <- &message
+
+				core.Log("update accelerated percent")
 			}
 		}
 	}(service.Context)
