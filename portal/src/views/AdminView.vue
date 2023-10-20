@@ -8,9 +8,9 @@
     
       <div id="next_sessions" class="graph"/>
 
-      <div id="server_count" class="graph"/>
-
       <div id="accelerated_percent" class="graph"/>
+
+      <div id="server_count" class="graph"/>
 
       <div id="retry" class="graph"/>
 

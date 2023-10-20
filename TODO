@@ -14,15 +14,13 @@ DONE
 
 	Get buyer graphs working in dev
 
-TODO
-
 	Need to do something about counters graphs showing zeros
 
-	Don't post pad with zeros unless at least 5 samples behind?
+TODO
 
-	-----------------------
+	Bring back the accelerated percent graph (admin)
 
-	Bring back the accelerated percent graph
+	Bring back the accelerated percent graph (buyer)
 
 	Verify accelerated percent graph in dev
 
