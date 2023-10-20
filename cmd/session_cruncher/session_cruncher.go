@@ -8,10 +8,14 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"os"
+	"context"
+	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
+	"github.com/networknext/next/modules/envvar"
 )
 
 const TopSessionsCount = 10000
@@ -73,7 +77,20 @@ type MapPoints struct {
 var mapDataMutex sync.Mutex
 var mapData []byte
 
+var enableRedisTimeSeries bool
+var redisTimeSeriesCluster []string
+var redisTimeSeriesHostname string
+
 func main() {
+
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
 
 	service := common.CreateService("session_cruncher")
 
@@ -98,9 +115,82 @@ func main() {
 
 	go TopSessionsThread()
 
+	go UpdateAcceleratedPercent(service)
+
 	service.StartWebServer()
 
 	service.WaitForShutdown()
+}
+
+func UpdateAcceleratedPercent(service *common.Service) {
+
+	// calculate accelerated percent once per-second from counters
+
+	countersConfig := common.RedisCountersConfig{
+		RedisHostname: redisTimeSeriesHostname,
+		RedisCluster:  redisTimeSeriesCluster,
+	}
+
+	countersWatcher, err := common.CreateRedisCountersWatcher(service.Context, countersConfig)
+	if err != nil {
+		core.Error("could not create redis counters watcher: %v", err)
+		os.Exit(1)
+	}
+
+	timeSeriesConfig := common.RedisTimeSeriesConfig{
+		RedisHostname: redisTimeSeriesHostname,
+		RedisCluster:  redisTimeSeriesCluster,
+	}
+
+	timeSeriesPublisher, err := common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
+	if err != nil {
+		core.Error("could not create redis time series publisher: %v", err)
+		os.Exit(1)
+	}
+
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(time.Minute)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+
+				database := service.Database()
+				if database == nil {
+					break
+				}
+
+				keys := []string{}
+				values := []float64{}
+
+				sessionUpdates := countersWatcher.GetFloatValue("session_update")
+				nextSessionUpdates := countersWatcher.GetFloatValue("next_session_update")
+				if sessionUpdates > 0 {
+					acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
+					keys = append(keys, "accelerated_percent")
+					values = append(values, acceleratedPercent)
+				}
+
+				buyerIds := database.GetBuyerIds()
+				for i := range buyerIds {
+					sessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("session_update_%016x", buyerIds[i]))
+					nextSessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
+					if sessionUpdates > 0 {
+						acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
+						keys = append(keys, fmt.Sprintf("accelerated_percent_%016x", buyerIds[i]))
+						values = append(values, acceleratedPercent)
+					}
+				}
+
+				message := common.RedisTimeSeriesMessage{}
+				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+				message.Keys = keys
+				message.Values = values
+				timeSeriesPublisher.MessageChannel <- &message
+			}
+		}
+	}(service.Context)
 }
 
 func TestThread() {

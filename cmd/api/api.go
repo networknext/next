@@ -1400,8 +1400,7 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 	if enableRedisTimeSeries {
 
 		adminTimeSeriesWatcher.Lock()
-		// todo: bring back accelerated percent
-		// adminTimeSeriesWatcher.GetFloat32Values(&response.AcceleratedPercent_Timestamps, &response.AcceleratedPercent_Values, "accelerated_percent")
+		adminTimeSeriesWatcher.GetFloat32Values(&response.AcceleratedPercent_Timestamps, &response.AcceleratedPercent_Values, "accelerated_percent")
 		adminTimeSeriesWatcher.GetIntValues(&response.TotalRoutes_Timestamps, &response.TotalRoutes_Values, "route_matrix_total_routes")
 		adminTimeSeriesWatcher.GetIntValues(&response.RouteMatrixBytes_Timestamps, &response.RouteMatrixBytes_Values, "route_matrix_bytes")
 		adminTimeSeriesWatcher.GetIntValues(&response.OptimizeMs_Timestamps, &response.OptimizeMs_Values, "route_matrix_optimize_ms")
