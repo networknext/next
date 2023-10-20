@@ -990,14 +990,14 @@ type PortalBuyer struct {
 	TotalSessions                            int               `json:"total_sessions"`
 	NextSessions                             int               `json:"next_sessions"`
 	ServerCount                              int               `json:"server_count"`
-	TimeSeries_TotalSessions_Timestamps      []uint64          `json:"time_series_total_sessions_timestamps,string"`
-	TimeSeries_TotalSessions_Values          []int             `json:"time_series_total_sessions_values"`
-	TimeSeries_NextSessions_Timestamps       []uint64          `json:"time_series_next_sessions_timestamps,string"`
-	TimeSeries_NextSessions_Values           []int             `json:"time_series_next_sessions_values"`
-	TimeSeries_AcceleratedPercent_Timestamps []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
-	TimeSeries_AcceleratedPercent_Values     []float32         `json:"time_series_accelerated_percent_values"`
-	TimeSeries_ServerCount_Timestamps        []uint64          `json:"time_series_server_count_timestamps,string"`
-	TimeSeries_ServerCount_Values            []int             `json:"time_series_server_count_values"`
+	Counters_TotalSessions_Timestamps        []uint64          `json:"time_series_total_sessions_timestamps,string"`
+	Counters_TotalSessions_Values            []float32         `json:"time_series_total_sessions_values"`
+	Counters_NextSessions_Timestamps         []uint64          `json:"time_series_next_sessions_timestamps,string"`
+	Counters_NextSessions_Values             []float32         `json:"time_series_next_sessions_values"`
+	Counters_AcceleratedPercent_Timestamps   []uint64          `json:"time_series_accelerated_percent_timestamps,string"`
+	Counters_AcceleratedPercent_Values       []float32         `json:"time_series_accelerated_percent_values"`
+	Counters_ServerCount_Timestamps          []uint64          `json:"time_series_server_count_timestamps,string"`
+	Counters_ServerCount_Values              []float32         `json:"time_series_server_count_values"`
 }
 
 type PortalBuyersResponse struct {
@@ -1032,12 +1032,25 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	}
 
 	if enableRedisTimeSeries && withTimeSeries {
-		buyerTimeSeriesWatcher.Lock()
-		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_TotalSessions_Timestamps, &output.TimeSeries_TotalSessions_Values, fmt.Sprintf("buyer_%016x_total_sessions", input.Id))
-		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_NextSessions_Timestamps, &output.TimeSeries_NextSessions_Values, fmt.Sprintf("buyer_%016x_next_sessions", input.Id))
-		buyerTimeSeriesWatcher.GetFloat32Values(&output.TimeSeries_AcceleratedPercent_Timestamps, &output.TimeSeries_AcceleratedPercent_Values, fmt.Sprintf("buyer_%016x_accelerated_percent", input.Id))
-		buyerTimeSeriesWatcher.GetIntValues(&output.TimeSeries_ServerCount_Timestamps, &output.TimeSeries_ServerCount_Values, fmt.Sprintf("buyer_%016x_server_count", input.Id))
-		buyerTimeSeriesWatcher.Unlock()
+
+		adminCountersWatcher.Lock()
+		adminCountersWatcher.GetFloat32Values(&output.Counters_TotalSessions_Timestamps, &output.Counters_TotalSessions_Values, "session_update")
+		adminCountersWatcher.GetFloat32Values(&output.Counters_NextSessions_Timestamps, &output.Counters_NextSessions_Values, "next_session_update")
+		adminCountersWatcher.GetFloat32Values(&output.Counters_ServerCount_Timestamps, &output.Counters_ServerCount_Values, "server_update")
+		// todo: accelerated percent for buyer
+		adminCountersWatcher.Unlock()
+
+		for i := range output.Counters_TotalSessions_Values {
+			output.Counters_TotalSessions_Values[i] *= 10.0 / 60.0
+		}
+
+		for i := range output.Counters_NextSessions_Values {
+			output.Counters_NextSessions_Values[i] *= 10.0 / 60.0
+		}
+
+		for i := range output.Counters_ServerCount_Values {
+			output.Counters_ServerCount_Values[i] *= 10.0 / 60.0
+		}
 	}
 }
 

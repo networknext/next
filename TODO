@@ -4,13 +4,23 @@ DONE
 
 	Update API to get all buyer related server and session counts from counters
 
-TODO
-
 	Make sure all admin graphs work in dev
+
+	Make sure all relay graphs work in dev
+
+	Verify session sort order is correct in dev
 
 	Make sure all buyer counts work in dev
 
-	Make sure all relay graphs work in dev
+TODO
+
+	Get buyer graphs working in dev
+
+	-----------------------
+
+	Need to do something about counters graphs showing zeros
+
+	Don't post pad with zeros unless at least 5 samples behind?
 
 	-----------------------
 
