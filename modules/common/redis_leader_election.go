@@ -126,9 +126,9 @@ func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service 
 
 	// leader is the one with longest uptime, instance id used for tie-break
 
-	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
+	sort.Slice(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId < instanceEntries[j].InstanceId })
 
-	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
 
 	// todo
 	core.Log("%d leader election entries", len(instanceEntries))
