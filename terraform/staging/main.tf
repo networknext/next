@@ -1796,6 +1796,7 @@ module "session_cruncher" {
     DATABASE_PATH="/app/database.bin"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
