@@ -54,8 +54,8 @@ func CreateRedisLeaderElection(redisClient redis.Cmdable, config RedisLeaderElec
 	leaderElection.startTime = time.Now()
 	leaderElection.instanceId = uuid.New().String()
 
-	// core.Debug("redis leader election start time: %s", leaderElection.startTime)
-	// core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
+	core.Debug("redis leader election start time: %s", leaderElection.startTime)
+	core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
 
 	return leaderElection, nil
 }
@@ -164,7 +164,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// wait at least timeout to ensure we don't flap leader when a bunch of services start close together
 
 	if time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
-		// core.Debug("wait timeout\n")
+		core.Debug("leader election wait timeout\n")
 		return
 	}
 
@@ -196,6 +196,9 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 		core.Log("we became the leader")
 	} else if previousValue && !currentValue {
 		core.Log("we are no longer the leader")
+	} else {
+		// todo
+		core.Log("we are not the leader")
 	}
 }
 
