@@ -10,10 +10,6 @@ DONE
 
 TODO
 
-	Fix optimize time
-
-	--------------
-
 	There seems to be a load related issue @ 1000 relays.
 
 	Increase staging to 1000 relays. Is the load issue back?
@@ -44,6 +40,9 @@ TODO
 
 	--------------
 
+	Both the relay backend leader election and the fallback to direct fix don't seem to be reliably working in staging. WTF
+
+	--------------
 
 
 
