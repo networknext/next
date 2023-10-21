@@ -196,10 +196,7 @@ func main() {
 						keys := []string{}
 						buyerIds := database.GetBuyerIds()
 						for i := range buyerIds {
-							keys = append(keys, fmt.Sprintf("buyer_%016x_total_sessions", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("buyer_%016x_next_sessions", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("buyer_%016x_accelerated_percent", buyerIds[i]))
-							keys = append(keys, fmt.Sprintf("buyer_%016x_server_count", buyerIds[i]))
+							keys = append(keys, fmt.Sprintf("accelerated_percent_%016x", buyerIds[i]))
 						}
 						buyerTimeSeriesWatcher.SetKeys(keys)
 					}
