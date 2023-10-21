@@ -1789,8 +1789,13 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    GOOGLE_PROJECT_ID=${var.google_project}
+    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_PATH="/app/database.bin"
     EOF
-    sudo systemctl start app.service
+    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
   EOF1
 
   tag                        = var.tag
