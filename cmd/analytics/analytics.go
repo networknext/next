@@ -22,6 +22,7 @@ var googleProjectId string
 var bigqueryDataset string
 var enableGooglePubsub bool
 var enableGoogleBigquery bool
+var initialDelay int
 
 var logMutex sync.Mutex
 
@@ -37,6 +38,7 @@ func main() {
 	bigqueryDataset = envvar.GetString("BIGQUERY_DATASET", "analytics")
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	enableGoogleBigquery = envvar.GetBool("ENABLE_GOOGLE_BIGQUERY", false)
+	initialDelay = envvar.GetInt("INITIAL_DELAY", 15)
 
 	reps := envvar.GetInt("REPS", 1)
 
@@ -48,6 +50,7 @@ func main() {
 	core.Debug("bigquery dataset: %s", bigqueryDataset)
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 	core.Debug("enable google bigquery: %v", enableGoogleBigquery)
+	core.Debug("initial delay: %d", initialDelay)
 
 	ProcessRouteMatrix(service)
 
@@ -69,7 +72,7 @@ func main() {
 
 	service.StartWebServer()
 
-	service.LeaderElection()
+	service.LeaderElection(initialDelay)
 
 	service.WaitForShutdown()
 }

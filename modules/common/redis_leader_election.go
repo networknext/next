@@ -20,7 +20,7 @@ const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change 
 type RedisLeaderElectionConfig struct {
 	RedisHostname string
 	ServiceName   string
-	Timeout       time.Duration
+	InitialDelay  int
 }
 
 type RedisLeaderElection struct {
@@ -45,8 +45,8 @@ func CreateRedisLeaderElection(redisClient redis.Cmdable, config RedisLeaderElec
 
 	leaderElection := &RedisLeaderElection{}
 
-	if config.Timeout == 0 {
-		config.Timeout = time.Second * 10
+	if config.InitialDelay == 0 {
+		config.InitialDelay = 15
 	}
 
 	leaderElection.config = config
@@ -131,11 +131,7 @@ func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service 
 	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
 
 	// todo
-	core.Log("------------------------------------------------")
-	for i := range instanceEntries {
-		core.Log("+v", instanceEntries[i])
-	}
-	core.Log("------------------------------------------------")
+	core.Log("%d leader election entries", len(instanceEntries))
 
 	return instanceEntries
 }
@@ -168,10 +164,10 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	leaderElection.redisClient.HSet(ctx, key, field, value)
 
-	// wait at least timeout to ensure we don't flap leader when a bunch of services start close together
+	// wait for the initial delay
 
-	if time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
-		core.Debug("leader election wait\n")
+	if int(time.Since(leaderElection.startTime).Seconds()) < leaderElection.config.InitialDelay {
+		core.Debug("leader election wait: initial delay = %d\n", leaderElection.config.InitialDelay)
 		return
 	}
 

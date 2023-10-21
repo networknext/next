@@ -472,7 +472,7 @@ func CreateRedisClusterClient(redisNodes []string) *redis.ClusterClient {
 	return redisClient
 }
 
-func (service *Service) LeaderElection() {
+func (service *Service) LeaderElection(initialDelay int) {
 
 	core.Log("started leader election")
 
@@ -481,7 +481,7 @@ func (service *Service) LeaderElection() {
 	redisClient := CreateRedisClient(redisHostname)
 
 	config := RedisLeaderElectionConfig{}
-	config.Timeout = time.Second * 10
+	config.InitialDelay = initialDelay
 	config.ServiceName = service.ServiceName
 
 	var err error

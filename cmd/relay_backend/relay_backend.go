@@ -40,7 +40,7 @@ var enableGooglePubsub bool
 
 var enableRedisStreams bool
 
-var initialDelay time.Duration
+var initialDelay int
 
 var relaysMutex sync.RWMutex
 var relaysCSVData []byte
@@ -87,7 +87,7 @@ func main() {
 
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 
-	initialDelay = envvar.GetDuration("INITIAL_DELAY", 1*time.Second)
+	initialDelay = envvar.GetInt("INITIAL_DELAY", 15)
 
 	startTime = time.Now()
 
@@ -118,7 +118,7 @@ func main() {
 
 	core.Debug("enable redis streams: %v", enableRedisStreams)
 
-	core.Debug("initial delay: %s", initialDelay.String())
+	core.Debug("initial delay: %d", initialDelay)
 
 	core.Debug("start time: %s", startTime.String())
 
@@ -157,7 +157,7 @@ func main() {
 
 	service.StartWebServer()
 
-	service.LeaderElection()
+	service.LeaderElection(initialDelay)
 
 	ProcessRelayUpdates(service, relayManager)
 
@@ -548,7 +548,7 @@ func initialDelayCompleted() bool {
 func UpdateInitialDelayState(service *common.Service) {
 	go func() {
 		for {
-			if time.Since(startTime) >= initialDelay {
+			if int(time.Since(startTime).Seconds()) >= initialDelay {
 				core.Debug("initial delay completed")
 				delayMutex.Lock()
 				delayCompleted = true
