@@ -971,39 +971,51 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					continue
 				}
 
-				// if we are the leader, store our data in redis
+				// store our data in redis
 
-				if service.IsLeader() {
-					service.Store("relays", relaysCSVDataNew)
-					service.Store("cost_matrix", costMatrixDataNew)
-					service.Store("route_matrix", routeMatrixDataNew)
+				service.Store("relays", relaysCSVDataNew)
+				service.Store("cost_matrix", costMatrixDataNew)
+				service.Store("route_matrix", routeMatrixDataNew)
+
+				// load the leader data from redis
+
+				relaysCSVDataNew = service.Load("relays")
+				if relaysCSVDataNew == nil {
+					continue
 				}
 
-				// if we are not the leader, load the data from redis
-
-				if !service.IsLeader() {
-
-					relaysCSVDataNew = service.Load("relays")
-					if relaysCSVDataNew == nil {
-						continue
-					}
-
-					costMatrixDataNew = service.Load("cost_matrix")
-					if costMatrixDataNew == nil {
-						continue
-					}
-
-					routeMatrixDataNew = service.Load("route_matrix")
-					if routeMatrixDataNew == nil {
-						continue
-					}
+				costMatrixDataNew = service.Load("cost_matrix")
+				if costMatrixDataNew == nil {
+					continue
 				}
+
+				routeMatrixDataNew = service.Load("route_matrix")
+				if routeMatrixDataNew == nil {
+					continue
+				}
+
+				// serve up as official data
+
+				relaysMutex.Lock()
+				relaysCSVData = relaysCSVDataNew
+				relaysMutex.Unlock()
+
+				costMatrixMutex.Lock()
+				costMatrixData = costMatrixDataNew
+				costMatrixMutex.Unlock()
+
+				routeMatrixMutex.Lock()
+				routeMatrixData = routeMatrixDataNew
+				routeMatrixMutex.Unlock()
 
 				// analyze route matrix and send time series data to redis if leader
 
 				if enableRedisTimeSeries {
 
 					analysis := routeMatrixNew.Analyze()
+
+					// todo
+					core.Log("total routes %d (leader)", analysis.TotalRoutes)
 
 					keys := []string{
 						"active_relays",
@@ -1044,20 +1056,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 						timeSeriesPublisher.MessageChannel <- &message
 					}
 				}
-
-				// serve up as official data
-
-				relaysMutex.Lock()
-				relaysCSVData = relaysCSVDataNew
-				relaysMutex.Unlock()
-
-				costMatrixMutex.Lock()
-				costMatrixData = costMatrixDataNew
-				costMatrixMutex.Unlock()
-
-				routeMatrixMutex.Lock()
-				routeMatrixData = routeMatrixDataNew
-				routeMatrixMutex.Unlock()
 			}
 		}
 	}()
