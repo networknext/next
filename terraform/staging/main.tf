@@ -1623,7 +1623,7 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
-    INITIAL_DELAY=15s
+    INITIAL_DELAY=90s
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
@@ -1645,6 +1645,7 @@ module "relay_backend" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
+  initial_delay              = 360
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
