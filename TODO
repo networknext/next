@@ -8,31 +8,25 @@ DONE
 
 	Relays seem fine, however optimize time did not increase. Suspect optimize time is not working properly.
 
+	10 relays in fine.
+
+	100 relays is fine.
+
+	Optimize time is working
+
+	Click on server and get server sessions seems to be broken in staging. Doesn't seem load related. 
+
+	Verify that at low scale it is still broken. Verified.
+
 TODO
 
-	--------------
-
-	There seems to be a load related issue @ 1000 relays.
-
-	Increase staging to 1000 relays. Is the load issue back?
-
-	If so then it is definitely a load issue and I should look at load testing the relay manager locally.
-
-	My guess is that it is an issue related to contention on the mutex, and/or a concurrency problem.
+	Try 1000 relays...
 
 	--------------
 
 	Portal crunchers seem to be a bottleneck in scaling up.
 
 	Consider removing the portal cruncher entirely and just publishing the data directly from the server backend.
-
-	--------------
-
-	Click on server and get server sessions seems to be broken in staging. Doesn't seem load related. 
-
-	Verify that at low scale it is still broken.
-
-	Fix it.
 
 	--------------
 
@@ -58,6 +52,10 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	Click on server to see sessions on server is broken in staging even at small load. My guess, sessions are not properly linking to server addresses?
 
 	--------------
 
