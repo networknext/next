@@ -4,6 +4,8 @@ TODO
 
 	We need to see a steady route matrix across deploys. Work out what is going on with leader election and the new instance sending time series and counter data
 
+	I think it is simply that we need to add an initial delay that gets past the history buffer
+
 	--------------
 
 	There seems to be a load related issue @ 1000 relays.
