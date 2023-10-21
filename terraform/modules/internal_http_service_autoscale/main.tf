@@ -28,6 +28,10 @@ variable "tags" { type = list }
 variable "min_size" { type = number }
 variable "max_size" { type = number }
 variable "target_cpu" { type = number }
+variable "initial_delay" {
+  type = number
+  default = 60
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -163,7 +167,7 @@ resource "google_compute_region_instance_group_manager" "service" {
   }
   auto_healing_policies {
     health_check      = google_compute_health_check.service_vm.id
-    initial_delay_sec = 120
+    initial_delay_sec = var.initial_delay
   }
   update_policy {
     type                           = "PROACTIVE"
