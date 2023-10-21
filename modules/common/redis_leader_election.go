@@ -130,9 +130,6 @@ func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service 
 
 	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
 
-	// todo
-	core.Log("%d leader election entries", len(instanceEntries))
-
 	return instanceEntries
 }
 
@@ -167,7 +164,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// wait for the initial delay
 
 	if int(time.Since(leaderElection.startTime).Seconds()) < leaderElection.config.InitialDelay {
-		core.Debug("leader election wait: initial delay = %d\n", leaderElection.config.InitialDelay)
+		core.Debug("initial delay (%d)\n", leaderElection.config.InitialDelay)
 		return
 	}
 
@@ -199,13 +196,6 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 		core.Log("we became the leader")
 	} else if previousValue && !currentValue {
 		core.Log("we are no longer the leader")
-	}
-
-	// todo
-	if currentValue {
-		core.Log("we are the leader")
-	} else {
-		core.Log("we are not the leader")
 	}
 }
 

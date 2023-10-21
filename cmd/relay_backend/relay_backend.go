@@ -1014,9 +1014,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 					analysis := routeMatrixNew.Analyze()
 
-					// todo
-					core.Log("total routes %d (leader)", analysis.TotalRoutes)
-
 					keys := []string{
 						"active_relays",
 						"total_relays",

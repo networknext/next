@@ -7,7 +7,7 @@ import (
 	"github.com/networknext/next/modules/common"
 )
 
-const NumRelays = 10
+const NumRelays = 100
 
 func main() {
 

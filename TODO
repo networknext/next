@@ -1,22 +1,34 @@
 DONE
 
-TODO
-
 	We need to see a steady route matrix across deploys. Work out what is going on with leader election and the new instance sending time series and counter data
 
-	I think it is simply that we need to add an initial delay that gets past the history buffer
+	Seems to be resolved.
 
-	--------------
+TODO
 
 	There seems to be a load related issue @ 1000 relays.
+
+	Try increasing staging to 100 relays. Does the load issue still occur?
+
+	Increase staging to 1000 relays. Is the load issue back?
+
+	If so then it is definitely a load issue and I should look at load testing the relay manager locally.
+
+	My guess is that it is an issue related to contention on the mutex, and/or a concurrency problem.
 
 	--------------
 
 	Portal crunchers seem to be a bottleneck in scaling up.
 
+	Consider removing the portal cruncher entirely and just publishing the data directly from the server backend.
+
 	--------------
 
-	Click on server and get server sessions seems to be broken in staging. Doesn't seem load related.
+	Click on server and get server sessions seems to be broken in staging. Doesn't seem load related. 
+
+	Verify that at low scale it is still broken.
+
+	Fix it.
 
 	--------------
 
@@ -39,6 +51,10 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	Active relays seems to double during deploys. Currently, I cannot think of any reason why this would happen?
 
 	--------------
 
