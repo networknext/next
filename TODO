@@ -4,11 +4,17 @@ DONE
 
 	Seems to be resolved.
 
+	Try increasing staging to 100 relays. Does the load issue still occur?
+
+	Relays seem fine, however optimize time did not increase. Suspect optimize time is not working properly.
+
 TODO
 
-	There seems to be a load related issue @ 1000 relays.
+	Fix optimize time
 
-	Try increasing staging to 100 relays. Does the load issue still occur?
+	--------------
+
+	There seems to be a load related issue @ 1000 relays.
 
 	Increase staging to 1000 relays. Is the load issue back?
 

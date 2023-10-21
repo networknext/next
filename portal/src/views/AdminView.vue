@@ -288,7 +288,7 @@ async function getData() {
       let i = 0
       while (i < res.data.optimize_ms_timestamps.length) {
         optimize_time_timestamps.push(Math.floor(parseInt(res.data.optimize_ms_timestamps[i]) / 1000.0))
-        optimize_time_values.push(parseInt(res.data.optimize_ms_values[i]))
+        optimize_time_values.push(res.data.optimize_ms_values[i].toFixed(2))
         i++
       }
       data.optimize_time_data = [optimize_time_timestamps, optimize_time_values]

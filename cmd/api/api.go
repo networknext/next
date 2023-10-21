@@ -1377,7 +1377,7 @@ type PortalAdminDataResponse struct {
 	RouteMatrixBytes_Timestamps   []uint64  `json:"route_matrix_bytes_timestamps,string"`
 	RouteMatrixBytes_Values       []int     `json:"route_matrix_bytes_values"`
 	OptimizeMs_Timestamps         []uint64  `json:"optimize_ms_timestamps,string"`
-	OptimizeMs_Values             []int     `json:"optimize_ms_values"`
+	OptimizeMs_Values             []float32 `json:"optimize_ms_values"`
 
 	TotalSessions_Timestamps    []uint64  `json:"total_sessions_timestamps,string"`
 	TotalSessions_Values        []float32 `json:"total_sessions_values"`
@@ -1403,7 +1403,7 @@ func portalAdminDataHandler(w http.ResponseWriter, r *http.Request) {
 		adminTimeSeriesWatcher.GetFloat32Values(&response.AcceleratedPercent_Timestamps, &response.AcceleratedPercent_Values, "accelerated_percent")
 		adminTimeSeriesWatcher.GetIntValues(&response.TotalRoutes_Timestamps, &response.TotalRoutes_Values, "route_matrix_total_routes")
 		adminTimeSeriesWatcher.GetIntValues(&response.RouteMatrixBytes_Timestamps, &response.RouteMatrixBytes_Values, "route_matrix_bytes")
-		adminTimeSeriesWatcher.GetIntValues(&response.OptimizeMs_Timestamps, &response.OptimizeMs_Values, "route_matrix_optimize_ms")
+		adminTimeSeriesWatcher.GetFloat32Values(&response.OptimizeMs_Timestamps, &response.OptimizeMs_Values, "route_matrix_optimize_ms")
 		adminTimeSeriesWatcher.Unlock()
 
 		adminCountersWatcher.Lock()
