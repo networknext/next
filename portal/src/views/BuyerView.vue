@@ -175,6 +175,8 @@ async function getData(page, buyer) {
 
     data['buyer'] = buyer
 
+    console.log(res.data.buyer_data)
+
     if (res.data.buyer_data !== null) {
 
       // buyer data

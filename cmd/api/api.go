@@ -1034,11 +1034,11 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 
 	if enableRedisTimeSeries && withTimeSeries {
 
-		adminCountersWatcher.Lock()
-		adminCountersWatcher.GetFloat32Values(&output.TotalSessions_Timestamps, &output.TotalSessions_Values, fmt.Sprintf("session_update_%016x", input.Id))
-		adminCountersWatcher.GetFloat32Values(&output.NextSessions_Timestamps, &output.NextSessions_Values, fmt.Sprintf("next_session_update_%016x", input.Id))
-		adminCountersWatcher.GetFloat32Values(&output.ServerCount_Timestamps, &output.ServerCount_Values, fmt.Sprintf("server_update_%016x", input.Id))
-		adminCountersWatcher.Unlock()
+		buyerCountersWatcher.Lock()
+		buyerCountersWatcher.GetFloat32Values(&output.TotalSessions_Timestamps, &output.TotalSessions_Values, fmt.Sprintf("session_update_%016x", input.Id))
+		buyerCountersWatcher.GetFloat32Values(&output.NextSessions_Timestamps, &output.NextSessions_Values, fmt.Sprintf("next_session_update_%016x", input.Id))
+		buyerCountersWatcher.GetFloat32Values(&output.ServerCount_Timestamps, &output.ServerCount_Values, fmt.Sprintf("server_update_%016x", input.Id))
+		buyerCountersWatcher.Unlock()
 
 		buyerTimeSeriesWatcher.Lock()
 		buyerTimeSeriesWatcher.GetFloat32Values(&output.AcceleratedPercent_Timestamps, &output.AcceleratedPercent_Values, fmt.Sprintf("accelerated_percent_%016x", input.Id))
