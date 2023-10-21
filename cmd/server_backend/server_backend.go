@@ -1,14 +1,14 @@
 package main
 
 import (
-	"net"
-	"os"
-	"sync"
-	"time"
-	"strings"
-	"os/exec"
 	"bufio"
 	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -228,7 +228,7 @@ func updateShuttingDown() {
 
 	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
 	if !result {
-		return	// not in google cloud
+		return // not in google cloud
 	}
 
 	instanceName = strings.TrimSuffix(instanceName, "\n")
@@ -236,7 +236,7 @@ func updateShuttingDown() {
 	tokens := strings.Split(instanceName, ".")
 
 	instanceName = tokens[0]
-	
+
 	core.Log("google cloud instance name is '%s'", instanceName)
 
 	// grab google cloud zone from metadata
@@ -250,7 +250,7 @@ func updateShuttingDown() {
 	zone = strings.TrimSuffix(zone, "\n")
 
 	tokens = strings.Split(zone, "/")
-	
+
 	zone = tokens[len(tokens)-1]
 
 	core.Log("google cloud zone is '%s'", zone)
@@ -265,8 +265,8 @@ func updateShuttingDown() {
 
 	go func() {
 
-		ticker := time.NewTicker(100*time.Millisecond)
-		
+		ticker := time.NewTicker(100 * time.Millisecond)
+
 		for {
 			select {
 

@@ -246,13 +246,13 @@ func RunSession(index int) {
 							packet.NumNearRelays = numNearRelays
 							copy(packet.NearRelayIds[:], nearRelayIds[:])
 							for i := range packet.NearRelayRTT {
-								packet.NearRelayRTT[i] = 10 + int32((sessionId ^ nearRelayIds[i]) % 10)
+								packet.NearRelayRTT[i] = 10 + int32((sessionId^nearRelayIds[i])%10)
 							}
 						}
 
 						if sliceNumber >= 1 {
-							if (sessionId % 10) == 0 {					
-								packet.DirectRTT = float32(sessionId % 400) + 100			// send approx 10% of sessions over netowrk next
+							if (sessionId % 10) == 0 {
+								packet.DirectRTT = float32(sessionId%400) + 100 // send approx 10% of sessions over netowrk next
 							} else {
 								packet.DirectRTT = 1
 							}
