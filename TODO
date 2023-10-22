@@ -28,20 +28,14 @@ DONE
 
 	Mutex lock missing an unlock. Fixed.
 
+	Setup 1000 relays to run locally with a relay backend and see if it works	
+
+	I believe the 1000 relays thing is fixed now.
+
 TODO
 
-	Add code that removes leader entries older than n seconds.
+	Bring it back up in staging and see...
 
-	The old leader is hanging around too long, even though it is not providing a route matrix (it is dead)
-
-	It needs to go away faster (shorter than time for stale route matrix), in order for the new instance to take over as leader.
-
-
-
-
-	----------------
-
-	Setup 1000 relays to run locally with a relay backend and see if it works	
 
 
 
@@ -99,7 +93,7 @@ TODO
 
 	--------------
 
-	Both the relay backend leader election and the fallback to direct fix don't seem to be reliably working in staging. WTF
+	Need a second pass on the fallback to direct fix. It doesn't seem to be working in staging. May need to reach out to DoIT for help.
 
 	--------------
 

@@ -67,16 +67,11 @@ func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				// todo
-				core.Log("*** DONE ***")
 				return
 			case <-ticker.C:
-				core.Log("*** tick ***")
 				leaderElection.Update(ctx)
 			}
 		}
-
-		core.Log("*** end of for loop? ***")
 	}()
 }
 
@@ -140,8 +135,6 @@ func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service 
 
 func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
-	core.Log("*** update ***")
-
 	// write our instance entry
 
 	seconds := time.Now().Unix()
@@ -204,20 +197,9 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	} else if previousValue && !currentValue {
 		core.Log("we are no longer the leader")
 	}
-
-	// todo
-	if currentValue {
-		core.Log("*** we are the leader ***")
-	} else {
-		core.Log("*** we are not the leader ***")
-	}
 }
 
 func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name string, data []byte) {
-
-	// todo
-	core.Log("store %s", name)
-
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name)
 	err := leaderElection.redisClient.Set(ctx, key, data, 0).Err()
 	if err != nil {
@@ -226,10 +208,6 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name strin
 }
 
 func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string) []byte {
-
-	// todo
-	core.Log("load %s", name)
-
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name)
 	value, err := leaderElection.redisClient.Get(ctx, key).Result()
 	if err != nil {
