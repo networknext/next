@@ -67,20 +67,25 @@ func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
+				// todo
+				core.Log("*** DONE ***")
 				return
 			case <-ticker.C:
+				core.Log("*** tick ***")
 				leaderElection.Update(ctx)
 			}
 		}
+
+		core.Log("*** end of for loop? ***")
 	}()
 }
 
-func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service string, minutes int64) []InstanceEntry {
+func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service string, period int64) []InstanceEntry {
 
 	// get all instance keys and values
 
-	key_a := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, minutes)
-	key_b := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, minutes-1)
+	key_a := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, period)
+	key_b := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, period-1)
 
 	pipeline := redisClient.Pipeline()
 
@@ -135,10 +140,12 @@ func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service 
 
 func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
+	core.Log("*** update ***")
+
 	// write our instance entry
 
 	seconds := time.Now().Unix()
-	minutes := seconds / 60
+	period := seconds / 3
 
 	instanceEntry := InstanceEntry{}
 	instanceEntry.InstanceId = leaderElection.instanceId
@@ -149,12 +156,12 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(instanceEntry)
 	if err != nil {
-		core.Error("failed to write instance entry\n")
+		core.Error("failed to write instance entry")
 	}
 
 	instanceData := buffer.Bytes()
 
-	key := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, minutes)
+	key := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, period)
 
 	field := instanceEntry.InstanceId
 	value := instanceData
@@ -164,18 +171,18 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// wait for the initial delay
 
 	if int(time.Since(leaderElection.startTime).Seconds()) < leaderElection.config.InitialDelay {
-		core.Debug("initial delay (%d)\n", leaderElection.config.InitialDelay)
+		core.Debug("initial delay (%d)", leaderElection.config.InitialDelay)
 		return
 	}
 
 	// get all instance entries for this service
 
-	instanceEntries := getInstanceEntries(ctx, leaderElection.redisClient, leaderElection.config.ServiceName, minutes)
+	instanceEntries := getInstanceEntries(ctx, leaderElection.redisClient, leaderElection.config.ServiceName, period)
 
 	// if there are no instance entries, we cannot be leader and there is no leader (yet)
 
 	if len(instanceEntries) == 0 {
-		core.Debug("no instance entries?\n")
+		core.Debug("no instance entries?")
 		return
 	}
 
@@ -197,9 +204,20 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	} else if previousValue && !currentValue {
 		core.Log("we are no longer the leader")
 	}
+
+	// todo
+	if currentValue {
+		core.Log("*** we are the leader ***")
+	} else {
+		core.Log("*** we are not the leader ***")
+	}
 }
 
 func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name string, data []byte) {
+
+	// todo
+	core.Log("store %s", name)
+
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.instanceId, name)
 	err := leaderElection.redisClient.Set(ctx, key, data, 0).Err()
 	if err != nil {
@@ -208,6 +226,10 @@ func (leaderElection *RedisLeaderElection) Store(ctx context.Context, name strin
 }
 
 func (leaderElection *RedisLeaderElection) Load(ctx context.Context, name string) []byte {
+
+	// todo
+	core.Log("load %s", name)
+
 	key := fmt.Sprintf("%s-instance-data-%d-%s-%s", leaderElection.config.ServiceName, RedisLeaderElectionVersion, leaderElection.leaderInstanceId, name)
 	value, err := leaderElection.redisClient.Get(ctx, key).Result()
 	if err != nil {
@@ -233,8 +255,8 @@ func (leaderElection *RedisLeaderElection) IsReady() bool {
 
 func LoadMasterServiceData(ctx context.Context, redisClient redis.Cmdable, service string, name string) []byte {
 	seconds := time.Now().Unix()
-	minutes := seconds / 60
-	instanceEntries := getInstanceEntries(ctx, redisClient, service, minutes)
+	period := seconds / 3
+	instanceEntries := getInstanceEntries(ctx, redisClient, service, period)
 	if len(instanceEntries) == 0 {
 		return nil
 	}

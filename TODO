@@ -18,9 +18,72 @@ DONE
 
 	Verify that at low scale it is still broken. Verified.
 
+	Try 1000 relays...
+
+	Yes, it's still broken here.
+
+	Clue. It seems to be oscillating between lots of routes, and zero routes.
+
+	It seems like the leader election stops updating after a while. Why?
+
+	Mutex lock missing an unlock. Fixed.
+
 TODO
 
-	Try 1000 relays...
+	Add code that removes leader entries older than n seconds.
+
+	The old leader is hanging around too long, even though it is not providing a route matrix (it is dead)
+
+	It needs to go away faster (shorter than time for stale route matrix), in order for the new instance to take over as leader.
+
+
+
+
+	----------------
+
+	Setup 1000 relays to run locally with a relay backend and see if it works	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 

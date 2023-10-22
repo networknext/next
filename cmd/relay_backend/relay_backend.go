@@ -87,7 +87,7 @@ func main() {
 
 	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
 
-	initialDelay = envvar.GetInt("INITIAL_DELAY", 15)
+	initialDelay = envvar.GetInt("INITIAL_DELAY", 10)
 
 	startTime = time.Now()
 
@@ -926,6 +926,18 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					}
 				}
 
+				// write cost matrix data
+
+				costMatrixDataNew, err := costMatrixNew.Write()
+				if err != nil {
+					core.Error("could not write cost matrix: %v", err)
+					continue
+				}
+
+				// optimize
+
+				routeEntries := core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays)
+
 				timeFinish := time.Now()
 
 				optimizeDuration := timeFinish.Sub(timeStart)
@@ -934,14 +946,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				if optimizeDuration.Milliseconds() > routeMatrixInterval.Milliseconds() {
 					core.Warn("optimize can't keep up! increase the number of cores or increase ROUTE_MATRIX_INTERVAL to provide more time to complete the optimization!")
-				}
-
-				// write cost matrix data
-
-				costMatrixDataNew, err := costMatrixNew.Write()
-				if err != nil {
-					core.Error("could not write cost matrix: %v", err)
-					continue
 				}
 
 				// create new route matrix
@@ -956,7 +960,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RelayLongitudes:    costMatrixNew.RelayLongitudes,
 					RelayDatacenterIds: costMatrixNew.RelayDatacenterIds,
 					DestRelays:         costMatrixNew.DestRelays,
-					RouteEntries:       core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays),
+					RouteEntries:       routeEntries,
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 					CostMatrixSize:     uint32(len(costMatrixDataNew)),
@@ -971,6 +975,8 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					continue
 				}
 
+				// todo
+				/*
 				// store our data in redis
 
 				service.Store("relays", relaysCSVDataNew)
@@ -993,6 +999,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				if routeMatrixDataNew == nil {
 					continue
 				}
+				*/
 
 				// serve up as official data
 
