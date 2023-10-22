@@ -977,30 +977,25 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// store our data in redis
 
-				if service.IsLeader() {
-					service.Store("relays", relaysCSVDataNew)
-					service.Store("cost_matrix", costMatrixDataNew)
-					service.Store("route_matrix", routeMatrixDataNew)
-				}
+				service.Store("relays", relaysCSVDataNew)
+				service.Store("cost_matrix", costMatrixDataNew)
+				service.Store("route_matrix", routeMatrixDataNew)
 
 				// load the leader data from redis
 
-				if !service.IsLeader() {
+				relaysCSVDataNew = service.Load("relays")
+				if relaysCSVDataNew == nil {
+					continue
+				}
 
-					relaysCSVDataNew = service.Load("relays")
-					if relaysCSVDataNew == nil {
-						continue
-					}
+				costMatrixDataNew = service.Load("cost_matrix")
+				if costMatrixDataNew == nil {
+					continue
+				}
 
-					costMatrixDataNew = service.Load("cost_matrix")
-					if costMatrixDataNew == nil {
-						continue
-					}
-
-					routeMatrixDataNew = service.Load("route_matrix")
-					if routeMatrixDataNew == nil {
-						continue
-					}
+				routeMatrixDataNew = service.Load("route_matrix")
+				if routeMatrixDataNew == nil {
+					continue
 				}
 
 				// serve up as official data
