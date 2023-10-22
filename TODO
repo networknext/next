@@ -36,6 +36,15 @@ TODO
 
 	Bring it back up in staging and see...
 
+	Zero routes issue is still there at 1000.
+
+	Run a few deploys to verify that the leader election issue goes away.
+
+	------------
+
+	Active relays seems wrong. I have 1000 relays, but it shows 300.
+
+	------------
 
 
 
