@@ -1,76 +1,16 @@
 DONE
 
-	Reproduce leader election issue locally and fix it.
-
-	Verify leader election fix in staging
-
-	It's better, we don't have the fighting between multiple leaders, but it seems like the new leader (or the old leader?) goes into a period where the route matrix has no routes during transition.
-
-	So it's not really working still.
-
-	Seems like with a longer initial delay it is working now. Keep watching though...
-
-	Modify the server backend to perform the portal cruncher functionality in situ
-
-	Verified session updates are coming through from server backend!
-
-	There is a problem with fallback to directs happening in server backend.
-
-	It seems that every session falls back to direct...
-
-	My guess is that there is not enough throughput via the channels to push all the data to portal?
-
-	Check that the channels are buffered properly.
-
-	Tried increasing channel buffer size.
-
-	See if the channel size increase works.
-
-	Otherwise, I'll need multiple threads processing messages with sessionId % channelCount picking which channel to send down to get the throughput.
-
-	Channel size increased worked. Keep it simple and just leave it for now, unless scaling up shows that we need to have more channels.
-
-	Get the server update processing done in the server backend
-
-	Get the near relay update processing done in teh server backend
-
-	Verify near relay data shows in portal for staging sessions
-
-	Scale up to 1M
-
-	Does session stretching occur still without the portal cruncher?
-
-	Not so far at 1M. Everything looks perfect.
-
-	How does the load look on redis now?
-
-	Definitely fewer connections...
-
-	How does the load look on server backend?
-
-	Looks fine.
-
-	2.5M sessions. No stretching!
-
-	Scale up to 5M.
-
-	Do we have any session point stretching?
-
-	No, its' fine!
-
-	Remove portal cruncher code completely
+	Shut down staging
 
 TODO
-	
-	Fix next sessions on portal only so it doesn't mess up the session counts
 
-	----------
+	Bring across to production env and update it so that it has no portal cruncher, and everything is setup
 
-	Scale up to 10M
+	Verify that we have no leader election issues with relay backend in prod
 
-	----------
+	Verify that we have no fallback to direct issues with server backend in prod
 
-	I think the relay backend is becoming leader before it fully has a route matrix, now and then due to timing. Investigate.
+	Verify that click on server to see server sessions works in prod
 
 	----------
 
@@ -78,15 +18,25 @@ TODO
 
 	----------
 
+	Ingest into bigquery with google pubsub
 
+	"Better yet, you no longer need to pay for data ingestion into BigQuery when using this new direct method. You only pay for the Pub/Sub you use. Ingestion from Pub/Sub’s BigQuery subscription into BigQuery costs $50/TiB based on read (subscribe throughput) from the subscription. This is a simpler and cheaper billing experience compared to the alternative path via Dataflow pipeline where you would be paying for the Pub/Sub read, Dataflow job, and BigQuery data ingestion. See the pricing page for details."
 
+	https://cloud.google.com/blog/products/data-analytics/pub-sub-launches-direct-path-to-bigquery-for-streaming-analytics
 
+	----------
 
+	Integrate map with portal
 
+	----------
 
+	Setup projects and service accounts with terraform
 
+	----------
 
+	Relays need to be setup to use cloud storage for tf state
 
+	----------
 
 
 
@@ -147,49 +97,6 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	------------
-
-	Active relays seems wrong. I have 1000 relays, but it shows 300.
-
-	--------------
-
-	Change analytics to perform bulk inserts instead of streaming inserts.
-
-	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	--------------
 
 
 
@@ -266,26 +173,6 @@ Small things:
 
 	--------------
 
-
-
-
-
-
-
-
-
-
-Finalize terraform and document:
-
-	--------------
-
-	Setup projects and service accounts with terraform
-
-	--------------
-
-	Relays need to be setup to use cloud storage for tf state
-
-	--------------
 
 
 

@@ -76,6 +76,8 @@ DONE
 
 	Setup prod environment
 
+	Load test to 25M sessions
+
 TODO
 
 	Load test to 1K relays, 1M servers and 10M sessions.
