@@ -1805,50 +1805,6 @@ module "server_cruncher" {
   target_size                = 1
 }
 
-// ---------------------------------------------------------------------------------------
-
-module "portal_cruncher" {
-
-  source = "../../modules/internal_mig_with_health_check_autoscale"
-
-  service_name = "portal-cruncher"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=prod
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    FORCE_REDIS_PORTAL_CLUSTER_SETTINGS=true
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
-    REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
-    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
-    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
-    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
-    REPS=10
-    EOF
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = "n1-standard-2"
-  project            = var.google_project
-  region             = var.google_region
-  zones              = var.google_zones
-  default_network    = google_compute_network.production.id
-  default_subnetwork = google_compute_subnetwork.production.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size           = 3
-  max_size           = 64
-  target_cpu         = 60
-}
-
 # ----------------------------------------------------------------------------------------
 
 module "server_backend" {

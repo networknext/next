@@ -129,11 +129,6 @@ blocks:
             - make dist/server_cruncher.tar.gz
             - artifact push workflow dist/server_cruncher.tar.gz --force
 
-        - name: "Portal Cruncher"
-          commands:
-            - make dist/portal_cruncher.tar.gz
-            - artifact push workflow dist/portal_cruncher.tar.gz --force
-
         - name: "Relay Gateway"
           commands:
             - make dist/relay_gateway.tar.gz

@@ -62,11 +62,6 @@ blocks:
             - artifact pull workflow server_cruncher.tar.gz
             - gsutil cp server_cruncher.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/server_cruncher.tar.gz
 
-        - name: "Portal Cruncher"
-          commands:
-            - artifact pull workflow portal_cruncher.tar.gz
-            - gsutil cp portal_cruncher.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/portal_cruncher.tar.gz
-
         - name: "Relay Gateway"
           commands:
             - artifact pull workflow relay_gateway.tar.gz

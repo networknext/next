@@ -97,18 +97,6 @@ services:
       relays:
         ipv4_address: 10.5.0.100
 
-  portal_cruncher:
-    build: 
-      context: .
-      dockerfile: docker/portal_cruncher.Dockerfile
-    ports:
-      - "14000:80"
-    depends_on:
-      - base
-      - redis
-    environment:
-      - REDIS_HOSTNAME=redis:6379
-
   analytics:
     build: 
       context: .

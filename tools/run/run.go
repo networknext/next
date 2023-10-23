@@ -108,8 +108,6 @@ func main() {
 		analytics()
 	} else if command == "api" {
 		api()
-	} else if command == "portal-cruncher" {
-		portal_cruncher()
 	} else if command == "session-cruncher" {
 		session_cruncher()
 	} else if command == "server-cruncher" {
@@ -293,14 +291,6 @@ func relay() {
 
 func server_backend() {
 	bash("HTTP_PORT=40000 ./dist/server_backend")
-}
-
-func portal_cruncher() {
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "40012"
-	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
 }
 
 func session_cruncher() {

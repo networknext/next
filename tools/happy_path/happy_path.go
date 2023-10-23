@@ -460,57 +460,6 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	// initialize portal cruncher
-
-	fmt.Printf("\nstarting portal cruncher:\n\n")
-
-	portal_cruncher_1_stdout := run("portal-cruncher", "logs/portal_cruncher_1")
-	portal_cruncher_2_stdout := run("portal-cruncher", "logs/portal_cruncher_2", "HTTP_PORT=40013")
-
-	fmt.Printf("\nverifying portal cruncher 1 ...")
-
-	portal_cruncher_1_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(portal_cruncher_1_stdout.String(), "starting http server on port 40012") {
-			portal_cruncher_1_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !portal_cruncher_1_initialized {
-		fmt.Printf("\n\nerror: portal cruncher 1 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher 2 ...")
-
-	portal_cruncher_2_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(portal_cruncher_2_stdout.String(), "starting http server on port 40013") {
-			portal_cruncher_2_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !portal_cruncher_2_initialized {
-		fmt.Printf("\n\nerror: portal cruncher 2 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
 	// initialize analytics
 
 	fmt.Printf("\nstarting analytics:\n\n")
@@ -760,64 +709,6 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	// ----------------------------------------------------------------------------------------------
-
-	fmt.Printf("verifying portal cruncher received session update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received session update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received session update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive session update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher received server update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received server update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received server update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive server update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher received relay update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received relay update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received relay update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive relay update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher received near relay update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received near relay update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received near relay update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive near relay update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
 	// ==================================================================================
 
 	fmt.Printf("\n*** SUCCESS! ***\n\n")
@@ -841,7 +732,7 @@ func bash(command string) {
 }
 
 func cleanup() {
-	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "portal_cruncher", "session_cruncher", "server_cruncher"}
+	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "session_cruncher", "server_cruncher"}
 	for i := range killList {
 		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}
