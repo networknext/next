@@ -14,8 +14,6 @@ DONE
 
 	Verified session updates are coming through from server backend!
 
-TODO
-
 	There is a problem with fallback to directs happening in server backend.
 
 	It seems that every session falls back to direct...
@@ -24,13 +22,29 @@ TODO
 
 	Check that the channels are buffered properly.
 
+	Tried increasing channel buffer size.
+
+	See if the channel size increase works.
+
+	Otherwise, I'll need multiple threads processing messages with sessionId % channelCount picking which channel to send down to get the throughput.
+
+	Channel size increased worked. Keep it simple and just leave it for now, unless scaling up shows that we need to have more channels.
+
+TODO
+
+	Get the server update processing done in the server backend
 
 	----------
 
-	Get the server update processing done in the server backend as well.
+	Get the near relay update processing done in teh server backend
 
+	----------
 
+	Scale up to 10M
 
+	----------
+
+	
 
 
 

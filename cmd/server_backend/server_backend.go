@@ -169,15 +169,6 @@ func main() {
 	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
 	portalNearRelayUpdateMessageChannel = make(chan *messages.PortalNearRelayUpdateMessage, channelSize)
 
-	var redisClient redis.Cmdable
-	if len(redisPortalCluster) > 0 {
-		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
-	} else {
-		redisClient = common.CreateRedisClient(redisPortalHostname)
-	}
-
-	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, sessionInsertBatchSize)
-
 	if enableRedisTimeSeries {
 
 		countersConfig := common.RedisCountersConfig{
@@ -193,11 +184,10 @@ func main() {
 	}
 
 	processPortalSessionUpdateMessages(service, portalSessionUpdateMessageChannel)
+	processPortalServerUpdateMessages(service, portalServerUpdateMessageChannel)
 
 	// todo
 	/*
-	processPortalMessages_RedisStreams[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
-	processPortalMessages_RedisStreams[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
 	processPortalMessages_RedisStreams[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
 	*/
 
@@ -484,6 +474,15 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 
 func processPortalSessionUpdateMessages(service *common.Service, inputChannel chan *messages.PortalSessionUpdateMessage ) {
 
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
+
+	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, sessionInsertBatchSize)
+
 	go func() {
 		for {
 			message := <-inputChannel
@@ -572,63 +571,45 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 	}()
 }
 
-/*
-func processPortalMessages_RedisStreams[T messages.Message](service *common.Service, name string, inputChannel chan T) {
+func processPortalServerUpdateMessages(service *common.Service, inputChannel chan *messages.PortalServerUpdateMessage ) {
 
-	streamName := strings.ReplaceAll(name, " ", "_")
-
-	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
-		RedisHostname: redisHostname,
-		RedisCluster:  redisCluster,
-		StreamName:    streamName,
-	})
-
-	if err != nil {
-		core.Error("could not create redis streams producer for %s", name)
-		os.Exit(1)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
+
+	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, serverInsertBatchSize)
 
 	go func() {
 		for {
 			message := <-inputChannel
-			core.Debug("processing portal %s message", name)
-			messageData := message.Write(make([]byte, message.GetMaxSize()))
-			if enableRedisStreams {
-				core.Debug("sent portal %s message to redis streams", name)
-				redisStreamsProducer.MessageChannel <- messageData
+		
+			core.Debug("processing portal server update message")
+
+			serverData := portal.ServerData{
+				ServerAddress:    message.ServerAddress.String(),
+				SDKVersion_Major: message.SDKVersion_Major,
+				SDKVersion_Minor: message.SDKVersion_Minor,
+				SDKVersion_Patch: message.SDKVersion_Patch,
+				BuyerId:          message.BuyerId,
+				DatacenterId:     message.DatacenterId,
+				NumSessions:      message.NumSessions,
+				Uptime:           message.Uptime,
+			}
+
+			serverInserter.Insert(service.Context, &serverData)
+
+			if enableRedisTimeSeries {
+
+				countersPublisher.MessageChannel <- "server_update"
+
+				countersPublisher.MessageChannel <- fmt.Sprintf("server_update_%016x", message.BuyerId)
 			}
 		}
 	}()
 }
-
-func processPortalMessages_RedisPubsub[T messages.Message](service *common.Service, name string, inputChannel chan T) {
-
-	channelName := strings.ReplaceAll(name, " ", "_")
-
-	redisPubsubProducer, err := common.CreateRedisPubsubProducer(service.Context, common.RedisPubsubConfig{
-		RedisHostname:     redisHostname,
-		RedisCluster:      redisCluster,
-		PubsubChannelName: channelName,
-	})
-
-	if err != nil {
-		core.Error("could not create redis pubsub producer for %s", name)
-		os.Exit(1)
-	}
-
-	go func() {
-		for {
-			message := <-inputChannel
-			core.Debug("processing portal %s message", name)
-			messageData := message.Write(make([]byte, message.GetMaxSize()))
-			if enableRedisStreams {
-				core.Debug("sent portal %s message to redis pubsub", name)
-				redisPubsubProducer.MessageChannel <- messageData
-			}
-		}
-	}()
-}
-*/
 
 // ------------------------------------------------------------------------------------
 
