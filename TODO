@@ -1,8 +1,12 @@
 DONE
 
+	Reproduce leader election issue locally and fix it.
+
 TODO
 
-	Reproduce leader election issue locally and fix it.
+	Verify leader election fix in staging
+
+	Modify the server backend to perform the portal cruncher functionality in situ
 
 
 
