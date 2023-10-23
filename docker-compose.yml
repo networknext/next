@@ -97,21 +97,6 @@ services:
       relays:
         ipv4_address: 10.5.0.100
 
-  analytics:
-    build: 
-      context: .
-      dockerfile: docker/analytics.Dockerfile
-    ports:
-      - "16000:80"
-    depends_on:
-      - base
-      - redis
-      - relay_backend
-    environment:
-      - REDIS_HOSTNAME=redis:6379
-      - COST_MATRIX_URL=http://relay_backend/cost_matrix
-      - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
-
   api:
     build: 
       context: .

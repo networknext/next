@@ -219,7 +219,6 @@ resource "google_compute_firewall" "allow_udp_all" {
   target_tags = ["allow-udp-all"]
 }
 
-/*
 # ----------------------------------------------------------------------------------------
 
 resource "cloudflare_record" "api_domain" {
@@ -289,7 +288,6 @@ output "redis_time_series_address" {
 
 locals {
   redis_portal_address = "10.0.255.179:6379"
-  redis_server_backend_address = "10.0.255.181:6379"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
@@ -299,16 +297,6 @@ resource "google_redis_instance" "redis_relay_backend" {
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
   redis_configs           = { "maxmemory-gb" = "5" }
-  authorized_network      = google_compute_network.production.id
-}
-
-resource "google_redis_instance" "redis_analytics" {
-  name                    = "redis-analytics"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 2
-  region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "1" }
   authorized_network      = google_compute_network.production.id
 }
 
@@ -327,19 +315,9 @@ output "redis_portal_address" {
   value       = local.redis_portal_address
 }
 
-output "redis_server_backend_address" {
-  description = "The IP address of the server backend redis instance"
-  value       = local.redis_server_backend_address
-}
-
 output "redis_relay_backend_address" {
   description = "The IP address of the relay backend redis instance"
   value       = google_redis_instance.redis_relay_backend.host
-}
-
-output "redis_analytics_address" {
-  description = "The IP address of the analytics redis instance"
-  value       = google_redis_instance.redis_analytics.host
 }
 
 output "redis_raspberry_address" {
@@ -1595,10 +1573,13 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
-    INITIAL_DELAY=15s
     ENABLE_GOOGLE_PUBSUB=true
     MAX_JITTER=10
     MAX_PACKET_LOSS=0.1
+    INITIAL_DELAY=180s
+    ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
@@ -1624,59 +1605,6 @@ module "relay_backend" {
 output "relay_backend_address" {
   description = "The IP address of the relay backend load balancer"
   value       = module.relay_backend.address
-}
-
-# ----------------------------------------------------------------------------------------
-
-module "analytics" {
-
-  source = "../../modules/internal_http_service_autoscale"
-
-  service_name = "analytics"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a analytics.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=prod
-    GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_database_bucket}/prod.bin"
-    DATABASE_PATH="/app/database.bin"
-    COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
-    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
-    ENABLE_GOOGLE_PUBSUB=true
-    ENABLE_GOOGLE_BIGQUERY=true
-    REPS=10
-    EOF
-    sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
-    sudo systemctl start app.service
-  EOF1
-
-  tag                        = var.tag
-  extra                      = var.extra
-  machine_type               = "n1-highcpu-8"
-  project                    = var.google_project
-  region                     = var.google_region
-  zones                      = var.google_zones
-  default_network            = google_compute_network.production.id
-  default_subnetwork         = google_compute_subnetwork.production.id
-  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
-  tags                       = ["allow-ssh", "allow-health-checks"]
-  min_size                   = 3
-  max_size                   = 64
-  target_cpu                 = 90
-
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
-}
-
-output "analytics_address" {
-  description = "The IP address of the analytics load balancer"
-  value       = module.analytics.address
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1750,13 +1678,17 @@ module "session_cruncher" {
     ENV=prod
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    GOOGLE_PROJECT_ID=${var.google_project}
+    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_PATH="/app/database.bin"
     EOF
+    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-8"
+  machine_type               = "c3-highmem-2"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1784,15 +1716,13 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-8"
+  machine_type               = "c3-highmem-2"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1834,9 +1764,15 @@ module "server_backend" {
     SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
     SERVER_BACKEND_PRIVATE_KEY=${var.server_backend_private_key}
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
+    PORTAL_NEXT_SESSIONS_ONLY=true
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1854,7 +1790,7 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 60
+  target_cpu         = 30
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }
@@ -2061,4 +1997,3 @@ module "raspberry_client" {
 }
 
 # ----------------------------------------------------------------------------------------
-*/

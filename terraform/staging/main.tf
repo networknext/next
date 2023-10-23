@@ -1640,62 +1640,6 @@ output "relay_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-module "analytics" {
-
-  source = "../modules/internal_http_service_autoscale"
-
-  service_name = "analytics"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a analytics.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=staging
-    GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_database_bucket}/staging.bin"
-    DATABASE_PATH="/app/database.bin"
-    COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
-    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
-    ENABLE_GOOGLE_PUBSUB=true
-    ENABLE_GOOGLE_BIGQUERY=true
-    REPS=10
-    EOF
-    sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
-    sudo systemctl start app.service
-  EOF1
-
-  tag                        = var.tag
-  extra                      = var.extra
-  machine_type               = "n1-highcpu-8"
-  project                    = var.google_project
-  region                     = var.google_region
-  zones                      = var.google_zones
-  default_network            = google_compute_network.staging.id
-  default_subnetwork         = google_compute_subnetwork.staging.id
-  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
-  tags                       = ["allow-ssh", "allow-health-checks"]
-  min_size                   = 3
-  max_size                   = 64
-  target_cpu                 = 90
-
-  depends_on = [
-    google_pubsub_topic.pubsub_topic,
-    google_pubsub_subscription.pubsub_subscription
-  ]
-}
-
-output "analytics_address" {
-  description = "The IP address of the analytics load balancer"
-  value       = module.analytics.address
-}
-
-# ----------------------------------------------------------------------------------------
-
 module "api" {
 
   source = "../modules/external_http_service_autoscale"
