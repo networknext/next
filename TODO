@@ -16,6 +16,17 @@ DONE
 
 TODO
 
+	There is a problem with fallback to directs happening in server backend.
+
+	It seems that every session falls back to direct...
+
+	My guess is that there is not enough throughput via the channels to push all the data to portal?
+
+	Check that the channels are buffered properly.
+
+
+	----------
+
 	Get the server update processing done in the server backend as well.
 
 

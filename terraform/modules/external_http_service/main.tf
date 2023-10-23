@@ -28,7 +28,7 @@ variable "certificate" { type = string }
 variable "target_size" { type = number }
 variable "initial_delay" {
   type = number
-  default = 120
+  default = 60
 }
 
 # ----------------------------------------------------------------------------------------

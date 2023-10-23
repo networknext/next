@@ -30,7 +30,7 @@ variable "domain" { type = string }
 variable "certificate" { type = string }
 variable "initial_delay" {
   type = number
-  default = 120
+  default = 60
 }
 
 # ----------------------------------------------------------------------------------------
