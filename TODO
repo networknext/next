@@ -30,21 +30,51 @@ DONE
 
 	Channel size increased worked. Keep it simple and just leave it for now, unless scaling up shows that we need to have more channels.
 
-TODO
-
 	Get the server update processing done in the server backend
-
-	----------
 
 	Get the near relay update processing done in teh server backend
 
-	----------
+	Verify near relay data shows in portal for staging sessions
+
+	Scale up to 1M
+
+	Does session stretching occur still without the portal cruncher?
+
+	Not so far at 1M. Everything looks perfect.
+
+	How does the load look on redis now?
+
+	Definitely fewer connections...
+
+	How does the load look on server backend?
+
+	Looks fine.
+
+	2.5M sessions. No stretching!
+
+	Scale up to 5M.
+
+	Do we have any session point stretching?
+
+	No, its' fine!
+
+TODO
 
 	Scale up to 10M
 
 	----------
 
-	
+	Remove portal cruncher code completely
+
+	----------
+
+	I think the relay backend is becoming leader before it fully has a route matrix, now and then due to timing. Investigate.
+
+	----------
+
+	Solve the problem with 1000 relays in staging
+
+	----------
 
 
 
@@ -90,20 +120,6 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	Fix the 1000 relays issue
 
 
 
@@ -165,65 +181,11 @@ TODO
 
 	Active relays seems wrong. I have 1000 relays, but it shows 300.
 
-	------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Portal crunchers seem to be a bottleneck in scaling up.
-
-	Consider removing the portal cruncher entirely and just publishing the data directly from the server backend.
-
 	--------------
 
 	Change analytics to perform bulk inserts instead of streaming inserts.
 
 	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	--------------
-
-	Need a second pass on the fallback to direct fix. It doesn't seem to be working in staging. May need to reach out to DoIT for help.
 
 	--------------
 
@@ -242,6 +204,10 @@ Small things:
 
 	--------------
 
+	Just leave the buyer page as graphs. The rightmost column doesn't add enough to justify its existence.
+
+	--------------
+
 	Click on server to see sessions on server is broken in staging even at small load. My guess, sessions are not properly linking to server addresses?
 
 	--------------
@@ -251,18 +217,6 @@ Small things:
 	--------------
 
 	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
-
-	--------------
-
-	If portal cruncher can't keep up, session counts will fall... this is weird.
-
-	--------------
-
-	We should not trigger "session_update" counter on retries.
-
-	--------------
-
-	When redis sample stretching starts to happen, slices can get out of order, which really messes up the graphs.
 
 	--------------
 

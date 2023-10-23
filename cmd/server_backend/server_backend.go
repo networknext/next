@@ -548,22 +548,20 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 
 			if enableRedisTimeSeries {
 
-				countersPublisher.MessageChannel <- "session_update"
-
-				if message.Next {
-					countersPublisher.MessageChannel <- "next_session_update"
-				}
-
-				countersPublisher.MessageChannel <- fmt.Sprintf("session_update_%016x", message.BuyerId)
-				if message.Next {
-					countersPublisher.MessageChannel <- fmt.Sprintf("next_session_update_%016x", message.BuyerId)
-				}
-
-				if message.Retry {
+				if !message.Retry {
+						countersPublisher.MessageChannel <- "session_update"
+					if message.Next {
+						countersPublisher.MessageChannel <- "next_session_update"
+					}
+					countersPublisher.MessageChannel <- fmt.Sprintf("session_update_%016x", message.BuyerId)
+					if message.Next {
+						countersPublisher.MessageChannel <- fmt.Sprintf("next_session_update_%016x", message.BuyerId)
+					}
+					if message.FallbackToDirect {
+						countersPublisher.MessageChannel <- "fallback_to_direct"
+					}
+				} else {
 					countersPublisher.MessageChannel <- "retry"
-				}
-				if message.FallbackToDirect {
-					countersPublisher.MessageChannel <- "fallback_to_direct"
 				}
 			}
 		}
