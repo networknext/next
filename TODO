@@ -2,13 +2,77 @@ DONE
 
 	Reproduce leader election issue locally and fix it.
 
-TODO
-
 	Verify leader election fix in staging
+
+	It's better, we don't have the fighting between multiple leaders, but it seems like the new leader (or the old leader?) goes into a period where the route matrix has no routes during transition.
+
+	So it's not really working still.
+
+TODO
 
 	Modify the server backend to perform the portal cruncher functionality in situ
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	Fix the 1000 relays issue
 
 
 

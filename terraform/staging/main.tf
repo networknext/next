@@ -298,22 +298,6 @@ resource "google_redis_cluster" "portal" {
   ]
 }
 
-resource "google_redis_cluster" "server_backend" {
-  provider       = google-beta
-  name           = "server-backend"
-  shard_count    = 10
-  psc_configs {
-    network = google_compute_network.staging.id
-  }
-  region = "us-central1"
-  replica_count = 1
-  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
-  authorization_mode = "AUTH_MODE_DISABLED"
-  depends_on = [
-    google_network_connectivity_service_connection_policy.default
-  ]
-}
-
 resource "google_network_connectivity_service_connection_policy" "default" {
   provider = google-beta
   name = "redis"
@@ -328,7 +312,6 @@ resource "google_network_connectivity_service_connection_policy" "default" {
 
 locals {
   redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
-  redis_server_backend_address = "${google_redis_cluster.server_backend.discovery_endpoints[0].address}:6379"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
@@ -354,11 +337,6 @@ resource "google_redis_instance" "redis_analytics" {
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = local.redis_portal_address
-}
-
-output "redis_server_backend_address" {
-  description = "The IP address of the server backend redis instance"
-  value       = local.redis_server_backend_address
 }
 
 output "redis_relay_backend_address" {
@@ -1623,7 +1601,7 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
-    INITIAL_DELAY=90s
+    INITIAL_DELAY=180s
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
@@ -1849,55 +1827,6 @@ module "server_cruncher" {
   target_size                = 1
 }
 
-// ---------------------------------------------------------------------------------------
-
-module "portal_cruncher" {
-
-  source = "../modules/internal_mig_with_health_check_autoscale"
-
-  service_name = "portal-cruncher"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a portal_cruncher.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=staging
-    ENABLE_REDIS_TIME_SERIES=true
-    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    FORCE_REDIS_PORTAL_CLUSTER_SETTINGS=true
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
-    REDIS_SERVER_BACKEND_CLUSTER="${local.redis_server_backend_address}"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
-    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
-    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
-    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
-    REPS=10
-    EOF
-    sudo systemctl start app.service
-  EOF1
-
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = "n1-standard-2"
-  project            = var.google_project
-  region             = var.google_region
-  zones              = var.google_zones
-  default_network    = google_compute_network.staging.id
-  default_subnetwork = google_compute_subnetwork.staging.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size           = 3
-  max_size           = 64
-  target_cpu         = 25
-
-  depends_on = [
-    module.redis_time_series,
-    google_redis_cluster.portal
-  ]
-}
-
 # ----------------------------------------------------------------------------------------
 
 module "server_backend" {
@@ -1920,7 +1849,7 @@ module "server_backend" {
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_CLUSTER="${local.redis_server_backend_address}"
+    REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
@@ -1952,7 +1881,7 @@ module "server_backend" {
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
     google_pubsub_subscription.pubsub_subscription,
-    google_redis_cluster.server_backend
+    google_redis_cluster.portal
   ]
 }
 
@@ -2031,7 +1960,6 @@ module "load_test_relays" {
 
   depends_on = [
     google_redis_cluster.portal,
-    google_redis_cluster.server_backend,
     google_sql_database_instance.postgres,
     module.server_backend
   ]
@@ -2073,7 +2001,6 @@ module "load_test_servers" {
 
   depends_on = [
     google_redis_cluster.portal,
-    google_redis_cluster.server_backend,
     google_sql_database_instance.postgres,
     module.server_backend
   ]
@@ -2115,7 +2042,6 @@ module "load_test_sessions" {
 
   depends_on = [
     google_redis_cluster.portal,
-    google_redis_cluster.server_backend,
     google_sql_database_instance.postgres,
     module.server_backend
   ]
