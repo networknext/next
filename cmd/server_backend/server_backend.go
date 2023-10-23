@@ -54,6 +54,7 @@ var sessionCruncherURL string
 var serverCruncherURL string
 var sessionInsertBatchSize int
 var serverInsertBatchSize int
+var nearRelayInsertBatchSize int
 
 var enableRedisTimeSeries bool
 var redisTimeSeriesHostname string
@@ -84,6 +85,7 @@ func main() {
 	serverCruncherURL = envvar.GetString("SERVER_CRUNCHER_URL", "http://127.0.0.1:40300")
 	sessionInsertBatchSize = envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 10000)
 	serverInsertBatchSize = envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 10000)
+	nearRelayInsertBatchSize = envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 10000)
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
 	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
@@ -110,6 +112,7 @@ func main() {
 	core.Debug("server cruncher url: %s", serverCruncherURL)
 	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
 	core.Debug("server insert batch size: %d", serverInsertBatchSize)
+	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -185,11 +188,7 @@ func main() {
 
 	processPortalSessionUpdateMessages(service, portalSessionUpdateMessageChannel)
 	processPortalServerUpdateMessages(service, portalServerUpdateMessageChannel)
-
-	// todo
-	/*
-	processPortalMessages_RedisStreams[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
-	*/
+	processPortalNearRelayUpdateMessages(service, portalNearRelayUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -606,6 +605,44 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 				countersPublisher.MessageChannel <- "server_update"
 
 				countersPublisher.MessageChannel <- fmt.Sprintf("server_update_%016x", message.BuyerId)
+			}
+		}
+	}()
+}
+
+func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalNearRelayUpdateMessage ) {
+
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
+
+	nearRelayInserter := portal.CreateNearRelayInserter(redisClient, nearRelayInsertBatchSize)
+
+	go func() {
+		for {
+			message := <-inputChannel
+		
+			core.Debug("processing near relay update message")
+
+			sessionId := message.SessionId
+
+			nearRelayData := portal.NearRelayData{
+				Timestamp:           message.Timestamp,
+				NumNearRelays:       message.NumNearRelays,
+				NearRelayId:         message.NearRelayId,
+				NearRelayRTT:        message.NearRelayRTT,
+				NearRelayJitter:     message.NearRelayJitter,
+				NearRelayPacketLoss: message.NearRelayPacketLoss,
+			}
+
+			nearRelayInserter.Insert(service.Context, sessionId, &nearRelayData)
+
+			if enableRedisTimeSeries {
+
+				countersPublisher.MessageChannel <- "near_relay_update"
 			}
 		}
 	}()
