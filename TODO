@@ -1,44 +1,66 @@
 DONE
 
-	We need to see a steady route matrix across deploys. Work out what is going on with leader election and the new instance sending time series and counter data
-
-	Seems to be resolved.
-
-	Try increasing staging to 100 relays. Does the load issue still occur?
-
-	Relays seem fine, however optimize time did not increase. Suspect optimize time is not working properly.
-
-	10 relays in fine.
-
-	100 relays is fine.
-
-	Optimize time is working
-
-	Click on server and get server sessions seems to be broken in staging. Doesn't seem load related. 
-
-	Verify that at low scale it is still broken. Verified.
-
-	Try 1000 relays...
-
-	Yes, it's still broken here.
-
-	Clue. It seems to be oscillating between lots of routes, and zero routes.
-
-	It seems like the leader election stops updating after a while. Why?
-
-	Mutex lock missing an unlock. Fixed.
-
-	Setup 1000 relays to run locally with a relay backend and see if it works	
-
-	I believe the 1000 relays thing is fixed now.
-
 TODO
 
-	Bring it back up in staging and see...
+	Reproduce leader election issue locally and fix it.
 
-	Zero routes issue is still there at 1000.
 
-	Run a few deploys to verify that the leader election issue goes away.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	------------
 

@@ -189,6 +189,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	previousValue := leaderElection.isLeader
 	currentValue := leaderInstance.InstanceId == leaderElection.instanceId
 	leaderElection.isLeader = currentValue
+
 	leaderElection.isReady = true
 	leaderElection.leaderMutex.Unlock()
 

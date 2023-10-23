@@ -608,7 +608,6 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 }
 
 func (service *Service) IsLeader() bool {
-	return true
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
 	}
