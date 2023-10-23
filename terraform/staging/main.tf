@@ -1859,6 +1859,12 @@ module "server_backend" {
     PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     EOF
     sudo systemctl start app.service
   EOF1
