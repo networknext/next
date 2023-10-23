@@ -31,7 +31,7 @@ variable "target_size" {
 }
 variable "initial_delay" {
   type = number
-  default = 60
+  default = 120
 }
 
 # ----------------------------------------------------------------------------------------

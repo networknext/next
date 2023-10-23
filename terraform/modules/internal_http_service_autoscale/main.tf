@@ -30,7 +30,7 @@ variable "max_size" { type = number }
 variable "target_cpu" { type = number }
 variable "initial_delay" {
   type = number
-  default = 60
+  default = 120
 }
 
 # ----------------------------------------------------------------------------------------

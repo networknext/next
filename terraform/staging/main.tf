@@ -1882,7 +1882,8 @@ module "server_backend" {
   tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size           = 3
   max_size           = 64
-  target_cpu         = 25
+  target_cpu         = 60
+  initial_delay      = 180
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 

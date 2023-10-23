@@ -8,9 +8,15 @@ DONE
 
 	So it's not really working still.
 
-TODO
+	Seems like with a longer initial delay it is working now. Keep watching though...
 
 	Modify the server backend to perform the portal cruncher functionality in situ
+
+	Verified session updates are coming through from server backend!
+
+TODO
+
+	Get the server update processing done in the server backend as well.
 
 
 
