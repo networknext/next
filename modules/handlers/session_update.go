@@ -1155,10 +1155,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		return
 	}
 
-	if state.PortalNextSessionsOnly && state.Output.DurationOnNext == 0 {
-		return
-	}
-
 	message := messages.PortalSessionUpdateMessage{}
 
 	message.Version = messages.PortalSessionUpdateMessageVersion_Write
@@ -1225,6 +1221,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Retry = state.Request.RetryNumber != 0
 	message.FallbackToDirect = state.FallbackToDirect
+	message.SendToPortal = !state.PortalNextSessionsOnly || (state.PortalNextSessionsOnly && state.Output.DurationOnNext > 0)
 
 	if state.PortalSessionUpdateMessageChannel != nil {
 		state.PortalSessionUpdateMessageChannel <- &message

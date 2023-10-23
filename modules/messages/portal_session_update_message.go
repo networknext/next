@@ -72,6 +72,7 @@ type PortalSessionUpdateMessage struct {
 
 	Retry            bool
 	FallbackToDirect bool
+	SendToPortal     bool
 }
 
 func (message *PortalSessionUpdateMessage) GetMaxSize() int {
@@ -149,6 +150,7 @@ func (message *PortalSessionUpdateMessage) Write(buffer []byte) []byte {
 
 	encoding.WriteBool(buffer, &index, message.Retry)
 	encoding.WriteBool(buffer, &index, message.FallbackToDirect)
+	encoding.WriteBool(buffer, &index, message.SendToPortal)
 
 	return buffer[:index]
 }
@@ -360,6 +362,10 @@ func (message *PortalSessionUpdateMessage) Read(buffer []byte) error {
 
 	if !encoding.ReadBool(buffer, &index, &message.FallbackToDirect) {
 		return fmt.Errorf("failed to read fallback to direct")
+	}
+
+	if !encoding.ReadBool(buffer, &index, &message.SendToPortal) {
+		return fmt.Errorf("failed to read send to portal")
 	}
 
 	return nil

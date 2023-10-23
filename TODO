@@ -58,13 +58,15 @@ DONE
 
 	No, its' fine!
 
-TODO
+	Remove portal cruncher code completely
 
-	Scale up to 10M
+TODO
+	
+	Fix next sessions on portal only so it doesn't mess up the session counts
 
 	----------
 
-	Remove portal cruncher code completely
+	Scale up to 10M
 
 	----------
 

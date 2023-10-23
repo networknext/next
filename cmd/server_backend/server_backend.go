@@ -544,7 +544,9 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 				Next:             message.Next,
 			}
 
-			sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+			if message.SendToPortal {
+				sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+			}
 
 			if enableRedisTimeSeries {
 
