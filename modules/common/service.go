@@ -250,6 +250,14 @@ func (service *Service) LoadIP2Location() {
 		os.Exit(1)
 	}
 
+	if isp_db == nil {
+		panic("null isp db")
+	}
+
+	if city_db == nil {
+		panic("null city db")
+	}
+
 	service.ip2location_mutex.Lock()
 	service.ip2location_isp_db = isp_db
 	service.ip2location_city_db = city_db
@@ -276,7 +284,13 @@ func (service *Service) LoadIP2Location() {
 					goto sleep;
 				}
 
-				// todo: we need to validate the databases here, if they don't validate, don't pointer swap
+				if isp_db == nil {
+					panic("null isp db")
+				}
+
+				if city_db == nil {
+					panic("null city db")
+				}
 
 				service.ip2location_mutex.Lock()
 				service.ip2location_isp_db = isp_db
