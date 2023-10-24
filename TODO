@@ -4,13 +4,45 @@ DONE
 
 	Bring across to production env and update it so that it has no portal cruncher, and everything is setup
 
-TODO
+	Get prod back up
 
-	Verify that we have no leader election issues with relay backend in prod
+	Verify that click on server to see server sessions works in prod
 
 	Verify that we have no fallback to direct issues with server backend in prod
 
-	Verify that click on server to see server sessions works in prod
+	Fallback to direct is still happening on scale down server backend. Consistently happening 100%
+
+	Verify that we have no leader election issues with relay backend in prod
+
+	Seems to be working fine.
+
+	Once saw a patch where num routes was 0 during deploy period.
+
+	Works sometimes, doesn't work other times...
+
+TODO
+
+	Clean up prod relays ... =p
+
+	----------
+
+	Relay update needs to be processed directly in the leader relay backend.
+
+	----------
+
+	Active relays also need to be driven by relay backend leader.
+
+	----------
+	
+	Final crack at relay backend leader election in dev
+
+	Seems like < 10 second window where no routes
+
+	Perhaps, the new leader election takes long enough for the old entry to expire?
+
+	----------
+
+	Final crack at fallback to direct in dev
 
 	----------
 
@@ -172,9 +204,6 @@ Small things:
 	When many server instances are running on one server, this can cause problems. eg. thread starvation
 
 	--------------
-
-
-
 
 
 
