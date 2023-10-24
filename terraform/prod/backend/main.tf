@@ -1780,7 +1780,7 @@ module "server_cruncher" {
 
 module "server_backend" {
 
-  source = "../../modules/external_udp_service_autoscale"
+  source = "../modules/external_udp_service_autoscale"
 
   service_name = "server-backend"
 
@@ -1805,6 +1805,7 @@ module "server_backend" {
     SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
     SERVER_BACKEND_PRIVATE_KEY=${var.server_backend_private_key}
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
+    PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
@@ -1814,7 +1815,6 @@ module "server_backend" {
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     PORTAL_NEXT_SESSIONS_ONLY=true
-    PING_KEY=${var.ping_key}
     EOF
     sudo systemctl start app.service
   EOF1
