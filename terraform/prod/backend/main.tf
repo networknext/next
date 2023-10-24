@@ -1720,10 +1720,10 @@ module "session_cruncher" {
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_database_bucket}/dev.bin"
+    DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
   EOF1
 
