@@ -34,21 +34,19 @@ DONE
 
 	Added more logs to track it down.
 
-TODO
-
-	----------
-
 	Seeing a lot of this as well:
 
 	error: failed to read route matrix: invalid route matrix version: 110
 
 	Need to check route matrix status code before parsing? eg. only accept 200 OK?
 
+TODO
+
+	What's up with dev crashing every hour?
+
 	----------
 
 	Relay update needs to be processed directly in the leader relay backend.
-
-	----------
 
 	Active relays also need to be driven by relay backend leader.
 
@@ -71,6 +69,10 @@ TODO
 	----------
 
 	Relays need to be setup to use cloud storage for tf state
+
+	----------
+
+	For providers like akamai, vultr, amazon, we need to prefix all resource names with env (because their aren't separate projects...)
 
 	----------
 

@@ -572,6 +572,11 @@ func (service *Service) UpdateRouteMatrix() {
 					continue
 				}
 
+				if response.StatusCode != 200 {
+					core.Error("got http response %d when getting route matrix")
+					continue
+				}
+
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err != nil {
 					core.Error("failed to read response body: %v", err)
