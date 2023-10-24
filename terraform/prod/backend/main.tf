@@ -1699,7 +1699,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-2"
+  machine_type               = "c3-highmem-4"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -1733,7 +1733,7 @@ module "server_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-2"
+  machine_type               = "c3-highmem-4"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
