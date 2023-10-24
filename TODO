@@ -22,11 +22,19 @@ DONE
 
 	Clean up prod relays ... =p
 
-TODO
+	These errors need to go away, we don't want to show them since they are benign
+
+		error: failed to add counters: ERR TSDB: key already exists
+
+	Done.
 
 	server backend is periodically crashing.
 
 	It seems to be ip2location related...
+
+	Added more logs to track it down.
+
+TODO
 
 	----------
 
@@ -34,11 +42,7 @@ TODO
 
 	error: failed to read route matrix: invalid route matrix version: 110
 
-	----------
-
-	These errors need to go away, we don't want to show them since they are benign
-
-		error: failed to add counters: ERR TSDB: key already exists
+	Need to check route matrix status code before parsing? eg. only accept 200 OK?
 
 	----------
 
