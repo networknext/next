@@ -2,9 +2,9 @@ DONE
 
 	Shut down staging
 
-TODO
-
 	Bring across to production env and update it so that it has no portal cruncher, and everything is setup
+
+TODO
 
 	Verify that we have no leader election issues with relay backend in prod
 

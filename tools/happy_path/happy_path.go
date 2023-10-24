@@ -460,86 +460,9 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	// initialize analytics
-
-	fmt.Printf("\nstarting analytics:\n\n")
-
-	analytics_1_stdout := run("analytics", "logs/analytics_1")
-	analytics_2_stdout := run("analytics", "logs/analytics_2", "HTTP_PORT=40002")
-
-	fmt.Printf("\nverifying analytics 1 ...")
-
-	analytics_1_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_1_stdout.String(), "starting http server on port 40001") {
-			analytics_1_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !analytics_1_initialized {
-		fmt.Printf("\n\nerror: analytics 1 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying analytics 2 ...")
-
-	analytics_2_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_2_stdout.String(), "starting http server on port 40002") {
-			analytics_2_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !analytics_2_initialized {
-		fmt.Printf("\n\nerror: analytics 2 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
 	// ==================================================================================
 
 	fmt.Printf("\nwaiting for leader election\n\n")
-
-	fmt.Printf("    analytics ...")
-
-	analytics_leader_elected := false
-
-	for i := 0; i < 250; i++ {
-		analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
-		analytics_2_is_leader := strings.Contains(analytics_2_stdout.String(), "we became the leader")
-		if analytics_1_is_leader || analytics_2_is_leader {
-			analytics_leader_elected = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !analytics_leader_elected {
-		fmt.Printf("\n\nerror: no analytics leader?\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
 
 	fmt.Printf("    relay backend ...")
 
@@ -663,52 +586,6 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	// ---------------------------------------------------------------------------------------------------
-
-	fmt.Printf("verifying leader election in analytics ...")
-
-	analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
-	analytics_2_is_leader := strings.Contains(analytics_2_stdout.String(), "we became the leader")
-
-	if analytics_1_is_leader && analytics_2_is_leader {
-		fmt.Printf("\n\nerror: leader flap in analytics\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	if !analytics_1_is_leader && !analytics_2_is_leader {
-		fmt.Printf("\n\nerror: no analytics leader?!\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying leader election in analytics ...")
-
-	analytics_leader_stdout := analytics_1_stdout
-	if analytics_2_is_leader {
-		analytics_leader_stdout = analytics_2_stdout
-	}
-
-	if strings.Contains(analytics_leader_stdout.String(), "we are no longer the leader") ||
-		!strings.Contains(analytics_leader_stdout.String(), "route matrix num relays: 10") {
-		fmt.Printf("\n\nerror: analytics leader did not verify\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_leader_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
 	// ==================================================================================
 
 	fmt.Printf("\n*** SUCCESS! ***\n\n")
@@ -732,7 +609,7 @@ func bash(command string) {
 }
 
 func cleanup() {
-	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "session_cruncher", "server_cruncher"}
+	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "session_cruncher", "server_cruncher"}
 	for i := range killList {
 		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}

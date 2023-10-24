@@ -41,6 +41,5 @@ blocks:
             - killall server_backend || true
             - killall session_cruncher || true
             - killall server_cruncher || true
-            - killall analytics || true
             - killall client || true
             - killall server || true

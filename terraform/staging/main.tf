@@ -324,16 +324,6 @@ resource "google_redis_instance" "redis_relay_backend" {
   authorized_network      = google_compute_network.staging.id
 }
 
-resource "google_redis_instance" "redis_analytics" {
-  name                    = "redis-analytics"
-  tier                    = "STANDARD_HA"
-  memory_size_gb          = 2
-  region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
-  redis_configs           = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru", "maxmemory-gb" = "1" }
-  authorized_network      = google_compute_network.staging.id
-}
-
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
   value       = local.redis_portal_address

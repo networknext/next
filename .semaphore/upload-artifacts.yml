@@ -42,11 +42,6 @@ blocks:
             - artifact pull workflow libnext.so
             - gsutil cp libnext.so ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/libnext.so
 
-        - name: "Analytics"
-          commands:
-            - artifact pull workflow analytics.tar.gz
-            - gsutil cp analytics.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/analytics.tar.gz
-
         - name: "API"
           commands:
             - artifact pull workflow api.tar.gz

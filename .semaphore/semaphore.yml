@@ -109,11 +109,6 @@ blocks:
 
       jobs:
 
-        - name: "Analytics"
-          commands:
-            - make dist/analytics.tar.gz
-            - artifact push workflow dist/analytics.tar.gz --force
-
         - name: "API"
           commands:
             - make dist/api.tar.gz

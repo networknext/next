@@ -290,16 +290,6 @@ resource "google_redis_instance" "redis_raspberry" {
   authorized_network = google_compute_network.development.id
 }
 
-resource "google_redis_instance" "redis_analytics" {
-  name               = "redis-analytics"
-  tier               = "BASIC"
-  memory_size_gb     = 1
-  region             = "us-central1"
-  redis_version      = "REDIS_6_X"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.development.id
-}
-
 resource "google_redis_instance" "redis_relay_backend" {
   name               = "redis-relay-backend"
   tier               = "BASIC"
@@ -326,11 +316,6 @@ output "redis_portal_address" {
 output "redis_raspberry_address" {
   description = "The IP address of the raspberry redis instance"
   value       = google_redis_instance.redis_raspberry.host
-}
-
-output "redis_analytics_address" {
-  description = "The IP address of the analytics redis instance"
-  value       = google_redis_instance.redis_analytics.host
 }
 
 output "redis_relay_backend_address" {
@@ -1615,57 +1600,6 @@ module "relay_backend" {
 output "relay_backend_address" {
   description = "The IP address of the relay backend load balancer"
   value       = module.relay_backend.address
-}
-
-# ----------------------------------------------------------------------------------------
-
-module "analytics" {
-
-  source = "../../modules/internal_http_service"
-
-  service_name = "analytics"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a analytics.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    GOOGLE_PROJECT_ID=${var.google_project}
-    DATABASE_URL="${var.google_database_bucket}/dev.bin"
-    DATABASE_PATH="/app/database.bin"
-    COST_MATRIX_URL="http://${module.relay_backend.address}/cost_matrix"
-    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    REDIS_HOSTNAME="${google_redis_instance.redis_analytics.host}:6379"
-    ENABLE_GOOGLE_PUBSUB=true
-    ENABLE_GOOGLE_BIGQUERY=true
-    EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
-    sudo systemctl start app.service
-  EOF1
-
-  tag                        = var.tag
-  extra                      = var.extra
-  machine_type               = var.google_machine_type
-  project                    = var.google_project
-  region                     = var.google_region
-  zones                      = var.google_zones
-  default_network            = google_compute_network.development.id
-  default_subnetwork         = google_compute_subnetwork.development.id
-  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
-  tags                       = ["allow-ssh", "allow-http"]
-  target_size                = 1
-
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
-}
-
-output "analytics_address" {
-  description = "The IP address of the analytics load balancer"
-  value       = module.analytics.address
 }
 
 # ----------------------------------------------------------------------------------------

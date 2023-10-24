@@ -104,8 +104,6 @@ func main() {
 		relay_gateway()
 	} else if command == "relay-backend" {
 		relay_backend()
-	} else if command == "analytics" {
-		analytics()
 	} else if command == "api" {
 		api()
 	} else if command == "session-cruncher" {
@@ -255,14 +253,6 @@ func relay_backend() {
 		httpPort = "30001"
 	}
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/relay_backend", httpPort))
-}
-
-func analytics() {
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "40001"
-	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/analytics", httpPort))
 }
 
 func api() {
