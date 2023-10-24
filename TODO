@@ -24,6 +24,24 @@ DONE
 
 TODO
 
+	server backend is periodically crashing.
+
+	It seems to be ip2location related...
+
+	----------
+
+	Seeing a lot of this as well:
+
+	error: failed to read route matrix: invalid route matrix version: 110
+
+	----------
+
+	These errors need to go away, we don't want to show them since they are benign
+
+		error: failed to add counters: ERR TSDB: key already exists
+
+	----------
+
 	Relay update needs to be processed directly in the leader relay backend.
 
 	----------
@@ -143,6 +161,10 @@ Painful things:
 
 
 Small things:
+
+	--------------
+
+	User hash link in server sessions page is not working
 
 	--------------
 

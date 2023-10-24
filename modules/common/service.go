@@ -259,7 +259,6 @@ func (service *Service) LoadIP2Location() {
 
 		go func() {
 			for {
-				time.Sleep(time.Hour)
 
 				core.Log("updating ip2location databases")
 
@@ -268,19 +267,25 @@ func (service *Service) LoadIP2Location() {
 				err := ip2location.DownloadDatabases_CloudStorage(bucketName)
 				if err != nil {
 					core.Warn("failed to download ip2location databases from cloud storage: %v")
-					continue
+					goto sleep;
 				}
 
 				isp_db, city_db, err = ip2location.LoadDatabases()
 				if err != nil {
 					core.Warn("failed to load ip2location databases: %v", err)
-					continue
+					goto sleep;
 				}
+
+				// todo: we need to validate the databases here, if they don't validate, don't pointer swap
 
 				service.ip2location_mutex.Lock()
 				service.ip2location_isp_db = isp_db
 				service.ip2location_city_db = city_db
 				service.ip2location_mutex.Unlock()
+
+			sleep:
+
+				time.Sleep(time.Hour)
 			}
 		}()
 	}
