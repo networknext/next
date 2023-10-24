@@ -531,7 +531,7 @@ func sendTrafficToMe(service *common.Service) func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
-		return initialDelayCompleted() && hasRouteMatrix
+		return hasRouteMatrix
 	}
 }
 

@@ -14,6 +14,21 @@ TODO
 
 	----------
 
+	I think this is a clue:
+
+		Oct 24 23:20:27 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+		Oct 24 23:20:28 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+		Oct 24 23:20:29 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+		Oct 24 23:20:30 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+		Oct 24 23:20:31 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+		Oct 24 23:20:31 server-backend-tg03 app[1527]: error: http response 503 when getting route matrix
+		Oct 24 23:20:32 server-backend-tg03 app[1527]: error: http response 503 when getting route matrix
+		Oct 24 23:20:33 server-backend-tg03 app[1527]: error: http response 503 when getting route matrix
+
+	Maybe it can't serve up the route matrix initally, for some reason?
+
+	----------
+
 	Solve the problem with 1000 relays
 
 	----------
