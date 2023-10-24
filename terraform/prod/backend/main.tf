@@ -302,7 +302,7 @@ resource "google_redis_cluster" "portal" {
   name           = "portal"
   shard_count    = 10
   psc_configs {
-    network = google_compute_network.staging.id
+    network = google_compute_network.production.id
   }
   region = "us-central1"
   replica_count = 1
@@ -319,9 +319,9 @@ resource "google_network_connectivity_service_connection_policy" "default" {
   location = "us-central1"
   service_class = "gcp-memorystore-redis"
   description   = "redis cluster service connection policy"
-  network = google_compute_network.staging.id
+  network = google_compute_network.production.id
   psc_config {
-    subnetworks = [google_compute_subnetwork.staging.id]
+    subnetworks = [google_compute_subnetwork.production.id]
   }
 }
 
