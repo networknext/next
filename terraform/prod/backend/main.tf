@@ -297,8 +297,36 @@ output "redis_time_series_address" {
 
 # ----------------------------------------------------------------------------------------
 
+resource "google_redis_cluster" "portal" {
+  provider       = google-beta
+  name           = "portal"
+  shard_count    = 10
+  psc_configs {
+    network = google_compute_network.staging.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
+  ]
+}
+
+resource "google_network_connectivity_service_connection_policy" "default" {
+  provider = google-beta
+  name = "redis"
+  location = "us-central1"
+  service_class = "gcp-memorystore-redis"
+  description   = "redis cluster service connection policy"
+  network = google_compute_network.staging.id
+  psc_config {
+    subnetworks = [google_compute_subnetwork.staging.id]
+  }
+}
+
 locals {
-  redis_portal_address = "10.0.255.179:6379"
+  redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
 }
 
 resource "google_redis_instance" "redis_relay_backend" {
@@ -1607,7 +1635,12 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    google_redis_instance.redis_relay_backend,
+    module.redis_time_series
+  ]
 }
 
 output "relay_backend_address" {
@@ -1801,7 +1834,11 @@ module "server_backend" {
   max_size           = 64
   target_cpu         = 30
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    google_redis_cluster.portal
+  ]
 }
 
 output "server_backend_address" {
