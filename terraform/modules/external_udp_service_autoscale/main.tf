@@ -73,6 +73,8 @@ resource "google_compute_instance_template" "service" {
 
   provider     = google-beta
 
+  project      = var.project
+
   name         = "${var.service_name}-${var.tag}${var.extra}"
   machine_type = var.machine_type
 
