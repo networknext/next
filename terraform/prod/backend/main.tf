@@ -1757,7 +1757,7 @@ module "server_backend" {
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_CLUSTER="${local.redis_server_backend_address}"
+    REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
