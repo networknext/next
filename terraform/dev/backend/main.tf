@@ -1569,6 +1569,7 @@ module "relay_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     MAX_JITTER=10
     MAX_PACKET_LOSS=0.1
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     sudo systemctl start app.service
@@ -1665,7 +1666,6 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
-    DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     GOOGLE_PROJECT_ID=${var.google_project}
@@ -1741,12 +1741,14 @@ module "server_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
-    DEBUG_LOGS=1
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
+    UDP_NUM_THREADS=8
+    UDP_SOCKET_READ_BUFFER=104857600
+    UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${var.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_HOSTNAME="${google_redis_instance.redis_server_backend.host}:6379"
+    REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
@@ -1756,6 +1758,12 @@ module "server_backend" {
     PING_KEY=${var.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     EOF
     sudo systemctl start app.service
   EOF1

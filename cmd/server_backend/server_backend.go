@@ -97,9 +97,6 @@ func main() {
 		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
 	}
 
-	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
-	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
-
 	core.Debug("redis portal cluster: %s", redisPortalCluster)
 	core.Debug("redis portal hostname: %s", redisPortalHostname)
 

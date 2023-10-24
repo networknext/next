@@ -20,11 +20,9 @@ DONE
 
 	Works sometimes, doesn't work other times...
 
-TODO
-
 	Clean up prod relays ... =p
 
-	----------
+TODO
 
 	Relay update needs to be processed directly in the leader relay backend.
 
@@ -33,20 +31,8 @@ TODO
 	Active relays also need to be driven by relay backend leader.
 
 	----------
-	
-	Final crack at relay backend leader election in dev
 
-	Seems like < 10 second window where no routes
-
-	Perhaps, the new leader election takes long enough for the old entry to expire?
-
-	----------
-
-	Final crack at fallback to direct in dev
-
-	----------
-
-	Solve the problem with 1000 relays in staging
+	Solve the problem with 1000 relays
 
 	----------
 
@@ -62,14 +48,13 @@ TODO
 
 	----------
 
-	Setup projects and service accounts with terraform
-
-	----------
-
 	Relays need to be setup to use cloud storage for tf state
 
 	----------
 
+	Setup projects and service accounts with terraform
+
+	----------
 
 
 
@@ -111,6 +96,22 @@ TODO
 
 
 
+
+Painful things:
+
+	----------
+
+	Final crack at relay backend leader election in dev
+
+	Seems like < 10 second window where no routes
+
+	Perhaps, the new leader election takes long enough for the old entry to expire?
+
+	----------
+
+	Final crack at fallback to direct in dev
+
+	----------
 
 
 

@@ -38,8 +38,6 @@ var analyticsRelayUpdateGooglePubsubChannelSize int
 
 var enableGooglePubsub bool
 
-var enableRedisStreams bool
-
 var initialDelay int
 
 var relaysMutex sync.RWMutex
@@ -64,6 +62,9 @@ var redisTimeSeriesHostname string
 
 var timeSeriesPublisher *common.RedisTimeSeriesPublisher
 
+var redisPortalHostname string
+var redisPortalCluster []string
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -85,8 +86,6 @@ func main() {
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
-	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
-
 	initialDelay = envvar.GetInt("INITIAL_DELAY", 10)
 
 	startTime = time.Now()
@@ -99,6 +98,9 @@ func main() {
 		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
 		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
 	}
+
+	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
+	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 
 	core.Debug("max jitter: %d", maxJitter)
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
@@ -115,8 +117,6 @@ func main() {
 	core.Debug("analytics relay update google pubsub channel size: %d", analyticsRelayUpdateGooglePubsubChannelSize)
 
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
-
-	core.Debug("enable redis streams: %v", enableRedisStreams)
 
 	core.Debug("initial delay: %d", initialDelay)
 
@@ -659,22 +659,8 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 		os.Exit(1)
 	}
 
-	var portalRelayUpdateProducer *common.RedisStreamsProducer
 	var analyticsRelayUpdateProducer *common.GooglePubsubProducer
 	var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
-
-	if enableRedisStreams {
-
-		portalRelayUpdateProducer, err = common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
-			RedisHostname: redisHostName,
-			StreamName:    "relay_update",
-		})
-
-		if err != nil {
-			core.Error("could not create redis streams producer for portal relay update")
-			os.Exit(1)
-		}
-	}
 
 	if enableGooglePubsub {
 
@@ -814,11 +800,10 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					}
 
 					if service.IsLeader() {
-						messageBuffer := make([]byte, message.GetMaxSize())
-						messageData := message.Write(messageBuffer[:])
-						if enableRedisStreams {
-							portalRelayUpdateProducer.MessageChannel <- messageData
-						}
+
+						// todo: send relay update to portal redis
+
+						_ = message
 					}
 				}
 
