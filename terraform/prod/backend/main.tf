@@ -1780,7 +1780,7 @@ module "server_cruncher" {
 
 module "server_backend" {
 
-  source = "../modules/external_udp_service_autoscale"
+  source = "../../modules/external_udp_service_autoscale"
 
   service_name = "server-backend"
 
