@@ -1577,7 +1577,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = var.google_machine_type
+  machine_type               = "n1-standard-8"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
