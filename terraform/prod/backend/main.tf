@@ -1584,9 +1584,6 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
-    ENABLE_GOOGLE_PUBSUB=true
-    MAX_JITTER=10
-    MAX_PACKET_LOSS=0.1
     INITIAL_DELAY=180s
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
