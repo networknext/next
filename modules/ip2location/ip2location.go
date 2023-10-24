@@ -76,6 +76,22 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 		return err
 	}
 
+	stat, err := os.Stat(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
+	if err != nil {
+	    return err
+	}
+	size := stat.Size()
+	core.Debug("GeoIP2-ISP.mmdb is %d bytes", size)
+
+	stat, err = os.Stat(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
+	if err != nil {
+	    return err
+	}
+	size = stat.Size()
+	core.Debug("GeoIP2-City.mmdb is %d bytes", size)
+
+	// todo: if files are zero bytes, error out here
+
 	core.Debug("validating isp database")
 
 	isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
@@ -96,6 +112,8 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 	if err != nil {
 		return fmt.Errorf("failed to copy databases: %v", err)
 	}
+
+	// todo: we should validate here somehow
 
 	_ = isp_db
 	_ = city_db

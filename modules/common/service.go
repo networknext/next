@@ -573,7 +573,7 @@ func (service *Service) UpdateRouteMatrix() {
 				}
 
 				if response.StatusCode != 200 {
-					core.Error("got http response %d when getting route matrix")
+					core.Error("http response %d when getting route matrix", response.StatusCode)
 					continue
 				}
 

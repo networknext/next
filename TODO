@@ -1,54 +1,16 @@
 DONE
 
-	Shut down staging
+	Print out file sizes in bytes
 
-	Bring across to production env and update it so that it has no portal cruncher, and everything is setup
-
-	Get prod back up
-
-	Verify that click on server to see server sessions works in prod
-
-	Verify that we have no fallback to direct issues with server backend in prod
-
-	Fallback to direct is still happening on scale down server backend. Consistently happening 100%
-
-	Verify that we have no leader election issues with relay backend in prod
-
-	Seems to be working fine.
-
-	Once saw a patch where num routes was 0 during deploy period.
-
-	Works sometimes, doesn't work other times...
-
-	Clean up prod relays ... =p
-
-	These errors need to go away, we don't want to show them since they are benign
-
-		error: failed to add counters: ERR TSDB: key already exists
-
-	Done.
-
-	server backend is periodically crashing.
-
-	It seems to be ip2location related...
-
-	Added more logs to track it down.
-
-	Seeing a lot of this as well:
-
-	error: failed to read route matrix: invalid route matrix version: 110
-
-	Need to check route matrix status code before parsing? eg. only accept 200 OK?
-
-TODO
+TODO	
 
 	What's up with dev crashing every hour?
 
-	----------
+	Theory. I need to write out the database to a tmp file and load it from there, it might be memory mapping the file or doing something crazy?
 
-	Relay update needs to be processed directly in the leader relay backend.
+	Failing that, it could be a partial file transfer?
 
-	Active relays also need to be driven by relay backend leader.
+	Maybe check the bytes of the file before loading it?
 
 	----------
 

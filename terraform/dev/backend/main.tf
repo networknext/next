@@ -1771,7 +1771,7 @@ module "server_backend" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-1"
+  machine_type       = "n1-standard-8"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
