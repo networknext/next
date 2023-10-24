@@ -91,7 +91,7 @@ func main() {
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
-	initialDelay = envvar.GetInt("INITIAL_DELAY", 10)
+	initialDelay = envvar.GetInt("INITIAL_DELAY", 15)
 
 	relayInserterBatchSize = envvar.GetInt("RELAY_INSERTER_BATCH_SIZE", 1024)
 
