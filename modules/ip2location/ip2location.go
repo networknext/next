@@ -188,12 +188,8 @@ func LoadDatabases() (*maxminddb.Reader, *maxminddb.Reader, error) {
 }
 
 func GetLocation(city_db *maxminddb.Reader, ip net.IP) (float32, float32) {
-	if city_db == nil {
-		return 0, 0
-	}
 	var city City
-	err := city_db.Lookup(ip, &city)
-	if err == nil {
+	if city_db != nil && city_db.Lookup(ip, &city) == nil {
 		return float32(city.Location.Latitude), float32(city.Location.Longitude)
 	} else {
 		return 0, 0
@@ -201,12 +197,8 @@ func GetLocation(city_db *maxminddb.Reader, ip net.IP) (float32, float32) {
 }
 
 func GetISP(isp_db *maxminddb.Reader, ip net.IP) string {
-	if isp_db == nil {
-		return "Unknown"
-	}
 	var isp ISP
-	err := isp_db.Lookup(ip, &isp)
-	if err == nil {
+	if isp_db != nil && isp_db.Lookup(ip, &isp) == nil {
 		return isp.ISP
 	} else {
 		return "Unknown"
