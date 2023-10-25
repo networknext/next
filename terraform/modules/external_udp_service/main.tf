@@ -211,7 +211,7 @@ resource "google_compute_region_backend_service" "dummy" {
   health_checks         = [google_compute_region_health_check.dummy.id]
   backend {
     group           = google_compute_region_instance_group_manager.service.instance_group
-    balancing_mode  = "UTILIZATION"
+    balancing_mode  = "CONNECTION"
     capacity_scaler = 1.0
   }
   connection_draining_timeout_sec = 300
