@@ -70,19 +70,25 @@ DONE
 
 	The solution is to give each database file a unique name and not copy across to the same files in root.
 
-TODO	
-
 	Deployed the unique filename fix for ip2location. If this fixes it, then there will need to be some cron job setup in the startup script to clean up old temp database files.
-
-	----------
 
 	Final crack at relay backend leader election in dev
 
 	Start by seeing if we can break it just by stopping the leader service...
 
-	----------
+	No. It's working perfectly.
+
+	Now try it by replacing vms in the instance group
+
+	Seems fine again. Considering this fixed.
+
+TODO	
 
 	Solve the problem with 1000 relays
+
+	It's going to a throughput limit with the mutexes, you can do around 400k locks/unlocks per-second with a mutex, but with 1000 relays, and 1000 other relays, that's 1M locks/unlocks per-second.
+
+	What we need to do then is come up with a strategy to distribute the locks so there is less contention, eg. modulo hash the relay pair, cluster or whatever.
 
 	----------
 
@@ -140,6 +146,10 @@ TODO
 
 
 Small things:
+
+	--------------
+
+	Clean up old ip2location database files
 
 	--------------
 
