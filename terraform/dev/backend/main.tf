@@ -1535,6 +1535,11 @@ module "relay_gateway" {
   domain                   = "relay-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay-dev.id
   target_size              = 1
+
+  depends_on = [
+    module.magic_backend,
+    module.relay_backend
+  ]
 }
 
 output "relay_gateway_address" {
@@ -1590,7 +1595,11 @@ module "relay_backend" {
   initial_delay              = 360
   target_size                = 1
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    module.magic_backend,
+  ]
 }
 
 output "relay_backend_address" {
@@ -1690,6 +1699,10 @@ module "session_cruncher" {
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
+
+  depends_on = [
+    module.redis_time_series
+  ]
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1783,7 +1796,16 @@ module "server_backend" {
   target_size        = 1
   initial_delay      = 180
 
-  depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    module.server_cruncher,
+    module.session_cruncher,
+    module.redis_time_series,
+    module.relay_backend,
+    module.magic_backend,
+    google_redis_instance.redis_portal
+  ]
 }
 
 output "server_backend_address" {
@@ -1875,7 +1897,8 @@ module "raspberry_server" {
   target_size        = 8
 
   depends_on = [
-    module.server_backend
+    module.server_backend,
+    module.raspberry_backend
   ]
 }
 
@@ -1918,7 +1941,8 @@ module "raspberry_client" {
   target_size        = 4
 
   depends_on = [
-    module.server_backend
+    module.server_backend,
+    module.raspberry_server
   ]
 }
 
