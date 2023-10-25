@@ -12,8 +12,6 @@ DONE
 
 	Does this trigger fallback to directs? If not, then there is something going on differently in the mig update that is causing the issue.
 
-TODO	
-
 	On systemctl stop for server backend I see this:
 
 		Oct 25 02:17:14 server-backend-0hs1 app[1530]: connection drain...
@@ -36,16 +34,21 @@ TODO
 		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: Stopped Network Next App Server.
 		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: app.service: Consumed 12.084s CPU time.
 
-	----------
+	Fixed with null check for isp_db and city_db
 
+	gcloud compute instance-groups managed list-instances server-backend --region us-central1
 
-	----------
+	Verified that no fallback to direct happens with systemctl stop on a service.
 
 	Idea #2. We need to first make the server backend instance stick around for 1hr with cooldown (potentially by adding a fake http load balancer).
 
 	Then, while in cooldown, we can detect that we are in connection drain state on the MIG (hopefully!), and trigger a clean shutdown.
 
 	This will let us turn the MIG upgrade so that it is exactly the same as systemctl stop.
+
+TODO	
+
+	Confirming that with the fake http load balancer, the server backend old instances sit in DELETING for a long time.
 
 	----------
 

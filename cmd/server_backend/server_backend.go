@@ -335,9 +335,9 @@ func updateShuttingDown() {
 						if !shuttingDown {
 							core.Log("*** SHUTTING DOWN ***")
 							shuttingDown = true
-							break
 						}
 						shuttingDownMutex.Unlock()
+						break
 					}
 				}
 			}
