@@ -263,6 +263,8 @@ func (service *Service) LoadIP2Location() {
 	service.ip2location_city_db = city_db
 	service.ip2location_mutex.Unlock()
 
+	// todo: temporarily disabled
+	/*
 	if bucketName != "" {
 
 		go func() {
@@ -303,6 +305,7 @@ func (service *Service) LoadIP2Location() {
 			}
 		}()
 	}
+	*/
 }
 
 func (service *Service) GetLocation(ip net.IP) (float32, float32) {

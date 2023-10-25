@@ -54,46 +54,29 @@ DONE
 
 	Verified!
 
-TODO	
-
 	Next step. Setup a fake http load balancer for the server backend.
 
 	It can be internal, the same type as the magic backend uses. Copy the code from there, and add a 5 minute connection drain.
 
-	Verify that we can now deploy to server backend without fallback to direct.
+	Verified fallback to direct is fixed!
+
+TODO	
+
+	Apply the same fixes to the autoscale version of the udp external service
+
+	----------
+
+	The server backend crash once per-hour is still happening
+
+	The question should be. Does this still occur without updating the ip2location database?
+
+	I'll bet it doesn't. I think what's going on here is memory mapping for the database files, and by writing over the same file, we trash that file.
+
+	The solution is to give each database file a unique name and not copy across to the same files in root.
 
 	----------
 
 	Final crack at relay backend leader election in dev
-
-	Seems like < 10 second window where no routes
-
-	Perhaps, the new leader election takes long enough for the old entry to expire?
-
-	----------
-
-	Maybe the relay backend needs special code to detect "DELETING" state as well, with a connection drain -- so the instance can stop pushing leader election entries, and give leadership over to another.
-
-	----------
-
-	I see fallback to direct logs in server backend, but I don't see fallback to direct counters in the graphs. What's up with this?
-
-	I need to be able to trust that the graphs capture ALL fallback to direct cases.
-
-	----------
-
-	I think this is a clue:
-
-		Oct 24 23:20:27 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-		Oct 24 23:20:28 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-		Oct 24 23:20:29 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-		Oct 24 23:20:30 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-		Oct 24 23:20:31 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-		Oct 24 23:20:31 server-backend-tg03 app[1527]: error: http response 503 when getting route matrix
-		Oct 24 23:20:32 server-backend-tg03 app[1527]: error: http response 503 when getting route matrix
-		Oct 24 23:20:33 server-backend-tg03 app[1527]: error: http response 503 when getting route matrix
-
-	Maybe it can't serve up the route matrix initally, for some reason?
 
 	----------
 
