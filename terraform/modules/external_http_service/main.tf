@@ -85,6 +85,7 @@ resource "google_compute_backend_service" "service" {
     balancing_mode  = "UTILIZATION"
     capacity_scaler = 1.0
   }
+  connection_draining_timeout_sec = 60
 }
 
 resource "google_compute_instance_template" "service" {
