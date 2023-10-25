@@ -60,11 +60,7 @@ DONE
 
 	Verified fallback to direct is fixed!
 
-TODO	
-
 	Apply the same fixes to the autoscale version of the udp external service
-
-	----------
 
 	The server backend crash once per-hour is still happening
 
@@ -74,9 +70,15 @@ TODO
 
 	The solution is to give each database file a unique name and not copy across to the same files in root.
 
+TODO	
+
+	Deployed the unique filename fix for ip2location. If this fixes it, then there will need to be some cron job setup in the startup script to clean up old temp database files.
+
 	----------
 
 	Final crack at relay backend leader election in dev
+
+	Start by seeing if we can break it just by stopping the leader service...
 
 	----------
 
