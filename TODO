@@ -86,6 +86,8 @@ DONE
 
 TODO	
 
+	Verify 1000 relays in staging
+
 	----------
 
 	Ingest into bigquery with google pubsub
