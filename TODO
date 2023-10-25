@@ -14,6 +14,12 @@ TODO
 
 	----------
 
+	I see fallback to direct logs in server backend, but I don't see fallback to direct counters in the graphs. What's up with this?
+
+	Is redis counters overloaded in dev?
+
+	----------
+
 	I think this is a clue:
 
 		Oct 24 23:20:27 server-backend-tg03 app[1527]: error: failed to http get route matrix: Get "http://10.0.0.20/route_matrix": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
