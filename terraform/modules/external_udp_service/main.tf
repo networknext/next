@@ -135,6 +135,10 @@ resource "google_compute_region_instance_group_manager" "service" {
     name = "udp"
     port = 45000
   }
+  named_port {
+    name = "http"
+    port = 80
+  }
   version {
     instance_template = google_compute_instance_template.service.id
     name              = "primary"
@@ -206,13 +210,15 @@ resource "google_compute_region_backend_service" "dummy" {
   project               = var.project
   region                = var.region
   protocol              = "HTTP"
+  port_name             = "http"
   load_balancing_scheme = "INTERNAL_MANAGED"
   timeout_sec           = 10
   health_checks         = [google_compute_region_health_check.dummy.id]
   backend {
-    group           = google_compute_region_instance_group_manager.service.instance_group
-    balancing_mode  = "UTILIZATION"
-    capacity_scaler = 1.0
+    group                 = google_compute_region_instance_group_manager.service.instance_group
+    balancing_mode        = "RATE"
+    max_rate_per_instance = 1000
+    capacity_scaler       = 1.0
   }
   connection_draining_timeout_sec = 300
 }
