@@ -237,16 +237,9 @@ func (service *Service) LoadIP2Location() {
 		os.Exit(1)
 	}
 
-	err := ip2location.DownloadDatabases_CloudStorage(bucketName)
+	err, isp_db, city_db := ip2location.DownloadDatabases_CloudStorage(bucketName)
 	if err != nil {
 		core.Error("could not download ip2location databases from cloud storage: %v", err)
-		os.Exit(1)
-	}
-
-	isp_db, city_db, err := ip2location.LoadDatabases()
-
-	if err != nil {
-		core.Error("failed to load ip2location databases: %v", err)
 		os.Exit(1)
 	}
 
@@ -263,8 +256,6 @@ func (service *Service) LoadIP2Location() {
 	service.ip2location_city_db = city_db
 	service.ip2location_mutex.Unlock()
 
-	// todo: temporarily disabled
-	/*
 	if bucketName != "" {
 
 		go func() {
@@ -272,17 +263,9 @@ func (service *Service) LoadIP2Location() {
 
 				core.Log("updating ip2location databases")
 
-				var isp_db, city_db *maxminddb.Reader
-
-				err := ip2location.DownloadDatabases_CloudStorage(bucketName)
+				err, isp_db, city_db := ip2location.DownloadDatabases_CloudStorage(bucketName)
 				if err != nil {
 					core.Warn("failed to download ip2location databases from cloud storage: %v")
-					goto sleep;
-				}
-
-				isp_db, city_db, err = ip2location.LoadDatabases()
-				if err != nil {
-					core.Warn("failed to load ip2location databases: %v", err)
 					goto sleep;
 				}
 
@@ -301,11 +284,10 @@ func (service *Service) LoadIP2Location() {
 
 			sleep:
 
-				time.Sleep(time.Hour)
+				time.Sleep(time.Minute) // todo -- Hour)
 			}
 		}()
 	}
-	*/
 }
 
 func (service *Service) GetLocation(ip net.IP) (float32, float32) {
