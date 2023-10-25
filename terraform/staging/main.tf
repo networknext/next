@@ -1804,20 +1804,22 @@ module "server_backend" {
     sudo systemctl start app.service
   EOF1
 
-  tag                = var.tag
-  extra              = var.extra
-  machine_type       = "c3-highcpu-44"
-  project            = var.google_project
-  region             = var.google_region
-  zones              = var.google_zones
-  port               = 40000
-  default_network    = google_compute_network.staging.id
-  default_subnetwork = google_compute_subnetwork.staging.id
-  service_account    = var.google_service_account
-  tags               = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size           = 3
-  max_size           = 64
-  target_cpu         = 30
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "c3-highcpu-44"
+  project                    = var.google_project
+  region                     = var.google_region
+  zones                      = var.google_zones
+  port                       = 40000
+  default_network            = google_compute_network.staging.id
+  default_subnetwork         = google_compute_subnetwork.staging.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = var.google_service_account
+  tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
+  min_size                   = 3
+  max_size                   = 64
+  target_cpu                 = 30
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
