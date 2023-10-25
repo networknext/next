@@ -1,92 +1,82 @@
 DONE
 
-	Print out file sizes in bytes
+	Cost matrix is all 255s
 
-	New theory for fallback to direct. The sessions are going to the new instance before it is ready to service traffic.
+	All relays are considered active, or almost all.
 
-	Evidence for this. I see fallbacks to direct happening on the old server backend, *before* it is told to shut down.
+	Relay data shows that most relays are online. Very few are offline.
 
-	Idea #1. Go into a server backend instance and systemctl stop it.
-
-	This should make it go into shutdown state for 60 seconds.
-
-	Does this trigger fallback to directs? If not, then there is something going on differently in the mig update that is causing the issue.
-
-	On systemctl stop for server backend I see this:
-
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: connection drain...
-		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: Stopping Network Next App Server...
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: panic: runtime error: invalid memory address or nil pointer dereference
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: [signal SIGSEGV: segmentation violation code=0x1 addr=0x10 pc=0xe71121]
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: goroutine 26 [running]:
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: github.com/oschwald/maxminddb-golang.(*Reader).Lookup(0xc0004e1040?, {0xc03c52eea0?, 0xc032bb3d40?, 0xc032bb3d40?}, {0xf36880?, 0xc03c46f970?})
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]:         /home/semaphore/go/pkg/mod/github.com/oschwald/maxminddb-golang@v1.12.0/reader.go:134 +0x21
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: github.com/networknext/next/modules/ip2location.GetISP(...)
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]:         /home/semaphore/next/modules/ip2location/ip2location.go:202
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: github.com/networknext/next/modules/common.(*Service).GetISP(0x118b513?, {0xc03c52eea0, 0x10, 0x10})
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]:         /home/semaphore/next/modules/common/service.go:319 +0xcc
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: main.processPortalSessionUpdateMessages.func1()
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]:         /home/semaphore/next/cmd/server_backend/server_backend.go:499 +0xcf
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]: created by main.processPortalSessionUpdateMessages in goroutine 1
-		Oct 25 02:17:14 server-backend-0hs1 app[1530]:         /home/semaphore/next/cmd/server_backend/server_backend.go:487 +0x1b9
-		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: app.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
-		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: app.service: Failed with result 'exit-code'.
-		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: Stopped Network Next App Server.
-		Oct 25 02:17:14 server-backend-0hs1 systemd[1]: app.service: Consumed 12.084s CPU time.
-
-	Fixed with null check for isp_db and city_db
-
-	gcloud compute instance-groups managed list-instances server-backend --region us-central1
-
-	Verified that no fallback to direct happens with systemctl stop on a service.
-
-	Idea #2. We need to first make the server backend instance stick around for 1hr with cooldown (potentially by adding a fake http load balancer).
-
-	Then, while in cooldown, we can detect that we are in connection drain state on the MIG (hopefully!), and trigger a clean shutdown.
-
-	This will let us turn the MIG upgrade so that it is exactly the same as systemctl stop.
-
-	Confirming that with the fake http load balancer, the server backend old instances sit in DELETING for a long time.
-
-	Confirming no fallback to direct occurs.
-
-	Verify no fallback to directs occur with 5 minute connection drain.
-
-	Verified!
-
-	Next step. Setup a fake http load balancer for the server backend.
-
-	It can be internal, the same type as the magic backend uses. Copy the code from there, and add a 5 minute connection drain.
-
-	Verified fallback to direct is fixed!
-
-	Apply the same fixes to the autoscale version of the udp external service
-
-	The server backend crash once per-hour is still happening
-
-	The question should be. Does this still occur without updating the ip2location database?
-
-	I'll bet it doesn't. I think what's going on here is memory mapping for the database files, and by writing over the same file, we trash that file.
-
-	The solution is to give each database file a unique name and not copy across to the same files in root.
-
-	Deployed the unique filename fix for ip2location. If this fixes it, then there will need to be some cron job setup in the startup script to clean up old temp database files.
-
-	Final crack at relay backend leader election in dev
-
-	Start by seeing if we can break it just by stopping the leader service...
-
-	No. It's working perfectly.
-
-	Now try it by replacing vms in the instance group
-
-	Seems fine again. Considering this fixed.
-
-	Solve the problem with 1000 relays
+	Idea. Capture the gob data for the relay manager and explore it locally. I really just don't have any idea WHY the cost matrix is all red. This may help me find out why.
 
 TODO	
 
-	Verify 1000 relays in staging
+	Load the relay manager gob data
+
+	
+
+	----------
+
+	New theory. It could be that the redis pubsub between relay gateway and relay backend is getting overloaded?
+
+	How to check if this is the case?
+
+	----------
+
+	Try to reproduce locally
+
+	----------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	----------
+
+	Relay backend in staging needs a quick fix:
+
+		Oct 25 21:29:11 relay-backend-kvdz app[2115]: error: relay insert error: dial tcp 127.0.0.1:6379: connect: connection refused
+
+	It's still pointing at default redis...
 
 	----------
 
