@@ -334,11 +334,6 @@ output "redis_relay_backend_address" {
   value       = google_redis_instance.redis_relay_backend.host
 }
 
-output "redis_analytics_address" {
-  description = "The IP address of the analytics redis instance"
-  value       = google_redis_instance.redis_analytics.host
-}
-
 # ----------------------------------------------------------------------------------------
 
 locals {

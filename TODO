@@ -82,13 +82,9 @@ DONE
 
 	Seems fine again. Considering this fixed.
 
-TODO	
-
 	Solve the problem with 1000 relays
 
-	It's going to a throughput limit with the mutexes, you can do around 400k locks/unlocks per-second with a mutex, but with 1000 relays, and 1000 other relays, that's 1M locks/unlocks per-second.
-
-	What we need to do then is come up with a strategy to distribute the locks so there is less contention, eg. modulo hash the relay pair, cluster or whatever.
+TODO	
 
 	----------
 
