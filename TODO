@@ -4,6 +4,12 @@ DONE
 
 TODO	
 
+	New theory for fallback to direct. The sessions are going to the new instance before it is ready to service traffic.
+
+	Evidence for this. I see fallbacks to direct happening on the old server backend, *before* it is told to shut down.
+
+	----------
+
 	What's up with dev crashing every hour?
 
 	Theory. I need to write out the database to a tmp file and load it from there, it might be memory mapping the file or doing something crazy?

@@ -1781,6 +1781,7 @@ module "server_backend" {
   service_account    = var.google_service_account
   tags               = ["allow-ssh", "allow-http", "allow-udp-40000"]
   target_size        = 1
+  initial_delay      = 180
 
   depends_on = [google_pubsub_topic.pubsub_topic, google_pubsub_subscription.pubsub_subscription]
 }

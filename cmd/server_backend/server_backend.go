@@ -65,7 +65,11 @@ var redisPortalCluster []string
 
 var countersPublisher *common.RedisCountersPublisher
 
+var startTime int64
+
 func main() {
+
+	startTime = time.Now().Unix()
 
 	service = common.CreateService("server_backend")
 
@@ -350,7 +354,8 @@ func isShuttingDown() bool {
 
 func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
+	// todo: parameterize as INITIAL_DELAY
+	return time.Now().Unix() > startTime + 90 && routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
 }
 
 func machineIsHealthy() bool {
