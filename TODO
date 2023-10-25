@@ -46,25 +46,39 @@ DONE
 
 	This will let us turn the MIG upgrade so that it is exactly the same as systemctl stop.
 
+	Confirming that with the fake http load balancer, the server backend old instances sit in DELETING for a long time.
+
+	Confirming no fallback to direct occurs.
+
+	Verify no fallback to directs occur with 5 minute connection drain.
+
+	Verified!
+
 TODO	
 
-	Confirming that with the fake http load balancer, the server backend old instances sit in DELETING for a long time.
+	Next step. Setup a fake http load balancer for the server backend.
+
+	It can be internal, the same type as the magic backend uses. Copy the code from there, and add a 5 minute connection drain.
+
+	Verify that we can now deploy to server backend without fallback to direct.
 
 	----------
 
-	What's up with dev crashing every hour?
+	Final crack at relay backend leader election in dev
 
-	Theory. I need to write out the database to a tmp file and load it from there, it might be memory mapping the file or doing something crazy?
+	Seems like < 10 second window where no routes
 
-	Failing that, it could be a partial file transfer?
+	Perhaps, the new leader election takes long enough for the old entry to expire?
 
-	Maybe check the bytes of the file before loading it?
+	----------
+
+	Maybe the relay backend needs special code to detect "DELETING" state as well, with a connection drain -- so the instance can stop pushing leader election entries, and give leadership over to another.
 
 	----------
 
 	I see fallback to direct logs in server backend, but I don't see fallback to direct counters in the graphs. What's up with this?
 
-	Is redis counters overloaded in dev?
+	I need to be able to trust that the graphs capture ALL fallback to direct cases.
 
 	----------
 
@@ -108,63 +122,6 @@ TODO
 	----------
 
 	Setup projects and service accounts with terraform
-
-	----------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Painful things:
-
-	----------
-
-	Final crack at relay backend leader election in dev
-
-	Seems like < 10 second window where no routes
-
-	Perhaps, the new leader election takes long enough for the old entry to expire?
-
-	----------
-
-	Final crack at fallback to direct in dev
 
 	----------
 
