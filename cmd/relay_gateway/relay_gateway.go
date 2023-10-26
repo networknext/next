@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"bytes"
+	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -24,8 +26,7 @@ var relayUpdateChannelSize int
 var pingKey []byte
 var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
-
-var producer *common.RedisPubsubProducer
+var relayBackendAddress string
 
 func main() {
 
@@ -39,6 +40,7 @@ func main() {
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
+	relayBackendAddress = envvar.GetString("RELAY_BACKEND_ADDRESS", "127.0.0.1:30001")
 
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
@@ -95,8 +97,6 @@ func main() {
 		pingKey[30],
 		pingKey[31],
 	)
-
-	producer = CreatePubsubProducer(service)
 
 	service.UpdateMagic()
 
@@ -297,14 +297,23 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		encoding.WriteUint64(packetData, &timestampIndex, currentTimestamp)
 
-		// forward the decrypted relay update to the relay backend(s)
+		// forward the decrypted relay update to the relay backend
 
-		messageData := body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)]
+		buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
 
-		// todo
-		core.Log("relay update is %d bytes", len(messageData))
+		url := fmt.Sprintf("http://%s/relay_update", relayBackendAddress)
 
-		producer.MessageChannel <- messageData
+		forward_request, err := http.NewRequest("POST", url, buffer)
+		if err == nil {
+			httpClient := http.Client{
+			    Timeout: time.Second,
+			}
+			response, _ := httpClient.Do(forward_request)
+			if response != nil {
+				_,_  = ioutil.ReadAll(response.Body)
+				response.Body.Close()
+			}
+		}
 	}
 }
 
@@ -318,24 +327,4 @@ func GetMagicValues(service *common.Service) func() ([constants.MagicBytes]byte,
 	return func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 		return service.GetMagicValues()
 	}
-}
-
-func CreatePubsubProducer(service *common.Service) *common.RedisPubsubProducer {
-
-	config := common.RedisPubsubConfig{}
-
-	config.RedisHostname = redisHostname
-	config.PubsubChannelName = redisPubsubChannelName
-	config.BatchSize = relayUpdateBatchSize
-	config.BatchDuration = relayUpdateBatchDuration
-	config.MessageChannelSize = relayUpdateChannelSize
-
-	var err error
-	producer, err = common.CreateRedisPubsubProducer(service.Context, config)
-	if err != nil {
-		core.Error("could not create redis pubsub producer")
-		os.Exit(1)
-	}
-
-	return producer
 }

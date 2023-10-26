@@ -46,8 +46,6 @@ DONE
 
 	It's not complicated, and I know it will work. Why not just do this? It's much simpler and less stupid.
 
-TODO	
-
 	See if tier_1 bandwidth and upgrades fixes the problem. If not, it seems I have two choices:
 
 		1. Fix the redis pubsub thing
@@ -58,13 +56,22 @@ TODO
 
 	If this is done, does this mean I am no longer using redis except for the leader election, storage of data, and the portal?
 
+	Redo comms.
+
+TODO	
+
+	Extend relay_backend to accept relay updates on a http handler
+
+	Drop relay backend to one instance, temporarily.
+
+	Pass the relay update from the relay gateway to the relay backend via http.
+
+	Verify that we can now handle 1000 relays.
+
+	Now write code to 
+
 	--------
 
-	Extend relay gateway and relay backend to check if relay updates are "late" (eg. older than 5 seconds?)
-
-	Print out if they are late, and drop them. There is no point processing late updates. This will also give some indication that something is wrong.
-
-	--------
 
 
 
@@ -113,20 +120,6 @@ TODO
 
 
 
-
-
-
-
-
-
-
-	----------
-
-	Relay backend in staging needs a quick fix:
-
-		Oct 25 21:29:11 relay-backend-kvdz app[2115]: error: relay insert error: dial tcp 127.0.0.1:6379: connect: connection refused
-
-	It's still pointing at default redis...
 
 	----------
 

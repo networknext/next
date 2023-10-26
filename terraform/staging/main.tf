@@ -317,10 +317,9 @@ locals {
 resource "google_redis_instance" "redis_relay_backend" {
   name                    = "redis-relay-backend"
   tier                    = "STANDARD_HA"
-  memory_size_gb          = 10
+  memory_size_gb          = 1
   region                  = "us-central1"
   redis_version           = "REDIS_7_0"
-  redis_configs           = { "maxmemory-gb" = "5" }
   authorized_network      = google_compute_network.staging.id
 }
 
@@ -1535,6 +1534,7 @@ module "relay_gateway" {
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
     PING_KEY=${var.ping_key}
+    RELAY_BACKEND_ADDRESS=${module.relay_gateway.address}
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -1542,7 +1542,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-highcpu-8"
+  machine_type             = "c3-highcpu-4"
   project                  = var.google_project
   region                   = var.google_region
   zones                    = var.google_zones
@@ -1608,8 +1608,8 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size                = 3
-  initial_delay              = 360
+  target_size                = 1
+  initial_delay              = 90
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 

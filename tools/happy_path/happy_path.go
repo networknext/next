@@ -129,7 +129,9 @@ func happy_path(wait bool) int {
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
 	relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
-	relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
+
+	// todo: bring back once we have fan out
+//	relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
 
 	fmt.Printf("\nverifying magic backend ...")
 
@@ -201,6 +203,8 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// todo: bring back once we have fan out
+	/*
 	relay_backend_2_initialized := false
 
 	fmt.Printf("verifying relay backend 2 ...")
@@ -224,6 +228,7 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
+	*/
 
 	// initialize relays
 
@@ -281,8 +286,11 @@ func happy_path(wait bool) int {
 		fmt.Printf("%s", relay_gateway_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_backend_1_stdout)
+		// todo
+		/*
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_backend_2_stdout)
+		*/
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
@@ -347,6 +355,8 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
+	// todo: bring back once we have fan out working
+	/*
 	fmt.Printf("verifying relay backend 2 sees relays ...")
 
 	relay_backend_2_sees_relays := false
@@ -372,6 +382,7 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
+	*/
 
 	// initialize server backends
 
@@ -470,8 +481,9 @@ func happy_path(wait bool) int {
 
 	for i := 0; i < 250; i++ {
 		relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
-		relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
-		if relay_backend_1_is_leader || relay_backend_2_is_leader {
+		// todo
+		// relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
+		if relay_backend_1_is_leader { //|| relay_backend_2_is_leader {
 			relay_backend_leader_elected = true
 			break
 		}
@@ -483,8 +495,9 @@ func happy_path(wait bool) int {
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_backend_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
+		// todo
+		// fmt.Printf("%s", relay_backend_2_stdout)
+		// fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
 
@@ -557,6 +570,8 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
+	// todo: bring back later
+	/*
 	fmt.Printf("\npost validation:\n\n")
 
 	fmt.Printf("verifying leader election in relay backend ...")
@@ -585,6 +600,7 @@ func happy_path(wait bool) int {
 	}
 
 	fmt.Printf(" OK\n")
+	*/
 
 	// ==================================================================================
 

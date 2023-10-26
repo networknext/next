@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"io/ioutil"
 
 	"github.com/gorilla/mux"
 
@@ -17,11 +18,9 @@ import (
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
-	"github.com/networknext/next/modules/messages"
 	"github.com/networknext/next/modules/packets"
-	"github.com/networknext/next/modules/portal"
-
-	"github.com/redis/go-redis/v9"
+	// "github.com/networknext/next/modules/messages"
+	// "github.com/networknext/next/modules/portal"
 )
 
 var maxJitter int32
@@ -149,6 +148,7 @@ func main() {
 
 	relayManager := common.CreateRelayManager(service.Local)
 
+	service.Router.HandleFunc("/relay_update", relayUpdateHandler(service, relayManager)).Methods("POST")
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
@@ -166,13 +166,245 @@ func main() {
 
 	service.LeaderElection(initialDelay)
 
-	ProcessRelayUpdates(service, relayManager)
-
 	UpdateRouteMatrix(service, relayManager)
 
 	UpdateInitialDelayState(service)
 
 	service.WaitForShutdown()
+}
+
+func relayUpdateHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		core.Log("relay_update")
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			core.Error("could not read request body: %v", err)
+			return
+		}
+		defer r.Body.Close()
+
+		// read the relay update request packet
+
+		var relayUpdateRequest packets.RelayUpdateRequestPacket
+
+		err = relayUpdateRequest.Read(body)
+		if err != nil {
+			core.Error("could not read relay update: %v", err)
+			return
+		}
+
+		// check if we are overloaded
+
+		currentTime := uint64(time.Now().Unix())
+
+		if relayUpdateRequest.CurrentTime < currentTime - 5 {
+			core.Error("relay update is old. relay gateway -> relay backend is overloaded!")
+		}
+
+		// look up the relay in the database
+
+		relayData := service.RelayData()
+
+		relayId := common.RelayId(relayUpdateRequest.Address.String())
+		relayIndex, ok := relayData.RelayIdToIndex[relayId]
+		if !ok {
+			core.Error("unknown relay id %016x", relayId)
+			return
+		}
+
+		relayName := relayData.RelayNames[relayIndex]
+		relayAddress := relayData.RelayAddresses[relayIndex]
+
+		// process samples in the relay update (this drives the cost matrix...)
+
+		core.Debug("[%s] received update for %s [%016x]", relayAddress.String(), relayName, relayId)
+
+		numSamples := int(relayUpdateRequest.NumSamples)
+
+		relayManager.ProcessRelayUpdate(int64(currentTime),
+			relayId,
+			relayName,
+			relayUpdateRequest.Address,
+			int(relayUpdateRequest.SessionCount),
+			relayUpdateRequest.RelayVersion,
+			relayUpdateRequest.RelayFlags,
+			numSamples,
+			relayUpdateRequest.SampleRelayId[:numSamples],
+			relayUpdateRequest.SampleRTT[:numSamples],
+			relayUpdateRequest.SampleJitter[:numSamples],
+			relayUpdateRequest.SamplePacketLoss[:numSamples],
+			relayUpdateRequest.RelayCounters[:],
+		)
+
+		// todo: bring back
+		/*
+		// build relay to relay ping messages for analytics
+
+		numRoutable := 0
+
+		pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
+
+		for i := 0; i < numSamples; i++ {
+
+			rtt := relayUpdateRequest.SampleRTT[i]
+			jitter := relayUpdateRequest.SampleJitter[i]
+			pl := float32(relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0)
+
+			if rtt < 255 && int32(jitter) <= maxJitter && pl <= maxPacketLoss {
+				numRoutable++
+			}
+
+			sampleRelayId := relayUpdateRequest.SampleRelayId[i]
+
+			pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
+				Version:            messages.AnalyticsRelayToRelayPingMessageVersion_Write,
+				Timestamp:          uint64(time.Now().Unix()),
+				SourceRelayId:      relayId,
+				DestinationRelayId: sampleRelayId,
+				RTT:                rtt,
+				Jitter:             jitter,
+				PacketLoss:         pl,
+			}
+		}
+
+		numUnroutable := numSamples - numRoutable
+
+		// send relay update message to portal
+		{
+			message := messages.PortalRelayUpdateMessage{
+				Version:                   messages.PortalRelayUpdateMessageVersion_Write,
+				Timestamp:                 uint64(time.Now().Unix()),
+				RelayName:                 relayName,
+				RelayId:                   relayId,
+				SessionCount:              relayUpdateRequest.SessionCount,
+				MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
+				EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
+				EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
+				PacketsSentPerSecond:      relayUpdateRequest.PacketsSentPerSecond,
+				PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
+				BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
+				BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
+				NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
+				RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
+				RelayFlags:                relayUpdateRequest.RelayFlags,
+				RelayVersion:              relayUpdateRequest.RelayVersion,
+				NumRoutable:               uint32(numRoutable),
+				NumUnroutable:             uint32(numUnroutable),
+				StartTime:                 relayUpdateRequest.StartTime,
+				CurrentTime:               relayUpdateRequest.CurrentTime,
+				RelayAddress:              relayAddress,
+			}
+
+			if service.IsLeader() {
+
+				relayData := portal.RelayData{
+					RelayId:      message.RelayId,
+					RelayName:    message.RelayName,
+					RelayAddress: message.RelayAddress.String(),
+					NumSessions:  message.SessionCount,
+					MaxSessions:  message.MaxSessions,
+					StartTime:    message.StartTime,
+					RelayFlags:   message.RelayFlags,
+					RelayVersion: message.RelayVersion,
+				}
+
+				relayInserter.Insert(service.Context, &relayData)
+
+				if enableRedisTimeSeries {
+
+					// send time series to redis
+
+					timeSeriesMessage := common.RedisTimeSeriesMessage{}
+
+					timeSeriesMessage.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+
+					timeSeriesMessage.Keys = []string{
+						fmt.Sprintf("relay_%016x_session_count", message.RelayId),
+						fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.RelayId),
+						fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.RelayId),
+						fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
+						fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
+						fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
+						fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
+						fmt.Sprintf("relay_%016x_near_pings_per_second", message.RelayId),
+						fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayId),
+						fmt.Sprintf("relay_%016x_num_routable", message.RelayId),
+						fmt.Sprintf("relay_%016x_num_unroutable", message.RelayId),
+					}
+
+					timeSeriesMessage.Values = []float64{
+						float64(message.SessionCount),
+						float64(message.EnvelopeBandwidthUpKbps),
+						float64(message.EnvelopeBandwidthDownKbps),
+						float64(message.PacketsSentPerSecond),
+						float64(message.PacketsReceivedPerSecond),
+						float64(message.BandwidthSentKbps),
+						float64(message.BandwidthReceivedKbps),
+						float64(message.NearPingsPerSecond),
+						float64(message.RelayPingsPerSecond),
+						float64(message.NumRoutable),
+						float64(message.NumUnroutable),
+					}
+
+					timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
+
+					// send counters to redis
+
+					countersPublisher.MessageChannel <- "relay_update"
+				}
+			}
+		}
+
+		// send relay update message to analytics
+		{
+			message := messages.AnalyticsRelayUpdateMessage{
+				Version:                   messages.AnalyticsRelayUpdateMessageVersion_Write,
+				Timestamp:                 uint64(time.Now().Unix()),
+				RelayId:                   relayId,
+				SessionCount:              relayUpdateRequest.SessionCount,
+				MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
+				EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
+				EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
+				PacketsSentPerSecond:      relayUpdateRequest.PacketsSentPerSecond,
+				PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
+				BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
+				BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
+				NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
+				RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
+				RelayFlags:                relayUpdateRequest.RelayFlags,
+				NumRelayCounters:          relayUpdateRequest.NumRelayCounters,
+				RelayCounters:             relayUpdateRequest.RelayCounters,
+				NumRoutable:               uint32(numRoutable),
+				NumUnroutable:             uint32(numUnroutable),
+				StartTime:                 relayUpdateRequest.StartTime,
+				CurrentTime:               relayUpdateRequest.CurrentTime,
+			}
+
+			if service.IsLeader() {
+				messageBuffer := make([]byte, message.GetMaxSize())
+				messageData := message.Write(messageBuffer[:])
+				if enableGooglePubsub {
+					analyticsRelayUpdateProducer.MessageChannel <- messageData
+				}
+			}
+		}
+
+		// send relay to relay ping messages to analytics
+
+		if service.IsLeader() {
+			for i := 0; i < len(pingMessages); i++ {
+				messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
+				messageData := pingMessages[i].Write(messageBuffer[:])
+				if enableGooglePubsub {
+					analyticsRelayToRelayPingProducer.MessageChannel <- messageData
+				}
+			}
+		}
+		*/
+	}
 }
 
 func activeRelaysHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
@@ -651,6 +883,7 @@ func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
 func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayManager) {
 
 	config := common.RedisPubsubConfig{}
@@ -739,225 +972,11 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 			case message := <-consumer.MessageChannel:
 
-				// read the relay update request packet
-
-				var relayUpdateRequest packets.RelayUpdateRequestPacket
-
-				err = relayUpdateRequest.Read(message)
-				if err != nil {
-					core.Error("could not read relay update: %v", err)
-					break
-				}
-
-				// track redis being overloaded
-
-				currentTime := uint64(time.Now().Unix())
-
-				if relayUpdateRequest.CurrentTime < currentTime - 5 {
-					core.Error("relay update is old. redis is overloaded!")
-				}
-
-				// look up the relay in the database
-
-				relayData := service.RelayData()
-
-				relayId := common.RelayId(relayUpdateRequest.Address.String())
-				relayIndex, ok := relayData.RelayIdToIndex[relayId]
-				if !ok {
-					core.Error("unknown relay id %016x", relayId)
-					break
-				}
-
-				relayName := relayData.RelayNames[relayIndex]
-				relayAddress := relayData.RelayAddresses[relayIndex]
-
-				// process samples in the relay update (this drives the cost matrix...)
-
-				core.Debug("[%s] received update for %s [%016x]", relayAddress.String(), relayName, relayId)
-
-				numSamples := int(relayUpdateRequest.NumSamples)
-
-				relayManager.ProcessRelayUpdate(int64(currentTime),
-					relayId,
-					relayName,
-					relayUpdateRequest.Address,
-					int(relayUpdateRequest.SessionCount),
-					relayUpdateRequest.RelayVersion,
-					relayUpdateRequest.RelayFlags,
-					numSamples,
-					relayUpdateRequest.SampleRelayId[:numSamples],
-					relayUpdateRequest.SampleRTT[:numSamples],
-					relayUpdateRequest.SampleJitter[:numSamples],
-					relayUpdateRequest.SamplePacketLoss[:numSamples],
-					relayUpdateRequest.RelayCounters[:],
-				)
-
-				// build relay to relay ping messages for analytics
-
-				numRoutable := 0
-
-				pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
-
-				for i := 0; i < numSamples; i++ {
-
-					rtt := relayUpdateRequest.SampleRTT[i]
-					jitter := relayUpdateRequest.SampleJitter[i]
-					pl := float32(relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0)
-
-					if rtt < 255 && int32(jitter) <= maxJitter && pl <= maxPacketLoss {
-						numRoutable++
-					}
-
-					sampleRelayId := relayUpdateRequest.SampleRelayId[i]
-
-					pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
-						Version:            messages.AnalyticsRelayToRelayPingMessageVersion_Write,
-						Timestamp:          uint64(time.Now().Unix()),
-						SourceRelayId:      relayId,
-						DestinationRelayId: sampleRelayId,
-						RTT:                rtt,
-						Jitter:             jitter,
-						PacketLoss:         pl,
-					}
-				}
-
-				numUnroutable := numSamples - numRoutable
-
-				// send relay update message to portal
-				{
-					message := messages.PortalRelayUpdateMessage{
-						Version:                   messages.PortalRelayUpdateMessageVersion_Write,
-						Timestamp:                 uint64(time.Now().Unix()),
-						RelayName:                 relayName,
-						RelayId:                   relayId,
-						SessionCount:              relayUpdateRequest.SessionCount,
-						MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
-						EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
-						EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
-						PacketsSentPerSecond:      relayUpdateRequest.PacketsSentPerSecond,
-						PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
-						BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
-						BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
-						NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
-						RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
-						RelayFlags:                relayUpdateRequest.RelayFlags,
-						RelayVersion:              relayUpdateRequest.RelayVersion,
-						NumRoutable:               uint32(numRoutable),
-						NumUnroutable:             uint32(numUnroutable),
-						StartTime:                 relayUpdateRequest.StartTime,
-						CurrentTime:               relayUpdateRequest.CurrentTime,
-						RelayAddress:              relayAddress,
-					}
-
-					if service.IsLeader() {
-
-						relayData := portal.RelayData{
-							RelayId:      message.RelayId,
-							RelayName:    message.RelayName,
-							RelayAddress: message.RelayAddress.String(),
-							NumSessions:  message.SessionCount,
-							MaxSessions:  message.MaxSessions,
-							StartTime:    message.StartTime,
-							RelayFlags:   message.RelayFlags,
-							RelayVersion: message.RelayVersion,
-						}
-
-						relayInserter.Insert(service.Context, &relayData)
-
-						if enableRedisTimeSeries {
-
-							// send time series to redis
-
-							timeSeriesMessage := common.RedisTimeSeriesMessage{}
-
-							timeSeriesMessage.Timestamp = uint64(time.Now().UnixNano() / 1000000)
-
-							timeSeriesMessage.Keys = []string{
-								fmt.Sprintf("relay_%016x_session_count", message.RelayId),
-								fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.RelayId),
-								fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.RelayId),
-								fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
-								fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
-								fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
-								fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
-								fmt.Sprintf("relay_%016x_near_pings_per_second", message.RelayId),
-								fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayId),
-								fmt.Sprintf("relay_%016x_num_routable", message.RelayId),
-								fmt.Sprintf("relay_%016x_num_unroutable", message.RelayId),
-							}
-
-							timeSeriesMessage.Values = []float64{
-								float64(message.SessionCount),
-								float64(message.EnvelopeBandwidthUpKbps),
-								float64(message.EnvelopeBandwidthDownKbps),
-								float64(message.PacketsSentPerSecond),
-								float64(message.PacketsReceivedPerSecond),
-								float64(message.BandwidthSentKbps),
-								float64(message.BandwidthReceivedKbps),
-								float64(message.NearPingsPerSecond),
-								float64(message.RelayPingsPerSecond),
-								float64(message.NumRoutable),
-								float64(message.NumUnroutable),
-							}
-
-							timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
-
-							// send counters to redis
-
-							countersPublisher.MessageChannel <- "relay_update"
-						}
-					}
-				}
-
-				// send relay update message to analytics
-				{
-					message := messages.AnalyticsRelayUpdateMessage{
-						Version:                   messages.AnalyticsRelayUpdateMessageVersion_Write,
-						Timestamp:                 uint64(time.Now().Unix()),
-						RelayId:                   relayId,
-						SessionCount:              relayUpdateRequest.SessionCount,
-						MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
-						EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
-						EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
-						PacketsSentPerSecond:      relayUpdateRequest.PacketsSentPerSecond,
-						PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
-						BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
-						BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
-						NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
-						RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
-						RelayFlags:                relayUpdateRequest.RelayFlags,
-						NumRelayCounters:          relayUpdateRequest.NumRelayCounters,
-						RelayCounters:             relayUpdateRequest.RelayCounters,
-						NumRoutable:               uint32(numRoutable),
-						NumUnroutable:             uint32(numUnroutable),
-						StartTime:                 relayUpdateRequest.StartTime,
-						CurrentTime:               relayUpdateRequest.CurrentTime,
-					}
-
-					if service.IsLeader() {
-						messageBuffer := make([]byte, message.GetMaxSize())
-						messageData := message.Write(messageBuffer[:])
-						if enableGooglePubsub {
-							analyticsRelayUpdateProducer.MessageChannel <- messageData
-						}
-					}
-				}
-
-				// send relay to relay ping messages to analytics
-
-				if service.IsLeader() {
-					for i := 0; i < len(pingMessages); i++ {
-						messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
-						messageData := pingMessages[i].Write(messageBuffer[:])
-						if enableGooglePubsub {
-							analyticsRelayToRelayPingProducer.MessageChannel <- messageData
-						}
-					}
-				}
 			}
 		}
 	}()
 }
+*/
 
 func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {
 
