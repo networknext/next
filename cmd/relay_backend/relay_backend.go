@@ -177,7 +177,14 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		core.Log("relay_update")
+		startTime := time.Now()
+
+		defer func() {
+			duration := time.Since(startTime)
+			if duration.Milliseconds() > 1000 {
+				core.Warn("long relay update: %s", duration.String())
+			}
+		}()
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
