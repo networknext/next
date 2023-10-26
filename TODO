@@ -12,11 +12,23 @@ DONE
 
 	It works!
 
-TODO	
-
 	Uncomment code for the rest of the relay update processing
 
-	Watch the relay_backend instance via 
+	Verify active relays in dev
+
+TODO	
+
+	Check if running under google cloud.
+
+	If running under google cloud...
+
+	Watch the relay_backend instance via gcloud and get list of VM ids in that group once per-second
+
+	Get the VM internal IP address in || for all instance ids.
+
+	Run a health check in || on /health_fanout for each VM in the list, no matter the status.
+
+	If the health check passes, add the IP to the array of relay_backend_addresses under lock.
 
 	--------
 
