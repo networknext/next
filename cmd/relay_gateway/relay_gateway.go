@@ -304,9 +304,6 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		url := fmt.Sprintf("http://%s/relay_update", relayBackendAddress)
 
-		// todo
-		core.Log("forwarding relay update to %s", url)
-
 		forward_request, err := http.NewRequest("POST", url, buffer)
 		if err == nil {
 			httpClient := http.Client{

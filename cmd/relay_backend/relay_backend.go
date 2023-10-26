@@ -19,8 +19,10 @@ import (
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/packets"
-	// "github.com/networknext/next/modules/messages"
-	// "github.com/networknext/next/modules/portal"
+	"github.com/networknext/next/modules/messages"
+	"github.com/networknext/next/modules/portal"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var maxJitter int32
@@ -65,6 +67,10 @@ var redisPortalHostname string
 var redisPortalCluster []string
 
 var relayInserterBatchSize int
+var relayInserter *portal.RelayInserter
+var countersPublisher *common.RedisCountersPublisher
+var analyticsRelayUpdateProducer *common.GooglePubsubProducer
+var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
 
 func main() {
 
@@ -119,6 +125,15 @@ func main() {
 
 	core.Debug("start time: %s", startTime.String())
 
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
+
+	relayInserter = portal.CreateRelayInserter(redisClient, relayInserterBatchSize)
+
 	if enableRedisTimeSeries {
 
 		timeSeriesConfig := common.RedisTimeSeriesConfig{
@@ -129,6 +144,40 @@ func main() {
 		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
 		if err != nil {
 			core.Error("could not create redis time series publisher: %v", err)
+			os.Exit(1)
+		}
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	if enableGooglePubsub {
+
+		var err error
+		analyticsRelayUpdateProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          service.GoogleProjectId,
+			Topic:              analyticsRelayUpdateGooglePubsubTopic,
+			MessageChannelSize: analyticsRelayUpdateGooglePubsubChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create analytics relay update google pubsub producer")
+			os.Exit(1)
+		}
+
+		analyticsRelayToRelayPingProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          service.GoogleProjectId,
+			Topic:              analyticsRelayToRelayPingGooglePubsubTopic,
+			MessageChannelSize: analyticsRelayToRelayPingGooglePubsubChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create analytics relay to relay ping google pubsub producer")
 			os.Exit(1)
 		}
 	}
@@ -237,8 +286,6 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 			relayUpdateRequest.RelayCounters[:],
 		)
 
-		// todo: bring back
-		/*
 		// build relay to relay ping messages for analytics
 
 		numRoutable := 0
@@ -401,7 +448,6 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 				}
 			}
 		}
-		*/
 	}
 }
 
