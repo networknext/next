@@ -237,9 +237,10 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// relay update accepted
 
-		relayName := relay.Name
+		// todo: disable spam for now
+		// relayName := relay.Name
 
-		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
+//		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
@@ -426,7 +427,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 
 	go func() {
 
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticker := time.NewTicker(1000 * time.Millisecond)
 
 		for {
 			select {
@@ -484,11 +485,11 @@ func TrackRelayBackendInstances(service *common.Service) {
 					}
 				}
 
-				fmt.Printf("==========================================")
+				fmt.Printf("==========================================\n")
 				for i := range verified {
 					fmt.Printf("%s\n", verified[i])
 				}
-				fmt.Printf("==========================================")
+				fmt.Printf("==========================================\n")
 
 				mutex.Lock()
 				relayBackendAddresses = verified
