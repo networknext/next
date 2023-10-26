@@ -8,6 +8,10 @@ import (
 	"time"
 	"bytes"
 	"fmt"
+	"sync"
+	"bufio"
+	"os/exec"
+	"strings"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -27,6 +31,9 @@ var pingKey []byte
 var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
 var relayBackendAddress string
+
+var mutex sync.Mutex
+var relayBackendAddresses []string
 
 func main() {
 
@@ -98,6 +105,8 @@ func main() {
 		pingKey[30],
 		pingKey[31],
 	)
+
+	TrackRelayBackendInstances(service)
 
 	service.UpdateMagic()
 
@@ -298,24 +307,195 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		encoding.WriteUint64(packetData, &timestampIndex, currentTimestamp)
 
-		// forward the decrypted relay update to the relay backend
+		// forward the decrypted relay update to the relay backends
 
 		buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
 
-		url := fmt.Sprintf("http://%s/relay_update", relayBackendAddress)
+		addresses := []string{}
+		if relayBackendAddress != "" {
+			addresses = []string{relayBackendAddress}
+		} else {
+			mutex.Lock()
+			addresses = relayBackendAddresses
+			mutex.Unlock()
+		}
 
-		forward_request, err := http.NewRequest("POST", url, buffer)
-		if err == nil {
-			httpClient := http.Client{
-			    Timeout: time.Second,
-			}
-			response, _ := httpClient.Do(forward_request)
-			if response != nil {
-				_,_  = ioutil.ReadAll(response.Body)
-				response.Body.Close()
-			}
+		for i := range addresses {
+			go func() {
+				url := fmt.Sprintf("http://%s/relay_update", addresses[i])
+				forward_request, err := http.NewRequest("POST", url, buffer)
+				if err == nil {
+					httpClient := http.Client{
+					    Timeout: time.Second,
+					}
+					response, _ := httpClient.Do(forward_request)
+					if response != nil {
+						_,_  = ioutil.ReadAll(response.Body)
+						response.Body.Close()
+					}
+				}
+			}()
 		}
 	}
+}
+
+func RunCommand(command string, args []string) (bool, string) {
+
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func Bash(command string) (bool, string) {
+	return RunCommand("bash", []string{"-c", command})
+}
+
+func TrackRelayBackendInstances(service *common.Service) {
+
+	// grab google cloud instance name from metadata
+
+	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	if !result {
+		return // not in google cloud
+	}
+
+	instanceName = strings.TrimSuffix(instanceName, "\n")
+
+	tokens := strings.Split(instanceName, ".")
+
+	instanceName = tokens[0]
+
+	core.Log("google cloud instance name is '%s'", instanceName)
+
+	// grab google cloud zone from metadata
+
+	var zone string
+	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	if !result {
+		return // not in google cloud
+	}
+
+	zone = strings.TrimSuffix(zone, "\n")
+
+	tokens = strings.Split(zone, "/")
+
+	zone = tokens[len(tokens)-1]
+
+	core.Log("google cloud zone is '%s'", zone)
+
+	// turn zone into region
+
+	tokens = strings.Split(zone, "-")
+
+	region := strings.Join(tokens[:len(tokens)-1], "-")
+
+	core.Log("google cloud region is '%s'", region)
+
+	go func() {
+
+		ticker := time.NewTicker(100 * time.Millisecond)
+
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				_, list_output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
+
+				list_lines := strings.Split(list_output, "\n")
+
+				instanceIds := make([]string, 0)
+				zones := make([]string, 0)
+				for i := range list_lines {
+					if strings.Contains(list_lines[i], "relay-backend-") {
+						values := strings.Fields(list_lines[i])
+						instanceId := values[0]
+						zone := values[1]
+						instanceIds = append(instanceIds, instanceId)
+						zones = append(zones, zone)
+					}
+				}
+
+				addresses := make([]string, len(instanceIds))
+				for i := range instanceIds {
+					_, describe_output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[i], zones[i]))
+					describe_lines := strings.Split(describe_output, "\n")
+					address := ""
+					for i := range describe_lines {
+						if strings.Contains(describe_lines[i], "networkIP: ") {
+							values := strings.Fields(describe_lines[i])
+							address = values[1]
+						}
+					}
+					addresses[i] = address
+				}
+
+				ok := make([]bool, len(addresses))
+				waitGroup := sync.WaitGroup{}
+				waitGroup.Add(len(addresses))
+				for i := range addresses {
+					go func() {
+						ok[i], _ = Bash("curl -s http://%s/health_fanout --max-time 1 -vs 2>/dev/null")
+						waitGroup.Done()
+					}()
+				}
+				waitGroup.Wait()
+
+				verified := []string{}
+				for i := range addresses {
+					if ok[i] {
+						verified = append(verified, addresses[i])
+					}
+				}
+
+				fmt.Printf("==========================================")
+				for i := range verified {
+					fmt.Printf("%s\n", verified[i])
+				}
+				fmt.Printf("==========================================")
+
+				mutex.Lock()
+				relayBackendAddresses = verified
+				mutex.Unlock()
+			}
+		}
+	}()
 }
 
 func GetRelayData(service *common.Service) func() *common.RelayData {

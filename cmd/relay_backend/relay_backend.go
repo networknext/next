@@ -189,6 +189,7 @@ func main() {
 	relayManager := common.CreateRelayManager(service.Local)
 
 	service.Router.HandleFunc("/relay_update", relayUpdateHandler(service, relayManager)).Methods("POST")
+	service.Router.HandleFunc("/health_fanout", healthFanoutHandler)
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
@@ -449,6 +450,10 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 			}
 		}
 	}
+}
+
+func healthFanoutHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func activeRelaysHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
