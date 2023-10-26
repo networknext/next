@@ -170,10 +170,6 @@ func main() {
 		load_test_portal()
 	} else if command == "load-test-redis-data" {
 		load_test_redis_data()
-	} else if command == "load-test-redis-pubsub" {
-		load_test_redis_pubsub()
-	} else if command == "load-test-redis-streams" {
-		load_test_redis_streams()
 	} else if command == "load-test-redis-time-series" {
 		load_test_redis_time_series()
 	} else if command == "load-test-redis-counters" {
@@ -460,14 +456,6 @@ func func_backend() {
 
 func load_test_redis_data() {
 	bash("go run tools/load_test_redis_data/load_test_redis_data.go")
-}
-
-func load_test_redis_pubsub() {
-	bash("go run tools/load_test_redis_pubsub/load_test_redis_pubsub.go")
-}
-
-func load_test_redis_streams() {
-	bash("go run tools/load_test_redis_streams/load_test_redis_streams.go")
 }
 
 func load_test_redis_time_series() {

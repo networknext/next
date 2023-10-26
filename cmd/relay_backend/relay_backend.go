@@ -29,9 +29,6 @@ var routeMatrixInterval time.Duration
 
 var redisHostName string
 
-var relayUpdateRedisPubsubChannelName string
-var relayUpdateRedisPubsubChannelSize int
-
 var analyticsRelayToRelayPingGooglePubsubTopic string
 var analyticsRelayToRelayPingGooglePubsubChannelSize int
 
@@ -79,9 +76,6 @@ func main() {
 
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	relayUpdateRedisPubsubChannelName = envvar.GetString("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
-	relayUpdateRedisPubsubChannelSize = envvar.GetInt("RELAY_UPDATE_REDIS_PUBSUB_CHANNEL_SIZE", 1024*1024)
-
 	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
 	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
 
@@ -112,9 +106,6 @@ func main() {
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
 	core.Debug("route matrix interval: %s", routeMatrixInterval)
 	core.Debug("redis host name: %s", redisHostName)
-
-	core.Debug("relay update redis pubsub channel name: %s", relayUpdateRedisPubsubChannelName)
-	core.Debug("relay update redis pubsub channel size: %d", relayUpdateRedisPubsubChannelSize)
 
 	core.Debug("analytics relay to relay ping google pubsub topic: %s", analyticsRelayToRelayPingGooglePubsubTopic)
 	core.Debug("analytics relay to relay ping google pubsub channel size: %d", analyticsRelayToRelayPingGooglePubsubChannelSize)
@@ -889,101 +880,6 @@ func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
-
-/*
-func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayManager) {
-
-	config := common.RedisPubsubConfig{}
-
-	config.RedisHostname = redisHostName
-	config.PubsubChannelName = relayUpdateRedisPubsubChannelName
-	config.MessageChannelSize = relayUpdateRedisPubsubChannelSize
-
-	consumer, err := common.CreateRedisPubsubConsumer(service.Context, config)
-
-	if err != nil {
-		core.Error("could not create redis pubsub consumer for relay updates sent from relay gateway")
-		os.Exit(1)
-	}
-
-	var analyticsRelayUpdateProducer *common.GooglePubsubProducer
-	var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
-
-	if enableGooglePubsub {
-
-		analyticsRelayUpdateProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          service.GoogleProjectId,
-			Topic:              analyticsRelayUpdateGooglePubsubTopic,
-			MessageChannelSize: analyticsRelayUpdateGooglePubsubChannelSize,
-		})
-		if err != nil {
-			core.Error("could not create analytics relay update google pubsub producer")
-			os.Exit(1)
-		}
-
-		analyticsRelayToRelayPingProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          service.GoogleProjectId,
-			Topic:              analyticsRelayToRelayPingGooglePubsubTopic,
-			MessageChannelSize: analyticsRelayToRelayPingGooglePubsubChannelSize,
-		})
-		if err != nil {
-			core.Error("could not create analytics relay to relay ping google pubsub producer")
-			os.Exit(1)
-		}
-	}
-
-	var redisClient redis.Cmdable
-	if len(redisPortalCluster) > 0 {
-		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
-	} else {
-		redisClient = common.CreateRedisClient(redisPortalHostname)
-	}
-
-	relayInserter := portal.CreateRelayInserter(redisClient, relayInserterBatchSize)
-
-	var timeSeriesPublisher *common.RedisTimeSeriesPublisher
-
-	var countersPublisher *common.RedisCountersPublisher
-
-	if enableRedisTimeSeries {
-
-		timeSeriesConfig := common.RedisTimeSeriesConfig{
-			RedisHostname: redisTimeSeriesHostname,
-			RedisCluster:  redisTimeSeriesCluster,
-		}
-		var err error
-		timeSeriesPublisher, err = common.CreateRedisTimeSeriesPublisher(service.Context, timeSeriesConfig)
-		if err != nil {
-			core.Error("could not create redis time series publisher: %v", err)
-			os.Exit(1)
-		}
-
-		countersConfig := common.RedisCountersConfig{
-			RedisHostname: redisTimeSeriesHostname,
-			RedisCluster:  redisTimeSeriesCluster,
-		}
-		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
-		if err != nil {
-			core.Error("could not create redis counters publisher: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	go func() {
-
-		for {
-			select {
-
-			case <-service.Context.Done():
-				return
-
-			case message := <-consumer.MessageChannel:
-
-			}
-		}
-	}()
-}
-*/
 
 func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {
 
