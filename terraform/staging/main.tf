@@ -1542,7 +1542,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-highcpu-4"
+  machine_type             = "c3-highcpu-8"
   project                  = var.google_project
   region                   = var.google_region
   zones                    = var.google_zones
@@ -1555,6 +1555,7 @@ module "relay_gateway" {
   target_cpu               = 60
   domain                   = "relay-staging.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
+  tier_1                   = true
 
   depends_on = [
     google_redis_instance.redis_relay_backend
@@ -1610,6 +1611,7 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
   initial_delay              = 360
+  tier_1                     = true
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
