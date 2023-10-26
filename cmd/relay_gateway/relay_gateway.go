@@ -301,6 +301,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		messageData := body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)]
 
+		// todo
+		core.Log("relay update is %d bytes", len(messageData))
+
 		producer.MessageChannel <- messageData
 	}
 }

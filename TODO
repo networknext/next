@@ -26,13 +26,19 @@ DONE
 
 	No effect. The history buffer has been cleared.
 
-TODO	
-
 	What is going on is that dest entries are timing out (10 seconds), because they are stale.
 
 	This removes all RTT entries and stuff doesn't work right.
 
 	It's definitely pointing to something being overloaded so that relay updates arrive late, and are continually timed out.
+
+TODO	
+
+	Caught it. "error: relay update is old. redis is overloaded!"
+
+	Now look at the relay backend redis instance and see if we can spot signs of overload...
+
+	Print the size of relay updates...
 
 	--------
 
