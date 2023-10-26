@@ -467,6 +467,12 @@ func TrackRelayBackendInstances(service *common.Service) {
 					addresses[i] = address
 				}
 
+				fmt.Printf("==========================================\n")
+				for i := range instanceIds {
+					fmt.Printf("%s -> %s\n", instanceIds[i], addresses[i])
+				}
+				fmt.Printf("==========================================\n")
+
 				ok := make([]bool, len(addresses))
 				waitGroup := sync.WaitGroup{}
 				waitGroup.Add(len(addresses))
