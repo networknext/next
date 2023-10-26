@@ -8,21 +8,49 @@ DONE
 
 	Idea. Capture the gob data for the relay manager and explore it locally. I really just don't have any idea WHY the cost matrix is all red. This may help me find out why.
 
-TODO	
-
 	Load the relay manager gob data
 
-	----------
+	Look for patterns in the data. It seems that last update times are really scatterred. eg. I see up to 13 seconds delta between oldest and newest entries.
 
-	New theory. It could be that the redis pubsub between relay gateway and relay backend is getting overloaded?
+	This is likely the problem. If the relay updates are coming in late, due to relay gateway redis being overloaded, then this would explain what's going on.
 
-	How to check if this is the case?
+	To check that this is the case, manually go across all source and dest samples post load, and adjust to a fixed timestamp.
 
-	----------
+	Then go "GetCosts" from the fixed timestamp. -- Costs should work and be all green. Output to html file and verify.
 
-	Try to reproduce locally
+	The plot thickens, excluding last update time effects, the data is all set to 100000000000000
 
-	----------
+	In this case, it means that the history buffer hasn't been filled with 60 samples yet. If everything is overloaded and not all relays are getting updates, it's clear that this could be the case.
+
+	Try excluding the history buffer effects on rtt by taking min... see what happens
+
+	No effect. The history buffer has been cleared.
+
+TODO	
+
+	What is going on is that dest entries are timing out (10 seconds), because they are stale.
+
+	This removes all RTT entries and stuff doesn't work right.
+
+	It's definitely pointing to something being overloaded so that relay updates arrive late, and are continually timed out.
+
+	--------
+
+	Extend relay gateway and relay backend to check if relay updates are "late" (eg. older than 5 seconds?)
+
+	Print out if they are late, and drop them. There is no point processing late updates. This will also give some indication that something is wrong.
+
+	--------
+
+
+
+
+
+
+
+
+
+
 
 
 

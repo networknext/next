@@ -33,9 +33,9 @@ func main() {
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
-	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
+	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 1000)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
-	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 1024*1024)
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
