@@ -220,6 +220,8 @@ func main() {
 		redis_cluster()
 	} else if command == "redis-time-series" {
 		redis_time_series()
+	} else if command == "load-relay-manager" {
+		load_relay_manager()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -597,4 +599,8 @@ func redis_cluster() {
 
 func redis_time_series() {
 	bash("docker run -p 6379:6379 --rm redis/redis-stack-server:latest")
+}
+
+func load_relay_manager() {
+	bash("go run tools/load_relay_manager/load_relay_manager.go")
 }

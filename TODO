@@ -12,8 +12,6 @@ TODO
 
 	Load the relay manager gob data
 
-	
-
 	----------
 
 	New theory. It could be that the redis pubsub between relay gateway and relay backend is getting overloaded?
