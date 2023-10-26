@@ -1555,8 +1555,7 @@ module "relay_gateway" {
   target_cpu               = 60
   domain                   = "relay-staging.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
-  tier_1                   = true
-
+  
   depends_on = [
     google_redis_instance.redis_relay_backend
   ]
@@ -1611,7 +1610,6 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
   initial_delay              = 360
-  tier_1                     = true
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 

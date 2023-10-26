@@ -32,13 +32,31 @@ DONE
 
 	It's definitely pointing to something being overloaded so that relay updates arrive late, and are continually timed out.
 
-TODO	
-
 	Caught it. "error: relay update is old. redis is overloaded!"
 
 	Now look at the relay backend redis instance and see if we can spot signs of overload...
 
 	Print the size of relay updates...
+
+	They're tiny, like 10k each update.
+	
+	I think something is wrong with the google pubsub implementation.
+
+	We could instead just track the instances in the "relay_backend" group and send directly to them via http.
+
+	It's not complicated, and I know it will work. Why not just do this? It's much simpler and less stupid.
+
+TODO	
+
+	See if tier_1 bandwidth and upgrades fixes the problem. If not, it seems I have two choices:
+
+		1. Fix the redis pubsub thing
+
+		2. Just redo-comms from relay gateway to relay backend via http
+
+	Personally, I'm leaning 2, it'll be much simpler and I can just get it done and move on.
+
+	If this is done, does this mean I am no longer using redis except for the leader election, storage of data, and the portal?
 
 	--------
 
