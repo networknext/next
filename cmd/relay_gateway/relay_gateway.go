@@ -33,7 +33,7 @@ func main() {
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
-	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 1000)
+	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 1)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
 	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 1024*1024)
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
@@ -123,7 +123,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Warn("[%s] unsupported content type", request.RemoteAddr)
+			core.Error("[%s] unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -141,7 +141,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		packetBytes := len(body)
 
 		if packetBytes < 1+1+4+2+crypto.Box_MacSize+crypto.Box_NonceSize {
-			core.Warn("[%s] relay update packet is too small to be valid", request.RemoteAddr)
+			core.Error("[%s] relay update packet is too small to be valid", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -154,7 +154,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		encoding.ReadUint8(packetData, &index, &packetVersion)
 
 		if packetVersion < packets.RelayUpdateRequestPacket_VersionMin || packetVersion > packets.RelayUpdateRequestPacket_VersionMax {
-			core.Warn("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
+			core.Error("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -163,7 +163,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		var relayAddress net.UDPAddr
 		if !encoding.ReadAddress(packetData, &index, &relayAddress) {
-			core.Warn("[%s] could not read relay address", request.RemoteAddr)
+			core.Error("[%s] could not read relay address", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -176,7 +176,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Warn("[%s] unknown relay %x", request.RemoteAddr, relayId)
+			core.Error("[%s] unknown relay %x", request.RemoteAddr, relayId)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -198,7 +198,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 		if err != nil {
-			core.Warn("[%s] failed to decrypt relay update", request.RemoteAddr)
+			core.Error("[%s] failed to decrypt relay update", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -207,18 +207,20 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		var packetTimestamp uint64
 
+		timestampIndex := index
+
 		encoding.ReadUint64(packetData, &index, &packetTimestamp)
 
 		currentTimestamp := uint64(startTime.Unix())
 
 		if packetTimestamp < currentTimestamp-10 {
-			core.Warn("[%s] relay update request is too old", request.RemoteAddr)
+			core.Error("[%s] relay update request is too old", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		if packetTimestamp > currentTimestamp+10 {
-			core.Warn("[%s] relay update request is in the future", request.RemoteAddr)
+			core.Error("[%s] relay update request is in the future", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -291,7 +293,11 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		writer.Write(responseData)
 
-		// forward the relay update to the relay backend, sans crypto stuff (it's now decrypted...)
+		// adjust the packet to current time so we can detect when redis is overloaded in the relay backend
+
+		encoding.WriteUint64(packetData, &timestampIndex, currentTimestamp)
+
+		// forward the decrypted relay update to the relay backend(s)
 
 		messageData := body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)]
 

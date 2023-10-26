@@ -749,6 +749,14 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 					break
 				}
 
+				// track redis being overloaded
+
+				currentTime := uint64(time.Now().Unix())
+
+				if relayUpdateRequest.CurrentTime < currentTime - 5 {
+					core.Error("relay update is old. redis is overloaded!")
+				}
+
 				// look up the relay in the database
 
 				relayData := service.RelayData()
@@ -769,9 +777,7 @@ func ProcessRelayUpdates(service *common.Service, relayManager *common.RelayMana
 
 				numSamples := int(relayUpdateRequest.NumSamples)
 
-				currentTime := time.Now().Unix()
-
-				relayManager.ProcessRelayUpdate(currentTime,
+				relayManager.ProcessRelayUpdate(int64(currentTime),
 					relayId,
 					relayName,
 					relayUpdateRequest.Address,
