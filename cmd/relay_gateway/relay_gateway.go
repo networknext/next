@@ -47,6 +47,7 @@ func main() {
 	core.Debug("relay update batch size: %d", relayUpdateBatchSize)
 	core.Debug("relay update batch duration: %v", relayUpdateBatchDuration)
 	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
+	core.Debug("relay backend address: %s", relayBackendAddress)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -302,6 +303,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
 
 		url := fmt.Sprintf("http://%s/relay_update", relayBackendAddress)
+
+		// todo
+		core.Log("forwarding relay update to %s", url)
 
 		forward_request, err := http.NewRequest("POST", url, buffer)
 		if err == nil {
