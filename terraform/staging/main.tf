@@ -1774,7 +1774,7 @@ module "server_backend" {
     ENV=staging
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=8
+    UDP_NUM_THREADS=16
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${var.google_project}
@@ -1815,7 +1815,7 @@ module "server_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = 3
   max_size                   = 64
-  target_cpu                 = 30
+  target_cpu                 = 60
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 

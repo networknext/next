@@ -1,79 +1,33 @@
 DONE
 
-	Redo relay_gateway -> relay_backend comms.
-
-	Extend relay_backend to accept relay updates on a http handler
-
-	Drop relay backend to one instance, temporarily.
-
-	Pass the relay update from the relay gateway to the relay backend via http.
-
-	Verify that we can now handle 1000 relays.
-
-	It works!
-
-	Uncomment code for the rest of the relay update processing
-
-	Verify active relays in dev
-
-	Check if running under google cloud.
-
-	If running under google cloud...
-
-	Watch the relay_backend instance via gcloud and get list of VM ids in that group once per-second
-
-	Get the VM internal IP address in || for all instance ids.
-
-	Run a health check in || on /health_fanout for each VM in the list, no matter the status.
-
-	If the health check passes, add the IP to the array of relay_backend_addresses under lock.
-
-	Integrate and test under dev
-
-	It works!
-
-	Test in dev with multiple relay backend and relay gateways
-
-	Verified 1000 relays working in staging still.
-
-	Fix so we are accelerating only 10% of sessions again. By default, we are hitting 60% which means we have probably got routes through near relays to dest that beat direct?
-
-	Relay backend seems to be crashing out in staging. Find out why.
-
-	It seems to be this:
-
-		 runtime error: index out of range [0] with length 0
-
-	I think it's the relay gateway being overloaded and sending dummy 
-
-	Hah. It's totally the HTTP forwarding getting overloaded over time and not reusing connections. Classic golang problem
-
-	Fixed. 
-
-	It's stable for a short while now, then it seems the relay backend falls over. Debug what's going on here. Logs should show what's happening.
-
-	The relay backend is fine. The relay gateway is crashing...
-
-	Fixed.
-
-	Scale up to 1000 relays, 1M servers and 10M sessions.
-
-	Obtained, but not stable yet.
-
 TODO	
 
-	Now the relay backend is crashing randomly. I believe it is because we are calling redis things from multiple threads, and they are crapping out.
+	----------
 
-	To fix we must setup a channel and process the data offline on the same thread.
+	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 102ms
+	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 103ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 101ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 102ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 102ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 104ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 106ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 116ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 101ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 145ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 160ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 168ms
+	Oct 27 18:40:13 server-backend-b4fx app[2149]: warning: update route matrix can't keep up!
+	Oct 27 18:40:13 server-backend-b4fx app[2149]: warning: long session update: 117ms
+	Oct 27 18:45:22 server-backend-b4fx app[2149]: error: failed to send message batch: context deadline exceeded
 
+	Server backend seems to be getting some long session updates. Why?
 
 	----------
 
 	Fix relay backend so it's completely steady on deploy.
-
-	----------
-
-	Make sure the system can run with no relays (eg. analysis only initially...)
 
 	----------
 
@@ -126,7 +80,17 @@ Small things:
 
 	----------
 
-	Fallback to direct logs need to directly correlate to counters in graphs
+	"Active relays" seems to be cosmetically messed up during load test, it shows only 100 active relays in the chart, but there are 1000 active relays for sure.
+
+	----------
+
+	Calling sessions "next" is fine for code, but in the portal we should refer to it as accelerated.
+
+	That way if somebody rebrands the portal internally, stuff will still make sense vs. "next sessions" (what's that?)
+
+	----------
+
+	Make sure the system can run with no relays in dev and production (eg. analysis only initially...)
 
 	----------
 

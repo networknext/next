@@ -400,6 +400,10 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 				if enableRedisTimeSeries {
 
+					// send counters to redis
+
+					countersPublisher.MessageChannel <- "relay_update"
+
 					// send time series to redis
 
 					timeSeriesMessage := common.RedisTimeSeriesMessage{}
@@ -435,10 +439,6 @@ func PostRelayUpdateRequest(service *common.Service) {
 					}
 
 					timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
-
-					// send counters to redis
-
-					countersPublisher.MessageChannel <- "relay_update"
 				}
 			}
 		}
