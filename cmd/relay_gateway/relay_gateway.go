@@ -453,18 +453,24 @@ func TrackRelayBackendInstances(service *common.Service) {
 				}
 
 				addresses := make([]string, len(instanceIds))
+				waitGroup := sync.WaitGroup{}
+				waitGroup.Add(len(addresses))
 				for i := range instanceIds {
-					_, describe_output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[i], zones[i]))
-					describe_lines := strings.Split(describe_output, "\n")
-					address := ""
-					for i := range describe_lines {
-						if strings.Contains(describe_lines[i], "networkIP: ") {
-							values := strings.Fields(describe_lines[i])
-							address = values[1]
+					go func(index int) {
+						_, describe_output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
+						describe_lines := strings.Split(describe_output, "\n")
+						address := ""
+						for j := range describe_lines {
+							if strings.Contains(describe_lines[j], "networkIP: ") {
+								values := strings.Fields(describe_lines[j])
+								address = values[1]
+							}
 						}
-					}
-					addresses[i] = address
+						addresses[index] = address
+						waitGroup.Done()
+					}(i)
 				}
+				waitGroup.Wait()
 
 				// todo
 				fmt.Printf("===============================\n")
@@ -474,7 +480,6 @@ func TrackRelayBackendInstances(service *common.Service) {
 				fmt.Printf("===============================\n")
 
 				ok := make([]bool, len(addresses))
-				waitGroup := sync.WaitGroup{}
 				waitGroup.Add(len(addresses))
 				for i := range addresses {
 					go func(index int) {
