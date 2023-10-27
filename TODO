@@ -34,11 +34,19 @@ DONE
 
 TODO	
 
-	Test in staging.
+	Test in dev with multiple relay backend and relay gateways
 
 	----------
 
 	Scale up to 1000 relays, 1M servers and 10M sessions.
+
+	----------
+
+	Fix relay backend so it's completely steady on deploy.
+
+	----------
+
+	Integrate map with portal
 
 	----------
 
@@ -50,17 +58,13 @@ TODO
 
 	----------
 
-	Integrate map with portal
-
-	----------
-
 	Setup projects and service accounts with terraform
 
 	----------
 
+	Write documentation
 
-
-
+	----------
 
 
 
@@ -88,6 +92,10 @@ TODO
 
 
 Small things:
+
+	----------
+
+	Fallback to direct logs need to directly correlate to counters in graphs
 
 	----------
 
