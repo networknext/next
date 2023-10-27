@@ -1608,7 +1608,7 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size                = 1
+  target_size                = 3
   initial_delay              = 90
 
   depends_on = [
