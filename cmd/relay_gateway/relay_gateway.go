@@ -321,8 +321,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}
 
 		for i := range addresses {
-			go func() {
-				url := fmt.Sprintf("http://%s/relay_update", addresses[i])
+			go func(index int) {
+				url := fmt.Sprintf("http://%s/relay_update", addresses[index])
 				forward_request, err := http.NewRequest("POST", url, buffer)
 				if err == nil {
 					httpClient := http.Client{
@@ -334,7 +334,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 						response.Body.Close()
 					}
 				}
-			}()
+			}(i)
 		}
 	}
 }
