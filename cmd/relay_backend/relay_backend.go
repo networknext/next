@@ -234,10 +234,16 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 		}
 		defer r.Body.Close()
 
+		// discard if the body is too small to possibly be valid
+
+		if len(body) < 64 {
+			core.Error("relay update is too small to be valid")
+			return
+		}
+
 		// read the relay update request packet
 
 		var relayUpdateRequest packets.RelayUpdateRequestPacket
-
 		err = relayUpdateRequest.Read(body)
 		if err != nil {
 			core.Error("could not read relay update: %v", err)
