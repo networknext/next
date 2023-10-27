@@ -36,9 +36,11 @@ DONE
 
 	Verified 1000 relays working in staging still.
 
+	Fix so we are accelerating only 10% of sessions again. By default, we are hitting 60% which means we have probably got routes through near relays to dest that beat direct?
+
 TODO	
 
-	Fix so we are accelerating only 10% of sessions again. By default, we are hitting 60% which means we have probably got routes through near relays to dest that beat direct?
+	Relay backend seems to be crashing out in staging. Find out why.
 
 	----------
 
@@ -47,6 +49,10 @@ TODO
 	----------
 
 	Fix relay backend so it's completely steady on deploy.
+
+	----------
+
+	Make sure the system can run with no relays (eg. analysis only initially...)
 
 	----------
 
