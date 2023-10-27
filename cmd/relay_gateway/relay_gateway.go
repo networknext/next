@@ -469,7 +469,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 
 				fmt.Printf("==========================================\n")
 				for i := range instanceIds {
-					fmt.Printf("%s -> %s\n", instanceIds[i], addresses[i])
+					fmt.Printf("%s -> '%s'\n", instanceIds[i], addresses[i])
 				}
 				fmt.Printf("==========================================\n")
 
