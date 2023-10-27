@@ -237,10 +237,9 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// relay update accepted
 
-		// todo: disable spam for now
-		// relayName := relay.Name
+		relayName := relay.Name
 
-//		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
+		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
@@ -467,6 +466,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 					addresses[i] = address
 				}
 
+				// todo
 				fmt.Printf("==========================================\n")
 				for i := range instanceIds {
 					fmt.Printf("%s -> '%s'\n", instanceIds[i], addresses[i])
@@ -491,6 +491,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 					}
 				}
 
+				// todo
 				fmt.Printf("==========================================\n")
 				for i := range verified {
 					fmt.Printf("%s\n", verified[i])

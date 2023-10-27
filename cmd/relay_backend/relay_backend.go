@@ -453,8 +453,6 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 }
 
 func healthFanoutHandler(w http.ResponseWriter, r *http.Request) {
-	// todo
-	core.Log("health_fanout")
 	w.WriteHeader(http.StatusOK)
 }
 
