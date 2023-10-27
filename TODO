@@ -38,8 +38,6 @@ DONE
 
 	Fix so we are accelerating only 10% of sessions again. By default, we are hitting 60% which means we have probably got routes through near relays to dest that beat direct?
 
-TODO	
-
 	Relay backend seems to be crashing out in staging. Find out why.
 
 	It seems to be this:
@@ -49,6 +47,14 @@ TODO
 	I think it's the relay gateway being overloaded and sending dummy 
 
 	Hah. It's totally the HTTP forwarding getting overloaded over time and not reusing connections. Classic golang problem
+
+	Fixed. 
+
+TODO	
+
+	It's stable for a short while now, then it seems the relay backend falls over. Debug what's going on here. Logs should show what's happening.
+
+	The relay backend is fine. The relay gateway is crashing...
 
 	----------
 

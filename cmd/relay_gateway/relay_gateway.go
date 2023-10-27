@@ -326,7 +326,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				forward_request, err := http.NewRequest("POST", url, buffer)
 				if err == nil {
 					response, err := http.DefaultClient.Do(forward_request)
-					if err != nil {
+					if err != nil && response != nil {
 						io.Copy(ioutil.Discard, response.Body)
 						response.Body.Close()
 					}
