@@ -76,7 +76,17 @@ DONE
 
 	Setup prod environment
 
+	Fix fallback to directs on server backend.
+
 TODO
+
+	Optimize for cost
+
+	-----------
+
+	Fix leader election for route matrix
+
+	-----------
 
 	Load test to 1K relays, 1M servers and 10M sessions.
 
