@@ -2,7 +2,7 @@
 Description=Network Next App Server
 
 [Service]
-ExecStart=/app/app
+ExecStart=/app/app -race
 EnvironmentFile=/app/app.env
 Restart=always
 RestartSec=30
