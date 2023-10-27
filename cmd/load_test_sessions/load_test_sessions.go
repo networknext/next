@@ -250,12 +250,10 @@ func RunSession(index int) {
 							}
 						}
 
-						if sliceNumber >= 1 {
-							if (sessionId % 10) == 0 {
-								packet.DirectRTT = float32(sessionId%400) + 100 // send approx 10% of sessions over netowrk next
-							} else {
-								packet.DirectRTT = 1
-							}
+						if (sessionId % 10) == 0 {
+							packet.DirectRTT = float32(sessionId%400) + 100 // send approx 10% of sessions over network next
+						} else {
+							packet.DirectRTT = 1
 						}
 
 						if next {
