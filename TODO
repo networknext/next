@@ -42,6 +42,41 @@ TODO
 
 	Relay backend seems to be crashing out in staging. Find out why.
 
+	It seems to be this:
+
+		 runtime error: index out of range [0] with length 0
+
+	I think it's the relay gateway being overloaded and sending dummy 
+
+	Hah. It's totally the HTTP forwarding getting overloaded over time and not reusing connections. Classic golang problem
+
+	----------
+
+	I think the time series is getting overloaded?
+
+		Oct 27 14:57:33 relay-backend-cj2x app[2337]: error: failed to add time series: read tcp 10.0.0.44:39946->10.0.0.5:6379: i/o timeout
+		Oct 27 14:57:47 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:36474->10.0.0.5:6379: i/o timeout
+		Oct 27 14:58:00 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:41364->10.0.0.5:6379: i/o timeout
+		Oct 27 14:58:13 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:42412->10.0.0.5:6379: i/o timeout
+		Oct 27 14:58:27 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:35690->10.0.0.5:6379: i/o timeout
+		Oct 27 14:58:40 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:48284->10.0.0.5:6379: i/o timeout
+		Oct 27 14:58:53 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:46088->10.0.0.5:6379: i/o timeout
+		Oct 27 14:59:07 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:47074->10.0.0.5:6379: i/o timeout
+		Oct 27 14:59:20 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:33562->10.0.0.5:6379: i/o timeout
+		Oct 27 14:59:33 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:46556->10.0.0.5:6379: i/o timeout
+		Oct 27 14:59:47 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:48344->10.0.0.5:6379: i/o timeout
+		Oct 27 15:00:00 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:51408->10.0.0.5:6379: i/o timeout
+		Oct 27 15:00:14 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:41374->10.0.0.5:6379: i/o timeout
+		Oct 27 15:00:27 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:55904->10.0.0.5:6379: i/o timeout
+		Oct 27 15:00:40 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:43506->10.0.0.5:6379: i/o timeout
+		Oct 27 15:00:54 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:40454->10.0.0.5:6379: i/o timeout
+		Oct 27 15:01:07 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:40864->10.0.0.5:6379: i/o timeout
+		Oct 27 15:01:21 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:46288->10.0.0.5:6379: i/o timeout
+		Oct 27 15:01:34 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:45978->10.0.0.5:6379: i/o timeout
+		Oct 27 15:01:48 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:37102->10.0.0.5:6379: i/o timeout
+		^[[1;5FOct 27 15:02:01 relay-backend-cj2x app[2337]: error: failed to add time series: write tcp 10.0.0.44:56352->10.0.0.5:6379: i/o timeout
+
+
 	----------
 
 	Scale up to 1000 relays, 1M servers and 10M sessions.

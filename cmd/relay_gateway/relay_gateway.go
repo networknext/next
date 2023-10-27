@@ -12,6 +12,7 @@ import (
 	"bufio"
 	"os/exec"
 	"strings"
+	"io"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -309,8 +310,6 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// forward the decrypted relay update to the relay backends
 
-		buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
-
 		addresses := []string{}
 		if relayBackendAddress != "" {
 			addresses = []string{relayBackendAddress}
@@ -323,14 +322,12 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		for i := range addresses {
 			go func(index int) {
 				url := fmt.Sprintf("http://%s/relay_update", addresses[index])
+				buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
 				forward_request, err := http.NewRequest("POST", url, buffer)
 				if err == nil {
-					httpClient := http.Client{
-					    Timeout: time.Second,
-					}
-					response, _ := httpClient.Do(forward_request)
-					if response != nil {
-						_,_  = ioutil.ReadAll(response.Body)
+					response, err := http.DefaultClient.Do(forward_request)
+					if err != nil {
+						io.Copy(ioutil.Discard, response.Body)
 						response.Body.Close()
 					}
 				}
