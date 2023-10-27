@@ -22,8 +22,6 @@ DONE
 
 	Watch the relay_backend instance via gcloud and get list of VM ids in that group once per-second
 
-TODO	
-
 	Get the VM internal IP address in || for all instance ids.
 
 	Run a health check in || on /health_fanout for each VM in the list, no matter the status.
@@ -32,51 +30,15 @@ TODO
 
 	Integrate and test under dev
 
+	It works!
 
+TODO	
 
+	Test in staging.
 
+	----------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Scale up to 1000 relays, 1M servers and 10M sessions.
 
 	----------
 
@@ -89,14 +51,6 @@ TODO
 	----------
 
 	Integrate map with portal
-
-	----------
-
-	Relays need to be setup to use cloud storage for tf state
-
-	----------
-
-	For providers like akamai, vultr, amazon, we need to prefix all resource names with env (because their aren't separate projects...)
 
 	----------
 
@@ -135,9 +89,17 @@ TODO
 
 Small things:
 
+	----------
+
+	Relays need to be setup to use cloud storage for tf state
+
+	----------
+
+	For providers like akamai, vultr, amazon, we need to prefix all resource names with env (because their aren't separate projects...)
+
 	--------------
 
-	Clean up old ip2location database files
+	Clean up old ip2location database files in server backend
 
 	--------------
 
