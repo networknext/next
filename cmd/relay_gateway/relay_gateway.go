@@ -471,7 +471,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 				waitGroup.Add(len(addresses))
 				for i := range addresses {
 					go func(index int) {
-						ok[i], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 1", addresses[index]))
+						ok[index], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 1", addresses[index]))
 						waitGroup.Done()
 					}(i)
 				}
