@@ -32,11 +32,9 @@ DONE
 
 	It works!
 
-TODO	
-
 	Test in dev with multiple relay backend and relay gateways
 
-	----------
+TODO	
 
 	Scale up to 1000 relays, 1M servers and 10M sessions.
 
@@ -46,15 +44,15 @@ TODO
 
 	----------
 
-	Integrate map with portal
-
-	----------
-
 	Ingest into bigquery with google pubsub
 
 	"Better yet, you no longer need to pay for data ingestion into BigQuery when using this new direct method. You only pay for the Pub/Sub you use. Ingestion from Pub/Sub’s BigQuery subscription into BigQuery costs $50/TiB based on read (subscribe throughput) from the subscription. This is a simpler and cheaper billing experience compared to the alternative path via Dataflow pipeline where you would be paying for the Pub/Sub read, Dataflow job, and BigQuery data ingestion. See the pricing page for details."
 
 	https://cloud.google.com/blog/products/data-analytics/pub-sub-launches-direct-path-to-bigquery-for-streaming-analytics
+
+	----------
+
+	Integrate map with portal
 
 	----------
 
