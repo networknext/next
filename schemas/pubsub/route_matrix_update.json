@@ -1,0 +1,33 @@
+{
+  "type": "record",
+  "name": "route_matrix_update",
+  "namespace": "com.networknext.avro",
+  "fields" : [
+    {"name": "timestamp",                   "type": "string"},
+    {"name": "cost_matrix_size",            "type": "int"},
+    {"name": "route_matrix_size",           "type": "int"},
+    {"name": "optimize_time",               "type": "int"},
+    {"name": "num_relays",                  "type": "int"},
+    {"name": "num_dest_relays",             "type": "int"},
+    {"name": "num_full_relays",             "type": "int"},
+    {"name": "num_datacenters",             "type": "int"},
+    {"name": "total_routes",                "type": "int"},
+    {"name": "average_num_routes",          "type": "float"},
+    {"name": "average_route_length",        "type": "float"},
+    {"name": "no_route_percent",            "type": "float"},
+    {"name": "one_route_percent",           "type": "float"},
+    {"name": "no_direct_route_percent",     "type": "float"},
+    {"name": "rtt_bucket_no_improvement",   "type": "float"},
+    {"name": "rtt_bucket_0_5ms",            "type": "float"},
+    {"name": "rtt_bucket_5_10ms",           "type": "float"},
+    {"name": "rtt_bucket_10_15ms",          "type": "float"},
+    {"name": "rtt_bucket_15_20ms",          "type": "float"},
+    {"name": "rtt_bucket_20_25ms",          "type": "float"},
+    {"name": "rtt_bucket_25_30ms",          "type": "float"},
+    {"name": "rtt_bucket_30_35ms",          "type": "float"},
+    {"name": "rtt_bucket_35_40ms",          "type": "float"},
+    {"name": "rtt_bucket_40_45ms",          "type": "float"},
+    {"name": "rtt_bucket_45_50ms",          "type": "float"},
+    {"name": "rtt_bucket_50ms_plus",        "type": "float"}
+  ]
+}

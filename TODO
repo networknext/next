@@ -8,9 +8,75 @@ DONE
 
 	https://cloud.google.com/blog/products/data-analytics/pub-sub-launches-direct-path-to-bigquery-for-streaming-analytics
 
+	Investigate apache avro vs. protobufs. Both options are available for google pubsub.
+
+	Going with avro.
+
 TODO	
 
-	Investigate apache avro vs. protobufs. Both options are available for google pubsub.
+	Define avro message schemas, copying from bigquery json and translating.
+
+	Work out how to define message schema in pubsub with avro files in tf.
+
+	Implement golang side, structs with avro tags and encoding methods.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	----------
 

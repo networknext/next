@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "near_relay_ping",
+  "namespace": "com.networknext.avro",
+  "fields" : [
+    {"name": "timestamp",              "type": "string"},
+    {"name": "buyer_id",               "type": "int"},
+    {"name": "session_id",             "type": "int"},
+    {"name": "user_hash",              "type": "int"},
+    {"name": "latitude",               "type": "int"},
+    {"name": "longitude",              "type": "int"},
+    {"name": "client_address",         "type": "string"},
+    {"name": "connection_type",        "type": "int"},
+    {"name": "platform_type",          "type": "int"},
+    {"name": "near_relay_id",          "type": "int"},
+    {"name": "near_relay_rtt",         "type": "int"},
+    {"name": "near_relay_jitter",      "type": "int"},
+    {"name": "near_relay_packet_loss", "type": "float"}
+  ]
+}
