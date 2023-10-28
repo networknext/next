@@ -337,24 +337,24 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 			// todo: avro
 			/*
-			rtt := relayUpdateRequest.SampleRTT[i]
-			jitter := relayUpdateRequest.SampleJitter[i]
-			pl := float32(relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0)
+				rtt := relayUpdateRequest.SampleRTT[i]
+				jitter := relayUpdateRequest.SampleJitter[i]
+				pl := float32(relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0)
 
-			if rtt < 255 && int32(jitter) <= maxJitter && pl <= maxPacketLoss {
-				numRoutable++
-			}
+				if rtt < 255 && int32(jitter) <= maxJitter && pl <= maxPacketLoss {
+					numRoutable++
+				}
 
-			sampleRelayId := relayUpdateRequest.SampleRelayId[i]
+				sampleRelayId := relayUpdateRequest.SampleRelayId[i]
 
-			pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
-				Timestamp:          uint64(time.Now().Unix()),
-				SourceRelayId:      relayId,
-				DestinationRelayId: sampleRelayId,
-				RTT:                rtt,
-				Jitter:             jitter,
-				PacketLoss:         pl,
-			}
+				pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
+					Timestamp:          uint64(time.Now().Unix()),
+					SourceRelayId:      relayId,
+					DestinationRelayId: sampleRelayId,
+					RTT:                rtt,
+					Jitter:             jitter,
+					PacketLoss:         pl,
+				}
 			*/
 		}
 
@@ -485,15 +485,15 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 		// todo: avro
 		/*
-		if service.IsLeader() {
-			for i := 0; i < len(pingMessages); i++ {
-				messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
-				messageData := pingMessages[i].Write(messageBuffer[:])
-				if enableGooglePubsub {
-					analyticsRelayToRelayPingProducer.MessageChannel <- messageData
+			if service.IsLeader() {
+				for i := 0; i < len(pingMessages); i++ {
+					messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
+					messageData := pingMessages[i].Write(messageBuffer[:])
+					if enableGooglePubsub {
+						analyticsRelayToRelayPingProducer.MessageChannel <- messageData
+					}
 				}
 			}
-		}
 		*/
 	}
 }
