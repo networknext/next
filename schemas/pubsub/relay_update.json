@@ -4,23 +4,22 @@
   "namespace": "com.networknext.avro",
   "fields" : [
     {"name": "timestamp",                    "type": "string"},
-    {"name": "relay_id",                     "type": "int"},
-    {"name": "session_count",                "type": "int"},
+    {"name": "relay_id",                     "type": "long"},
     {"name": "num_sessions",                 "type": "int"},
     {"name": "max_sessions",                 "type": "int"},
-    {"name": "envelope_bandwidth_up_kbps",   "type": "int"},
-    {"name": "envelope_bandwidth_down_kbps", "type": "int"},
+    {"name": "envelope_bandwidth_up_kbps",   "type": "long"},
+    {"name": "envelope_bandwidth_down_kbps", "type": "long"},
     {"name": "packets_sent_per_second",      "type": "float"},
     {"name": "packets_received_per_second",  "type": "float"},
     {"name": "bandwidth_sent_kbps",          "type": "float"},
     {"name": "bandwidth_received_kbps",      "type": "float"},
     {"name": "near_pings_per_second",        "type": "float"},
     {"name": "relay_pings_per_second",       "type": "float"},
-    {"name": "relay_flags",                  "type": "int"},
+    {"name": "relay_flags",                  "type": "long"},
     {"name": "num_routable",                 "type": "int"},
     {"name": "num_unroutable",               "type": "int"},
-    {"name": "start_time",                   "type": "int"},
-    {"name": "current_time",                 "type": "int"},
-    {"name": "relay_counters",               "type": "array", "items": "int"}
+    {"name": "start_time",                   "type": "long"},
+    {"name": "current_time",                 "type": "long"},
+    {"name": "relay_counters",               "type": {"type": "array", "items": "int"}}
   ]
 }

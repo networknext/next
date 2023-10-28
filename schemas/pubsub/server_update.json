@@ -7,8 +7,8 @@
     {"name": "sdk_version_major", "type": "int"},
     {"name": "sdk_version_minor", "type": "int"},
     {"name": "sdk_version_patch", "type": "int"},
-    {"name": "buyer_id",          "type": "int"},
-    {"name": "datacenter_id",     "type": "int"},
+    {"name": "buyer_id",          "type": "long"},
+    {"name": "datacenter_id",     "type": "long"},
     {"name": "num_sessions",      "type": "int"},
     {"name": "server_address",    "type": "string"}
   ]
