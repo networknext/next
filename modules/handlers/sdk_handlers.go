@@ -314,11 +314,12 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 
 	defer func() {
 
+		// todo: avro
+		/*
 		if handler.AnalyticsServerUpdateMessageChannel != nil {
 
 			message := messages.AnalyticsServerUpdateMessage{}
 
-			message.Version = messages.AnalyticsServerUpdateMessageVersion_Write
 			message.Timestamp = uint64(time.Now().Unix())
 			message.SDKVersion_Major = byte(requestPacket.Version.Major)
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
@@ -332,6 +333,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 
 			handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage] = true
 		}
+		*/
 	}()
 
 	defer func() {

@@ -129,21 +129,6 @@ func GenerateRandomAnalyticsServerInitMessage() messages.AnalyticsServerInitMess
 	return message
 }
 
-func GenerateRandomAnalyticsServerUpdateMessage() messages.AnalyticsServerUpdateMessage {
-
-	message := messages.AnalyticsServerUpdateMessage{
-		Version:          byte(common.RandomInt(messages.AnalyticsServerUpdateMessageVersion_Min, messages.AnalyticsServerUpdateMessageVersion_Max)),
-		SDKVersion_Major: 5,
-		SDKVersion_Minor: 0,
-		SDKVersion_Patch: 0,
-		BuyerId:          rand.Uint64(),
-		DatacenterId:     rand.Uint64(),
-		ServerAddress:    common.RandomAddress(),
-	}
-
-	return message
-}
-
 func GenerateRandomPortalServerUpdateMessage() messages.PortalServerUpdateMessage {
 
 	message := messages.PortalServerUpdateMessage{
