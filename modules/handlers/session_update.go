@@ -1151,7 +1151,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		return
 	}
 
-	if state.Request.ClientPingTimedOut {
+	if state.Request.ClientPingTimedOut && !state.FallbackToDirect {
 		return
 	}
 

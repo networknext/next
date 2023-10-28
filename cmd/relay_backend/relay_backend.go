@@ -72,6 +72,8 @@ var countersPublisher *common.RedisCountersPublisher
 var analyticsRelayUpdateProducer *common.GooglePubsubProducer
 var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
 
+var postRelayUpdateRequestChannel chan *packets.RelayUpdateRequestPacket
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -182,6 +184,8 @@ func main() {
 		}
 	}
 
+	postRelayUpdateRequestChannel = make(chan *packets.RelayUpdateRequestPacket, 1024*1024) // todo: make configurable
+
 	service.LoadDatabase()
 
 	initCounterNames()
@@ -211,6 +215,8 @@ func main() {
 
 	UpdateInitialDelayState(service)
 
+	PostRelayUpdateRequest(service)
+
 	service.WaitForShutdown()
 }
 
@@ -234,23 +240,80 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 		}
 		defer r.Body.Close()
 
+		// discard if the body is too small to possibly be valid
+
+		if len(body) < 64 {
+			core.Error("relay update is too small to be valid")
+			return
+		}
+
 		// read the relay update request packet
 
 		var relayUpdateRequest packets.RelayUpdateRequestPacket
-
 		err = relayUpdateRequest.Read(body)
 		if err != nil {
 			core.Error("could not read relay update: %v", err)
 			return
 		}
 
-		// check if we are overloaded
+		go func() {
 
-		currentTime := uint64(time.Now().Unix())
+			// check if we are overloaded
 
-		if relayUpdateRequest.CurrentTime < currentTime - 5 {
-			core.Error("relay update is old. relay gateway -> relay backend is overloaded!")
-		}
+			currentTime := uint64(time.Now().Unix())
+
+			if relayUpdateRequest.CurrentTime < currentTime - 5 {
+				core.Error("relay update is old. relay gateway -> relay backend is overloaded!")
+			}
+
+			// look up the relay in the database
+
+			relayData := service.RelayData()
+
+			relayId := common.RelayId(relayUpdateRequest.Address.String())
+			relayIndex, ok := relayData.RelayIdToIndex[relayId]
+			if !ok {
+				core.Error("unknown relay id %016x", relayId)
+				return
+			}
+
+			relayName := relayData.RelayNames[relayIndex]
+			relayAddress := relayData.RelayAddresses[relayIndex]
+
+			// process samples in the relay update (this drives the cost matrix...)
+
+			core.Debug("[%s] received update for %s [%016x]", relayAddress.String(), relayName, relayId)
+
+			numSamples := int(relayUpdateRequest.NumSamples)
+
+			relayManager.ProcessRelayUpdate(int64(currentTime),
+				relayId,
+				relayName,
+				relayUpdateRequest.Address,
+				int(relayUpdateRequest.SessionCount),
+				relayUpdateRequest.RelayVersion,
+				relayUpdateRequest.RelayFlags,
+				numSamples,
+				relayUpdateRequest.SampleRelayId[:numSamples],
+				relayUpdateRequest.SampleRTT[:numSamples],
+				relayUpdateRequest.SampleJitter[:numSamples],
+				relayUpdateRequest.SamplePacketLoss[:numSamples],
+				relayUpdateRequest.RelayCounters[:],
+			)
+
+			postRelayUpdateRequestChannel <- &relayUpdateRequest
+		}()
+	}
+}
+
+func PostRelayUpdateRequest(service *common.Service) {
+
+	for {
+		relayUpdateRequest := <- postRelayUpdateRequestChannel
+
+		// build relay to relay ping messages for analytics
+
+		numRoutable := 0
 
 		// look up the relay in the database
 
@@ -259,37 +322,13 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 		relayId := common.RelayId(relayUpdateRequest.Address.String())
 		relayIndex, ok := relayData.RelayIdToIndex[relayId]
 		if !ok {
-			core.Error("unknown relay id %016x", relayId)
-			return
+			continue
 		}
 
 		relayName := relayData.RelayNames[relayIndex]
 		relayAddress := relayData.RelayAddresses[relayIndex]
 
-		// process samples in the relay update (this drives the cost matrix...)
-
-		core.Debug("[%s] received update for %s [%016x]", relayAddress.String(), relayName, relayId)
-
 		numSamples := int(relayUpdateRequest.NumSamples)
-
-		relayManager.ProcessRelayUpdate(int64(currentTime),
-			relayId,
-			relayName,
-			relayUpdateRequest.Address,
-			int(relayUpdateRequest.SessionCount),
-			relayUpdateRequest.RelayVersion,
-			relayUpdateRequest.RelayFlags,
-			numSamples,
-			relayUpdateRequest.SampleRelayId[:numSamples],
-			relayUpdateRequest.SampleRTT[:numSamples],
-			relayUpdateRequest.SampleJitter[:numSamples],
-			relayUpdateRequest.SamplePacketLoss[:numSamples],
-			relayUpdateRequest.RelayCounters[:],
-		)
-
-		// build relay to relay ping messages for analytics
-
-		numRoutable := 0
 
 		pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
 
@@ -361,6 +400,10 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 
 				if enableRedisTimeSeries {
 
+					// send counters to redis
+
+					countersPublisher.MessageChannel <- "relay_update"
+
 					// send time series to redis
 
 					timeSeriesMessage := common.RedisTimeSeriesMessage{}
@@ -396,10 +439,6 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 					}
 
 					timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
-
-					// send counters to redis
-
-					countersPublisher.MessageChannel <- "relay_update"
 				}
 			}
 		}

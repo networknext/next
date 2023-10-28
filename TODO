@@ -1,52 +1,35 @@
 DONE
 
-	Redo relay_gateway -> relay_backend comms.
-
-	Extend relay_backend to accept relay updates on a http handler
-
-	Drop relay backend to one instance, temporarily.
-
-	Pass the relay update from the relay gateway to the relay backend via http.
-
-	Verify that we can now handle 1000 relays.
-
-	It works!
-
-	Uncomment code for the rest of the relay update processing
-
-	Verify active relays in dev
-
-	Check if running under google cloud.
-
-	If running under google cloud...
-
-	Watch the relay_backend instance via gcloud and get list of VM ids in that group once per-second
-
-	Get the VM internal IP address in || for all instance ids.
-
-	Run a health check in || on /health_fanout for each VM in the list, no matter the status.
-
-	If the health check passes, add the IP to the array of relay_backend_addresses under lock.
-
-	Integrate and test under dev
-
-	It works!
-
 TODO	
 
-	Test in dev with multiple relay backend and relay gateways
+	Create a channel specifically for fallback for fallback to direct
 
 	----------
 
-	Scale up to 1000 relays, 1M servers and 10M sessions.
+	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 102ms
+	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 103ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 101ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 102ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 102ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 104ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
+	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 106ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 116ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 101ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 145ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 160ms
+	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 168ms
+	Oct 27 18:40:13 server-backend-b4fx app[2149]: warning: update route matrix can't keep up!
+	Oct 27 18:40:13 server-backend-b4fx app[2149]: warning: long session update: 117ms
+	Oct 27 18:45:22 server-backend-b4fx app[2149]: error: failed to send message batch: context deadline exceeded
+
+	Server backend seems to be getting some long session updates. Why?
 
 	----------
 
 	Fix relay backend so it's completely steady on deploy.
-
-	----------
-
-	Integrate map with portal
 
 	----------
 
@@ -55,6 +38,10 @@ TODO
 	"Better yet, you no longer need to pay for data ingestion into BigQuery when using this new direct method. You only pay for the Pub/Sub you use. Ingestion from Pub/Sub’s BigQuery subscription into BigQuery costs $50/TiB based on read (subscribe throughput) from the subscription. This is a simpler and cheaper billing experience compared to the alternative path via Dataflow pipeline where you would be paying for the Pub/Sub read, Dataflow job, and BigQuery data ingestion. See the pricing page for details."
 
 	https://cloud.google.com/blog/products/data-analytics/pub-sub-launches-direct-path-to-bigquery-for-streaming-analytics
+
+	----------
+
+	Integrate map with portal
 
 	----------
 
@@ -95,7 +82,17 @@ Small things:
 
 	----------
 
-	Fallback to direct logs need to directly correlate to counters in graphs
+	"Active relays" seems to be cosmetically messed up during load test, it shows only 100 active relays in the chart, but there are 1000 active relays for sure.
+
+	----------
+
+	Calling sessions "next" is fine for code, but in the portal we should refer to it as accelerated.
+
+	That way if somebody rebrands the portal internally, stuff will still make sense vs. "next sessions" (what's that?)
+
+	----------
+
+	Make sure the system can run with no relays in dev and production (eg. analysis only initially...)
 
 	----------
 

@@ -67,6 +67,8 @@ var countersPublisher *common.RedisCountersPublisher
 
 var startTime int64
 
+var initialDelay int
+
 func main() {
 
 	startTime = time.Now().Unix()
@@ -95,6 +97,7 @@ func main() {
 	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
 	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+	initialDelay = envvar.GetInt("INITIAL_DELAY", 90)
 
 	if enableRedisTimeSeries {
 		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
@@ -354,8 +357,7 @@ func isShuttingDown() bool {
 
 func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	// todo: parameterize as INITIAL_DELAY
-	return time.Now().Unix() > startTime + 90 && routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
+	return time.Now().Unix() > startTime + int64(initialDelay) && routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
 }
 
 func machineIsHealthy() bool {

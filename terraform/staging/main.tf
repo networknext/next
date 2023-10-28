@@ -1543,7 +1543,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-highcpu-4"
+  machine_type             = "c3-highcpu-8"
   project                  = var.google_project
   region                   = var.google_region
   zones                    = var.google_zones
@@ -1609,7 +1609,7 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = var.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size                = 1
+  target_size                = 3
   initial_delay              = 90
 
   depends_on = [
@@ -1816,7 +1816,7 @@ module "server_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = 3
   max_size                   = 64
-  target_cpu                 = 30
+  target_cpu                 = 25
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
