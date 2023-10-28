@@ -1,0 +1,158 @@
+[
+  {
+    "name": "timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "The timestamp when the route matrix update occurred"
+  },
+  {
+    "name": "cost_matrix_size",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The size of the cost matrix in bytes"
+  },
+  {
+    "name": "route_matrix_size",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The size of the route matrix in bytes"
+  },
+  {
+    "name": "optimize_time",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Time it took produce this route matrix from the cost matrix (milliseconds)"
+  },
+  {
+    "name": "num_relays",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of relays in the route matrix"
+  },
+  {
+    "name": "num_dest_relays",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of destination relays in the route matrix"
+  },
+  {
+    "name": "num_full_relays",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of full relays in the route matrix"
+  },
+  {
+    "name": "num_datacenters",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of datacenters in the route matrix"
+  },
+  {
+    "name": "total_routes",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of routes in the route matrix"
+  },
+  {
+    "name": "average_num_routes",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The average number of routes between any two relays"
+  },
+  {
+    "name": "average_route_length",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The average number of relays per-route"
+  },
+  {
+    "name": "no_route_percent",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs that have no route between them"
+  },
+  {
+    "name": "one_route_percent",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with only one route between them"
+  },
+  {
+    "name": "no_direct_route_percent",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with no direct route between them"
+  },
+  {
+    "name": "rtt_bucket_no_improvement",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with no improvement"
+  },
+  {
+    "name": "rtt_bucket_0_5ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 0-5ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_5_10ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 5-10ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_10_15ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 10-15ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_15_20ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 15-20ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_20_25ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 20-25ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_25_30ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 25-30ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_30_35ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 30-35ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_35_40ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 35-40ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_40_45ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 40-45ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_45_50ms",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 45-50ms reduction in latency"
+  },
+  {
+    "name": "rtt_bucket_50ms_plus",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The percent of relay pairs with 50ms+ reduction in latency"
+  }
+]

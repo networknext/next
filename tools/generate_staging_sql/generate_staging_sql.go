@@ -15,7 +15,7 @@ func main() {
 
 	fmt.Printf("\nGenerating staging.sql\n")
 
-	file, err := os.Create("sql/staging.sql")
+	file, err := os.Create("schemas/sql/staging.sql")
 	if err != nil {
 		panic(err)
 	}

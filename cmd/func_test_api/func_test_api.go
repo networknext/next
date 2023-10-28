@@ -46,8 +46,8 @@ func bash(command string) {
 }
 
 func clearDatabase() {
-	bash("psql -U developer -h localhost postgres -f ../sql/destroy.sql")
-	bash("psql -U developer -h localhost postgres -f ../sql/create.sql")
+	bash("psql -U developer -h localhost postgres -f ../schemas/sql/destroy.sql")
+	bash("psql -U developer -h localhost postgres -f ../schemas/sql/create.sql")
 }
 
 func api() (*exec.Cmd, *bytes.Buffer) {

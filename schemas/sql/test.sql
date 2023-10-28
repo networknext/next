@@ -38,24 +38,7 @@ INSERT INTO sellers(seller_name, seller_code) VALUES('Tencent', 'tencent');
 INSERT INTO sellers(seller_name, seller_code) VALUES('VULTR', 'vultr');
 INSERT INTO sellers(seller_name, seller_code) VALUES('Yandex', 'yandex');
 
-\i './sql/sellers/amazon.sql'
-\i './sql/sellers/akamai.sql'
-\i './sql/sellers/alibaba.sql'
-\i './sql/sellers/azure.sql'
-\i './sql/sellers/digitalocean.sql'
-\i './sql/sellers/equinix.sql'
-\i './sql/sellers/gcore.sql'
-\i './sql/sellers/google.sql'
-\i './sql/sellers/hivelocity.sql'
-\i './sql/sellers/huawei.sql'
-\i './sql/sellers/ibm.sql'
-\i './sql/sellers/latitude.sql'
-\i './sql/sellers/oracle.sql'
-\i './sql/sellers/ovh.sql'
-\i './sql/sellers/phoenixnap.sql'
-\i './sql/sellers/tencent.sql'
-\i './sql/sellers/vultr.sql'
-\i './sql/sellers/yandex.sql'
+-- todo: bring in some datacenter definitions for google (see below...)
 
 -- enable datacenters for buyers
 
