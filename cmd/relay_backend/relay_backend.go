@@ -184,7 +184,7 @@ func main() {
 		}
 	}
 
-	postRelayUpdateRequestChannel = make(chan *packets.RelayUpdateRequestPacket, 1024*1024) // todo: make configurable
+	postRelayUpdateRequestChannel = make(chan *packets.RelayUpdateRequestPacket, 1024*1024)
 
 	service.LoadDatabase()
 

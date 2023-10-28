@@ -1,37 +1,8 @@
 DONE
 
-TODO	
-
 	Create a channel specifically for fallback for fallback to direct
 
-	----------
-
-	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 102ms
-	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 103ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 101ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 102ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 102ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 104ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 105ms
-	Oct 27 18:40:06 server-backend-b4fx app[2149]: warning: long session update: 106ms
-	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 116ms
-	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 101ms
-	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 145ms
-	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 160ms
-	Oct 27 18:40:07 server-backend-b4fx app[2149]: warning: long session update: 168ms
-	Oct 27 18:40:13 server-backend-b4fx app[2149]: warning: update route matrix can't keep up!
-	Oct 27 18:40:13 server-backend-b4fx app[2149]: warning: long session update: 117ms
-	Oct 27 18:45:22 server-backend-b4fx app[2149]: error: failed to send message batch: context deadline exceeded
-
-	Server backend seems to be getting some long session updates. Why?
-
-	----------
-
-	Fix relay backend so it's completely steady on deploy.
-
-	----------
+TODO	
 
 	Ingest into bigquery with google pubsub
 
