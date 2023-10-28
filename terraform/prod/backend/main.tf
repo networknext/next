@@ -404,11 +404,10 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 locals {
   
   bigquery_tables = {
-
-  bigquery_tables = {
     "session_update"      = file("../../../schemas/bigquery/session_update.json")
     "session_summary"     = file("../../../schemas/bigquery/session_summary.json")
     "server_update"       = file("../../../schemas/bigquery/server_update.json")
+    "server_init"         = file("../../../schemas/bigquery/server_init.json")
     "relay_update"        = file("../../../schemas/bigquery/relay_update.json")
     "route_matrix_update" = file("../../../schemas/bigquery/route_matrix_update.json")
     "relay_to_relay_ping" = file("../../../schemas/bigquery/relay_to_relay_ping.json")
