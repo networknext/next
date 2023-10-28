@@ -213,9 +213,7 @@ func main() {
 	// todo: avro
 	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
 	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
-	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel)
-
-	// todo: pending avro
+	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel)
 	//processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
 	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
 
@@ -675,6 +673,8 @@ func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel 
 
 // ------------------------------------------------------------------------------------
 
+// todo: avro
+/*
 func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inputChannel chan T) {
 
 	var googlePubsubProducer *common.GooglePubsubProducer
@@ -715,5 +715,6 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 		}
 	}()
 }
+*/
 
 // ------------------------------------------------------------------------------------

@@ -1140,8 +1140,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		// todo: switch to avro
 		//sendAnalyticsSessionUpdateMessage(state)
 		// sendAnalyticsSessionSummaryMessage(state)
-
-		sendAnalyticsNearRelayPingMessages(state)
+		// sendAnalyticsNearRelayPingMessages(state)
 	}
 }
 
@@ -1254,6 +1253,8 @@ func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 	}
 }
 
+// todo: Avro
+/*
 func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
@@ -1264,7 +1265,6 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 		message := messages.AnalyticsNearRelayPingMessage{}
 
-		message.Version = messages.AnalyticsNearRelayPingMessageVersion_Write
 		message.Timestamp = uint64(time.Now().Unix())
 		message.BuyerId = state.Request.BuyerId
 		message.SessionId = state.Output.SessionId
@@ -1286,6 +1286,7 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 	}
 }
+*/
 
 // todo: switch to avro
 /*

@@ -330,10 +330,13 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 		numSamples := int(relayUpdateRequest.NumSamples)
 
-		pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
+		// todo: avro
+		// pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
 
 		for i := 0; i < numSamples; i++ {
 
+			// todo: avro
+			/*
 			rtt := relayUpdateRequest.SampleRTT[i]
 			jitter := relayUpdateRequest.SampleJitter[i]
 			pl := float32(relayUpdateRequest.SamplePacketLoss[i] / 65535.0 * 100.0)
@@ -345,7 +348,6 @@ func PostRelayUpdateRequest(service *common.Service) {
 			sampleRelayId := relayUpdateRequest.SampleRelayId[i]
 
 			pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
-				Version:            messages.AnalyticsRelayToRelayPingMessageVersion_Write,
 				Timestamp:          uint64(time.Now().Unix()),
 				SourceRelayId:      relayId,
 				DestinationRelayId: sampleRelayId,
@@ -353,6 +355,7 @@ func PostRelayUpdateRequest(service *common.Service) {
 				Jitter:             jitter,
 				PacketLoss:         pl,
 			}
+			*/
 		}
 
 		numUnroutable := numSamples - numRoutable
@@ -480,6 +483,8 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 		// send relay to relay ping messages to analytics
 
+		// todo: avro
+		/*
 		if service.IsLeader() {
 			for i := 0; i < len(pingMessages); i++ {
 				messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
@@ -489,6 +494,7 @@ func PostRelayUpdateRequest(service *common.Service) {
 				}
 			}
 		}
+		*/
 	}
 }
 
