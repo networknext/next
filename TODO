@@ -16,14 +16,15 @@ DONE
 
 	Implement golang side, structs with avro tags and encoding methods.
 
-TODO	
-
 	Implement a basic test to verify that each analytics struct writes with avro schema.
 
-	Work out how to define message schema in pubsub with avro files in tf.
+TODO	
+
+	Setup pubsub channels to have bigquery table and schema defined for messages.
 
 	Actually send the analytics messages encoded with avro to pubsub.
 
+	Deploy to dev and verify data is ingested into bigquery!
 
 
 
