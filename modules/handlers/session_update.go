@@ -1159,8 +1159,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message := messages.PortalSessionUpdateMessage{}
 
-	message.Version = messages.PortalSessionUpdateMessageVersion_Write
-
 	message.Timestamp = state.StartTimestamp
 
 	message.ClientAddress = state.Request.ClientAddress
@@ -1239,7 +1237,6 @@ func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 
 	message := messages.PortalNearRelayUpdateMessage{}
 
-	message.Version = messages.PortalNearRelayUpdateMessageVersion_Write
 	message.Timestamp = state.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId

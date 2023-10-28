@@ -28,6 +28,9 @@
     {"name": "rtt_bucket_35_40ms",          "type": "float"},
     {"name": "rtt_bucket_40_45ms",          "type": "float"},
     {"name": "rtt_bucket_45_50ms",          "type": "float"},
-    {"name": "rtt_bucket_50ms_plus",        "type": "float"}
+    {"name": "rtt_bucket_50ms_plus",        "type": "float"},
+    {"name": "cost_matrix_size",            "type": "int"},
+    {"name": "database_size",               "type": "int"},
+    {"name": "optimize_time",               "type": "int"}
   ]
 }

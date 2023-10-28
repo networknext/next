@@ -360,7 +360,6 @@ func PostRelayUpdateRequest(service *common.Service) {
 		// send relay update message to portal
 		{
 			message := messages.PortalRelayUpdateMessage{
-				Version:                   messages.PortalRelayUpdateMessageVersion_Write,
 				Timestamp:                 uint64(time.Now().Unix()),
 				RelayName:                 relayName,
 				RelayId:                   relayId,
@@ -443,39 +442,41 @@ func PostRelayUpdateRequest(service *common.Service) {
 			}
 		}
 
-		// send relay update message to analytics
-		{
-			message := messages.AnalyticsRelayUpdateMessage{
-				Version:                   messages.AnalyticsRelayUpdateMessageVersion_Write,
-				Timestamp:                 uint64(time.Now().Unix()),
-				RelayId:                   relayId,
-				SessionCount:              relayUpdateRequest.SessionCount,
-				MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
-				EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
-				EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
-				PacketsSentPerSecond:      relayUpdateRequest.PacketsSentPerSecond,
-				PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
-				BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
-				BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
-				NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
-				RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
-				RelayFlags:                relayUpdateRequest.RelayFlags,
-				NumRelayCounters:          relayUpdateRequest.NumRelayCounters,
-				RelayCounters:             relayUpdateRequest.RelayCounters,
-				NumRoutable:               uint32(numRoutable),
-				NumUnroutable:             uint32(numUnroutable),
-				StartTime:                 relayUpdateRequest.StartTime,
-				CurrentTime:               relayUpdateRequest.CurrentTime,
-			}
+		// todo: avro
+		/*
+			// send relay update message to analytics
+			{
+				message := messages.AnalyticsRelayUpdateMessage{
+					Timestamp:                 uint64(time.Now().Unix()),
+					RelayId:                   relayId,
+					SessionCount:              relayUpdateRequest.SessionCount,
+					MaxSessions:               uint32(relayData.RelayArray[relayIndex].MaxSessions),
+					EnvelopeBandwidthUpKbps:   relayUpdateRequest.EnvelopeBandwidthUpKbps,
+					EnvelopeBandwidthDownKbps: relayUpdateRequest.EnvelopeBandwidthDownKbps,
+					PacketsSentPerSecond:      relayUpdateRequest.PacketsSentPerSecond,
+					PacketsReceivedPerSecond:  relayUpdateRequest.PacketsReceivedPerSecond,
+					BandwidthSentKbps:         relayUpdateRequest.BandwidthSentKbps,
+					BandwidthReceivedKbps:     relayUpdateRequest.BandwidthReceivedKbps,
+					NearPingsPerSecond:        relayUpdateRequest.NearPingsPerSecond,
+					RelayPingsPerSecond:       relayUpdateRequest.RelayPingsPerSecond,
+					RelayFlags:                relayUpdateRequest.RelayFlags,
+					NumRelayCounters:          relayUpdateRequest.NumRelayCounters,
+					RelayCounters:             relayUpdateRequest.RelayCounters,
+					NumRoutable:               uint32(numRoutable),
+					NumUnroutable:             uint32(numUnroutable),
+					StartTime:                 relayUpdateRequest.StartTime,
+					CurrentTime:               relayUpdateRequest.CurrentTime,
+				}
 
-			if service.IsLeader() {
-				messageBuffer := make([]byte, message.GetMaxSize())
-				messageData := message.Write(messageBuffer[:])
-				if enableGooglePubsub {
-					analyticsRelayUpdateProducer.MessageChannel <- messageData
+				if service.IsLeader() {
+					messageBuffer := make([]byte, message.GetMaxSize())
+					messageData := message.Write(messageBuffer[:])
+					if enableGooglePubsub {
+						analyticsRelayUpdateProducer.MessageChannel <- messageData
+					}
 				}
 			}
-		}
+		*/
 
 		// send relay to relay ping messages to analytics
 

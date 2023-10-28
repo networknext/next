@@ -280,24 +280,26 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_SERVER_INIT_RESPONSE_PACKET, responsePacket)
 
-	if handler.AnalyticsServerInitMessageChannel != nil {
+	// todo: avro
+	/*
+		if handler.AnalyticsServerInitMessageChannel != nil {
 
-		message := messages.AnalyticsServerInitMessage{}
+			message := messages.AnalyticsServerInitMessage{}
 
-		message.Version = messages.AnalyticsServerInitMessageVersion_Write
-		message.Timestamp = uint64(time.Now().Unix())
-		message.SDKVersion_Major = byte(requestPacket.Version.Major)
-		message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
-		message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
-		message.BuyerId = requestPacket.BuyerId
-		message.DatacenterId = requestPacket.DatacenterId
-		message.DatacenterName = requestPacket.DatacenterName
-		message.ServerAddress = *from
+			message.Timestamp = uint64(time.Now().Unix())
+			message.SDKVersion_Major = byte(requestPacket.Version.Major)
+			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
+			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
+			message.BuyerId = requestPacket.BuyerId
+			message.DatacenterId = requestPacket.DatacenterId
+			message.DatacenterName = requestPacket.DatacenterName
+			message.ServerAddress = *from
 
-		handler.AnalyticsServerInitMessageChannel <- &message
+			handler.AnalyticsServerInitMessageChannel <- &message
 
-		handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage] = true
-	}
+			handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage] = true
+		}
+	*/
 }
 
 func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ServerUpdateRequestPacket) {
@@ -316,23 +318,23 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 
 		// todo: avro
 		/*
-		if handler.AnalyticsServerUpdateMessageChannel != nil {
+			if handler.AnalyticsServerUpdateMessageChannel != nil {
 
-			message := messages.AnalyticsServerUpdateMessage{}
+				message := messages.AnalyticsServerUpdateMessage{}
 
-			message.Timestamp = uint64(time.Now().Unix())
-			message.SDKVersion_Major = byte(requestPacket.Version.Major)
-			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
-			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
-			message.BuyerId = requestPacket.BuyerId
-			message.DatacenterId = requestPacket.DatacenterId
-			message.NumSessions = requestPacket.NumSessions
-			message.ServerAddress = *from
+				message.Timestamp = uint64(time.Now().Unix())
+				message.SDKVersion_Major = byte(requestPacket.Version.Major)
+				message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
+				message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
+				message.BuyerId = requestPacket.BuyerId
+				message.DatacenterId = requestPacket.DatacenterId
+				message.NumSessions = requestPacket.NumSessions
+				message.ServerAddress = *from
 
-			handler.AnalyticsServerUpdateMessageChannel <- &message
+				handler.AnalyticsServerUpdateMessageChannel <- &message
 
-			handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage] = true
-		}
+				handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage] = true
+			}
 		*/
 	}()
 
@@ -342,7 +344,6 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 
 			message := messages.PortalServerUpdateMessage{}
 
-			message.Version = messages.PortalServerUpdateMessageVersion_Write
 			message.Timestamp = uint64(time.Now().Unix())
 			message.SDKVersion_Major = byte(requestPacket.Version.Major)
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
