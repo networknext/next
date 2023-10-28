@@ -103,6 +103,8 @@ type SessionUpdateState struct {
 	WroteResponsePacket                       bool
 	LongSessionUpdate                         bool
 
+	FallbackToDirectChannel   chan<- uint64
+
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
 
@@ -188,6 +190,9 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			core.Error("fallback to direct [%016x]", state.Request.SessionId)
 			state.Error |= constants.SessionError_FallbackToDirect
 			state.FallbackToDirect = true
+			if state.FallbackToDirectChannel != nil {
+				state.FallbackToDirectChannel <- state.Request.SessionId
+			}
 		}
 		return true
 	}
@@ -1110,8 +1115,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Debug != nil {
 		state.Response.Debug = *state.Debug
-		core.Debug("-------------------------------------")
-		core.Debug("%s-------------------------------------", *state.Debug)
+		core.Debug("-------------------------------------\n%s-------------------------------------", *state.Debug)
 	}
 
 	state.ResponsePacket, err = packets.SDK_WritePacket(&state.Response, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
@@ -1124,9 +1128,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.WroteResponsePacket = true
 
 	/*
-		Send various messages to drive the portal and analytics systems.
-
-		(Skip this on the first update, we don't have any useful information yet.)
+		Send various messages to drive the portal and analytics
 	*/
 
 	if !state.FirstUpdate {
@@ -1151,7 +1153,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		return
 	}
 
-	if state.Request.ClientPingTimedOut && !state.FallbackToDirect {
+	if state.Request.ClientPingTimedOut {
 		return
 	}
 

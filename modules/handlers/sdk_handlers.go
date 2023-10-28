@@ -62,6 +62,8 @@ type SDK_Handler struct {
 
 	PortalNextSessionsOnly bool
 
+	FallbackToDirectChannel chan<- uint64
+
 	PortalServerUpdateMessageChannel    chan<- *messages.PortalServerUpdateMessage
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
@@ -426,6 +428,8 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	}
 
 	state.PortalNextSessionsOnly = handler.PortalNextSessionsOnly
+
+	state.FallbackToDirectChannel = handler.FallbackToDirectChannel
 
 	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
 	state.PortalNearRelayUpdateMessageChannel = handler.PortalNearRelayUpdateMessageChannel

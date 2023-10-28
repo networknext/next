@@ -32,6 +32,8 @@ var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
 var relayBackendPrivateKey []byte
 
+var fallbackToDirectChannel chan uint64
+
 var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
 var portalServerUpdateMessageChannel chan *messages.PortalServerUpdateMessage
 var portalNearRelayUpdateMessageChannel chan *messages.PortalNearRelayUpdateMessage
@@ -169,6 +171,12 @@ func main() {
 		pingKey[30],
 		pingKey[31],
 	)
+
+	// initialize fallback to direct channel
+
+	fallbackToDirectChannel = make(chan uint64, channelSize)
+
+	processFallbackToDirect(service, fallbackToDirectChannel)
 
 	// initialize portal message channels
 
@@ -386,6 +394,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		return service.GetMagicValues()
 	}
 
+	handler.FallbackToDirectChannel = fallbackToDirectChannel
+
 	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
 	handler.PortalServerUpdateMessageChannel = portalServerUpdateMessageChannel
 	handler.PortalNearRelayUpdateMessageChannel = portalNearRelayUpdateMessageChannel
@@ -471,6 +481,17 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 func locateIP_Real(ip net.IP) (float32, float32) {
 	// production
 	return service.GetLocation(ip)
+}
+
+// ------------------------------------------------------------------------------------
+
+func processFallbackToDirect(service *common.Service, channel chan uint64) {
+	go func() {
+		for {
+			_ = <-channel
+			countersPublisher.MessageChannel <- "fallback_to_direct"
+		}
+	}()
 }
 
 // ------------------------------------------------------------------------------------
@@ -562,9 +583,6 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 					countersPublisher.MessageChannel <- fmt.Sprintf("session_update_%016x", message.BuyerId)
 					if message.Next {
 						countersPublisher.MessageChannel <- fmt.Sprintf("next_session_update_%016x", message.BuyerId)
-					}
-					if message.FallbackToDirect {
-						countersPublisher.MessageChannel <- "fallback_to_direct"
 					}
 				} else {
 					countersPublisher.MessageChannel <- "retry"
