@@ -941,7 +941,7 @@ blocks:
             - make clean
             - make -j dist/api dist/func_test_database
 
-            - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database sql/*.sql sql/sellers/*.sql
+            - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/*.sql
 
             - artifact push workflow functional_test_database.tar.gz --force
 
@@ -1017,7 +1017,7 @@ blocks:
             
             - make -j dist/api dist/func_test_api
 
-            - tar -zcvf functional_test_api.tar.gz dist/api dist/func_test_api sql/*.sql
+            - tar -zcvf functional_test_api.tar.gz dist/api dist/func_test_api schemas/sql/*.sql
 
             - artifact push workflow functional_test_api.tar.gz --force
 
@@ -1138,7 +1138,7 @@ blocks:
             
             - make -j dist/api dist/func_test_terraform
 
-            - tar -zcvf functional_test_terraform.tar.gz dist/api dist/func_test_terraform sql/*.sql
+            - tar -zcvf functional_test_terraform.tar.gz dist/api dist/func_test_terraform schemas/sql/*.sql
 
             - artifact push workflow functional_test_terraform.tar.gz --force
 

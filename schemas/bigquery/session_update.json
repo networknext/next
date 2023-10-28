@@ -1,0 +1,230 @@
+[
+  {
+    "name": "timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "The timestamp when the session update occurred"
+  },
+  {
+    "name": "session_id",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Unique identifier for this session"
+  },
+  {
+    "name": "slice_number",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Slices are 10 second periods starting from slice number 0 at the start of the session"
+  },
+  {
+    "name": "real_packet_loss",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Packet loss between the client and the server measured from game packets (%)"
+  },
+  {
+    "name": "real_jitter",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Jitter between the client and the server measured from game packets (milliseconds)"
+  },
+  {
+    "name": "real_out_of_order",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Percentage of packets that arrive out of order between the client and the server (%)"
+  },
+  {
+    "name": "session_events",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Customer specified set of 64bit event flags. Optional. NULL if no flags are set"
+  },
+  {
+    "name": "internal_events",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Internal SDK event flags. Optional. NULL if no flags are set"
+  },
+  {
+    "name": "direct_rtt",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always. Ignore. Not known yet"
+  },
+  {
+    "name": "direct_jitter",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Jitter between client and server as measured by direct pings (unaccelerated path). Milliseconds"
+  },
+  {
+    "name": "direct_packet_loss",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Packet loss between client and server as measured by direct pings (unaccelerated path). Percent"
+  },
+  {
+    "name": "direct_kbps_up",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
+  },
+  {
+    "name": "direct_kbps_down",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
+  },
+  {
+    "name": "next",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this slice is being accelerated over network next"
+  },
+  {
+    "name": "next_rtt",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Latency between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next"
+  },
+  {
+    "name": "next_jitter",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Jitter between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next"
+  },
+  {
+    "name": "next_packet_loss",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Packet loss between client and server as measured by next pings (accelerated path). Percent. NULL if not on network next"
+  },
+  {
+    "name": "next_kbps_up",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth in the client to server direction along the next path (accelerated). Kilobits per-second"
+  },
+  {
+    "name": "next_kbps_down",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth in the server to client direction along the next path (accelerated). Kilobits per-second"
+  },
+  {
+    "name": "next_predicted_rtt",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next"
+  },
+  {
+    "name": "next_route_relays",
+    "type": "INT64",
+    "mode": "REPEATED",
+    "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
+  },
+  {
+    "name": "fallback_to_direct",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the SDK has encountered a fatal error and cannot continue acceleration. Typically this only happens when the system is misconfigured or extremely overloaded."
+  },
+  {
+    "name": "reported",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session was reported by the player"
+  },
+  {
+    "name": "latency_reduction",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next this slice to reduce latency"
+  },
+  {
+    "name": "packet_loss_reduction",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next this slice to reduce packet loss"
+  },
+  {
+    "name": "force_next",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next this slice because it was forced to"
+  },
+  {
+    "name": "long_session_update",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded."
+  },
+  {
+    "name": "client_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct."
+  },
+  {
+    "name": "server_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the server to client next bandwidth went over the envelope limit this slice and was sent over direct."
+  },
+  {
+    "name": "veto",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the routing logic decided that this session should no longer be accelerated for some reason."
+  },
+  {
+    "name": "disabled",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next."
+  },
+  {
+    "name": "not_selected",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration."
+  },
+  {
+    "name": "a",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "This session was part of an AB test, and is in the A group."
+  },
+  {
+    "name": "b",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "This session was part of an AB test, and is in the B group."
+  },
+  {
+    "name": "latency_worse",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we made latency worse."
+  },
+  {
+    "name": "location_veto",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we could not locate the player, eg. lat long is at null island (0,0)."
+  },
+  {
+    "name": "mispredict",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
+  },
+  {
+    "name": "lack_of_diversity",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
+  }
+]

@@ -186,7 +186,7 @@ func main() {
 
 	fmt.Printf("\nGenerating vultr.sql\n")
 
-	file, err = os.Create("sql/sellers/vultr.sql")
+	file, err = os.Create("schemas/sql/sellers/vultr.sql")
 	if err != nil {
 		panic(err)
 	}

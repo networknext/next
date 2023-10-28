@@ -167,7 +167,7 @@ func main() {
 
 	fmt.Printf("\nGenerating akamai.sql\n")
 
-	file, err = os.Create("sql/sellers/akamai.sql")
+	file, err = os.Create("schemas/sql/sellers/akamai.sql")
 	if err != nil {
 		panic(err)
 	}

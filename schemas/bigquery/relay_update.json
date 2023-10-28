@@ -1,0 +1,110 @@
+[
+  {
+    "name": "timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "The timestamp when the relay update occurred"
+  },
+  {
+    "name": "relay_id",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Unique relay id. The fnv1a hash of the relay address + port as a string"
+  },
+  {
+    "name": "session_count",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of sessions currently going through this relay"
+  },
+  {
+    "name": "max_sessions",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The maximum number of sessions allowed through this relay (optional: NULL if not specified)"
+  },
+  {
+    "name": "envelope_bandwidth_up_kbps",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The current amount of envelope bandwidth in the client to server direction through this relay"
+  },
+  {
+    "name": "envelope_bandwidth_down_kbps",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The current amount of envelope bandwidth in the server to client direction through this relay"
+  },
+  {
+    "name": "packets_sent_per_second",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The number of packets sent per-second by this relay"
+  },
+  {
+    "name": "packets_received_per_second",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The number of packets received per-second by this relay"
+  },
+  {
+    "name": "bandwidth_sent_kbps",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The amount of bandwidth sent by this relay in kilobits per-second"
+  },
+  {
+    "name": "bandwidth_received_kbps",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The amount of bandwidth received by this relay in kilobits per-second"
+  },
+  {
+    "name": "near_pings_per_second",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The number of near relay pings received by this relay per-second"
+  },
+  {
+    "name": "relay_pings_per_second",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The number of relay pings sent from other relays received by this relay per-second"
+  },
+  {
+    "name": "relay_flags",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The current value of the relay flags. See RelayFlags_* in the source code"
+  },
+  {
+    "name": "num_routable",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of other relays this relay can route to"
+  },
+  {
+    "name": "num_unroutable",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of other relays this relay cannot route to"
+  },
+  {
+    "name": "start_time",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The start time of the relay as a unix timestamp according to the clock on the relay"
+  },
+  {
+    "name": "current_time",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The start time of the relay as a unix timestamp according to the clock on the relay. Together with start_time and timestamp this can be used to determine relay uptime, and clock desynchronization between the relay and the backend."
+  },
+  {
+    "name": "relay_counters",
+    "type": "INT64",
+    "mode": "REPEATED",
+    "description": "Array of counters used to diagnose what is going on with a relay. Search for RELAY_COUNTER_ in the codebase for counter names"
+  }
+]
