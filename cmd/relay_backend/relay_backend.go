@@ -5,12 +5,12 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
 	"sync"
 	"time"
-	"io/ioutil"
 
 	"github.com/gorilla/mux"
 
@@ -18,8 +18,8 @@ import (
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
-	"github.com/networknext/next/modules/packets"
 	"github.com/networknext/next/modules/messages"
+	"github.com/networknext/next/modules/packets"
 	"github.com/networknext/next/modules/portal"
 
 	"github.com/redis/go-redis/v9"
@@ -262,7 +262,7 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 
 			currentTime := uint64(time.Now().Unix())
 
-			if relayUpdateRequest.CurrentTime < currentTime - 5 {
+			if relayUpdateRequest.CurrentTime < currentTime-5 {
 				core.Error("relay update is old. relay gateway -> relay backend is overloaded!")
 			}
 
@@ -309,7 +309,7 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 func PostRelayUpdateRequest(service *common.Service) {
 
 	for {
-		relayUpdateRequest := <- postRelayUpdateRequestChannel
+		relayUpdateRequest := <-postRelayUpdateRequestChannel
 
 		// build relay to relay ping messages for analytics
 

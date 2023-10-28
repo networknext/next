@@ -103,7 +103,7 @@ type SessionUpdateState struct {
 	WroteResponsePacket                       bool
 	LongSessionUpdate                         bool
 
-	FallbackToDirectChannel   chan<- uint64
+	FallbackToDirectChannel chan<- uint64
 
 	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
 	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
@@ -1137,9 +1137,9 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 		sendPortalNearRelayUpdateMessage(state)
 
-		sendAnalyticsSessionUpdateMessage(state)
-
-		sendAnalyticsSessionSummaryMessage(state)
+		// todo: switch to avro
+		//sendAnalyticsSessionUpdateMessage(state)
+		// sendAnalyticsSessionSummaryMessage(state)
 
 		sendAnalyticsNearRelayPingMessages(state)
 	}
@@ -1290,6 +1290,8 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 	}
 }
 
+// todo: switch to avro
+/*
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber < 1 {
@@ -1300,7 +1302,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// always
 
-	message.Version = messages.AnalyticsSessionUpdateMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
 	message.SessionId = state.Request.SessionId
 	message.SliceNumber = state.Request.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
@@ -1367,7 +1368,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
 	message := messages.AnalyticsSessionSummaryMessage{}
 
-	message.Version = messages.AnalyticsSessionSummaryMessageVersion_Write
 	message.Timestamp = uint64(time.Now().Unix())
 	message.SessionId = state.Request.SessionId
 	message.DatacenterId = state.Request.DatacenterId
@@ -1421,5 +1421,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 		state.SentAnalyticsSessionSummaryMessage = true
 	}
 }
+*/
 
 // -----------------------------------------

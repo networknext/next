@@ -144,117 +144,6 @@ func GenerateRandomAnalyticsServerUpdateMessage() messages.AnalyticsServerUpdate
 	return message
 }
 
-func GenerateRandomAnalyticsSessionUpdateMessage() messages.AnalyticsSessionUpdateMessage {
-
-	message := messages.AnalyticsSessionUpdateMessage{
-
-		Version: byte(common.RandomInt(messages.AnalyticsSessionUpdateMessageVersion_Min, messages.AnalyticsSessionUpdateMessageVersion_Max)),
-
-		// always
-
-		Timestamp:        rand.Uint64(),
-		SessionId:        rand.Uint64(),
-		SliceNumber:      rand.Uint32(),
-		RealPacketLoss:   float32(common.RandomInt(0, 100)),
-		RealJitter:       float32(common.RandomInt(0, 1000)),
-		RealOutOfOrder:   float32(common.RandomInt(0, 100)),
-		SessionEvents:    rand.Uint64(),
-		InternalEvents:   rand.Uint64(),
-		DirectRTT:        float32(common.RandomInt(0, 1000)),
-		DirectJitter:     float32(common.RandomInt(0, 1000)),
-		DirectPacketLoss: float32(common.RandomInt(0, 100)),
-		DirectKbpsUp:     rand.Uint32(),
-		DirectKbpsDown:   rand.Uint32(),
-
-		// flags
-
-		Next:                         common.RandomBool(),
-		Reported:                     common.RandomBool(),
-		LatencyReduction:             common.RandomBool(),
-		PacketLossReduction:          common.RandomBool(),
-		ForceNext:                    common.RandomBool(),
-		LongSessionUpdate:            common.RandomBool(),
-		ClientNextBandwidthOverLimit: common.RandomBool(),
-		ServerNextBandwidthOverLimit: common.RandomBool(),
-		Veto:                         common.RandomBool(),
-		Disabled:                     common.RandomBool(),
-		NotSelected:                  common.RandomBool(),
-		A:                            common.RandomBool(),
-		B:                            common.RandomBool(),
-		LatencyWorse:                 common.RandomBool(),
-		LocationVeto:                 common.RandomBool(),
-		Mispredict:                   common.RandomBool(),
-		LackOfDiversity:              common.RandomBool(),
-	}
-
-	if message.Next {
-		message.NextRTT = float32(common.RandomInt(0, 1000))
-		message.NextJitter = float32(common.RandomInt(0, 1000))
-		message.NextPacketLoss = float32(common.RandomInt(0, 100))
-		message.NextKbpsUp = rand.Uint32()
-		message.NextKbpsDown = rand.Uint32()
-		message.NextPredictedRTT = uint32(common.RandomInt(0, 1000))
-		message.NextNumRouteRelays = uint32(common.RandomInt(0, constants.MaxRouteRelays))
-		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			message.NextRouteRelayId[i] = rand.Uint64()
-		}
-	}
-
-	return message
-}
-
-func GenerateRandomAnalyticsSessionSummaryMessage() messages.AnalyticsSessionSummaryMessage {
-
-	message := messages.AnalyticsSessionSummaryMessage{
-
-		Version:                         byte(common.RandomInt(messages.AnalyticsSessionSummaryMessageVersion_Min, messages.AnalyticsSessionSummaryMessageVersion_Max)),
-		Timestamp:                       rand.Uint64(),
-		SessionId:                       rand.Uint64(),
-		DatacenterId:                    rand.Uint64(),
-		BuyerId:                         rand.Uint64(),
-		UserHash:                        rand.Uint64(),
-		Latitude:                        float32(common.RandomInt(-90, +90)),
-		Longitude:                       float32(common.RandomInt(-180, +180)),
-		ClientAddress:                   common.RandomAddress(),
-		ServerAddress:                   common.RandomAddress(),
-		ConnectionType:                  uint8(common.RandomInt(0, 255)),
-		PlatformType:                    uint8(common.RandomInt(0, 255)),
-		SDKVersion_Major:                uint8(common.RandomInt(0, 255)),
-		SDKVersion_Minor:                uint8(common.RandomInt(0, 255)),
-		SDKVersion_Patch:                uint8(common.RandomInt(0, 255)),
-		ClientToServerPacketsSent:       rand.Uint64(),
-		ServerToClientPacketsSent:       rand.Uint64(),
-		ClientToServerPacketsLost:       rand.Uint64(),
-		ServerToClientPacketsLost:       rand.Uint64(),
-		ClientToServerPacketsOutOfOrder: rand.Uint64(),
-		ServerToClientPacketsOutOfOrder: rand.Uint64(),
-		SessionDuration:                 rand.Uint32(),
-		TotalNextEnvelopeBytesUp:        rand.Uint64(),
-		TotalNextEnvelopeBytesDown:      rand.Uint64(),
-		DurationOnNext:                  rand.Uint32(),
-		StartTimestamp:                  rand.Uint64(),
-		Error:                           rand.Uint64(),
-		Reported:                        common.RandomBool(),
-		LatencyReduction:                common.RandomBool(),
-		PacketLossReduction:             common.RandomBool(),
-		ForceNext:                       common.RandomBool(),
-		LongSessionUpdate:               common.RandomBool(),
-		ClientNextBandwidthOverLimit:    common.RandomBool(),
-		ServerNextBandwidthOverLimit:    common.RandomBool(),
-		Veto:                            common.RandomBool(),
-		Disabled:                        common.RandomBool(),
-		NotSelected:                     common.RandomBool(),
-		A:                               common.RandomBool(),
-		B:                               common.RandomBool(),
-		LatencyWorse:                    common.RandomBool(),
-		LocationVeto:                    common.RandomBool(),
-		Mispredict:                      common.RandomBool(),
-		LackOfDiversity:                 common.RandomBool(),
-	}
-
-	return message
-}
-
 func GenerateRandomPortalServerUpdateMessage() messages.PortalServerUpdateMessage {
 
 	message := messages.PortalServerUpdateMessage{
@@ -305,7 +194,7 @@ func GenerateRandomPortalSessionUpdateMessage() messages.PortalSessionUpdateMess
 		BestNextRTT:      uint32(common.RandomInt(0, 1000)),
 		Retry:            common.RandomBool(),
 		FallbackToDirect: common.RandomBool(),
-		SendToPortal: 	  common.RandomBool(),
+		SendToPortal:     common.RandomBool(),
 	}
 
 	message.Next = common.RandomBool()
@@ -476,24 +365,6 @@ func TestAnalyticsServerInitMessage(t *testing.T) {
 		writeMessage := GenerateRandomAnalyticsServerInitMessage()
 		readMessage := messages.AnalyticsServerInitMessage{}
 		MessageReadWriteTest[*messages.AnalyticsServerInitMessage](&writeMessage, &readMessage, t)
-	}
-}
-
-func TestAnalyticsServerUpdateMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsServerUpdateMessage()
-		readMessage := messages.AnalyticsServerUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsServerUpdateMessage](&writeMessage, &readMessage, t)
-	}
-}
-
-func TestAnalyticsSessionUpdateMessage(t *testing.T) {
-	t.Parallel()
-	for i := 0; i < NumIterations; i++ {
-		writeMessage := GenerateRandomAnalyticsSessionUpdateMessage()
-		readMessage := messages.AnalyticsSessionUpdateMessage{}
-		MessageReadWriteTest[*messages.AnalyticsSessionUpdateMessage](&writeMessage, &readMessage, t)
 	}
 }
 

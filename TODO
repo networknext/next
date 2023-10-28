@@ -12,14 +12,15 @@ DONE
 
 	Going with avro.
 
-TODO	
-
 	Define avro message schemas, copying from bigquery json and translating.
 
-	Work out how to define message schema in pubsub with avro files in tf.
+TODO	
 
 	Implement golang side, structs with avro tags and encoding methods.
 
+	Work out how to define message schema in pubsub with avro files in tf.
+
+	Actually send the analytics messages encoded with avro
 
 
 

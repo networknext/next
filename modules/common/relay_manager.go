@@ -246,7 +246,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 	}
 
 	relayManager.mutex.RUnlock()
-	
+
 	return costs
 }
 

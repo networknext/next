@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"sort"
-	"bytes"
-	"encoding/gob"
 
 	"github.com/networknext/next/modules/common"
 )
@@ -31,14 +31,14 @@ func main() {
 	fmt.Printf("loaded relay manager\n")
 
 	type RelayData struct {
-		relayId uint64
-		relayName string
+		relayId        uint64
+		relayName      string
 		lastUpdateTime uint64
 	}
 
 	relayData := []RelayData{}
 
-	for _,v := range relayManager.SourceEntries {
+	for _, v := range relayManager.SourceEntries {
 		relayData = append(relayData, RelayData{relayId: v.RelayId, relayName: v.RelayName, lastUpdateTime: uint64(v.LastUpdateTime)})
 	}
 
@@ -67,9 +67,9 @@ func main() {
 
 	fmt.Printf("adjusting timestamps\n")
 
-	for _,u := range relayManager.SourceEntries {
+	for _, u := range relayManager.SourceEntries {
 		u.LastUpdateTime = int64(oldestLastUpdateTime)
-		for _,v := range u.DestEntries {
+		for _, v := range u.DestEntries {
 			v.LastUpdateTime = int64(oldestLastUpdateTime)
 		}
 	}

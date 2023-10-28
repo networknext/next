@@ -213,8 +213,10 @@ func main() {
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel)
-	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
-	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
+
+	// todo: pending avro
+	//processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
+	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
 
 	// start the service
 
@@ -365,7 +367,7 @@ func isShuttingDown() bool {
 
 func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return time.Now().Unix() > startTime + int64(initialDelay) && routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
+	return time.Now().Unix() > startTime+int64(initialDelay) && routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
 }
 
 func machineIsHealthy() bool {
@@ -496,7 +498,7 @@ func processFallbackToDirect(service *common.Service, channel chan uint64) {
 
 // ------------------------------------------------------------------------------------
 
-func processPortalSessionUpdateMessages(service *common.Service, inputChannel chan *messages.PortalSessionUpdateMessage ) {
+func processPortalSessionUpdateMessages(service *common.Service, inputChannel chan *messages.PortalSessionUpdateMessage) {
 
 	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
@@ -510,7 +512,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 	go func() {
 		for {
 			message := <-inputChannel
-		
+
 			core.Debug("processing portal session update message")
 
 			sessionId := message.SessionId
@@ -576,7 +578,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 			if enableRedisTimeSeries {
 
 				if !message.Retry {
-						countersPublisher.MessageChannel <- "session_update"
+					countersPublisher.MessageChannel <- "session_update"
 					if message.Next {
 						countersPublisher.MessageChannel <- "next_session_update"
 					}
@@ -592,7 +594,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 	}()
 }
 
-func processPortalServerUpdateMessages(service *common.Service, inputChannel chan *messages.PortalServerUpdateMessage ) {
+func processPortalServerUpdateMessages(service *common.Service, inputChannel chan *messages.PortalServerUpdateMessage) {
 
 	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
@@ -606,7 +608,7 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 	go func() {
 		for {
 			message := <-inputChannel
-		
+
 			core.Debug("processing portal server update message")
 
 			serverData := portal.ServerData{
@@ -632,7 +634,7 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 	}()
 }
 
-func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalNearRelayUpdateMessage ) {
+func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalNearRelayUpdateMessage) {
 
 	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
@@ -646,7 +648,7 @@ func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel 
 	go func() {
 		for {
 			message := <-inputChannel
-		
+
 			core.Debug("processing near relay update message")
 
 			sessionId := message.SessionId

@@ -1,16 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"time"
-	"os"
-	"context"
-	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
