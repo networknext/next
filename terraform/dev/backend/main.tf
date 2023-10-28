@@ -350,11 +350,11 @@ resource "google_pubsub_schema" "pubsub_schema" {
 resource "google_pubsub_topic" "pubsub_topic" {
   count      = length(local.pubsub_channels)
   name       = local.pubsub_channels[count.index]
-  depends_on = [google_pubsub_schema.pubsub_schema]
   schema_settings {
-    schema = "projects/${var.google_project}/schemas/${local.pubsub_channels[count.index]}"
+    schema = google.pubsub_schema.pubsub_schema[count.index]
     encoding = "JSON"
   }
+  depends_on = [google_pubsub_schema.pubsub_schema]
 } 
 
 resource "google_pubsub_subscription" "pubsub_subscription" {
