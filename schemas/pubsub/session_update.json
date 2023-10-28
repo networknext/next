@@ -1,6 +1,6 @@
 {
   "type": "record",
-  "name": "session_summary",
+  "name": "session_update",
   "namespace": "com.networknext.avro",
   "fields" : [
     {"name": "timestamp",                             "type": "string"},
