@@ -401,7 +401,6 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 
 # ----------------------------------------------------------------------------------------
 
-
 locals {
   
   bigquery_tables = {
