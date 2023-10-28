@@ -341,17 +341,18 @@ locals {
 }
 
 resource "google_pubsub_schema" "pubsub_schema" {
-  name = pubsub_channels[count.index]
-  type = "AVRO"
-  definition = file("../../../schemas/pubsub/${pubsub_channels[count.index]}.json")
+  count      = length(local.pubsub_channels)
+  name       = local.pubsub_channels[count.index]
+  type       = "AVRO"
+  definition = file("../../../schemas/pubsub/${local.pubsub_channels[count.index]}.json")
 }
 
 resource "google_pubsub_topic" "pubsub_topic" {
-  count = length(local.pubsub_channels)
-  name  = local.pubsub_channels[count.index]
+  count      = length(local.pubsub_channels)
+  name       = local.pubsub_channels[count.index]
   depends_on = [google_pubsub_schema.pubsub_schema]
   schema_settings {
-    schema = "projects/${var.project}/schemas/${pubsub_channels[count.index]"
+    schema = "projects/${var.google_project}/schemas/${local.pubsub_channels[count.index]}"
     encoding = "JSON"
   }
 } 
@@ -367,8 +368,8 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     ttl = ""
   }
   bigquery_config {
-    table = local.pubsub_channels[count_index]
-    use_topic_schema = true
+    table               = local.pubsub_channels[count.index]
+    use_topic_schema    = true
     drop_unknown_fields = true    
   }
 }
