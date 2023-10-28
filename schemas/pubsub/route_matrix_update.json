@@ -4,9 +4,6 @@
   "namespace": "com.networknext.avro",
   "fields" : [
     {"name": "timestamp",                   "type": "string"},
-    {"name": "cost_matrix_size",            "type": "int"},
-    {"name": "route_matrix_size",           "type": "int"},
-    {"name": "optimize_time",               "type": "int"},
     {"name": "num_relays",                  "type": "int"},
     {"name": "num_dest_relays",             "type": "int"},
     {"name": "num_full_relays",             "type": "int"},
