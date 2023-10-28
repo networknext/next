@@ -2,6 +2,8 @@ DONE
 
 TODO	
 
+	Create a channel specifically for fallback for fallback to direct
+
 	----------
 
 	Oct 27 18:39:59 server-backend-b4fx app[2149]: warning: long session update: 102ms
