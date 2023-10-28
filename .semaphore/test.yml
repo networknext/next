@@ -878,14 +878,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_backend test_magic_backend
 
-        - name: "test_redis_streams"
-          commands:
-            - cd ./dist && ./func_test_backend test_redis_streams
-
-        - name: "test_redis_pubsub"
-          commands:
-            - cd ./dist && ./func_test_backend test_redis_pubsub
-
         - name: "test_google_pubsub"
           commands:
             - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &

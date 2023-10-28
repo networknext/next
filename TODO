@@ -1,63 +1,70 @@
 DONE
 
-	Implement counters for buyer servers and buyer sessions
+	Redo relay_gateway -> relay_backend comms.
 
-	Update API to get all buyer related server and session counts from counters
+	Extend relay_backend to accept relay updates on a http handler
 
-	Make sure all admin graphs work in dev
+	Drop relay backend to one instance, temporarily.
 
-	Make sure all relay graphs work in dev
+	Pass the relay update from the relay gateway to the relay backend via http.
 
-	Verify session sort order is correct in dev
+	Verify that we can now handle 1000 relays.
 
-	Make sure all buyer counts work in dev
+	It works!
 
-	Get buyer graphs working in dev
+	Uncomment code for the rest of the relay update processing
 
-	Need to do something about counters graphs showing zeros
+	Verify active relays in dev
 
-	Add the active relays graph
+	Check if running under google cloud.
 
-	Verify active relays graph in dev
+	If running under google cloud...
 
-	Verify accelerated percent graph in admin
+	Watch the relay_backend instance via gcloud and get list of VM ids in that group once per-second
 
-	Verify buyer accelerated percent graph
+	Get the VM internal IP address in || for all instance ids.
 
-TODO
+	Run a health check in || on /health_fanout for each VM in the list, no matter the status.
 
-	Sorting is really weird in staging... it seems inverted (?!)
+	If the health check passes, add the IP to the array of relay_backend_addresses under lock.
 
-	-----------------------
+	Integrate and test under dev
 
-	Scale up to 1M in staging with 10% next
+	It works!
 
-	Scale up to 10M in staging with 10% next
+TODO	
 
-	Verify that we don't see any redis time series stretched dots @ 10M
+	Test in dev with multiple relay backend and relay gateways
 
-	Scale up to 25M in staging with 10% next
+	----------
 
-	Verify that we don't see any redis time series stretched dots @ 25M
+	Scale up to 1000 relays, 1M servers and 10M sessions.
 
-	Verify we can scale down sessions and they don't get stuck up high
+	----------
 
-	-----------------------
+	Fix relay backend so it's completely steady on deploy.
 
-	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
+	----------
 
-	---------------
+	Integrate map with portal
 
-	We need to see a steady route matrix across deploys. Work out what is going on with leader election and the new instance sending time series and counter data
+	----------
 
-	---------------
+	Ingest into bigquery with google pubsub
 
+	"Better yet, you no longer need to pay for data ingestion into BigQuery when using this new direct method. You only pay for the Pub/Sub you use. Ingestion from Pub/Sub’s BigQuery subscription into BigQuery costs $50/TiB based on read (subscribe throughput) from the subscription. This is a simpler and cheaper billing experience compared to the alternative path via Dataflow pipeline where you would be paying for the Pub/Sub read, Dataflow job, and BigQuery data ingestion. See the pricing page for details."
 
+	https://cloud.google.com/blog/products/data-analytics/pub-sub-launches-direct-path-to-bigquery-for-streaming-analytics
 
+	----------
 
+	Setup projects and service accounts with terraform
 
+	----------
 
+	Write documentation
 
+	----------
 
 
 
@@ -71,90 +78,6 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Add "portal_cruncher" counter. We need to see the throughput of the portal cruncher, to see if it is getting backed up or behind.
-
-	--------------
-
-	Number of routes is going up/down a lot even in dev. Is the minute history buffer long enough?
-
-	--------------
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	There seems to be a load related issue @ 1000 relays.
-
-	--------------
-
-	Change analytics to perform bulk inserts instead of streaming inserts.
-
-	https://cloud.google.com/bigquery/docs/write-api-batch
-
-	--------------
 
 
 
@@ -169,6 +92,46 @@ TODO
 
 
 Small things:
+
+	----------
+
+	Fallback to direct logs need to directly correlate to counters in graphs
+
+	----------
+
+	Relays need to be setup to use cloud storage for tf state
+
+	----------
+
+	For providers like akamai, vultr, amazon, we need to prefix all resource names with env (because their aren't separate projects...)
+
+	--------------
+
+	Clean up old ip2location database files in server backend
+
+	--------------
+
+	User hash link in server sessions page is not working
+
+	--------------
+
+	Just leave the buyer page as graphs. The rightmost column doesn't add enough to justify its existence.
+
+	--------------
+
+	Click on server to see sessions on server is broken in staging even at small load. My guess, sessions are not properly linking to server addresses?
+
+	--------------
+
+	Active relays seems to double during deploys. Currently, I cannot think of any reason why this would happen?
+
+	--------------
+
+	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
+
+	--------------
+
+	Relay graphs need to be aggregated (time series) into per-minute values. Use average.
 
 	--------------
 
@@ -211,29 +174,6 @@ Small things:
 	When many server instances are running on one server, this can cause problems. eg. thread starvation
 
 	--------------
-
-
-
-
-
-
-
-
-
-
-Finalize terraform and document:
-
-	--------------
-
-	Setup projects and service accounts with terraform
-
-	--------------
-
-	Relays need to be setup to use cloud storage for tf state
-
-	--------------
-
-
 
 
 

@@ -20,7 +20,7 @@ const RedisLeaderElectionVersion = 1 // IMPORTANT: bump this anytime you change 
 type RedisLeaderElectionConfig struct {
 	RedisHostname string
 	ServiceName   string
-	Timeout       time.Duration
+	InitialDelay  int
 }
 
 type RedisLeaderElection struct {
@@ -45,8 +45,8 @@ func CreateRedisLeaderElection(redisClient redis.Cmdable, config RedisLeaderElec
 
 	leaderElection := &RedisLeaderElection{}
 
-	if config.Timeout == 0 {
-		config.Timeout = time.Second * 10
+	if config.InitialDelay == 0 {
+		config.InitialDelay = 15
 	}
 
 	leaderElection.config = config
@@ -54,8 +54,8 @@ func CreateRedisLeaderElection(redisClient redis.Cmdable, config RedisLeaderElec
 	leaderElection.startTime = time.Now()
 	leaderElection.instanceId = uuid.New().String()
 
-	// core.Debug("redis leader election start time: %s", leaderElection.startTime)
-	// core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
+	core.Debug("redis leader election start time: %s", leaderElection.startTime)
+	core.Debug("redis leader election instance id: %s", leaderElection.instanceId)
 
 	return leaderElection, nil
 }
@@ -75,12 +75,12 @@ func (leaderElection *RedisLeaderElection) Start(ctx context.Context) {
 	}()
 }
 
-func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service string, minutes int64) []InstanceEntry {
+func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service string, period int64) []InstanceEntry {
 
 	// get all instance keys and values
 
-	key_a := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, minutes)
-	key_b := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, minutes-1)
+	key_a := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, period)
+	key_b := fmt.Sprintf("%s-instance-%d-%d", service, RedisLeaderElectionVersion, period-1)
 
 	pipeline := redisClient.Pipeline()
 
@@ -126,9 +126,9 @@ func getInstanceEntries(ctx context.Context, redisClient redis.Cmdable, service 
 
 	// leader is the one with longest uptime, instance id used for tie-break
 
-	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
+	sort.Slice(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId < instanceEntries[j].InstanceId })
 
-	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].InstanceId > instanceEntries[j].InstanceId })
+	sort.SliceStable(instanceEntries, func(i, j int) bool { return instanceEntries[i].StartTime < instanceEntries[j].StartTime })
 
 	return instanceEntries
 }
@@ -138,7 +138,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	// write our instance entry
 
 	seconds := time.Now().Unix()
-	minutes := seconds / 60
+	period := seconds / 3
 
 	instanceEntry := InstanceEntry{}
 	instanceEntry.InstanceId = leaderElection.instanceId
@@ -149,33 +149,33 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(instanceEntry)
 	if err != nil {
-		core.Error("failed to write instance entry\n")
+		core.Error("failed to write instance entry")
 	}
 
 	instanceData := buffer.Bytes()
 
-	key := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, minutes)
+	key := fmt.Sprintf("%s-instance-%d-%d", leaderElection.config.ServiceName, RedisLeaderElectionVersion, period)
 
 	field := instanceEntry.InstanceId
 	value := instanceData
 
 	leaderElection.redisClient.HSet(ctx, key, field, value)
 
-	// wait at least timeout to ensure we don't flap leader when a bunch of services start close together
+	// wait for the initial delay
 
-	if time.Since(leaderElection.startTime) < leaderElection.config.Timeout {
-		// core.Debug("wait timeout\n")
+	if int(time.Since(leaderElection.startTime).Seconds()) < leaderElection.config.InitialDelay {
+		core.Debug("initial delay (%d)", leaderElection.config.InitialDelay)
 		return
 	}
 
 	// get all instance entries for this service
 
-	instanceEntries := getInstanceEntries(ctx, leaderElection.redisClient, leaderElection.config.ServiceName, minutes)
+	instanceEntries := getInstanceEntries(ctx, leaderElection.redisClient, leaderElection.config.ServiceName, period)
 
 	// if there are no instance entries, we cannot be leader and there is no leader (yet)
 
 	if len(instanceEntries) == 0 {
-		core.Debug("no instance entries?\n")
+		core.Debug("no instance entries?")
 		return
 	}
 
@@ -189,6 +189,7 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 	previousValue := leaderElection.isLeader
 	currentValue := leaderInstance.InstanceId == leaderElection.instanceId
 	leaderElection.isLeader = currentValue
+
 	leaderElection.isReady = true
 	leaderElection.leaderMutex.Unlock()
 
@@ -233,8 +234,8 @@ func (leaderElection *RedisLeaderElection) IsReady() bool {
 
 func LoadMasterServiceData(ctx context.Context, redisClient redis.Cmdable, service string, name string) []byte {
 	seconds := time.Now().Unix()
-	minutes := seconds / 60
-	instanceEntries := getInstanceEntries(ctx, redisClient, service, minutes)
+	period := seconds / 3
+	instanceEntries := getInstanceEntries(ctx, redisClient, service, period)
 	if len(instanceEntries) == 0 {
 		return nil
 	}

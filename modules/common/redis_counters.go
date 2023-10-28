@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/networknext/next/modules/core"
 
@@ -139,7 +140,9 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters
 
 	_, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to add counters: %v", err)
+		if !strings.Contains(err.Error(), "key already exists") {
+			core.Error("failed to add counters: %v", err)
+		}
 	}
 }
 

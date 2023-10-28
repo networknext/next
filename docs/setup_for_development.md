@@ -84,7 +84,6 @@ dist/raspberry_server
 dist/server
 dist/api
 dist/func_test_backend
-dist/portal_cruncher
 dist/func_server
 dist/raspberry_backend
 dist/server_backend
@@ -264,7 +263,6 @@ dist/raspberry_server
 dist/server
 dist/api
 dist/func_test_backend
-dist/portal_cruncher
 dist/func_server
 dist/raspberry_backend
 dist/server_backend

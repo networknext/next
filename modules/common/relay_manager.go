@@ -168,7 +168,7 @@ func Max(a float32, b float32) float32 {
 	}
 }
 
-func (relayManager *RelayManager) getSample(currentTime int64, sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
+func (relayManager *RelayManager) getSample(sourceRelayId uint64, destRelayId uint64) (float32, float32, float32) {
 
 	sourceRTT := float32(200000.0)
 	sourceJitter := float32(200000.0)
@@ -225,6 +225,8 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 
 	activeRelayMap := relayManager.GetActiveRelayMap(currentTime)
 
+	relayManager.mutex.RLock()
+
 	for i := 0; i < numRelays; i++ {
 		sourceRelayId := uint64(relayIds[i])
 		_, sourceActive := activeRelayMap[sourceRelayId]
@@ -233,9 +235,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 				destRelayId := uint64(relayIds[j])
 				_, destActive := activeRelayMap[destRelayId]
 				if destActive {
-					relayManager.mutex.RLock()
-					rtt, jitter, packetLoss := relayManager.getSample(currentTime, sourceRelayId, destRelayId)
-					relayManager.mutex.RUnlock()
+					rtt, jitter, packetLoss := relayManager.getSample(sourceRelayId, destRelayId)
 					if rtt < 255 && jitter < maxJitter && packetLoss < maxPacketLoss {
 						index := TriMatrixIndex(i, j)
 						costs[index] = uint8(math.Ceil(float64(rtt)))
@@ -245,6 +245,8 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 		}
 	}
 
+	relayManager.mutex.RUnlock()
+	
 	return costs
 }
 

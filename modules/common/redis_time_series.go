@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/networknext/next/modules/core"
 
@@ -150,7 +151,9 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 
 	_, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to add time series: %v", err)
+		if !strings.Contains(err.Error(), "key already exists") {
+			core.Error("failed to add time series: %v", err)
+		}
 	}
 
 	batchNumMessages := len(publisher.messageBatch)

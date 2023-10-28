@@ -237,17 +237,18 @@ func (service *Service) LoadIP2Location() {
 		os.Exit(1)
 	}
 
-	err := ip2location.DownloadDatabases_CloudStorage(bucketName)
+	err, isp_db, city_db := ip2location.DownloadDatabases_CloudStorage(bucketName)
 	if err != nil {
 		core.Error("could not download ip2location databases from cloud storage: %v", err)
 		os.Exit(1)
 	}
 
-	isp_db, city_db, err := ip2location.LoadDatabases()
+	if isp_db == nil {
+		panic("null isp db")
+	}
 
-	if err != nil {
-		core.Error("failed to load ip2location databases: %v", err)
-		os.Exit(1)
+	if city_db == nil {
+		panic("null city db")
 	}
 
 	service.ip2location_mutex.Lock()
@@ -259,28 +260,31 @@ func (service *Service) LoadIP2Location() {
 
 		go func() {
 			for {
-				time.Sleep(time.Hour)
 
 				core.Log("updating ip2location databases")
 
-				var isp_db, city_db *maxminddb.Reader
-
-				err := ip2location.DownloadDatabases_CloudStorage(bucketName)
+				err, isp_db, city_db := ip2location.DownloadDatabases_CloudStorage(bucketName)
 				if err != nil {
-					core.Warn("failed to download ip2location databases from cloud storage: %v")
-					continue
+					core.Warn("failed to download ip2location databases from cloud storage: %v", err)
+					goto sleep;
 				}
 
-				isp_db, city_db, err = ip2location.LoadDatabases()
-				if err != nil {
-					core.Warn("failed to load ip2location databases: %v", err)
-					continue
+				if isp_db == nil {
+					panic("null isp db")
+				}
+
+				if city_db == nil {
+					panic("null city db")
 				}
 
 				service.ip2location_mutex.Lock()
 				service.ip2location_isp_db = isp_db
 				service.ip2location_city_db = city_db
 				service.ip2location_mutex.Unlock()
+
+			sleep:
+
+				time.Sleep(time.Hour)
 			}
 		}()
 	}
@@ -472,7 +476,7 @@ func CreateRedisClusterClient(redisNodes []string) *redis.ClusterClient {
 	return redisClient
 }
 
-func (service *Service) LeaderElection() {
+func (service *Service) LeaderElection(initialDelay int) {
 
 	core.Log("started leader election")
 
@@ -481,7 +485,7 @@ func (service *Service) LeaderElection() {
 	redisClient := CreateRedisClient(redisHostname)
 
 	config := RedisLeaderElectionConfig{}
-	config.Timeout = time.Second * 10
+	config.InitialDelay = initialDelay
 	config.ServiceName = service.ServiceName
 
 	var err error
@@ -553,6 +557,11 @@ func (service *Service) UpdateRouteMatrix() {
 					continue
 				}
 
+				if response.StatusCode != 200 {
+					core.Error("http response %d when getting route matrix", response.StatusCode)
+					continue
+				}
+
 				buffer, err := ioutil.ReadAll(response.Body)
 				if err != nil {
 					core.Error("failed to read response body: %v", err)
@@ -608,7 +617,6 @@ func (service *Service) RouteMatrixAndDatabase() (*RouteMatrix, *db.Database) {
 }
 
 func (service *Service) IsLeader() bool {
-	return true
 	if service.leaderElection != nil {
 		return service.leaderElection.IsLeader()
 	}

@@ -128,8 +128,7 @@ func happy_path(wait bool) int {
 
 	magic_backend_stdout := run("magic-backend", "logs/magic_backend")
 	relay_gateway_stdout := run("relay-gateway", "logs/relay_gateway")
-	relay_backend_1_stdout := run("relay-backend", "logs/relay_backend_1")
-	relay_backend_2_stdout := run("relay-backend", "logs/relay_backend_2", "HTTP_PORT=30002")
+	relay_backend_stdout := run("relay-backend", "logs/relay_backend")
 
 	fmt.Printf("\nverifying magic backend ...")
 
@@ -177,48 +176,24 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	relay_backend_1_initialized := false
+	relay_backend_initialized := false
 
-	fmt.Printf("verifying relay backend 1 ...")
+	fmt.Printf("verifying relay backend ...")
 
 	for i := 0; i < 300; i++ {
-		if strings.Contains(relay_backend_1_stdout.String(), "starting http server on port 30001") &&
-			strings.Contains(relay_backend_1_stdout.String(), "loaded database: database.bin") &&
-			strings.Contains(relay_backend_1_stdout.String(), "initial delay completed") {
-			relay_backend_1_initialized = true
+		if strings.Contains(relay_backend_stdout.String(), "starting http server on port 30001") &&
+			strings.Contains(relay_backend_stdout.String(), "loaded database: database.bin") &&
+			strings.Contains(relay_backend_stdout.String(), "initial delay completed") {
+			relay_backend_initialized = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !relay_backend_1_initialized {
-		fmt.Printf("\n\nerror: failed to initialize relay backend 1\n")
+	if !relay_backend_initialized {
+		fmt.Printf("\n\nerror: failed to initialize relay backend\n")
 		fmt.Printf("-----------------------------------------\n")
-		fmt.Printf("%s", relay_backend_1_stdout.String())
-		fmt.Printf("-----------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	relay_backend_2_initialized := false
-
-	fmt.Printf("verifying relay backend 2 ...")
-
-	for i := 0; i < 300; i++ {
-		if strings.Contains(relay_backend_2_stdout.String(), "starting http server on port 30002") &&
-			strings.Contains(relay_backend_2_stdout.String(), "loaded database: database.bin") &&
-			strings.Contains(relay_backend_2_stdout.String(), "initial delay completed") {
-			relay_backend_2_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !relay_backend_2_initialized {
-		fmt.Printf("\nerror: failed to initialize relay backend 2\n")
-		fmt.Printf("-----------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout.String())
+		fmt.Printf("%s", relay_backend_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
@@ -280,9 +255,7 @@ func happy_path(wait bool) int {
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_gateway_stdout)
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout)
+		fmt.Printf("%s", relay_backend_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", relay_1_stdout)
 		fmt.Printf("----------------------------------------------------\n")
@@ -321,52 +294,26 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	fmt.Printf("verifying relay backend 1 sees relays ...")
+	fmt.Printf("verifying relay backend sees relays ...")
 
-	relay_backend_1_sees_relays := false
+	relay_backend_sees_relays := false
 
 	for i := 0; i < 200; i++ {
-		if strings.Contains(relay_backend_1_stdout.String(), "received update for local.0") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received update for local.1") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received update for local.2") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received update for local.3") &&
-			strings.Contains(relay_backend_1_stdout.String(), "received update for local.4") {
-			relay_backend_1_sees_relays = true
+		if strings.Contains(relay_backend_stdout.String(), "received update for local.0") &&
+			strings.Contains(relay_backend_stdout.String(), "received update for local.1") &&
+			strings.Contains(relay_backend_stdout.String(), "received update for local.2") &&
+			strings.Contains(relay_backend_stdout.String(), "received update for local.3") &&
+			strings.Contains(relay_backend_stdout.String(), "received update for local.4") {
+			relay_backend_sees_relays = true
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if !relay_backend_1_sees_relays {
-		fmt.Printf("\n\nerror: relay backend 1 does not see relays\n")
+	if !relay_backend_sees_relays {
+		fmt.Printf("\n\nerror: relay backend does not see relays\n")
 		fmt.Printf("-----------------------------------------\n")
-		fmt.Printf("%s", relay_backend_1_stdout.String())
-		fmt.Printf("-----------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying relay backend 2 sees relays ...")
-
-	relay_backend_2_sees_relays := false
-
-	for i := 0; i < 200; i++ {
-		if strings.Contains(relay_backend_2_stdout.String(), "received update for local.0") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received update for local.1") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received update for local.2") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received update for local.3") &&
-			strings.Contains(relay_backend_2_stdout.String(), "received update for local.4") {
-			relay_backend_2_sees_relays = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !relay_backend_2_sees_relays {
-		fmt.Printf("\n\nerror: relay backend 2 does not see relays\n")
-		fmt.Printf("-----------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout.String())
+		fmt.Printf("%s", relay_backend_stdout.String())
 		fmt.Printf("-----------------------------------------\n")
 		return 1
 	}
@@ -460,146 +407,17 @@ func happy_path(wait bool) int {
 
 	fmt.Printf(" OK\n")
 
-	// initialize portal cruncher
-
-	fmt.Printf("\nstarting portal cruncher:\n\n")
-
-	portal_cruncher_1_stdout := run("portal-cruncher", "logs/portal_cruncher_1")
-	portal_cruncher_2_stdout := run("portal-cruncher", "logs/portal_cruncher_2", "HTTP_PORT=40013")
-
-	fmt.Printf("\nverifying portal cruncher 1 ...")
-
-	portal_cruncher_1_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(portal_cruncher_1_stdout.String(), "starting http server on port 40012") {
-			portal_cruncher_1_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !portal_cruncher_1_initialized {
-		fmt.Printf("\n\nerror: portal cruncher 1 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher 2 ...")
-
-	portal_cruncher_2_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(portal_cruncher_2_stdout.String(), "starting http server on port 40013") {
-			portal_cruncher_2_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !portal_cruncher_2_initialized {
-		fmt.Printf("\n\nerror: portal cruncher 2 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// initialize analytics
-
-	fmt.Printf("\nstarting analytics:\n\n")
-
-	analytics_1_stdout := run("analytics", "logs/analytics_1")
-	analytics_2_stdout := run("analytics", "logs/analytics_2", "HTTP_PORT=40002")
-
-	fmt.Printf("\nverifying analytics 1 ...")
-
-	analytics_1_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_1_stdout.String(), "starting http server on port 40001") {
-			analytics_1_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !analytics_1_initialized {
-		fmt.Printf("\n\nerror: analytics 1 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying analytics 2 ...")
-
-	analytics_2_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(analytics_2_stdout.String(), "starting http server on port 40002") {
-			analytics_2_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !analytics_2_initialized {
-		fmt.Printf("\n\nerror: analytics 2 failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
 	// ==================================================================================
 
 	fmt.Printf("\nwaiting for leader election\n\n")
-
-	fmt.Printf("    analytics ...")
-
-	analytics_leader_elected := false
-
-	for i := 0; i < 250; i++ {
-		analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
-		analytics_2_is_leader := strings.Contains(analytics_2_stdout.String(), "we became the leader")
-		if analytics_1_is_leader || analytics_2_is_leader {
-			analytics_leader_elected = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !analytics_leader_elected {
-		fmt.Printf("\n\nerror: no analytics leader?\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
 
 	fmt.Printf("    relay backend ...")
 
 	relay_backend_leader_elected := false
 
 	for i := 0; i < 250; i++ {
-		relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
-		relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
-		if relay_backend_1_is_leader || relay_backend_2_is_leader {
+		relay_backend_is_leader := strings.Contains(relay_backend_stdout.String(), "we became the leader")
+		if relay_backend_is_leader {
 			relay_backend_leader_elected = true
 			break
 		}
@@ -609,9 +427,7 @@ func happy_path(wait bool) int {
 	if !relay_backend_leader_elected {
 		fmt.Printf("\n\nerror: no relay backend leader?\n\n")
 		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout)
+		fmt.Printf("%s", relay_backend_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}
@@ -685,141 +501,6 @@ func happy_path(wait bool) int {
 
 	// ==================================================================================
 
-	fmt.Printf("\npost validation:\n\n")
-
-	fmt.Printf("verifying leader election in relay backend ...")
-
-	relay_backend_1_is_leader := strings.Contains(relay_backend_1_stdout.String(), "we became the leader")
-	relay_backend_2_is_leader := strings.Contains(relay_backend_2_stdout.String(), "we became the leader")
-
-	if relay_backend_1_is_leader && relay_backend_2_is_leader {
-		fmt.Printf("\n\nerror: leader flap in relay backend\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	if relay_backend_1_is_leader && relay_backend_2_is_leader {
-		fmt.Printf("\n\nerror: no relay backend leader?\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// ---------------------------------------------------------------------------------------------------
-
-	fmt.Printf("verifying leader election in analytics ...")
-
-	analytics_1_is_leader := strings.Contains(analytics_1_stdout.String(), "we became the leader")
-	analytics_2_is_leader := strings.Contains(analytics_2_stdout.String(), "we became the leader")
-
-	if analytics_1_is_leader && analytics_2_is_leader {
-		fmt.Printf("\n\nerror: leader flap in analytics\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	if !analytics_1_is_leader && !analytics_2_is_leader {
-		fmt.Printf("\n\nerror: no analytics leader?!\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying leader election in analytics ...")
-
-	analytics_leader_stdout := analytics_1_stdout
-	if analytics_2_is_leader {
-		analytics_leader_stdout = analytics_2_stdout
-	}
-
-	if strings.Contains(analytics_leader_stdout.String(), "we are no longer the leader") ||
-		!strings.Contains(analytics_leader_stdout.String(), "route matrix num relays: 10") {
-		fmt.Printf("\n\nerror: analytics leader did not verify\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", analytics_leader_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// ----------------------------------------------------------------------------------------------
-
-	fmt.Printf("verifying portal cruncher received session update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received session update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received session update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive session update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher received server update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received server update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received server update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive server update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher received relay update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received relay update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received relay update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive relay update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	fmt.Printf("verifying portal cruncher received near relay update messages ...")
-
-	if !strings.Contains(portal_cruncher_1_stdout.String(), "received near relay update message") && !strings.Contains(portal_cruncher_2_stdout.String(), "received near relay update message") {
-		fmt.Printf("\n\nerror: portal cruncher did not receive near relay update messages\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_1_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", portal_cruncher_2_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// ==================================================================================
-
 	fmt.Printf("\n*** SUCCESS! ***\n\n")
 
 	if wait {
@@ -841,7 +522,7 @@ func bash(command string) {
 }
 
 func cleanup() {
-	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "analytics", "portal_cruncher", "session_cruncher", "server_cruncher"}
+	killList := [...]string{"api", "relay", "client", "server", "magic_backend", "relay_gateway", "relay_backend", "server_backend", "session_cruncher", "server_cruncher"}
 	for i := range killList {
 		bash(fmt.Sprintf("pkill -f %s", killList[i]))
 	}

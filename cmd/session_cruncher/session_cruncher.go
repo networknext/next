@@ -184,6 +184,9 @@ func UpdateAcceleratedPercent(service *common.Service) {
 				nextSessionUpdates := countersWatcher.GetFloatValue("next_session_update")
 				if sessionUpdates > 0 {
 					acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
+					if acceleratedPercent > 100.0 {
+						acceleratedPercent = 100.0
+					}
 					keys = append(keys, "accelerated_percent")
 					values = append(values, acceleratedPercent)
 				}
@@ -193,6 +196,9 @@ func UpdateAcceleratedPercent(service *common.Service) {
 					nextSessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
 					if sessionUpdates > 0 {
 						acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
+						if acceleratedPercent > 100.0 {
+							acceleratedPercent = 100.0
+						}
 						keys = append(keys, fmt.Sprintf("accelerated_percent_%016x", buyerIds[i]))
 						values = append(values, acceleratedPercent)
 					}

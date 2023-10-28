@@ -104,12 +104,8 @@ func main() {
 		relay_gateway()
 	} else if command == "relay-backend" {
 		relay_backend()
-	} else if command == "analytics" {
-		analytics()
 	} else if command == "api" {
 		api()
-	} else if command == "portal-cruncher" {
-		portal_cruncher()
 	} else if command == "session-cruncher" {
 		session_cruncher()
 	} else if command == "server-cruncher" {
@@ -174,10 +170,6 @@ func main() {
 		load_test_portal()
 	} else if command == "load-test-redis-data" {
 		load_test_redis_data()
-	} else if command == "load-test-redis-pubsub" {
-		load_test_redis_pubsub()
-	} else if command == "load-test-redis-streams" {
-		load_test_redis_streams()
 	} else if command == "load-test-redis-time-series" {
 		load_test_redis_time_series()
 	} else if command == "load-test-redis-counters" {
@@ -224,6 +216,8 @@ func main() {
 		redis_cluster()
 	} else if command == "redis-time-series" {
 		redis_time_series()
+	} else if command == "load-relay-manager" {
+		load_relay_manager()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -259,14 +253,6 @@ func relay_backend() {
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/relay_backend", httpPort))
 }
 
-func analytics() {
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "40001"
-	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/analytics", httpPort))
-}
-
 func api() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
@@ -293,14 +279,6 @@ func relay() {
 
 func server_backend() {
 	bash("HTTP_PORT=40000 ./dist/server_backend")
-}
-
-func portal_cruncher() {
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "40012"
-	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/portal_cruncher", httpPort))
 }
 
 func session_cruncher() {
@@ -480,14 +458,6 @@ func load_test_redis_data() {
 	bash("go run tools/load_test_redis_data/load_test_redis_data.go")
 }
 
-func load_test_redis_pubsub() {
-	bash("go run tools/load_test_redis_pubsub/load_test_redis_pubsub.go")
-}
-
-func load_test_redis_streams() {
-	bash("go run tools/load_test_redis_streams/load_test_redis_streams.go")
-}
-
 func load_test_redis_time_series() {
 	bash("go run tools/load_test_redis_time_series/load_test_redis_time_series.go")
 }
@@ -617,4 +587,8 @@ func redis_cluster() {
 
 func redis_time_series() {
 	bash("docker run -p 6379:6379 --rm redis/redis-stack-server:latest")
+}
+
+func load_relay_manager() {
+	bash("go run tools/load_relay_manager/load_relay_manager.go")
 }

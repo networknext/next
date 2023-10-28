@@ -39,9 +39,7 @@ blocks:
             - killall relay_backend || true
             - killall relay-debug || true
             - killall server_backend || true
-            - killall portal_cruncher || true
             - killall session_cruncher || true
             - killall server_cruncher || true
-            - killall analytics || true
             - killall client || true
             - killall server || true

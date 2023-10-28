@@ -6,6 +6,12 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"bytes"
+	"fmt"
+	"sync"
+	"bufio"
+	"os/exec"
+	"strings"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -24,8 +30,10 @@ var relayUpdateChannelSize int
 var pingKey []byte
 var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
+var relayBackendAddress string
 
-var producer *common.RedisPubsubProducer
+var mutex sync.Mutex
+var relayBackendAddresses []string
 
 func main() {
 
@@ -33,18 +41,20 @@ func main() {
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
-	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 100)
+	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 1)
 	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
-	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 10*1024)
+	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 1024*1024)
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
+	relayBackendAddress = envvar.GetString("RELAY_BACKEND_ADDRESS", "127.0.0.1:30001")
 
 	core.Debug("redis hostname: %s", redisHostname)
 	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
 	core.Debug("relay update batch size: %d", relayUpdateBatchSize)
 	core.Debug("relay update batch duration: %v", relayUpdateBatchDuration)
 	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
+	core.Debug("relay backend address: %s", relayBackendAddress)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -96,7 +106,7 @@ func main() {
 		pingKey[31],
 	)
 
-	producer = CreatePubsubProducer(service)
+	TrackRelayBackendInstances(service)
 
 	service.UpdateMagic()
 
@@ -123,7 +133,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Warn("[%s] unsupported content type", request.RemoteAddr)
+			core.Error("[%s] unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -141,7 +151,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		packetBytes := len(body)
 
 		if packetBytes < 1+1+4+2+crypto.Box_MacSize+crypto.Box_NonceSize {
-			core.Warn("[%s] relay update packet is too small to be valid", request.RemoteAddr)
+			core.Error("[%s] relay update packet is too small to be valid", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -154,7 +164,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		encoding.ReadUint8(packetData, &index, &packetVersion)
 
 		if packetVersion < packets.RelayUpdateRequestPacket_VersionMin || packetVersion > packets.RelayUpdateRequestPacket_VersionMax {
-			core.Warn("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
+			core.Error("[%s] invalid relay update packet version: %d", request.RemoteAddr, packetVersion)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -163,7 +173,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		var relayAddress net.UDPAddr
 		if !encoding.ReadAddress(packetData, &index, &relayAddress) {
-			core.Warn("[%s] could not read relay address", request.RemoteAddr)
+			core.Error("[%s] could not read relay address", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -176,7 +186,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Warn("[%s] unknown relay %x", request.RemoteAddr, relayId)
+			core.Error("[%s] unknown relay %x", request.RemoteAddr, relayId)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -198,7 +208,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 		if err != nil {
-			core.Warn("[%s] failed to decrypt relay update", request.RemoteAddr)
+			core.Error("[%s] failed to decrypt relay update", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -207,18 +217,20 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		var packetTimestamp uint64
 
+		timestampIndex := index
+
 		encoding.ReadUint64(packetData, &index, &packetTimestamp)
 
 		currentTimestamp := uint64(startTime.Unix())
 
 		if packetTimestamp < currentTimestamp-10 {
-			core.Warn("[%s] relay update request is too old", request.RemoteAddr)
+			core.Error("[%s] relay update request is too old", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
 
 		if packetTimestamp > currentTimestamp+10 {
-			core.Warn("[%s] relay update request is in the future", request.RemoteAddr)
+			core.Error("[%s] relay update request is in the future", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -291,12 +303,212 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		writer.Write(responseData)
 
-		// forward the relay update to the relay backend, sans crypto stuff (it's now decrypted...)
+		// adjust the packet to current time so we can detect when redis is overloaded in the relay backend
 
-		messageData := body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)]
+		encoding.WriteUint64(packetData, &timestampIndex, currentTimestamp)
 
-		producer.MessageChannel <- messageData
+		// forward the decrypted relay update to the relay backends
+
+		buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
+
+		addresses := []string{}
+		if relayBackendAddress != "" {
+			addresses = []string{relayBackendAddress}
+		} else {
+			mutex.Lock()
+			addresses = relayBackendAddresses
+			mutex.Unlock()
+		}
+
+		for i := range addresses {
+			go func(index int) {
+				url := fmt.Sprintf("http://%s/relay_update", addresses[index])
+				forward_request, err := http.NewRequest("POST", url, buffer)
+				if err == nil {
+					httpClient := http.Client{
+					    Timeout: time.Second,
+					}
+					response, _ := httpClient.Do(forward_request)
+					if response != nil {
+						_,_  = ioutil.ReadAll(response.Body)
+						response.Body.Close()
+					}
+				}
+			}(i)
+		}
 	}
+}
+
+func RunCommand(command string, args []string) (bool, string) {
+
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func Bash(command string) (bool, string) {
+	return RunCommand("bash", []string{"-c", command})
+}
+
+func TrackRelayBackendInstances(service *common.Service) {
+
+	// grab google cloud instance name from metadata
+
+	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	if !result {
+		return // not in google cloud
+	}
+
+	instanceName = strings.TrimSuffix(instanceName, "\n")
+
+	tokens := strings.Split(instanceName, ".")
+
+	instanceName = tokens[0]
+
+	core.Log("google cloud instance name is '%s'", instanceName)
+
+	// grab google cloud zone from metadata
+
+	var zone string
+	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	if !result {
+		return // not in google cloud
+	}
+
+	zone = strings.TrimSuffix(zone, "\n")
+
+	tokens = strings.Split(zone, "/")
+
+	zone = tokens[len(tokens)-1]
+
+	core.Log("google cloud zone is '%s'", zone)
+
+	// turn zone into region
+
+	tokens = strings.Split(zone, "-")
+
+	region := strings.Join(tokens[:len(tokens)-1], "-")
+
+	core.Log("google cloud region is '%s'", region)
+
+	go func() {
+
+		ticker := time.NewTicker(1000 * time.Millisecond)
+
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				_, list_output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
+
+				list_lines := strings.Split(list_output, "\n")
+
+				instanceIds := make([]string, 0)
+				zones := make([]string, 0)
+				for i := range list_lines {
+					if strings.Contains(list_lines[i], "relay-backend-") {
+						values := strings.Fields(list_lines[i])
+						instanceId := values[0]
+						zone := values[1]
+						instanceIds = append(instanceIds, instanceId)
+						zones = append(zones, zone)
+					}
+				}
+
+				addresses := make([]string, len(instanceIds))
+				waitGroup := sync.WaitGroup{}
+				waitGroup.Add(len(addresses))
+				for i := range instanceIds {
+					go func(index int) {
+						_, describe_output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
+						describe_lines := strings.Split(describe_output, "\n")
+						address := ""
+						for j := range describe_lines {
+							if strings.Contains(describe_lines[j], "networkIP: ") {
+								values := strings.Fields(describe_lines[j])
+								address = values[1]
+							}
+						}
+						addresses[index] = address
+						waitGroup.Done()
+					}(i)
+				}
+				waitGroup.Wait()
+
+				// todo
+				fmt.Printf("===============================\n")
+				for i := range instanceIds {
+					fmt.Printf("%s -> %s\n", instanceIds[i], addresses[i])
+				}
+				fmt.Printf("===============================\n")
+
+				ok := make([]bool, len(addresses))
+				waitGroup.Add(len(addresses))
+				for i := range addresses {
+					go func(index int) {
+						ok[index], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 1", addresses[index]))
+						waitGroup.Done()
+					}(i)
+				}
+				waitGroup.Wait()
+
+				verified := []string{}
+				for i := range addresses {
+					if ok[i] {
+						verified = append(verified, addresses[i])
+					}
+				}
+
+				// todo
+				fmt.Printf("===============================\n")
+				for i := range verified {
+					fmt.Printf("%s\n", verified[i])
+				}
+				fmt.Printf("===============================\n")
+
+				mutex.Lock()
+				relayBackendAddresses = verified
+				mutex.Unlock()
+			}
+		}
+	}()
 }
 
 func GetRelayData(service *common.Service) func() *common.RelayData {
@@ -309,24 +521,4 @@ func GetMagicValues(service *common.Service) func() ([constants.MagicBytes]byte,
 	return func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte) {
 		return service.GetMagicValues()
 	}
-}
-
-func CreatePubsubProducer(service *common.Service) *common.RedisPubsubProducer {
-
-	config := common.RedisPubsubConfig{}
-
-	config.RedisHostname = redisHostname
-	config.PubsubChannelName = redisPubsubChannelName
-	config.BatchSize = relayUpdateBatchSize
-	config.BatchDuration = relayUpdateBatchDuration
-	config.MessageChannelSize = relayUpdateChannelSize
-
-	var err error
-	producer, err = common.CreateRedisPubsubProducer(service.Context, config)
-	if err != nil {
-		core.Error("could not create redis pubsub producer")
-		os.Exit(1)
-	}
-
-	return producer
 }

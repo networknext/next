@@ -103,51 +103,40 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 	return nil
 }
 
-func DownloadDatabases_CloudStorage(bucketName string) error {
+func DownloadDatabases_CloudStorage(bucketName string) (error, *maxminddb.Reader, *maxminddb.Reader) {
 
 	dir, err := ioutil.TempDir("/tmp", "database-")
 	if err != nil {
-		return err
+		return err, nil, nil
 	}
-	defer os.RemoveAll(dir)
 
 	core.Debug("downloading isp database")
 
 	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-ISP.mmdb %s", bucketName, dir))
 	if err != nil {
-		return fmt.Errorf("failed to download isp database: %v", err)
+		return fmt.Errorf("failed to download isp database: %v", err), nil, nil
 	}
 
 	err = Bash(fmt.Sprintf("gsutil cp gs://%s/GeoIP2-City.mmdb %s", bucketName, dir))
 	if err != nil {
-		return fmt.Errorf("failed to download isp database: %v", err)
+		return fmt.Errorf("failed to download isp database: %v", err), nil, nil
 	}
 
 	core.Debug("validating isp database")
 
 	isp_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-ISP.mmdb", dir))
 	if err != nil {
-		return fmt.Errorf("failed to load isp database: %v", err)
+		return fmt.Errorf("failed to load isp database: %v", err), nil, nil
 	}
 
 	core.Debug("validating city database")
 
 	city_db, err := maxminddb.Open(fmt.Sprintf("%s/GeoIP2-City.mmdb", dir))
 	if err != nil {
-		return fmt.Errorf("failed to load city database: %v", err)
+		return fmt.Errorf("failed to load city database: %v", err), nil, nil
 	}
 
-	core.Debug("copying database files to app dir")
-
-	err = Bash(fmt.Sprintf("cp %s/GeoIP2-*.mmdb .", dir))
-	if err != nil {
-		return fmt.Errorf("failed to copy databases: %v", err)
-	}
-
-	_ = isp_db
-	_ = city_db
-
-	return nil
+	return nil, isp_db, city_db
 }
 
 func LoadDatabases() (*maxminddb.Reader, *maxminddb.Reader, error) {
@@ -171,8 +160,7 @@ func LoadDatabases() (*maxminddb.Reader, *maxminddb.Reader, error) {
 
 func GetLocation(city_db *maxminddb.Reader, ip net.IP) (float32, float32) {
 	var city City
-	err := city_db.Lookup(ip, &city)
-	if err == nil {
+	if city_db != nil && city_db.Lookup(ip, &city) == nil {
 		return float32(city.Location.Latitude), float32(city.Location.Longitude)
 	} else {
 		return 0, 0
@@ -181,8 +169,7 @@ func GetLocation(city_db *maxminddb.Reader, ip net.IP) (float32, float32) {
 
 func GetISP(isp_db *maxminddb.Reader, ip net.IP) string {
 	var isp ISP
-	err := isp_db.Lookup(ip, &isp)
-	if err == nil {
+	if isp_db != nil && isp_db.Lookup(ip, &isp) == nil {
 		return isp.ISP
 	} else {
 		return "Unknown"

@@ -16,6 +16,9 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/handlers"
 	"github.com/networknext/next/modules/messages"
+	"github.com/networknext/next/modules/portal"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var service *common.Service
@@ -40,17 +43,33 @@ var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummary
 var analyticsNearRelayPingMessageChannel chan *messages.AnalyticsNearRelayPingMessage
 
 var enableGooglePubsub bool
-var enableRedisStreams bool
-
-var redisHostname string
-var redisCluster []string
 
 var shuttingDownMutex sync.Mutex
 var shuttingDown bool
 
 var portalNextSessionsOnly bool
 
+var sessionInserter *portal.SessionInserter
+var sessionCruncherURL string
+var serverCruncherURL string
+var sessionInsertBatchSize int
+var serverInsertBatchSize int
+var nearRelayInsertBatchSize int
+
+var enableRedisTimeSeries bool
+var redisTimeSeriesHostname string
+var redisTimeSeriesCluster []string
+
+var redisPortalHostname string
+var redisPortalCluster []string
+
+var countersPublisher *common.RedisCountersPublisher
+
+var startTime int64
+
 func main() {
+
+	startTime = time.Now().Unix()
 
 	service = common.CreateService("server_backend")
 
@@ -58,26 +77,43 @@ func main() {
 
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 
-	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024)
+	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024*1024)
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
 	serverBackendPublicKey = envvar.GetBase64("SERVER_BACKEND_PUBLIC_KEY", []byte{})
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
-	enableRedisStreams = envvar.GetBool("ENABLE_REDIS_STREAMS", true)
-	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
 	portalNextSessionsOnly = envvar.GetBool("PORTAL_NEXT_SESSIONS_ONLY", false)
+	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
+	serverCruncherURL = envvar.GetString("SERVER_CRUNCHER_URL", "http://127.0.0.1:40300")
+	sessionInsertBatchSize = envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 10000)
+	serverInsertBatchSize = envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 10000)
+	nearRelayInsertBatchSize = envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 10000)
+	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
+	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
+	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
+	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
+	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+
+	if enableRedisTimeSeries {
+		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
+		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
+	}
+
+	core.Debug("redis portal cluster: %s", redisPortalCluster)
+	core.Debug("redis portal hostname: %s", redisPortalHostname)
 
 	core.Debug("channel size: %d", channelSize)
 	core.Debug("max packet size: %d bytes", maxPacketSize)
 	core.Debug("server backend address: %s", serverBackendAddress.String())
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
-	core.Debug("enable redis streams: %v", enableRedisStreams)
-	core.Debug("redis hostname: %s", redisHostname)
-	core.Debug("redis cluster: %v", redisCluster)
 	core.Debug("portal next sessions only: %v", portalNextSessionsOnly)
+	core.Debug("session cruncher url: %s", sessionCruncherURL)
+	core.Debug("server cruncher url: %s", serverCruncherURL)
+	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
+	core.Debug("server insert batch size: %d", serverInsertBatchSize)
+	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -137,9 +173,23 @@ func main() {
 	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
 	portalNearRelayUpdateMessageChannel = make(chan *messages.PortalNearRelayUpdateMessage, channelSize)
 
-	processPortalMessages_RedisStreams[*messages.PortalSessionUpdateMessage](service, "session update", portalSessionUpdateMessageChannel)
-	processPortalMessages_RedisStreams[*messages.PortalServerUpdateMessage](service, "server update", portalServerUpdateMessageChannel)
-	processPortalMessages_RedisStreams[*messages.PortalNearRelayUpdateMessage](service, "near relay update", portalNearRelayUpdateMessageChannel)
+	if enableRedisTimeSeries {
+
+		countersConfig := common.RedisCountersConfig{
+			RedisHostname: redisTimeSeriesHostname,
+			RedisCluster:  redisTimeSeriesCluster,
+		}
+		var err error
+		countersPublisher, err = common.CreateRedisCountersPublisher(service.Context, countersConfig)
+		if err != nil {
+			core.Error("could not create redis counters publisher: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	processPortalSessionUpdateMessages(service, portalSessionUpdateMessageChannel)
+	processPortalServerUpdateMessages(service, portalServerUpdateMessageChannel)
+	processPortalNearRelayUpdateMessages(service, portalNearRelayUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -285,9 +335,9 @@ func updateShuttingDown() {
 						if !shuttingDown {
 							core.Log("*** SHUTTING DOWN ***")
 							shuttingDown = true
-							break
 						}
 						shuttingDownMutex.Unlock()
+						break
 					}
 				}
 			}
@@ -304,7 +354,8 @@ func isShuttingDown() bool {
 
 func sendTrafficToMe() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
+	// todo: parameterize as INITIAL_DELAY
+	return time.Now().Unix() > startTime + 90 && routeMatrix != nil && database != nil && !isShuttingDown() && !service.Stopping
 }
 
 func machineIsHealthy() bool {
@@ -416,64 +467,190 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 }
 
 func locateIP_Real(ip net.IP) (float32, float32) {
+	// production
 	return service.GetLocation(ip)
 }
 
-func processPortalMessages_RedisStreams[T messages.Message](service *common.Service, name string, inputChannel chan T) {
+// ------------------------------------------------------------------------------------
 
-	streamName := strings.ReplaceAll(name, " ", "_")
+func processPortalSessionUpdateMessages(service *common.Service, inputChannel chan *messages.PortalSessionUpdateMessage ) {
 
-	redisStreamsProducer, err := common.CreateRedisStreamsProducer(service.Context, common.RedisStreamsConfig{
-		RedisHostname: redisHostname,
-		RedisCluster:  redisCluster,
-		StreamName:    streamName,
-	})
-
-	if err != nil {
-		core.Error("could not create redis streams producer for %s", name)
-		os.Exit(1)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
+
+	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, sessionInsertBatchSize)
 
 	go func() {
 		for {
 			message := <-inputChannel
-			core.Debug("processing portal %s message", name)
-			messageData := message.Write(make([]byte, message.GetMaxSize()))
-			if enableRedisStreams {
-				core.Debug("sent portal %s message to redis streams", name)
-				redisStreamsProducer.MessageChannel <- messageData
+		
+			core.Debug("processing portal session update message")
+
+			sessionId := message.SessionId
+
+			userHash := message.UserHash
+
+			var isp string
+			if !service.Local {
+				isp = service.GetISP(message.ClientAddress.IP)
+			} else {
+				isp = "Local"
+			}
+
+			sessionData := portal.SessionData{
+				SessionId:      message.SessionId,
+				UserHash:       message.UserHash,
+				StartTime:      message.StartTime,
+				ISP:            isp,
+				ConnectionType: message.ConnectionType,
+				PlatformType:   message.PlatformType,
+				Latitude:       message.Latitude,
+				Longitude:      message.Longitude,
+				DirectRTT:      message.BestDirectRTT,
+				NextRTT:        message.BestNextRTT,
+				BuyerId:        message.BuyerId,
+				DatacenterId:   message.DatacenterId,
+				ServerAddress:  message.ServerAddress.String(),
+			}
+
+			if message.Next {
+				sessionData.NumRouteRelays = int(message.NextNumRouteRelays)
+				for i := 0; i < int(message.NextNumRouteRelays); i++ {
+					sessionData.RouteRelays[i] = message.NextRouteRelayId[i]
+				}
+			}
+
+			sliceData := portal.SliceData{
+				Timestamp:        message.Timestamp,
+				SliceNumber:      message.SliceNumber,
+				DirectRTT:        uint32(message.DirectRTT),
+				NextRTT:          uint32(message.NextRTT),
+				PredictedRTT:     uint32(message.NextPredictedRTT),
+				DirectJitter:     uint32(message.DirectJitter),
+				NextJitter:       uint32(message.NextJitter),
+				RealJitter:       uint32(message.RealJitter),
+				DirectPacketLoss: float32(message.DirectPacketLoss),
+				NextPacketLoss:   float32(message.NextPacketLoss),
+				RealPacketLoss:   float32(message.RealPacketLoss),
+				RealOutOfOrder:   float32(message.RealOutOfOrder),
+				InternalEvents:   message.InternalEvents,
+				SessionEvents:    message.SessionEvents,
+				DirectKbpsUp:     message.DirectKbpsUp,
+				DirectKbpsDown:   message.DirectKbpsUp,
+				NextKbpsUp:       message.NextKbpsUp,
+				NextKbpsDown:     message.NextKbpsDown,
+				Next:             message.Next,
+			}
+
+			if message.SendToPortal {
+				sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+			}
+
+			if enableRedisTimeSeries {
+
+				if !message.Retry {
+						countersPublisher.MessageChannel <- "session_update"
+					if message.Next {
+						countersPublisher.MessageChannel <- "next_session_update"
+					}
+					countersPublisher.MessageChannel <- fmt.Sprintf("session_update_%016x", message.BuyerId)
+					if message.Next {
+						countersPublisher.MessageChannel <- fmt.Sprintf("next_session_update_%016x", message.BuyerId)
+					}
+					if message.FallbackToDirect {
+						countersPublisher.MessageChannel <- "fallback_to_direct"
+					}
+				} else {
+					countersPublisher.MessageChannel <- "retry"
+				}
 			}
 		}
 	}()
 }
 
-func processPortalMessages_RedisPubsub[T messages.Message](service *common.Service, name string, inputChannel chan T) {
+func processPortalServerUpdateMessages(service *common.Service, inputChannel chan *messages.PortalServerUpdateMessage ) {
 
-	channelName := strings.ReplaceAll(name, " ", "_")
-
-	redisPubsubProducer, err := common.CreateRedisPubsubProducer(service.Context, common.RedisPubsubConfig{
-		RedisHostname:     redisHostname,
-		RedisCluster:      redisCluster,
-		PubsubChannelName: channelName,
-	})
-
-	if err != nil {
-		core.Error("could not create redis pubsub producer for %s", name)
-		os.Exit(1)
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
+
+	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, serverInsertBatchSize)
 
 	go func() {
 		for {
 			message := <-inputChannel
-			core.Debug("processing portal %s message", name)
-			messageData := message.Write(make([]byte, message.GetMaxSize()))
-			if enableRedisStreams {
-				core.Debug("sent portal %s message to redis pubsub", name)
-				redisPubsubProducer.MessageChannel <- messageData
+		
+			core.Debug("processing portal server update message")
+
+			serverData := portal.ServerData{
+				ServerAddress:    message.ServerAddress.String(),
+				SDKVersion_Major: message.SDKVersion_Major,
+				SDKVersion_Minor: message.SDKVersion_Minor,
+				SDKVersion_Patch: message.SDKVersion_Patch,
+				BuyerId:          message.BuyerId,
+				DatacenterId:     message.DatacenterId,
+				NumSessions:      message.NumSessions,
+				Uptime:           message.Uptime,
+			}
+
+			serverInserter.Insert(service.Context, &serverData)
+
+			if enableRedisTimeSeries {
+
+				countersPublisher.MessageChannel <- "server_update"
+
+				countersPublisher.MessageChannel <- fmt.Sprintf("server_update_%016x", message.BuyerId)
 			}
 		}
 	}()
 }
+
+func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalNearRelayUpdateMessage ) {
+
+	var redisClient redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
+
+	nearRelayInserter := portal.CreateNearRelayInserter(redisClient, nearRelayInsertBatchSize)
+
+	go func() {
+		for {
+			message := <-inputChannel
+		
+			core.Debug("processing near relay update message")
+
+			sessionId := message.SessionId
+
+			nearRelayData := portal.NearRelayData{
+				Timestamp:           message.Timestamp,
+				NumNearRelays:       message.NumNearRelays,
+				NearRelayId:         message.NearRelayId,
+				NearRelayRTT:        message.NearRelayRTT,
+				NearRelayJitter:     message.NearRelayJitter,
+				NearRelayPacketLoss: message.NearRelayPacketLoss,
+			}
+
+			nearRelayInserter.Insert(service.Context, sessionId, &nearRelayData)
+
+			if enableRedisTimeSeries {
+
+				countersPublisher.MessageChannel <- "near_relay_update"
+			}
+		}
+	}()
+}
+
+// ------------------------------------------------------------------------------------
 
 func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inputChannel chan T) {
 
@@ -515,3 +692,5 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 		}
 	}()
 }
+
+// ------------------------------------------------------------------------------------
