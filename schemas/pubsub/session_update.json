@@ -41,6 +41,5 @@
     {"name": "location_veto",                         "type": "boolean"},
     {"name": "mispredict",                            "type": "boolean"},
     {"name": "lack_of_diversity",                     "type": "boolean"},
-    {"name": "lack_of_diversity",                     "type": "boolean"}
   ]
 }

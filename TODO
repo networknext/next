@@ -18,9 +18,11 @@ DONE
 
 	Implement a basic test to verify that each analytics struct writes with avro schema.
 
+	Setup pubsub channels to have bigquery table and schema defined for messages.
+
 TODO	
 
-	Setup pubsub channels to have bigquery table and schema defined for messages.
+	Load the avro schemas in the server backend.
 
 	Actually send the analytics messages encoded with avro to pubsub.
 
