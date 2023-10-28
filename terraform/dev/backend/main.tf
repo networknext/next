@@ -351,7 +351,7 @@ resource "google_pubsub_topic" "pubsub_topic" {
   count      = length(local.pubsub_channels)
   name       = local.pubsub_channels[count.index]
   schema_settings {
-    schema = google_pubsub_schema.pubsub_schema[count.index]
+    schema = google_pubsub_schema.pubsub_schema[count.index].id
     encoding = "JSON"
   }
   depends_on = [google_pubsub_schema.pubsub_schema]
