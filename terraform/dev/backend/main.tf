@@ -18,7 +18,6 @@ variable "google_zone" { type = string }
 variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
 variable "google_database_bucket" { type = string }
-variable "google_machine_type" { type = string }
 
 variable "cloudflare_api_token" { type = string }
 variable "cloudflare_zone_id" { type = string }
@@ -503,7 +502,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = var.google_machine_type
+  machine_type               = "f1-micro"
   project                    = var.google_project
   region                     = var.google_region
   zones                      = var.google_zones
@@ -867,7 +866,7 @@ module "raspberry_backend" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = var.google_machine_type
+  machine_type             = "f1-micro"
   project                  = var.google_project
   region                   = var.google_region
   zones                    = var.google_zones
@@ -917,7 +916,7 @@ module "raspberry_server" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "f1-micro"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1001,7 +1000,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = var.google_machine_type
+  machine_type       = "f1-micro"
   project            = var.google_project
   region             = var.google_region
   zones              = var.google_zones
@@ -1024,7 +1023,7 @@ module "portal" {
   config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = var.google_machine_type
+  machine_type             = "f1-micro"
   project                  = var.google_project
   region                   = var.google_region
   zones                    = var.google_zones
