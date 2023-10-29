@@ -3,7 +3,7 @@
   "name": "relay_update",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",                    "type": {"type": "long", "logicalType": "time-micros"}},
+    {"name": "timestamp",                    "type": {"type": "long", "logicalType": "timestamp-micros"}},
     {"name": "relay_id",                     "type": "long"},
     {"name": "session_count",                "type": "int"},
     {"name": "max_sessions",                 "type": "int"},

@@ -3,7 +3,7 @@
   "name": "near_relay_ping",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",              "type": {"type": "long", "logicalType": "time-micros"}},
+    {"name": "timestamp",              "type": {"type": "long", "logicalType": "timestamp-micros"}},
     {"name": "buyer_id",               "type": "long"},
     {"name": "session_id",             "type": "long"},
     {"name": "user_hash",              "type": "long"},

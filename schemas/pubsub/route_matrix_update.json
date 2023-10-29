@@ -3,7 +3,7 @@
   "name": "route_matrix_update",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",                   "type": {"type": "long", "logicalType": "time-micros"}},
+    {"name": "timestamp",                   "type": {"type": "long", "logicalType": "timestamp-micros"}},
     {"name": "num_relays",                  "type": "int"},
     {"name": "num_dest_relays",             "type": "int"},
     {"name": "num_full_relays",             "type": "int"},
