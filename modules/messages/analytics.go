@@ -6,7 +6,7 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// always
 
-	Timestamp        string  `avro:"timestamp"`
+	Timestamp        int64   `avro:"timestamp"`
 	SessionId        int64   `avro:"session_id"`
 	SliceNumber      int32   `avro:"slice_number"`
 	RealPacketLoss   float32 `avro:"real_packet_loss"`
@@ -58,7 +58,7 @@ type AnalyticsSessionSummaryMessage struct {
 
 	// summary data
 
-	Timestamp                       string  `avro:"timestamp"`
+	Timestamp                       int64   `avro:"timestamp"`
 	SessionId                       int64   `avro:"session_id"`
 	DatacenterId                    int64   `avro:"datacenter_id"`
 	BuyerId                         int64   `avro:"buyer_id"`
@@ -82,7 +82,7 @@ type AnalyticsSessionSummaryMessage struct {
 	TotalNextEnvelopeBytesDown      int64   `avro:"total_next_envelope_bytes_down"`
 	DurationOnNext                  int32   `avro:"duration_on_next"`
 	SessionDuration                 int32   `avro:"session_duration"`
-	StartTimestamp                  string  `avro:"start_timestamp"`
+	StartTimestamp                  int64   `avro:"start_timestamp"`
 	Error                           int64   `avro:"error"`
 
 	// flags
@@ -108,7 +108,7 @@ type AnalyticsSessionSummaryMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsServerUpdateMessage struct {
-	Timestamp        string `avro:"timestamp"`
+	Timestamp        int64  `avro:"timestamp"`
 	SDKVersion_Major int32  `avro:"sdk_version_major"`
 	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
 	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
@@ -121,7 +121,7 @@ type AnalyticsServerUpdateMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsServerInitMessage struct {
-	Timestamp        string `avro:"timestamp"`
+	Timestamp        int64  `avro:"timestamp"`
 	SDKVersion_Major int32  `avro:"sdk_version_major"`
 	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
 	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
@@ -134,7 +134,7 @@ type AnalyticsServerInitMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsRelayUpdateMessage struct {
-	Timestamp                 string  `avro:"timestamp"`
+	Timestamp                 int64   `avro:"timestamp"`
 	RelayId                   int64   `avro:"relay_id"`
 	SessionCount              int32   `avro:"session_count"`
 	MaxSessions               int32   `avro:"max_sessions"`
@@ -158,7 +158,7 @@ type AnalyticsRelayUpdateMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsRouteMatrixUpdateMessage struct {
-	Timestamp               string  `avro:"timestamp"`
+	Timestamp               int64   `avro:"timestamp"`
 	NumRelays               int32   `avro:"num_relays"`
 	NumDestRelays           int32   `avro:"num_dest_relays"`
 	NumFullRelays           int32   `avro:"num_full_relays"`
@@ -190,7 +190,7 @@ type AnalyticsRouteMatrixUpdateMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsNearRelayPingMessage struct {
-	Timestamp           string  `avro:"timestamp"`
+	Timestamp           int64   `avro:"timestamp"`
 	BuyerId             int64   `avro:"buyer_id"`
 	SessionId           int64   `avro:"session_id"`
 	UserHash            int64   `avro:"user_hash"`
@@ -208,7 +208,7 @@ type AnalyticsNearRelayPingMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsRelayToRelayPingMessage struct {
-	Timestamp          string  `avro:"timestamp"`
+	Timestamp          int64   `avro:"timestamp"`
 	SourceRelayId      int64   `avro:"source_relay_id"`
 	DestinationRelayId int64   `avro:"destination_relay_id"`
 	RTT                int32   `avro:"rtt"`

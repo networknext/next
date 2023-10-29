@@ -3,7 +3,7 @@
   "name": "session_update",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",                             "type": "string"},
+    {"name": "timestamp",                             "type": {"type": "long", "logicalType": "time-micros"}},
     {"name": "session_id",                            "type": "long"},
     {"name": "slice_number",                          "type": "int"},
     {"name": "real_packet_loss",                      "type": "float"},

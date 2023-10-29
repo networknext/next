@@ -3,7 +3,7 @@
   "name": "server_init",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",         "type": "string"},
+    {"name": "timestamp",         "type": {"type": "long", "logicalType": "time-micros"}},
     {"name": "sdk_version_major", "type": "int"},
     {"name": "sdk_version_minor", "type": "int"},
     {"name": "sdk_version_patch", "type": "int"},
