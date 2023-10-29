@@ -22,7 +22,7 @@
     {"name": "next_packet_loss",                      "type": "float"},
     {"name": "next_kbps_up",                          "type": "int"},
     {"name": "next_kbps_down",                        "type": "int"},
-    {"name": "next_predicted_rtt",                    "type": "int"},
+    {"name": "next_predicted_rtt",                    "type": "float"},
     {"name": "next_route_relays",                     "type": {"type": "array", "items": "long"} },
     {"name": "fallback_to_direct",                    "type": "boolean"},
     {"name": "reported",                              "type": "boolean"},
