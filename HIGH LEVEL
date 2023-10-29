@@ -80,11 +80,9 @@ DONE
 
 	Load test to 1K relays, 1M servers and 10M sessions.
 
-TODO
-
 	Insert analytics messages into bigquery
 
-	-----------
+TODO
 
 	Portal map
 	
@@ -94,15 +92,15 @@ TODO
 
 	-----------
 
+	Finalize SDK and UE5 plugin
+
+	-----------
+
 	Multithreaded relay fix and load testing.
 
 	https://github.com/leandromoreira/linux-network-performance-parameters
 
 	https://developers.redhat.com/blog/2021/05/13/receive-side-scaling-rss-with-ebpf-and-cpumap#redirecting_into_a_cpumap
-
-	-----------
-
-	Finalize SDK and UE5 plugin
 
 	-----------
 
