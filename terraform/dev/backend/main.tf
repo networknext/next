@@ -391,7 +391,7 @@ locals {
 
   bigquery_table_clustering = {
     "session_update"      = [ "session_id" ]
-    "session_summary"     = [ "session_id", "buyer_id", "user_hash" ]
+    "session_summary"     = [ "buyer_id", "user_hash" ]
     "server_update"       = [ "datacenter_id", "buyer_id" ]
     "server_init"         = [ "datacenter_id", "buyer_id" ]
     "relay_update"        = [ "relay_id" ]
@@ -418,7 +418,7 @@ resource "google_bigquery_table" "table" {
   clustering          = local.bigquery_table_clustering[each.key]
   deletion_protection = false
   time_partitioning {
-    type = "DAY"
+    field = "timestamp"
   }
 }
 

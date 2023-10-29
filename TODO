@@ -34,11 +34,17 @@ DONE
 
 	Process the session update messages in the server backend and encode them with avro before sending to google pubsub.
 
-TODO	
-
 	Deploy to dev and verify data is ingested into bigquery.
 
 	No, it's not ingested. I think the AVRO schema is set to text (JSON) messages. I need to set the encoding to binary.
+
+	Set to binary and deploy.
+
+	Verify bigquery sees data.
+
+	Force next flag is true in dev on session slices. Is this correct? Yes.
+
+TODO	
 
 	-------------
 
@@ -47,6 +53,24 @@ TODO
 	-------------
 
 	Pass over the relay backend messages. Make sure timestamp is micros, and extend handlers to encode in avro and send to google pubsub.
+
+	-------------
+
+	Update staging so the pubsub service account has permission to do the bigquery stuff.
+
+	-------------
+
+	Deploy to staging and verify we have ingestion into bigquery @ 100k sessions.
+
+	-------------
+
+	Scale up to 1000 relays, 1M servers and 10M sessions and run for one day.
+
+	Verify that we have data ingestion running for the whole day with no errors.
+
+	-------------
+
+	At this point the backend is finished.
 
 	-------------
 
@@ -144,6 +168,10 @@ TODO
 
 
 Small things:
+
+	----------
+
+	How to make sure bigquery partitions on my timestamp, not the insert timestamp?
 
 	----------
 
