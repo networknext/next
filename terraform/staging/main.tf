@@ -347,14 +347,25 @@ locals {
     "near_relay_ping",
     "session_update",
     "session_summary",
-    "cost_matrix_stats",
   ]
   
 }
 
+resource "google_pubsub_schema" "pubsub_schema" {
+  count      = length(local.pubsub_channels)
+  name       = local.pubsub_channels[count.index]
+  type       = "AVRO"
+  definition = file("../../schemas/pubsub/${local.pubsub_channels[count.index]}.json")
+}
+
 resource "google_pubsub_topic" "pubsub_topic" {
-  count = length(local.pubsub_channels)
-  name  = local.pubsub_channels[count.index]
+  count      = length(local.pubsub_channels)
+  name       = local.pubsub_channels[count.index]
+  schema_settings {
+    schema = google_pubsub_schema.pubsub_schema[count.index].id
+    encoding = "BINARY"
+  }
+  depends_on = [google_pubsub_schema.pubsub_schema]
 } 
 
 resource "google_pubsub_subscription" "pubsub_subscription" {
@@ -362,10 +373,15 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
   name                        = local.pubsub_channels[count.index]
   topic                       = google_pubsub_topic.pubsub_topic[count.index].name
   message_retention_duration  = "604800s"
-  retain_acked_messages       = true
+  retain_acked_messages       = false
   ack_deadline_seconds        = 60
   expiration_policy {
     ttl = ""
+  }
+  bigquery_config {
+    table = "${google_bigquery_table.table[local.pubsub_channels[count.index]].project}.${google_bigquery_table.table[local.pubsub_channels[count.index]].dataset_id}.${google_bigquery_table.table[local.pubsub_channels[count.index]].table_id}"
+    use_topic_schema    = true
+    drop_unknown_fields = true    
   }
 }
 
@@ -376,8 +392,8 @@ locals {
   bigquery_tables = {
     "session_update"      = file("../../schemas/bigquery/session_update.json")
     "session_summary"     = file("../../schemas/bigquery/session_summary.json")
-    "server_update"       = file("../../schemas/bigquery/server_update.json")
     "server_init"         = file("../../schemas/bigquery/server_init.json")
+    "server_update"       = file("../../schemas/bigquery/server_update.json")
     "relay_update"        = file("../../schemas/bigquery/relay_update.json")
     "route_matrix_update" = file("../../schemas/bigquery/route_matrix_update.json")
     "relay_to_relay_ping" = file("../../schemas/bigquery/relay_to_relay_ping.json")
@@ -386,7 +402,7 @@ locals {
 
   bigquery_table_clustering = {
     "session_update"      = [ "session_id" ]
-    "session_summary"     = [ "session_id", "buyer_id", "user_hash" ]
+    "session_summary"     = [ "buyer_id", "user_hash" ]
     "server_update"       = [ "datacenter_id", "buyer_id" ]
     "server_init"         = [ "datacenter_id", "buyer_id" ]
     "relay_update"        = [ "relay_id" ]
@@ -414,6 +430,7 @@ resource "google_bigquery_table" "table" {
   deletion_protection = false
   time_partitioning {
     type = "DAY"
+    field = "timestamp"
   }
 }
 
