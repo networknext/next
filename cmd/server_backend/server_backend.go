@@ -20,6 +20,7 @@ import (
 	"github.com/networknext/next/modules/portal"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/hamba/avro"
 )
 
 var service *common.Service
@@ -86,6 +87,12 @@ var sessionUpdateSchemaData string
 
 //go:embed session_summary.json
 var sessionSummarySchemaData string
+
+var nearRelayPingSchema avro.Schema
+var serverUpdateSchema avro.Schema
+var serverInitSchema avro.Schema
+var sessionUpdateSchema avro.Schema
+var sessionSummarySchema avro.Schema
 
 func main() {
 
@@ -187,6 +194,37 @@ func main() {
 		pingKey[30],
 		pingKey[31],
 	)
+
+	// initialize avro schemas for sending analytics data to pubsub -> bigquery ingestion	
+
+	if enableGooglePubsub {
+
+		var err error
+		sessionUpdateSchema, err = avro.Parse(sessionUpdateSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid session update schema: %v", err))
+		}
+
+		sessionSummarySchema, err = avro.Parse(sessionSummarySchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid session summary schema: %v", err))
+		}
+
+		nearRelayPingSchema, err = avro.Parse(nearRelayPingSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid near relay ping schema: %v", err))
+		}
+
+		serverUpdateSchema, err = avro.Parse(serverUpdateSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid server update schema: %v", err))
+		}
+
+		serverInitSchema, err = avro.Parse(serverInitSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid server init schema: %v", err))
+		}
+	}
 
 	// initialize fallback to direct channel
 
