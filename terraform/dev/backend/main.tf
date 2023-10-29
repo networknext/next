@@ -354,7 +354,7 @@ resource "google_pubsub_topic" "pubsub_topic" {
     schema = google_pubsub_schema.pubsub_schema[count.index].id
     encoding = "JSON"
   }
-  depends_on = [google_pubsub_schema.pubsub_schema]
+  depends_on = [google_pubsub_schema.pubsub_schema[count.index]]
 } 
 
 resource "google_pubsub_subscription" "pubsub_subscription" {
