@@ -46,17 +46,15 @@ DONE
 
 	Make sure bigquery partition based on my timestamp, not the insert time.
 
-TODO	
-
-	Verify that bigquery table in dev is set to partition on my field.
-
-	-------------
-
 	Pass over the rest of the server backend messages, make sure they are emitted with correct timestamps (micros), and extend the handlers to encode to avro and send to google pubsub
 
-	-------------
+TODO	
 
 	Pass over the relay backend messages. Make sure timestamp is micros, and extend handlers to encode in avro and send to google pubsub.
+
+	-------------
+
+	Verify that bigquery table in dev is set to partition on my field.
 
 	-------------
 

@@ -151,7 +151,6 @@ type AnalyticsRelayUpdateMessage struct {
 	NumUnroutable             int32   `avro:"num_unroutable"`
 	StartTime                 int64   `avro:"start_time"`
 	CurrentTime               int64   `avro:"current_time"`
-	NumRelayCounters          int32   `avro:"num_relay_counters"`
 	RelayCounters             []int64 `avro:"relay_counters"`
 }
 
