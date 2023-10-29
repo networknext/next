@@ -325,6 +325,7 @@ output "redis_relay_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 locals {
 
   pubsub_channels = [
@@ -373,6 +374,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     drop_unknown_fields = true    
   }
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
