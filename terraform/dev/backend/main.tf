@@ -97,6 +97,7 @@ resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
   }
 }
 
+/*
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_network" "development" {
@@ -352,7 +353,7 @@ resource "google_pubsub_topic" "pubsub_topic" {
   name       = local.pubsub_channels[count.index]
   schema_settings {
     schema = google_pubsub_schema.pubsub_schema[count.index].id
-    encoding = "JSON"
+    encoding = "BINARY"
   }
   depends_on = [google_pubsub_schema.pubsub_schema]
 } 
@@ -1059,3 +1060,4 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/

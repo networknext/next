@@ -26,7 +26,6 @@ type GooglePubsubProducer struct {
 	config          GooglePubsubConfig
 	pubsubClient    *pubsub.Client
 	pubsubTopic     *pubsub.Topic
-	batchStartTime  time.Time
 	mutex           sync.RWMutex
 	numMessagesSent int
 	numBatchesSent  int

@@ -38,6 +38,8 @@ TODO
 
 	Deploy to dev and verify data is ingested into bigquery.
 
+	No, it's not ingested. I think the AVRO schema is set to text (JSON) messages. I need to set the encoding to binary.
+
 	-------------
 
 	Pass over the rest of the server backend messages, make sure they are emitted with correct timestamps (micros), and extend the handlers to encode to avro and send to google pubsub
