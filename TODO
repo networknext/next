@@ -20,7 +20,25 @@ DONE
 
 	Setup pubsub channels to have bigquery table and schema defined for messages.
 
+	Debug and fix a huge amount of issues...
+
 TODO	
+
+	Convert the timestamp fields to int64 with logical types, see:
+
+		https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-avro#avro_conversions
+
+	ps. I'm not sure if the timestamp is Unix or not?
+
+	"A timestamp value represents an absolute point in time, independent of any time zone or convention such as daylight saving time (DST), with microsecond precision.
+
+	 A timestamp is typically represented internally as the number of elapsed microseconds since a fixed initial point in time.
+
+	Note that a timestamp itself does not have a time zone; it represents the same instant in time globally. However, the display of a timestamp for human readability usually includes a Gregorian date, a time, and a time zone, in an implementation-dependent format. For example, the displayed values "2020-01-01 00:00:00 UTC", "2019-12-31 19:00:00 America/New_York", and "2020-01-01 05:30:00 Asia/Kolkata" all represent the same instant in time and therefore represent the same timestamp value."
+
+	Am I passing in timestamps in the correct units?
+
+	---------------
 
 	Load the avro schemas in the server backend.
 

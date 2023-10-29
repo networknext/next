@@ -5,7 +5,7 @@
   "fields" : [
     {"name": "timestamp",                    "type": "string"},
     {"name": "relay_id",                     "type": "long"},
-    {"name": "num_sessions",                 "type": "int"},
+    {"name": "session_count",                "type": "int"},
     {"name": "max_sessions",                 "type": "int"},
     {"name": "envelope_bandwidth_up_kbps",   "type": "long"},
     {"name": "envelope_bandwidth_down_kbps", "type": "long"},

@@ -325,7 +325,6 @@ output "redis_relay_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 locals {
 
   pubsub_channels = [
@@ -369,12 +368,11 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     ttl = ""
   }
   bigquery_config {
-    table               = google_bigquery_table.table[local.pubsub_channels[count.index]].id
+    table = "${google_bigquery_table.table[local.pubsub_channels[count.index]].project}.${google_bigquery_table.table[local.pubsub_channels[count.index]].dataset_id}.${google_bigquery_table.table[local.pubsub_channels[count.index]].table_id}"
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -626,8 +624,8 @@ module "relay_backend" {
   target_size                = 1
 
   depends_on = [
-//    google_pubsub_topic.pubsub_topic, 
-//    google_pubsub_subscription.pubsub_subscription,
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
     module.magic_backend,
   ]
 }
@@ -829,8 +827,8 @@ module "server_backend" {
   initial_delay              = 180
 
   depends_on = [
-//    google_pubsub_topic.pubsub_topic, 
-//    google_pubsub_subscription.pubsub_subscription,
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
     module.server_cruncher,
     module.session_cruncher,
     module.redis_time_series,

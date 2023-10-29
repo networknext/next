@@ -27,6 +27,7 @@
     {"name": "rtt_bucket_45_50ms",          "type": "float"},
     {"name": "rtt_bucket_50ms_plus",        "type": "float"},
     {"name": "cost_matrix_size",            "type": "int"},
+    {"name": "route_matrix_size",           "type": "int"},
     {"name": "database_size",               "type": "int"},
     {"name": "optimize_time",               "type": "int"}
   ]

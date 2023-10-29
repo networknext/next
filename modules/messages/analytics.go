@@ -82,7 +82,7 @@ type AnalyticsSessionSummaryMessage struct {
 	TotalNextEnvelopeBytesDown      int64   `avro:"total_next_envelope_bytes_down"`
 	DurationOnNext                  int32   `avro:"duration_on_next"`
 	SessionDuration                 int32   `avro:"session_duration"`
-	StartTimestamp                  int64   `avro:"start_timestamp"`
+	StartTimestamp                  string  `avro:"start_timestamp"`
 	Error                           int64   `avro:"error"`
 
 	// flags
@@ -136,7 +136,7 @@ type AnalyticsServerInitMessage struct {
 type AnalyticsRelayUpdateMessage struct {
 	Timestamp                 string  `avro:"timestamp"`
 	RelayId                   int64   `avro:"relay_id"`
-	NumSessions               int32   `avro:"num_sessions"`
+	SessionCount              int32   `avro:"session_count"`
 	MaxSessions               int32   `avro:"max_sessions"`
 	EnvelopeBandwidthUpKbps   int64   `avro:"envelope_bandwidth_up_kbps"`
 	EnvelopeBandwidthDownKbps int64   `avro:"envelope_bandwidth_down_kbps"`
@@ -159,7 +159,6 @@ type AnalyticsRelayUpdateMessage struct {
 
 type AnalyticsRouteMatrixUpdateMessage struct {
 	Timestamp               string  `avro:"timestamp"`
-	RouteMatrixSize         int32   `avro:"route_matrix_size"`
 	NumRelays               int32   `avro:"num_relays"`
 	NumDestRelays           int32   `avro:"num_dest_relays"`
 	NumFullRelays           int32   `avro:"num_full_relays"`
@@ -183,6 +182,7 @@ type AnalyticsRouteMatrixUpdateMessage struct {
 	RTTBucket_45_50ms       float32 `avro:"rtt_bucket_45_50ms"`
 	RTTBucket_50ms_Plus     float32 `avro:"rtt_bucket_50ms_plus"`
 	CostMatrixSize          int32   `avro:"cost_matrix_size"`
+	RouteMatrixSize         int32   `avro:"route_matrix_size"`
 	DatabaseSize            int32   `avro:"database_size"`
 	OptimizeTime            int32   `avro:"optimize_time"`
 }
