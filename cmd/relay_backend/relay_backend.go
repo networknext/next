@@ -503,15 +503,12 @@ func PostRelayUpdateRequest(service *common.Service) {
 			}
 
 			if service.IsLeader() {
-				// todo: avro
-				_ = message
-				/*
-				messageBuffer := make([]byte, message.GetMaxSize())
-				messageData := message.Write(messageBuffer[:])
-				if enableGooglePubsub {
-					analyticsRelayUpdateProducer.MessageChannel <- messageData
+				data, err := avro.Marshal(relayUpdateSchema, &message)
+				if err == nil {
+					analyticsRelayUpdateProducer.MessageChannel <- data
+				} else {
+					core.Warn("failed to encode relay update message: %v", err)
 				}
-				*/
 			}
 		}
 
@@ -519,15 +516,12 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 		if service.IsLeader() {
 			for i := 0; i < len(pingMessages); i++ {
-				// todo: avro
-				_ = pingMessages[i]
-				/*
-				messageBuffer := make([]byte, pingMessages[i].GetMaxSize())
-				messageData := pingMessages[i].Write(messageBuffer[:])
-				if enableGooglePubsub {
-					analyticsRelayToRelayPingProducer.MessageChannel <- messageData
+				data, err := avro.Marshal(relayToRelayPingSchema, &pingMessages[i])
+				if err == nil {
+					analyticsRelayToRelayPingProducer.MessageChannel <- data
+				} else {
+					core.Warn("failed to encode relay to relay ping message: %v", err)
 				}
-				*/
 			}
 		}
 	}
