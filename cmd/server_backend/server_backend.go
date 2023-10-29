@@ -264,12 +264,11 @@ func main() {
 	analyticsSessionSummaryMessageChannel = make(chan *messages.AnalyticsSessionSummaryMessage, channelSize)
 	analyticsNearRelayPingMessageChannel = make(chan *messages.AnalyticsNearRelayPingMessage, channelSize)
 
-	// todo: avro
-	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel)
-	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel)
-	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel)
-	//processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel)
-	// processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel, serverInitSchema)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel, serverUpdateSchema)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel, nearRelayPingSchema)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel, sessionUpdateSchema)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel, sessionSummarySchema)
 
 	// start the service
 
@@ -727,9 +726,7 @@ func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel 
 
 // ------------------------------------------------------------------------------------
 
-// todo: avro
-/*
-func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inputChannel chan T) {
+func processAnalyticsMessages_GooglePubsub[T any](name string, inputChannel chan T, schema avro.Schema) {
 
 	var googlePubsubProducer *common.GooglePubsubProducer
 
@@ -761,14 +758,17 @@ func processAnalyticsMessages_GooglePubsub[T messages.Message](name string, inpu
 		for {
 			message := <-inputChannel
 			core.Debug("processing analytics %s message", name)
-			messageData := message.Write(make([]byte, message.GetMaxSize()))
 			if enableGooglePubsub {
+				data, err := avro.Marshal(schema, &message)
+				if err != nil {
+					core.Warn("failed to encode %s message: %v", name, err)
+					continue
+				}
 				core.Debug("sent analytics %s message to google pubsub", name)
-				googlePubsubProducer.MessageChannel <- messageData
+				googlePubsubProducer.MessageChannel <- data
 			}
 		}
 	}()
 }
-*/
 
 // ------------------------------------------------------------------------------------

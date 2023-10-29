@@ -30,11 +30,11 @@ DONE
 
 	Actually send the messages again from the session update handler.
 
-TODO	
-
 	Load the avro schemas in the server backend.
 
 	Process the session update messages in the server backend and encode them with avro before sending to google pubsub.
+
+TODO	
 
 	Deploy to dev and verify data is ingested into bigquery.
 
