@@ -110,7 +110,7 @@ func main() {
 	analyticsRouteMatrixUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_ROUTE_MATRIX_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
 
 	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
-	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
+	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 1024*1024*1024)
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 

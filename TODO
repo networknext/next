@@ -187,6 +187,13 @@ TODO
 
 Small things:
 
+	----------
+
+	Active relays still does not match the number of actual relays.
+
+	This is concerning because it recently went up from ~100 active relays to 600 or so, once I went tier 1 bandwidth. Indicating there is some IO throughput issue.
+
+	Perhaps we need two graphs, eg. the relay updates at relay gateway, and the relay updates in relay backend. If they diverge, then we know there is some problem.
 
 	----------
 
