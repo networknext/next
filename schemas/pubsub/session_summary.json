@@ -3,7 +3,7 @@
   "name": "session_summary",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",                             "type": "string"},
+    {"name": "timestamp",                             "type": {"type": "long", "logicalType": "time-micros"}},
     {"name": "session_id",                            "type": "long"},
     {"name": "datacenter_id",                         "type": "long"},
     {"name": "buyer_id",                              "type": "long"},
@@ -27,7 +27,7 @@
     {"name": "total_next_envelope_bytes_down",        "type": "long"},
     {"name": "duration_on_next",                      "type": "int"},
     {"name": "session_duration",                      "type": "int"},
-    {"name": "start_timestamp",                       "type": "long"},
+    {"name": "start_timestamp",                       "type": {"type": "long", "logicalType": "time-micros"}},
     {"name": "error",                                 "type": "long"},
     {"name": "reported",                              "type": "boolean"},
     {"name": "latency_reduction",                     "type": "boolean"},

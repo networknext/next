@@ -3,7 +3,7 @@
   "name": "relay_to_relay_ping",
   "namespace": "com.networknext.avro",
   "fields" : [
-    {"name": "timestamp",              "type": "string"},
+    {"name": "timestamp",              "type": {"type": "long", "logicalType": "time-micros"}},
     {"name": "source_relay_id",        "type": "long"},
     {"name": "destination_relay_id",   "type": "long"},
     {"name": "rtt",                    "type": "int"},
