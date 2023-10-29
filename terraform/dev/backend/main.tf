@@ -123,6 +123,7 @@ resource "google_compute_subnetwork" "internal_http_load_balancer" {
   ip_cidr_range = "10.1.0.0/16"
 }
 
+/*
 # ----------------------------------------------------------------------------------------
 
 resource "cloudflare_record" "api_domain" {
@@ -1059,3 +1060,4 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/
