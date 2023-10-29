@@ -626,8 +626,8 @@ module "relay_backend" {
   target_size                = 1
 
   depends_on = [
-    google_pubsub_topic.pubsub_topic, 
-    google_pubsub_subscription.pubsub_subscription,
+//    google_pubsub_topic.pubsub_topic, 
+//    google_pubsub_subscription.pubsub_subscription,
     module.magic_backend,
   ]
 }
@@ -829,8 +829,8 @@ module "server_backend" {
   initial_delay              = 180
 
   depends_on = [
-    google_pubsub_topic.pubsub_topic, 
-    google_pubsub_subscription.pubsub_subscription,
+//    google_pubsub_topic.pubsub_topic, 
+//    google_pubsub_subscription.pubsub_subscription,
     module.server_cruncher,
     module.session_cruncher,
     module.redis_time_series,
