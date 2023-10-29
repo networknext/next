@@ -354,7 +354,7 @@ resource "google_pubsub_topic" "pubsub_topic" {
     schema = google_pubsub_schema.pubsub_schema[count.index].id
     encoding = "JSON"
   }
-  depends_on = [google_pubsub_schema.pubsub_schema[count.index]]
+  depends_on = [google_pubsub_schema.pubsub_schema]
 } 
 
 resource "google_pubsub_subscription" "pubsub_subscription" {
@@ -368,7 +368,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     ttl = ""
   }
   bigquery_config {
-    table               = local.pubsub_channels[count.index]
+    table               = google_bigquery_table.table[local.pubsub_channels[count.index]]
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
