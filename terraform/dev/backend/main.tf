@@ -372,6 +372,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
+  depends_on = [google_project_iam_member.viewer, google_project_iam_member.editor]
 }
 
 data "google_project" "project" {
