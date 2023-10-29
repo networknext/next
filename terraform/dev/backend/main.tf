@@ -368,7 +368,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     ttl = ""
   }
   bigquery_config {
-    table               = google_bigquery_table.table[local.pubsub_channels[count.index]]
+    table               = google_bigquery_table.table[local.pubsub_channels[count.index]].id
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
