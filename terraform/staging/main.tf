@@ -631,6 +631,7 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
   initial_delay              = 90
+  tier_1                     = true
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 

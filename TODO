@@ -76,6 +76,10 @@ DONE
 
 	Deploy to staging and verify we have ingestion into bigquery @ 100k sessions.
 
+	"Active relays" seems to be cosmetically messed up during load test, it shows only 100 active relays in the chart, but there are 1000 active relays for sure.
+
+	^------ It was the channel sizes being too small, causing the relay update threads to spawn goroutines and block.
+
 TODO	
 
 	Scale up to 1000 relays, 1M servers and 10M sessions and run for one day.
@@ -183,9 +187,6 @@ TODO
 
 Small things:
 
-	----------
-
-	"Active relays" seems to be cosmetically messed up during load test, it shows only 100 active relays in the chart, but there are 1000 active relays for sure.
 
 	----------
 
