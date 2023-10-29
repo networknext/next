@@ -50,11 +50,23 @@ DONE
 
 	Pass over the relay backend messages. Make sure timestamp is micros, and extend handlers to encode in avro and send to google pubsub.
 
-TODO	
-
 	Verify that bigquery table in dev is set to partition on my field.
 
 	Verify we see data in relay update and relay to relay ping tables.
+
+	Verified data in relay to relay ping table
+
+	Verified data in route matrix update table
+
+TODO	
+
+	I don't see any data in relay update table. Check relay backend for errors...
+
+	Yes, the relay update is broken.
+
+	-------------
+
+	Verify session summary table
 
 	-------------
 

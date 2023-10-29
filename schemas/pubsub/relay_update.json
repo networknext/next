@@ -20,6 +20,6 @@
     {"name": "num_unroutable",               "type": "int"},
     {"name": "start_time",                   "type": "long"},
     {"name": "current_time",                 "type": "long"},
-    {"name": "relay_counters",               "type": {"type": "array", "items": "int"}}
+    {"name": "relay_counters",               "type": {"type": "array", "items": "long"}}
   ]
 }
