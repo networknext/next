@@ -97,6 +97,7 @@ resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
   }
 }
 
+/*
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_network" "development" {
@@ -1059,3 +1060,4 @@ resource "google_compute_router_nat" "nat" {
 }
 
 # ----------------------------------------------------------------------------------------
+*/
