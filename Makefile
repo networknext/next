@@ -34,6 +34,9 @@ update-schemas:
 	@cp -f schemas/pubsub/server_update.json cmd/server_backend
 	@cp -f schemas/pubsub/session_update.json cmd/server_backend
 	@cp -f schemas/pubsub/session_summary.json cmd/server_backend
+	@cp -f schemas/pubsub/relay_update.json cmd/relay_backend
+	@cp -f schemas/pubsub/relay_to_relay_ping.json cmd/relay_backend
+	@cp -f schemas/pubsub/route_matrix_update.json cmd/relay_backend
 
 # Clean, build and rebuild
 

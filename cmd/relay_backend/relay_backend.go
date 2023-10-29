@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	_ "embed"
 
 	"github.com/gorilla/mux"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/networknext/next/modules/portal"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/hamba/avro"
 )
 
 var maxJitter int32
@@ -73,6 +75,19 @@ var analyticsRelayUpdateProducer *common.GooglePubsubProducer
 var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
 
 var postRelayUpdateRequestChannel chan *packets.RelayUpdateRequestPacket
+
+//go:embed relay_update.json
+var relayUpdateSchemaData string
+
+//go:embed route_matrix_update.json
+var routeMatrixUpdateSchemaData string
+
+//go:embed relay_to_relay_ping.json
+var relayToRelayPingSchemaData string
+
+var relayUpdateSchema avro.Schema
+var routeMatrixUpdateSchema avro.Schema
+var relayToRelayPingSchema avro.Schema
 
 func main() {
 
@@ -181,6 +196,21 @@ func main() {
 		if err != nil {
 			core.Error("could not create analytics relay to relay ping google pubsub producer")
 			os.Exit(1)
+		}
+
+		relayUpdateSchema, err = avro.Parse(relayUpdateSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid relay update schema: %v", err))
+		}
+
+		routeMatrixUpdateSchema, err = avro.Parse(routeMatrixUpdateSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid route matrix update schema: %v", err))
+		}
+
+		relayToRelayPingSchema, err = avro.Parse(relayToRelayPingSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid relay to relay ping schema: %v", err))
 		}
 	}
 
