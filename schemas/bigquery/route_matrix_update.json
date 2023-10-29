@@ -30,16 +30,16 @@
     "description": "The number of relays in the route matrix"
   },
   {
+    "name": "num_active_relays",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of active relays in the relay manager"
+  },
+  {
     "name": "num_dest_relays",
     "type": "INT64",
     "mode": "REQUIRED",
     "description": "The number of destination relays in the route matrix"
-  },
-  {
-    "name": "num_full_relays",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The number of full relays in the route matrix"
   },
   {
     "name": "num_datacenters",

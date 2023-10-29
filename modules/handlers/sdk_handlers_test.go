@@ -515,20 +515,16 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-	// todo: Avro
-	// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server init message sent over the channel
 
-	// todo: avro
-	/*
-		select {
-		case _ = <-harness.analyticsServerInitMessageChannel:
-		default:
-			panic("no server init message found on channel")
-		}
-	*/
+	select {
+	case _ = <-harness.analyticsServerInitMessageChannel:
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
@@ -609,20 +605,16 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-	// todo
-	// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server init message sent over the channel
 
-	// todo
-	/*
-		select {
-		case _ = <-harness.analyticsServerInitMessageChannel:
-		default:
-			panic("no server init message found on channel")
-		}
-	*/
+	select {
+	case _ = <-harness.analyticsServerInitMessageChannel:
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
@@ -697,20 +689,16 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-	// todo: Avro
-	// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server init message sent over the channel
 
-	// todo: avro
-	/*
-		select {
-		case _ = <-harness.analyticsServerInitMessageChannel:
-		default:
-			panic("no server init message found on channel")
-		}
-	*/
+	select {
+	case _ = <-harness.analyticsServerInitMessageChannel:
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
@@ -909,9 +897,8 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-		// todo: avro
-		// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-		// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
@@ -924,20 +911,17 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 	// verify that we get at least one server init message sent over the channel
 
-	// todo: avro
-	/*
-		select {
-		case message := <-harness.analyticsServerInitMessageChannel:
-			assert.Equal(t, message.SDKVersion_Major, byte(1))
-			assert.Equal(t, message.SDKVersion_Minor, byte(0))
-			assert.Equal(t, message.SDKVersion_Patch, byte(0))
-			assert.Equal(t, message.BuyerId, packet.BuyerId)
-			assert.Equal(t, message.DatacenterId, packet.DatacenterId)
-			assert.Equal(t, message.DatacenterName, packet.DatacenterName)
-		default:
-			panic("no server init message found on channel")
-		}
-	*/
+	select {
+	case message := <-harness.analyticsServerInitMessageChannel:
+		assert.Equal(t, message.SDKVersion_Major, int32(1))
+		assert.Equal(t, message.SDKVersion_Minor, int32(0))
+		assert.Equal(t, message.SDKVersion_Patch, int32(0))
+		assert.Equal(t, message.BuyerId, int64(packet.BuyerId))
+		assert.Equal(t, message.DatacenterId, int64(packet.DatacenterId))
+		assert.Equal(t, message.DatacenterName, packet.DatacenterName)
+	default:
+		panic("no server init message found on channel")
+	}
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1015,20 +999,16 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-	// todo: avro
-	// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server update message sent over the channel
 
-	// todo
-	/*
-		select {
-		case _ = <-harness.analyticsServerUpdateMessageChannel:
-		default:
-			panic("no server update message found on channel")
-		}
-	*/
+	select {
+	case _ = <-harness.analyticsServerUpdateMessageChannel:
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
@@ -1109,20 +1089,16 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-	// todo: avro
-	// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server update message sent over the channel
 
-	// todo: avro
-	/*
-		select {
-		case _ = <-harness.analyticsServerUpdateMessageChannel:
-		default:
-			panic("no server update message found on channel")
-		}
-	*/
+	select {
+	case _ = <-harness.analyticsServerUpdateMessageChannel:
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
@@ -1195,19 +1171,16 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-	// todo: avro
-	// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server update message sent over the channel
 
-	/*
-		select {
-		case _ = <-harness.analyticsServerUpdateMessageChannel:
-		default:
-			panic("no server update message found on channel")
-		}
-	*/
+	select {
+	case _ = <-harness.analyticsServerUpdateMessageChannel:
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
@@ -1409,9 +1382,8 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
 		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
 
-		// todo: avro
-		// assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-		// assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
+		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
+		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
@@ -1424,19 +1396,16 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 	// verify that we get at least one server update message sent over the channel
 
-	// todo: avro
-	/*
-		select {
-		case message := <-harness.analyticsServerUpdateMessageChannel:
-			assert.Equal(t, message.SDKVersion_Major, byte(1))
-			assert.Equal(t, message.SDKVersion_Minor, byte(0))
-			assert.Equal(t, message.SDKVersion_Patch, byte(0))
-			assert.Equal(t, message.BuyerId, packet.BuyerId)
-			assert.Equal(t, message.DatacenterId, packet.DatacenterId)
-		default:
-			panic("no server update message found on channel")
-		}
-	*/
+	select {
+	case message := <-harness.analyticsServerUpdateMessageChannel:
+		assert.Equal(t, message.SDKVersion_Major, int32(1))
+		assert.Equal(t, message.SDKVersion_Minor, int32(0))
+		assert.Equal(t, message.SDKVersion_Patch, int32(0))
+		assert.Equal(t, message.BuyerId, int64(packet.BuyerId))
+		assert.Equal(t, message.DatacenterId, int64(packet.DatacenterId))
+	default:
+		panic("no server update message found on channel")
+	}
 }
 
 // ---------------------------------------------------------------------------------------

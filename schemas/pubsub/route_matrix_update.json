@@ -5,8 +5,8 @@
   "fields" : [
     {"name": "timestamp",                   "type": {"type": "long", "logicalType": "timestamp-micros"}},
     {"name": "num_relays",                  "type": "int"},
+    {"name": "num_active_relays",           "type": "int"},
     {"name": "num_dest_relays",             "type": "int"},
-    {"name": "num_full_relays",             "type": "int"},
     {"name": "num_datacenters",             "type": "int"},
     {"name": "total_routes",                "type": "int"},
     {"name": "average_num_routes",          "type": "float"},

@@ -33,11 +33,14 @@ var routeMatrixInterval time.Duration
 
 var redisHostName string
 
-var analyticsRelayToRelayPingGooglePubsubTopic string
-var analyticsRelayToRelayPingGooglePubsubChannelSize int
-
 var analyticsRelayUpdateGooglePubsubTopic string
 var analyticsRelayUpdateGooglePubsubChannelSize int
+
+var analyticsRouteMatrixUpdateGooglePubsubTopic string
+var analyticsRouteMatrixUpdateGooglePubsubChannelSize int
+
+var analyticsRelayToRelayPingGooglePubsubTopic string
+var analyticsRelayToRelayPingGooglePubsubChannelSize int
 
 var enableGooglePubsub bool
 
@@ -72,6 +75,7 @@ var relayInserterBatchSize int
 var relayInserter *portal.RelayInserter
 var countersPublisher *common.RedisCountersPublisher
 var analyticsRelayUpdateProducer *common.GooglePubsubProducer
+var analyticsRouteMatrixUpdateProducer *common.GooglePubsubProducer
 var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
 
 var postRelayUpdateRequestChannel chan *packets.RelayUpdateRequestPacket
@@ -99,11 +103,14 @@ func main() {
 
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
-	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
-	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
-
 	analyticsRelayUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
 	analyticsRelayUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+
+	analyticsRouteMatrixUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_ROUTE_MATRIX_UPDATE_GOOGLE_PUBSUB_TOPIC", "route_matrix_update")
+	analyticsRouteMatrixUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_ROUTE_MATRIX_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+
+	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
+	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
@@ -130,11 +137,14 @@ func main() {
 	core.Debug("route matrix interval: %s", routeMatrixInterval)
 	core.Debug("redis host name: %s", redisHostName)
 
-	core.Debug("analytics relay to relay ping google pubsub topic: %s", analyticsRelayToRelayPingGooglePubsubTopic)
-	core.Debug("analytics relay to relay ping google pubsub channel size: %d", analyticsRelayToRelayPingGooglePubsubChannelSize)
-
 	core.Debug("analytics relay update google pubsub topic: %s", analyticsRelayUpdateGooglePubsubTopic)
 	core.Debug("analytics relay update google pubsub channel size: %d", analyticsRelayUpdateGooglePubsubChannelSize)
+
+	core.Debug("analytics route matrix update google pubsub topic: %s", analyticsRouteMatrixUpdateGooglePubsubTopic)
+	core.Debug("analytics route matrix update google pubsub channel size: %d", analyticsRouteMatrixUpdateGooglePubsubChannelSize)
+
+	core.Debug("analytics relay to relay ping google pubsub topic: %s", analyticsRelayToRelayPingGooglePubsubTopic)
+	core.Debug("analytics relay to relay ping google pubsub channel size: %d", analyticsRelayToRelayPingGooglePubsubChannelSize)
 
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
 
@@ -185,6 +195,16 @@ func main() {
 		})
 		if err != nil {
 			core.Error("could not create analytics relay update google pubsub producer")
+			os.Exit(1)
+		}
+
+		analyticsRouteMatrixUpdateProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+			ProjectId:          service.GoogleProjectId,
+			Topic:              analyticsRouteMatrixUpdateGooglePubsubTopic,
+			MessageChannelSize: analyticsRouteMatrixUpdateGooglePubsubChannelSize,
+		})
+		if err != nil {
+			core.Error("could not create analytics route matrix update google pubsub producer")
 			os.Exit(1)
 		}
 
@@ -1086,7 +1106,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				// create new route matrix
 
 				routeMatrixNew := &common.RouteMatrix{
-					CreatedAt:          uint64(time.Now().Unix()),
+					CreatedAt:          uint64(currentTime),
 					Version:            common.RouteMatrixVersion_Write,
 					RelayIds:           costMatrixNew.RelayIds,
 					RelayAddresses:     costMatrixNew.RelayAddresses,
@@ -1147,11 +1167,13 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				routeMatrixData = routeMatrixDataNew
 				routeMatrixMutex.Unlock()
 
-				// analyze route matrix and send time series data to redis if leader
+				// analyze route matrix
+
+				analysis := routeMatrixNew.Analyze()
+
+				// send route matrix time series data to redis if leader
 
 				if enableRedisTimeSeries {
-
-					analysis := routeMatrixNew.Analyze()
 
 					keys := []string{
 						"active_relays",
@@ -1184,12 +1206,63 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					}
 
 					message := common.RedisTimeSeriesMessage{}
-					message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+					message.Timestamp = uint64(time.Now().UnixNano() / 1000000) // nano -> milliseconds
 					message.Keys = keys
 					message.Values = values
 
 					if service.IsLeader() {
 						timeSeriesPublisher.MessageChannel <- &message
+					}
+				}
+
+				// send route matrix update to pubsub/bigquery if leader
+
+				if enableGooglePubsub {
+
+					numDestRelays := 0
+					for i := range routeMatrixNew.DestRelays {
+						if routeMatrixNew.DestRelays[i] {
+							numDestRelays++
+						}
+					}
+
+					message := messages.AnalyticsRouteMatrixUpdateMessage{}
+
+					message.Timestamp = int64(time.Now().UnixNano() / 1000) // nano -> microseconds
+					message.NumRelays = int32(len(routeMatrixNew.RelayIds))
+					message.NumActiveRelays = int32(len(activeRelays))
+					message.NumDestRelays = int32(numDestRelays)
+					message.NumDatacenters = int32(len(relayData.RelayDatacenterIds))
+					message.TotalRoutes = int32(analysis.TotalRoutes)
+					message.AverageNumRoutes = analysis.AverageNumRoutes
+					message.AverageRouteLength = analysis.AverageRouteLength
+					message.NoRoutePercent = analysis.NoRoutePercent
+					message.OneRoutePercent = analysis.OneRoutePercent
+					message.NoDirectRoutePercent = analysis.NoDirectRoutePercent
+					message.RTTBucket_NoImprovement = analysis.RTTBucket_NoImprovement
+					message.RTTBucket_0_5ms = analysis.RTTBucket_0_5ms
+					message.RTTBucket_5_10ms = analysis.RTTBucket_5_10ms
+					message.RTTBucket_10_15ms = analysis.RTTBucket_10_15ms
+					message.RTTBucket_15_20ms = analysis.RTTBucket_15_20ms
+					message.RTTBucket_20_25ms = analysis.RTTBucket_20_25ms
+					message.RTTBucket_25_30ms = analysis.RTTBucket_25_30ms
+					message.RTTBucket_30_35ms = analysis.RTTBucket_30_35ms
+					message.RTTBucket_35_40ms = analysis.RTTBucket_35_40ms
+					message.RTTBucket_40_45ms = analysis.RTTBucket_40_45ms
+					message.RTTBucket_45_50ms = analysis.RTTBucket_45_50ms
+					message.RTTBucket_50ms_Plus = analysis.RTTBucket_50ms_Plus
+					message.CostMatrixSize = int32(len(costMatrixDataNew))
+					message.RouteMatrixSize = int32(len(routeMatrixDataNew))
+					message.DatabaseSize = int32(len(relayData.DatabaseBinFile))
+					message.OptimizeTime = int32(optimizeDuration.Milliseconds())
+
+					if service.IsLeader() {
+						data, err := avro.Marshal(routeMatrixUpdateSchema, &message)
+						if err == nil {
+							analyticsRouteMatrixUpdateProducer.MessageChannel <- data
+						} else {
+							core.Warn("failed to encode route matrix update message: %v", err)
+						}
 					}
 				}
 			}

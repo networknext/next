@@ -159,12 +159,12 @@ type AnalyticsRelayUpdateMessage struct {
 type AnalyticsRouteMatrixUpdateMessage struct {
 	Timestamp               int64   `avro:"timestamp"`
 	NumRelays               int32   `avro:"num_relays"`
+	NumActiveRelays         int32   `avro:"num_active_relays"`
 	NumDestRelays           int32   `avro:"num_dest_relays"`
-	NumFullRelays           int32   `avro:"num_full_relays"`
 	NumDatacenters          int32   `avro:"num_datacenters"`
 	TotalRoutes             int32   `avro:"total_routes"`
 	AverageNumRoutes        float32 `avro:"average_num_routes"`
-	AverageRouteLength      float32 `avro:"average_route_length"` // todo: make sure this is set. it was missing
+	AverageRouteLength      float32 `avro:"average_route_length"`
 	NoRoutePercent          float32 `avro:"no_route_percent"`
 	OneRoutePercent         float32 `avro:"one_route_percent"`
 	NoDirectRoutePercent    float32 `avro:"no_direct_route_percent"`
