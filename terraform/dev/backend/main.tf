@@ -418,6 +418,7 @@ resource "google_bigquery_table" "table" {
   clustering          = local.bigquery_table_clustering[each.key]
   deletion_protection = false
   time_partitioning {
+    type = "FIELD"
     field = "timestamp"
   }
 }

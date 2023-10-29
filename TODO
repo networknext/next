@@ -44,7 +44,11 @@ DONE
 
 	Force next flag is true in dev on session slices. Is this correct? Yes.
 
+	Make sure bigquery partition based on my timestamp, not the insert time.
+
 TODO	
+
+	Verify that bigquery table in dev is set to partition on my field.
 
 	-------------
 
@@ -168,10 +172,6 @@ TODO
 
 
 Small things:
-
-	----------
-
-	How to make sure bigquery partitions on my timestamp, not the insert timestamp?
 
 	----------
 
