@@ -27,7 +27,7 @@ type AnalyticsSessionUpdateMessage struct {
 	NextPacketLoss   float32  `avro:"next_packet_loss"`
 	NextKbpsUp       int32    `avro:"next_kbps_up"`
 	NextKbpsDown     int32    `avro:"next_kbps_down"`
-	NextPredictedRTT int32    `avro:"next_predicted_rtt"`
+	NextPredictedRTT float32  `avro:"next_predicted_rtt"`
 	NextRouteRelays  []uint64 `avro:"next_route_relays"`
 
 	// flags
