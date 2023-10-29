@@ -104,13 +104,13 @@ func main() {
 	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
 
 	analyticsRelayUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
-	analyticsRelayUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+	analyticsRelayUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
 
 	analyticsRouteMatrixUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_ROUTE_MATRIX_UPDATE_GOOGLE_PUBSUB_TOPIC", "route_matrix_update")
-	analyticsRouteMatrixUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_ROUTE_MATRIX_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+	analyticsRouteMatrixUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_ROUTE_MATRIX_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
 
 	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
-	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024)
+	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 

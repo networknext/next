@@ -72,17 +72,11 @@ DONE
 
 	Verify session summary table
 
-TODO	
-
-	-------------
-
 	Update staging so the pubsub service account has permission to do the bigquery stuff.
-
-	-------------
 
 	Deploy to staging and verify we have ingestion into bigquery @ 100k sessions.
 
-	-------------
+TODO	
 
 	Scale up to 1000 relays, 1M servers and 10M sessions and run for one day.
 
