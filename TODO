@@ -54,23 +54,25 @@ DONE
 
 	Verify we see data in relay update and relay to relay ping tables.
 
+	Need to bring back code to push AnalyticsRouteMatrixUpdate to pubsub. This has gone missing. It probably was in analytics.go or something. It should be done directly in relay backend.
+
 	Verified data in relay to relay ping table
 
 	Verified data in route matrix update table
-
-TODO	
 
 	I don't see any data in relay update table. Check relay backend for errors...
 
 	Yes, the relay update is broken.
 
-	-------------
+	Verify no error logs on relay backend in dev.
+
+	Verify fix in dev.
+
+	Verify no error logs on server backend in dev.
 
 	Verify session summary table
 
-	-------------
-
-	Need to bring back code to push AnalyticsRouteMatrixUpdate to pubsub. This has gone missing. It probably was in analytics.go or something. It should be done directly in relay backend.
+TODO	
 
 	-------------
 
