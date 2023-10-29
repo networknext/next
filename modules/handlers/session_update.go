@@ -72,8 +72,11 @@ type SessionUpdateState struct {
 	Latitude  float32
 	Longitude float32
 
-	// for session update message
-	StartTimestamp   uint64
+	// track start time of handler
+	StartTimestamp     uint64
+	StartTimestampNano uint64
+
+	// true if we fellback to direct on this update
 	FallbackToDirect bool
 
 	// if true, only network next sessions are sent to portal
@@ -141,7 +144,9 @@ func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
 
 func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
-	state.StartTimestamp = uint64(time.Now().Unix())
+	state.StartTimestampNano = uint64(time.Now().UnixNano())
+
+	state.StartTimestamp = state.StartTimestampNano / 1000000000	// nano -> seconds
 
 	/*
 		Read session data first
@@ -1134,13 +1139,11 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	if !state.FirstUpdate {
 
 		sendPortalSessionUpdateMessage(state)
-
 		sendPortalNearRelayUpdateMessage(state)
 
-		// todo: switch to avro
-		//sendAnalyticsSessionUpdateMessage(state)
-		// sendAnalyticsSessionSummaryMessage(state)
-		// sendAnalyticsNearRelayPingMessages(state)
+		sendAnalyticsSessionUpdateMessage(state)
+		sendAnalyticsSessionSummaryMessage(state)
+		sendAnalyticsNearRelayPingMessages(state)
 	}
 }
 
@@ -1253,8 +1256,8 @@ func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
 	}
 }
 
-// todo: Avro
-/*
+// ---------------------------------------------------------------------------------
+
 func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
@@ -1265,18 +1268,18 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 		message := messages.AnalyticsNearRelayPingMessage{}
 
-		message.Timestamp = uint64(time.Now().Unix())
-		message.BuyerId = state.Request.BuyerId
-		message.SessionId = state.Output.SessionId
-		message.UserHash = state.Request.UserHash
+		message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
+		message.BuyerId = int64(state.Request.BuyerId)
+		message.SessionId = int64(state.Output.SessionId)
+		message.UserHash = int64(state.Request.UserHash)
 		message.Latitude = state.Output.Latitude
 		message.Longitude = state.Output.Longitude
-		message.ClientAddress = state.Request.ClientAddress
-		message.ConnectionType = byte(state.Request.ConnectionType)
-		message.PlatformType = byte(state.Request.PlatformType)
-		message.NearRelayId = state.Request.NearRelayIds[i]
-		message.NearRelayRTT = byte(state.Request.NearRelayRTT[i])
-		message.NearRelayJitter = byte(state.Request.NearRelayJitter[i])
+		message.ClientAddress = state.Request.ClientAddress.String()
+		message.ConnectionType = int32(state.Request.ConnectionType)
+		message.PlatformType = int32(state.Request.PlatformType)
+		message.NearRelayId = int64(state.Request.NearRelayIds[i])
+		message.NearRelayRTT = int32(state.Request.NearRelayRTT[i])
+		message.NearRelayJitter = int32(state.Request.NearRelayJitter[i])
 		message.NearRelayPacketLoss = state.Request.NearRelayPacketLoss[i]
 
 		if state.AnalyticsNearRelayPingMessageChannel != nil {
@@ -1286,10 +1289,7 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 
 	}
 }
-*/
 
-// todo: switch to avro
-/*
 func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber < 1 {
@@ -1300,19 +1300,19 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	// always
 
-	message.Timestamp = uint64(time.Now().Unix())
-	message.SessionId = state.Request.SessionId
-	message.SliceNumber = state.Request.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
+	message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
+	message.SessionId = int64(state.Request.SessionId)
+	message.SliceNumber = int32(state.Request.SliceNumber - 1) // IMPORTANT: Line it up with data coming from the SDK
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealJitter = state.RealJitter
 	message.RealOutOfOrder = state.RealOutOfOrder
-	message.SessionEvents = state.Request.SessionEvents
-	message.InternalEvents = state.Request.InternalEvents
+	message.SessionEvents = int64(state.Request.SessionEvents)
+	message.InternalEvents = int64(state.Request.InternalEvents)
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	message.DirectKbpsUp = state.Request.DirectKbpsUp
-	message.DirectKbpsDown = state.Request.DirectKbpsDown
+	message.DirectKbpsUp = int32(state.Request.DirectKbpsUp)
+	message.DirectKbpsDown = int32(state.Request.DirectKbpsDown)
 
 	// next only
 
@@ -1321,12 +1321,12 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
-		message.NextKbpsUp = state.Request.NextKbpsUp
-		message.NextKbpsDown = state.Request.NextKbpsDown
-		message.NextPredictedRTT = uint32(state.Input.RouteCost)
-		message.NextNumRouteRelays = uint32(state.Input.RouteNumRelays)
-		for i := 0; i < int(message.NextNumRouteRelays); i++ {
-			message.NextRouteRelayId[i] = state.Input.RouteRelayIds[i]
+		message.NextKbpsUp = int32(state.Request.NextKbpsUp)
+		message.NextKbpsDown = int32(state.Request.NextKbpsDown)
+		message.NextPredictedRTT = float32(state.Input.RouteCost)
+		message.NextRouteRelays = make([]int64, len(state.Input.RouteRelayIds))
+		for i := range state.Input.RouteRelayIds {
+			message.NextRouteRelays[i] = int64(state.Input.RouteRelayIds[i])
 		}
 	}
 
@@ -1366,35 +1366,35 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
 	message := messages.AnalyticsSessionSummaryMessage{}
 
-	message.Timestamp = uint64(time.Now().Unix())
-	message.SessionId = state.Request.SessionId
-	message.DatacenterId = state.Request.DatacenterId
-	message.BuyerId = state.Request.BuyerId
-	message.UserHash = state.Request.UserHash
+	message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
+	message.SessionId = int64(state.Request.SessionId)
+	message.DatacenterId = int64(state.Request.DatacenterId)
+	message.BuyerId = int64(state.Request.BuyerId)
+	message.UserHash = int64(state.Request.UserHash)
 	message.Latitude = state.Input.Latitude
 	message.Longitude = state.Input.Longitude
-	message.ClientAddress = state.Request.ClientAddress
-	message.ServerAddress = state.Request.ServerAddress
-	message.ConnectionType = byte(state.Request.ConnectionType)
-	message.PlatformType = byte(state.Request.PlatformType)
-	message.SDKVersion_Major = byte(state.Request.Version.Major)
-	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
-	message.SDKVersion_Patch = byte(state.Request.Version.Patch)
-	message.ClientToServerPacketsSent = state.Request.PacketsSentClientToServer
-	message.ServerToClientPacketsSent = state.Request.PacketsSentServerToClient
-	message.ClientToServerPacketsLost = state.Request.PacketsLostClientToServer
-	message.ServerToClientPacketsLost = state.Request.PacketsLostServerToClient
-	message.ClientToServerPacketsOutOfOrder = state.Request.PacketsOutOfOrderClientToServer
-	message.ServerToClientPacketsOutOfOrder = state.Request.PacketsOutOfOrderServerToClient
-	message.SessionDuration = (state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds
-	message.TotalNextEnvelopeBytesUp = state.Input.NextEnvelopeBytesUpSum
-	message.TotalNextEnvelopeBytesDown = state.Input.NextEnvelopeBytesDownSum
-	message.DurationOnNext = state.Input.DurationOnNext
-	message.StartTimestamp = state.Input.StartTimestamp
+	message.ClientAddress = state.Request.ClientAddress.String()
+	message.ServerAddress = state.Request.ServerAddress.String()
+	message.ConnectionType = int32(state.Request.ConnectionType)
+	message.PlatformType = int32(state.Request.PlatformType)
+	message.SDKVersion_Major = int32(state.Request.Version.Major)
+	message.SDKVersion_Minor = int32(state.Request.Version.Minor)
+	message.SDKVersion_Patch = int32(state.Request.Version.Patch)
+	message.ClientToServerPacketsSent = int64(state.Request.PacketsSentClientToServer)
+	message.ServerToClientPacketsSent = int64(state.Request.PacketsSentServerToClient)
+	message.ClientToServerPacketsLost = int64(state.Request.PacketsLostClientToServer)
+	message.ServerToClientPacketsLost = int64(state.Request.PacketsLostServerToClient)
+	message.ClientToServerPacketsOutOfOrder = int64(state.Request.PacketsOutOfOrderClientToServer)
+	message.ServerToClientPacketsOutOfOrder = int64(state.Request.PacketsOutOfOrderServerToClient)
+	message.SessionDuration = int32((state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds)
+	message.TotalNextEnvelopeBytesUp = int64(state.Input.NextEnvelopeBytesUpSum)
+	message.TotalNextEnvelopeBytesDown = int64(state.Input.NextEnvelopeBytesDownSum)
+	message.DurationOnNext = int32(state.Input.DurationOnNext) // seconds
+	message.StartTimestamp = int64(state.Input.StartTimestamp * 1000000) // seconds -> microseconds
+	message.Error = int64(state.Input.Error)
 
 	// flags
 
-	message.Error = state.Input.Error
 	message.Reported = state.Request.Reported
 	message.LatencyReduction = state.Input.RouteState.ReduceLatency
 	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
@@ -1419,6 +1419,5 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 		state.SentAnalyticsSessionSummaryMessage = true
 	}
 }
-*/
 
 // -----------------------------------------

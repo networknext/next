@@ -25,17 +25,27 @@ COMMIT_HASH ?= $(shell git rev-parse --short HEAD)
 test: build
 	./run test
 
+# Update schemas in module directories (golang can only include them in module source if they are under the module directory)
+
+.PHONY: update-schemas
+update-schemas:
+	@cp -f schemas/pubsub/near_relay_ping.json cmd/server_backend
+	@cp -f schemas/pubsub/server_init.json cmd/server_backend
+	@cp -f schemas/pubsub/server_update.json cmd/server_backend
+	@cp -f schemas/pubsub/session_update.json cmd/server_backend
+	@cp -f schemas/pubsub/session_summary.json cmd/server_backend
+
 # Clean, build and rebuild
 
 .PHONY: build
-build:
+build: update-schemas
 	@make -s build-fast -j
 
 .PHONY: build-fast
 build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/relay-release dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
-rebuild: clean ## rebuild everything
+rebuild: clean update-schemas ## rebuild everything
 	@echo rebuilding...
 	@make build -j
 

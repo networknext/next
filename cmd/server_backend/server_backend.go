@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	_ "embed"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -70,6 +71,21 @@ var countersPublisher *common.RedisCountersPublisher
 var startTime int64
 
 var initialDelay int
+
+//go:embed near_relay_ping.json
+var nearRelayPingSchemaData string
+
+//go:embed server_update.json
+var serverUpdateSchemaData string
+
+//go:embed server_init.json
+var serverInitSchemaData string
+
+//go:embed session_update.json
+var sessionUpdateSchemaData string
+
+//go:embed session_summary.json
+var sessionSummarySchemaData string
 
 func main() {
 
