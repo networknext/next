@@ -481,30 +481,18 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 					timeSeriesMessage.Keys = []string{
 						fmt.Sprintf("relay_%016x_session_count", message.RelayId),
-						fmt.Sprintf("relay_%016x_envelope_bandwidth_up_kbps", message.RelayId),
-						fmt.Sprintf("relay_%016x_envelope_bandwidth_down_kbps", message.RelayId),
 						fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
 						fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
 						fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
 						fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
-						fmt.Sprintf("relay_%016x_near_pings_per_second", message.RelayId),
-						fmt.Sprintf("relay_%016x_relay_pings_per_second", message.RelayId),
-						fmt.Sprintf("relay_%016x_num_routable", message.RelayId),
-						fmt.Sprintf("relay_%016x_num_unroutable", message.RelayId),
 					}
 
 					timeSeriesMessage.Values = []float64{
 						float64(message.SessionCount),
-						float64(message.EnvelopeBandwidthUpKbps),
-						float64(message.EnvelopeBandwidthDownKbps),
 						float64(message.PacketsSentPerSecond),
 						float64(message.PacketsReceivedPerSecond),
 						float64(message.BandwidthSentKbps),
 						float64(message.BandwidthReceivedKbps),
-						float64(message.NearPingsPerSecond),
-						float64(message.RelayPingsPerSecond),
-						float64(message.NumRoutable),
-						float64(message.NumUnroutable),
 					}
 
 					timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
