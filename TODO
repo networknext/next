@@ -80,6 +80,10 @@ DONE
 
 	^------ It was the channel sizes being too small, causing the relay update threads to spawn goroutines and block.
 
+	Relay backend appears to have crashed. My guess is, out of memory, not able to flush relay to relay ping channel fast enough to pubsub...
+
+	It's probably beneficial to have multiple sharded pubsub publishers for the relay to relay pings, since there are so many of them, eg. 64
+
 TODO	
 
 	Scale up to 1000 relays, 1M servers and 10M sessions and run for one day.
@@ -88,15 +92,7 @@ TODO
 
 	-------------
 
-	Relay backend appears to have crashed. My guess is, out of memory, not able to flush relay to relay ping channel fast enough to pubsub...
-
-	-------------
-
-	It's probably beneficial to have multiple sharded pubsub publishers for the relay to relay pings, since there are so many of them, eg. 64
-
-	-------------
-
-	At this point the backend is finished.
+	At this point the backend is finished!
 
 	-------------
 
