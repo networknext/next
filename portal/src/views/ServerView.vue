@@ -74,14 +74,14 @@
                 <th>User Hash</th>
                 <th>ISP</th>
                 <th>Direct RTT</th>
-                <th>Next RTT</th>
+                <th>Accelerated RTT</th>
                 <th>Improvement</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
-                <td class="fixed">{{item.user_hash}}</td>
+                <td class="fixed"> <router-link :to='"/user/" + item.user_hash'> {{ item.user_hash }} </router-link> </td>
                 <td>{{item.isp}}</td>
                 <td>{{item.direct_rtt}}</td>
                 <td >{{item.next_rtt}}</td>
@@ -104,14 +104,14 @@
                 <th>Connection</th>
                 <th>Platform</th>
                 <th>Direct RTT</th>
-                <th>Next RTT</th>
+                <th>Accelerated RTT</th>
                 <th>Improvement</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
-                <td class="fixed">{{item.user_hash}}</td>
+                <td class="fixed"> <router-link :to='"/user/" + item.user_hash'> {{ item.user_hash }} </router-link> </td>
                 <td>{{item.isp}}</td>
                 <td>{{item.connection}}</td>
                 <td>{{item.platform}}</td>

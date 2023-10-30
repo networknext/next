@@ -1,12 +1,22 @@
 DONE
 
-TODO	
-
 	Relay graphs need to be sent at 1 minute intervals, not 1 second. The graphs are too dense, and they are overloading the time series redis @ 1000 relays.
 
-	----------
+	Rename "Next RTT" to "Accelerated RTT". Makes much more sense to the casual viewer.
 
-	Setup production again and verify we can hit 100k scale with raspberry
+	User hash link in server sessions page is not working
+
+	Setup production again
+
+	Just leave the buyer page as graphs. The rightmost column doesn't add enough to justify its existence.
+
+	Verify buyer page in staging (no right side column, working mobile layout etc).
+
+TODO	
+
+	Verify relay graphs in staging and prod
+
+	Verify session view user hash link is working in prod
 
 	----------
 
@@ -71,12 +81,6 @@ Small things:
 
 	----------
 
-	Calling sessions "next" is fine for code, but in the portal we should refer to it as accelerated.
-
-	That way if somebody rebrands the portal internally, stuff will still make sense vs. "next sessions" (what's that?)
-
-	----------
-
 	Make sure the system can run with no relays in dev and production (eg. analysis only initially...)
 
 	----------
@@ -90,14 +94,6 @@ Small things:
 	--------------
 
 	Clean up old ip2location database files in server backend
-
-	--------------
-
-	User hash link in server sessions page is not working
-
-	--------------
-
-	Just leave the buyer page as graphs. The rightmost column doesn't add enough to justify its existence.
 
 	--------------
 

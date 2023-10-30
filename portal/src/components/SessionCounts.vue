@@ -8,7 +8,7 @@
 
     <button type="button" class="btn next">
       <div class="d-xxl-none"> {{ this.next_sessions }} </div>
-      <div class="d-none d-xxl-block"> {{ this.next_sessions }} on Network Next </div>
+      <div class="d-none d-xxl-block"> {{ this.next_sessions }} Accelerated </div>
     </button>
   </div>
 

@@ -24,7 +24,7 @@
               </tr>
 
               <tr>
-                <td class="bold">Next Sessions</td>
+                <td class="bold">Accelerated Sessions</td>
                 <td> {{ this.data.next_sessions }} </td>
               </tr>
 
@@ -52,50 +52,6 @@
 
       </div>
 
-      <div id="right" class="right d-none d-xxl-block">
-
-        <div class="buyer_info">
-
-          <table id="buyer_table" class="table table-striped" style="vertical-align: middle;">
-            <tbody>
-
-              <tr>
-                <td class="bold">Total Sessions</td>
-                <td> {{ this.data.total_sessions}} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Next Sessions</td>
-                <td> {{ this.data.next_sessions}} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Accelerated</td>
-                <td> {{ this.data.accelerated_percent }}% </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Servers</td>
-                <td> {{ this.data.servers }} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Live</td>
-                <td> {{ this.data.live }} </td>
-              </tr>
-
-              <tr>
-                <td class="bold">Debug</td>
-                <td> {{ this.data.debug }} </td>
-              </tr>
-
-            </tbody>
-          </table>
-
-        </div>
-
-      </div>
-
     </div>
 
   </div>
@@ -108,7 +64,7 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import { is_visible, getAcceleratedPercent, custom_graph } from '@/utils.js'
+import { getAcceleratedPercent, custom_graph } from '@/utils.js'
 
 let total_sessions_opts = custom_graph({
   title: "Total Sessions",
@@ -123,10 +79,10 @@ let total_sessions_opts = custom_graph({
 })
 
 let next_sessions_opts = custom_graph({
-  title: "Next Sessions",
+  title: "Accelerated Sessions",
   series: [
     { 
-      name: 'Next Sessions',
+      name: 'Accelerated Sessions',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
       units: '',
@@ -322,7 +278,6 @@ export default {
 
     resize() {
 
-      const right_visible = is_visible(document.getElementById('right'))
       const width = document.body.clientWidth;
       if (width !== this.prevWidth) {
 
@@ -330,12 +285,8 @@ export default {
 
         this.prevWidth = width;
         if (this.total_sessions) {
-          let graph_width = width
-          if (right_visible) {
-            graph_width -= 550
-          } else {
-            graph_width -= 30
-          }
+          let graph_width = width;
+          graph_width -= 30
           let graph_height = graph_width * 0.333
           if (graph_height > 450) {
             graph_height = 450
@@ -351,7 +302,7 @@ export default {
 
       // show legends in desktop, hide them in mobile layout
 
-      this.show_legend = right_visible
+      this.show_legend = width > 1000;
       var elements = document.getElementsByClassName('u-legend');
       let i = 0;
       while (i < elements.length) {
@@ -458,17 +409,6 @@ export default {
   height: 100%;
 }
 
-.right {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding: 0px;
-  max-width: 500px;
-  min-width: 300px;
-}
-
 .search {
   width: 100%;
   height: 35px;
@@ -492,33 +432,6 @@ export default {
 
 .test-text {
   width: 100%;
-}
-
-.right-top {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.right-bottom {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 50px;
-}
-
-.map {
-  background-color: #555555;
-  width: 100%;
-  height: 500px;
-  flex-shrink: 0;
-}
-
-.buyer_info {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
 }
 
 .left_align {

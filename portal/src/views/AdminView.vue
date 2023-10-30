@@ -51,10 +51,10 @@ let total_sessions_opts = custom_graph({
 })
 
 let next_sessions_opts = custom_graph({
-  title: "Next Sessions",
+  title: "Accelerated Sessions",
   series: [
     { 
-      name: 'Next Sessions',
+      name: 'Accelerated Sessions',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
       units: '',

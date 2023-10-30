@@ -15,7 +15,7 @@
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
-            <td> {{ item["Next Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
+            <td> {{ item["Accelerated Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
           </tr>
         </tbody>
       </table>
@@ -42,7 +42,7 @@
             <td> {{ item["Debug"] }} </td>
             <td> {{ item["Public Key"] }} </td>
             <td> {{ item["Server Count"] }} </td>
-            <td> {{ item["Next Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
+            <td> {{ item["Accelerated Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
           </tr>
         </tbody>
       </table>
@@ -81,7 +81,7 @@ async function getData(page) {
         "Public Key":v.public_key,
         "Server Count":v.server_count.toLocaleString(),
         "Total Sessions":v.total_sessions.toLocaleString(),
-        "Next Sessions":v.next_sessions.toLocaleString(),
+        "Accelerated Sessions":v.next_sessions.toLocaleString(),
         "Accelerated Percent":getAcceleratedPercent(v.next_sessions, v.total_sessions),
       }
       data.push(row)
@@ -164,7 +164,7 @@ export default {
   padding-top: 10px;
 }
 
-tbody>tr>:nth-child(4){
+tbody>tr>:nth-child(5){
   font-family: monospace;
 }
 

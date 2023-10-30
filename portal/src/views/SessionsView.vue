@@ -31,7 +31,7 @@
             <th>Session ID</th>
             <th>ISP</th>
             <th class="right_align">Direct RTT</th>
-            <th class="right_align">Next RTT</th>
+            <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
@@ -40,7 +40,7 @@
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Next RTT"] }} </td>
+            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -58,7 +58,7 @@
             <th>User Hash</th>
             <th>ISP</th>
             <th class="right_align">Direct RTT</th>
-            <th class="right_align">Next RTT</th>
+            <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
@@ -68,7 +68,7 @@
             <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Next RTT"] }} </td>
+            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -89,7 +89,7 @@
             <th>Datacenter</th>
             <th>Server Address</th>
             <th class="right_align">Direct RTT</th>
-            <th class="right_align">Next RTT</th>
+            <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
@@ -102,7 +102,7 @@
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td> <router-link :to='"server/" + item["Server Address"]'> {{ item["Server Address"] }} </router-link> </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Next RTT"] }} </td>
+            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -150,7 +150,7 @@ async function getData(page) {
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
         "Server Address":v.server_address,
         "Direct RTT":v.direct_rtt + " ms",
-        "Next RTT":next_rtt,
+        "Accelerated RTT":next_rtt,
         "Improvement":improvement,
       }
       data.push(row)

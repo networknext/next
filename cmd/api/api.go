@@ -226,6 +226,10 @@ func main() {
 						relayIds := database.GetRelayIds()
 						for i := range relayIds {
 							keys = append(keys, fmt.Sprintf("relay_%016x_session_count", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_packets_sent_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_packets_received_per_second", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", relayIds[i]))
+							keys = append(keys, fmt.Sprintf("relay_%016x_bandwidth_received_kbps", relayIds[i]))
 						}
 						relayTimeSeriesWatcher.SetKeys(keys)
 					}
