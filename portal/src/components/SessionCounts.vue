@@ -3,7 +3,7 @@
   <div v-if="this.updated" class="btn-group" role="group" aria-label="Basic example">
     <button type="button" class="btn total">
       <div class="d-xxl-none"> {{ this.total_sessions }} </div>
-      <div class="d-none d-xxl-block"> {{ this.total_sessions }} Total Sessions </div>
+      <div class="d-none d-xxl-block"> {{ this.total_sessions }} Sessions </div>
     </button>
 
     <button type="button" class="btn next">

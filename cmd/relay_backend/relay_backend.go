@@ -480,9 +480,9 @@ func PostRelayUpdateRequest(service *common.Service) {
 					// send relay time series data to redis (once per-minute only!)
 
 					sendTimeSeries := false
-					currentTime := timestamp / 1000 // milliseconds -> seconds
+					currentTime := time.Now().Unix()
 					lastUpdateTime, exists := lastTimeSeriesUpdateTime[message.RelayId]
-					if !exists || lastUpdateTime + 60 < time.Now().Unix() {
+					if !exists || lastUpdateTime + 60 < currentTime {
 						lastTimeSeriesUpdateTime[message.RelayId] = currentTime
 						sendTimeSeries = true
 					}

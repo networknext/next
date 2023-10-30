@@ -16,7 +16,7 @@ TODO
 
 	Verify relay graphs in staging and prod
 
-	Verify session view user hash link is working in prod
+	Verify server session view user hash link is working in prod
 
 	----------
 
@@ -78,6 +78,14 @@ TODO
 
 
 Small things:
+
+	----------
+
+	Sessions being out of order in the portal in staging is weird. I have no explanation for this, at the moment.
+
+	----------
+
+	Portal redis having 10-15 second 95th percentile write time seems bad @ 10M relays...
 
 	----------
 
