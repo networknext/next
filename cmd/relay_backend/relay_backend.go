@@ -96,6 +96,8 @@ var relayUpdateSchema avro.Schema
 var routeMatrixUpdateSchema avro.Schema
 var relayToRelayPingSchema avro.Schema
 
+var lastTimeSeriesUpdateTime map[uint64]int64	// IMPORTANT: per-relay, we only send time series stats once per-minute, otherwise we overload the time series redis @ 1000 relays
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -125,6 +127,8 @@ func main() {
 	relayInserterBatchSize = envvar.GetInt("RELAY_INSERTER_BATCH_SIZE", 1024)
 
 	startTime = time.Now()
+
+	lastTimeSeriesUpdateTime = make(map[uint64]int64, constants.MaxRelays)
 
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
@@ -473,29 +477,40 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 					countersPublisher.MessageChannel <- "relay_update"
 
-					// send time series to redis
+					// send relay time series data to redis (once per-minute only!)
 
-					timeSeriesMessage := common.RedisTimeSeriesMessage{}
-
-					timeSeriesMessage.Timestamp = uint64(timestamp / 1000) // microseconds -> milliseconds
-
-					timeSeriesMessage.Keys = []string{
-						fmt.Sprintf("relay_%016x_session_count", message.RelayId),
-						fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
-						fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
-						fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
-						fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
+					sendTimeSeries := false
+					currentTime := timestamp / 1000 // milliseconds -> seconds
+					lastUpdateTime, exists := lastTimeSeriesUpdateTime[message.RelayId]
+					if !exists || lastUpdateTime + 60 < time.Now().Unix() {
+						lastTimeSeriesUpdateTime[message.RelayId] = currentTime
+						sendTimeSeries = true
 					}
 
-					timeSeriesMessage.Values = []float64{
-						float64(message.SessionCount),
-						float64(message.PacketsSentPerSecond),
-						float64(message.PacketsReceivedPerSecond),
-						float64(message.BandwidthSentKbps),
-						float64(message.BandwidthReceivedKbps),
-					}
+					if sendTimeSeries {
 
-					timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
+						timeSeriesMessage := common.RedisTimeSeriesMessage{}
+
+						timeSeriesMessage.Timestamp = uint64(timestamp / 1000) // microseconds -> milliseconds
+
+						timeSeriesMessage.Keys = []string{
+							fmt.Sprintf("relay_%016x_session_count", message.RelayId),
+							fmt.Sprintf("relay_%016x_packets_sent_per_second", message.RelayId),
+							fmt.Sprintf("relay_%016x_packets_received_per_second", message.RelayId),
+							fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", message.RelayId),
+							fmt.Sprintf("relay_%016x_bandwidth_received_kbps", message.RelayId),
+						}
+
+						timeSeriesMessage.Values = []float64{
+							float64(message.SessionCount),
+							float64(message.PacketsSentPerSecond),
+							float64(message.PacketsReceivedPerSecond),
+							float64(message.BandwidthSentKbps),
+							float64(message.BandwidthReceivedKbps),
+						}
+
+						timeSeriesPublisher.MessageChannel <- &timeSeriesMessage
+					}
 				}
 			}
 		}

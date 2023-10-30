@@ -2,6 +2,10 @@ DONE
 
 TODO	
 
+	Relay graphs need to be sent at 1 minute intervals, not 1 second. The graphs are too dense, and they are overloading the time series redis @ 1000 relays.
+
+	----------
+
 	Setup production again and verify we can hit 100k scale with raspberry
 
 	----------
@@ -98,10 +102,6 @@ Small things:
 	--------------
 
 	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
-
-	--------------
-
-	Relay graphs need to be sent at 1 minute intervals, not 1 second. The graphs are too dense, and they are overloading the time series redis @ 1000 relays.
 
 	--------------
 
