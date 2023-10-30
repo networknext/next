@@ -42,6 +42,8 @@ var analyticsRouteMatrixUpdateGooglePubsubChannelSize int
 var analyticsRelayToRelayPingGooglePubsubTopic string
 var analyticsRelayToRelayPingGooglePubsubChannelSize int
 
+var enableRelayToRelayPingAnalytics bool
+
 var enableGooglePubsub bool
 
 var initialDelay int
@@ -116,6 +118,8 @@ func main() {
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
+	enableRelayToRelayPingAnalytics = envvar.GetBool("ENABLE_RELAY_TO_RELAY_PING_ANALYTICS", false)
+
 	initialDelay = envvar.GetInt("INITIAL_DELAY", 15)
 
 	relayInserterBatchSize = envvar.GetInt("RELAY_INSERTER_BATCH_SIZE", 1024)
@@ -149,6 +153,8 @@ func main() {
 	core.Debug("analytics relay to relay ping google pubsub channel size: %d", analyticsRelayToRelayPingGooglePubsubChannelSize)
 
 	core.Debug("enable google pubsub: %v", enableGooglePubsub)
+
+	core.Debug("enable relay to relay ping analytics: %v", enableRelayToRelayPingAnalytics)
 
 	core.Debug("initial delay: %d", initialDelay)
 
@@ -210,16 +216,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		analyticsRelayToRelayPingProducer = make([]*common.GooglePubsubProducer, analyticsRelayToRelayPingReps)
-		for i := 0; i < analyticsRelayToRelayPingReps; i++ {
-			analyticsRelayToRelayPingProducer[i], err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-				ProjectId:          service.GoogleProjectId,
-				Topic:              analyticsRelayToRelayPingGooglePubsubTopic,
-				MessageChannelSize: analyticsRelayToRelayPingGooglePubsubChannelSize,
-			})
-			if err != nil {
-				core.Error("could not create analytics relay to relay ping google pubsub producer")
-				os.Exit(1)
+		if enableRelayToRelayPingAnalytics {
+			// IMPORTANT: this is too expensive to have on by default. use for debugging only.
+			analyticsRelayToRelayPingProducer = make([]*common.GooglePubsubProducer, analyticsRelayToRelayPingReps)
+			for i := 0; i < analyticsRelayToRelayPingReps; i++ {
+				analyticsRelayToRelayPingProducer[i], err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+					ProjectId:          service.GoogleProjectId,
+					Topic:              analyticsRelayToRelayPingGooglePubsubTopic,
+					MessageChannelSize: analyticsRelayToRelayPingGooglePubsubChannelSize,
+				})
+				if err != nil {
+					core.Error("could not create analytics relay to relay ping google pubsub producer")
+					os.Exit(1)
+				}
 			}
 		}
 
@@ -385,7 +394,10 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 		numSamples := int(relayUpdateRequest.NumSamples)
 
-		pingMessages := make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
+		var pingMessages []messages.AnalyticsRelayToRelayPingMessage
+		if enableRelayToRelayPingAnalytics {
+			pingMessages = make([]messages.AnalyticsRelayToRelayPingMessage, numSamples)
+		}
 
 		timestamp := time.Now().UnixNano() / 1000 // nano -> microseconds
 
@@ -401,13 +413,15 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 			sampleRelayId := relayUpdateRequest.SampleRelayId[i]
 
-			pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
-				Timestamp:          timestamp,
-				SourceRelayId:      int64(relayId),
-				DestinationRelayId: int64(sampleRelayId),
-				RTT:                int32(rtt),
-				Jitter:             int32(jitter),
-				PacketLoss:         pl,
+			if enableRelayToRelayPingAnalytics {
+				pingMessages[i] = messages.AnalyticsRelayToRelayPingMessage{
+					Timestamp:          timestamp,
+					SourceRelayId:      int64(relayId),
+					DestinationRelayId: int64(sampleRelayId),
+					RTT:                int32(rtt),
+					Jitter:             int32(jitter),
+					PacketLoss:         pl,
+				}
 			}
 		}
 
@@ -539,7 +553,7 @@ func PostRelayUpdateRequest(service *common.Service) {
 
 		// send relay to relay ping messages to analytics
 
-		if service.IsLeader() {
+		if service.IsLeader() && enableRelayToRelayPingAnalytics {
 			for i := 0; i < len(pingMessages); i++ {
 				data, err := avro.Marshal(relayToRelayPingSchema, &pingMessages[i])
 				if err == nil {
