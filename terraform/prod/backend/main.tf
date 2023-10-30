@@ -606,6 +606,10 @@ module "relay_gateway" {
   target_cpu               = 60
   domain                   = "relay.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
+  
+  depends_on = [
+    google_redis_instance.redis_relay_backend
+  ]
 }
 
 output "relay_gateway_address" {
