@@ -642,6 +642,7 @@ module "relay_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
