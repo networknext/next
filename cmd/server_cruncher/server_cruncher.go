@@ -135,7 +135,7 @@ func TopSessionsThread() {
 		select {
 		case <-ticker.C:
 
-			core.Log("-------------------------------------------------------------------")
+			core.Debug("-------------------------------------------------------------------")
 
 			servers := make([]*SortedSet, NumBuckets)
 
@@ -190,7 +190,7 @@ func TopSessionsThread() {
 
 			duration := time.Since(start)
 
-			core.Log("top %d servers (%.6fms)", len(topServers), float64(duration.Nanoseconds())/1000000.0)
+			core.Debug("top %d servers (%.6fms)", len(topServers), float64(duration.Nanoseconds())/1000000.0)
 		}
 	}
 }
