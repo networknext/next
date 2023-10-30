@@ -76,7 +76,8 @@ var relayInserter *portal.RelayInserter
 var countersPublisher *common.RedisCountersPublisher
 var analyticsRelayUpdateProducer *common.GooglePubsubProducer
 var analyticsRouteMatrixUpdateProducer *common.GooglePubsubProducer
-var analyticsRelayToRelayPingProducer *common.GooglePubsubProducer
+var analyticsRelayToRelayPingProducer []*common.GooglePubsubProducer
+var analyticsRelayToRelayPingReps int
 
 var postRelayUpdateRequestChannel chan *packets.RelayUpdateRequestPacket
 
@@ -111,6 +112,7 @@ func main() {
 
 	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
 	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 1024*1024*1024)
+	analyticsRelayToRelayPingReps = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_REPS", 64)
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
@@ -208,14 +210,17 @@ func main() {
 			os.Exit(1)
 		}
 
-		analyticsRelayToRelayPingProducer, err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
-			ProjectId:          service.GoogleProjectId,
-			Topic:              analyticsRelayToRelayPingGooglePubsubTopic,
-			MessageChannelSize: analyticsRelayToRelayPingGooglePubsubChannelSize,
-		})
-		if err != nil {
-			core.Error("could not create analytics relay to relay ping google pubsub producer")
-			os.Exit(1)
+		analyticsRelayToRelayPingProducer = make([]*common.GooglePubsubProducer, analyticsRelayToRelayPingReps)
+		for i := 0; i < analyticsRelayToRelayPingReps; i++ {
+			analyticsRelayToRelayPingProducer[i], err = common.CreateGooglePubsubProducer(service.Context, common.GooglePubsubConfig{
+				ProjectId:          service.GoogleProjectId,
+				Topic:              analyticsRelayToRelayPingGooglePubsubTopic,
+				MessageChannelSize: analyticsRelayToRelayPingGooglePubsubChannelSize,
+			})
+			if err != nil {
+				core.Error("could not create analytics relay to relay ping google pubsub producer")
+				os.Exit(1)
+			}
 		}
 
 		relayUpdateSchema, err = avro.Parse(relayUpdateSchemaData)
@@ -538,7 +543,7 @@ func PostRelayUpdateRequest(service *common.Service) {
 			for i := 0; i < len(pingMessages); i++ {
 				data, err := avro.Marshal(relayToRelayPingSchema, &pingMessages[i])
 				if err == nil {
-					analyticsRelayToRelayPingProducer.MessageChannel <- data
+					analyticsRelayToRelayPingProducer[i%analyticsRelayToRelayPingReps].MessageChannel <- data
 				} else {
 					core.Warn("failed to encode relay to relay ping message: %v", err)
 				}
