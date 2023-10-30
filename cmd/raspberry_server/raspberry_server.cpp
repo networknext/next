@@ -115,7 +115,7 @@ int main()
         next_copy_string( raspberry_backend_url, raspberry_backend_url_override, sizeof(raspberry_backend_url) );
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend url: %s", raspberry_backend_url );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "raspberry backend url: %s", raspberry_backend_url );
 
     char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_copy_string( server_address, "127.0.0.1", sizeof(server_address) );
@@ -147,7 +147,7 @@ int main()
 
     if ( server == NULL )
     {
-        printf( "error: failed to create raspberry server\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create raspberry server" );
         return 1;
     }
 

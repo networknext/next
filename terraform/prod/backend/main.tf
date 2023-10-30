@@ -1012,6 +1012,7 @@ module "raspberry_server" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
+    NEXT_LOG_LEVEL=1
     NEXT_DATACENTER=cloud
     NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
     NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"

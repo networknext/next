@@ -327,7 +327,6 @@ resource "networknext_route_shader" raspberry {
 resource "networknext_buyer" raspberry {
   name = "Raspberry"
   code = "raspberry"
-  debug = true
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
   public_key_base64 = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
