@@ -192,7 +192,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.FallbackToDirect {
 		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
-			core.Error("fallback to direct [%016x]", state.Request.SessionId)
+			core.Warn("fallback to direct [%016x]", state.Request.SessionId)
 			state.Error |= constants.SessionError_FallbackToDirect
 			state.FallbackToDirect = true
 			if state.FallbackToDirectChannel != nil {

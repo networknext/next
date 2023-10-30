@@ -1,24 +1,26 @@
 DONE
 
-TODO	
-
 	Leave the system running @ 1M in staging for a day.
 
 	Verify that we have data ingestion running for the whole day with no errors.
 
+	Some minor errors found...
+
+	http: superfluous response.WriteHeader call from main.routeMatrixHandler (relay_backend.go:1045)
+
+	You can't set error on the response after you write the response.
+
+	error: fallback to direct (server backend)
+
+	^--- turn into warning
+
 	Errors from running overnight:
 
-		error: fallback to direct (server backend)
 		error: failed to add time series: write tcp 10.0.0.33:50976->10.0.0.13:6379: i/o timeout (relay backend)
-		http: superfluous response.WriteHeader call from main.routeMatrixHandler (relay_backend.go:1045)
 
-	-------------
+	I think this just means the redis time series instance is overloaded. Running it as cluster with redis enterprise should solve the issue.
 
-	I see some fallback to direct after a while, AND they seem to "hold" turned on (like I've seen before...), which makes not a lot of sense to me.
-
-	Now I have caught the fallback to direct case in the act, I need to see what's causing it... also, why it "holds" on. It's weird.
-
-	-------------
+TODO	
 
 	Setup production again and verify we can hit 100k scale with raspberry
 

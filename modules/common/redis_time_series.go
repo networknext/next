@@ -152,7 +152,7 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 	_, err := pipeline.Exec(ctx)
 	if err != nil {
 		if !strings.Contains(err.Error(), "key already exists") {
-			core.Error("failed to add time series: %v", err)
+			core.Warn("failed to add time series: %v", err)
 		}
 	}
 

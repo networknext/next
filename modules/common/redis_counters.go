@@ -141,7 +141,7 @@ func (publisher *RedisCountersPublisher) sendBatch(ctx context.Context, counters
 	_, err := pipeline.Exec(ctx)
 	if err != nil {
 		if !strings.Contains(err.Error(), "key already exists") {
-			core.Error("failed to add counters: %v", err)
+			core.Warn("failed to add counters: %v", err)
 		}
 	}
 }
