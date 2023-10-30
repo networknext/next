@@ -968,10 +968,7 @@ func relaysHandler(w http.ResponseWriter, r *http.Request) {
 	relaysMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
 	buffer := bytes.NewBuffer(responseData)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	buffer.WriteTo(w)
 }
 
 type RelayJSON struct {
@@ -1013,10 +1010,7 @@ func relayDataHandler(service *common.Service) func(w http.ResponseWriter, r *ht
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(relayJSON); err != nil {
-			core.Error("could not write relay data json: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		json.NewEncoder(w).Encode(relayJSON)
 	}
 }
 
@@ -1027,10 +1021,7 @@ func costMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	costMatrixMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	buffer := bytes.NewBuffer(responseData)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	buffer.WriteTo(w)
 }
 
 func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
@@ -1040,10 +1031,7 @@ func routeMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	routeMatrixMutex.RUnlock()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	buffer := bytes.NewBuffer(responseData)
-	_, err := buffer.WriteTo(w)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	buffer.WriteTo(w)
 }
 
 func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManager) {

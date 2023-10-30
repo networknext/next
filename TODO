@@ -1,94 +1,26 @@
 DONE
 
-	Create a channel specifically for fallback for fallback to direct
-
-	Ingest into bigquery with google pubsub
-
-	"Better yet, you no longer need to pay for data ingestion into BigQuery when using this new direct method. You only pay for the Pub/Sub you use. Ingestion from Pub/Sub’s BigQuery subscription into BigQuery costs $50/TiB based on read (subscribe throughput) from the subscription. This is a simpler and cheaper billing experience compared to the alternative path via Dataflow pipeline where you would be paying for the Pub/Sub read, Dataflow job, and BigQuery data ingestion. See the pricing page for details."
-
-	https://cloud.google.com/blog/products/data-analytics/pub-sub-launches-direct-path-to-bigquery-for-streaming-analytics
-
-	Investigate apache avro vs. protobufs. Both options are available for google pubsub.
-
-	Going with avro.
-
-	Define avro message schemas, copying from bigquery json and translating.
-
-	Implement golang side, structs with avro tags and encoding methods.
-
-	Implement a basic test to verify that each analytics struct writes with avro schema.
-
-	Setup pubsub channels to have bigquery table and schema defined for messages.
-
-	Debug and fix a huge amount of issues...
-
-	Convert the timestamp fields to int64 with logical types, see:
-
-		https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-avro#avro_conversions
-
-	Make sure all timestamps are passed in with micro precision.
-
-	Actually send the messages again from the session update handler.
-
-	Load the avro schemas in the server backend.
-
-	Process the session update messages in the server backend and encode them with avro before sending to google pubsub.
-
-	Deploy to dev and verify data is ingested into bigquery.
-
-	No, it's not ingested. I think the AVRO schema is set to text (JSON) messages. I need to set the encoding to binary.
-
-	Set to binary and deploy.
-
-	Verify bigquery sees data.
-
-	Force next flag is true in dev on session slices. Is this correct? Yes.
-
-	Make sure bigquery partition based on my timestamp, not the insert time.
-
-	Pass over the rest of the server backend messages, make sure they are emitted with correct timestamps (micros), and extend the handlers to encode to avro and send to google pubsub
-
-	Pass over the relay backend messages. Make sure timestamp is micros, and extend handlers to encode in avro and send to google pubsub.
-
-	Verify that bigquery table in dev is set to partition on my field.
-
-	Verify we see data in relay update and relay to relay ping tables.
-
-	Need to bring back code to push AnalyticsRouteMatrixUpdate to pubsub. This has gone missing. It probably was in analytics.go or something. It should be done directly in relay backend.
-
-	Verified data in relay to relay ping table
-
-	Verified data in route matrix update table
-
-	I don't see any data in relay update table. Check relay backend for errors...
-
-	Yes, the relay update is broken.
-
-	Verify no error logs on relay backend in dev.
-
-	Verify fix in dev.
-
-	Verify no error logs on server backend in dev.
-
-	Verify session summary table
-
-	Update staging so the pubsub service account has permission to do the bigquery stuff.
-
-	Deploy to staging and verify we have ingestion into bigquery @ 100k sessions.
-
-	"Active relays" seems to be cosmetically messed up during load test, it shows only 100 active relays in the chart, but there are 1000 active relays for sure.
-
-	^------ It was the channel sizes being too small, causing the relay update threads to spawn goroutines and block.
-
-	Relay backend appears to have crashed. My guess is, out of memory, not able to flush relay to relay ping channel fast enough to pubsub...
-
-	It's probably beneficial to have multiple sharded pubsub publishers for the relay to relay pings, since there are so many of them, eg. 64
-
 TODO	
 
-	Scale up to 1000 relays, 1M servers and 10M sessions and run for one day.
+	Leave the system running @ 1M in staging for a day.
 
 	Verify that we have data ingestion running for the whole day with no errors.
+
+	Errors from running overnight:
+
+		error: fallback to direct (server backend)
+		error: failed to add time series: write tcp 10.0.0.33:50976->10.0.0.13:6379: i/o timeout (relay backend)
+		http: superfluous response.WriteHeader call from main.routeMatrixHandler (relay_backend.go:1045)
+
+	-------------
+
+	I see some fallback to direct after a while, AND they seem to "hold" turned on (like I've seen before...), which makes not a lot of sense to me.
+
+	Now I have caught the fallback to direct case in the act, I need to see what's causing it... also, why it "holds" on. It's weird.
+
+	-------------
+
+	Setup production again and verify we can hit 100k scale with raspberry
 
 	-------------
 
@@ -150,7 +82,7 @@ TODO
 
 
 
-	----------
+	---------- 
 
 	Integrate map with portal
 
@@ -244,12 +176,6 @@ Small things:
 	--------------
 
 	Current sessions on server doesn't seem to be correct, or at least, it is 181 when it should be just 1...
-
-	--------------
-
-	uPlot graphs really need to calculate the real maximum from the data passed in
-
-	In so many cases, they fail to calculate it. It's extremely annoying.
 
 	--------------
 

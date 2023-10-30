@@ -207,7 +207,7 @@ func RunSession(index int) {
 					receivedResponse = false
 					mutex.Unlock()
 
-					for i := 0; i < 4; i++ {
+					for i := 0; i < 9; i++ {
 
 						if retryNumber == 0 {
 							core.Debug("[%016x] update (%d)", sessionId, index)
@@ -273,7 +273,7 @@ func RunSession(index int) {
 							return
 						}
 
-						time.Sleep(2 * time.Second)
+						time.Sleep(1 * time.Second)
 
 						mutex.Lock()
 						done := receivedResponse

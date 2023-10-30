@@ -818,7 +818,7 @@ module "server_backend" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
-    PORTAL_NEXT_SESSIONS_ONLY=true
+    PORTAL_NEXT_SESSIONS_ONLY=false
     EOF
     sudo systemctl start app.service
   EOF1
