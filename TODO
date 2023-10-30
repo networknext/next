@@ -1,88 +1,16 @@
 DONE
 
-	Leave the system running @ 1M in staging for a day.
-
-	Verify that we have data ingestion running for the whole day with no errors.
-
-	Some minor errors found...
-
-	http: superfluous response.WriteHeader call from main.routeMatrixHandler (relay_backend.go:1045)
-
-	You can't set error on the response after you write the response.
-
-	error: fallback to direct (server backend)
-
-	^--- turn into warning
-
-	Errors from running overnight:
-
-		error: failed to add time series: write tcp 10.0.0.33:50976->10.0.0.13:6379: i/o timeout (relay backend)
-
-	I think this just means the redis time series instance is overloaded. Running it as cluster with redis enterprise should solve the issue.
-
 TODO	
 
 	Setup production again and verify we can hit 100k scale with raspberry
 
-	-------------
+	----------
 
-	At this point the backend is finished!
+	Setup projects and service accounts with terraform
 
-	-------------
+	----------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	Integrate new API key module in api.go
 
 	---------- 
 
@@ -90,7 +18,19 @@ TODO
 
 	----------
 
-	Setup projects and service accounts with terraform
+	Work out portal security model
+
+	----------
+
+	Finalize SDK
+
+	----------
+
+	Finalize UE5 plugin
+
+	----------
+
+	Fix singlethreaded relay
 
 	----------
 
@@ -157,19 +97,11 @@ Small things:
 
 	--------------
 
-	Click on server to see sessions on server is broken in staging even at small load. My guess, sessions are not properly linking to server addresses?
-
-	--------------
-
-	Active relays seems to double during deploys. Currently, I cannot think of any reason why this would happen?
-
-	--------------
-
 	Extend session update so it sends all sessions to portal below 100k sessions total, even if portal next sessions only is set
 
 	--------------
 
-	Relay graphs need to be aggregated (time series) into per-minute values. Use average.
+	Relay graphs need to be sent at 1 minute intervals, not 1 second. The graphs are too dense, and they are overloading the time series redis @ 1000 relays.
 
 	--------------
 
@@ -201,49 +133,6 @@ Small things:
 
 	--------------
 
-	Probably good to provide a way to disable the high priority threads on server with env var.
-
-	When many server instances are running on one server, this can cause problems. eg. thread starvation
+	Disable high priority threads on server by default. It can cause problems when many server instances are run per-machine.
 
 	--------------
-
-
-
-
-
-
-Finalize SDK and UE5 plugin:
-
-	------------------
-
-	Update to latest PS4 and PS5 SDK on Windows PC
-
-	Verify that we can build, link and run across PS4
-
-	Verify that we can build, link and run across PS5
-
-	------------------
-
-	Update to latest XDK
-
-	Verify that we can build, link and run across XBoxOne
-
-	Verify that we can build, link and run across SeriesX
-
-	------------------
-
-	Setup PS4 compilation with custom agents
-
-	Setup PS5 compilation with custom agents
-
-	Setup XBoxOne compilation with custom agents
-
-	Setup Series X compilation with custom agents
-
-	------------------
-
-	Get the UE5 plugin back up
-
-	Make sure to include Flush on the server before the server is destroyed
-
-	------------------
