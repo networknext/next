@@ -126,7 +126,7 @@ void client_thread_function( void * data )
             }
             else
             {
-                printf( "could not parse '%s'\n", buffer );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "could not parse '%s'", buffer );
             }
         }
 
@@ -146,7 +146,7 @@ void client_thread_function( void * data )
         next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
         if ( client == NULL )
         {
-            printf( "error: failed to create client\n" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create client" );
             exit(1);
         }
 
@@ -171,7 +171,7 @@ void client_thread_function( void * data )
 
             if ( next_platform_time() > connect_time + GameLength )
             {
-                printf( "game has finished. reconnecting...\n");
+                next_printf( NEXT_LOG_LEVEL_INFO, "game has finished. reconnecting..." );
                 break;
             }
 
@@ -225,8 +225,9 @@ int main()
         num_clients = atoi( num_clients_override );
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "raspberry backend url: %s", raspberry_backend_url );
-    next_printf( NEXT_LOG_LEVEL_INFO, "num clients: %d", num_clients );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "raspberry backend url: %s", raspberry_backend_url );
+
+    printf( "simulating %d clients\n", num_clients );
 
     run_clients( num_clients );
 
@@ -236,6 +237,8 @@ int main()
     }
 
     next_term();
+
+    printf( "\n" );
 
     return 0;
 }

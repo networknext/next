@@ -46,10 +46,10 @@ func downloadDatabases() {
 				core.Error("failed to upload database files: %v", err)
 				goto sleep
 			}
-			core.Log("success!")
+			core.Debug("success!")
 		}
 	sleep:
-		fmt.Printf("sleeping...\n")
+		core.Debug("sleeping...")
 		core.Debug("---------------------------------------------------")
 		time.Sleep(time.Hour)
 	}

@@ -16,6 +16,8 @@ DONE
 
 	Verify server session view user hash link is working in prod
 
+	Review all service logs in prod and make sure everything is perfect
+
 TODO	
 
 	Setup projects and service accounts with terraform

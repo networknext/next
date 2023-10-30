@@ -1050,6 +1050,7 @@ module "raspberry_client" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
+    NEXT_LOG_LEVEL=1
     NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=256
