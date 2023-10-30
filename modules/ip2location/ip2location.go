@@ -54,7 +54,7 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 		return err
 	}
 
-	core.Log("downloading city database")
+	core.Debug("downloading city database")
 
 	err = Bash(fmt.Sprintf("rm -f GeoIP2-City.tar.gz && curl 'https://download.maxmind.com/app/geoip_download?edition_id=GeoIP2-City&license_key=%s&suffix=tar.gz' --output %s/GeoIP2-City.tar.gz", licenseKey, dir))
 	if err != nil {

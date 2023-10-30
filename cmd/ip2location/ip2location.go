@@ -33,14 +33,14 @@ func main() {
 
 func downloadDatabases() {
 	for {
-		core.Log("---------------------------------------------------")
+		core.Debug("---------------------------------------------------")
 		err := ip2location.DownloadDatabases_MaxMind(licenseKey)
 		if err != nil {
 			core.Error("failed to download databases: %v", err)
 			goto sleep
 		}
 		if bucketName != "" {
-			core.Log("uploading database files to google cloud bucket")
+			core.Debug("uploading database files to google cloud bucket")
 			err := ip2location.Bash(fmt.Sprintf("gsutil cp GeoIP2-*.mmdb gs://%s", bucketName))
 			if err != nil {
 				core.Error("failed to upload database files: %v", err)
@@ -50,7 +50,7 @@ func downloadDatabases() {
 		}
 	sleep:
 		fmt.Printf("sleeping...\n")
-		core.Log("---------------------------------------------------")
+		core.Debug("---------------------------------------------------")
 		time.Sleep(time.Hour)
 	}
 }
