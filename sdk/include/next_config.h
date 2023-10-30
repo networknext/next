@@ -78,7 +78,7 @@
 #define NEXT_SLICE_SECONDS                                           10.0
 #define NEXT_ROUTE_REQUEST_TIMEOUT                                      5
 #define NEXT_CONTINUE_REQUEST_TIMEOUT                                   5
-#define NEXT_SESSION_UPDATE_RESEND_TIME                               2.0
+#define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                  10.0
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 #define NEXT_SERVER_FLUSH_TIMEOUT                                    30.0

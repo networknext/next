@@ -12,13 +12,11 @@ DONE
 
 	Verify buyer page in staging (no right side column, working mobile layout etc).
 
-TODO	
-
 	Verify relay graphs in staging and prod
 
 	Verify server session view user hash link is working in prod
 
-	----------
+TODO	
 
 	Setup projects and service accounts with terraform
 
