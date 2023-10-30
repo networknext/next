@@ -18,9 +18,27 @@ DONE
 
 	Review all service logs in prod and make sure everything is perfect
 
+	Adjust prod so it runs clean with no logs unless something goes wrong
+
+	Verify bigquery data ingestion in prod
+
+	Leave prod to run with 100k sessions for a few hours to make sure it is stable.
+
+	Destroy all projects in google cloud.
+
+	Shut down all AWS, linode and google cloud relays.
+
 TODO	
 
 	Setup projects and service accounts with terraform
+
+	First, create a new terraform directory under "terraform/projects"
+
+	Next, work out how to create all the projects.
+
+	Then work out how to create service accounts.
+
+	Then work out how to setup the storage buckets.
 
 
 
