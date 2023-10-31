@@ -1,44 +1,24 @@
 DONE
 
-	Relay graphs need to be sent at 1 minute intervals, not 1 second. The graphs are too dense, and they are overloading the time series redis @ 1000 relays.
-
-	Rename "Next RTT" to "Accelerated RTT". Makes much more sense to the casual viewer.
-
-	User hash link in server sessions page is not working
-
-	Setup production again
-
-	Just leave the buyer page as graphs. The rightmost column doesn't add enough to justify its existence.
-
-	Verify buyer page in staging (no right side column, working mobile layout etc).
-
-	Verify relay graphs in staging and prod
-
-	Verify server session view user hash link is working in prod
-
-	Review all service logs in prod and make sure everything is perfect
-
-	Adjust prod so it runs clean with no logs unless something goes wrong
-
-	Verify bigquery data ingestion in prod
-
-	Leave prod to run with 100k sessions for a few hours to make sure it is stable.
-
-	Destroy all projects in google cloud.
-
-	Shut down all AWS, linode and google cloud relays.
-
-TODO	
-
 	Setup projects and service accounts with terraform
 
 	First, create a new terraform directory under "terraform/projects"
 
 	Next, work out how to create all the projects.
 
-	Then work out how to create service accounts.
+	Work out how to enable various services on each project, eg. google compute, SQL, whatever.
 
-	Then work out how to setup the storage buckets.
+	Configure services needed for each project
+
+TODO	
+
+	Create storage buckets (need local.company_name)
+
+	Create service account(s)
+
+	Setup permissions across projects with service accounts and storage buckets. Keep it as simple as possible!
+
+	Work out how to pass project ids and so on from the "projects" terraform into the other terrafrom projects, so there are no manual steps.
 
 
 
