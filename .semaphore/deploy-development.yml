@@ -21,7 +21,7 @@ blocks:
       jobs:
         - name: "Deploy"
           commands:
-            - gcloud auth activate-service-account --key-file=/home/semaphore/google-terraform.json
+            - gcloud auth activate-service-account --key-file=/home/semaphore/terraform-google.json
             - echo $SEMAPHORE_GIT_TAG_NAME
             - echo $SEMAPHORE_GIT_BRANCH
             - echo $SEMAPHORE_WORKFLOW_NUMBER
