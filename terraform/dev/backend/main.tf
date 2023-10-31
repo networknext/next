@@ -10,12 +10,10 @@ variable "extra" {
 variable "vpn_address" { type = string }
 
 variable "google_credentials" { type = string }
-variable "google_project" { type = string }
 variable "google_location" { type = string }
 variable "google_region" { type = string }
 variable "google_zones" { type = list(string) }
 variable "google_zone" { type = string }
-variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
 variable "google_database_bucket" { type = string }
 
@@ -35,6 +33,11 @@ variable "customer_private_key" { type = string }
 variable "maxmind_license_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
+
+locals {
+  google_project         = file("../../projects/dev-project.txt")
+  google_service_account = file("../../projects/dev-runtime-service-account.txt")
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -57,7 +60,7 @@ terraform {
 
 provider "google" {
   credentials = file(var.google_credentials)
-  project     = var.google_project
+  project     = local.google_project
   region      = var.google_region
   zone        = var.google_zone
 }
@@ -100,7 +103,7 @@ resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
 
 resource "google_compute_network" "development" {
   name                    = "development"
-  project                 = var.google_project
+  project                 = local.google_project
   auto_create_subnetworks = false
 }
 
@@ -258,7 +261,7 @@ module "redis_time_series" {
   zone                     = var.google_zone
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-redis", "allow-ssh"]
 }
 
@@ -510,7 +513,7 @@ module "magic_backend" {
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
 }
@@ -558,7 +561,7 @@ module "relay_gateway" {
   zones                    = var.google_zones
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "relay-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay-dev.id
@@ -618,7 +621,7 @@ module "relay_backend" {
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   initial_delay              = 360
   target_size                = 1
@@ -676,7 +679,7 @@ module "api" {
   zones                      = var.google_zones
   default_network            = google_compute_network.development.id
   default_subnetwork         = google_compute_subnetwork.development.id
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http", "allow-https"]
   domain                     = "api-dev.${var.cloudflare_domain}"
   certificate                = google_compute_managed_ssl_certificate.api-dev.id
@@ -724,7 +727,7 @@ module "session_cruncher" {
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
 
@@ -763,7 +766,7 @@ module "server_cruncher" {
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
 }
@@ -821,7 +824,7 @@ module "server_backend" {
   default_subnetwork         = google_compute_subnetwork.development.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http", "allow-udp-40000"]
   target_size                = 1
   initial_delay              = 180
@@ -872,7 +875,7 @@ module "raspberry_backend" {
   zones                    = var.google_zones
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
@@ -922,7 +925,7 @@ module "raspberry_server" {
   zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
+  service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 8
 
@@ -966,7 +969,7 @@ module "raspberry_client" {
   zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
+  service_account    = local.google_service_account
   tags               = ["allow-ssh"]
   target_size        = 4
 
@@ -1006,7 +1009,7 @@ module "ip2location" {
   zones              = var.google_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
-  service_account    = var.google_service_account
+  service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 1
 }
@@ -1024,12 +1027,12 @@ module "portal" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "f1-micro"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.development.id
   default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal-dev.id
@@ -1046,7 +1049,7 @@ output "portal_address" {
 resource "google_compute_router" "router" {
   name    = "router-to-internet"
   network = google_compute_network.development.id
-  project = var.google_project
+  project = local.google_project
   region  = var.google_region
 }
 

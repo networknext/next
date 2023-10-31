@@ -43,7 +43,7 @@ resource "google_service_account" "staging_runtime" {
 }
 
 resource "google_service_account" "prod_runtime" {
-  project  = google_project.staging.project_id
+  project  = google_project.prod.project_id
   account_id   = "prod-runtime"
   display_name = "Production Runtime Service Account"
 }
@@ -56,6 +56,15 @@ output google_terraform_json {
 resource "local_file" "google_terraform_json" {
     filename = "terraform-google.json"
     content  =  base64decode(google_service_account_key.terraform.private_key)
+}
+
+output dev_runtime_service_account {
+  value = google_service_account.dev_runtime.email
+}
+
+resource "local_file" "dev_runtime_service_account" {
+    filename = "dev-runtime-service-account.txt"
+    content  =  google_service_account.dev_runtime.email
 }
 
 # ----------------------------------------------------------------------------------------
@@ -106,6 +115,15 @@ resource "google_project" "prod_relays" {
   project_id      = "prod-relays-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+}
+
+output dev_project_id {
+  value = google_project.dev.id
+}
+
+resource "local_file" "dev_project" {
+    filename = "dev_project.txt"
+    content  = google_project.dev.id
 }
 
 # ----------------------------------------------------------------------------------------
@@ -189,7 +207,6 @@ resource "google_storage_bucket" "terraform" {
   project       = google_project.storage.project_id
   location      = "US"
   force_destroy = true
-  uniform_bucket_level_access = true
 }
 
 resource "google_storage_bucket_object" "amazon_txt" {
@@ -258,20 +275,25 @@ resource "google_storage_bucket_object" "staging_sql" {
   bucket = google_storage_bucket.sql_files.name
 }
 
-resource "google_storage_bucket_iam_binding" "backend_artifacts" {
-  bucket = google_storage_bucket.backend_artifacts.name
-  role = "roles/storage.admin"
-  members = [
-    google_service_account.terraform.member,
-  ]
+resource "google_storage_bucket_iam_member" "terraform_storage_object_admin" {
+  bucket = google_storage_bucket.terraform.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform.member
+  depends_on = [google_storage_bucket.terraform]
 }
 
-resource "google_storage_bucket_iam_binding" "relay_artifacts" {
+resource "google_storage_bucket_iam_member" "backend_artifacts_storage_object_admin" {
+  bucket = google_storage_bucket.backend_artifacts.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform.member
+  depends_on = [google_storage_bucket.terraform]
+}
+
+resource "google_storage_bucket_iam_member" "relay_artifacts_storage_object_admin" {
   bucket = google_storage_bucket.relay_artifacts.name
-  role = "roles/storage.admin"
-  members = [
-    google_service_account.terraform.member,
-  ]
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform.member
+  depends_on = [google_storage_bucket.terraform]
 }
 
 # ----------------------------------------------------------------------------------------
