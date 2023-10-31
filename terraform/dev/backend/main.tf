@@ -109,7 +109,7 @@ resource "google_compute_network" "development" {
 
 resource "google_compute_subnetwork" "development" {
   name                     = "development"
-  project                  = var.google_project
+  project                  = local.google_project
   ip_cidr_range            = "10.0.0.0/16"
   region                   = var.google_region
   network                  = google_compute_network.development.id
@@ -118,7 +118,7 @@ resource "google_compute_subnetwork" "development" {
 
 resource "google_compute_subnetwork" "internal_http_load_balancer" {
   name          = "internal-http-load-balancer"
-  project       = var.google_project
+  project       = local.google_project
   region        = var.google_region
   purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
   role          = "ACTIVE"
@@ -172,7 +172,7 @@ resource "cloudflare_record" "portal_domain" {
 
 resource "google_compute_firewall" "allow_ssh" {
   name          = "allow-ssh"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
@@ -185,7 +185,7 @@ resource "google_compute_firewall" "allow_ssh" {
 
 resource "google_compute_firewall" "allow_http" {
   name          = "allow-http"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -198,7 +198,7 @@ resource "google_compute_firewall" "allow_http" {
 
 resource "google_compute_firewall" "allow_https" {
   name          = "allow-https"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -211,7 +211,7 @@ resource "google_compute_firewall" "allow_https" {
 
 resource "google_compute_firewall" "allow_redis" {
   name          = "allow-redis"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -224,7 +224,7 @@ resource "google_compute_firewall" "allow_redis" {
 
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -237,7 +237,7 @@ resource "google_compute_firewall" "allow_udp_40000" {
 
 resource "google_compute_firewall" "allow_udp_all" {
   name          = "allow-udp-all"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.development.id
   source_ranges = ["0.0.0.0/0"]
@@ -256,7 +256,7 @@ module "redis_time_series" {
   service_name = "redis-time-series"
 
   machine_type             = "n1-standard-1"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zone                     = var.google_zone
   default_network          = google_compute_network.development.id
@@ -506,7 +506,7 @@ module "magic_backend" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "f1-micro"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.development.id
@@ -539,7 +539,7 @@ module "relay_gateway" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
@@ -556,7 +556,7 @@ module "relay_gateway" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "n1-standard-2"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.development.id
@@ -596,7 +596,7 @@ module "relay_backend" {
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
@@ -614,7 +614,7 @@ module "relay_backend" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "n1-standard-8"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.development.id
@@ -660,7 +660,7 @@ module "api" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
@@ -674,7 +674,7 @@ module "api" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "g1-small"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.development.id
@@ -709,7 +709,7 @@ module "session_cruncher" {
     DEBUG_LOGS=1
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     EOF
@@ -720,7 +720,7 @@ module "session_cruncher" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "n1-standard-2"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.development.id
@@ -759,7 +759,7 @@ module "server_cruncher" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "n1-standard-2"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.development.id
@@ -792,7 +792,7 @@ module "server_backend" {
     UDP_NUM_THREADS=8
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
@@ -816,7 +816,7 @@ module "server_backend" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "n1-standard-8"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   port                       = 40000
@@ -870,7 +870,7 @@ module "raspberry_backend" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "f1-micro"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.development.id
@@ -920,7 +920,7 @@ module "raspberry_server" {
   tag                = var.tag
   extra              = var.extra
   machine_type       = "f1-micro"
-  project            = var.google_project
+  project            = local.google_project
   region             = var.google_region
   zones              = var.google_zones
   default_network    = google_compute_network.development.id
@@ -964,7 +964,7 @@ module "raspberry_client" {
   tag                = var.tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
-  project            = var.google_project
+  project            = local.google_project
   region             = var.google_region
   zones              = var.google_zones
   default_network    = google_compute_network.development.id
@@ -1004,7 +1004,7 @@ module "ip2location" {
   tag                = var.tag
   extra              = var.extra
   machine_type       = "f1-micro"
-  project            = var.google_project
+  project            = local.google_project
   region             = var.google_region
   zones              = var.google_zones
   default_network    = google_compute_network.development.id
