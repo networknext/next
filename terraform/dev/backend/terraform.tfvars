@@ -3,7 +3,7 @@ extra = ""
 
 vpn_address = "45.79.157.168"
 
-google_credentials          = "~/secrets/terraform-google.json"
+google_credentials          = "~/secrets/terraform-dev.json"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"

@@ -17,62 +17,6 @@ locals {
 
 # ----------------------------------------------------------------------------------------
 
-# create service accounts
-
-resource "google_service_account" "terraform" {
-  project  = google_project.storage.project_id
-  account_id   = "terraform"
-  display_name = "Terraform Service Account"
-}
-
-resource "google_service_account_key" "terraform" {
-  service_account_id = google_service_account.terraform.name
-  public_key_type    = "TYPE_X509_PEM_FILE"
-}
-
-resource "google_service_account" "dev_runtime" {
-  project  = google_project.dev.project_id
-  account_id   = "dev-runtime"
-  display_name = "Development Runtime Service Account"
-}
-
-resource "google_service_account" "staging_runtime" {
-  project  = google_project.staging.project_id
-  account_id   = "staging-runtime"
-  display_name = "Staging Runtime Service Account"
-}
-
-resource "google_service_account" "prod_runtime" {
-  project  = google_project.prod.project_id
-  account_id   = "prod-runtime"
-  display_name = "Production Runtime Service Account"
-}
-
-# write the terraform service account key to "terraform-google.txt"
-
-output google_terraform_json {
-  value = google_service_account_key.terraform.private_key
-  sensitive = true
-}
-
-resource "local_file" "google_terraform_json" {
-    filename = "terraform-google.json"
-    content  =  base64decode(google_service_account_key.terraform.private_key)
-}
-
-# write the dev service account email to "dev-runtime-service-account.txt"
-
-output dev_runtime_service_account {
-  value = google_service_account.dev_runtime.email
-}
-
-resource "local_file" "dev_runtime_service_account" {
-    filename = "dev-runtime-service-account.txt"
-    content  =  google_service_account.dev_runtime.email
-}
-
-# ----------------------------------------------------------------------------------------
-
 # create projects
 
 resource "random_id" "postfix" {
@@ -121,24 +65,13 @@ resource "google_project" "prod_relays" {
   billing_account = local.billing_account
 }
 
-# write the dev project id to "dev-project.txt"
-
-output dev_project_id {
-  value = replace(google_project.dev.id, "projects/", "")
-}
-
-resource "local_file" "dev_project" {
-    filename = "dev-project.txt"
-    content  = replace(google_project.dev.id, "projects/", "")
-}
-
 # ----------------------------------------------------------------------------------------
-
-# configure storage project
+#                                         STORAGE
+# ----------------------------------------------------------------------------------------
 
 locals {
   storage_services = [
-    "storage.googleapis.com",         # cloud storage
+    "storage.googleapis.com",
   ]
 }
 
@@ -205,6 +138,26 @@ resource "google_storage_bucket" "terraform" {
   force_destroy = true
 }
 
+# create service accounts so semaphore can upload artifacts
+
+resource "google_service_account" "terraform_storage" {
+  project  = google_project.storage.project_id
+  account_id   = "terraform-storage"
+  display_name = "Terraform Service Account (Storage)"
+}
+
+resource "google_service_account_key" "terraform_storage" {
+  service_account_id = google_service_account.terraform_storage.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+# write the storage terraform service account key to "terraform-storage.json"
+
+resource "local_file" "terraform_storage_json" {
+    filename = "terraform-storage.json"
+    content  =  base64decode(google_service_account_key.terraform_storage.private_key)
+}
+
 # setup bucket permissions
 
 resource "google_storage_bucket_iam_member" "relay_artifacts" {
@@ -222,21 +175,21 @@ resource "google_storage_bucket_iam_member" "sdk_config" {
 resource "google_storage_bucket_iam_member" "terraform_storage_object_admin" {
   bucket = google_storage_bucket.terraform.name
   role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform.member
+  member = google_service_account.terraform_storage.member
   depends_on = [google_storage_bucket.terraform]
 }
 
 resource "google_storage_bucket_iam_member" "backend_artifacts_storage_object_admin" {
   bucket = google_storage_bucket.backend_artifacts.name
   role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform.member
+  member = google_service_account.terraform_storage.member
   depends_on = [google_storage_bucket.terraform]
 }
 
 resource "google_storage_bucket_iam_member" "relay_artifacts_storage_object_admin" {
   bucket = google_storage_bucket.relay_artifacts.name
   role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform.member
+  member = google_service_account.terraform_storage.member
   depends_on = [google_storage_bucket.terraform]
 }
 
@@ -313,8 +266,8 @@ resource "google_storage_bucket_object" "staging_sql" {
 }
 
 # ----------------------------------------------------------------------------------------
-
-# configure dev project
+#                                           DEV
+# ----------------------------------------------------------------------------------------
 
 locals {
   dev_services = [
@@ -323,8 +276,9 @@ locals {
     "bigquery.googleapis.com",                  # bigquery
     "compute.googleapis.com",                   # compute engine
     "redis.googleapis.com",                     # redis
-    "sql-component.googleapis.com",             # postgres
-    "cloudresourcemanager.googleapis.com",      # cloud resource manager (enables setting up service connections to redis)
+    "sqladmin.googleapis.com",                  # postgres
+    "cloudresourcemanager.googleapis.com",      # cloud resource manager
+    "servicenetworking.googleapis.com"          # service networking
   ]
 }
 
@@ -339,15 +293,116 @@ resource "google_project_service" "dev" {
   disable_dependent_services = true
 }
 
-# give permissions to the terraform service account
+# setup service accounts for dev
 
-resource "google_project_iam_member" "dev-terraform-editor" {
+resource "google_service_account" "terraform_dev" {
+  project  = google_project.dev.project_id
+  account_id   = "terraform-dev"
+  display_name = "Terraform Service Account (Development)"
+}
+
+resource "google_service_account_key" "terraform_dev" {
+  service_account_id = google_service_account.terraform_dev.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+# write the storage terraform service account key to "terraform-dev.json"
+
+resource "local_file" "terraform_dev_json" {
+    filename = "terraform-dev.json"
+    content  =  base64decode(google_service_account_key.terraform_dev.private_key)
+}
+
+resource "google_service_account" "dev_runtime" {
+  project  = google_project.dev.project_id
+  account_id   = "dev-runtime"
+  display_name = "Development Runtime Service Account"
+}
+
+resource "google_project_iam_member" "dev_terraform_editor" {
   project = google_project.dev.project_id
-  role    = "roles/editor"
-  member  = google_service_account.terraform.member
+  role    = "roles/admin"
+  member  = google_service_account.terraform_dev.member
+}
+
+# write the dev project id to "dev-project.txt"
+
+resource "local_file" "dev_project" {
+  filename = "dev-project.txt"
+  content  = replace(google_project.dev.id, "projects/", "")
+}
+
+# write the dev runtime service account email to "dev-runtime-service-account.txt"
+
+resource "local_file" "dev_runtime_service_account" {
+  filename = "dev-runtime-service-account.txt"
+  content  =  google_service_account.dev_runtime.email
 }
 
 # ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # configure dev relays project
 
