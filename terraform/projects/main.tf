@@ -48,6 +48,8 @@ resource "google_service_account" "prod_runtime" {
   display_name = "Production Runtime Service Account"
 }
 
+# write the terraform service account key to "terraform-google.txt"
+
 output google_terraform_json {
   value = google_service_account_key.terraform.private_key
   sensitive = true
@@ -57,6 +59,8 @@ resource "local_file" "google_terraform_json" {
     filename = "terraform-google.json"
     content  =  base64decode(google_service_account_key.terraform.private_key)
 }
+
+# write the dev service account email to "dev-runtime-service-account.txt"
 
 output dev_runtime_service_account {
   value = google_service_account.dev_runtime.email
@@ -117,13 +121,15 @@ resource "google_project" "prod_relays" {
   billing_account = local.billing_account
 }
 
+# write the dev project id to "dev-project.txt"
+
 output dev_project_id {
-  value = google_project.dev.id
+  value = replace(google_project.dev.id, "projects/", "")
 }
 
 resource "local_file" "dev_project" {
-    filename = "dev_project.txt"
-    content  = google_project.dev.id
+    filename = "dev-project.txt"
+    content  = replace(google_project.dev.id, "projects/", "")
 }
 
 # ----------------------------------------------------------------------------------------
@@ -139,13 +145,15 @@ locals {
 resource "google_project_service" "storage" {
   count    = length(local.storage_services)
   project  = google_project.storage.project_id
-  service  = "pubsub.googleapis.com"
+  service  = local.storage_services[count.index]
   timeouts {
     create = "30m"
     update = "40m"
   }
   disable_dependent_services = true
 }
+
+# create buckets
 
 resource "google_storage_bucket" "backend_artifacts" {
   name          = "${local.company_name}_network_next_backend_artifacts"
@@ -162,12 +170,6 @@ resource "google_storage_bucket" "relay_artifacts" {
   location      = "US"
   force_destroy = true
   uniform_bucket_level_access = true
-}
-
-resource "google_storage_bucket_iam_member" "relay_artifacts" {
-  bucket = google_storage_bucket.relay_artifacts.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
 }
 
 resource "google_storage_bucket" "database_files" {
@@ -196,18 +198,49 @@ resource "google_storage_bucket" "sdk_config" {
   uniform_bucket_level_access = true
 }
 
-resource "google_storage_bucket_iam_member" "sdk_config" {
-  bucket = google_storage_bucket.sdk_config.name
-  role   = "roles/storage.objectViewer"
-  member = "allUsers"
-}
-
 resource "google_storage_bucket" "terraform" {
   name          = "${local.company_name}_network_next_terraform"
   project       = google_project.storage.project_id
   location      = "US"
   force_destroy = true
 }
+
+# setup bucket permissions
+
+resource "google_storage_bucket_iam_member" "relay_artifacts" {
+  bucket = google_storage_bucket.relay_artifacts.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_storage_bucket_iam_member" "sdk_config" {
+  bucket = google_storage_bucket.sdk_config.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_storage_bucket_iam_member" "terraform_storage_object_admin" {
+  bucket = google_storage_bucket.terraform.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform.member
+  depends_on = [google_storage_bucket.terraform]
+}
+
+resource "google_storage_bucket_iam_member" "backend_artifacts_storage_object_admin" {
+  bucket = google_storage_bucket.backend_artifacts.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform.member
+  depends_on = [google_storage_bucket.terraform]
+}
+
+resource "google_storage_bucket_iam_member" "relay_artifacts_storage_object_admin" {
+  bucket = google_storage_bucket.relay_artifacts.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform.member
+  depends_on = [google_storage_bucket.terraform]
+}
+
+# upload config files read by the SDK
 
 resource "google_storage_bucket_object" "amazon_txt" {
   name   = "amazon.txt"
@@ -239,6 +272,8 @@ resource "google_storage_bucket_object" "vultr_txt" {
   bucket = google_storage_bucket.sdk_config.name
 }
 
+# upload database files necessary to bootstrap the envs
+
 resource "google_storage_bucket_object" "dev_bin" {
   name   = "dev.bin"
   source = "../../envs/empty.bin"
@@ -256,6 +291,8 @@ resource "google_storage_bucket_object" "prod_bin" {
   source = "../../envs/empty.bin"
   bucket = google_storage_bucket.database_files.name
 }
+
+# upload sql files for initializing the postgres db
 
 resource "google_storage_bucket_object" "create_sql" {
   name   = "create.sql"
@@ -275,51 +312,39 @@ resource "google_storage_bucket_object" "staging_sql" {
   bucket = google_storage_bucket.sql_files.name
 }
 
-resource "google_storage_bucket_iam_member" "terraform_storage_object_admin" {
-  bucket = google_storage_bucket.terraform.name
-  role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform.member
-  depends_on = [google_storage_bucket.terraform]
-}
-
-resource "google_storage_bucket_iam_member" "backend_artifacts_storage_object_admin" {
-  bucket = google_storage_bucket.backend_artifacts.name
-  role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform.member
-  depends_on = [google_storage_bucket.terraform]
-}
-
-resource "google_storage_bucket_iam_member" "relay_artifacts_storage_object_admin" {
-  bucket = google_storage_bucket.relay_artifacts.name
-  role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform.member
-  depends_on = [google_storage_bucket.terraform]
-}
-
 # ----------------------------------------------------------------------------------------
 
 # configure dev project
 
 locals {
   dev_services = [
-    "pubsub.googleapis.com",          # google pubsub
-    "storage.googleapis.com",         # cloud storage
-    "bigquery.googleapis.com",        # bigquery
-    "compute.googleapis.com",         # compute engine
-    "redis.googleapis.com",           # redis
-    "sql-component.googleapis.com",   # postgres
+    "pubsub.googleapis.com",                    # google pubsub
+    "storage.googleapis.com",                   # cloud storage
+    "bigquery.googleapis.com",                  # bigquery
+    "compute.googleapis.com",                   # compute engine
+    "redis.googleapis.com",                     # redis
+    "sql-component.googleapis.com",             # postgres
+    "cloudresourcemanager.googleapis.com",      # cloud resource manager (enables setting up service connections to redis)
   ]
 }
 
 resource "google_project_service" "dev" {
   count    = length(local.dev_services)
   project  = google_project.dev.project_id
-  service  = "pubsub.googleapis.com"
+  service  = local.dev_services[count.index]
   timeouts {
     create = "30m"
     update = "40m"
   }
   disable_dependent_services = true
+}
+
+# give permissions to the terraform service account
+
+resource "google_project_iam_member" "dev-terraform-editor" {
+  project = google_project.dev.project_id
+  role    = "roles/editor"
+  member  = google_service_account.terraform.member
 }
 
 # ----------------------------------------------------------------------------------------
