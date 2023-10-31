@@ -14,15 +14,21 @@ DONE
 
 	Upload starter files to storage buckets
 
-TODO	
-	
-	-------------
-
 	Create service accounts
 
 	There should be a service account that represents terraform when it runs, and generally it should have admin access to do everything. I'd like this to be a single account, instead of the account that runs 
 
 	There should be a more restricted, per-project service account that the services run under, and this one should be selectively given access to read/write to cloud storage buckets as needed only.
+
+TODO	
+	
+	Run and export terraform key json and save to location (eg. ~/secrets/google-terraform.json)
+
+	Simplify setup for semaphore so it uses the one google-terraform.json file for all gcloud ops (upload artifacts, and run tf...)
+
+	Verify that I can build and upload artifacts via semaphore jobs.
+
+	Need to work out how to get company name uploaded to semaphore -- perhaps just have it in the semaphore jobs, and modify it with the setup script.
 
 	-------------
 
@@ -31,6 +37,8 @@ TODO
 	-------------
 
 	Configure script to set company name, modify stuff etc. Idea is run "./configure" and enter some data, and everything is setup for you. *** Zero work. ***
+
+	Should also roll relay backend, server backend keys... api keys etc.
 	
 	-------------
 

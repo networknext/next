@@ -17,6 +17,43 @@ locals {
 
 # ----------------------------------------------------------------------------------------
 
+# create service accounts
+
+resource "google_service_account" "terraform" {
+  project  = google_project.storage.project_id
+  account_id   = "terraform"
+  display_name = "Terraform Service Account"
+}
+
+resource "google_service_account_key" "terraform" {
+  service_account_id = google_service_account.terraform.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+resource "google_service_account" "dev_runtime" {
+  project  = google_project.dev.project_id
+  account_id   = "dev_runtime"
+  display_name = "Development Runtime Service Account"
+}
+
+resource "google_service_account" "staging_runtime" {
+  project  = google_project.staging.project_id
+  account_id   = "staging_runtime"
+  display_name = "Staging Runtime Service Account"
+}
+
+resource "google_service_account" "prod_runtime" {
+  project  = google_project.staging.project_id
+  account_id   = "prod_runtime"
+  display_name = "Production Runtime Service Account"
+}
+
+outputs {
+  dev_terraform_key = google_service_account_key.dev_terraform.private_key
+}
+
+# ----------------------------------------------------------------------------------------
+
 # create projects
 
 resource "random_id" "postfix" {
@@ -214,6 +251,10 @@ resource "google_storage_bucket_object" "staging_sql" {
   source = "../../schemas/sql/staging.sql"
   bucket = google_storage_bucket.sql_files.name
 }
+
+# todo: terraform account needs ability to write to backend artifact bucket
+
+# todo: terraform account needs ability to write to relay artifact bucket
 
 # ----------------------------------------------------------------------------------------
 
