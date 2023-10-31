@@ -48,9 +48,14 @@ resource "google_service_account" "prod_runtime" {
   display_name = "Production Runtime Service Account"
 }
 
-output terraform_key {
+output google_terraform_json {
   value = google_service_account_key.terraform.private_key
   sensitive = true
+}
+
+resource "local_file" "google_terraform_json" {
+    content  = google_service_account_key.terraform.private_key
+    filename = "terraform-google.json"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -253,9 +258,21 @@ resource "google_storage_bucket_object" "staging_sql" {
   bucket = google_storage_bucket.sql_files.name
 }
 
-# todo: terraform account needs ability to write to backend artifact bucket
+resource "google_storage_bucket_iam_binding" "backend_artifacts" {
+  bucket = google_storage_bucket.backend_artifacts.name
+  role = "roles/storage.admin"
+  members = [
+    google_service_account.terraform.member,
+  ]
+}
 
-# todo: terraform account needs ability to write to relay artifact bucket
+resource "google_storage_bucket_iam_binding" "relay_artifacts" {
+  bucket = google_storage_bucket.relay_artifacts.name
+  role = "roles/storage.admin"
+  members = [
+    google_service_account.terraform.member,
+  ]
+}
 
 # ----------------------------------------------------------------------------------------
 

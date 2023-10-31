@@ -20,19 +20,15 @@ DONE
 
 	There should be a more restricted, per-project service account that the services run under, and this one should be selectively given access to read/write to cloud storage buckets as needed only.
 
+	Give the terraform service account write permission to both the backend artifact and relay artifact buckets.
+
 TODO	
 	
-	Run and export terraform key json and save to location (eg. ~/secrets/google-terraform.json)
+	Export the terraform key and use it to setup semaphore.
 
-	Simplify setup for semaphore so it uses the one google-terraform.json file for all gcloud ops (upload artifacts, and run tf...)
+	Verify that semaphore can write backend artifacts.
 
-	Verify that I can build and upload artifacts via semaphore jobs.
-
-	Need to work out how to get company name uploaded to semaphore -- perhaps just have it in the semaphore jobs, and modify it with the setup script.
-
-	-------------
-
-	Work out how to pass project ids and so on from the "projects" terraform into the other terrafrom projects, so there are no manual steps.
+	Verify that semaphore can write relay artifacts.
 
 	-------------
 
@@ -40,6 +36,10 @@ TODO
 
 	Should also roll relay backend, server backend keys... api keys etc.
 	
+	-------------
+
+	Work out how to pass project ids and so on from the "projects" terraform into the other terrafrom projects, so there are no manual steps.
+
 	-------------
 
 

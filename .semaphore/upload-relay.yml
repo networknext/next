@@ -21,7 +21,7 @@ blocks:
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export RELAY_BUCKET=gs://${COMPANY_NAME}_network_next_relay_artifacts/
+            - export RELAY_BUCKET=gs://auspicious_network_next_relay_artifacts/
 
       jobs:
 

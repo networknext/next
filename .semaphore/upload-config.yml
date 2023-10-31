@@ -21,7 +21,7 @@ blocks:
       prologue:
         commands:
             - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export SDK_CONFIG_BUCKET=gs://${COMPANY_NAME}_network_next_sdk_config/
+            - export SDK_CONFIG_BUCKET=gs://auspicious_network_next_sdk_config/
 
       jobs:
 

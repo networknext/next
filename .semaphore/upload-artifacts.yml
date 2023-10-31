@@ -10,7 +10,7 @@ agent:
 global_job_config:
   secrets:
     - name: company-name
-    - name: google-cloud-platform
+    - name: terraform-google
 
 blocks:
 
@@ -20,8 +20,8 @@ blocks:
 
       prologue:
         commands:
-            - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
-            - export ARTIFACT_BUCKET=gs://${COMPANY_NAME}_network_next_backend_artifacts
+            - gcloud auth activate-service-account --key-file=/home/semaphore/terraform-google.json
+            - export ARTIFACT_BUCKET=gs://auspicious_network_next_backend_artifacts
             - echo $ARTIFACT_BUCKET
             - echo $SEMAPHORE_GIT_TAG_NAME
             - echo $SEMAPHORE_GIT_BRANCH
