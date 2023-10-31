@@ -10,17 +10,29 @@ DONE
 
 	Configure services needed for each project
 
-TODO	
-
 	Create storage buckets (need local.company_name)
 
-	Create service account(s)
+	Upload starter files to storage buckets
 
-	Setup permissions across projects with service accounts and storage buckets. Keep it as simple as possible!
+TODO	
+	
+	-------------
+
+	Create service accounts
+
+	There should be a service account that represents terraform when it runs, and generally it should have admin access to do everything. I'd like this to be a single account, instead of the account that runs 
+
+	There should be a more restricted, per-project service account that the services run under, and this one should be selectively given access to read/write to cloud storage buckets as needed only.
+
+	-------------
 
 	Work out how to pass project ids and so on from the "projects" terraform into the other terrafrom projects, so there are no manual steps.
 
+	-------------
 
+	Configure script to set company name, modify stuff etc. Idea is run "./configure" and enter some data, and everything is setup for you. *** Zero work. ***
+	
+	-------------
 
 
 
@@ -144,10 +156,6 @@ Small things:
 
 	----------
 
-	Relays need to be setup to use cloud storage for tf state
-
-	----------
-
 	For providers like akamai, vultr, amazon, we need to prefix all resource names with env (because their aren't separate projects...)
 
 	--------------
@@ -174,12 +182,6 @@ Small things:
 
 	--------------
 
-	There will be a challenge getting prod relays up in AWS vs. dev. There are no projects to segregate?
-
-	Might need to create a separate project, or distinguish resources with naming convention.
-
-	--------------
-
 	Connection type detection needs to be brought back for all platforms in the SDK. On linux, connection type was 0 -> "Unknown"
 
 	--------------
@@ -188,6 +190,6 @@ Small things:
 
 	--------------
 
-	Disable high priority threads on server by default. It can cause problems when many server instances are run per-machine.
+	Disable high priority threads by default on the server. It can cause problems when many server instances are run per-machine.
 
 	--------------

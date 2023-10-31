@@ -19,6 +19,7 @@ func main() {
 	service := common.CreateService("ip2location")
 
 	licenseKey = envvar.GetString("MAXMIND_LICENSE_KEY", "")
+
 	bucketName = envvar.GetString("IP2LOCATION_BUCKET_NAME", "")
 
 	if licenseKey == "" {

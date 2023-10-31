@@ -24,6 +24,10 @@ terraform {
       version = "~> 5.0.6"
     }
   }
+  backend "gcs" {
+    bucket  = "auspicious_network_next_terraform"
+    prefix  = "dev_relays"
+  }
 }
 
 provider "networknext" {

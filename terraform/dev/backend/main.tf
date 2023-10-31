@@ -50,7 +50,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "test_network_next_terraform_state"
+    bucket  = "auspicious_network_next_terraform_state"
     prefix  = "dev"
   }
 }

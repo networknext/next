@@ -1,5 +1,5 @@
 /*
-    Network Next. Accelerate and Protect. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -26,14 +26,13 @@
 #include "next.h"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME               "server.virtualgo.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME           "server-dev.virtualgo.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME "server-dev.virtualgo.net"
 #endif // #if !NEXT_DEVELOPMENT
+#define NEXT_CONFIG_BUCKET_NAME      "auspicious_network_next_sdk_config"
+
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
-
-#define NEXT_CONFIG_BUCKET_NAME            "test_network_next_sdk_config"
-
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0

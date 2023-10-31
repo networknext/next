@@ -11,7 +11,7 @@ print_usage() {
     printf "a [string]\tArtifact name on GCP Storage\n"
 
     printf "Example:\n\n"
-    printf "> bootstrap.sh -t dev-007 -b gs://test_network_next_artifacts -a server_backend.tar.gz\n"
+    printf "> bootstrap.sh -t dev-007 -b gs://auspicious_network_next_artifacts -a server_backend.tar.gz\n"
 }
 
 while getopts 't:b:a:h' flag; do

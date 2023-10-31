@@ -86,7 +86,7 @@ resource "google_project_service" "storage" {
   disable_dependent_services = true
 }
 
-resource "google_storage_bucket" "dev_backend_artifacts" {
+resource "google_storage_bucket" "backend_artifacts" {
   name          = "${local.company_name}_network_next_backend_artifacts"
   project       = google_project.storage.project_id
   location      = "US"
@@ -95,7 +95,7 @@ resource "google_storage_bucket" "dev_backend_artifacts" {
   uniform_bucket_level_access = true
 }
 
-resource "google_storage_bucket" "dev_relay_artifacts" {
+resource "google_storage_bucket" "relay_artifacts" {
   name          = "${local.company_name}_network_next_relay_artifacts"
   project       = google_project.storage.project_id
   location      = "US"
@@ -103,13 +103,13 @@ resource "google_storage_bucket" "dev_relay_artifacts" {
   uniform_bucket_level_access = true
 }
 
-resource "google_storage_bucket_iam_member" "dev_relay_artifacts" {
-  bucket = google_storage_bucket.dev_relay_artifacts.name
+resource "google_storage_bucket_iam_member" "relay_artifacts" {
+  bucket = google_storage_bucket.relay_artifacts.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
 }
 
-resource "google_storage_bucket" "dev_database_files" {
+resource "google_storage_bucket" "database_files" {
   name          = "${local.company_name}_network_next_database_files"
   project       = google_project.storage.project_id
   location      = "US"
@@ -118,7 +118,16 @@ resource "google_storage_bucket" "dev_database_files" {
   uniform_bucket_level_access = true
 }
 
-resource "google_storage_bucket" "dev_sdk_config" {
+resource "google_storage_bucket" "sql_files" {
+  name          = "${local.company_name}_network_next_sql_files"
+  project       = google_project.storage.project_id
+  location      = "US"
+  force_destroy = true
+  public_access_prevention = "enforced"
+  uniform_bucket_level_access = true
+}
+
+resource "google_storage_bucket" "sdk_config" {
   name          = "${local.company_name}_network_next_sdk_config"
   project       = google_project.storage.project_id
   location      = "US"
@@ -126,10 +135,84 @@ resource "google_storage_bucket" "dev_sdk_config" {
   uniform_bucket_level_access = true
 }
 
-resource "google_storage_bucket_iam_member" "dev_sdk_config" {
-  bucket = google_storage_bucket.dev_sdk_config.name
+resource "google_storage_bucket_iam_member" "sdk_config" {
+  bucket = google_storage_bucket.sdk_config.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
+}
+
+resource "google_storage_bucket" "terraform" {
+  name          = "${local.company_name}_network_next_terraform"
+  project       = google_project.storage.project_id
+  location      = "US"
+  force_destroy = true
+  uniform_bucket_level_access = true
+}
+
+resource "google_storage_bucket_object" "amazon_txt" {
+  name   = "amazon.txt"
+  source = "../../config/amazon.txt"
+  bucket = google_storage_bucket.sdk_config.name
+}
+
+resource "google_storage_bucket_object" "google_txt" {
+  name   = "google.txt"
+  source = "../../config/google.txt"
+  bucket = google_storage_bucket.sdk_config.name
+}
+
+resource "google_storage_bucket_object" "multiplay_txt" {
+  name   = "multiplay.txt"
+  source = "../../config/multiplay.txt"
+  bucket = google_storage_bucket.sdk_config.name
+}
+
+resource "google_storage_bucket_object" "akamai_txt" {
+  name   = "akamai.txt"
+  source = "../../config/akamai.txt"
+  bucket = google_storage_bucket.sdk_config.name
+}
+
+resource "google_storage_bucket_object" "vultr_txt" {
+  name   = "vultr.txt"
+  source = "../../config/vultr.txt"
+  bucket = google_storage_bucket.sdk_config.name
+}
+
+resource "google_storage_bucket_object" "dev_bin" {
+  name   = "dev.bin"
+  source = "../../envs/empty.bin"
+  bucket = google_storage_bucket.database_files.name
+}
+
+resource "google_storage_bucket_object" "staging_bin" {
+  name   = "staging.bin"
+  source = "../../envs/staging.bin"
+  bucket = google_storage_bucket.database_files.name
+}
+
+resource "google_storage_bucket_object" "prod_bin" {
+  name   = "prod.bin"
+  source = "../../envs/empty.bin"
+  bucket = google_storage_bucket.database_files.name
+}
+
+resource "google_storage_bucket_object" "create_sql" {
+  name   = "create.sql"
+  source = "../../schemas/sql/create.sql"
+  bucket = google_storage_bucket.sql_files.name
+}
+
+resource "google_storage_bucket_object" "destroy_sql" {
+  name   = "destroy.sql"
+  source = "../../schemas/sql/destroy.sql"
+  bucket = google_storage_bucket.sql_files.name
+}
+
+resource "google_storage_bucket_object" "staging_sql" {
+  name   = "staging.sql"
+  source = "../../schemas/sql/staging.sql"
+  bucket = google_storage_bucket.sql_files.name
 }
 
 # ----------------------------------------------------------------------------------------
