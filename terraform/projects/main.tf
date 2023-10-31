@@ -32,24 +32,25 @@ resource "google_service_account_key" "terraform" {
 
 resource "google_service_account" "dev_runtime" {
   project  = google_project.dev.project_id
-  account_id   = "dev_runtime"
+  account_id   = "dev-runtime"
   display_name = "Development Runtime Service Account"
 }
 
 resource "google_service_account" "staging_runtime" {
   project  = google_project.staging.project_id
-  account_id   = "staging_runtime"
+  account_id   = "staging-runtime"
   display_name = "Staging Runtime Service Account"
 }
 
 resource "google_service_account" "prod_runtime" {
   project  = google_project.staging.project_id
-  account_id   = "prod_runtime"
+  account_id   = "prod-runtime"
   display_name = "Production Runtime Service Account"
 }
 
-outputs {
-  dev_terraform_key = google_service_account_key.dev_terraform.private_key
+output terraform_key {
+  value = google_service_account_key.terraform.private_key
+  sensitive = true
 }
 
 # ----------------------------------------------------------------------------------------
