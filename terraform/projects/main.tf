@@ -301,12 +301,16 @@ resource "google_service_account" "terraform_dev" {
   display_name = "Terraform Service Account (Development)"
 }
 
+resource "google_project_iam_member" "dev_terraform_editor" {
+  project = google_project.dev.project_id
+  role    = "roles/admin"
+  member  = google_service_account.terraform_dev.member
+}
+
 resource "google_service_account_key" "terraform_dev" {
   service_account_id = google_service_account.terraform_dev.name
   public_key_type    = "TYPE_X509_PEM_FILE"
 }
-
-# write the storage terraform service account key to "terraform-dev.json"
 
 resource "local_file" "terraform_dev_json" {
     filename = "terraform-dev.json"
@@ -319,10 +323,18 @@ resource "google_service_account" "dev_runtime" {
   display_name = "Development Runtime Service Account"
 }
 
-resource "google_project_iam_member" "dev_terraform_editor" {
-  project = google_project.dev.project_id
-  role    = "roles/admin"
-  member  = google_service_account.terraform_dev.member
+resource "google_storage_bucket_iam_member" "dev_runtime_backend_artifacts_storage_viewer" {
+  bucket = google_storage_bucket.backend_artifacts.name
+  role   = "roles/storage.objectViewer"
+  member = google_service_account.dev_runtime.member
+  depends_on = [google_storage_bucket.backend_artifacts]
+}
+
+resource "google_storage_bucket_iam_member" "dev_runtime_database_files_storage_admin" {
+  bucket = google_storage_bucket.database_files.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.dev_runtime.member
+  depends_on = [google_storage_bucket.database_files]
 }
 
 # write the dev project id to "dev-project.txt"
@@ -337,6 +349,14 @@ resource "local_file" "dev_project" {
 resource "local_file" "dev_runtime_service_account" {
   filename = "dev-runtime-service-account.txt"
   content  =  google_service_account.dev_runtime.email
+}
+
+# give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
+
+resource "google_project_iam_member" "pubsub_bigquery_admin" {
+  project = google_project.dev.project_id
+  role    = "roles/bigquery.admin"
+  member  = "serviceAccount:service-${google_project.dev.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 # ----------------------------------------------------------------------------------------
