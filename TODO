@@ -22,10 +22,10 @@ DONE
 
 	Give the terraform service account write permission to both the backend artifact and relay artifact buckets.
 
-TODO	
-	
 	Export the terraform key and use it to setup semaphore.
 
+TODO	
+	
 	Verify that semaphore can write backend artifacts.
 
 	Verify that semaphore can write relay artifacts.

@@ -54,8 +54,8 @@ output google_terraform_json {
 }
 
 resource "local_file" "google_terraform_json" {
-    content  = google_service_account_key.terraform.private_key
     filename = "terraform-google.json"
+    content  =  base64decode(google_service_account_key.terraform.private_key)
 }
 
 # ----------------------------------------------------------------------------------------
