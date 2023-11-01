@@ -4,13 +4,17 @@ DONE
 
 	Found the issues. Cloudflare basically had a bunch of old DNS records set.
 
+	Verify prod is up.
+
+	Dev is still not up?
+
+	Verify that we can actually see https://portal-dev.virtualgo.net up.
+
 TODO	
 
 	Staging is up, but I see no sessions or relays in the portal, and I see no next sessions.
 
 	-------------
-
-	Verify that we can actually see https://portal-dev.virtualgo.net up.
 
 	-------------
 
@@ -156,6 +160,10 @@ TODO
 
 
 Small things:
+
+	----------
+
+	If no time series data in time period, fill with zeros.
 
 	----------
 
