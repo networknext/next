@@ -9,7 +9,7 @@ agent:
 
 global_job_config:
   secrets:
-    - name: terraform-dev-relays
+    - name: terraform-storage
 
 blocks:
 
@@ -19,7 +19,7 @@ blocks:
 
       prologue:
         commands:
-            - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-dev-relays.json
+            - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-storage.json
             - export RELAY_BUCKET=gs://auspicious_network_next_relay_artifacts/
 
       jobs:

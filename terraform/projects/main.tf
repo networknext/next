@@ -167,39 +167,26 @@ resource "local_file" "terraform_storage_json" {
     content  =  base64decode(google_service_account_key.terraform_storage.private_key)
 }
 
-# setup bucket permissions
+# make relay artifacts and sdk config publicly accessible
 
-resource "google_storage_bucket_iam_member" "relay_artifacts" {
+resource "google_storage_bucket_iam_member" "relay_artifacts_public_access" {
   bucket = google_storage_bucket.relay_artifacts.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
 }
 
-resource "google_storage_bucket_iam_member" "sdk_config" {
+resource "google_storage_bucket_iam_member" "sdk_config_public_access" {
   bucket = google_storage_bucket.sdk_config.name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
 }
 
-resource "google_storage_bucket_iam_member" "terraform_storage_object_admin" {
-  bucket = google_storage_bucket.terraform.name
-  role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform_storage.member
-  depends_on = [google_storage_bucket.terraform]
-}
+# give the terraform storage service account storage admin permission over the project
 
-resource "google_storage_bucket_iam_member" "backend_artifacts_storage_object_admin" {
-  bucket = google_storage_bucket.backend_artifacts.name
-  role   = "roles/storage.objectAdmin"
+resource "google_project_iam_member" "terraform_storage_admin_admin" {
+  project = google_project.storage.project_id
+  role    = "roles/storage.objectAdmin"
   member = google_service_account.terraform_storage.member
-  depends_on = [google_storage_bucket.terraform]
-}
-
-resource "google_storage_bucket_iam_member" "relay_artifacts_storage_object_admin" {
-  bucket = google_storage_bucket.relay_artifacts.name
-  role   = "roles/storage.objectAdmin"
-  member = google_service_account.terraform_storage.member
-  depends_on = [google_storage_bucket.terraform]
 }
 
 # upload config files read by the SDK
