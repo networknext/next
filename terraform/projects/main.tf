@@ -138,6 +138,14 @@ resource "google_storage_bucket" "terraform" {
   force_destroy = true
 }
 
+resource "google_storage_bucket" "dev" {
+  name          = "${local.company_name}_network_next_dev"
+  project       = google_project.storage.project_id
+  location      = "US"
+  force_destroy = true
+  uniform_bucket_level_access = true
+}
+
 # create service accounts so semaphore can upload artifacts
 
 resource "google_service_account" "terraform_storage" {
@@ -335,6 +343,20 @@ resource "google_storage_bucket_iam_member" "dev_runtime_database_files_storage_
   role   = "roles/storage.objectAdmin"
   member = google_service_account.dev_runtime.member
   depends_on = [google_storage_bucket.database_files]
+}
+
+resource "google_storage_bucket_iam_member" "dev_runtime_dev_storage_admin" {
+  bucket = google_storage_bucket.dev.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.dev_runtime.member
+  depends_on = [google_storage_bucket.dev]
+}
+
+resource "google_storage_bucket_iam_member" "terraform_dev_object_admin" {
+  bucket = google_storage_bucket.terraform.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform_dev.member
+  depends_on = [google_storage_bucket.terraform]
 }
 
 # write the dev project id to "dev-project.txt"
