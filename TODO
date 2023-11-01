@@ -53,9 +53,17 @@ DONE
 
 	Verify we can deploy relay binaries with semaphore
 
+	Setup the relays/main.tf so it gets the project id from files under terraform/projects
+
 TODO	
 
-	Setup the relays/main.tf so it gets the project id from files under terraform/projects
+	-------------
+
+	Setup staging
+
+	Setup prod
+
+	Setup prod relays
 
 	-------------
 

@@ -147,6 +147,22 @@ resource "google_storage_bucket" "dev" {
   uniform_bucket_level_access = true
 }
 
+resource "google_storage_bucket" "staging" {
+  name          = "${local.company_name}_network_next_staging"
+  project       = google_project.storage.project_id
+  location      = "US"
+  force_destroy = true
+  uniform_bucket_level_access = true
+}
+
+resource "google_storage_bucket" "prod" {
+  name          = "${local.company_name}_network_next_prod"
+  project       = google_project.storage.project_id
+  location      = "US"
+  force_destroy = true
+  uniform_bucket_level_access = true
+}
+
 # create service accounts so semaphore can upload artifacts
 
 resource "google_service_account" "terraform_storage" {
@@ -363,7 +379,7 @@ resource "local_file" "dev_runtime_service_account" {
 
 # give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
 
-resource "google_project_iam_member" "pubsub_bigquery_admin" {
+resource "google_project_iam_member" "dev_pubsub_bigquery_admin" {
   project = google_project.dev.project_id
   role    = "roles/bigquery.admin"
   member  = "serviceAccount:service-${google_project.dev.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
@@ -430,76 +446,26 @@ resource "local_file" "dev_relays_project" {
 }
 
 # ----------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# configure staging project
+#                                         STAGING
+# ----------------------------------------------------------------------------------------
 
 locals {
   staging_services = [
-    "pubsub.googleapis.com",          # google pubsub
-    "storage.googleapis.com",         # cloud storage
-    "bigquery.googleapis.com",        # bigquery
-    "compute.googleapis.com",         # compute engine
-    "redis.googleapis.com",           # redis
-    "sql-component.googleapis.com",   # postgres
+    "pubsub.googleapis.com",                    # google pubsub
+    "storage.googleapis.com",                   # cloud storage
+    "bigquery.googleapis.com",                  # bigquery
+    "compute.googleapis.com",                   # compute engine
+    "redis.googleapis.com",                     # redis
+    "sqladmin.googleapis.com",                  # postgres
+    "cloudresourcemanager.googleapis.com",      # cloud resource manager
+    "servicenetworking.googleapis.com"          # service networking
   ]
 }
 
 resource "google_project_service" "staging" {
   count    = length(local.staging_services)
   project  = google_project.staging.project_id
-  service  = "pubsub.googleapis.com"
+  service  = local.staging_services[count.index]
   timeouts {
     create = "30m"
     update = "40m"
@@ -507,51 +473,93 @@ resource "google_project_service" "staging" {
   disable_dependent_services = true
 }
 
+# setup service accounts for staging
+
+resource "google_service_account" "terraform_staging" {
+  project  = google_project.staging.project_id
+  account_id   = "terraform-staging"
+  display_name = "Terraform Service Account (Staging)"
+}
+
+resource "google_project_iam_member" "staging_terraform_admin" {
+  project = google_project.staging.project_id
+  role    = "roles/admin"
+  member  = google_service_account.terraform_staging.member
+}
+
+resource "google_service_account_key" "terraform_staging" {
+  service_account_id = google_service_account.terraform_staging.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+resource "local_file" "terraform_staging_json" {
+    filename = "terraform-staging.json"
+    content  =  base64decode(google_service_account_key.terraform_staging.private_key)
+}
+
+resource "google_service_account" "staging_runtime" {
+  project  = google_project.staging.project_id
+  account_id   = "staging-runtime"
+  display_name = "Staging Runtime Service Account"
+}
+
+resource "google_storage_bucket_iam_member" "staging_runtime_backend_artifacts_storage_viewer" {
+  bucket = google_storage_bucket.backend_artifacts.name
+  role   = "roles/storage.objectViewer"
+  member = google_service_account.staging_runtime.member
+  depends_on = [google_storage_bucket.backend_artifacts]
+}
+
+resource "google_storage_bucket_iam_member" "staging_runtime_database_files_storage_admin" {
+  bucket = google_storage_bucket.database_files.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.staging_runtime.member
+  depends_on = [google_storage_bucket.database_files]
+}
+
+resource "google_storage_bucket_iam_member" "staging_runtime_staging_storage_admin" {
+  bucket = google_storage_bucket.staging.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.staging_runtime.member
+  depends_on = [google_storage_bucket.staging]
+}
+
+resource "google_storage_bucket_iam_member" "terraform_staging_object_admin" {
+  bucket = google_storage_bucket.terraform.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform_staging.member
+  depends_on = [google_storage_bucket.terraform]
+}
+
+# write the staging project id to "staging-project.txt"
+
+resource "local_file" "staging_project" {
+  filename = "staging-project.txt"
+  content  = replace(google_project.staging.id, "projects/", "")
+}
+
+# write the staging runtime service account email to "staging-runtime-service-account.txt"
+
+resource "local_file" "staging_runtime_service_account" {
+  filename = "staging-runtime-service-account.txt"
+  content  =  google_service_account.staging_runtime.email
+}
+
+# give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
+
+resource "google_project_iam_member" "staging_pubsub_bigquery_admin" {
+  project = google_project.staging.project_id
+  role    = "roles/bigquery.admin"
+  member  = "serviceAccount:service-${google_project.staging.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+# give the staging runtime service account permission to publish pubsub messages
+
+resource "google_project_iam_member" "staging_pubsub_publish" {
+  project = google_project.staging.project_id
+  role    = "roles/pubsub.publisher"
+  member  = google_service_account.staging_runtime.member
+}
+
 # ----------------------------------------------------------------------------------------
 
-# configure prod project
-
-locals {
-  prod_services = [
-    "pubsub.googleapis.com",          # google pubsub
-    "storage.googleapis.com",         # cloud storage
-    "bigquery.googleapis.com",        # bigquery
-    "compute.googleapis.com",         # compute engine
-    "redis.googleapis.com",           # redis
-    "sql-component.googleapis.com",   # postgres
-  ]
-}
-
-resource "google_project_service" "prod" {
-  count    = length(local.prod_services)
-  project  = google_project.prod.project_id
-  service  = "pubsub.googleapis.com"
-  timeouts {
-    create = "30m"
-    update = "40m"
-  }
-  disable_dependent_services = true
-}
-
-# ----------------------------------------------------------------------------------------
-
-# configure prod relays project
-
-locals {
-  prod_relays_services = [
-    "compute.googleapis.com",         # compute engine
-  ]
-}
-
-resource "google_project_service" "prod_relays" {
-  count    = length(local.prod_relays_services)
-  project  = google_project.prod_relays.project_id
-  service  = "pubsub.googleapis.com"
-  timeouts {
-    create = "30m"
-    update = "40m"
-  }
-  disable_dependent_services = true
-}
-
-# ----------------------------------------------------------------------------------------
