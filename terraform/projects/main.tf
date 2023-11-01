@@ -417,13 +417,13 @@ resource "google_project_service" "dev_relays" {
 # setup service account for dev relays
 
 resource "google_service_account" "terraform_dev_relays" {
-  project  = google_project.dev.project_id
+  project  = google_project.dev_relays.project_id
   account_id   = "terraform-dev-relays"
   display_name = "Terraform Service Account (Development Relays)"
 }
 
 resource "google_project_iam_member" "dev_relays_terraform_admin" {
-  project = google_project.dev.project_id
+  project = google_project.dev_relays.project_id
   role    = "roles/admin"
   member  = google_service_account.terraform_dev_relays.member
 }
@@ -701,13 +701,13 @@ resource "google_project_service" "prod_relays" {
 # setup service account for prod relays
 
 resource "google_service_account" "terraform_prod_relays" {
-  project  = google_project.prod.project_id
+  project  = google_project.prod_relays.project_id
   account_id   = "terraform-prod-relays"
   display_name = "Terraform Service Account (Production Relays)"
 }
 
 resource "google_project_iam_member" "prod_relays_terraform_admin" {
-  project = google_project.prod.project_id
+  project = google_project.prod_relays.project_id
   role    = "roles/admin"
   member  = google_service_account.terraform_prod_relays.member
 }
