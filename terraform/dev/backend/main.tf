@@ -684,6 +684,14 @@ module "api" {
   domain                     = "api-dev.${var.cloudflare_domain}"
   certificate                = google_compute_managed_ssl_certificate.api-dev.id
   target_size                = 1
+
+  depends_on = [
+    module.server_cruncher,
+    module.session_cruncher,
+    module.redis_time_series,
+    google_redis_instance.redis_portal,
+    google_sql_database_instance.postgres,
+  ]
 }
 
 output "api_address" {
