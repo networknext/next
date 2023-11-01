@@ -55,9 +55,13 @@ TODO
 
 	Do we need another service account? Probably yes?
 
-	Setup the terraform so it pull project data from files etc.
+	Setup the relays/main.tf so it gets the project id from files under terraform/projects
 
-	Make sure these files are added to perforce.
+	Make sure these output files are added to perforce.
+
+	-------------
+
+	Verify we can deploy relay binaries with semaphore
 
 	-------------
 
@@ -83,6 +87,10 @@ TODO
 	-------------
 
 	Automatically setup the "development" database in postgres and load the create.sql
+
+	Looks like this can only be done with gcloud:
+
+		gcloud sql import sql INSTANCE_NAME gs://BUCKET_NAME/IMPORT_FILE_NAME --database=DATABASE_NAME
 
 	-------------
 
