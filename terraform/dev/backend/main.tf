@@ -460,8 +460,9 @@ resource "google_sql_database_instance" "postgres" {
       enabled = true
       binary_log_enabled = true
     }
+    deletion_protection_enabled = true
   }
-  deletion_protection = false
+  deletion_protection = true
 }
 
 resource "google_sql_database" "database" {
