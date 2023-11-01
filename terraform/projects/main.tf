@@ -562,4 +562,120 @@ resource "google_project_iam_member" "staging_pubsub_publish" {
 }
 
 # ----------------------------------------------------------------------------------------
+#                                          PROD
+# ----------------------------------------------------------------------------------------
+
+locals {
+  prod_services = [
+    "pubsub.googleapis.com",                    # google pubsub
+    "storage.googleapis.com",                   # cloud storage
+    "bigquery.googleapis.com",                  # bigquery
+    "compute.googleapis.com",                   # compute engine
+    "redis.googleapis.com",                     # redis
+    "sqladmin.googleapis.com",                  # postgres
+    "cloudresourcemanager.googleapis.com",      # cloud resource manager
+    "servicenetworking.googleapis.com"          # service networking
+  ]
+}
+
+resource "google_project_service" "prod" {
+  count    = length(local.prod_services)
+  project  = google_project.prod.project_id
+  service  = local.prod_services[count.index]
+  timeouts {
+    create = "30m"
+    update = "40m"
+  }
+  disable_dependent_services = true
+}
+
+# setup service accounts for prod
+
+resource "google_service_account" "terraform_prod" {
+  project  = google_project.prod.project_id
+  account_id   = "terraform-prod"
+  display_name = "Terraform Service Account (Production)"
+}
+
+resource "google_project_iam_member" "prod_terraform_admin" {
+  project = google_project.prod.project_id
+  role    = "roles/admin"
+  member  = google_service_account.terraform_prod.member
+}
+
+resource "google_service_account_key" "terraform_prod" {
+  service_account_id = google_service_account.terraform_prod.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+resource "local_file" "terraform_prod_json" {
+    filename = "terraform-prod.json"
+    content  =  base64decode(google_service_account_key.terraform_prod.private_key)
+}
+
+resource "google_service_account" "prod_runtime" {
+  project  = google_project.prod.project_id
+  account_id   = "prod-runtime"
+  display_name = "Production Runtime Service Account"
+}
+
+resource "google_storage_bucket_iam_member" "prod_runtime_backend_artifacts_storage_viewer" {
+  bucket = google_storage_bucket.backend_artifacts.name
+  role   = "roles/storage.objectViewer"
+  member = google_service_account.prod_runtime.member
+  depends_on = [google_storage_bucket.backend_artifacts]
+}
+
+resource "google_storage_bucket_iam_member" "prod_runtime_database_files_storage_admin" {
+  bucket = google_storage_bucket.database_files.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.prod_runtime.member
+  depends_on = [google_storage_bucket.database_files]
+}
+
+resource "google_storage_bucket_iam_member" "prod_runtime_prod_storage_admin" {
+  bucket = google_storage_bucket.prod.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.prod_runtime.member
+  depends_on = [google_storage_bucket.prod]
+}
+
+resource "google_storage_bucket_iam_member" "terraform_prod_object_admin" {
+  bucket = google_storage_bucket.terraform.name
+  role   = "roles/storage.objectAdmin"
+  member = google_service_account.terraform_prod.member
+  depends_on = [google_storage_bucket.terraform]
+}
+
+# write the prod project id to "prod-project.txt"
+
+resource "local_file" "prod_project" {
+  filename = "prod-project.txt"
+  content  = replace(google_project.prod.id, "projects/", "")
+}
+
+# write the prod runtime service account email to "prod-runtime-service-account.txt"
+
+resource "local_file" "prod_runtime_service_account" {
+  filename = "prod-runtime-service-account.txt"
+  content  =  google_service_account.prod_runtime.email
+}
+
+# give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
+
+resource "google_project_iam_member" "prod_pubsub_bigquery_admin" {
+  project = google_project.prod.project_id
+  role    = "roles/bigquery.admin"
+  member  = "serviceAccount:service-${google_project.prod.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+# give the prod runtime service account permission to publish pubsub messages
+
+resource "google_project_iam_member" "prod_pubsub_publish" {
+  project = google_project.prod.project_id
+  role    = "roles/pubsub.publisher"
+  member  = google_service_account.prod_runtime.member
+}
+
+# ----------------------------------------------------------------------------------------
 

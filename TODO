@@ -55,11 +55,13 @@ DONE
 
 	Setup the relays/main.tf so it gets the project id from files under terraform/projects
 
+	Setup staging
+
+	Verify deploy to staging
+
 TODO	
 
 	-------------
-
-	Setup staging
 
 	Setup prod
 
