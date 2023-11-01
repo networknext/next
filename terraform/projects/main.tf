@@ -381,6 +381,14 @@ resource "google_project_iam_member" "pubsub_bigquery_admin" {
   member  = "serviceAccount:service-${google_project.dev.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
+# give the dev runtime service account permission to publish pubsub messages
+
+resource "google_project_iam_member" "dev_pubsub_publish" {
+  project = google_project.dev.project_id
+  role    = "roles/pubsub.publisher"
+  member  = google_service_account.dev_runtime.member
+}
+
 # ----------------------------------------------------------------------------------------
 
 

@@ -24,11 +24,65 @@ DONE
 
 	Export the terraform key and use it to setup semaphore.
 
-TODO	
-	
 	Verify that semaphore can write backend artifacts.
 
 	Verify that semaphore can write relay artifacts.
+
+	Verify that dev can actually get up
+	
+	There is some permission issue with dev runtime service account not being able to send pubsub messages from relay backend:
+
+		Nov 01 00:26:36 relay-backend-8xl4 app[1717]: error: failed to send message batch: rpc error: code = PermissionDenied desc = User not authorized to perform this action.
+		Nov 01 00:26:36 relay-backend-8xl4 app[1717]: error: failed to send message batch: rpc error: code = PermissionDenied desc = User not authorized to perform this action.
+
+	What permission is required to let pubsub publish messages?
+
+	roles/pubsub.publisher
+
+	^----- theoretically, this has been added.
+
+	Verify that I can load the create.sql into postgres
+
+TODO	
+
+	Verify that we can actually see https://portal-dev.virtualgo.net up.
+
+	-------------
+
+	Setup the "Development Relays" project in dev.
+
+	Make sure compute engine is enabled.
+
+	Do we need another service account? Probably yes?
+
+	Setup the terraform so it pull project data from files etc.
+
+	Make sure these files are added to perforce.
+
+	-------------
+
+	Verify that I can setup relays in dev
+
+	-------------
+
+	Verify that I see green in dev
+
+	-------------
+
+
+
+
+
+
+
+
+
+
+
+
+	-------------
+
+	Automatically setup the "development" database in postgres and load the create.sql
 
 	-------------
 

@@ -456,6 +456,10 @@ resource "google_sql_database_instance" "postgres" {
       name  = "max_connections"
       value = "1024"
     }
+    backup_configuration {
+      enabled = true
+      binary_log_enabled = true
+    }
   }
   deletion_protection = false
 }
