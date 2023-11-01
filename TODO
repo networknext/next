@@ -2,6 +2,8 @@ DONE
 
 	Verify staging is up.
 
+	Found the issues. Cloudflare basically had a bunch of old DNS records set.
+
 TODO	
 
 	Staging is up, but I see no sessions or relays in the portal, and I see no next sessions.
