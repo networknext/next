@@ -10,8 +10,9 @@ terraform {
 }
 
 locals {
+  # todo: work out how to get these
   org_id = "434699063105"
-  billing_account = "018C15-D3C7AC-4722E8"
+  billing_account = "012279-A33489-722F96"
   company_name = "auspicious"
 }
 
@@ -309,7 +310,7 @@ resource "google_service_account" "terraform_dev" {
   display_name = "Terraform Service Account (Development)"
 }
 
-resource "google_project_iam_member" "dev_terraform_editor" {
+resource "google_project_iam_member" "dev_terraform_admin" {
   project = google_project.dev.project_id
   role    = "roles/admin"
   member  = google_service_account.terraform_dev.member
@@ -390,71 +391,8 @@ resource "google_project_iam_member" "dev_pubsub_publish" {
 }
 
 # ----------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# configure dev relays project
+#                                        DEV RELAYS
+# ----------------------------------------------------------------------------------------
 
 locals {
   dev_relays_services = [
@@ -473,7 +411,90 @@ resource "google_project_service" "dev_relays" {
   disable_dependent_services = true
 }
 
+# setup service account for dev relays
+
+resource "google_service_account" "terraform_dev_relays" {
+  project  = google_project.dev.project_id
+  account_id   = "terraform-dev-relays"
+  display_name = "Terraform Service Account (Development Relays)"
+}
+
+resource "google_project_iam_member" "dev_relays_terraform_admin" {
+  project = google_project.dev.project_id
+  role    = "roles/admin"
+  member  = google_service_account.terraform_dev_relays.member
+}
+
+resource "google_service_account_key" "terraform_dev_relays" {
+  service_account_id = google_service_account.terraform_dev_relays.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+resource "local_file" "terraform_dev_relays_json" {
+    filename = "terraform-dev-relays.json"
+    content  =  base64decode(google_service_account_key.terraform_dev_relays.private_key)
+}
+
+# write the dev relays project id to "dev-relays-project.txt"
+
+resource "local_file" "dev_relays_project" {
+  filename = "dev-relays-project.txt"
+  content  = replace(google_project.dev_relays.id, "projects/", "")
+}
+
 # ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # configure staging project
 
