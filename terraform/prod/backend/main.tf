@@ -10,12 +10,10 @@ variable "extra" {
 variable "vpn_address" { type = string }
 
 variable "google_credentials" { type = string }
-variable "google_project" { type = string }
 variable "google_location" { type = string }
 variable "google_region" { type = string }
 variable "google_zone" { type = string }
 variable "google_zones" { type = list(string) }
-variable "google_service_account" { type = string }
 variable "google_artifacts_bucket" { type = string }
 variable "google_database_bucket" { type = string }
 
@@ -35,6 +33,11 @@ variable "customer_private_key" { type = string }
 variable "maxmind_license_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
+
+locals {
+  google_project         = file("../../projects/prod-project.txt")
+  google_service_account = file("../../projects/prod-runtime-service-account.txt")
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -61,14 +64,14 @@ terraform {
 
 provider "google" {
   credentials = file(var.google_credentials)
-  project     = var.google_project
+  project     = local.google_project
   region      = var.google_region
   zone        = var.google_zone
 }
 
 provider "google-beta" {
   credentials = file(var.google_credentials)
-  project     = var.google_project
+  project     = local.google_project
   region      = var.google_region
   zone        = var.google_zone
 }
@@ -111,13 +114,13 @@ resource "google_compute_managed_ssl_certificate" "raspberry" {
 
 resource "google_compute_network" "production" {
   name                    = "production"
-  project                 = var.google_project
+  project                 = local.google_project
   auto_create_subnetworks = false
 }
 
 resource "google_compute_subnetwork" "production" {
   name                     = "production"
-  project                  = var.google_project
+  project                  = local.google_project
   ip_cidr_range            = "10.0.0.0/16"
   region                   = var.google_region
   network                  = google_compute_network.production.id
@@ -126,7 +129,7 @@ resource "google_compute_subnetwork" "production" {
 
 resource "google_compute_subnetwork" "internal_http_load_balancer" {
   name          = "internal-http-load-balancer"
-  project       = var.google_project
+  project       = local.google_project
   region        = var.google_region
   purpose       = "INTERNAL_HTTPS_LOAD_BALANCER"
   role          = "ACTIVE"
@@ -138,7 +141,7 @@ resource "google_compute_subnetwork" "internal_http_load_balancer" {
 
 resource "google_compute_firewall" "allow_ssh" {
   name          = "allow-ssh"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20"]
@@ -151,7 +154,7 @@ resource "google_compute_firewall" "allow_ssh" {
 
 resource "google_compute_firewall" "allow_health_checks" {
   name          = "allow-health-checks"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
@@ -166,7 +169,7 @@ resource "google_compute_firewall" "allow_health_checks" {
 
 resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
   name          = "allow-network-load-balancer-traffic"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["130.211.0.0/22", "35.191.0.0/16", "35.235.240.0/20", "209.85.152.0/22", "209.85.204.0/22"]
@@ -181,7 +184,7 @@ resource "google_compute_firewall" "allow_network_load_balancer_traffic" {
 
 resource "google_compute_firewall" "allow_http" {
   name          = "allow-http"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["0.0.0.0/0"]
@@ -194,7 +197,7 @@ resource "google_compute_firewall" "allow_http" {
 
 resource "google_compute_firewall" "allow_redis" {
   name          = "allow-redis"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["0.0.0.0/0"]
@@ -207,7 +210,7 @@ resource "google_compute_firewall" "allow_redis" {
 
 resource "google_compute_firewall" "allow_udp_40000" {
   name          = "allow-udp-40000"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["0.0.0.0/0"]
@@ -220,7 +223,7 @@ resource "google_compute_firewall" "allow_udp_40000" {
 
 resource "google_compute_firewall" "allow_udp_all" {
   name          = "allow-udp-all"
-  project       = var.google_project
+  project       = local.google_project
   direction     = "INGRESS"
   network       = google_compute_network.production.id
   source_ranges = ["0.0.0.0/0"]
@@ -281,12 +284,12 @@ module "redis_time_series" {
   service_name = "redis-time-series"
 
   machine_type             = "n1-standard-2"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zone                     = var.google_zone
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-redis", "allow-ssh"]
 }
 
@@ -548,14 +551,14 @@ module "magic_backend" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "n1-highcpu-2"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.production.id
   default_subnetwork         = google_compute_subnetwork.production.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                   = 3
   max_size                   = 16
@@ -582,7 +585,7 @@ module "relay_gateway" {
     sudo ./bootstrap.sh  -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
@@ -599,12 +602,12 @@ module "relay_gateway" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "c3-highcpu-4"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = 3
   max_size                 = 64
@@ -637,7 +640,7 @@ module "relay_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
@@ -655,14 +658,14 @@ module "relay_backend" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "c3-highcpu-44"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.production.id
   default_subnetwork         = google_compute_subnetwork.production.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size                = 3
   tier_1                     = true
@@ -701,7 +704,7 @@ module "api" {
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
@@ -715,12 +718,12 @@ module "api" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "n1-highcpu-2"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = 3
   max_size                 = 16
@@ -751,7 +754,7 @@ module "session_cruncher" {
     ENV=prod
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     EOF
@@ -762,14 +765,14 @@ module "session_cruncher" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "c3-highmem-4"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.production.id
   default_subnetwork         = google_compute_subnetwork.production.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
 }
@@ -796,14 +799,14 @@ module "server_cruncher" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "c3-highmem-4"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   default_network            = google_compute_network.production.id
   default_subnetwork         = google_compute_subnetwork.production.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
   target_size                = 1
 }
@@ -828,7 +831,7 @@ module "server_backend" {
     UDP_NUM_THREADS=8
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
-    GOOGLE_PROJECT_ID=${var.google_project}
+    GOOGLE_PROJECT_ID=${local.google_project}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
@@ -854,7 +857,7 @@ module "server_backend" {
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "c3-highcpu-44"
-  project                    = var.google_project
+  project                    = local.google_project
   region                     = var.google_region
   zones                      = var.google_zones
   port                       = 40000
@@ -862,7 +865,7 @@ module "server_backend" {
   default_subnetwork         = google_compute_subnetwork.production.id
   load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
-  service_account            = var.google_service_account
+  service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = 3
   max_size                   = 64
@@ -904,12 +907,12 @@ module "ip2location" {
   tag                = var.tag
   extra              = var.extra
   machine_type       = "n1-highcpu-2"
-  project            = var.google_project
+  project            = local.google_project
   region             = var.google_region
   zones              = var.google_zones
   default_network    = google_compute_network.production.id
   default_subnetwork = google_compute_subnetwork.production.id
-  service_account    = var.google_service_account
+  service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 1
 }
@@ -927,12 +930,12 @@ module "portal" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "n1-highcpu-2"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
@@ -949,7 +952,7 @@ output "portal_address" {
 resource "google_compute_router" "router" {
   name    = "router-to-internet" 
   network = google_compute_network.production.id
-  project = var.google_project
+  project = local.google_project
   region  = var.google_region
 }
 
@@ -984,12 +987,12 @@ module "raspberry_backend" {
   tag                      = var.tag
   extra                    = var.extra
   machine_type             = "n1-standard-2"
-  project                  = var.google_project
+  project                  = local.google_project
   region                   = var.google_region
   zones                    = var.google_zones
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
-  service_account          = var.google_service_account
+  service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry.id
@@ -1030,12 +1033,12 @@ module "raspberry_server" {
   tag                = var.tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
-  project            = var.google_project
+  project            = local.google_project
   region             = var.google_region
   zones              = var.google_zones
   default_network    = google_compute_network.production.id
   default_subnetwork = google_compute_subnetwork.production.id
-  service_account    = var.google_service_account
+  service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = 32
 }
@@ -1068,12 +1071,12 @@ module "raspberry_client" {
   tag                = var.tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
-  project            = var.google_project
+  project            = local.google_project
   region             = var.google_region
   zones              = var.google_zones
   default_network    = google_compute_network.production.id
   default_subnetwork = google_compute_subnetwork.production.id
-  service_account    = var.google_service_account
+  service_account    = local.google_service_account
   tags               = ["allow-ssh"]
   target_size        = 40
 }
