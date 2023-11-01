@@ -678,4 +678,55 @@ resource "google_project_iam_member" "prod_pubsub_publish" {
 }
 
 # ----------------------------------------------------------------------------------------
+#                                       PROD RELAYS
+# ----------------------------------------------------------------------------------------
 
+locals {
+  prod_relays_services = [
+    "compute.googleapis.com",         # compute engine
+  ]
+}
+
+resource "google_project_service" "prod_relays" {
+  count    = length(local.prod_relays_services)
+  project  = google_project.prod_relays.project_id
+  service  = "pubsub.googleapis.com"
+  timeouts {
+    create = "30m"
+    update = "40m"
+  }
+  disable_dependent_services = true
+}
+
+# setup service account for prod relays
+
+resource "google_service_account" "terraform_prod_relays" {
+  project  = google_project.prod.project_id
+  account_id   = "terraform-prod-relays"
+  display_name = "Terraform Service Account (Production Relays)"
+}
+
+resource "google_project_iam_member" "prod_relays_terraform_admin" {
+  project = google_project.prod.project_id
+  role    = "roles/admin"
+  member  = google_service_account.terraform_prod_relays.member
+}
+
+resource "google_service_account_key" "terraform_prod_relays" {
+  service_account_id = google_service_account.terraform_prod_relays.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+resource "local_file" "terraform_prod_relays_json" {
+    filename = "terraform-prod-relays.json"
+    content  =  base64decode(google_service_account_key.terraform_prod_relays.private_key)
+}
+
+# write the prod relays project id to "prod-relays-project.txt"
+
+resource "local_file" "prod_relays_project" {
+  filename = "prod-relays-project.txt"
+  content  = replace(google_project.prod_relays.id, "projects/", "")
+}
+
+# ----------------------------------------------------------------------------------------
