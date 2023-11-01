@@ -43,17 +43,13 @@ DONE
 
 	Verify that I can load the create.sql into postgres
 
-TODO	
-
-	Verify that we can actually see https://portal-dev.virtualgo.net up.
-
-	-------------
-
 	Setup the "Development Relays" project in dev.
 
 	Make sure compute engine is enabled.
 
 	Do we need another service account? Probably yes?
+
+TODO	
 
 	Setup the relays/main.tf so it gets the project id from files under terraform/projects
 
@@ -62,6 +58,10 @@ TODO
 	-------------
 
 	Verify we can deploy relay binaries with semaphore
+
+	-------------
+
+	Verify that we can actually see https://portal-dev.virtualgo.net up.
 
 	-------------
 
