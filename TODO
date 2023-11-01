@@ -1,8 +1,12 @@
 DONE
 
-	Verify staging is up!
+	Verify staging is up.
 
 TODO	
+
+	Staging is up, but I see no sessions or relays in the portal, and I see no next sessions.
+
+	-------------
 
 	Verify that we can actually see https://portal-dev.virtualgo.net up.
 
