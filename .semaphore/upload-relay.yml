@@ -9,8 +9,7 @@ agent:
 
 global_job_config:
   secrets:
-    - name: company-name
-    - name: google-cloud-platform
+    - name: terraform-dev-relays
 
 blocks:
 
