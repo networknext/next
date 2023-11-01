@@ -35,7 +35,7 @@ variable "maxmind_license_key" { type = string }
 variable "ip2location_bucket_name" { type = string }
 
 locals {
-  google_project         = file("../../projects/dev-project.txt")
+  google_project         = "development"
   google_service_account = file("../../projects/dev-runtime-service-account.txt")
 }
 

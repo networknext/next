@@ -51,13 +51,11 @@ DONE
 
 	Make sure these output files are added to perforce.
 
+	Verify we can deploy relay binaries with semaphore
+
 TODO	
 
 	Setup the relays/main.tf so it gets the project id from files under terraform/projects
-
-	-------------
-
-	Verify we can deploy relay binaries with semaphore
 
 	-------------
 

@@ -43,7 +43,7 @@ provider "networknext" {
 
 locals {
 
-  google_credentials = "~/secrets/terraform-development-relays.json"
+  google_credentials = "~/secrets/terraform-dev-relays.json"
   google_project     = "development-relays"
   google_relays = {
 
