@@ -19,7 +19,7 @@ blocks:
 
       prologue:
         commands:
-            - gcloud auth activate-service-account --key-file=/home/semaphore/terraform-storage.json
+            - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-storage.json
             - export ARTIFACT_BUCKET=gs://auspicious_network_next_backend_artifacts
             - echo $ARTIFACT_BUCKET
             - echo $SEMAPHORE_GIT_TAG_NAME
