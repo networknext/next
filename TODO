@@ -1,73 +1,8 @@
 DONE
 
-	Setup projects and service accounts with terraform
-
-	First, create a new terraform directory under "terraform/projects"
-
-	Next, work out how to create all the projects.
-
-	Work out how to enable various services on each project, eg. google compute, SQL, whatever.
-
-	Configure services needed for each project
-
-	Create storage buckets (need local.company_name)
-
-	Upload starter files to storage buckets
-
-	Create service accounts
-
-	There should be a service account that represents terraform when it runs, and generally it should have admin access to do everything. I'd like this to be a single account, instead of the account that runs 
-
-	There should be a more restricted, per-project service account that the services run under, and this one should be selectively given access to read/write to cloud storage buckets as needed only.
-
-	Give the terraform service account write permission to both the backend artifact and relay artifact buckets.
-
-	Export the terraform key and use it to setup semaphore.
-
-	Verify that semaphore can write backend artifacts.
-
-	Verify that semaphore can write relay artifacts.
-
-	Verify that dev can actually get up
-	
-	There is some permission issue with dev runtime service account not being able to send pubsub messages from relay backend:
-
-		Nov 01 00:26:36 relay-backend-8xl4 app[1717]: error: failed to send message batch: rpc error: code = PermissionDenied desc = User not authorized to perform this action.
-		Nov 01 00:26:36 relay-backend-8xl4 app[1717]: error: failed to send message batch: rpc error: code = PermissionDenied desc = User not authorized to perform this action.
-
-	What permission is required to let pubsub publish messages?
-
-	roles/pubsub.publisher
-
-	^----- theoretically, this has been added.
-
-	Verify that I can load the create.sql into postgres
-
-	Setup the "Development Relays" project in dev.
-
-	Make sure compute engine is enabled.
-
-	Do we need another service account? Probably yes?
-
-	Make sure these output files are added to perforce.
-
-	Verify we can deploy relay binaries with semaphore
-
-	Setup the relays/main.tf so it gets the project id from files under terraform/projects
-
-	Setup staging
-
-	Verify deploy to staging
+	Verify staging is up!
 
 TODO	
-
-	-------------
-
-	Setup prod
-
-	Setup prod relays
-
-	-------------
 
 	Verify that we can actually see https://portal-dev.virtualgo.net up.
 
@@ -94,21 +29,17 @@ TODO
 
 	-------------
 
-	Automatically setup the "development" database in postgres and load the create.sql
-
-	Looks like this can only be done with gcloud:
-
-		gcloud sql import sql INSTANCE_NAME gs://BUCKET_NAME/IMPORT_FILE_NAME --database=DATABASE_NAME
-
-	-------------
-
 	Configure script to set company name, modify stuff etc. Idea is run "./configure" and enter some data, and everything is setup for you. *** Zero work. ***
 
 	Should also roll relay backend, server backend keys... api keys etc.
 	
 	-------------
 
-	Work out how to pass project ids and so on from the "projects" terraform into the other terrafrom projects, so there are no manual steps.
+	Automatically setup the "development" database in postgres and load the create.sql
+
+	Looks like this can only be done with gcloud:
+
+		gcloud sql import sql INSTANCE_NAME gs://BUCKET_NAME/IMPORT_FILE_NAME --database=DATABASE_NAME
 
 	-------------
 
