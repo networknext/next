@@ -49,11 +49,11 @@ DONE
 
 	Do we need another service account? Probably yes?
 
+	Make sure these output files are added to perforce.
+
 TODO	
 
 	Setup the relays/main.tf so it gets the project id from files under terraform/projects
-
-	Make sure these output files are added to perforce.
 
 	-------------
 
