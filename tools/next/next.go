@@ -28,6 +28,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"crypto/ed25519"
+	"crypto/rand"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -38,198 +40,6 @@ import (
 	"github.com/modood/table"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
-
-type arrayFlags []string
-
-func (i *arrayFlags) String() string {
-	return ""
-}
-
-func (i *arrayFlags) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
-
-func runCommand(command string, args []string) bool {
-	cmd := exec.Command(command, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	err := cmd.Run()
-	if err != nil {
-		return false
-	}
-	return true
-}
-
-func runCommandEnv(command string, args []string, env map[string]string) bool {
-	cmd := exec.Command(command, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	finalEnv := os.Environ()
-	for k, v := range env {
-		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
-	}
-	cmd.Env = finalEnv
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		sig := <-c
-		fmt.Printf("\n\n")
-		if cmd.Process != nil {
-			cmd.Process.Signal(sig)
-			cmd.Wait()
-		}
-		os.Exit(1)
-	}()
-
-	err := cmd.Run()
-
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-// stdout is the string return value
-// stderr is contained in the error return value or nil if the command exited successfully
-func runCommandGetOutput(command string, args []string, env map[string]string) (string, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	cmd := exec.Command(command, args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	finalEnv := os.Environ()
-	for k, v := range env {
-		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
-	}
-	cmd.Env = finalEnv
-
-	err := cmd.Run()
-
-	stdoutStr := strings.Trim(stdout.String(), "\r\n")
-	if err != nil {
-		stderrStr := strings.Trim(stderr.String(), "\r\n")
-		return stdoutStr, fmt.Errorf("%v, %s", err, stderrStr)
-	}
-
-	return stdoutStr, nil
-}
-
-func runCommandQuiet(command string, args []string, stdoutOnly bool) (bool, string) {
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, ""
-	}
-
-	var stderrReader io.ReadCloser
-	if !stdoutOnly {
-		stderrReader, err = cmd.StderrPipe()
-		if err != nil {
-			return false, ""
-		}
-	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	if !stdoutOnly {
-		stderrScanner := bufio.NewScanner(stderrReader)
-		wait.Add(1)
-		go func() {
-			for stderrScanner.Scan() {
-				mutex.Lock()
-				output += stderrScanner.Text() + "\n"
-				mutex.Unlock()
-			}
-			wait.Done()
-		}()
-	} else {
-		cmd.Stderr = os.Stderr
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func bash(command string) bool {
-	return runCommand("bash", []string{"-c", command})
-}
-
-func bashQuiet(command string) string {
-	_, output := runCommandQuiet("bash", []string{"-c", command}, false)
-	return output
-}
-
-func secureShell(user string, address string, port int) {
-	ssh, err := exec.LookPath("ssh")
-	if err != nil {
-		handleRunTimeError(fmt.Sprintln("error: could not find ssh"), 1)
-	}
-	args := make([]string, 4)
-	args[0] = "ssh"
-	args[1] = "-p"
-	args[2] = fmt.Sprintf("%d", port)
-	args[3] = fmt.Sprintf("%s@%s", user, address)
-	env := os.Environ()
-	err = syscall.Exec(ssh, args, env)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintln("error: failed to exec ssh"), 1)
-	}
-}
-
-// level 0: user error
-// level 1: program error
-func handleRunTimeError(msg string, level int) {
-	fmt.Printf(msg)
-	fmt.Printf("\n\n")
-	os.Exit(level)
-}
-
-var env Environment
-
-func getKeyValue(envFile string, keyName string) string {
-	value := bashQuiet(fmt.Sprintf("cat %s | awk -v key=%s -F= '$1 == key { sub(/^[^=]+=/, \"\"); print }'", envFile, keyName))
-	if len(value) < 1 {
-		return ""
-	}
-	value = value[:len(value)-1]
-	if value[0] == '"' || value[0] == '\'' {
-		value = value[1 : len(value)-1]
-	}
-	return value
-}
 
 func main() {
 
@@ -304,6 +114,16 @@ func main() {
 
 			fmt.Printf("Selected %s environment\n\n", env.Name)
 
+			return nil
+		},
+	}
+
+	var keygenCommand = &ffcli.Command{
+		Name:       "keygen",
+		ShortUsage: "next keygen",
+		ShortHelp:  "Generate new keypairs for network next",
+		Exec: func(ctx context.Context, args []string) error {
+			keygen(env, args)
 			return nil
 		},
 	}
@@ -592,6 +412,7 @@ func main() {
 	}
 
 	var commands = []*ffcli.Command{
+		keygenCommand,
 		configCommand,
 		selectCommand,
 		envCommand,
@@ -637,6 +458,34 @@ func main() {
 	if len(args) == 0 {
 		root.FlagSet.Usage()
 	}
+}
+
+// ------------------------------------------------------------------------------
+
+func keygen(env Environment, regexes []string) {
+		
+	fmt.Printf("generating keypairs\n\n")
+
+	buyerId := make([]byte, 8)
+	rand.Read(buyerId)
+
+	publicKey, privateKey, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		fmt.Printf("failed to generate keypair: %v", err)
+		os.Exit(1)
+	}
+
+	buyerPublicKey := make([]byte, 0)
+	buyerPublicKey = append(buyerPublicKey, buyerId...)
+	buyerPublicKey = append(buyerPublicKey, publicKey...)
+
+	buyerPrivateKey := make([]byte, 0)
+	buyerPrivateKey = append(buyerPrivateKey, buyerId...)
+	buyerPrivateKey = append(buyerPrivateKey, privateKey...)
+
+	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
+	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
+
 }
 
 // ------------------------------------------------------------------------------
@@ -1966,3 +1815,186 @@ func ping() {
 }
 
 // -------------------------------------------------------------------------------------------
+
+func runCommand(command string, args []string) bool {
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	err := cmd.Run()
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func runCommandEnv(command string, args []string, env map[string]string) bool {
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	finalEnv := os.Environ()
+	for k, v := range env {
+		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
+	}
+	cmd.Env = finalEnv
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		sig := <-c
+		fmt.Printf("\n\n")
+		if cmd.Process != nil {
+			cmd.Process.Signal(sig)
+			cmd.Wait()
+		}
+		os.Exit(1)
+	}()
+
+	err := cmd.Run()
+
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// stdout is the string return value
+// stderr is contained in the error return value or nil if the command exited successfully
+func runCommandGetOutput(command string, args []string, env map[string]string) (string, error) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	finalEnv := os.Environ()
+	for k, v := range env {
+		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))
+	}
+	cmd.Env = finalEnv
+
+	err := cmd.Run()
+
+	stdoutStr := strings.Trim(stdout.String(), "\r\n")
+	if err != nil {
+		stderrStr := strings.Trim(stderr.String(), "\r\n")
+		return stdoutStr, fmt.Errorf("%v, %s", err, stderrStr)
+	}
+
+	return stdoutStr, nil
+}
+
+func runCommandQuiet(command string, args []string, stdoutOnly bool) (bool, string) {
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var stderrReader io.ReadCloser
+	if !stdoutOnly {
+		stderrReader, err = cmd.StderrPipe()
+		if err != nil {
+			return false, ""
+		}
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	if !stdoutOnly {
+		stderrScanner := bufio.NewScanner(stderrReader)
+		wait.Add(1)
+		go func() {
+			for stderrScanner.Scan() {
+				mutex.Lock()
+				output += stderrScanner.Text() + "\n"
+				mutex.Unlock()
+			}
+			wait.Done()
+		}()
+	} else {
+		cmd.Stderr = os.Stderr
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func bash(command string) bool {
+	return runCommand("bash", []string{"-c", command})
+}
+
+func bashQuiet(command string) string {
+	_, output := runCommandQuiet("bash", []string{"-c", command}, false)
+	return output
+}
+
+func secureShell(user string, address string, port int) {
+	ssh, err := exec.LookPath("ssh")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintln("error: could not find ssh"), 1)
+	}
+	args := make([]string, 4)
+	args[0] = "ssh"
+	args[1] = "-p"
+	args[2] = fmt.Sprintf("%d", port)
+	args[3] = fmt.Sprintf("%s@%s", user, address)
+	env := os.Environ()
+	err = syscall.Exec(ssh, args, env)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintln("error: failed to exec ssh"), 1)
+	}
+}
+
+// level 0: user error
+// level 1: program error
+func handleRunTimeError(msg string, level int) {
+	fmt.Printf(msg)
+	fmt.Printf("\n\n")
+	os.Exit(level)
+}
+
+var env Environment
+
+func getKeyValue(envFile string, keyName string) string {
+	value := bashQuiet(fmt.Sprintf("cat %s | awk -v key=%s -F= '$1 == key { sub(/^[^=]+=/, \"\"); print }'", envFile, keyName))
+	if len(value) < 1 {
+		return ""
+	}
+	value = value[:len(value)-1]
+	if value[0] == '"' || value[0] == '\'' {
+		value = value[1 : len(value)-1]
+	}
+	return value
+}
+
+// --------------------------------------------------------------------------------------
