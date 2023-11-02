@@ -642,12 +642,14 @@ func main() {
 // ------------------------------------------------------------------------------
 
 type Config struct {
-	CompanyName        string `json:"company_name"`
-	VPNAddress         string `json:"vpn_address"`
-	CloudflareZoneId   string `json:"cloudflare_zone_id"`
-	CloudflareDomain   string `json:"cloudflare_domain"`
-	BuyerName          string `json:"buyer_name"`
-	BuyerId            string `json:"buyer_id"`
+	CompanyName          string `json:"company_name"`
+	VPNAddress           string `json:"vpn_address"`
+	CloudflareZoneId     string `json:"cloudflare_zone_id"`
+	CloudflareDomain     string `json:"cloudflare_domain"`
+	GoogleBillingAccount string `json:"google_billing_account"`
+	GoogleOrgId          string `json:"google_org_id"`
+	BuyerName            string `json:"buyer_name"`
+	BuyerId              string `json:"buyer_id"`
 }
 
 func fileExists(filename string) bool {
@@ -711,6 +713,20 @@ func config(env Environment, regexes []string) {
 
 	if config.CloudflareDomain == "" {
 		fmt.Printf("\nerror: you must supply a cloudflare domain\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    google billing account = \"%s\"\n", config.GoogleBillingAccount)
+
+	if config.GoogleBillingAccount == "" {
+		fmt.Printf("\nerror: you must supply a google billing account\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    google org id = \"%s\"\n", config.GoogleOrgId)
+
+	if config.GoogleOrgId == "" {
+		fmt.Printf("\nerror: you must supply a google org id\n\n")
 		os.Exit(1)
 	}
 
