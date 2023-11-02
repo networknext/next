@@ -57,8 +57,6 @@ For example:
 
 Try to make sure that registration for each of these domains is anonymized and protected. Ideally, an attacker wouldn't be able to discover the full set of domains or link them together in any way.
 
-None of these domains will be accessible or known to your customers, but it's always best to be safe. Keep the domains extremely clean and avoid exposing them to DDoS attack. Do not have them linked to your company in any way. The sillier the domain names the better.
-
 3. Setup a cloudflare account and import your new domains
 
 We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain names.

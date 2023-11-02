@@ -11,7 +11,7 @@
 #include <cstdio>
 #include "next.h"
 
-const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
 void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
@@ -71,7 +71,7 @@ extern "C" void nnMain()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
 
     next_init( NULL, &config );
 

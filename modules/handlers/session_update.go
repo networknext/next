@@ -259,7 +259,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	/*
 		Check if the datacenter is unknown, and flag it.
 
-		This is important so that we can quickly check if we need to add new datacenters for customers.
+		This is important so that we can quickly see when we need to add new datacenters for buyers.
 	*/
 
 	if !state.Database.DatacenterExists(state.Request.DatacenterId) {
@@ -268,7 +268,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	}
 
 	/*
-		Check if the datacenter is enabled for this customer.
+		Check if the datacenter is enabled for this buyer.
 
 		If the datacenter is not enabled, we just wont accelerate the player.
 	*/

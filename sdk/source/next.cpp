@@ -333,68 +333,68 @@ int next_init( void * context, next_config_t * config_in )
     config.socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config.socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 
-    const char * customer_public_key_env = next_platform_getenv( "NEXT_CUSTOMER_PUBLIC_KEY" );
-    if ( customer_public_key_env )
+    const char * buyer_public_key_env = next_platform_getenv( "NEXT_BUYER_PUBLIC_KEY" );
+    if ( buyer_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "customer public key override: '%s'", customer_public_key_env );
+        next_printf( NEXT_LOG_LEVEL_INFO, "buyer public key override: '%s'", buyer_public_key_env );
     }
 
-    const char * customer_public_key = customer_public_key_env ? customer_public_key_env : ( config_in ? config_in->customer_public_key : "" );
-    if ( customer_public_key )
+    const char * buyer_public_key = buyer_public_key_env ? buyer_public_key_env : ( config_in ? config_in->buyer_public_key : "" );
+    if ( buyer_public_key )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "customer public key is '%s'", customer_public_key );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "buyer public key is '%s'", buyer_public_key );
         uint8_t decode_buffer[8+NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        if ( next_base64_decode_data( customer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
+        if ( next_base64_decode_data( buyer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
-            config.client_customer_id = next_read_uint64( &p );
-            memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
-            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: '%s'", customer_public_key );
-            config.valid_customer_public_key = true;
+            config.client_buyer_id = next_read_uint64( &p );
+            memcpy( config.buyer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid buyer public key: '%s'", buyer_public_key );
+            config.valid_buyer_public_key = true;
         }
         else
         {
-            if ( customer_public_key[0] != '\0' )
+            if ( buyer_public_key[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "customer public key is invalid: '%s'", customer_public_key );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "buyer public key is invalid: '%s'", buyer_public_key );
             }
         }
     }
 
-    const char * customer_private_key_env = next_platform_getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
-    if ( customer_private_key_env )
+    const char * buyer_private_key_env = next_platform_getenv( "NEXT_BUYER_PRIVATE_KEY" );
+    if ( buyer_private_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "customer private key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "buyer private key override" );
     }
 
-    const char * customer_private_key = customer_private_key_env ? customer_private_key_env : ( config_in ? config_in->customer_private_key : "" );
-    if ( customer_private_key )
+    const char * buyer_private_key = buyer_private_key_env ? buyer_private_key_env : ( config_in ? config_in->buyer_private_key : "" );
+    if ( buyer_private_key )
     {
         uint8_t decode_buffer[8+NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        if ( customer_private_key && next_base64_decode_data( customer_private_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
+        if ( buyer_private_key && next_base64_decode_data( buyer_private_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
-            config.server_customer_id = next_read_uint64( &p );
-            memcpy( config.customer_private_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
-            config.valid_customer_private_key = true;
-            next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer private key" );
+            config.server_buyer_id = next_read_uint64( &p );
+            memcpy( config.buyer_private_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
+            config.valid_buyer_private_key = true;
+            next_printf( NEXT_LOG_LEVEL_INFO, "found valid buyer private key" );
         }
         else
         {
-            if ( customer_private_key[0] != '\0' )
+            if ( buyer_private_key[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "customer private key is invalid" );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "buyer private key is invalid" );
             }
         }
     }
 
-    if ( config.valid_customer_private_key && config.valid_customer_public_key && config.client_customer_id != config.server_customer_id )
+    if ( config.valid_buyer_private_key && config.valid_buyer_public_key && config.client_buyer_id != config.server_buyer_id )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "mismatch between client and server customer id. please check the private and public keys are part of the same keypair!" );
-        config.valid_customer_public_key = false;
-        config.valid_customer_private_key = false;
-        memset( config.customer_public_key, 0, sizeof(config.customer_public_key) );
-        memset( config.customer_private_key, 0, sizeof(config.customer_private_key) );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "mismatch between client and server buyer id. please check the private and public keys are part of the same keypair!" );
+        config.valid_buyer_public_key = false;
+        config.valid_buyer_private_key = false;
+        memset( config.buyer_public_key, 0, sizeof(config.buyer_public_key) );
+        memset( config.buyer_private_key, 0, sizeof(config.buyer_private_key) );
     }
 
     next_copy_string( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );

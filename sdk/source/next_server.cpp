@@ -234,7 +234,7 @@ struct next_server_internal_t
 
     void * context;
     int state;
-    uint64_t customer_id;
+    uint64_t buyer_id;
     uint64_t datacenter_id;
     uint64_t start_time;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -244,11 +244,11 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+    uint8_t buyer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(2)
 
-    bool valid_customer_private_key;
+    bool valid_buyer_private_key;
     bool no_datacenter_specified;
     uint64_t upgrade_sequence;
     double next_resolve_hostname_time;
@@ -449,7 +449,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_assert( bind_address_string );
     next_assert( datacenter_string );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_buyer_id );
 
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
@@ -495,9 +495,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->context = context;
     server->start_time = time( NULL );
-    server->customer_id = next_global_config.server_customer_id;
-    memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
-    server->valid_customer_private_key = next_global_config.valid_customer_private_key;
+    server->buyer_id = next_global_config.server_buyer_id;
+    memcpy( server->buyer_private_key, next_global_config.buyer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
+    server->valid_buyer_private_key = next_global_config.valid_buyer_private_key;
 
     const char * datacenter = datacenter_string;
 
@@ -628,7 +628,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    if ( !next_global_config.disable_network_next && server->valid_customer_private_key )
+    if ( !next_global_config.disable_network_next && server->valid_buyer_private_key )
     {
         next_server_internal_initialize( server );
     }
@@ -808,7 +808,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
         next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
     }
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->buyer_private_key, send_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write internal packet with id %d", packet_id );
         return NEXT_ERROR;
@@ -1284,8 +1284,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 switch ( packet.response )
                 {
-                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER:
-                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown customer" );
+                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_BUYER:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown buyer" );
                         return;
 
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER:
@@ -1300,8 +1300,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
                         return;
 
-                    case NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE:
-                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. customer not active" );
+                    case NEXT_SERVER_INIT_RESPONSE_BUYER_NOT_ACTIVE:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. buyer not active" );
                         return;
 
                     case NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED:
@@ -2978,7 +2978,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
     NextBackendServerInitRequestPacket packet;
 
     packet.request_id = server->server_init_request_id;
-    packet.customer_id = server->customer_id;
+    packet.buyer_id = server->buyer_id;
     packet.datacenter_id = server->datacenter_id;
     next_copy_string( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
     packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
@@ -3001,7 +3001,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
     next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
     int packet_bytes = 0;
-    if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+    if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
         return;
@@ -3092,7 +3092,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         NextBackendServerUpdateRequestPacket packet;
 
         packet.request_id = server->server_update_request_id;
-        packet.customer_id = server->customer_id;
+        packet.buyer_id = server->buyer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
@@ -3116,7 +3116,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
         int packet_bytes = 0;
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update request packet for backend" );
             return;
@@ -3144,7 +3144,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         NextBackendServerUpdateRequestPacket packet;
 
         packet.request_id = server->server_update_request_id;
-        packet.customer_id = server->customer_id;
+        packet.buyer_id = server->buyer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
@@ -3167,7 +3167,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
         int packet_bytes = 0;
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
             return;
@@ -3198,7 +3198,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             packet.Reset();
 
-            packet.customer_id = server->customer_id;
+            packet.buyer_id = server->buyer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.session_id = session->session_id;
             packet.slice_number = session->update_sequence++;
@@ -3309,7 +3309,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
                 return;
@@ -3372,7 +3372,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &session->session_update_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &session->session_update_request_packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update request packet for backend" );
                 return;

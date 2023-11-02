@@ -10,7 +10,7 @@
 
 using namespace DirectX;
 
-const char* customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char* buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
 extern const char* next_log_level_str(int level)
 {
@@ -83,7 +83,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
 
     next_config_t config;
     next_default_config(&config);
-    strncpy_s(config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1);
+    strncpy_s(config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1);
 
     next_log_function( xbox_printf );
 

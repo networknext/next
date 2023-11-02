@@ -10,17 +10,17 @@ First define configuration values for the client:
 
 	const char * bind_address = "0.0.0.0:0";
 	const char * server_address = "127.0.0.1:50000";
-	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+	const char * buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
-These includes the bind address for the client socket, the server address to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
+These includes the bind address for the client socket, the server address to connect to, and the test buyer public key we're using in this example. A buyer public key is required to enable acceleration by Network Next.
 
-Next, initialize a configuration struct to defaults, then copy the customer public key on top.
+Next, initialize a configuration struct to defaults, then copy the buyer public key on top.
 
 .. code-block:: c++
 
 	next_config_t config;
 	next_default_config( &config );
-	strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+	strncpy( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
 
 	if ( next_init( NULL, &config ) != NEXT_OK )
 	{
@@ -38,9 +38,9 @@ Initialize the SDK, this time passing in the configuration struct.
 	    return 1;
 	}
 
-This activates the customer public key so it's used by the client. 
+This activates the buyer public key so it's used by the client. 
 
-Network Next needs a customer public key to monitor and accelerate players. Without a customer public key, Network Next just sends player traffic across the public internet.
+Network Next needs a buyer public key to monitor and accelerate players. Without a buyer public key, Network Next just sends player traffic across the public internet.
 
 Next, define a function to be called when packets are received:
 

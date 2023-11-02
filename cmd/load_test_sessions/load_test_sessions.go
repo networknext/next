@@ -49,17 +49,17 @@ func main() {
 	core.Log("client address = %s", clientAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
 
-	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
+	buyerPrivateKey := envvar.GetBase64("NEXT_BUYER_PRIVATE_KEY", nil)
 
-	if customerPrivateKey == nil {
-		panic("you must supply the customer private key")
+	if buyerPrivateKey == nil {
+		panic("you must supply the buyer private key")
 	}
 
 	clientAddress = DetectGoogleClientAddress(clientAddress)
 
-	buyerId = binary.LittleEndian.Uint64(customerPrivateKey[0:8])
+	buyerId = binary.LittleEndian.Uint64(buyerPrivateKey[0:8])
 
-	buyerPrivateKey = customerPrivateKey[8:]
+	buyerPrivateKey = buyerPrivateKey[8:]
 
 	core.Log("simulating %d sessions", numSessions)
 

@@ -28,12 +28,12 @@
 struct next_internal_config_t
 {
     char server_backend_hostname[256];
-    uint64_t client_customer_id;
-    uint64_t server_customer_id;
-    uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-    uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    bool valid_customer_private_key;
-    bool valid_customer_public_key;
+    uint64_t client_buyer_id;
+    uint64_t server_buyer_id;
+    uint8_t buyer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    uint8_t buyer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+    bool valid_buyer_private_key;
+    bool valid_buyer_public_key;
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;

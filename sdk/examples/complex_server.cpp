@@ -36,7 +36,7 @@ const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "server.virtualgo.net";
-const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+const char * buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 // -------------------------------------------------------------
 
@@ -432,7 +432,7 @@ int main()
     next_config_t config;
     next_default_config( &config );
     strncpy_s( config.server_backend_hostname, server_backend_hostname, sizeof(config.server_backend_hostname) - 1 );
-    strncpy_s( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+    strncpy_s( config.buyer_private_key, buyer_private_key, sizeof(config.buyer_private_key) - 1 );
 
     if ( next_init( &global_context, &config ) != NEXT_OK )
     {

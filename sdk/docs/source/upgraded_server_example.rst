@@ -12,18 +12,18 @@ First define configuration values for the server:
 	const char * server_address = "127.0.0.1:50000";
 	const char * server_datacenter = "local";
 	const char * backend_hostname = "server.virtualgo.net";
-	const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+	const char * buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
-This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.
+This includes the test buyer private key we're using in this example. A buyer private key is required on the server to enable acceleration by Network Next.
 
-Next, initialize a configuration struct to defaults, then copy the hostname and the customer private key on top.
+Next, initialize a configuration struct to defaults, then copy the hostname and the buyer private key on top.
 
 .. code-block:: c++
 
 	next_config_t config;
 	next_default_config( &config );
 	strncpy( config.hostname, backend_hostname, sizeof(config.hostname) - 1 );
-	strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+	strncpy( config.buyer_private_key, buyer_private_key, sizeof(config.buyer_private_key) - 1 );
 
 	if ( next_init( NULL, &config ) != NEXT_OK )
 	{
@@ -31,7 +31,7 @@ Next, initialize a configuration struct to defaults, then copy the hostname and 
 	    return 1;
 	}
 
-IMPORTANT: Generally speaking it's bad form to include a private key in your codebase like this, it's done here only to make this example easy to use. In production environments, we strongly recommend passing in "" for your customer private key, and setting it via the environment variable: *NEXT_CUSTOMER_PRIVATE_KEY* which overrides the value specified in code.
+IMPORTANT: Generally speaking it's bad form to include a private key in your codebase like this, it's done here only to make this example easy to use. In production environments, we strongly recommend passing in "" for your buyer private key, and setting it via the environment variable: *NEXT_BUYER_PRIVATE_KEY* which overrides the value specified in code.
 
 Next we initialize the SDK, this time passing in the configuration struct. 
 

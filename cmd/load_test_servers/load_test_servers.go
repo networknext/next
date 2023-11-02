@@ -39,22 +39,22 @@ func main() {
 
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
 
-	customerPrivateKey := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
+	buyerPrivateKey := envvar.GetBase64("NEXT_BUYER_PRIVATE_KEY", nil)
 
 	core.Log("num relays = %d", numRelays)
 	core.Log("num servers = %d", numServers)
 	core.Log("server address = %s", serverAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
 
-	if customerPrivateKey == nil {
-		panic("you must supply the customer private key")
+	if buyerPrivateKey == nil {
+		panic("you must supply the buyer private key")
 	}
 
 	serverAddress = DetectGoogleServerAddress(serverAddress)
 
-	buyerId = binary.LittleEndian.Uint64(customerPrivateKey[0:8])
+	buyerId = binary.LittleEndian.Uint64(buyerPrivateKey[0:8])
 
-	buyerPrivateKey = customerPrivateKey[8:]
+	buyerPrivateKey = buyerPrivateKey[8:]
 
 	core.Log("simulating %d servers", numServers)
 

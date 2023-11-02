@@ -220,7 +220,7 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(4)
 
-    uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    uint8_t buyer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
     uint8_t client_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t client_kx_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
     uint8_t client_send_key[NEXT_CRYPTO_KX_SESSIONKEYBYTES];
@@ -355,7 +355,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.client_customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.client_buyer_id );
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
@@ -380,7 +380,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     client->context = context;
 
-    memcpy( client->customer_public_key, next_global_config.customer_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
+    memcpy( client->buyer_public_key, next_global_config.buyer_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
 
     next_client_internal_verify_sentinels( client );
 

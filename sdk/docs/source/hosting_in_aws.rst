@@ -6,7 +6,7 @@ Network Next can autodetect which amazon datacenter your server is running in.
 
 To use this autodetection, simply pass in a datacenter of "" to *next_server_create* when you run on AWS, while making sure that NEXT_DATACENTER environment variable is also not set, as it overrides whatever datacenter string you pass in.
 
-Important note. On AWS, it's not possible to look up the network next datacenter directly from the availability zone, because it's potentially different on different customer accounts. Instead, we use the account independent AZID, which is guaranteed to be the same across all accounts.
+Important note. On AWS, it's not possible to look up the network next datacenter directly from the availability zone, because it's potentially different on different AWS accounts. Instead, we use the account independent AZID, which is guaranteed to be the same across all accounts.
 
 Please see this article for more details: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
 

@@ -21,7 +21,7 @@ First, as with the upgraded client example, we start by defining our key configu
 
 	const char * bind_address = "0.0.0.0:0";
 	const char * server_address = "127.0.0.1:50000";
-	const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+	const char * buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
 Next, we dive right in and define a custom allocator class that tracks all allocations made, and checks them for leaks when it shuts down:
 
@@ -279,7 +279,7 @@ Next, create a global context and pass it in to *next_init* to be used for any g
 
     next_config_t config;
     next_default_config( &config );
-    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
 
 Now when the Network Next SDK makes any global allocations, they will be made by calling the malloc_function and free_function callbacks, passing in the global context pointer as a void*.
 

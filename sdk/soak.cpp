@@ -43,8 +43,8 @@ const int MaxClients = 1000;
 
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "127.0.0.1";
-const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
-const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+const char * buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+const char * buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 #define FUZZ_TEST 1
 
@@ -204,8 +204,8 @@ int main( int argc, char ** argv )
     next_config_t config;
     next_default_config( &config );
     strncpy( config.server_backend_hostname, server_backend_hostname, sizeof(config.server_backend_hostname) - 1 );
-    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
-    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+    strncpy( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
+    strncpy( config.buyer_private_key, buyer_private_key, sizeof(config.buyer_private_key) - 1 );
 
     next_allocator( malloc_function, free_function );
 

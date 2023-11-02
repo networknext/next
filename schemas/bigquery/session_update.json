@@ -39,7 +39,7 @@
     "name": "session_events",
     "type": "INT64",
     "mode": "NULLABLE",
-    "description": "Customer specified set of 64bit event flags. Optional. NULL if no flags are set"
+    "description": "Custom set of 64bit event flags. Optional. NULL if no flags are set"
   },
   {
     "name": "internal_events",

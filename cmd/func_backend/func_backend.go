@@ -83,7 +83,7 @@ type ServerEntry struct {
 }
 
 type SessionCacheEntry struct {
-	CustomerID                 uint64
+	BuyerID                    uint64
 	SessionID                  uint64
 	UserHash                   uint64
 	Sequence                   uint64

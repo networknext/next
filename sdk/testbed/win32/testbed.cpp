@@ -38,7 +38,7 @@ void client_packet_received( next_client_t * client, void * context, const uint8
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
-const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
 int main()
 {
@@ -69,7 +69,7 @@ int main()
     
     next_config_t config;
     next_default_config( &config );
-    strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy_s( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
 
     next_init( NULL, &config ); 
 

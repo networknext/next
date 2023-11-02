@@ -337,7 +337,7 @@ Report the session as problematic.
 
 	void next_client_report_session( next_client_t * client );
 
-This feature was added to support our customers who let players flag bad play sessions in their game UI.
+This feature was added to support games who let players flag bad play sessions in their game UI.
 
 Call this function when your players complain, and it's sent to our backend so we can help you track down why!
 

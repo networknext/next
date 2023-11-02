@@ -253,7 +253,7 @@ bool next_autodetect_amazon( char * output )
     char buffer[1024*10];
 
     // Get the AZID from instance metadata
-    // This is necessary because only AZ IDs are the same across different customer accounts
+    // This is necessary because only AZ IDs are the same across different AWS accounts
     // See https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html for details
 
     char azid[256];

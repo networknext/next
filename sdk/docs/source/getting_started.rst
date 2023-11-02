@@ -60,11 +60,11 @@ Select it and enter your public key to link your keypair with your account:
 
 The client needs only your public key to link with your account. It's safe to share your public key outside your company.
 
-In the *upgraded_client.cpp* example, replace the test customer public key with your own:
+In the *upgraded_client.cpp* example, replace the test buyer public key with your own:
 
 .. code-block:: c++
 
-	const char * customer_public_key = "OGivr2IM0k7oLTQ3lmGXVnZJpxDRPFsZrKxYLn7fQAosTpQAfs464w==";
+	const char * buyer_public_key = "OGivr2IM0k7oLTQ3lmGXVnZJpxDRPFsZrKxYLn7fQAosTpQAfs464w==";
 
 7. Set your private key on the server
 -------------------------------------
@@ -75,13 +75,13 @@ Change the code in the *upgraded_server.cpp* example to set your private key:
 
 .. code-block:: c++
 
-	const char * customer_private_key = "OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj";
+	const char * buyer_private_key = "OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj";
 
 Or pass it in with an environment variable:
 
 .. code-block:: console
 
-	export NEXT_CUSTOMER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
+	export NEXT_BUYER_PRIVATE_KEY=OGivr2IM0k4lCfbM/VZCVK99KkDSCbzi8fzM2WnZCQb7R6k4UHc51+gtNDeWYZdWdkmnENE8WxmsrFguft9ACixOlAB+zjrj
 
 8. Build and run a server
 -------------------------
@@ -93,8 +93,8 @@ The server output should look like this:
 .. code-block:: console
 
 	root@linux:~/sdk# ./bin/upgraded_server
-	0.000317: info: customer private key override
-	0.000342: info: found valid customer private key
+	0.000317: info: buyer private key override
+	0.000342: info: found valid buyer private key
 	0.000347: info: override next hostname: 'server.virtualgo.net'
 	0.000368: info: server sdk version is 4.0.16
 	0.000377: info: server address override: '173.255.241.176:50000'
@@ -123,7 +123,7 @@ The client should connect to your server and exchange packets:
 .. code-block:: c++
 
 	glenn@macbook sdk % ./bin/upgraded_client
-	0.010058: info: found valid customer public key
+	0.010058: info: found valid buyer public key
 	0.010086: info: client sdk version is 4.0.16
 	0.010204: info: client bound to 0.0.0.0:59617
 	0.010396: info: client increased thread priority

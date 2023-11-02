@@ -203,11 +203,11 @@ int main()
     next_config_t config;
     next_default_config(&config);
 #ifdef _WIN32
-    strncpy_s(config.customer_public_key, "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==", 256);
+    strncpy_s(config.buyer_public_key, "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==", 256);
 #else
-    strncpy(config.customer_public_key, "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==", 256);
+    strncpy(config.buyer_public_key, "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==", 256);
 #endif
-    config.customer_public_key[255] = 0;
+    config.buyer_public_key[255] = 0;
 
     next_init( NULL, &config );
 

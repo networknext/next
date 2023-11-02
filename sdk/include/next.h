@@ -255,8 +255,8 @@ __inline int c99_snprintf(char *outBuf, size_t size, const char *format, ...)
 struct next_config_t
 {
     char server_backend_hostname[256];
-    char customer_public_key[256];
-    char customer_private_key[256];
+    char buyer_public_key[256];
+    char buyer_private_key[256];
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;

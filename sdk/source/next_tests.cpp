@@ -3657,7 +3657,7 @@ void test_server_init_request_packet()
 
         static NextBackendServerInitRequestPacket in, out;
         in.request_id = next_random_uint64();
-        in.customer_id = 1231234127431LL;
+        in.buyer_id = 1231234127431LL;
         in.datacenter_id = next_datacenter_id( "local" );
         strcpy( in.datacenter_name, "local" );
 
@@ -3679,7 +3679,7 @@ void test_server_init_request_packet()
         next_check( in.version_major == out.version_major );
         next_check( in.version_minor == out.version_minor );
         next_check( in.version_patch == out.version_patch );
-        next_check( in.customer_id == out.customer_id );
+        next_check( in.buyer_id == out.buyer_id );
         next_check( in.datacenter_id == out.datacenter_id );
         next_check( strcmp( in.datacenter_name, out.datacenter_name ) == 0 );
     }
@@ -3754,7 +3754,7 @@ void test_server_update_packet()
 
         static NextBackendServerUpdateRequestPacket in, out;
         in.request_id = next_random_uint64();
-        in.customer_id = next_random_uint64();
+        in.buyer_id = next_random_uint64();
         in.datacenter_id = next_random_uint64();
         in.num_sessions = 1000;
         next_address_parse( &in.server_address, "127.0.0.1:40000" );
@@ -3778,7 +3778,7 @@ void test_server_update_packet()
         next_check( in.version_minor == out.version_minor );
         next_check( in.version_patch == out.version_patch );
         next_check( in.request_id == out.request_id );
-        next_check( in.customer_id == out.customer_id );
+        next_check( in.buyer_id == out.buyer_id );
         next_check( in.datacenter_id == out.datacenter_id );
         next_check( in.num_sessions == out.num_sessions );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
@@ -3853,7 +3853,7 @@ void test_session_update_packet()
 
         static NextBackendSessionUpdateRequestPacket in, out;
         in.slice_number = 0;
-        in.customer_id = 1231234127431LL;
+        in.buyer_id = 1231234127431LL;
         in.datacenter_id = 111222454443LL;
         in.session_id = 1234342431431LL;
         in.user_hash = 11111111;
@@ -3914,7 +3914,7 @@ void test_session_update_packet()
         next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET );
 
         next_check( in.slice_number == out.slice_number );
-        next_check( in.customer_id == out.customer_id );
+        next_check( in.buyer_id == out.buyer_id );
         next_check( in.datacenter_id == out.datacenter_id );
         next_check( in.session_id == out.session_id );
         next_check( in.user_hash == out.user_hash );

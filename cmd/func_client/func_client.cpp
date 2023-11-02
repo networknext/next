@@ -101,10 +101,10 @@ int main()
     next_config_t config;
     next_default_config( &config );
 
-    const char * customer_public_key_env = getenv( "NEXT_CUSTOMER_PUBLIC_KEY" );
-    if ( customer_public_key_env )
+    const char * buyer_public_key_env = getenv( "NEXT_BUYER_PUBLIC_KEY" );
+    if ( buyer_public_key_env )
     {
-        strcpy( config.customer_public_key, customer_public_key_env );
+        strcpy( config.buyer_public_key, buyer_public_key_env );
     }
 
     const char * disable_network_next_env = getenv( "CLIENT_DISABLE_NETWORK_NEXT" );

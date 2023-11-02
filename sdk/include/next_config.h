@@ -105,11 +105,11 @@
 #define NEXT_SECONDS_BETWEEN_PACKET_LOSS_UPDATES                      0.1
 
 #define NEXT_SERVER_INIT_RESPONSE_OK                                    0
-#define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER                      1
+#define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_BUYER                         1
 #define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER                    2
 #define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
-#define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
+#define NEXT_SERVER_INIT_RESPONSE_BUYER_NOT_ACTIVE                      5
 #define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
 
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)

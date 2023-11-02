@@ -27,8 +27,8 @@ variable "server_backend_public_key" { type = string }
 variable "server_backend_private_key" { type = string }
 variable "ping_key" { type = string }
 variable "api_private_key" { type = string }
-variable "customer_public_key" { type = string }
-variable "customer_private_key" { type = string }
+variable "buyer_public_key" { type = string }
+variable "buyer_private_key" { type = string }
 
 variable "maxmind_license_key" { type = string }
 
@@ -950,7 +950,7 @@ module "load_test_servers" {
     NUM_RELAYS=1000
     NUM_SERVERS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
-    NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
+    NEXT_BUYER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
     sudo systemctl start app.service
   EOF1
@@ -991,7 +991,7 @@ module "load_test_sessions" {
     NUM_RELAYS=1000
     NUM_SESSIONS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
-    NEXT_CUSTOMER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
+    NEXT_BUYER_PRIVATE_KEY=leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn
     EOF
     sudo systemctl start app.service
   EOF1

@@ -123,10 +123,10 @@ int main()
     next_config_t config;
     next_default_config( &config );
 
-    const char * customer_private_key_env = getenv( "NEXT_CUSTOMER_PRIVATE_KEY" );
-    if ( customer_private_key_env )
+    const char * buyer_private_key_env = getenv( "NEXT_BUYER_PRIVATE_KEY" );
+    if ( buyer_private_key_env )
     {
-        strcpy( config.customer_private_key, customer_private_key_env );
+        strcpy( config.buyer_private_key, buyer_private_key_env );
     }
     
     const char * disable_network_next_env = getenv( "SERVER_DISABLE_NETWORK_NEXT" );

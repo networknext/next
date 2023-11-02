@@ -25,8 +25,8 @@ Valid values:
 	$ ./bin/simple_client
 	(extreme spam follows...)
 
-NEXT_CUSTOMER_PUBLIC_KEY
-------------------------
+NEXT_BUYER_PUBLIC_KEY
+---------------------
 
 Overrides the public key set in *next_config_t*.
 
@@ -34,10 +34,10 @@ Overrides the public key set in *next_config_t*.
 
 .. code-block:: console
 
-	$ export NEXT_CUSTOMER_PUBLIC_KEY=tTpIS31zg4tAdFHjPnMUFIhhsWjsR1u5Tj0Ygd7cC1OEk6gjBv6r4Q==
+	$ export NEXT_BUYER_PUBLIC_KEY=tTpIS31zg4tAdFHjPnMUFIhhsWjsR1u5Tj0Ygd7cC1OEk6gjBv6r4Q==
 
-NEXT_CUSTOMER_PRIVATE_KEY
--------------------------
+NEXT_BUYER_PRIVATE_KEY
+----------------------
 
 Overrides the private key set in *next_config_t*.
 
@@ -45,7 +45,7 @@ Overrides the private key set in *next_config_t*.
 
 .. code-block:: console
 
-	$ export NEXT_CUSTOMER_PRIVATE_KEY=tTpIS31zg4tsrIKlNL6LAXVAQLZc0rzD5utQLcKgnpYuCC7PsoyPkEB0UeM+cxQUiGGxaOxHW7lOPRiB3twLU4STqCMG/qvh
+	$ export NEXT_BUYER_PRIVATE_KEY=tTpIS31zg4tsrIKlNL6LAXVAQLZc0rzD5utQLcKgnpYuCC7PsoyPkEB0UeM+cxQUiGGxaOxHW7lOPRiB3twLU4STqCMG/qvh
 
 NEXT_DISABLE_NETWORK_NEXT
 -------------------------

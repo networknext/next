@@ -185,7 +185,7 @@ Gets the state the server is in.
 
 	The server is initially in the direct only state. 
 
-	If a valid customer private key is setup, the server will first try to resolve the backend hostname.
+	If a valid buyer private key is setup, the server will first try to resolve the backend hostname.
 
 	Once the backend hostname is resolved, the server initializes with the backend. When everything works, the server lands in the initialized state and is ready to accelerate players.
 

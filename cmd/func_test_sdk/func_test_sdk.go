@@ -100,7 +100,7 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 
 type ClientConfig struct {
 	duration                  int
-	customer_public_key       string
+	buyer_public_key          string
 	disable_network_next      bool
 	packet_loss               bool
 	fake_direct_packet_loss   float32
@@ -130,8 +130,8 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CLIENT_DURATION=%d", config.duration))
 	}
 
-	if config.customer_public_key != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_CUSTOMER_PUBLIC_KEY=%s", config.customer_public_key))
+	if config.buyer_public_key != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=%s", config.buyer_public_key))
 	}
 
 	if config.disable_network_next {
@@ -197,7 +197,7 @@ type ServerConfig struct {
 	no_upgrade                     bool
 	upgrade_count                  int
 	packet_loss                    bool
-	customer_private_key           string
+	buyer_private_key              string
 	disable_network_next           bool
 	server_address                 string
 	server_port                    int
@@ -224,8 +224,8 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "NEXT_DATACENTER=local")
 	cmd.Env = append(cmd.Env, "NEXT_SERVER_BACKEND_HOSTNAME=127.0.0.1")
 	cmd.Env = append(cmd.Env, "NEXT_PORT=45000")
-	cmd.Env = append(cmd.Env, "NEXT_CUSTOMER_PRIVATE_KEY=no")
-	cmd.Env = append(cmd.Env, "NEXT_CUSTOMER_PUBLIC_KEY=no")
+	cmd.Env = append(cmd.Env, "NEXT_BUYER_PRIVATE_KEY=no")
+	cmd.Env = append(cmd.Env, "NEXT_BUYER_PUBLIC_KEY=no")
 
 	if config.duration != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_DURATION=%d", config.duration))
@@ -239,8 +239,8 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_UPGRADE_COUNT=%d", config.upgrade_count))
 	}
 
-	if config.customer_private_key != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_CUSTOMER_PRIVATE_KEY=%s", config.customer_private_key))
+	if config.buyer_private_key != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_BUYER_PRIVATE_KEY=%s", config.buyer_private_key))
 	}
 
 	if config.disable_network_next {
@@ -385,7 +385,7 @@ func server_check(server_stdout *bytes.Buffer, backend_stdout *bytes.Buffer, con
 }
 
 /*
-   Test that when a client connects to a server with no backend running, and with no customer public or private
+   Test that when a client connects to a server with no backend running, and with no buyer public or private
    keys set on either client and server, that packets are sent and received direct. This is network next in direct mode.
 */
 
@@ -440,12 +440,12 @@ func test_direct_upgraded() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -494,12 +494,12 @@ func test_network_next_route() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -563,12 +563,12 @@ func test_fallback_to_direct_backend() {
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 70.0
 	clientConfig.stop_sending_packets_time = 50.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -630,12 +630,12 @@ func test_fallback_to_direct_client_side() {
 	clientConfig.fallback_to_direct_time = 30.0
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -702,13 +702,13 @@ func test_fallback_to_direct_server_restart() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 55.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.restart_time = 15.0
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -749,12 +749,12 @@ func test_disable_on_server() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	serverConfig.disable_network_next = true
 
 	server_cmd, server_stdout := server(serverConfig)
@@ -813,13 +813,13 @@ func test_disable_on_client() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.disable_network_next = true
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -879,12 +879,12 @@ func test_route_switching() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -942,12 +942,12 @@ func test_on_off() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1009,12 +1009,12 @@ func test_on_on_off() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1077,14 +1077,14 @@ func test_reconnect_direct() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 55.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
 	clientConfig.connect_address = "127.0.0.1:32202"
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1123,7 +1123,7 @@ func test_reconnect_direct_no_upgrade() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 55.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
 	clientConfig.connect_address = "127.0.0.1:32202"
 
@@ -1131,7 +1131,7 @@ func test_reconnect_direct_no_upgrade() {
 
 	serverConfig := &ServerConfig{}
 	serverConfig.upgrade_count = 1
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1174,14 +1174,14 @@ func test_reconnect_next() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
 	clientConfig.connect_address = "127.0.0.1:32202"
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1240,18 +1240,18 @@ func test_connect_to_another_server_direct() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
 	clientConfig.connect_address = "127.0.0.1:32203"
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig1 := &ServerConfig{}
-	serverConfig1.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig1.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	server_1_cmd, _ := server(serverConfig1)
 
 	serverConfig2 := &ServerConfig{}
-	serverConfig2.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig2.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	serverConfig2.server_address = "127.0.0.1"
 	serverConfig2.server_port = 32203
 	server_2_cmd, server_stdout := server(serverConfig2)
@@ -1299,18 +1299,18 @@ func test_connect_to_another_server_next() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.connect_time = 30.0
 	clientConfig.connect_address = "127.0.0.1:32203"
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig1 := &ServerConfig{}
-	serverConfig1.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig1.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	server_1_cmd, _ := server(serverConfig1)
 
 	serverConfig2 := &ServerConfig{}
-	serverConfig2.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig2.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	serverConfig2.server_address = "127.0.0.1"
 	serverConfig2.server_port = 32203
 	server_2_cmd, server_stdout := server(serverConfig2)
@@ -1374,12 +1374,12 @@ func test_multipath() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1437,12 +1437,12 @@ func test_multipath_next_packet_loss() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1502,12 +1502,12 @@ func test_multipath_fallback_to_direct() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1572,13 +1572,13 @@ func test_packet_loss_direct() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.packet_loss = true
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	serverConfig.packet_loss = true
 
 	server_cmd, server_stdout := server(serverConfig)
@@ -1622,13 +1622,13 @@ func test_packet_loss_next() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.packet_loss = true
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 	serverConfig.packet_loss = true
 
 	server_cmd, server_stdout := server(serverConfig)
@@ -1688,7 +1688,7 @@ func test_server_under_load() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	const MaxClients = 30
 
@@ -1700,7 +1700,7 @@ func test_server_under_load() {
 	}
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1766,12 +1766,12 @@ func test_session_update_retry() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1834,12 +1834,12 @@ func test_packet_loss() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1905,12 +1905,12 @@ func test_direct_bandwidth() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -1962,12 +1962,12 @@ func test_next_bandwidth() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2020,7 +2020,7 @@ func test_next_bandwidth() {
 /*
    Send bandwidth over the next bandwidth limit between client and server.
    Make sure the backends sees both client and server going over the bandwidth limit.
-   This way we can be sure that whenever real customers go over the limit, the SDK uploads that data
+   This way we can be sure that whenever real buyers go over the limit, the SDK uploads that data
    to the backend so we can analyze it.
 */
 
@@ -2032,12 +2032,12 @@ func test_next_bandwidth_over_limit() {
 	clientConfig.high_bandwidth = true
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2098,12 +2098,12 @@ func test_jitter() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2164,12 +2164,12 @@ func test_direct_stats() {
 	clientConfig.fake_direct_packet_loss = 10.0
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2219,12 +2219,12 @@ func test_next_stats() {
 	clientConfig.fake_next_packet_loss = 10.0
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2283,12 +2283,12 @@ func test_report_session() {
 	clientConfig.report_session = true
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2350,12 +2350,12 @@ func test_client_ping_timed_out() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 30.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2394,7 +2394,7 @@ func test_server_ready_success() {
 	fmt.Printf("test_server_ready_success\n")
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2423,7 +2423,7 @@ func test_server_ready_fallback_to_direct() {
 	fmt.Printf("test_server_ready_fallback_to_direct\n")
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2449,7 +2449,7 @@ func test_server_ready_autodetect_cloud() {
 
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "cloud"
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2496,7 +2496,7 @@ func test_server_ready_autodetect_multiplay_success() {
 
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "multiplay.newyork"
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2541,7 +2541,7 @@ func test_server_ready_autodetect_multiplay_fail() {
 
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "multiplay.newyork"
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2590,7 +2590,7 @@ func test_server_ready_disable_autodetect_cloud() {
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "cloud"
 	serverConfig.disable_autodetect = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2631,7 +2631,7 @@ func test_server_ready_disable_autodetect_multiplay() {
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "multiplay.newyork"
 	serverConfig.disable_autodetect = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2672,7 +2672,7 @@ func test_server_ready_resolve_hostname_timeout() {
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "local"
 	serverConfig.force_resolve_hostname_timeout = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2705,7 +2705,7 @@ func test_server_ready_autodetect_timeout() {
 	serverConfig := &ServerConfig{}
 	serverConfig.datacenter = "local"
 	serverConfig.force_autodetect_timeout = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2738,13 +2738,13 @@ func test_client_connect_before_ready() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.force_resolve_hostname_timeout = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2798,13 +2798,13 @@ func test_session_events() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.session_events = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2852,13 +2852,13 @@ func test_flush() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 40.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.flush = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2912,13 +2912,13 @@ func test_flush_retry() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 40.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.flush = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -2972,14 +2972,14 @@ func test_flush_session_events() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 40.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.session_events = true
 	serverConfig.flush = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -3037,14 +3037,14 @@ func test_flush_session_events_retry() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 30.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.session_events = true
 	serverConfig.flush = true
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 
@@ -3086,13 +3086,13 @@ func test_big_packets() {
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
 	clientConfig.duration = 60.0
-	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.buyer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 	clientConfig.big_packets = true
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	serverConfig := &ServerConfig{}
-	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig.buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 	server_cmd, server_stdout := server(serverConfig)
 

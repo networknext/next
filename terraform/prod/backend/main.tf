@@ -27,8 +27,8 @@ variable "server_backend_public_key" { type = string }
 variable "server_backend_private_key" { type = string }
 variable "ping_key" { type = string }
 variable "api_private_key" { type = string }
-variable "customer_public_key" { type = string }
-variable "customer_private_key" { type = string }
+variable "buyer_public_key" { type = string }
+variable "buyer_private_key" { type = string }
 
 variable "maxmind_license_key" { type = string }
 
@@ -1021,7 +1021,7 @@ module "raspberry_server" {
     ENV=prod
     NEXT_LOG_LEVEL=1
     NEXT_DATACENTER=cloud
-    NEXT_CUSTOMER_PRIVATE_KEY=${var.customer_private_key}
+    NEXT_BUYER_PRIVATE_KEY=${var.buyer_private_key}
     NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     EOF
@@ -1059,7 +1059,7 @@ module "raspberry_client" {
     cat <<EOF > /app/app.env
     ENV=prod
     NEXT_LOG_LEVEL=1
-    NEXT_CUSTOMER_PUBLIC_KEY=${var.customer_public_key}
+    NEXT_BUYER_PUBLIC_KEY=${var.buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=256
     EOF

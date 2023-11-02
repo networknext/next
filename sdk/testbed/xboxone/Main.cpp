@@ -14,7 +14,7 @@ using namespace Windows::UI::Core;
 using namespace Windows::Foundation;
 using namespace DirectX;
 
-const char * customer_public_key = "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==";
+const char * buyer_public_key = "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==";
 
 void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
@@ -87,7 +87,7 @@ public:
 
         next_config_t config;
         next_default_config(&config);
-        strncpy_s(config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1);
+        strncpy_s(config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1);
 
         next_init(NULL, &config);
 
