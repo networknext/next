@@ -1805,49 +1805,7 @@ locals {
 
 }
 
-module "relay_amazon_virginia_1" {
-	  source            = "./relay"
-	  name              = "amazon.virginia.1"
-	  zone              = local.datacenter_map["amazon.virginia.1"].zone
-	  region            = local.datacenter_map["amazon.virginia.1"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_east_1.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-east-1
-	  }
-	}
-
-	module "relay_amazon_virginia_2" {
-	  source            = "./relay"
-	  name              = "amazon.virginia.2"
-	  zone              = local.datacenter_map["amazon.virginia.2"].zone
-	  region            = local.datacenter_map["amazon.virginia.2"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_east_1.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-east-1
-	  }
-	}
-
-	module "relay_amazon_ohio_1" {
-	  source            = "./relay"
-	  name              = "amazon.ohio.1"
-	  zone              = local.datacenter_map["amazon.ohio.1"].zone
-	  region            = local.datacenter_map["amazon.ohio.1"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_east_2.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-east-2
-	  }
-	}
-
-	module "relay_amazon_ohio_2" {
+module "relay_amazon_ohio_2" {
 	  source            = "./relay"
 	  name              = "amazon.ohio.2"
 	  zone              = local.datacenter_map["amazon.ohio.2"].zone
@@ -1886,6 +1844,48 @@ module "relay_amazon_virginia_1" {
 	  vpn_address       = var.vpn_address
 	  providers = {
 	    aws = aws.us-west-1
+	  }
+	}
+
+	module "relay_amazon_virginia_1" {
+	  source            = "./relay"
+	  name              = "amazon.virginia.1"
+	  zone              = local.datacenter_map["amazon.virginia.1"].zone
+	  region            = local.datacenter_map["amazon.virginia.1"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+
+	module "relay_amazon_virginia_2" {
+	  source            = "./relay"
+	  name              = "amazon.virginia.2"
+	  zone              = local.datacenter_map["amazon.virginia.2"].zone
+	  region            = local.datacenter_map["amazon.virginia.2"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+
+	module "relay_amazon_ohio_1" {
+	  source            = "./relay"
+	  name              = "amazon.ohio.1"
+	  zone              = local.datacenter_map["amazon.ohio.1"].zone
+	  region            = local.datacenter_map["amazon.ohio.1"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_2.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-2
 	  }
 	}
 

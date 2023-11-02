@@ -462,9 +462,7 @@ func main() {
 
 // ------------------------------------------------------------------------------
 
-func keygen(env Environment, regexes []string) {
-		
-	fmt.Printf("generating keypairs\n\n")
+func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 
 	buyerId := make([]byte, 8)
 	rand.Read(buyerId)
@@ -475,13 +473,22 @@ func keygen(env Environment, regexes []string) {
 		os.Exit(1)
 	}
 
-	buyerPublicKey := make([]byte, 0)
+	buyerPublicKey = make([]byte, 0)
 	buyerPublicKey = append(buyerPublicKey, buyerId...)
 	buyerPublicKey = append(buyerPublicKey, publicKey...)
 
-	buyerPrivateKey := make([]byte, 0)
+	buyerPrivateKey = make([]byte, 0)
 	buyerPrivateKey = append(buyerPrivateKey, buyerId...)
 	buyerPrivateKey = append(buyerPrivateKey, privateKey...)
+
+	return
+}
+
+func keygen(env Environment, regexes []string) {
+		
+	fmt.Printf("generating keypairs\n\n")
+
+	buyerPublicKey, buyerPrivateKey := generateBuyerKeypair()
 
 	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
 	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
@@ -618,34 +625,36 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
    }
 
+   // todo: replace in files
+
    // configure amazon
 
-   fmt.Printf("\n--------------------------------------------\nConfiguring amazon\n--------------------------------------------\n")
+   fmt.Printf("\n--------------------------------------------\n                   amazon\n--------------------------------------------\n")
 
    if !bash("run config-amazon") {
-		fmt.Printf("\nerror: failed to configure amazon seller :(\n\n")
+		fmt.Printf("\nerror: failed to configure amazon :(\n\n")
 		os.Exit(1)
    }
 
    // configure akamai
 
-   fmt.Printf("--------------------------------------------\nConfiguring akamai\n--------------------------------------------\n")
+   fmt.Printf("--------------------------------------------\n                   akamai\n--------------------------------------------\n")
 
    if !bash("run config-akamai") {
-		fmt.Printf("\nerror: failed to configure akamai seller :(\n\n")
+		fmt.Printf("\nerror: failed to configure akamai :(\n\n")
 		os.Exit(1)
    }
 
    // configure google
 
-   fmt.Printf("--------------------------------------------\nConfiguring google\n--------------------------------------------\n")
+   fmt.Printf("--------------------------------------------\n                   google\n--------------------------------------------\n")
 
    if !bash("run config-google") {
-		fmt.Printf("\nerror: failed to configure google seller :(\n\n")
+		fmt.Printf("\nerror: failed to configure google :(\n\n")
 		os.Exit(1)
    }
 
-	fmt.Printf("\n")
+   fmt.Printf("*** CONFIGURATION COMPLETE ***\n\n")
 }
 
 // -------------------------------------------------------------------------------------------------------
