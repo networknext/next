@@ -335,6 +335,12 @@ resource "google_service_account" "dev_runtime" {
   display_name = "Development Runtime Service Account"
 }
 
+resource "google_project_iam_member" "dev_terraform_runtime_compute_viewer" {
+  project = google_project.dev.project_id
+  role    = "roles/compute.viewer"
+  member  = google_service_account.dev_runtime.member
+}
+
 resource "google_storage_bucket_iam_member" "dev_runtime_backend_artifacts_storage_viewer" {
   bucket = google_storage_bucket.backend_artifacts.name
   role   = "roles/storage.objectViewer"
@@ -406,7 +412,7 @@ locals {
 resource "google_project_service" "dev_relays" {
   count    = length(local.dev_relays_services)
   project  = google_project.dev_relays.project_id
-  service  = "pubsub.googleapis.com"
+  service  = local.dev_relays_services[count.index]
   timeouts {
     create = "30m"
     update = "40m"
@@ -501,6 +507,12 @@ resource "google_service_account" "staging_runtime" {
   project  = google_project.staging.project_id
   account_id   = "staging-runtime"
   display_name = "Staging Runtime Service Account"
+}
+
+resource "google_project_iam_member" "staging_terraform_runtime_compute_viewer" {
+  project = google_project.staging.project_id
+  role    = "roles/compute.viewer"
+  member  = google_service_account.staging_runtime.member
 }
 
 resource "google_storage_bucket_iam_member" "staging_runtime_backend_artifacts_storage_viewer" {
@@ -619,6 +631,12 @@ resource "google_service_account" "prod_runtime" {
   display_name = "Production Runtime Service Account"
 }
 
+resource "google_project_iam_member" "prod_terraform_runtime_compute_viewer" {
+  project = google_project.prod.project_id
+  role    = "roles/compute.viewer"
+  member  = google_service_account.prod_runtime.member
+}
+
 resource "google_storage_bucket_iam_member" "prod_runtime_backend_artifacts_storage_viewer" {
   bucket = google_storage_bucket.backend_artifacts.name
   role   = "roles/storage.objectViewer"
@@ -690,7 +708,7 @@ locals {
 resource "google_project_service" "prod_relays" {
   count    = length(local.prod_relays_services)
   project  = google_project.prod_relays.project_id
-  service  = "pubsub.googleapis.com"
+  service  = local.prod_relays_services[count.index]
   timeouts {
     create = "30m"
     update = "40m"

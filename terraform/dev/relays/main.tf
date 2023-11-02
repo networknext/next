@@ -156,7 +156,7 @@ locals {
 module "amazon_relays" {
 
   # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
-  # So for AWS, see tools/amazon_config/amazon_config.go for the set of dev relays -> amazon/generated.tf
+  # So for AWS, see sellers/amazon.go for the set of dev relays -> amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
@@ -204,6 +204,7 @@ locals {
 }
 
 module "akamai_relays" {
+  env                 = "dev"
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
