@@ -82,14 +82,16 @@ DONE
 
 	Insert analytics messages into bigquery
 
+	Optimize the setup process by automating creation of projects, service accounts and permissions
+
 TODO
+
+	Configure script to setup company name, billing id, roll keypairs etc.
+
+	-----------
 
 	Portal map
 	
-	-----------
-
-	Optimize the setup process by automating creation of projects, service accounts and permissions
-
 	-----------
 
 	Finalize SDK and UE5 plugin

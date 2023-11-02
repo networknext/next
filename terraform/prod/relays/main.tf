@@ -26,7 +26,7 @@ terraform {
   }
   backend "gcs" {
     bucket  = "auspicious_network_next_terraform"
-    prefix  = "prod"
+    prefix  = "prod_relays"
   }
 }
 
@@ -43,8 +43,8 @@ provider "networknext" {
 
 locals {
 
-  google_credentials = "~/secrets/terraform-production-relays.json"
-  google_project     = "production-relays"
+  google_credentials = "~/secrets/terraform-prod-relays.json"
+  google_project     = file("../../projects/prod-relays-project.txt")
   google_relays = {
 
     # IOWA
@@ -141,8 +141,6 @@ module "google_relays" {
   ssh_public_key_file = var.ssh_public_key_file
 }
 
-// todo: disable for now
-/*
 # ----------------------------------------------------------------------------------------
 
 # =============
@@ -167,7 +165,6 @@ module "amazon_relays" {
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -201,6 +198,7 @@ locals {
 }
 
 module "akamai_relays" {
+  env                 = "prod"
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
@@ -220,23 +218,20 @@ locals {
   relay_names = sort(
     concat(
       keys(module.google_relays.relays),
-// todo
-//      keys(module.amazon_relays.relays),
+      keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
     )
   )
 
   relays = merge(
     module.google_relays.relays,
-// todo
-//    module.amazon_relays.relays,
+    module.amazon_relays.relays,
     module.akamai_relays.relays,
   )
 
   datacenters = merge(
     module.google_relays.datacenters,
-// todo
-//    module.amazon_relays.datacenters,
+    module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
   )
 

@@ -308,6 +308,16 @@ func main() {
 		},
 	}
 
+	var configCommand = &ffcli.Command{
+		Name:       "config",
+		ShortUsage: "next config",
+		ShortHelp:  "Configure network next",
+		Exec: func(ctx context.Context, args []string) error {
+			config(env, args)
+			return nil
+		},
+	}
+
 	var envCommand = &ffcli.Command{
 		Name:       "env",
 		ShortUsage: "next env",
@@ -504,16 +514,6 @@ func main() {
 		},
 	}
 
-	var configCommand = &ffcli.Command{
-		Name:       "config",
-		ShortUsage: "next config [regex...]",
-		ShortHelp:  "Edit the configuration of a relay",
-		Exec: func(ctx context.Context, args []string) error {
-			config(env, args)
-			return nil
-		},
-	}
-
 	var costCommand = &ffcli.Command{
 		Name:       "cost",
 		ShortUsage: "next cost [output_file]",
@@ -592,6 +592,7 @@ func main() {
 	}
 
 	var commands = []*ffcli.Command{
+		configCommand,
 		selectCommand,
 		envCommand,
 		pingCommand,
@@ -606,7 +607,6 @@ func main() {
 		loadCommand,
 		upgradeCommand,
 		rebootCommand,
-		configCommand,
 		costCommand,
 		optimizeCommand,
 		analyzeCommand,
@@ -637,6 +637,123 @@ func main() {
 	if len(args) == 0 {
 		root.FlagSet.Usage()
 	}
+}
+
+// ------------------------------------------------------------------------------
+
+type Config struct {
+	CompanyName        string `json:"company_name"`
+	VPNAddress         string `json:"vpn_address"`
+	CloudflareZoneId   string `json:"cloudflare_zone_id"`
+	CloudflareDomain   string `json:"cloudflare_domain"`
+	BuyerName          string `json:"buyer_name"`
+	BuyerId            string `json:"buyer_id"`
+}
+
+func fileExists(filename string) bool {
+   info, err := os.Stat(filename)
+   if os.IsNotExist(err) {
+      return false
+   }
+   return !info.IsDir()
+}
+
+func config(env Environment, regexes []string) {
+	
+	fmt.Printf("configuring network next:\n\n")	
+
+	// load config.json
+
+	file, err := os.Open("config.json")
+	if err != nil {
+		fmt.Printf("error: could not load config.json\n\n")
+		os.Exit(1)
+   }
+	defer file.Close()
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		fmt.Printf("error: could not read config.json\n\n")
+		os.Exit(1)
+	}
+
+	var config Config
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		fmt.Printf("error: could not parse config.json\n\n")
+		os.Exit(1)
+	}
+
+	// validate config
+
+	fmt.Printf("    company name = \"%s\"\n", config.CompanyName)
+
+	if result, _ := regexp.MatchString(`^[a-zA-Z_]+$`, config.CompanyName); !result {
+		fmt.Printf("\nerror: company name must contain only A-Z, a-z and _ characters\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    vpn address = \"%s\"\n", config.VPNAddress)
+
+	if config.VPNAddress == "" {
+		fmt.Printf("\nerror: you must supply a VPN address\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    cloudflare zone id = \"%s\"\n", config.CloudflareZoneId)
+
+	if config.CloudflareZoneId == "" {
+		fmt.Printf("\nerror: you must supply a cloudflare zone id\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    cloudflare domain = \"%s\"\n", config.CloudflareDomain)
+
+	if config.CloudflareDomain == "" {
+		fmt.Printf("\nerror: you must supply a cloudflare domain\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    buyer name = \"%s\"\n", config.BuyerName)
+
+	if config.BuyerName == "" {
+		fmt.Printf("\nerror: you must supply a buyer name\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("    buyer id = \"%s\"\n", config.BuyerId)
+
+	if result, _ := regexp.MatchString(`^[a-zA-Z]+$`, config.BuyerId); !result {
+		fmt.Printf("\nerror: buyer id must contain only A-Z, a-z\n\n")
+		os.Exit(1)
+	}
+
+	// check that we have necessary files under ~/secrets
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could not get users home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+
+	secretsDir := fmt.Sprintf("%s/secrets", homeDir)
+
+	if !fileExists(fmt.Sprintf("%s/terraform-cloudflare.txt", secretsDir)) {
+		fmt.Printf("\nerror: missing cloudflare terraform api key at ~/secrets/terraform-cloudflare.txt :(\n\n")
+		os.Exit(1)
+   }
+
+	if !fileExists(fmt.Sprintf("%s/terraform-akamai.txt", secretsDir)) {
+		fmt.Printf("\nerror: missing cloudflare akamai api key at ~/secrets/terraform-akamai.txt :(\n\n")
+		os.Exit(1)
+   }
+
+	if !fileExists(fmt.Sprintf("%s/maxmind.txt", secretsDir)) {
+		fmt.Printf("\nerror: missing maxmind license key at ~/secrets/maxmind.txt :(\n\n")
+		os.Exit(1)
+   }
+
+	fmt.Printf("\n")
 }
 
 // -------------------------------------------------------------------------------------------------------
@@ -1242,28 +1359,6 @@ func ssh(env Environment, regexes []string) {
 	}
 
 	fmt.Printf("\n")
-}
-
-func config(env Environment, regexes []string) {
-	for _, regex := range regexes {
-		relays := getRelayInfo(env, regex)
-		if len(relays) == 0 {
-			fmt.Printf("no relays matched the regex '%s'\n", regex)
-			continue
-		}
-		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("connecting to %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			if !con.ConnectAndIssueCmd(ConfigRelayScript) {
-				continue
-			}
-			break
-		}
-	}
 }
 
 func setupRelays(env Environment, regexes []string) {
