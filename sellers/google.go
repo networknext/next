@@ -258,39 +258,6 @@ func main() {
 
 	file.Close()
 
-	// generate google.sql
-
-	fmt.Printf("\nGenerating google.sql\n")
-
-	file, err = os.Create("schemas/sql/sellers/google.sql")
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Fprintf(file, "\n-- google datacenters\n")
-
-	format_string := "\nINSERT INTO datacenters(\n" +
-		"	datacenter_name,\n" +
-		"	native_name,\n" +
-		"	latitude,\n" +
-		"	longitude,\n" +
-		"	seller_id)\n" +
-		"VALUES(\n" +
-		"   '%s',\n" +
-		"   '%s',\n" +
-		"   %f,\n" +
-		"   %f,\n" +
-		"   (select seller_id from sellers where seller_name = 'google')\n" +
-		");\n"
-
-	for i := range zones {
-		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
-		}
-	}
-
-	file.Close()
-
 	// generate google/generated.tf
 
 	file, err = os.Create("terraform/sellers/google/generated.tf")
@@ -302,7 +269,7 @@ func main() {
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
-	format_string = "    \"%s\" = {\n" +
+	format_string := "    \"%s\" = {\n" +
 		"      zone        = \"%s\"\n" +
 		"      region      = \"%s\"\n" +
 		"      native_name = \"%s\"\n" +

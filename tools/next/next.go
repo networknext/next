@@ -769,6 +769,33 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
    }
 
+   // configure amazon
+
+   fmt.Printf("\n--------------------------------------------\nConfiguring amazon\n--------------------------------------------\n")
+
+   if !bash("run config-amazon") {
+		fmt.Printf("\nerror: failed to configure amazon seller :(\n\n")
+		os.Exit(1)
+   }
+
+   // configure akamai
+
+   fmt.Printf("--------------------------------------------\nConfiguring akamai\n--------------------------------------------\n")
+
+   if !bash("run config-akamai") {
+		fmt.Printf("\nerror: failed to configure akamai seller :(\n\n")
+		os.Exit(1)
+   }
+
+   // configure google
+
+   fmt.Printf("--------------------------------------------\nConfiguring google\n--------------------------------------------\n")
+
+   if !bash("run config-google") {
+		fmt.Printf("\nerror: failed to configure google seller :(\n\n")
+		os.Exit(1)
+   }
+
 	fmt.Printf("\n")
 }
 

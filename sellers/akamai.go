@@ -163,39 +163,6 @@ func main() {
 
 	file.Close()
 
-	// generate akamai.sql
-
-	fmt.Printf("\nGenerating akamai.sql\n")
-
-	file, err = os.Create("schemas/sql/sellers/akamai.sql")
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Fprintf(file, "\n-- akamai datacenters\n")
-
-	format_string := "\nINSERT INTO datacenters(\n" +
-		"	datacenter_name,\n" +
-		"	native_name,\n" +
-		"	latitude,\n" +
-		"	longitude,\n" +
-		"	seller_id)\n" +
-		"VALUES(\n" +
-		"   '%s',\n" +
-		"   '%s',\n" +
-		"   %f,\n" +
-		"   %f,\n" +
-		"   (select seller_id from sellers where seller_name = 'akamai')\n" +
-		");\n"
-
-	for i := range zones {
-		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].Zone, zones[i].Latitude, zones[i].Longitude)
-		}
-	}
-
-	file.Close()
-
 	// generate akamai/generated.tf
 
 	file, err = os.Create("terraform/sellers/akamai/generated.tf")
@@ -207,7 +174,7 @@ func main() {
 
 	fmt.Fprintf(file, "\nlocals {\n\n  datacenter_map = {\n\n")
 
-	format_string = "    \"%s\" = {\n" +
+	format_string := "    \"%s\" = {\n" +
 		"      zone        = \"%s\"\n" +
 		"      native_name = \"%s\"\n" +
 		"      latitude    = %.2f\n" +
