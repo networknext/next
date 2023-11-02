@@ -17,20 +17,20 @@ provider "vultr" {
 
 # ----------------------------------------------------------------------------------------
 
+variable "env" { type = string }
 variable "relays" { type = map(map(string)) }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
 
 # --------------------------------------------------------------------------
 
-/*
 resource "vultr_ssh_key" "relay" {
-  name    = "relay"
+  name    = "${env}-relay"
   ssh_key = replace(file(var.ssh_public_key_file), "\n", "")
 }
 
 resource "vultr_startup_script" "setup_relay" {
-  name   = "setup-relay"
+  name   = "${env}-setup-relay"
   script = base64encode(replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address))
 }
 
@@ -76,7 +76,7 @@ resource "vultr_firewall_rule" "relay_udp_40000" {
 
 resource "vultr_instance" "relay" {
   for_each          = var.relays
-  label             = each.key
+  label             = "${var.env}-${each.key}"
   region            = local.datacenter_map[each.value.datacenter_name].zone
   plan              = data.vultr_plan.relay[each.key].id
   os_id             = data.vultr_os.relay[each.key].id
@@ -88,7 +88,7 @@ resource "vultr_instance" "relay" {
 
 resource "vultr_reserved_ip" "relay" {
   for_each    = var.relays
-  label       = each.key
+  label       = "${var.env}-${each.key}"
   region      = local.datacenter_map[each.value.datacenter_name].zone
   ip_type     = "v4"
   instance_id = vultr_instance.relay[each.key].id
@@ -140,4 +140,3 @@ output "datacenters" {
 }
 
 # ----------------------------------------------------------------------------------------
-*/

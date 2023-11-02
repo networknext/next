@@ -14,15 +14,7 @@ import (
 
 // ===========================================================================================================================================
 
-// PRODUCTION RELAYS
-
-var prodRelayMap = map[string][]string{
-	// todo
-}
-
-// ===========================================================================================================================================
-
-// DEVELOPMENT RELAYS
+// DEV RELAYS
 
 var devRelayMap = map[string][]string{
 
@@ -32,6 +24,14 @@ var devRelayMap = map[string][]string{
 	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.oregon.1":   {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+}
+
+// ===========================================================================================================================================
+
+// PROD RELAYS
+
+var prodRelayMap = map[string][]string{
+	// todo
 }
 
 // ===========================================================================================================================================
@@ -355,39 +355,6 @@ func main() {
 
 	file.Close()
 
-	// generate amazon.sql
-
-	fmt.Printf("\nGenerating amazon.sql\n")
-
-	file, err = os.Create("schemas/sql/sellers/amazon.sql")
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Fprintf(file, "\n-- amazon datacenters\n")
-
-	format_string := "\nINSERT INTO datacenters(\n" +
-		"	datacenter_name,\n" +
-		"	native_name,\n" +
-		"	latitude,\n" +
-		"	longitude,\n" +
-		"	seller_id)\n" +
-		"VALUES(\n" +
-		"   '%s',\n" +
-		"   '%s',\n" +
-		"   %f,\n" +
-		"   %f,\n" +
-		"   (select seller_id from sellers where seller_name = 'amazon')\n" +
-		");\n"
-
-	for i := range zones {
-		if zones[i].DatacenterName != "" {
-			fmt.Fprintf(file, format_string, zones[i].DatacenterName, zones[i].AZID, zones[i].Latitude, zones[i].Longitude)
-		}
-	}
-
-	file.Close()
-
 	// generate dev amazon/generated.tf
 	{
 		fmt.Printf("\nGenerating dev amazon/generated.tf\n")
@@ -409,7 +376,7 @@ func main() {
 	`
 		fmt.Fprintf(file, header)
 
-		format_string = "\nprovider \"aws\" { \n" +
+		format_string := "\nprovider \"aws\" { \n" +
 			"  shared_config_files      = var.config\n" +
 			"  shared_credentials_files = var.credentials\n" +
 			"  profile                  = var.profile\n" +
@@ -556,7 +523,7 @@ func main() {
 	`
 		fmt.Fprintf(file, header)
 
-		format_string = "\nprovider \"aws\" { \n" +
+		format_string := "\nprovider \"aws\" { \n" +
 			"  shared_config_files      = var.config\n" +
 			"  shared_credentials_files = var.credentials\n" +
 			"  profile                  = var.profile\n" +

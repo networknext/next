@@ -10,19 +10,27 @@ DONE
 
 	Verify that we can actually see https://portal-dev.virtualgo.net up.
 
+	Modify amazon relay setup code so it prefixes resources with env, eg. "dev-", or "prod-"
+
+	Modify akamai/linode relay setup code so it prefixes resources with env
+
+	Setup relays in dev
+
+	Modify vultr setup script so it prefixes with env
+
+	Relays are initially showing as offline, even though I have set them up and started them. Why?
+
+	I'm pretty sure that the comms from relay gateway -> relay backend is broken
+
+	Perhaps the relay gateway doesn't have permissions to get the MIG data?
+
+	Confirmed. Added the permissions across dev, staging and prod.
+
 TODO	
 
-	Staging is up, but I see no sessions or relays in the portal, and I see no next sessions.
+	Eat your own dogfood and setup a maximally provisioned set of cloud relays in USA in dev
 
-	-------------
-
-	-------------
-
-	Verify that I can setup relays in dev
-
-	-------------
-
-	Verify that I see green in dev
+	Setup a test customer with the SDK and verify that I can actually see some acceleration
 
 	-------------
 

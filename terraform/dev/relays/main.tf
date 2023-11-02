@@ -204,6 +204,7 @@ locals {
 }
 
 module "akamai_relays" {
+  env                 = "dev"
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address

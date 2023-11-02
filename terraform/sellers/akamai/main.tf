@@ -15,6 +15,7 @@ provider "linode" {
 
 # ----------------------------------------------------------------------------------------
 
+variable "env" { type = string }
 variable "relays" { type = map(map(string)) }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
@@ -23,7 +24,7 @@ variable "vpn_address" { type = string }
 
 resource "linode_firewall" "relays" {
 
-  label      = "relays"
+  label      = "${var.env}-relays"
 
   inbound {
     label    = "allow-ssh"
@@ -49,7 +50,7 @@ resource "linode_firewall" "relays" {
 }
 
 resource "linode_stackscript" "setup_relay" {
-  label = "setup-relay"
+  label = "${var.env}-setup-relay"
   description = "Set up relay"
   script = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
   images = ["linode/ubuntu22.04"]
@@ -58,7 +59,7 @@ resource "linode_stackscript" "setup_relay" {
 resource "linode_instance" "relay" {
   for_each        = var.relays
   image           = each.value.image
-  label           = each.key
+  label           = "${var.env}-${each.key}"
   region          = local.datacenter_map[each.value.datacenter_name].zone
   type            = each.value.type
   tags            = ["relay"]
