@@ -145,6 +145,10 @@ resource "google_compute_region_instance_group_manager" "service" {
     name = "udp"
     port = 45000
   }
+  named_port {
+    name = "http"
+    port = 80
+  }
   version {
     instance_template = google_compute_instance_template.service.id
     name              = "primary"
