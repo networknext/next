@@ -30,11 +30,13 @@ import (
 	"time"
 	"crypto/ed25519"
 	"crypto/rand"
+	"golang.org/x/crypto/nacl/box"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
 	db "github.com/networknext/next/modules/database"
 
 	"github.com/modood/table"
@@ -490,9 +492,22 @@ func keygen(env Environment, regexes []string) {
 
 	buyerPublicKey, buyerPrivateKey := generateBuyerKeypair()
 
+	relayBackendPublicKey, relayBackendPrivateKey, err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		fmt.Printf("\nerror: failed to generate relay backend keypair\n\n")
+		os.Exit(1)
+	}
+
+	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
 	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
 	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
 
+	fmt.Printf("Relay backend public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:]))
+	fmt.Printf("Relay backend private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:]))
+
+	fmt.Printf("Server backend public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
+	fmt.Printf("Server backend private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
 }
 
 // ------------------------------------------------------------------------------

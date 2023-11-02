@@ -1805,49 +1805,7 @@ locals {
 
 }
 
-module "relay_amazon_ohio_2" {
-	  source            = "./relay"
-	  name              = "amazon.ohio.2"
-	  zone              = local.datacenter_map["amazon.ohio.2"].zone
-	  region            = local.datacenter_map["amazon.ohio.2"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_east_2.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-east-2
-	  }
-	}
-
-	module "relay_amazon_oregon_1" {
-	  source            = "./relay"
-	  name              = "amazon.oregon.1"
-	  zone              = local.datacenter_map["amazon.oregon.1"].zone
-	  region            = local.datacenter_map["amazon.oregon.1"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_west_2.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-west-2
-	  }
-	}
-
-	module "relay_amazon_sanjose_1" {
-	  source            = "./relay"
-	  name              = "amazon.sanjose.1"
-	  zone              = local.datacenter_map["amazon.sanjose.1"].zone
-	  region            = local.datacenter_map["amazon.sanjose.1"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_west_1.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-west-1
-	  }
-	}
-
-	module "relay_amazon_virginia_1" {
+module "relay_amazon_virginia_1" {
 	  source            = "./relay"
 	  name              = "amazon.virginia.1"
 	  zone              = local.datacenter_map["amazon.virginia.1"].zone
@@ -1889,26 +1847,53 @@ module "relay_amazon_ohio_2" {
 	  }
 	}
 
+	module "relay_amazon_ohio_2" {
+	  source            = "./relay"
+	  name              = "amazon.ohio.2"
+	  zone              = local.datacenter_map["amazon.ohio.2"].zone
+	  region            = local.datacenter_map["amazon.ohio.2"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_2.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-2
+	  }
+	}
+
+	module "relay_amazon_oregon_1" {
+	  source            = "./relay"
+	  name              = "amazon.oregon.1"
+	  zone              = local.datacenter_map["amazon.oregon.1"].zone
+	  region            = local.datacenter_map["amazon.oregon.1"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_west_2.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-west-2
+	  }
+	}
+
+	module "relay_amazon_sanjose_1" {
+	  source            = "./relay"
+	  name              = "amazon.sanjose.1"
+	  zone              = local.datacenter_map["amazon.sanjose.1"].zone
+	  region            = local.datacenter_map["amazon.sanjose.1"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_west_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-west-1
+	  }
+	}
+
 	output "relays" {
 
 	  description = "Data for each amazon relay setup by Terraform"
 
 	  value = {
-
-	    "amazon.sanjose.1" = {
-	      "relay_name"       = "amazon.sanjose.1"
-	      "datacenter_name"  = "amazon.sanjose.1"
-	      "seller_name"      = "Amazon"
-	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_sanjose_1.public_address
-	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_sanjose_1.internal_address
-	      "internal_port"    = 40000
-	      "internal_group"   = "us-west-1"
-	      "ssh_ip"           = module.relay_amazon_sanjose_1.public_address
-	      "ssh_port"         = 22
-	      "ssh_user"         = "ubuntu"
-	    }
 
 	    "amazon.virginia.1" = {
 	      "relay_name"       = "amazon.virginia.1"
@@ -1981,6 +1966,21 @@ module "relay_amazon_ohio_2" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "us-west-2"
 	      "ssh_ip"           = module.relay_amazon_oregon_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.sanjose.1" = {
+	      "relay_name"       = "amazon.sanjose.1"
+	      "datacenter_name"  = "amazon.sanjose.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_sanjose_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_sanjose_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "us-west-1"
+	      "ssh_ip"           = module.relay_amazon_sanjose_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }
