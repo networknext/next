@@ -38,10 +38,10 @@ resource "aws_instance" "relay" {
   availability_zone      = var.zone
   instance_type          = var.type
   ami                    = data.aws_ami.ubuntu.id
-  key_name               = "region-ssh-key"
+  key_name               = "prod-region-ssh-key"
   vpc_security_group_ids = [var.security_group_id]
   tags = {
-    Name = var.name
+    Name = "prod-${var.name}"
   }
   lifecycle {
     create_before_destroy = true

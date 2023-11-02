@@ -19,7 +19,6 @@
     This generates the following files:
 
       config/amazon.txt
-      schemas/sql/sellers/amazon.sql,
       terraform/dev/relays/amazon/generated.tf
 
     IMPORTANT: You need to enable some regions and zones manually in your AWS account.

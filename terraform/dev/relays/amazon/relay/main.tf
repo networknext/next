@@ -41,7 +41,7 @@ resource "aws_instance" "relay" {
   key_name               = "region-ssh-key"
   vpc_security_group_ids = [var.security_group_id]
   tags = {
-    Name = var.name
+    Name = "dev-${var.name}"
   }
   lifecycle {
     create_before_destroy = true
