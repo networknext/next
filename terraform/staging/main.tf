@@ -30,13 +30,12 @@ variable "api_private_key" { type = string }
 variable "buyer_public_key" { type = string }
 variable "buyer_private_key" { type = string }
 
-variable "maxmind_license_key" { type = string }
-
 variable "ip2location_bucket_name" { type = string }
 
 locals {
   google_project         = file("../projects/staging-project.txt")
   google_service_account = file("../projects/staging-runtime-service-account.txt")
+  maxmind_license_key    = file("~/secrets/maxmind.txt")
 }
 
 # ----------------------------------------------------------------------------------------
@@ -873,7 +872,7 @@ module "ip2location" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a ip2location.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    MAXMIND_LICENSE_KEY=${var.maxmind_license_key}
+    MAXMIND_LICENSE_KEY=${local.maxmind_license_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
     sudo systemctl start app.service
