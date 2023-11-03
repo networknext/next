@@ -534,59 +534,97 @@ func keygen(env Environment, regexes []string) {
 		
 	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
 
-	buyerPublicKey, buyerPrivateKey := generateBuyerKeypair()
+   envs := []string{"local", "dev", "staging", "prod"}
 
-	relayBackendPublicKey, relayBackendPrivateKey, err := box.GenerateKey(rand.Reader)
-	if err != nil {
-		fmt.Printf("\nerror: failed to generate relay backend keypair\n\n")
-		os.Exit(1)
-	}
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	apiPrivateKey := common.RandomStringFixedLength(64)
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{})
-
-	apiKey, err := token.SignedString([]byte(apiPrivateKey))
-	if err != nil {
-		fmt.Printf("\nerror: could not generate api key: %v\n\n", err)
-		os.Exit(1)
-	}
-
-	pingKey := [32]byte{}
-	common.RandomBytes(pingKey[:])
-
-	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
-	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
-
-	fmt.Printf("Relay backend public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:]))
-	fmt.Printf("Relay backend private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:]))
-
-	fmt.Printf("Server backend public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
-	fmt.Printf("Server backend private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
-
-	fmt.Printf("API private key:\n\n    %s\n\n", apiPrivateKey)
-	fmt.Printf("API key:\n\n    %s\n\n", apiKey)
-
-   // replace keys in files
-
-	fmt.Printf("------------------------------------------\n              updating keys\n------------------------------------------\n\n")
-
-   envs := []string{"envs/local.env", "envs/dev.env", "envs/staging.env", "envs/prod.env"}
+	keypairs := make(map[string]map[string]string)
 
    for i := range envs {
-	   fmt.Printf("%s\n", envs[i])
+
+   	fmt.Printf("%s:\n\n", envs[i])
+
+		testBuyerPublicKey, testBuyerPrivateKey := generateBuyerKeypair()
+
+		relayBackendPublicKey, relayBackendPrivateKey, err := box.GenerateKey(rand.Reader)
+		if err != nil {
+			fmt.Printf("\nerror: failed to generate relay backend keypair\n\n")
+			os.Exit(1)
+		}
+
+		serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
+
+		apiPrivateKey := common.RandomStringFixedLength(64)
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{})
+
+		apiKey, err := token.SignedString([]byte(apiPrivateKey))
+		if err != nil {
+			fmt.Printf("\nerror: could not generate api key: %v\n\n", err)
+			os.Exit(1)
+		}
+
+		pingKey := [32]byte{}
+		common.RandomBytes(pingKey[:])
+
+		fmt.Printf("	Test buyer public key          = %s\n", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
+		fmt.Printf("	Test buyer private key         = %s\n", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
+		fmt.Printf("	Relay backend public key       = %s\n", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:]))
+		fmt.Printf("	Relay backend private key      = %s\n", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:]))
+		fmt.Printf("	Server backend public key      = %s\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
+		fmt.Printf("	Server backend private key     = %s\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
+		fmt.Printf("	API private key                = %s\n", apiPrivateKey)
+		fmt.Printf("	API key                        = %s\n\n", apiKey)
+
+   	k := make(map[string]string)
+
+   	k["test_buyer_public_key"] = base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])
+   	k["test_buyer_private_key"] = base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])
+
+   	keypairs[envs[i]] = k
+	}
+
+	// mark all envs except local as secure. this puts their private keys under ~/secrets instead of in the .env file
+
+	for k,v := range keypairs {
+		if k != "local" {
+			v["secure"] = "true"
+		}
+	}
+
+	// write secrets
+
+	fmt.Printf("------------------------------------------\n             writing secrets\n------------------------------------------\n\n")
+
+	for k,v := range keypairs {
+		if v["secure"] != "true" {
+			continue
+		}
+		// todo: write to ~/secrets
+		_ = k
+	}
+
+   // update keys in env files
+
+	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
+
+/*
+   for i := range envs {
+   	envFile := fmt.Sprintf("envs/%s.env", envs[i])
+	   fmt.Printf("%s\n", envFile)
 	   {
-		   replace(envs[i], "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", apiPrivateKey))
-		   replace(envs[i], "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", apiKey))
-		   replace(envs[i], "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])))
-		   replace(envs[i], "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])))
-		   replace(envs[i], "^\\w*SERVER_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])))
-		   replace(envs[i], "^\\w*SERVER_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])))
-		   replace(envs[i], "^\\w*PING_KEY\\w*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", base64.StdEncoding.EncodeToString(pingKey[:])))
+		   replace(envFile, "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", apiPrivateKey))
+		   replace(envFile, "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", apiKey))
+		   replace(envFile, "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])))
+		   replace(envFile, "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])))
+		   replace(envFile, "^\\w*SERVER_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])))
+		   replace(envFile, "^\\w*SERVER_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])))
+		   replace(envFile, "^\\w*PING_KEY\\w*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", base64.StdEncoding.EncodeToString(pingKey[:])))
 		}
    }
+   */
+
+   // update keys in terraform files
+
+	fmt.Printf("------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
 /*
 	local.env:
