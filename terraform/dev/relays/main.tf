@@ -23,7 +23,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "auspicious_network_next_terraform"
+    bucket  = "test_network_next_terraform"
     prefix  = "dev_relays"
   }
 }

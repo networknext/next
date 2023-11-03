@@ -825,7 +825,7 @@ func config(env Environment, regexes []string) {
 
    envs := []string{"local", "dev", "staging", "prod"}
 
-	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
+	fmt.Printf("\n------------------------------------------\n           updating env files\n------------------------------------------\n\n")
 
    for i := range envs {
    	envFile := fmt.Sprintf("envs/%s.env", envs[i])
@@ -842,7 +842,6 @@ func config(env Environment, regexes []string) {
 			   replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_URL=\"https://relay.%s\"", config.CloudflareDomain))
 			   replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry.%s\"", config.CloudflareDomain))
 			}
-
 		   replace(envFile, "^\\s*VPN_ADDRESS\\s*=.*$", fmt.Sprintf("VPN_ADDRESS=\"%s\"", config.VPNAddress))
 		   replace(envFile, "^\\s*SSH_KEY_FILE\\s*=.*$", fmt.Sprintf("SSH_KEY_FILE=\"~/.ssh/%s\"", config.SSHKey))
 		   replace(envFile, "^\\s*RELAY_ARTIFACTS_BUCKET_NAME\\s*=.*$", fmt.Sprintf("RELAY_ARTIFACTS_BUCKET_NAME=\"%s\"", fmt.Sprintf("%s_network_next_relay_artifacts", config.CompanyName)))
@@ -855,10 +854,24 @@ func config(env Environment, regexes []string) {
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
    for i := range envs {
+
    	filenames := []string {
+   		fmt.Sprintf("terraform/%s/backend/main.tf", envs[i]),
+   		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
+   	}
+
+   	for i := range filenames {
+   		if fileExists(filenames[i]) {
+	   		fmt.Printf("%s\n", filenames[i])
+			   replace(filenames[i], "^\\s*bucket\\s*=\\s*\"[a-zA-Z_]+\"\\s*$", fmt.Sprintf("    bucket  = \"%s_network_next_terraform\"", config.CompanyName))
+   		}
+   	}
+
+   	filenames = []string {
    		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", envs[i]),
    		fmt.Sprintf("terraform/%s/relays/terraform.tfvars", envs[i]),
    	}
+
    	for i := range filenames {
    		if fileExists(filenames[i]) {
 	   		fmt.Printf("%s\n", filenames[i])
@@ -879,6 +892,25 @@ func config(env Environment, regexes []string) {
    }
 
    // todo: projects terraform special case
+
+   // update semaphore ci files
+
+	fmt.Printf("\n------------------------------------------\n        updating semaphore files\n------------------------------------------\n\n")
+
+   fmt.Printf(".semaphore/upload-artifacts.yml\n")
+   {
+   	replace(".semaphore/upload-artifacts.yml", "^\\s*- export ARTIFACT_BUCKET=gs://[a-zA-Z_]+?_network_next_backend_artifacts\\s*$", fmt.Sprintf(" - export ARTIFACT_BUCKET=gs://%s_network_next_backend_artifacts", config.CompanyName))
+   }
+
+	fmt.Printf(".semaphore/upload-relay.yml\n")
+	{
+		replace(".semaphore/upload-relay.yml", "^\\s*-\\s*export RELAY_BUCKET=gs://[a-zA-Z_]+?_network_next_relay_artifacts\\s*$", fmt.Sprintf("            - export RELAY_BUCKET=gs://%s_network_next_relay_artifacts", config.CompanyName))
+	}
+
+	fmt.Printf(".semaphore/upload-config.yml\n")
+	{
+   	replace(".semaphore/upload-config.yml", "^\\s*- export SDK_CONFIG_BUCKET=gs://[a-zA-Z_]+?_network_next_sdk_config\\s*$", fmt.Sprintf("            - export SDK_CONFIG_BUCKET=gs://%s_network_next_sdk_config", config.CompanyName))
+	}
 
    // configure amazon
 
