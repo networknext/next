@@ -10,9 +10,9 @@ terraform {
 }
 
 locals {
-  org_id = "434699063105"
+  org_id = "ANUS"
   billing_account = "012279-A33489-722F96"
-  company_name = "auspicious"
+  company_name = "test"
 }
 
 # ----------------------------------------------------------------------------------------

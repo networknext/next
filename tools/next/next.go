@@ -891,7 +891,12 @@ func config(env Environment, regexes []string) {
    	}
    }
 
-   // todo: projects terraform special case
+	fmt.Printf("terraform/projects/main.tf\n")
+	{
+   	replace("terraform/projects/main.tf", "^\\s*org_id = \"\\d+\"\\s*$", fmt.Sprintf("  org_id = \"%s\"", config.GoogleOrgId))
+   	replace("terraform/projects/main.tf", "^\\s*billing_account = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  billing_account = \"%s\"", config.GoogleBillingAccount))
+   	replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
+	}
 
    // update semaphore ci files
 
@@ -939,11 +944,69 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
    }
 
-   // generate bin files
+   // generate staging.sql
 
-   fmt.Printf("--------------------------------------------\n\ngenerating bin files:\n\n")
+   fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("           Generating staging.sql           \n")
+	fmt.Printf("--------------------------------------------\n")
 
-   // todo
+   ok := bash("run generate-staging-sql")
+   if !ok {
+   	fmt.Printf("\nerror: could not generate staging.sql\n\n")
+   	os.Exit(1)
+   }
+
+   // generate empty.bin
+
+   fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("           Generating empty.bin             \n")
+	fmt.Printf("--------------------------------------------\n")
+   {
+	   ok = bash("run sql-destroy && run sql-create && run extract-database && mv database.bin envs/empty.bin")
+	   if !ok {
+	   	fmt.Printf("\nerror: could not generate empty.bin\n\n")
+	   	os.Exit(1)
+	   }
+   }
+
+   // generate local.bin
+
+   fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("           Generating local.bin             \n")
+	fmt.Printf("--------------------------------------------\n")
+   {
+	   ok = bash("run sql-destroy && run sql-create && run sql-local && run extract-database && mv database.bin envs/local.bin")
+	   if !ok {
+	   	fmt.Printf("\nerror: could not generate local.bin\n\n")
+	   	os.Exit(1)
+	   }
+   }
+
+   // generate docker.bin
+
+   fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("           Generating docker.bin            \n")
+	fmt.Printf("--------------------------------------------\n")
+   {
+	   ok = bash("run sql-destroy && run sql-create && run sql-docker && run extract-database && mv database.bin envs/docker.bin")
+	   if !ok {
+	   	fmt.Printf("\nerror: could not generate docker.bin\n\n")
+	   	os.Exit(1)
+	   }
+   }
+
+   // generate staging.bin
+
+   fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("           Generating staging.bin           \n")
+	fmt.Printf("--------------------------------------------\n")
+   {
+	   ok = bash("run sql-destroy && run sql-create && run sql-staging && run extract-database && mv database.bin envs/staging.bin")
+	   if !ok {
+	   	fmt.Printf("\nerror: could not generate staging.bin\n\n")
+	   	os.Exit(1)
+	   }
+   }
 
    fmt.Printf("--------------------------------------------\n\n")
 
