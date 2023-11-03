@@ -31,8 +31,8 @@ variable "load_test_buyer_private_key" { type = string }
 variable "ip2location_bucket_name" { type = string }
 
 locals {
-  google_project             = file("../projects/staging-project.txt")
-  google_service_account     = file("../projects/staging-runtime-service-account.txt")
+  google_project             = file("../../projects/staging-project.txt")
+  google_service_account     = file("../../projects/staging-runtime-service-account.txt")
   maxmind_license_key        = file("~/secrets/maxmind.txt")
   relay_backend_private_key  = file("~/secrets/staging-relay-backend-private-key.txt")
   server_backend_private_key = file("~/secrets/staging-server-backend-private-key.txt")
@@ -265,7 +265,7 @@ resource "cloudflare_record" "portal_domain" {
 
 module "redis_time_series" {
 
-  source = "../modules/redis_stack"
+  source = "../../modules/redis_stack"
 
   service_name = "redis-time-series"
 
@@ -358,7 +358,7 @@ resource "google_pubsub_schema" "pubsub_schema" {
   count      = length(local.pubsub_channels)
   name       = local.pubsub_channels[count.index]
   type       = "AVRO"
-  definition = file("../../schemas/pubsub/${local.pubsub_channels[count.index]}.json")
+  definition = file("../../../schemas/pubsub/${local.pubsub_channels[count.index]}.json")
 }
 
 resource "google_pubsub_topic" "pubsub_topic" {
@@ -393,14 +393,14 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
 locals {
   
   bigquery_tables = {
-    "session_update"      = file("../../schemas/bigquery/session_update.json")
-    "session_summary"     = file("../../schemas/bigquery/session_summary.json")
-    "server_init"         = file("../../schemas/bigquery/server_init.json")
-    "server_update"       = file("../../schemas/bigquery/server_update.json")
-    "relay_update"        = file("../../schemas/bigquery/relay_update.json")
-    "route_matrix_update" = file("../../schemas/bigquery/route_matrix_update.json")
-    "relay_to_relay_ping" = file("../../schemas/bigquery/relay_to_relay_ping.json")
-    "near_relay_ping"     = file("../../schemas/bigquery/near_relay_ping.json")
+    "session_update"      = file("../../../schemas/bigquery/session_update.json")
+    "session_summary"     = file("../../../schemas/bigquery/session_summary.json")
+    "server_init"         = file("../../../schemas/bigquery/server_init.json")
+    "server_update"       = file("../../../schemas/bigquery/server_update.json")
+    "relay_update"        = file("../../../schemas/bigquery/relay_update.json")
+    "route_matrix_update" = file("../../../schemas/bigquery/route_matrix_update.json")
+    "relay_to_relay_ping" = file("../../../schemas/bigquery/relay_to_relay_ping.json")
+    "near_relay_ping"     = file("../../../schemas/bigquery/near_relay_ping.json")
   }
 
   bigquery_table_clustering = {
@@ -503,7 +503,7 @@ output "postgres_address" {
 
 module "magic_backend" {
 
-  source = "../modules/internal_http_service_autoscale"
+  source = "../../modules/internal_http_service_autoscale"
 
   service_name = "magic-backend"
 
@@ -544,7 +544,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "../modules/external_http_service_autoscale"
+  source = "../../modules/external_http_service_autoscale"
 
   service_name = "relay-gateway"
 
@@ -599,7 +599,7 @@ output "relay_gateway_address" {
 
 module "relay_backend" {
 
-  source = "../modules/internal_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "relay-backend"
 
@@ -658,7 +658,7 @@ output "relay_backend_address" {
 
 module "api" {
 
-  source = "../modules/external_http_service_autoscale"
+  source = "../../modules/external_http_service_autoscale"
 
   service_name = "api"
 
@@ -717,7 +717,7 @@ output "api_address" {
 
 module "session_cruncher" {
 
-  source = "../modules/internal_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "session-cruncher"
 
@@ -757,7 +757,7 @@ module "session_cruncher" {
 
 module "server_cruncher" {
 
-  source = "../modules/internal_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "server-cruncher"
 
@@ -791,7 +791,7 @@ module "server_cruncher" {
 
 module "server_backend" {
 
-  source = "../modules/external_udp_service_autoscale"
+  source = "../../modules/external_udp_service_autoscale"
 
   service_name = "server-backend"
 
@@ -863,7 +863,7 @@ output "server_backend_address" {
 
 module "ip2location" {
 
-  source = "../modules/external_mig_without_health_check"
+  source = "../../modules/external_mig_without_health_check"
 
   service_name = "ip2location"
 
@@ -897,7 +897,7 @@ module "ip2location" {
 
 module "load_test_relays" {
 
-  source = "../modules/external_mig_without_health_check"
+  source = "../../modules/external_mig_without_health_check"
 
   service_name = "load-test-relays"
 
@@ -938,7 +938,7 @@ module "load_test_relays" {
 
 module "load_test_servers" {
 
-  source = "../modules/external_mig_without_health_check"
+  source = "../../modules/external_mig_without_health_check"
 
   service_name = "load-test-servers"
 
@@ -979,7 +979,7 @@ module "load_test_servers" {
 
 module "load_test_sessions" {
 
-  source = "../modules/external_mig_without_health_check"
+  source = "../../modules/external_mig_without_health_check"
 
   service_name = "load-test-sessions"
 
@@ -1020,7 +1020,7 @@ module "load_test_sessions" {
 
 module "portal" {
 
-  source = "../modules/nginx"
+  source = "../../modules/nginx"
 
   service_name = "portal"
 

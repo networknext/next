@@ -659,11 +659,7 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
-/*
-	local.env:
-
-		PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
-*/
+	// todo ...
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
