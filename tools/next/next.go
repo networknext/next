@@ -508,6 +508,8 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("Server backend public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
 	fmt.Printf("Server backend private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
+
+   // todo: replace keys in files
 }
 
 // ------------------------------------------------------------------------------
@@ -640,7 +642,7 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
    }
 
-   // todo: replace in files
+   // todo: replace configuration in files
 
    // configure amazon
 
