@@ -533,11 +533,12 @@ func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 func writeSecret(k string, v map[string]string, name string) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Printf("\nerror: could no tget user home dir: %v\n\n", err)
+		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
 		os.Exit(1)
 	}
-	filename := fmt.Sprintf("%s/secrets/%s_%s.txt", homeDir, k, name)
-	fmt.Printf("   ~/secrets/%s_%s.txt\n", k, name)
+	name = strings.Replace(name, "_", "-", -1)
+	filename := fmt.Sprintf("%s/secrets/%s-%s.txt", homeDir, k, name)
+	fmt.Printf("   ~/secrets/%s-%s.txt\n", k, name)
 	err = os.WriteFile(filename, []byte(v[name]), 0666)
 	if err != nil {
 		fmt.Printf("\nerror: failed to write secret: %v\n\n", err)
@@ -637,25 +638,26 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
 
-/*
-   for i := range envs {
-   	envFile := fmt.Sprintf("envs/%s.env", envs[i])
+   for k,v := range keypairs {
+   	envFile := fmt.Sprintf("envs/%s.env", k)
 	   fmt.Printf("%s\n", envFile)
 	   {
-		   replace(envFile, "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", apiPrivateKey))
-		   replace(envFile, "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", apiKey))
-		   replace(envFile, "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])))
-		   replace(envFile, "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])))
-		   replace(envFile, "^\\w*SERVER_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])))
-		   replace(envFile, "^\\w*SERVER_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])))
-		   replace(envFile, "^\\w*PING_KEY\\w*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", base64.StdEncoding.EncodeToString(pingKey[:])))
+		   replace(envFile, "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", v["api_key"]))
+		   replace(envFile, "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
+		   replace(envFile, "^\\w*SERVER_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+
+		   if v["secure"] != "true" {
+			   replace(envFile, "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
+			   replace(envFile, "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
+			   replace(envFile, "^\\w*SERVER_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
+			   replace(envFile, "^\\w*PING_KEY\\w*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", v["ping_key"]))
+		   }
 		}
    }
-   */
 
    // update keys in terraform files
 
-	fmt.Printf("------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
+	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
 /*
 	local.env:
@@ -797,8 +799,6 @@ func config(env Environment, regexes []string) {
 		fmt.Printf("\nerror: missing maxmind license key at ~/secrets/maxmind.txt :(\n\n")
 		os.Exit(1)
    }
-
-   // todo: replace configuration in files
 
    // configure amazon
 
