@@ -917,6 +917,22 @@ func config(env Environment, regexes []string) {
    	replace(".semaphore/upload-config.yml", "^\\s*- export SDK_CONFIG_BUCKET=gs://[a-zA-Z_]+?_network_next_sdk_config\\s*$", fmt.Sprintf("            - export SDK_CONFIG_BUCKET=gs://%s_network_next_sdk_config", config.CompanyName))
 	}
 
+   // update config in portal .env files
+
+	fmt.Printf("\n------------------------------------------\n      updating portal .env files\n------------------------------------------\n\n")
+
+	for i := range envs {
+		filename := fmt.Sprintf("portal/.env.%s", envs[i])
+		if fileExists(filename) {
+			fmt.Printf("%s\n", filename)
+			if envs[i] != "prod" {
+		   	replace(filename, "^VUE_APP_API_URL=.*$", fmt.Sprintf("VUE_APP_API_URL=https://api-%s.%s", envs[i], config.CloudflareDomain))
+			} else {
+		   	replace(filename, "^VUE_APP_API_URL=.*$", fmt.Sprintf("VUE_APP_API_URL=https://api.%s", config.CloudflareDomain))
+			}
+		}
+	}
+
    // configure amazon
 
    fmt.Printf("\n--------------------------------------------\n                   amazon\n--------------------------------------------\n")
@@ -948,7 +964,7 @@ func config(env Environment, regexes []string) {
 
    fmt.Printf("--------------------------------------------\n")
 	fmt.Printf("           Generating staging.sql           \n")
-	fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("--------------------------------------------\n\n")
 
    ok := bash("run generate-staging-sql")
    if !ok {
@@ -960,7 +976,7 @@ func config(env Environment, regexes []string) {
 
    fmt.Printf("--------------------------------------------\n")
 	fmt.Printf("           Generating empty.bin             \n")
-	fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("--------------------------------------------\n\n")
    {
 	   ok = bash("run sql-destroy && run sql-create && run extract-database && mv database.bin envs/empty.bin")
 	   if !ok {
@@ -973,7 +989,7 @@ func config(env Environment, regexes []string) {
 
    fmt.Printf("--------------------------------------------\n")
 	fmt.Printf("           Generating local.bin             \n")
-	fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("--------------------------------------------\n\n")
    {
 	   ok = bash("run sql-destroy && run sql-create && run sql-local && run extract-database && mv database.bin envs/local.bin")
 	   if !ok {
@@ -986,7 +1002,7 @@ func config(env Environment, regexes []string) {
 
    fmt.Printf("--------------------------------------------\n")
 	fmt.Printf("           Generating docker.bin            \n")
-	fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("--------------------------------------------\n\n")
    {
 	   ok = bash("run sql-destroy && run sql-create && run sql-docker && run extract-database && mv database.bin envs/docker.bin")
 	   if !ok {
@@ -999,7 +1015,7 @@ func config(env Environment, regexes []string) {
 
    fmt.Printf("--------------------------------------------\n")
 	fmt.Printf("           Generating staging.bin           \n")
-	fmt.Printf("--------------------------------------------\n")
+	fmt.Printf("--------------------------------------------\n\n")
    {
 	   ok = bash("run sql-destroy && run sql-create && run sql-staging && run extract-database && mv database.bin envs/staging.bin")
 	   if !ok {
