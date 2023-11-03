@@ -344,6 +344,7 @@ export default {
         vm.num_pages = result[2]
         vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
+        vm.updateGraphs()
       }
     })
   },
@@ -442,9 +443,7 @@ export default {
     },
 
     async getData() {
-      let data = getData()
-      this.updateGraphs()           // todo: data is actually out of date here (delayed...)
-      return data
+      return getData()
     },
 
     async update() {

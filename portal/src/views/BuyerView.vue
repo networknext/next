@@ -237,6 +237,7 @@ export default {
         vm.num_pages = result[2]
         vm.$emit('notify-update', vm.page, vm.num_pages)
         vm.found = result[0]['found']
+        vm.updateGraphs()
       }
     })
   },
@@ -319,9 +320,7 @@ export default {
       if (buyer == null) {
         buyer = this.$route.params.id
       }
-      let data = getData(page, buyer)
-      this.updateGraphs()
-      return data
+      return getData(page, buyer)
     },
 
     async update() {
