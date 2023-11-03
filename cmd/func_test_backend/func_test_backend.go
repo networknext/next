@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -155,7 +155,7 @@ func test_magic_backend() {
 		os.Exit(1)
 	}
 
-	magicData, error := ioutil.ReadAll(response.Body)
+	magicData, error := io.ReadAll(response.Body)
 	if error != nil {
 		fmt.Printf("error: failed to read magic response data\n")
 		cmd.Process.Signal(syscall.SIGTERM)
@@ -195,7 +195,7 @@ func test_magic_backend() {
 			os.Exit(1)
 		}
 
-		magicData, error := ioutil.ReadAll(response.Body)
+		magicData, error := io.ReadAll(response.Body)
 		if error != nil {
 			fmt.Printf("error: failed to read magic response data\n")
 			cmd.Process.Signal(syscall.SIGTERM)
@@ -284,7 +284,7 @@ func test_magic_backend() {
 			os.Exit(1)
 		}
 
-		magicData1, error := ioutil.ReadAll(response.Body)
+		magicData1, error := io.ReadAll(response.Body)
 		if error != nil {
 			fmt.Printf("error: failed to read magic response data (1)\n")
 			cmd.Process.Signal(syscall.SIGTERM)
@@ -298,7 +298,7 @@ func test_magic_backend() {
 			os.Exit(1)
 		}
 
-		magicData2, error := ioutil.ReadAll(response.Body)
+		magicData2, error := io.ReadAll(response.Body)
 		if error != nil {
 			fmt.Printf("error: failed to read magic response data (2)\n")
 			cmd.Process.Signal(syscall.SIGTERM)
@@ -1078,7 +1078,7 @@ func test_relay_backend() {
 
 	// write the database out to a temporary file
 
-	file, err := ioutil.TempFile(".", "temp-database-")
+	file, err := os.CreateTemp(".", "temp-database-")
 	if err != nil {
 		panic("could not create temporary database file")
 	}
@@ -1255,7 +1255,7 @@ func test_relay_backend() {
 						break
 					}
 
-					body, err = ioutil.ReadAll(response.Body)
+					body, err = io.ReadAll(response.Body)
 
 					if err != nil {
 						fmt.Printf("error reading http response: %v\n", err)
@@ -1349,7 +1349,7 @@ func test_relay_backend() {
 					break
 				}
 
-				buffer, err := ioutil.ReadAll(response.Body)
+				buffer, err := io.ReadAll(response.Body)
 				if err != nil {
 					core.Error("failed to read route matrix: %v", err)
 					atomic.AddUint64(&errorCount, 1)

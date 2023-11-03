@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -139,7 +138,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 			return
 		}
 
-		body, err := ioutil.ReadAll(request.Body)
+		body, err := io.ReadAll(request.Body)
 		if err != nil {
 			core.Error("[%s] could not read request body: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError) // 500
@@ -327,7 +326,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				if err == nil {
 					response, err := http.DefaultClient.Do(forward_request)
 					if err != nil && response != nil {
-						io.Copy(ioutil.Discard, response.Body)
+						io.Copy(io.Discard, response.Body)
 						response.Body.Close()
 					}
 				}

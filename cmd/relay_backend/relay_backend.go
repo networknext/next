@@ -5,7 +5,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"runtime"
@@ -301,7 +301,7 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 			}
 		}()
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			core.Error("could not read request body: %v", err)
 			return

@@ -2,7 +2,7 @@ package messages
 
 import (
 	"github.com/hamba/avro"
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -10,7 +10,7 @@ func TestAnalyticsSessionUpdateMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/session_update.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/session_update.json")
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +38,7 @@ func TestAnalyticsSessionSummaryMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/session_summary.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/session_summary.json")
 	if err != nil {
 		panic(err)
 	}
@@ -66,7 +66,7 @@ func TestAnalyticsServerUpdateMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/server_update.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/server_update.json")
 	if err != nil {
 		panic(err)
 	}
@@ -94,7 +94,7 @@ func TestAnalyticsServerInitMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/server_init.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/server_init.json")
 	if err != nil {
 		panic(err)
 	}
@@ -122,7 +122,7 @@ func TestAnalyticsRelayUpdateMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/relay_update.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/relay_update.json")
 	if err != nil {
 		panic(err)
 	}
@@ -150,7 +150,7 @@ func TestRouteMatrixUpdateMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/route_matrix_update.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/route_matrix_update.json")
 	if err != nil {
 		panic(err)
 	}
@@ -178,7 +178,7 @@ func TestNearRelayPingMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/near_relay_ping.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/near_relay_ping.json")
 	if err != nil {
 		panic(err)
 	}
@@ -206,7 +206,7 @@ func TestRelayToRelayPingMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := ioutil.ReadFile("../../schemas/pubsub/relay_to_relay_ping.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/relay_to_relay_ping.json")
 	if err != nil {
 		panic(err)
 	}

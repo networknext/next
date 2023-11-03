@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/binary"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -197,7 +197,7 @@ func TopSessionsThread() {
 
 func serverBatchHandler(w http.ResponseWriter, r *http.Request) {
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		core.Error("could not read server batch body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

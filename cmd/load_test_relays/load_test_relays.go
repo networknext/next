@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -164,7 +164,7 @@ func PostBinary(url string, data []byte) error {
 		return fmt.Errorf("got response %d", response.StatusCode)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response: %v", err)
 	}

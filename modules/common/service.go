@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -346,7 +346,7 @@ func (service *Service) GetMagicValues() ([constants.MagicBytes]byte, [constants
 
 func (service *Service) lbHealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
+		_, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -363,7 +363,7 @@ func (service *Service) lbHealthHandlerFunc() func(w http.ResponseWriter, r *htt
 
 func (service *Service) vmHealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
+		_, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -380,7 +380,7 @@ func (service *Service) vmHealthHandlerFunc() func(w http.ResponseWriter, r *htt
 
 func (service *Service) readyHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
+		_, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -562,7 +562,7 @@ func (service *Service) UpdateRouteMatrix() {
 					continue
 				}
 
-				buffer, err := ioutil.ReadAll(response.Body)
+				buffer, err := io.ReadAll(response.Body)
 				if err != nil {
 					core.Error("failed to read response body: %v", err)
 					continue
@@ -936,7 +936,7 @@ func getMagic(httpClient *http.Client, uri string) ([]byte, error) {
 		return nil, errors.New(fmt.Sprintf("failed to http get magic values: %v", err))
 	}
 
-	buffer, err := ioutil.ReadAll(response.Body)
+	buffer, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("failed to read magic data: %v", err))
 	}

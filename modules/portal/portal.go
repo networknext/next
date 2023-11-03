@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -859,7 +859,7 @@ func postBinary(url string, data []byte) error {
 		return fmt.Errorf("got response %d", response.StatusCode)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response: %v", err)
 	}
@@ -1042,7 +1042,7 @@ func getBinary(url string) []byte {
 		return nil
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		core.Error("could not read response body for %s: %v", url, err)
 		return nil

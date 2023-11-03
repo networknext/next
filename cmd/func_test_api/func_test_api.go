@@ -10,7 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -103,7 +103,7 @@ func GetText(path string) (string, error) {
 		return "", fmt.Errorf("got %d response for %s", response.StatusCode, url)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return "", fmt.Errorf("could not read response body for %s: %v", url, err)
 	}
@@ -138,7 +138,7 @@ func GetJSON(path string, object interface{}) error {
 		return fmt.Errorf("no response from %s", url)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response body for %s: %v", url, err)
 	}
@@ -187,7 +187,7 @@ func Create(path string, requestData interface{}, responseData interface{}) erro
 		return fmt.Errorf("no response from %s", url)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response body for %s: %v", url, err)
 	}
@@ -234,7 +234,7 @@ func Update(path string, requestData interface{}, responseData interface{}) erro
 		return fmt.Errorf("no response from %s", url)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response body for %s: %v", url, err)
 	}
@@ -277,7 +277,7 @@ func Delete(path string, responseData interface{}) error {
 		return fmt.Errorf("no response from %s", url)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response body for %s: %v", url, err)
 	}

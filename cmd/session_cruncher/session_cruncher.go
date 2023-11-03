@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -384,7 +384,7 @@ func TopSessionsThread() {
 
 func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		core.Error("could not read session batch body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

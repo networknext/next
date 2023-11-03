@@ -13,7 +13,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -465,6 +464,35 @@ func main() {
 
 // ------------------------------------------------------------------------------
 
+func replace(filename string, pattern string, replacement string) error {
+
+	r, err := regexp.Compile(pattern)
+	if err != nil {
+		return fmt.Errorf("could not compile regex: %v", pattern)
+	}
+
+	inputFile := filename
+
+//	outputFile := filename + ".tmp"
+
+	input, err := os.ReadFile(inputFile)
+   if err != nil {
+		return fmt.Errorf("could not read input file: %v", inputFile)
+   }
+
+   lines := strings.Split(string(input), "\n")
+
+   for i := range lines {
+   	if r.MatchString(lines[i]) {
+   		fmt.Printf("%s\n", replacement)
+   	} else {
+	   	fmt.Printf("%s\n", lines[i])
+   	}
+   }
+
+	return nil
+}
+
 func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 
 	buyerId := make([]byte, 8)
@@ -501,7 +529,7 @@ func keygen(env Environment, regexes []string) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
-	apiPrivateKey := common.RandomString(64)
+	apiPrivateKey := common.RandomStringFixedLength(64)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{})
 
@@ -510,6 +538,8 @@ func keygen(env Environment, regexes []string) {
 		fmt.Printf("\nerror: could not generate api key: %v\n\n", err)
 		os.Exit(1)
 	}
+
+	// todo: ping key
 
 	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
 	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
@@ -523,7 +553,30 @@ func keygen(env Environment, regexes []string) {
 	fmt.Printf("API private key:\n\n    %s\n\n", apiPrivateKey)
 	fmt.Printf("API key:\n\n    %s\n\n", apiKey)
 
-   // todo: replace keys in files
+   // replace keys in files
+
+   fmt.Printf("\nUpdating keys across project...\n\n")
+
+   fmt.Printf("	envs/local.env\n")
+   {
+	   replace("envs/local.env", "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", apiPrivateKey))
+	   /*
+	   replace("envs/local.env", "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", apiKey))
+	   replace("envs/local.env", "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])))
+	   replace("envs/local.env", "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])))
+	   replace("envs/local.env", "^\\w*RELAY_SERVER_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])))
+	   replace("envs/local.env", "^\\w*RELAY_SERVER_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])))
+	   */
+	}
+
+/*
+	local.env:
+
+		PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
+		MAXMIND_LICENSE_KEY="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"
+*/
+
+   fmt.Printf("*** KEYGEN COMPLETE ***\n\n")
 }
 
 // ------------------------------------------------------------------------------
@@ -560,7 +613,7 @@ func config(env Environment, regexes []string) {
    }
 	defer file.Close()
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		fmt.Printf("error: could not read config.json\n\n")
 		os.Exit(1)
@@ -721,7 +774,7 @@ func GetJSON(url string, object interface{}) {
 		os.Exit(1)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
 	}
@@ -762,7 +815,7 @@ func GetText(url string) string {
 		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
 	}
@@ -800,7 +853,7 @@ func GetBinary(url string) []byte {
 		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
 	}
@@ -840,7 +893,7 @@ func PutJSON(url string, requestData interface{}, responseData interface{}) erro
 		return fmt.Errorf("no response from %s", url)
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		return fmt.Errorf("could not read response body for %s: %v", url, err)
 	}
@@ -1723,7 +1776,7 @@ func analyzeRouteMatrix(inputFile string) {
 
 	routeMatrixFilename := "optimize.bin"
 
-	routeMatrixData, err := ioutil.ReadFile(routeMatrixFilename)
+	routeMatrixData, err := io.ReadFile(routeMatrixFilename)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
 	}
@@ -1769,7 +1822,7 @@ func routes(src string, dest string) {
 
 	routeMatrixFilename := "optimize.bin"
 
-	routeMatrixData, err := ioutil.ReadFile(routeMatrixFilename)
+	routeMatrixData, err := io.ReadFile(routeMatrixFilename)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
 	}

@@ -2,7 +2,6 @@ package ip2location
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -41,7 +40,7 @@ func Bash(command string) error {
 
 func DownloadDatabases_MaxMind(licenseKey string) error {
 
-	dir, err := ioutil.TempDir("/tmp", "database-")
+	dir, err := os.MkdirTemp("/tmp", "database-")
 	if err != nil {
 		return err
 	}
@@ -105,7 +104,7 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 
 func DownloadDatabases_CloudStorage(bucketName string) (error, *maxminddb.Reader, *maxminddb.Reader) {
 
-	dir, err := ioutil.TempDir("/tmp", "database-")
+	dir, err := os.MkdirTemp("/tmp", "database-")
 	if err != nil {
 		return err, nil, nil
 	}

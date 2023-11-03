@@ -15,7 +15,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -571,7 +571,7 @@ func getCostMatrix() *common.CostMatrix {
 		panic("failed to http get cost matrix")
 	}
 
-	buffer, err := ioutil.ReadAll(response.Body)
+	buffer, err := io.ReadAll(response.Body)
 	if err != nil {
 		panic("failed to read response body")
 	}

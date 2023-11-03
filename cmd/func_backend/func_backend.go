@@ -10,7 +10,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -214,7 +214,7 @@ const RelayTokenBytes = 32
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
-	body, err := ioutil.ReadAll(request.Body)
+	body, err := io.ReadAll(request.Body)
 
 	if err != nil {
 		core.Error("could not read body")

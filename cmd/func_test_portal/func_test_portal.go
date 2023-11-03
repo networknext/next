@@ -10,7 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -322,7 +322,7 @@ func Get(url string, object interface{}) {
 		return
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
 	}
@@ -361,7 +361,7 @@ func GetBinary(url string) []byte {
 		panic(fmt.Sprintf("got %d response for %s", response.StatusCode, url))
 	}
 
-	body, error := ioutil.ReadAll(response.Body)
+	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
 	}

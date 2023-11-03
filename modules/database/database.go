@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"sort"
@@ -189,7 +188,7 @@ func (database *Database) Save(filename string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(filename, compressed_buffer.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(filename, compressed_buffer.Bytes(), 0644); err != nil {
 		return err
 	}
 
