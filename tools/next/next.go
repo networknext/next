@@ -530,6 +530,21 @@ func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 	return
 }
 
+func writeSecret(k string, v map[string]string, name string) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could no tget user home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	filename := fmt.Sprintf("%s/secrets/%s_%s.txt", homeDir, k, name)
+	fmt.Printf("   ~/secrets/%s_%s.txt\n", k, name)
+	err = os.WriteFile(filename, []byte(v[name]), 0666)
+	if err != nil {
+		fmt.Printf("\nerror: failed to write secret: %v\n\n", err)
+		os.Exit(1)
+	}
+}
+
 func keygen(env Environment, regexes []string) {
 		
 	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
@@ -572,12 +587,20 @@ func keygen(env Environment, regexes []string) {
 		fmt.Printf("	Server backend public key      = %s\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
 		fmt.Printf("	Server backend private key     = %s\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
 		fmt.Printf("	API private key                = %s\n", apiPrivateKey)
-		fmt.Printf("	API key                        = %s\n\n", apiKey)
+		fmt.Printf("	API key                        = %s\n", apiKey)
+		fmt.Printf("	Ping key                       = %s\n\n", base64.StdEncoding.EncodeToString(pingKey[:]))
 
    	k := make(map[string]string)
 
    	k["test_buyer_public_key"] = base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])
    	k["test_buyer_private_key"] = base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])
+   	k["relay_backend_public_key"] = base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])
+   	k["relay_backend_private_key"] = base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])
+   	k["server_backend_public_key"] = base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])
+   	k["server_backend_private_key"] = base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])
+   	k["api_private_key"] = apiPrivateKey
+   	k["api_key"] = apiKey
+   	k["ping_key"] = base64.StdEncoding.EncodeToString(pingKey[:])
 
    	keypairs[envs[i]] = k
 	}
@@ -595,11 +618,19 @@ func keygen(env Environment, regexes []string) {
 	fmt.Printf("------------------------------------------\n             writing secrets\n------------------------------------------\n\n")
 
 	for k,v := range keypairs {
+
 		if v["secure"] != "true" {
 			continue
 		}
-		// todo: write to ~/secrets
-		_ = k
+
+   	fmt.Printf("%s:\n\n", k)
+
+   	writeSecret(k, v, "relay_backend_private_key")
+   	writeSecret(k, v, "server_backend_private_key")
+   	writeSecret(k, v, "server_api_private_key")
+   	writeSecret(k, v, "ping_key")
+
+		fmt.Printf("\n")
 	}
 
    // update keys in env files
