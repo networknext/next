@@ -22,20 +22,22 @@ variable "cloudflare_zone_id" { type = string }
 variable "cloudflare_domain" { type = string }
 
 variable "relay_backend_public_key" { type = string }
-variable "relay_backend_private_key" { type = string }
+
 variable "server_backend_public_key" { type = string }
-variable "server_backend_private_key" { type = string }
-variable "ping_key" { type = string }
-variable "api_private_key" { type = string }
-variable "buyer_public_key" { type = string }
-variable "buyer_private_key" { type = string }
+
+variable "raspberry_buyer_public_key" { type = string }
+variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
 locals {
-  google_project         = file("../../projects/prod-project.txt")
-  google_service_account = file("../../projects/prod-runtime-service-account.txt")
-  maxmind_license_key    = file("~/secrets/maxmind.txt")
+  google_project             = file("../../projects/prod-project.txt")
+  google_service_account     = file("../../projects/prod-runtime-service-account.txt")
+  maxmind_license_key        = file("~/secrets/maxmind.txt")
+  relay_backend_private_key  = file("~/secrets/prod-relay-backend-private-key.txt")
+  server_backend_private_key = file("~/secrets/prod-server-backend-private-key.txt")
+  api_private_key            = file("~/secrets/prod-api-private-key.txt")
+  ping_key                   = file("~/secrets/prod-ping-key.txt")
 }
 
 # ----------------------------------------------------------------------------------------
@@ -590,8 +592,8 @@ module "relay_gateway" {
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
-    RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
-    PING_KEY=${var.ping_key}
+    RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
+    PING_KEY=${local.ping_key}
     RELAY_BACKEND_ADDRESS=""
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
@@ -707,7 +709,7 @@ module "api" {
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
-    API_PRIVATE_KEY=${var.api_private_key}
+    API_PRIVATE_KEY=${local.api_private_key}
     ALLOWED_ORIGIN="*"
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
@@ -834,12 +836,12 @@ module "server_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
-    RELAY_BACKEND_PRIVATE_KEY=${var.relay_backend_private_key}
+    RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
     SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
-    SERVER_BACKEND_PRIVATE_KEY=${var.server_backend_private_key}
+    SERVER_BACKEND_PRIVATE_KEY=${local.server_backend_private_key}
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
-    PING_KEY=${var.ping_key}
+    PING_KEY=${local.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
@@ -1020,7 +1022,7 @@ module "raspberry_server" {
     ENV=prod
     NEXT_LOG_LEVEL=1
     NEXT_DATACENTER=cloud
-    NEXT_BUYER_PRIVATE_KEY=${var.buyer_private_key}
+    NEXT_BUYER_PRIVATE_KEY=${var.raspberry_buyer_private_key}
     NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     EOF
@@ -1058,7 +1060,7 @@ module "raspberry_client" {
     cat <<EOF > /app/app.env
     ENV=prod
     NEXT_LOG_LEVEL=1
-    NEXT_BUYER_PUBLIC_KEY=${var.buyer_public_key}
+    NEXT_BUYER_PUBLIC_KEY=${var.raspberry_buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=256
     EOF
