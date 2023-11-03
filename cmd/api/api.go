@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"time"
+	"strings"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -21,9 +22,9 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
 
-	// jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
+	"github.com/golang-jwt/jwt"
 )
 
 var redisPortalClient redis.Cmdable
@@ -366,37 +367,34 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 		endpoint(w, r)
 
-		// todo: API tokens are temporarily disabled
-		/*
-			auth := r.Header.Get("Authorization")
+		auth := r.Header.Get("Authorization")
 
-			split := strings.Split(auth, "Bearer ")
+		split := strings.Split(auth, "Bearer ")
 
-			if len(split) == 2 {
+		if len(split) == 2 {
 
-				apiKey := split[1]
+			apiKey := split[1]
 
-				token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
-					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-						return nil, fmt.Errorf("There was an error")
-					}
-					return []byte(privateKey), nil
-				})
-
-				if token == nil || err != nil {
-					w.WriteHeader(http.StatusUnauthorized)
-					fmt.Fprintf(w, err.Error())
+			token, err := jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("There was an error")
 				}
+				return []byte(privateKey), nil
+			})
 
-				endpoint(w, r)
-
-			} else {
-
+			if token == nil || err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprintf(w, "Not Authorized")
-
+				fmt.Fprintf(w, err.Error())
 			}
-		*/
+
+			endpoint(w, r)
+
+		} else {
+
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintf(w, "Not Authorized")
+
+		}
 	}
 }
 
