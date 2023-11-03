@@ -821,7 +821,7 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
    }
 
-   // update keys in env files
+   // update config in env files
 
    envs := []string{"local", "dev", "staging", "prod"}
 
@@ -850,11 +850,10 @@ func config(env Environment, regexes []string) {
 		}
    }
 
-   // update public keys in terraform files
+   // update config in terraform files
 
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
-	/*
    for i := range envs {
    	filenames := []string {
    		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", envs[i]),
@@ -863,12 +862,23 @@ func config(env Environment, regexes []string) {
    	for i := range filenames {
    		if fileExists(filenames[i]) {
 	   		fmt.Printf("%s\n", filenames[i])
-			   replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
-			   replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
+			   replace(filenames[i], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_terraform\"", config.CompanyName))
+			   replace(filenames[i], "^\\s*google_database_bucket\\s*=.*$",  fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_database_files\"", config.CompanyName))
+			   replace(filenames[i], "^\\s*cloudflare_domain\\s*=.*$",       fmt.Sprintf("cloudflare_domain           = \"%s\"", config.CloudflareDomain))
+			   replace(filenames[i], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))
+			   replace(filenames[i], "^\\s*ssh_public_key_file\\s*=.*$",     fmt.Sprintf("ssh_public_key_file         = \"~/.ssh/%s.pub\"", config.SSHKey))
+			   replace(filenames[i], "^\\s*ssh_private_key_file\\s*=.*$",    fmt.Sprintf("ssh_private_key_file        = \"~/.ssh/%s\"", config.SSHKey))
+			   replace(filenames[i], "^\\s*relay_artifacts_bucket\\s*=.*$",  fmt.Sprintf("relay_artifacts_bucket      = \"%s_network_next_relay_artifacts\"", config.CompanyName))
+			   if envs[i] != "prod" {
+				   replace(filenames[i], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay-%s.%s\"", envs[i], config.CloudflareDomain))
+			   } else {
+				   replace(filenames[i], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay.%s\"", config.CloudflareDomain))			   	
+			   }
    		}
    	}
    }
-   */
+
+   // todo: projects terraform special case
 
    // configure amazon
 
