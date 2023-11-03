@@ -24,7 +24,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var redisPortalClient redis.Cmdable
