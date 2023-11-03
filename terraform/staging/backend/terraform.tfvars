@@ -15,9 +15,9 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-relay_backend_public_key    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+relay_backend_public_key    = "Ie8C1qwTfFRPDhoueYEPJuRcsFn3F7ojHhA9WvHigxo="
 
-server_backend_public_key   = "TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A="
+server_backend_public_key   = "3NyMZnDZUtkw1mwGHKDSs4FmBWpwOZLMnFBh4H03IbI="
 
 load_test_buyer_public_key  = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 load_test_buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"

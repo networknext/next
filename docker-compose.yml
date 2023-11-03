@@ -122,7 +122,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.5.0.5:40000
       - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
       - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
-      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     networks:
       relays:
@@ -140,7 +140,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.5.0.6:40000
       - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
       - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
-      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     networks:
       relays:
@@ -158,7 +158,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.5.0.7:40000
       - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
       - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
-      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     networks:
       relays:
@@ -176,7 +176,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.5.0.8:40000
       - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
       - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
-      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     networks:
       relays:
@@ -194,7 +194,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.5.0.9:40000
       - RELAY_PUBLIC_KEY=9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=
       - RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
-      - RELAY_BACKEND_HOSTNAME=http://relay_gateway
+      - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_BACKEND_PUBLIC_KEY=SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=
     networks:
       relays:

@@ -3934,7 +3934,7 @@ struct main_t
     CURL * curl;
     int num_threads;
     uint64_t start_time;
-    const char * hostname;
+    const char * relay_backend_url;
     uint8_t * update_response_memory;
     relay_address_t relay_public_address;
     relay_address_t relay_internal_address;
@@ -4353,7 +4353,7 @@ int main_update( main_t * main )
     update_response_buffer.data = (uint8_t*) main->update_response_memory;
 
     char update_url[1024];
-    snprintf( update_url, sizeof(update_url), "%s/relay_update", main->hostname );
+    snprintf( update_url, sizeof(update_url), "%s/relay_update", main->relay_backend_url );
 
     curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 1024000L );
     curl_easy_setopt( main->curl, CURLOPT_URL, update_url );
@@ -6433,14 +6433,14 @@ int main( int argc, const char ** argv )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
-    const char * relay_backend_hostname = relay_platform_getenv( "RELAY_BACKEND_HOSTNAME" );
-    if ( !relay_backend_hostname )
+    const char * relay_backend_url = relay_platform_getenv( "RELAY_BACKEND_URL" );
+    if ( !relay_backend_url )
     {
-        printf( "\nerror: RELAY_BACKEND_HOSTNAME not set\n\n" );
+        printf( "\nerror: RELAY_BACKEND_URL not set\n\n" );
         return 1;
     }
 
-    printf( "Relay backend hostname is %s\n", relay_backend_hostname );
+    printf( "Relay backend url is %s\n", relay_backend_url );
 
     if ( relay_initialize() != RELAY_OK )
     {
@@ -6712,7 +6712,7 @@ int main( int argc, const char ** argv )
     main.curl = curl;
     main.start_time = start_time;
     main.num_threads = num_threads;
-    main.hostname = relay_backend_hostname;
+    main.relay_backend_url = relay_backend_url;
     main.update_response_memory = update_response_memory;
     main.relay_public_address = relay_public_address;
     main.relay_internal_address = relay_internal_address;

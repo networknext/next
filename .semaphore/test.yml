@@ -461,9 +461,9 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_relay_backend_public_key_mismatch
 
-        - name: "test_relay_backend_hostname_not_set"
+        - name: "test_relay_backend_url_not_set"
           commands:
-            - cd ./dist && ./func_test_relay test_relay_backend_hostname_not_set
+            - cd ./dist && ./func_test_relay test_relay_backend_url_not_set
 
         - name: "test_relay_cant_bind_to_port_zero"
           commands:

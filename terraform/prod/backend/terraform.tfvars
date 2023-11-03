@@ -15,11 +15,11 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-relay_backend_public_key    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-
-server_backend_public_key   = "TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A="
-
 raspberry_buyer_public_key  = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 raspberry_buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
 ip2location_bucket_name     = "auspicious_network_next_prod"
+
+relay_backend_public_key    = "qATW0do6IUxC/6GzIW6IEpIv/gBWj6o+RfiCs/uq7TQ="
+
+server_backend_public_key   = "sXqkbXuAzXaSxCzJdJfPpKQJ24AHJGJo43NCEpqHMh4="

@@ -531,7 +531,7 @@ type Environment struct {
 	APIPrivateKey            string `json:"api_private_key"`
 	APIKey                   string `json:"api_key"`
 	VPNAddress               string `json:"vpn_address"`
-	RelayBackendHostname     string `json:"relay_backend_hostname"`
+	RelayBackendURL          string `json:"relay_backend_url"`
 	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
 	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
 }

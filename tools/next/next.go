@@ -103,7 +103,7 @@ func main() {
 			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
 			env.APIKey = getKeyValue(envFilePath, "API_KEY")
 			env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
-			env.RelayBackendHostname = getKeyValue(envFilePath, "RELAY_BACKEND_HOSTNAME")
+			env.RelayBackendURL = getKeyValue(envFilePath, "RELAY_BACKEND_URL")
 			env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
 			env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
 			env.Write()
@@ -642,24 +642,36 @@ func keygen(env Environment, regexes []string) {
    	envFile := fmt.Sprintf("envs/%s.env", k)
 	   fmt.Printf("%s\n", envFile)
 	   {
-		   replace(envFile, "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", v["api_key"]))
-		   replace(envFile, "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
-		   replace(envFile, "^\\w*SERVER_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+		   replace(envFile, "^\\s*API_KEY\\s*=.*$", fmt.Sprintf("API_KEY=\"%s\"", v["api_key"]))
+		   replace(envFile, "^\\s*RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
+		   replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
 
 		   if v["secure"] != "true" {
-			   replace(envFile, "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
-			   replace(envFile, "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
-			   replace(envFile, "^\\w*SERVER_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
-			   replace(envFile, "^\\w*PING_KEY\\w*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", v["ping_key"]))
+			   replace(envFile, "^\\s*API_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
+			   replace(envFile, "^\\s*RELAY_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
+			   replace(envFile, "^\\s*SERVER_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
+			   replace(envFile, "^\\s*PING_KEY\\s*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", v["ping_key"]))
 		   }
 		}
    }
 
-   // update keys in terraform files
+   // update public keys in terraform files
 
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
-
+   for k,v := range keypairs {
+   	filenames := []string {
+   		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", k),
+   		fmt.Sprintf("terraform/%s/relays/terraform.tfvars", k),
+   	}
+   	for i := range filenames {
+   		if fileExists(filenames[i]) {
+	   		fmt.Printf("%s\n", filenames[i])
+			   replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
+			   replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
+   		}
+   	}
+   }
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
@@ -682,6 +694,7 @@ type Config struct {
 	GoogleOrgId          string `json:"google_org_id"`
 	BuyerName            string `json:"buyer_name"`
 	BuyerId              string `json:"buyer_id"`
+	SSHKey               string `json:"ssh_key"`
 }
 
 func fileExists(filename string) bool {
@@ -776,6 +789,13 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
 	}
 
+	fmt.Printf("    ssh key = \"%s\"\n", config.SSHKey)
+
+	if config.SSHKey == "" {
+		fmt.Printf("\nerror: you must supply an ssh key\n\n")
+		os.Exit(1)
+	}
+
 	// check that we have necessary files under ~/secrets
 
 	homeDir, err := os.UserHomeDir()
@@ -800,6 +820,55 @@ func config(env Environment, regexes []string) {
 		fmt.Printf("\nerror: missing maxmind license key at ~/secrets/maxmind.txt :(\n\n")
 		os.Exit(1)
    }
+
+   // update keys in env files
+
+   envs := []string{"local", "dev", "staging", "prod"}
+
+	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
+
+   for i := range envs {
+   	envFile := fmt.Sprintf("envs/%s.env", envs[i])
+	   fmt.Printf("%s\n", envFile)
+	   {
+			if envs[i] != "prod" {
+			   replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api-%s.%s\"", envs[i], config.CloudflareDomain))
+			   replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server-%s.%s\"", envs[i], config.CloudflareDomain))
+			   replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_URL=\"https://relay-%s.%s\"", envs[i], config.CloudflareDomain))
+			   replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
+			} else {
+			   replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api.%s\"", config.CloudflareDomain))
+			   replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server.%s\"", config.CloudflareDomain))
+			   replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_URL=\"https://relay.%s\"", config.CloudflareDomain))
+			   replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry.%s\"", config.CloudflareDomain))
+			}
+
+		   replace(envFile, "^\\s*VPN_ADDRESS\\s*=.*$", fmt.Sprintf("VPN_ADDRESS=\"%s\"", config.VPNAddress))
+		   replace(envFile, "^\\s*SSH_KEY_FILE\\s*=.*$", fmt.Sprintf("SSH_KEY_FILE=\"~/.ssh/%s\"", config.SSHKey))
+		   replace(envFile, "^\\s*RELAY_ARTIFACTS_BUCKET_NAME\\s*=.*$", fmt.Sprintf("RELAY_ARTIFACTS_BUCKET_NAME=\"%s\"", fmt.Sprintf("%s_network_next_relay_artifacts", config.CompanyName)))
+		   replace(envFile, "^\\s*IP2LOCATION_BUCKET_NAME\\s*=.*$", fmt.Sprintf("IP2LOCATION_BUCKET_NAME=\"%s\"", fmt.Sprintf("%s_network_next_%s", config.CompanyName, envs[i])))
+		}
+   }
+
+   // update public keys in terraform files
+
+	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
+
+	/*
+   for i := range envs {
+   	filenames := []string {
+   		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", envs[i]),
+   		fmt.Sprintf("terraform/%s/relays/terraform.tfvars", envs[i]),
+   	}
+   	for i := range filenames {
+   		if fileExists(filenames[i]) {
+	   		fmt.Printf("%s\n", filenames[i])
+			   replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
+			   replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
+   		}
+   	}
+   }
+   */
 
    // configure amazon
 
@@ -827,6 +896,14 @@ func config(env Environment, regexes []string) {
 		fmt.Printf("\nerror: failed to configure google :(\n\n")
 		os.Exit(1)
    }
+
+   // generate bin files
+
+   fmt.Printf("--------------------------------------------\n\ngenerating bin files:\n\n")
+
+   // todo
+
+   fmt.Printf("--------------------------------------------\n\n")
 
    fmt.Printf("*** CONFIGURATION COMPLETE ***\n\n")
 }
@@ -1322,7 +1399,7 @@ RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
 RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
 RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
 RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
-RELAY_BACKEND_HOSTNAME=$RELAY_BACKEND_HOSTNAME
+RELAY_BACKEND_URL=$RELAY_BACKEND_URL
 RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
 EOM
 
@@ -1462,7 +1539,7 @@ func setupRelays(env Environment, regexes []string) {
 			relayInternalAddress := fmt.Sprintf("%s:%d", relays[i].InternalIP, relays[i].InternalPort)
 			relayPublicKeyBase64 := relays[i].PublicKeyBase64
 			relayPrivateKeyBase64 := relays[i].PrivateKeyBase64
-			relayBackendHostname := env.RelayBackendHostname
+			relayBackendURL := env.RelayBackendURL
 			relayBackendPublicKeyBase64 := env.RelayBackendPublicKey
 			vpnAddress := env.VPNAddress
 			relayArtifactsBucketName := env.RelayArtifactsBucketName
@@ -1475,7 +1552,7 @@ func setupRelays(env Environment, regexes []string) {
 			script = strings.ReplaceAll(script, "$RELAY_INTERNAL_ADDRESS", relayInternalAddress)
 			script = strings.ReplaceAll(script, "$RELAY_PUBLIC_KEY", relayPublicKeyBase64)
 			script = strings.ReplaceAll(script, "$RELAY_PRIVATE_KEY", relayPrivateKeyBase64)
-			script = strings.ReplaceAll(script, "$RELAY_BACKEND_HOSTNAME", relayBackendHostname)
+			script = strings.ReplaceAll(script, "$RELAY_BACKEND_URL", relayBackendURL)
 			script = strings.ReplaceAll(script, "$RELAY_BACKEND_PUBLIC_KEY", relayBackendPublicKeyBase64)
 			script = strings.ReplaceAll(script, "$VPN_ADDRESS", vpnAddress)
 			script = strings.ReplaceAll(script, "$ENVIRONMENT", environment)
@@ -1630,7 +1707,7 @@ type Environment struct {
 	APIKey                   string `json:"api_key"`
 	VPNAddress               string `json:"vpn_address"`
 	SSHKeyFile               string `json:"ssh_key_file"`
-	RelayBackendHostname     string `json:"relay_backend_hostname"`
+	RelayBackendURL          string `json:"relay_backend_url"`
 	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
 	RelayArtifactsBucketName string `json:"relay_artifacts_bucket_name"`
 	RaspberryBackendURL      string `json:"raspberry_backend_url"`
@@ -1644,7 +1721,7 @@ func (e *Environment) String() string {
 	sb.WriteString(fmt.Sprintf(" + API Key = %s\n", e.APIKey))
 	sb.WriteString(fmt.Sprintf(" + VPN Address = %s\n", e.VPNAddress))
 	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
-	sb.WriteString(fmt.Sprintf(" + Relay Backend Hostname = %s\n", e.RelayBackendHostname))
+	sb.WriteString(fmt.Sprintf(" + Relay Backend URL = %s\n", e.RelayBackendURL))
 	sb.WriteString(fmt.Sprintf(" + Relay Backend Public Key = %s\n", e.RelayBackendPublicKey))
 	sb.WriteString(fmt.Sprintf(" + Relay Artifacts Bucket Name = %s\n", e.RelayArtifactsBucketName))
 	sb.WriteString(fmt.Sprintf(" + Raspberry Backend URL = %s\n", e.RaspberryBackendURL))

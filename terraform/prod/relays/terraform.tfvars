@@ -1,16 +1,16 @@
 
 # prod relay variables
 
-env                      = "prod"
-vpn_address              = "45.79.157.168"
-ssh_public_key_file      = "~/.ssh/id_rsa.pub"
-ssh_private_key_file     = "~/.ssh/id_rsa"
-relay_version            = "relay-release-1.0.28"
-relay_artifacts_bucket   = "network_next_relay_artifacts"
-relay_public_key         = "S0Nr+Hh05vpCpggvUjTwqqC5FX+nuKN02q1K9aOiGQY="
-relay_private_key        = "ei8wBWrWnnJOoI3dyQgajOcwfk1axAoKg0L5Xp9UCZw="
-relay_backend_public_key = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-relay_backend_hostname   = "https://relay.virtualgo.net"
+env                         = "prod"
+vpn_address                 = "45.79.157.168"
+ssh_public_key_file         = "~/.ssh/id_rsa.pub"
+ssh_private_key_file        = "~/.ssh/id_rsa"
+relay_version               = "relay-release-1.0.28"
+relay_artifacts_bucket      = "network_next_relay_artifacts"
+relay_public_key            = "S0Nr+Hh05vpCpggvUjTwqqC5FX+nuKN02q1K9aOiGQY="
+relay_private_key           = "ei8wBWrWnnJOoI3dyQgajOcwfk1axAoKg0L5Xp9UCZw="
+relay_backend_public_key    = "qATW0do6IUxC/6GzIW6IEpIv/gBWj6o+RfiCs/uq7TQ="
+relay_backend_url           = "https://relay.virtualgo.net"
 
 raspberry_datacenters = [
 	"google.iowa.1",

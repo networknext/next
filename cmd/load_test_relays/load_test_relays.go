@@ -30,7 +30,7 @@ func main() {
 
 	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
 
-	relayBackendHostname = envvar.GetString("RELAY_BACKEND_HOSTNAME", "http://127.0.0.1:30000")
+	relayBackendHostname = envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30000")
 
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 
