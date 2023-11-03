@@ -40,6 +40,7 @@ import (
 	db "github.com/networknext/next/modules/database"
 
 	"github.com/modood/table"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
@@ -500,6 +501,16 @@ func keygen(env Environment, regexes []string) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
+	apiPrivateKey := common.RandomString(64)
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{})
+
+	apiKey, err := token.SignedString([]byte(apiPrivateKey))
+	if err != nil {
+		fmt.Printf("\nerror: could not generate api key: %v\n\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
 	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
 
@@ -508,6 +519,9 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("Server backend public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
 	fmt.Printf("Server backend private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
+
+	fmt.Printf("API private key:\n\n    %s\n\n", apiPrivateKey)
+	fmt.Printf("API key:\n\n    %s\n\n", apiKey)
 
    // todo: replace keys in files
 }
