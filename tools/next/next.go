@@ -473,7 +473,7 @@ func replace(filename string, pattern string, replacement string) error {
 
 	inputFile := filename
 
-//	outputFile := filename + ".tmp"
+	outputFile := filename + ".tmp"
 
 	input, err := os.ReadFile(inputFile)
    if err != nil {
@@ -482,12 +482,27 @@ func replace(filename string, pattern string, replacement string) error {
 
    lines := strings.Split(string(input), "\n")
 
+	output, err := os.Create(outputFile)
+	if err != nil {
+		return fmt.Errorf("could not open output file: %v", outputFile)
+	}
+
    for i := range lines {
-   	if r.MatchString(lines[i]) {
-   		fmt.Printf("%s\n", replacement)
-   	} else {
-	   	fmt.Printf("%s\n", lines[i])
+   	if i == len(lines) - 1 && lines[i] == "" {
+   		break
    	}
+   	if r.MatchString(lines[i]) {
+   		fmt.Fprintf(output, "%s\n", replacement)
+   	} else {
+	   	fmt.Fprintf(output, "%s\n", lines[i])
+   	}
+   }
+
+   output.Close()
+
+   err = os.Rename(outputFile, inputFile)
+   if err != nil {
+   	return fmt.Errorf("could not move output file to input file: %v", err)
    }
 
 	return nil
@@ -517,7 +532,7 @@ func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 
 func keygen(env Environment, regexes []string) {
 		
-	fmt.Printf("generating keypairs\n\n")
+	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
 
 	buyerPublicKey, buyerPrivateKey := generateBuyerKeypair()
 
@@ -539,7 +554,8 @@ func keygen(env Environment, regexes []string) {
 		os.Exit(1)
 	}
 
-	// todo: ping key
+	pingKey := [32]byte{}
+	common.RandomBytes(pingKey[:])
 
 	fmt.Printf("Buyer public key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPublicKey[:]))
 	fmt.Printf("Buyer private key:\n\n    %s\n\n", base64.StdEncoding.EncodeToString(buyerPrivateKey[:]))
@@ -555,26 +571,30 @@ func keygen(env Environment, regexes []string) {
 
    // replace keys in files
 
-   fmt.Printf("\nUpdating keys across project...\n\n")
+	fmt.Printf("------------------------------------------\n              updating keys\n------------------------------------------\n\n")
 
-   fmt.Printf("	envs/local.env\n")
-   {
-	   replace("envs/local.env", "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", apiPrivateKey))
-	   /*
-	   replace("envs/local.env", "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", apiKey))
-	   replace("envs/local.env", "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])))
-	   replace("envs/local.env", "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])))
-	   replace("envs/local.env", "^\\w*RELAY_SERVER_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])))
-	   replace("envs/local.env", "^\\w*RELAY_SERVER_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])))
-	   */
-	}
+   envs := []string{"envs/local.env", "envs/dev.env", "envs/staging.env", "envs/prod.env"}
+
+   for i := range envs {
+	   fmt.Printf("%s\n", envs[i])
+	   {
+		   replace(envs[i], "^\\w*API_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", apiPrivateKey))
+		   replace(envs[i], "^\\w*API_KEY\\w*=.*$", fmt.Sprintf("API_KEY=\"%s\"", apiKey))
+		   replace(envs[i], "^\\w*RELAY_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])))
+		   replace(envs[i], "^\\w*RELAY_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])))
+		   replace(envs[i], "^\\w*SERVER_BACKEND_PUBLIC_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])))
+		   replace(envs[i], "^\\w*SERVER_BACKEND_PRIVATE_KEY\\w*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])))
+		   replace(envs[i], "^\\w*PING_KEY\\w*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", base64.StdEncoding.EncodeToString(pingKey[:])))
+		}
+   }
 
 /*
 	local.env:
 
 		PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
-		MAXMIND_LICENSE_KEY="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"
 */
+
+	fmt.Printf("\n------------------------------------------\n\n")
 
    fmt.Printf("*** KEYGEN COMPLETE ***\n\n")
 }
@@ -1776,7 +1796,7 @@ func analyzeRouteMatrix(inputFile string) {
 
 	routeMatrixFilename := "optimize.bin"
 
-	routeMatrixData, err := io.ReadFile(routeMatrixFilename)
+	routeMatrixData, err := os.ReadFile(routeMatrixFilename)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
 	}
@@ -1822,7 +1842,7 @@ func routes(src string, dest string) {
 
 	routeMatrixFilename := "optimize.bin"
 
-	routeMatrixData, err := io.ReadFile(routeMatrixFilename)
+	routeMatrixData, err := os.ReadFile(routeMatrixFilename)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not read the route matrix file: %v\n", err), 1)
 	}
