@@ -9,8 +9,7 @@ agent:
 
 global_job_config:
   secrets:
-    - name: terraform-staging
-    - name: terraform-cloudflare
+    - name: secrets
 
 blocks:
 
@@ -21,6 +20,7 @@ blocks:
       jobs:
         - name: "Deploy"
           commands:
+            - tar xzf /home/semaphore/secrets/secrets.tar.gz -C /home/semaphore/secrets
             - export GOOGLE_APPLICATION_CREDENTIALS=/home/semaphore/secrets/terraform-staging.json
             - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-staging.json
             - echo $SEMAPHORE_GIT_TAG_NAME

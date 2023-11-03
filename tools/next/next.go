@@ -659,9 +659,14 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
-	// todo ...
+
 
 	fmt.Printf("\n------------------------------------------\n\n")
+
+   if !bash("cd ~/secrets && rm -f secrets.tar.gz && tar -czvf secrets.tar.gz . 2> /dev/null") {
+		fmt.Printf("\nerror: failed to tar gzip secrets :(\n\n")
+		os.Exit(1)
+   }
 
    fmt.Printf("*** KEYGEN COMPLETE ***\n\n")
 }
