@@ -253,12 +253,31 @@ func relay_backend() {
 	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/relay_backend", httpPort))
 }
 
+func getAPIPrivateKey() string {
+	var env Environment
+	env.Read()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("error: could not get users home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	filename := fmt.Sprintf("%s/secrets/%s-api-private-key.txt", homeDir, env.Name)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("error: could not read api private key from secrets dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	return string(data)
+}
+
 func api() {
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = "50000"
 	}
-	bash(fmt.Sprintf("HTTP_PORT=%s ./dist/api", httpPort))
+	apiPrivateKey := getAPIPrivateKey()
+	fmt.Printf("api private key = '%s'\n", apiPrivateKey)
+	bash(fmt.Sprintf("HTTP_PORT=%s API_PRIVATE_KEY=%s ./dist/api", httpPort, apiPrivateKey))
 }
 
 func sync() {

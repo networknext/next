@@ -535,9 +535,9 @@ func writeSecret(k string, v map[string]string, name string) {
 		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
 		os.Exit(1)
 	}
-	name = strings.Replace(name, "_", "-", -1)
-	filename := fmt.Sprintf("%s/secrets/%s-%s.txt", homeDir, k, name)
-	fmt.Printf("   ~/secrets/%s-%s.txt\n", k, name)
+	adjustedName := strings.Replace(name, "_", "-", -1)
+	filename := fmt.Sprintf("%s/secrets/%s-%s.txt", homeDir, k, adjustedName)
+	fmt.Printf("   ~/secrets/%s-%s.txt\n", k, adjustedName)
 	err = os.WriteFile(filename, []byte(v[name]), 0666)
 	if err != nil {
 		fmt.Printf("\nerror: failed to write secret: %v\n\n", err)
@@ -644,21 +644,21 @@ func keygen(env Environment, regexes []string) {
 		fmt.Printf("	Portal API key                 = %s\n", adminAPIKey)
 		fmt.Printf("	Ping key                       = %s\n\n", base64.StdEncoding.EncodeToString(pingKey[:]))
 
-   	k := make(map[string]string)
+   	m := make(map[string]string)
 
-   	k["relay_backend_public_key"] = base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])
-   	k["relay_backend_private_key"] = base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])
-   	k["server_backend_public_key"] = base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])
-   	k["server_backend_private_key"] = base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])
-   	k["api_private_key"] = apiPrivateKey
-   	k["admin_api_key"] = adminAPIKey
-   	k["portal_api_key"] = portalAPIKey
-   	k["ping_key"] = base64.StdEncoding.EncodeToString(pingKey[:])
+   	m["relay_backend_public_key"] = base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])
+   	m["relay_backend_private_key"] = base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])
+   	m["server_backend_public_key"] = base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])
+   	m["server_backend_private_key"] = base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])
+   	m["api_private_key"] = apiPrivateKey
+   	m["admin_api_key"] = adminAPIKey
+   	m["portal_api_key"] = portalAPIKey
+   	m["ping_key"] = base64.StdEncoding.EncodeToString(pingKey[:])
 
-   	keypairs[envs[i]] = k
+   	keypairs[envs[i]] = m
 	}
 
-	// mark all envs except local as secure. this puts their private keys under ~/secrets instead of in the .env file
+	// mark all envs except local as secure. this puts their private keys under ~/secrets instead of the .env file
 
 	for k,v := range keypairs {
 		if k != "local" {
@@ -671,10 +671,6 @@ func keygen(env Environment, regexes []string) {
 	fmt.Printf("------------------------------------------\n             writing secrets\n------------------------------------------\n\n")
 
 	for k,v := range keypairs {
-
-		if v["secure"] != "true" {
-			continue
-		}
 
    	fmt.Printf("%s:\n\n", k)
 
@@ -706,7 +702,7 @@ func keygen(env Environment, regexes []string) {
 		   if v["secure"] != "true" {
 			   replace(envFile, "^\\s*API_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
 			   replace(envFile, "^\\s*RELAY_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
-			   replace(envFile, "^\\s*SERVER_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
+			   replace(envFile, "^\\s*SERVER_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["server_backend_private_key"]))
 			   replace(envFile, "^\\s*PING_KEY\\s*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", v["ping_key"]))
 		   }
 		}
@@ -782,6 +778,13 @@ func keygen(env Environment, regexes []string) {
 	   replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PRIVATE_KEY=.*$",     fmt.Sprintf("      - NEXT_BUYER_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 	   replace("docker-compose.yml", "^\\s* - RELAY_PUBLIC_KEY=.*$",           fmt.Sprintf("      - RELAY_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
 	   replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$",          fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	}
+
+	fmt.Printf("schemas/sql/local.sql\n")
+	{
+	   replace("schemas/sql/local.sql", "^SET local.buyer_public_key_base64 = '.*$",   fmt.Sprintf("SET local.buyer_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("schemas/sql/local.sql", "^SET local.relay_public_key_base64 = '.*$",   fmt.Sprintf("SET local.relay_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("schemas/sql/local.sql", "^SET local.relay_private_key_base64 = '.*$",   fmt.Sprintf("SET local.relay_private_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
 	}
 
 	fmt.Printf("schemas/sql/docker.sql\n")

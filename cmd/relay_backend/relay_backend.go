@@ -544,7 +544,7 @@ func PostRelayUpdateRequest(service *common.Service) {
 				CurrentTime:               int64(relayUpdateRequest.CurrentTime),
 			}
 
-			if service.IsLeader() {
+			if service.IsLeader() && relayUpdateSchema != nil {
 				data, err := avro.Marshal(relayUpdateSchema, &message)
 				if err == nil {
 					analyticsRelayUpdateProducer.MessageChannel <- data
