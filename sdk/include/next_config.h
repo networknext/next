@@ -26,11 +26,11 @@
 #include "next.h"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME "server.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME "server-dev.virtualgo.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME "server-dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_CONFIG_BUCKET_NAME      "auspicious_network_next_sdk_config"
+#define NEXT_CONFIG_BUCKET_NAME      "test_network_next_sdk_config"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0

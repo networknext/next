@@ -908,7 +908,19 @@ func config(env Environment, regexes []string) {
 	fmt.Printf("sdk/include/next_config.h\n")
    {
    	replace("sdk/include/next_config.h", "^\\s*#define NEXT_SERVER_BACKEND_HOSTNAME \"server\\..*\"\\s*$", fmt.Sprintf("#define NEXT_SERVER_BACKEND_HOSTNAME \"server.%s\"", config.CloudflareDomain))
+   	replace("sdk/include/next_config.h", "^\\s*#define NEXT_SERVER_BACKEND_HOSTNAME \"server-dev\\..*\"\\s*$", fmt.Sprintf("#define NEXT_SERVER_BACKEND_HOSTNAME \"server-dev.%s\"", config.CloudflareDomain))
+   	replace("sdk/include/next_config.h", "^\\s*#define NEXT_CONFIG_BUCKET_NAME\\s+\"[A-Za-z_]+?_network_next_sdk_config\"\\s*$", fmt.Sprintf("#define NEXT_CONFIG_BUCKET_NAME      \"%s_network_next_sdk_config\"", config.CompanyName))
    }
+
+	fmt.Printf("sdk/examples/upgraded_server.cpp\n")
+	{
+   	replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\"", config.CloudflareDomain))
+	}
+
+	fmt.Printf("sdk/examples/complex_server.cpp\n")
+	{
+   	replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\"", config.CloudflareDomain))
+	}
 
    // update semaphore ci files
 
