@@ -825,7 +825,10 @@ func config(env Environment, regexes []string) {
 
    envs := []string{"local", "dev", "staging", "prod"}
 
-	fmt.Printf("\n------------------------------------------\n           updating env files\n------------------------------------------\n\n")
+   fmt.Printf("\n")
+	fmt.Printf("------------------------------------------\n")
+	fmt.Printf("           updating env files             \n")
+	fmt.Printf("------------------------------------------\n\n")
 
    for i := range envs {
    	envFile := fmt.Sprintf("envs/%s.env", envs[i])
@@ -897,6 +900,15 @@ func config(env Environment, regexes []string) {
    	replace("terraform/projects/main.tf", "^\\s*billing_account = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  billing_account = \"%s\"", config.GoogleBillingAccount))
    	replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
 	}
+
+	// update source files
+
+	fmt.Printf("\n------------------------------------------\n         updating source files\n------------------------------------------\n\n")
+
+	fmt.Printf("sdk/include/next_config.h\n")
+   {
+   	replace("sdk/include/next_config.h", "^\\s*#define NEXT_SERVER_BACKEND_HOSTNAME \"server\\..*\"\\s*$", fmt.Sprintf("#define NEXT_SERVER_BACKEND_HOSTNAME \"server.%s\"", config.CloudflareDomain))
+   }
 
    // update semaphore ci files
 
