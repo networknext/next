@@ -23,9 +23,10 @@ import (
 	db "github.com/networknext/next/modules/database"
 )
 
-var hostname = "http://127.0.0.1:50000"
-var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+const Hostname = "http://127.0.0.1:50000"
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.Vsk-pPDSdxvSXC3FXbdoeomZenK_GkvOO6cB9mBmBp0"
+const TestAPIPrivateKey = "CUDvFyWYcfBuQYNqAJTmegrormJqBnATJfthABftjKpkABMoyRTjVthgJqjtpUQS"
+const TestBuyerPublicKey = "+rtOkfU/2mddf741YddaW9IXchGQGv8qQLnSe1nnVBaP68USps7BbQ=="
 
 // ----------------------------------------------------------------------------------------
 
@@ -62,7 +63,7 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "ENABLE_PORTAL=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", TestAPIPrivateKey))
 
 	var output bytes.Buffer
 	cmd.Stdout = os.Stdout
@@ -76,13 +77,13 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 
 func GetText(path string) (string, error) {
 
-	url := hostname + "/" + path
+	url := Hostname + "/" + path
 
 	var err error
 	var response *http.Response
 	for i := 0; i < 5; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Authorization", "Bearer "+TestAPIKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {
@@ -115,13 +116,13 @@ func GetText(path string) (string, error) {
 
 func GetJSON(path string, object interface{}) error {
 
-	url := hostname + "/" + path
+	url := Hostname + "/" + path
 
 	var err error
 	var response *http.Response
 	for i := 0; i < 5; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Authorization", "Bearer "+TestAPIKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {
@@ -155,7 +156,7 @@ func GetJSON(path string, object interface{}) error {
 
 func Create(path string, requestData interface{}, responseData interface{}) error {
 
-	url := hostname + "/" + path
+	url := Hostname + "/" + path
 
 	buffer := new(bytes.Buffer)
 
@@ -166,7 +167,7 @@ func Create(path string, requestData interface{}, responseData interface{}) erro
 		return fmt.Errorf("could not create HTTP POST request for %s: %v", url, err)
 	}
 
-	request.Header.Set("Authorization", "Bearer "+apiKey)
+	request.Header.Set("Authorization", "Bearer "+TestAPIKey)
 
 	httpClient := &http.Client{}
 
@@ -204,7 +205,7 @@ func Create(path string, requestData interface{}, responseData interface{}) erro
 
 func Update(path string, requestData interface{}, responseData interface{}) error {
 
-	url := hostname + "/" + path
+	url := Hostname + "/" + path
 
 	buffer := new(bytes.Buffer)
 
@@ -212,7 +213,7 @@ func Update(path string, requestData interface{}, responseData interface{}) erro
 
 	request, _ := http.NewRequest("PUT", url, buffer)
 
-	request.Header.Set("Authorization", "Bearer "+apiKey)
+	request.Header.Set("Authorization", "Bearer "+TestAPIKey)
 
 	httpClient := &http.Client{}
 
@@ -251,11 +252,11 @@ func Update(path string, requestData interface{}, responseData interface{}) erro
 
 func Delete(path string, responseData interface{}) error {
 
-	url := hostname + "/" + path
+	url := Hostname + "/" + path
 
 	request, _ := http.NewRequest("DELETE", url, nil)
 
-	request.Header.Set("Authorization", "Bearer "+apiKey)
+	request.Header.Set("Authorization", "Bearer "+TestAPIKey)
 
 	httpClient := &http.Client{}
 
@@ -1185,7 +1186,7 @@ func test_buyer() {
 		BuyerName:       "Test",
 		BuyerCode:       "test",
 		RouteShaderId:   routeShaderId,
-		PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
+		PublicKeyBase64: TestBuyerPublicKey,
 		Live:            true,
 		Debug:           true,
 	}
@@ -1349,7 +1350,7 @@ func test_buyer_datacenter_settings() {
 			BuyerName:       "Test",
 			BuyerCode:       "test",
 			RouteShaderId:   routeShaderId,
-			PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
+			PublicKeyBase64: TestBuyerPublicKey,
 		}
 
 		var response CreateBuyerResponse
@@ -1683,7 +1684,7 @@ func test_database() {
 			BuyerName:       "Test",
 			BuyerCode:       "test",
 			RouteShaderId:   routeShaderId,
-			PublicKeyBase64: "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==",
+			PublicKeyBase64: TestBuyerPublicKey,
 			Live:            true,
 			Debug:           true,
 		}

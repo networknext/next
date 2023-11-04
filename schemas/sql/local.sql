@@ -1,4 +1,8 @@
 
+SET local.buyer_public_key_base64 = 'gAPnU9DOiLIV8Yx2l2q1ODR2oDPUf8zT7A/osGUXUDTdWAfvE/+5jw==';
+SET local.relay_public_key_base64 = 'NuXtAKSPYwGruaPZvvPffY/ftRwKofI9wwncxSqB3m8=';
+SET local.relay_private_key_base64 = '/MDxAYmiL3mag8yVZl0EKlkK0KjAAlnMg4vtYbN4Ooc=';
+
 INSERT INTO route_shaders(route_shader_name, force_next) VALUES('local', true);
 
 INSERT INTO buyers
@@ -15,7 +19,7 @@ VALUES(
 	true,
 	'Local',
 	'local',
-	'leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==',
+	current_setting('local.buyer_public_key_base64'),
 	(select route_shader_id from route_shaders where route_shader_name = 'local')
 );
 
@@ -48,8 +52,8 @@ VALUES(
 	'local.0',
 	'127.0.0.1',
 	2000,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -64,8 +68,8 @@ VALUES(
 	'local.1',
 	'127.0.0.1',
 	2001,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -80,8 +84,8 @@ VALUES(
 	'local.2',
 	'127.0.0.1',
 	2002,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -96,8 +100,8 @@ VALUES(
 	'local.3',
 	'127.0.0.1',
 	2003,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -112,8 +116,8 @@ VALUES(
 	'local.4',
 	'127.0.0.1',
 	2004,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -128,8 +132,8 @@ VALUES(
 	'local.5',
 	'127.0.0.1',
 	2005,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -144,8 +148,8 @@ VALUES(
 	'local.6',
 	'127.0.0.1',
 	2006,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -160,8 +164,8 @@ VALUES(
 	'local.7',
 	'127.0.0.1',
 	2007,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -176,8 +180,8 @@ VALUES(
 	'local.8',
 	'127.0.0.1',
 	2008,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 
@@ -192,8 +196,8 @@ VALUES(
 	'local.9',
 	'127.0.0.1',
 	2009,
-	'9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=',
-	'lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=',
+	current_setting('local.relay_public_key_base64'),
+	current_setting('local.relay_private_key_base64'),
 	(select datacenter_id from datacenters where datacenter_name = 'local')
 );
 

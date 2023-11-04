@@ -28,8 +28,9 @@ import (
 	"syscall"
 	"time"
 	"crypto/ed25519"
-	"crypto/rand"
 	"golang.org/x/crypto/nacl/box"
+	crypto_rand "crypto/rand"
+	math_rand "math/rand"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -509,7 +510,7 @@ func replace(filename string, pattern string, replacement string) {
 func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 
 	buyerId := make([]byte, 8)
-	rand.Read(buyerId)
+	crypto_rand.Read(buyerId)
 
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -546,6 +547,8 @@ func writeSecret(k string, v map[string]string, name string) {
 
 func keygen(env Environment, regexes []string) {
 		
+	math_rand.Seed(time.Now().UnixNano())
+
 	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
 
 	// todo: if ~/secrets/somefile already exists, ask for confirmation
@@ -556,7 +559,7 @@ func keygen(env Environment, regexes []string) {
 
 	keypairs := make(map[string]map[string]string)
 
-	testRelayPublicKey, testRelayPrivateKey, err := box.GenerateKey(rand.Reader)
+	testRelayPublicKey, testRelayPrivateKey, err := box.GenerateKey(crypto_rand.Reader)
 	if err != nil {
 		fmt.Printf("\nerror: failed to generate relay keypair\n\n")
 		os.Exit(1)
@@ -569,7 +572,7 @@ func keygen(env Environment, regexes []string) {
 	fmt.Printf("global:\n\n")
 
 	fmt.Printf("	Test relay public key          = %s\n", base64.StdEncoding.EncodeToString(testRelayPublicKey[:]))
-	fmt.Printf("   Test relay private key         = %s\n", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
+	fmt.Printf("	Test relay private key         = %s\n", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
 
 	fmt.Printf("	Test buyer public key          = %s\n", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
 	fmt.Printf("	Test buyer private key         = %s\n", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
@@ -583,7 +586,7 @@ func keygen(env Environment, regexes []string) {
 
    	fmt.Printf("%s:\n\n", envs[i])
 
-		relayBackendPublicKey, relayBackendPrivateKey, err := box.GenerateKey(rand.Reader)
+		relayBackendPublicKey, relayBackendPrivateKey, err := box.GenerateKey(crypto_rand.Reader)
 		if err != nil {
 			fmt.Printf("\nerror: failed to generate relay backend keypair\n\n")
 			os.Exit(1)
@@ -690,11 +693,13 @@ func keygen(env Environment, regexes []string) {
    	for i := range filenames {
    		if fileExists(filenames[i]) {
 	   		fmt.Printf("%s\n", filenames[i])
-			   replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
-			   replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
-				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$",      fmt.Sprintf("test_buyer_public_key       = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-				replace(filenames[i], "^\\s*raspberry_buyer_public_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
-				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key  = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:])))
+			   replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$",    fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
+			   replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$",   fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
+				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$",       fmt.Sprintf("test_buyer_public_key       = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+				replace(filenames[i], "^\\s*raspberry_buyer_public_key\\s*=.*$",  fmt.Sprintf("raspberry_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
+				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:])))
+				replace(filenames[i], "^\\s*load_test_buyer_public_key\\s*=.*$",  fmt.Sprintf("load_test_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+				replace(filenames[i], "^\\s*load_test_buyer_private_key\\s*=.*$", fmt.Sprintf("load_test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
    		}
    	}
    }
@@ -702,6 +707,12 @@ func keygen(env Environment, regexes []string) {
    // update non-secret keys in source files
 
 	fmt.Printf("\n------------------------------------------\n          updating source files\n------------------------------------------\n\n")
+
+	fmt.Printf("sdk/soak.cpp\n")
+	{
+	   replace("sdk/soak.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	   replace("sdk/soak.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	}
 
 	fmt.Printf("cmd/raspberry_client/raspberry_client.cpp\n")
 	{
@@ -742,9 +753,38 @@ func keygen(env Environment, regexes []string) {
 	   replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$",          fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
 	}
 
-/*
-          - PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
-*/
+	fmt.Printf("schemas/sql/docker.sql\n")
+	{
+	   replace("schemas/sql/docker.sql", "^SET local.buyer_public_key_base64 = '.*$",   fmt.Sprintf("SET local.buyer_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("schemas/sql/docker.sql", "^SET local.relay_public_key_base64 = '.*$",   fmt.Sprintf("SET local.relay_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("schemas/sql/docker.sql", "^SET local.relay_private_key_base64 = '.*$",   fmt.Sprintf("SET local.relay_private_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	}
+
+	fmt.Printf("tools/generate_staging_sql/generate_staging_sql.go\n")
+	{
+	   replace("tools/generate_staging_sql/generate_staging_sql.go", "const BuyerPublicKeyBase64 = \".*$",   fmt.Sprintf("const BuyerPublicKeyBase64 = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("tools/generate_staging_sql/generate_staging_sql.go", "const RelayPublicKeyBase64 = \".*$",   fmt.Sprintf("const RelayPublicKeyBase64 = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("tools/generate_staging_sql/generate_staging_sql.go", "const RelayPrivateKeyBase64 = \".*$",   fmt.Sprintf("const RelayPrivateKeyBase64 = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	}
+
+	fmt.Printf("cmd/func_test_api/func_test_api.go\n")
+	{
+	   replace("cmd/func_test_api/func_test_api.go", "const TestAPIKey = \".*$",   fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["api_key"]))
+	   replace("cmd/func_test_api/func_test_api.go", "const TestAPIPrivateKey = \".*$",   fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+	   replace("cmd/func_test_api/func_test_api.go", "const TestBuyerPublicKey = \".*$",   fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	}
+
+	fmt.Printf("cmd/func_test_sdk/func_test_sdk.go\n")
+	{
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPublicKey = \".*$",   fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPrivateKey = \".*$",  fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestBuyerPublicKey = \".*$",   fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestBuyerPrivateKey = \".*$",  fmt.Sprintf("const TestBuyerPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPublicKey = \".*$",  fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPrivateKey = \".*$",  fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPublicKey = \".*$",  fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
+	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPrivateKey = \".*$",  fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
+	}
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
@@ -1070,6 +1110,8 @@ func config(env Environment, regexes []string) {
    	fmt.Printf("\nerror: could not generate staging.sql\n\n")
    	os.Exit(1)
    }
+
+   // todo: update keys in staging.sql
 
    bash("cat schemas/sql/staging.sql")
 
