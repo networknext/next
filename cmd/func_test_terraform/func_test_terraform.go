@@ -15,9 +15,7 @@ import (
 	"time"
 )
 
-var hostname = "http://127.0.0.1:50000"
-var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+const APIPrivateKey = "QNeCeGVqUMMFlGRZgUCxPwJIqhhuvmcAreUbEksKDPBXCizOPqgliicOQZlntppu"
 
 // ----------------------------------------------------------------------------------------
 
@@ -73,7 +71,7 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "ENABLE_PORTAL=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", APIPrivateKey))
 
 	var output bytes.Buffer
 	cmd.Stdout = os.Stdout
@@ -98,7 +96,7 @@ terraform {
 
 provider "networknext" {
   hostname = "http://localhost:50000"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTEzNTQ1NH0.QyhBF_ytyFLYLZZsndjrSDl4vqODtCr3qTlHY8Gy8LY"
 }
 
 # ---------------------------------------------------------
@@ -244,7 +242,7 @@ terraform {
 
 provider "networknext" {
   hostname = "http://localhost:50000"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTEzNTQ1NH0.QyhBF_ytyFLYLZZsndjrSDl4vqODtCr3qTlHY8Gy8LY"
 }
 
 # ---------------------------------------------------------

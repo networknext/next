@@ -101,12 +101,12 @@ func main() {
 			env.Name = args[0]
 			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
 			env.API_URL = getKeyValue(envFilePath, "API_URL")
-			env.APIPrivateKey = getKeyValue(envFilePath, "API_PRIVATE_KEY")
-			env.APIKey = getKeyValue(envFilePath, "API_KEY")
+			env.PortalAPIKey = getKeyValue(envFilePath, "PORTAL_API_KEY")
 			env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
 			env.RelayBackendURL = getKeyValue(envFilePath, "RELAY_BACKEND_URL")
 			env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
 			env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
+
 			env.Write()
 
 			cachedDatabase = nil
@@ -596,11 +596,39 @@ func keygen(env Environment, regexes []string) {
 
 		apiPrivateKey := common.RandomStringFixedLength(64)
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{})
+		type Claims struct {
+			Admin  bool `json:"admin"`
+			Portal bool `json:"portal"`
+			jwt.RegisteredClaims			
+		}
 
-		apiKey, err := token.SignedString([]byte(apiPrivateKey))
+		adminClaims := Claims{
+			true, 
+			true,
+			jwt.RegisteredClaims{
+				IssuedAt: jwt.NewNumericDate(time.Now()), 
+				Issuer: "next keygen",
+			},
+		}
+		adminToken := jwt.NewWithClaims(jwt.SigningMethodHS256, adminClaims)
+		adminAPIKey, err := adminToken.SignedString([]byte(apiPrivateKey))
 		if err != nil {
-			fmt.Printf("\nerror: could not generate api key: %v\n\n", err)
+			fmt.Printf("\nerror: could not generate admin api key: %v\n\n", err)
+			os.Exit(1)
+		}
+
+		portalClaims := Claims{
+			false, 
+			true,
+			jwt.RegisteredClaims{
+				IssuedAt: jwt.NewNumericDate(time.Now()), 
+				Issuer: "next keygen",
+			},
+		}
+		portalToken := jwt.NewWithClaims(jwt.SigningMethodHS256, portalClaims)
+		portalAPIKey, err := portalToken.SignedString([]byte(apiPrivateKey))
+		if err != nil {
+			fmt.Printf("\nerror: could not generate portal api key: %v\n\n", err)
 			os.Exit(1)
 		}
 
@@ -612,7 +640,8 @@ func keygen(env Environment, regexes []string) {
 		fmt.Printf("	Server backend public key      = %s\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
 		fmt.Printf("	Server backend private key     = %s\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
 		fmt.Printf("	API private key                = %s\n", apiPrivateKey)
-		fmt.Printf("	API key                        = %s\n", apiKey)
+		fmt.Printf("	Admin API key                  = %s\n", portalAPIKey)
+		fmt.Printf("	Portal API key                 = %s\n", adminAPIKey)
 		fmt.Printf("	Ping key                       = %s\n\n", base64.StdEncoding.EncodeToString(pingKey[:]))
 
    	k := make(map[string]string)
@@ -622,7 +651,8 @@ func keygen(env Environment, regexes []string) {
    	k["server_backend_public_key"] = base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])
    	k["server_backend_private_key"] = base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:])
    	k["api_private_key"] = apiPrivateKey
-   	k["api_key"] = apiKey
+   	k["admin_api_key"] = adminAPIKey
+   	k["portal_api_key"] = portalAPIKey
    	k["ping_key"] = base64.StdEncoding.EncodeToString(pingKey[:])
 
    	keypairs[envs[i]] = k
@@ -650,7 +680,8 @@ func keygen(env Environment, regexes []string) {
 
    	writeSecret(k, v, "relay_backend_private_key")
    	writeSecret(k, v, "server_backend_private_key")
-   	writeSecret(k, v, "server_api_private_key")
+   	writeSecret(k, v, "api_private_key")
+   	writeSecret(k, v, "admin_api_key")
    	writeSecret(k, v, "ping_key")
 
 		fmt.Printf("\n")
@@ -664,7 +695,7 @@ func keygen(env Environment, regexes []string) {
    	envFile := fmt.Sprintf("envs/%s.env", k)
 	   fmt.Printf("%s\n", envFile)
 	   {
-		   replace(envFile, "^\\s*API_KEY\\s*=.*$", fmt.Sprintf("API_KEY=\"%s\"", v["api_key"]))
+		   replace(envFile, "^\\s*PORTAL_API_KEY\\s*=.*$", fmt.Sprintf("PORTAL_API_KEY=\"%s\"", v["portal_api_key"]))
 		   replace(envFile, "^\\s*RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
 		   replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
 		   replace(envFile, "^\\s*NEXT_BUYER_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
@@ -769,7 +800,7 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("cmd/func_test_api/func_test_api.go\n")
 	{
-	   replace("cmd/func_test_api/func_test_api.go", "const TestAPIKey = \".*$",   fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["api_key"]))
+	   replace("cmd/func_test_api/func_test_api.go", "const TestAPIKey = \".*$",   fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
 	   replace("cmd/func_test_api/func_test_api.go", "const TestAPIPrivateKey = \".*$",   fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
 	   replace("cmd/func_test_api/func_test_api.go", "const TestBuyerPublicKey = \".*$",   fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 	}
@@ -784,6 +815,12 @@ func keygen(env Environment, regexes []string) {
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPrivateKey = \".*$",  fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPublicKey = \".*$",  fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPrivateKey = \".*$",  fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_terraform/func_test_terraform.go\n")
+	{
+	   replace("cmd/func_test_terraform/func_test_terraform.go", "^const APIPrivateKey = \".*$",   fmt.Sprintf("const APIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+	   replace("cmd/func_test_terraform/func_test_terraform.go", "^\\s*api_key\\s*=\\s*\".*$", fmt.Sprintf("  api_key  = \"%s\"", keypairs["local"]["admin_api_key"]))
 	}
 
 	fmt.Printf("\n------------------------------------------\n\n")
@@ -950,10 +987,12 @@ func config(env Environment, regexes []string) {
 	   fmt.Printf("%s\n", envFile)
 	   {
 			if envs[i] != "prod" {
-			   replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api-%s.%s\"", envs[i], config.CloudflareDomain))
-			   replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server-%s.%s\"", envs[i], config.CloudflareDomain))
-			   replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_URL=\"https://relay-%s.%s\"", envs[i], config.CloudflareDomain))
-			   replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
+				if envs[i] != "local" {
+				   replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api-%s.%s\"", envs[i], config.CloudflareDomain))
+				   replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay-%s.%s\"", envs[i], config.CloudflareDomain))
+				   replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
+				   replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server-%s.%s\"", envs[i], config.CloudflareDomain))
+				}
 			} else {
 			   replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api.%s\"", config.CloudflareDomain))
 			   replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server.%s\"", config.CloudflareDomain))
@@ -1176,13 +1215,13 @@ func config(env Environment, regexes []string) {
 
 // -------------------------------------------------------------------------------------------------------
 
-func GetJSON(url string, object interface{}) {
+func GetJSON(apiKey string, url string, object interface{}) {
 
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+env.APIKey)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {
@@ -1220,13 +1259,13 @@ func GetJSON(url string, object interface{}) {
 	}
 }
 
-func GetText(url string) string {
+func GetText(apiKey string, url string) string {
 
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+env.APIKey)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {
@@ -1258,13 +1297,13 @@ func GetText(url string) string {
 	return string(body)
 }
 
-func GetBinary(url string) []byte {
+func GetBinary(apiKey string, url string) []byte {
 
 	var err error
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+env.APIKey)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {
@@ -1296,7 +1335,7 @@ func GetBinary(url string) []byte {
 	return body
 }
 
-func PutJSON(url string, requestData interface{}, responseData interface{}) error {
+func PutJSON(apiKey string, url string, requestData interface{}, responseData interface{}) error {
 
 	buffer := new(bytes.Buffer)
 
@@ -1304,7 +1343,7 @@ func PutJSON(url string, requestData interface{}, responseData interface{}) erro
 
 	request, _ := http.NewRequest("PUT", url, buffer)
 
-	request.Header.Set("Authorization", "Bearer "+env.APIKey)
+	request.Header.Set("Authorization", "Bearer "+apiKey)
 
 	httpClient := &http.Client{}
 
@@ -1350,6 +1389,21 @@ type AdminDatabaseResponse struct {
 	Error    string `json:"error"`
 }
 
+func getAdminAPIKey() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("error: could not get users home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	filename := fmt.Sprintf("%s/secrets/%s-admin-api-key.txt", homeDir, env.Name)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("error: could not read admin api key from secrets dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	return string(data)
+}
+
 func getDatabase() *db.Database {
 
 	if cachedDatabase != nil {
@@ -1357,8 +1411,9 @@ func getDatabase() *db.Database {
 	}
 
 	if env.Name != "local" {
+
 		response := AdminDatabaseResponse{}
-		GetJSON(fmt.Sprintf("%s/admin/database", env.API_URL), &response)
+		GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/database", env.API_URL), &response)
 		if response.Error != "" {
 			fmt.Printf("%s\n", response.Error)
 			os.Exit(1)
@@ -1424,7 +1479,7 @@ func commitDatabase() {
 	request.User = fmt.Sprintf("%s <%s>", gitUser, gitEmail)
 	request.Database = database_base64
 
-	err = PutJSON(fmt.Sprintf("%s/admin/commit", env.API_URL), &request, &response)
+	err = PutJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/commit", env.API_URL), &request, &response)
 	if err != nil {
 		fmt.Printf("error: could not post JSON to commit database endpoint: %v", err)
 		os.Exit(1)
@@ -1478,8 +1533,8 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	adminRelaysResponse := AdminRelaysResponse{}
 	portalRelaysResponse := PortalRelaysResponse{}
 
-	GetJSON(fmt.Sprintf("%s/admin/relays", env.API_URL), &adminRelaysResponse)
-	GetJSON(fmt.Sprintf("%s/portal/all_relays", env.API_URL), &portalRelaysResponse)
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/relays", env.API_URL), &adminRelaysResponse)
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/portal/all_relays", env.API_URL), &portalRelaysResponse)
 
 	type RelayRow struct {
 		Name            string
@@ -1741,7 +1796,7 @@ func getRelayInfo(env Environment, regex string) []admin.RelayData {
 
 	relaysResponse := AdminRelaysResponse{}
 
-	GetJSON(fmt.Sprintf("%s/admin/relays", env.API_URL), &relaysResponse)
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/relays", env.API_URL), &relaysResponse)
 
 	relays := make([]admin.RelayData, 0)
 
@@ -1969,8 +2024,7 @@ func keys(env Environment, regexes []string) {
 type Environment struct {
 	Name                     string `json:"name"`
 	API_URL                  string `json:"api_url"`
-	APIPrivateKey            string `json:"api_private_key"`
-	APIKey                   string `json:"api_key"`
+	PortalAPIKey             string `json:"portal_api_key"`
 	VPNAddress               string `json:"vpn_address"`
 	SSHKeyFile               string `json:"ssh_key_file"`
 	RelayBackendURL          string `json:"relay_backend_url"`
@@ -1983,8 +2037,7 @@ func (e *Environment) String() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("[%s]\n\n", e.Name))
 	sb.WriteString(fmt.Sprintf(" + API URL = %s\n", e.API_URL))
-	sb.WriteString(fmt.Sprintf(" + API Private Key = %s\n", e.APIPrivateKey))
-	sb.WriteString(fmt.Sprintf(" + API Key = %s\n", e.APIKey))
+	sb.WriteString(fmt.Sprintf(" + Portal API Key = %s\n", e.PortalAPIKey))
 	sb.WriteString(fmt.Sprintf(" + VPN Address = %s\n", e.VPNAddress))
 	sb.WriteString(fmt.Sprintf(" + SSH Key File = %s\n", e.SSHKeyFile))
 	sb.WriteString(fmt.Sprintf(" + Relay Backend URL = %s\n", e.RelayBackendURL))
@@ -2066,7 +2119,7 @@ func (e *Environment) Clean() {
 
 func getCostMatrix(env Environment, fileName string) {
 
-	cost_matrix_binary := GetBinary(fmt.Sprintf("%s/portal/cost_matrix", env.API_URL))
+	cost_matrix_binary := GetBinary(getAdminAPIKey(), fmt.Sprintf("%s/portal/cost_matrix", env.API_URL))
 
 	os.WriteFile("cost.bin", cost_matrix_binary, 0644)
 
@@ -2336,7 +2389,7 @@ func routes(src string, dest string) {
 
 func ping() {
 	url := fmt.Sprintf("%s/ping", env.API_URL)
-	text := GetText(url)
+	text := GetText(getAdminAPIKey(), url)
 	fmt.Printf("%s\n\n", text)
 }
 

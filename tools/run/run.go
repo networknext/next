@@ -528,8 +528,7 @@ type Environment struct {
 	PortalURL                string `json:"portal_url"`
 	DatabaseURL              string `json:"database_url"`
 	SSHKeyFile               string `json:"ssh_key_filepath"`
-	APIPrivateKey            string `json:"api_private_key"`
-	APIKey                   string `json:"api_key"`
+	PortalAPIKey             string `json:"portal_api_key"`
 	VPNAddress               string `json:"vpn_address"`
 	RelayBackendURL          string `json:"relay_backend_url"`
 	RelayBackendPublicKey    string `json:"relay_backend_public_key"`
