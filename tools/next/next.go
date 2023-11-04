@@ -464,11 +464,11 @@ func main() {
 
 // ------------------------------------------------------------------------------
 
-func replace(filename string, pattern string, replacement string) error {
+func replace(filename string, pattern string, replacement string) {
 
 	r, err := regexp.Compile(pattern)
 	if err != nil {
-		return fmt.Errorf("could not compile regex: %v", pattern)
+		panic(fmt.Errorf("could not compile regex: %v", pattern))
 	}
 
 	inputFile := filename
@@ -477,14 +477,14 @@ func replace(filename string, pattern string, replacement string) error {
 
 	input, err := os.ReadFile(inputFile)
    if err != nil {
-		return fmt.Errorf("could not read input file: %v", inputFile)
+		panic(fmt.Errorf("could not read input file: %v", inputFile))
    }
 
    lines := strings.Split(string(input), "\n")
 
 	output, err := os.Create(outputFile)
 	if err != nil {
-		return fmt.Errorf("could not open output file: %v", outputFile)
+		panic(fmt.Errorf("could not open output file: %v", outputFile))
 	}
 
    for i := range lines {
@@ -502,10 +502,8 @@ func replace(filename string, pattern string, replacement string) error {
 
    err = os.Rename(outputFile, inputFile)
    if err != nil {
-   	return fmt.Errorf("could not move output file to input file: %v", err)
+   	panic(fmt.Errorf("could not move output file to input file: %v", err))
    }
-
-	return nil
 }
 
 func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
@@ -558,17 +556,26 @@ func keygen(env Environment, regexes []string) {
 
 	keypairs := make(map[string]map[string]string)
 
+	testRelayPublicKey, testRelayPrivateKey, err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		fmt.Printf("\nerror: failed to generate relay keypair\n\n")
+		os.Exit(1)
+	}
+
 	testBuyerPublicKey, testBuyerPrivateKey := generateBuyerKeypair()
 
 	raspberryBuyerPublicKey, raspberryBuyerPrivateKey := generateBuyerKeypair()
 
 	fmt.Printf("global:\n\n")
 
+	fmt.Printf("	Test relay public key          = %s\n", base64.StdEncoding.EncodeToString(testRelayPublicKey[:]))
+	fmt.Printf("   Test relay private key         = %s\n", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
+
 	fmt.Printf("	Test buyer public key          = %s\n", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
 	fmt.Printf("	Test buyer private key         = %s\n", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
 
-	fmt.Printf("	Raspberry buyer public key          = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:]))
-	fmt.Printf("	Raspberry buyer private key         = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:]))
+	fmt.Printf("	Raspberry buyer public key     = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:]))
+	fmt.Printf("	Raspberry buyer private key    = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:]))
 
 	fmt.Printf("\n")
 
@@ -659,6 +666,8 @@ func keygen(env Environment, regexes []string) {
 		   replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
 		   replace(envFile, "^\\s*NEXT_BUYER_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 		   replace(envFile, "^\\s*NEXT_BUYER_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+		   replace(envFile, "^\\s*RELAY_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+		   replace(envFile, "^\\s*RELAY_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
 
 		   if v["secure"] != "true" {
 			   replace(envFile, "^\\s*API_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
@@ -690,7 +699,56 @@ func keygen(env Environment, regexes []string) {
    	}
    }
 
+   // update non-secret keys in source files
+
+	fmt.Printf("\n------------------------------------------\n          updating source files\n------------------------------------------\n\n")
+
+	fmt.Printf("cmd/raspberry_client/raspberry_client.cpp\n")
+	{
+	   replace("cmd/raspberry_client/raspberry_client.cpp", "^\\s*strncpy_s\\(config\\.buyer_public_key,.*$", fmt.Sprintf("    strncpy_s(config.buyer_public_key, \"%s\", 256);", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
+	   replace("cmd/raspberry_client/raspberry_client.cpp", "^\\s*strncpy\\(config\\.buyer_public_key,.*$", fmt.Sprintf("    strncpy(config.buyer_public_key, \"%s\", 256);", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
+	}
+
+	fmt.Printf("sdk/examples/upgraded_client.cpp\n")
+	{
+	   replace("sdk/examples/upgraded_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("    const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	}
+
+	fmt.Printf("sdk/examples/upgraded_server.cpp\n")
+	{
+	   replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("    const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	}
+
+	fmt.Printf("sdk/examples/complex_client.cpp\n")
+	{
+	   replace("sdk/examples/complex_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("    const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	}
+
+	fmt.Printf("sdk/examples/complex_server.cpp\n")
+	{
+	   replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("    const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	}
+
+	fmt.Printf("docker-compose.yml\n")
+	{
+	   replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PUBLIC_KEY=.*$",   fmt.Sprintf("      - RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
+	   replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PRIVATE_KEY=.*$",  fmt.Sprintf("      - RELAY_BACKEND_PRIVATE_KEY=%s", keypairs["local"]["relay_backend_private_key"]))
+	   replace("docker-compose.yml", "^\\s* - SERVER_BACKEND_PUBLIC_KEY=.*$",  fmt.Sprintf("      - SERVER_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["server_backend_public_key"]))
+	   replace("docker-compose.yml", "^\\s* - SERVER_BACKEND_PRIVATE_KEY=.*$", fmt.Sprintf("      - SERVER_BACKEND_PRIVATE_KEY=%s", keypairs["local"]["server_backend_private_key"]))
+	   replace("docker-compose.yml", "^\\s* - PING_KEY=.*$",                   fmt.Sprintf("      - PING_KEY=%s", keypairs["local"]["ping_key"]))
+	   replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PUBLIC_KEY=.*$",      fmt.Sprintf("      - NEXT_BUYER_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PRIVATE_KEY=.*$",     fmt.Sprintf("      - NEXT_BUYER_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	   replace("docker-compose.yml", "^\\s* - RELAY_PUBLIC_KEY=.*$",           fmt.Sprintf("      - RELAY_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$",          fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	}
+
+/*
+          - PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=
+*/
+
 	fmt.Printf("\n------------------------------------------\n\n")
+
+	// zip up all secrets so we can upload them to semaphore ci in a single artifact
 
    if !bash("cd ~/secrets && rm -f secrets.tar.gz && tar -czvf secrets.tar.gz . 2> /dev/null") {
 		fmt.Printf("\nerror: failed to tar gzip secrets :(\n\n")
@@ -1007,11 +1065,15 @@ func config(env Environment, regexes []string) {
 	fmt.Printf("           Generating staging.sql           \n")
 	fmt.Printf("--------------------------------------------\n\n")
 
-   ok := bash("run generate-staging-sql")
+   ok := bash("run generate-staging-sql > /dev/null")
    if !ok {
    	fmt.Printf("\nerror: could not generate staging.sql\n\n")
    	os.Exit(1)
    }
+
+   bash("cat schemas/sql/staging.sql")
+
+   fmt.Printf("\n")
 
    // generate empty.bin
 

@@ -7,10 +7,10 @@ ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 ssh_private_key_file        = "~/.ssh/id_rsa"
 relay_version               = "relay-debug-1.0.28"
 relay_artifacts_bucket      = "test_network_next_relay_artifacts"
-relay_backend_public_key    = "bVOY2POK2DREzT8D4yz0+huh6UXlFoM9GOfZrf4zIEg="
+relay_backend_public_key    = "rK8hMu95MM4eJ+mrGWyhn3rDe2WrcsYSHKU233HAWQU="
 relay_backend_url           = "relay-dev.spacecats.net"
 
-raspberry_buyer_public_key  = "+2qlLDtiOJv+U+FYrs+7yLNq0oVkI/Qm7G2TI8lca/iCH7bTdEGzmw=="
+raspberry_buyer_public_key  = "yGzu/W1RB6CWnGtcCwjg+euwcpu2wE0P+9rf57dnjmqqfGieB3vPTQ=="
 
 raspberry_datacenters = [
 	"google.iowa.1",
@@ -19,7 +19,7 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-test_buyer_public_key       = "H+P06Co6wglahRssa1oUzYbF9FN+QLzvF3T3vIyn5uRh3NSxptgJww=="
+test_buyer_public_key       = "3vUqhZ0kRd19sCpCyoJp4GJAkGBBP8ABkf7YTy4wwuJ/tvPhOziVCA=="
 
 test_datacenters = [
 	"google.iowa.1",

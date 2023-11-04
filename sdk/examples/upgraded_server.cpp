@@ -33,7 +33,7 @@ const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "server-dev.spacecats.net"
-const char * buyer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+    const char * buyer_private_key = "3vUqhZ0kRd1PLUTLJMwe2b8ewMLH6CSCVaOcfG0cFwewVsilkuG0k32wKkLKgmngYkCQYEE/wAGR/thPLjDC4n+28+E7OJUI";
 
 static volatile int quit = 0;
 

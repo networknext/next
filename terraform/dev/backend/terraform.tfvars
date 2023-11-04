@@ -15,11 +15,11 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "spacecats.net"
 
-raspberry_buyer_public_key  = "+2qlLDtiOJv+U+FYrs+7yLNq0oVkI/Qm7G2TI8lca/iCH7bTdEGzmw=="
-raspberry_buyer_private_key  = "+2qlLDtiOJutj5L+ck6Sf6LYrPfWrYRYpNG8fMI0T4k9Ax8ZrdijvP5T4Viuz7vIs2rShWQj9CbsbZMjyVxr+IIfttN0QbOb"
+raspberry_buyer_public_key  = "yGzu/W1RB6CWnGtcCwjg+euwcpu2wE0P+9rf57dnjmqqfGieB3vPTQ=="
+raspberry_buyer_private_key  = "yGzu/W1RB6CnMfaFZM+EV+fJoGEy1U+YjTqQUMRh5EGHhGOUyCPX/5aca1wLCOD567Bym7bATQ/72t/nt2eOaqp8aJ4He89N"
 
 ip2location_bucket_name     = "test_network_next_local"
 
-relay_backend_public_key    = "bVOY2POK2DREzT8D4yz0+huh6UXlFoM9GOfZrf4zIEg="
+relay_backend_public_key    = "rK8hMu95MM4eJ+mrGWyhn3rDe2WrcsYSHKU233HAWQU="
 
-server_backend_public_key   = "TTF4oKvU6kC/cenOS6tIajOFEQPZNmzEs/HpU//t6T8="
+server_backend_public_key   = "PsFbWCTYnTNOr0NnfZIQLyiun6IVkXzKosf7vWhd6j0="
