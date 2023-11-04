@@ -10,8 +10,11 @@ variable "relay_version" { type = string }
 variable "relay_artifacts_bucket" { type = string }
 variable "relay_backend_url" { type = string }
 variable "relay_backend_public_key" { type = string }
-variable "raspberry_datacenters" { type = list(string) }
 variable "sellers" { type = map(string) }
+variable "raspberry_buyer_public_key" { type = string }
+variable "raspberry_datacenters" { type = list(string) }
+variable "test_buyer_public_key" { type = string }
+variable "test_datacenters" { type = list(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -318,7 +321,9 @@ output "all_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# Setup the raspberry buyer
+# ===============
+# RASPBERRY BUYER
+# ===============
 
 resource "networknext_route_shader" raspberry {
   name = "raspberry"
@@ -333,7 +338,7 @@ resource "networknext_buyer" raspberry {
   debug = true
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
-  public_key_base64 = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+  public_key_base64 = var.raspberry_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" raspberry {
@@ -341,6 +346,40 @@ resource "networknext_buyer_datacenter_settings" raspberry {
   buyer_id = networknext_buyer.raspberry.id
   datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
   enable_acceleration = true
+}
+
+# ==========
+# TEST BUYER
+# ==========
+
+resource "networknext_route_shader" test {
+  name = "test"
+  acceptable_latency = 0
+  latency_reduction_threshold = 1
+  acceptable_packet_loss_instant = 0.1
+  acceptable_packet_loss_sustained = 0.01
+  bandwidth_envelope_up_kbps = 1024
+  bandwidth_envelope_down_kbps = 1024
+}
+
+resource "networknext_buyer" test {
+  name = "Test"
+  code = "test"
+  debug = true
+  live = true
+  route_shader_id = networknext_route_shader.test.id
+  public_key_base64 = var.test_buyer_public_key
+}
+
+resource "networknext_buyer_datacenter_settings" test {
+  count = length(var.test_datacenters)
+  buyer_id = networknext_buyer.test.id
+  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
+  enable_acceleration = true
+}
+
+output "all_buyers" {
+  value = networknext_buyer.buyers
 }
 
 # ----------------------------------------------------------------------------------------

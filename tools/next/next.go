@@ -550,15 +550,31 @@ func keygen(env Environment, regexes []string) {
 		
 	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
 
+	// todo: if ~/secrets/somefile already exists, ask for confirmation
+
+	bash("mkdir -p ~/secrets")
+
    envs := []string{"local", "dev", "staging", "prod"}
 
 	keypairs := make(map[string]map[string]string)
 
+	testBuyerPublicKey, testBuyerPrivateKey := generateBuyerKeypair()
+
+	raspberryBuyerPublicKey, raspberryBuyerPrivateKey := generateBuyerKeypair()
+
+	fmt.Printf("global:\n\n")
+
+	fmt.Printf("	Test buyer public key          = %s\n", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
+	fmt.Printf("	Test buyer private key         = %s\n", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
+
+	fmt.Printf("	Raspberry buyer public key          = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:]))
+	fmt.Printf("	Raspberry buyer private key         = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:]))
+
+	fmt.Printf("\n")
+
    for i := range envs {
 
    	fmt.Printf("%s:\n\n", envs[i])
-
-		testBuyerPublicKey, testBuyerPrivateKey := generateBuyerKeypair()
 
 		relayBackendPublicKey, relayBackendPrivateKey, err := box.GenerateKey(rand.Reader)
 		if err != nil {
@@ -581,8 +597,6 @@ func keygen(env Environment, regexes []string) {
 		pingKey := [32]byte{}
 		common.RandomBytes(pingKey[:])
 
-		fmt.Printf("	Test buyer public key          = %s\n", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
-		fmt.Printf("	Test buyer private key         = %s\n", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
 		fmt.Printf("	Relay backend public key       = %s\n", base64.StdEncoding.EncodeToString(relayBackendPublicKey[:]))
 		fmt.Printf("	Relay backend private key      = %s\n", base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:]))
 		fmt.Printf("	Server backend public key      = %s\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
@@ -593,8 +607,6 @@ func keygen(env Environment, regexes []string) {
 
    	k := make(map[string]string)
 
-   	k["test_buyer_public_key"] = base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])
-   	k["test_buyer_private_key"] = base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])
    	k["relay_backend_public_key"] = base64.StdEncoding.EncodeToString(relayBackendPublicKey[:])
    	k["relay_backend_private_key"] = base64.StdEncoding.EncodeToString(relayBackendPrivateKey[:])
    	k["server_backend_public_key"] = base64.StdEncoding.EncodeToString(serverBackendPublicKey[:])
@@ -634,7 +646,7 @@ func keygen(env Environment, regexes []string) {
 		fmt.Printf("\n")
 	}
 
-   // update keys in env files
+   // update non-secret keys in env files
 
 	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
 
@@ -645,6 +657,8 @@ func keygen(env Environment, regexes []string) {
 		   replace(envFile, "^\\s*API_KEY\\s*=.*$", fmt.Sprintf("API_KEY=\"%s\"", v["api_key"]))
 		   replace(envFile, "^\\s*RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
 		   replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+		   replace(envFile, "^\\s*NEXT_BUYER_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+		   replace(envFile, "^\\s*NEXT_BUYER_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 
 		   if v["secure"] != "true" {
 			   replace(envFile, "^\\s*API_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
@@ -655,7 +669,7 @@ func keygen(env Environment, regexes []string) {
 		}
    }
 
-   // update public keys in terraform files
+   // update non-secret keys in terraform files
 
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
@@ -669,6 +683,9 @@ func keygen(env Environment, regexes []string) {
 	   		fmt.Printf("%s\n", filenames[i])
 			   replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
 			   replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
+				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$",      fmt.Sprintf("test_buyer_public_key       = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+				replace(filenames[i], "^\\s*raspberry_buyer_public_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
+				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key  = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:])))
    		}
    	}
    }

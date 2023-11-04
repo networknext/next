@@ -93,6 +93,15 @@ locals {
       seller_code = "akamai"
     }
 
+    "akamai.tokyo" = {
+      zone        = "ap-northeast"
+      native_name = "ap-northeast"
+      latitude    = 35.68
+      longitude   = 139.65
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
   }
 
 }
