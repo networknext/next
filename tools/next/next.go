@@ -693,7 +693,9 @@ func keygen(env Environment, regexes []string) {
 	   {
 		   replace(envFile, "^\\s*PORTAL_API_KEY\\s*=.*$", fmt.Sprintf("PORTAL_API_KEY=\"%s\"", v["portal_api_key"]))
 		   replace(envFile, "^\\s*RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
-		   replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+		   replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+		   replace(envFile, "^\\s*NEXT_RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
+		   replace(envFile, "^\\s*NEXT_SERVER_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
 		   replace(envFile, "^\\s*NEXT_BUYER_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 		   replace(envFile, "^\\s*NEXT_BUYER_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 		   replace(envFile, "^\\s*RELAY_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
@@ -735,6 +737,14 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n          updating source files\n------------------------------------------\n\n")
 
+	fmt.Printf("sdk/include/next_config.h\n")
+   {
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["server_backend_public_key"]))
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["relay_backend_public_key"]))
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["server_backend_public_key"]))
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["relay_backend_public_key"]))
+   }
+
 	fmt.Printf("sdk/soak.cpp\n")
 	{
 	   replace("sdk/soak.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
@@ -749,22 +759,22 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("sdk/examples/upgraded_client.cpp\n")
 	{
-	   replace("sdk/examples/upgraded_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("    const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("sdk/examples/upgraded_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 	}
 
 	fmt.Printf("sdk/examples/upgraded_server.cpp\n")
 	{
-	   replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("    const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	   replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 	}
 
 	fmt.Printf("sdk/examples/complex_client.cpp\n")
 	{
-	   replace("sdk/examples/complex_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("    const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+	   replace("sdk/examples/complex_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 	}
 
 	fmt.Printf("sdk/examples/complex_server.cpp\n")
 	{
-	   replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("    const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+	   replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 	}
 
 	fmt.Printf("docker-compose.yml\n")
@@ -1064,19 +1074,19 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("sdk/include/next_config.h\n")
    {
-   	replace("sdk/include/next_config.h", "^\\s*#define NEXT_SERVER_BACKEND_HOSTNAME \"server\\..*\"\\s*$", fmt.Sprintf("#define NEXT_SERVER_BACKEND_HOSTNAME \"server.%s\"", config.CloudflareDomain))
-   	replace("sdk/include/next_config.h", "^\\s*#define NEXT_SERVER_BACKEND_HOSTNAME \"server-dev\\..*\"\\s*$", fmt.Sprintf("#define NEXT_SERVER_BACKEND_HOSTNAME \"server-dev.%s\"", config.CloudflareDomain))
-   	replace("sdk/include/next_config.h", "^\\s*#define NEXT_CONFIG_BUCKET_NAME\\s+\"[A-Za-z_]+?_network_next_sdk_config\"\\s*$", fmt.Sprintf("#define NEXT_CONFIG_BUCKET_NAME      \"%s_network_next_sdk_config\"", config.CompanyName))
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_HOSTNAME.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_HOSTNAME \"server.%s\"", config.CloudflareDomain))
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_HOSTNAME.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_HOSTNAME \"server-dev.%s\"", config.CloudflareDomain))
+   	replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_CONFIG_BUCKET_NAME\\s+\"[A-Za-z_]+?_network_next_sdk_config\"\\s*$", fmt.Sprintf("#define NEXT_CONFIG_BUCKET_NAME \"%s_network_next_sdk_config\"", config.CompanyName))
    }
 
 	fmt.Printf("sdk/examples/upgraded_server.cpp\n")
 	{
-   	replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\"", config.CloudflareDomain))
+   	replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\";", config.CloudflareDomain))
 	}
 
 	fmt.Printf("sdk/examples/complex_server.cpp\n")
 	{
-   	replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\"", config.CloudflareDomain))
+   	replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\";", config.CloudflareDomain))
 	}
 
    // update semaphore ci files

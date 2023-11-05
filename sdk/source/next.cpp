@@ -305,6 +305,9 @@ int next_init( void * context, next_config_t * config_in )
 {
     next_assert( next_global_context == NULL );
 
+    next_base64_decode_data( NEXT_SERVER_BACKEND_PUBLIC_KEY, next_server_backend_public_key, 32 );
+    next_base64_decode_data( NEXT_RELAY_BACKEND_PUBLIC_KEY, next_relay_backend_public_key, 32 );
+
     next_global_context = context;
 
     if ( next_platform_init() != NEXT_OK )

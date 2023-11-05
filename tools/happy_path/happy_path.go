@@ -94,6 +94,62 @@ func happy_path(wait bool) int {
 
 	redisClient.FlushAll(context.Background())
 
+	// initialize session cruncher
+
+	fmt.Printf("\nstarting session cruncher:\n\n")
+
+	session_cruncher_stdout := run("session-cruncher", "logs/session_cruncher")
+
+	fmt.Printf("\nverifying session cruncher ...")
+
+	session_cruncher_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(session_cruncher_stdout.String(), "starting http server on port 40200") {
+			session_cruncher_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !session_cruncher_initialized {
+		fmt.Printf("\n\nerror: session cruncher failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", session_cruncher_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
+	// initialize server cruncher
+
+	fmt.Printf("\nstarting server cruncher:\n\n")
+
+	server_cruncher_stdout := run("server-cruncher", "logs/server_cruncher")
+
+	fmt.Printf("\nverifying server cruncher ...")
+
+	server_cruncher_initialized := false
+
+	for i := 0; i < 100; i++ {
+		if strings.Contains(server_cruncher_stdout.String(), "starting http server on port 40300") {
+			server_cruncher_initialized = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !server_cruncher_initialized {
+		fmt.Printf("\n\nerror: server cruncher failed to initialize\n\n")
+		fmt.Printf("----------------------------------------------------\n")
+		fmt.Printf("%s", server_cruncher_stdout)
+		fmt.Printf("----------------------------------------------------\n")
+		return 1
+	}
+
+	fmt.Printf(" OK\n")
+
 	// initialize api
 
 	fmt.Printf("starting api:\n\n")
@@ -345,62 +401,6 @@ func happy_path(wait bool) int {
 		fmt.Printf("\n\nerror: server backend failed to initialize\n\n")
 		fmt.Printf("----------------------------------------------------\n")
 		fmt.Printf("%s", server_backend_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// initialize session cruncher
-
-	fmt.Printf("\nstarting session cruncher:\n\n")
-
-	session_cruncher_stdout := run("session-cruncher", "logs/session_cruncher")
-
-	fmt.Printf("\nverifying session cruncher ...")
-
-	session_cruncher_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(session_cruncher_stdout.String(), "starting http server on port 40200") {
-			session_cruncher_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !session_cruncher_initialized {
-		fmt.Printf("\n\nerror: session cruncher failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", session_cruncher_stdout)
-		fmt.Printf("----------------------------------------------------\n")
-		return 1
-	}
-
-	fmt.Printf(" OK\n")
-
-	// initialize server cruncher
-
-	fmt.Printf("\nstarting server cruncher:\n\n")
-
-	server_cruncher_stdout := run("server-cruncher", "logs/server_cruncher")
-
-	fmt.Printf("\nverifying server cruncher ...")
-
-	server_cruncher_initialized := false
-
-	for i := 0; i < 100; i++ {
-		if strings.Contains(server_cruncher_stdout.String(), "starting http server on port 40300") {
-			server_cruncher_initialized = true
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if !server_cruncher_initialized {
-		fmt.Printf("\n\nerror: server cruncher failed to initialize\n\n")
-		fmt.Printf("----------------------------------------------------\n")
-		fmt.Printf("%s", server_cruncher_stdout)
 		fmt.Printf("----------------------------------------------------\n")
 		return 1
 	}

@@ -1795,12 +1795,12 @@ locals {
 
   relays = {
 
-    "amazon.sanjose.1" = { datacenter_name = "amazon.sanjose.1" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
     "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
     "amazon.ohio.2" = { datacenter_name = "amazon.ohio.2" },
     "amazon.oregon.1" = { datacenter_name = "amazon.oregon.1" },
+    "amazon.sanjose.1" = { datacenter_name = "amazon.sanjose.1" },
   }
 
 }
@@ -1895,6 +1895,21 @@ module "relay_amazon_ohio_2" {
 
 	  value = {
 
+	    "amazon.oregon.1" = {
+	      "relay_name"       = "amazon.oregon.1"
+	      "datacenter_name"  = "amazon.oregon.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_oregon_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_oregon_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "us-west-2"
+	      "ssh_ip"           = module.relay_amazon_oregon_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
 	    "amazon.sanjose.1" = {
 	      "relay_name"       = "amazon.sanjose.1"
 	      "datacenter_name"  = "amazon.sanjose.1"
@@ -1966,21 +1981,6 @@ module "relay_amazon_ohio_2" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "us-east-2"
 	      "ssh_ip"           = module.relay_amazon_ohio_2.public_address
-	      "ssh_port"         = 22
-	      "ssh_user"         = "ubuntu"
-	    }
-
-	    "amazon.oregon.1" = {
-	      "relay_name"       = "amazon.oregon.1"
-	      "datacenter_name"  = "amazon.oregon.1"
-	      "seller_name"      = "Amazon"
-	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_oregon_1.public_address
-	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_oregon_1.internal_address
-	      "internal_port"    = 40000
-	      "internal_group"   = "us-west-2"
-	      "ssh_ip"           = module.relay_amazon_oregon_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }

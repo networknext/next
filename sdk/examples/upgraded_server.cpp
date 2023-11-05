@@ -32,8 +32,8 @@
 const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
-const char * server_backend_hostname = "server-dev.spacecats.net"
-    const char * buyer_private_key = "WC6mKDnJmlGOqyEK8CCxCE58KXEyeCCJMSJOP9K/Bh34tUl5WbwZ1s+yu9+KLRYUlcTFLdxVEkr4e/XBZfWBG4hJ0226SWRj";
+const char * server_backend_hostname = "server-dev.spacecats.net";
+const char * buyer_private_key = "WU+Fzt1uQN63cn1xN7pL2ZVpvsWQxYRoUut5IjfH/vxzi/p4j9l4iUWPqJD0xTaGb+L915lGxxC0PsPKYi90SmPxEiHGF9xe";
 
 static volatile int quit = 0;
 
@@ -67,7 +67,7 @@ int main()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy_s( config.server_backend_hostname, NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) - 1 );
+    strncpy_s( config.server_backend_hostname, server_backend_hostname, sizeof(config.server_backend_hostname) - 1 );
     strncpy_s( config.buyer_private_key, buyer_private_key, sizeof(config.buyer_private_key) - 1 );
 
     if ( next_init( NULL, &config ) != NEXT_OK )
