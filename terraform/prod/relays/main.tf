@@ -34,7 +34,7 @@ terraform {
 }
 
 provider "networknext" {
-  hostname = "api-local.virtualgo.net"
+  hostname = "api.virtualgo.net"
   api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTExOX0.-w1RJDoOg7tuLJmCDxerr-lBs0PS6VuWAX249U_f9ys"
 }
 
@@ -372,10 +372,6 @@ resource "networknext_buyer_datacenter_settings" test {
   buyer_id = networknext_buyer.test.id
   datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
   enable_acceleration = true
-}
-
-output "all_buyers" {
-  value = networknext_buyer.buyers
 }
 
 # ----------------------------------------------------------------------------------------

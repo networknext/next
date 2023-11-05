@@ -1046,10 +1046,10 @@ func config(env Environment, regexes []string) {
    		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
    	}
 
-   	for i := range filenames {
-   		if fileExists(filenames[i]) {
-	   		fmt.Printf("%s\n", filenames[i])
-			   replace(filenames[i], "^\\s*bucket\\s*=\\s*\"[a-zA-Z_]+\"\\s*$", fmt.Sprintf("    bucket  = \"%s_network_next_terraform\"", config.CompanyName))
+   	for j := range filenames {
+   		if fileExists(filenames[j]) {
+	   		fmt.Printf("%s\n", filenames[j])
+			   replace(filenames[j], "^\\s*bucket\\s*=\\s*\"[a-zA-Z_]+\"\\s*$", fmt.Sprintf("    bucket  = \"%s_network_next_terraform\"", config.CompanyName))
    		}
    	}
 
@@ -1059,20 +1059,20 @@ func config(env Environment, regexes []string) {
    		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
    	}
 
-   	for i := range filenames {
-   		if fileExists(filenames[i]) {
-	   		fmt.Printf("%s\n", filenames[i])
-			   replace(filenames[i], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_backend_artifacts\"", config.CompanyName))
-			   replace(filenames[i], "^\\s*google_database_bucket\\s*=.*$",  fmt.Sprintf("google_database_bucket      = \"gs://%s_network_next_database_files\"", config.CompanyName))
-			   replace(filenames[i], "^\\s*cloudflare_domain\\s*=.*$",       fmt.Sprintf("cloudflare_domain           = \"%s\"", config.CloudflareDomain))
-			   replace(filenames[i], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))
-			   replace(filenames[i], "^\\s*ssh_public_key_file\\s*=.*$",     fmt.Sprintf("ssh_public_key_file         = \"~/.ssh/%s.pub\"", config.SSHKey))
-			   replace(filenames[i], "^\\s*ssh_private_key_file\\s*=.*$",    fmt.Sprintf("ssh_private_key_file        = \"~/.ssh/%s\"", config.SSHKey))
-			   replace(filenames[i], "^\\s*relay_artifacts_bucket\\s*=.*$",  fmt.Sprintf("relay_artifacts_bucket      = \"%s_network_next_relay_artifacts\"", config.CompanyName))
+   	for j := range filenames {
+   		if fileExists(filenames[j]) {
+	   		fmt.Printf("%s\n", filenames[j])
+			   replace(filenames[j], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_backend_artifacts\"", config.CompanyName))
+			   replace(filenames[j], "^\\s*google_database_bucket\\s*=.*$",  fmt.Sprintf("google_database_bucket      = \"gs://%s_network_next_database_files\"", config.CompanyName))
+			   replace(filenames[j], "^\\s*cloudflare_domain\\s*=.*$",       fmt.Sprintf("cloudflare_domain           = \"%s\"", config.CloudflareDomain))
+			   replace(filenames[j], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))
+			   replace(filenames[j], "^\\s*ssh_public_key_file\\s*=.*$",     fmt.Sprintf("ssh_public_key_file         = \"~/.ssh/%s.pub\"", config.SSHKey))
+			   replace(filenames[j], "^\\s*ssh_private_key_file\\s*=.*$",    fmt.Sprintf("ssh_private_key_file        = \"~/.ssh/%s\"", config.SSHKey))
+			   replace(filenames[j], "^\\s*relay_artifacts_bucket\\s*=.*$",  fmt.Sprintf("relay_artifacts_bucket      = \"%s_network_next_relay_artifacts\"", config.CompanyName))
 			   if envs[i] != "prod" {
-				   replace(filenames[i], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay-%s.%s\"", envs[i], config.CloudflareDomain))
+				   replace(filenames[j], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay-%s.%s\"", envs[i], config.CloudflareDomain))
   			   } else {
-				   replace(filenames[i], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay.%s\"", config.CloudflareDomain))			   	
+				   replace(filenames[j], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay.%s\"", config.CloudflareDomain))			   	
 			   }
    		}
    	}
@@ -1081,13 +1081,13 @@ func config(env Environment, regexes []string) {
    		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
    	}
 
-   	for i := range filenames {
-   		if fileExists(filenames[i]) {
-	   		fmt.Printf("%s\n", filenames[i])
+   	for j := range filenames {
+   		if fileExists(filenames[j]) {
+	   		fmt.Printf("%s\n", filenames[j])
 			   if envs[i] != "prod" {
-				   replace(filenames[i], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api-%s.%s\"", envs[i], config.CloudflareDomain))
+				   replace(filenames[j], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api-%s.%s\"", envs[i], config.CloudflareDomain))
   			   } else {
-				   replace(filenames[i], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api.%s\"", config.CloudflareDomain))
+				   replace(filenames[j], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api.%s\"", config.CloudflareDomain))
 			   }
    		}
    	}
