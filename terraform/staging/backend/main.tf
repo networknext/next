@@ -58,7 +58,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "test_network_next_terraform"
+    bucket  = "auspicious_network_next_terraform"
     prefix  = "staging"
   }
 }

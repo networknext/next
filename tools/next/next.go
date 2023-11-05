@@ -715,6 +715,7 @@ func keygen(env Environment, regexes []string) {
 	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
    for k,v := range keypairs {
+
    	filenames := []string {
    		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", k),
    		fmt.Sprintf("terraform/%s/relays/terraform.tfvars", k),
@@ -731,7 +732,18 @@ func keygen(env Environment, regexes []string) {
 				replace(filenames[i], "^\\s*load_test_buyer_private_key\\s*=.*$", fmt.Sprintf("load_test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
    		}
    	}
-   }
+
+   	filenames = []string {
+   		fmt.Sprintf("terraform/%s/relays/main.tf", k),
+   	}
+
+   	for i := range filenames {
+   		if fileExists(filenames[i]) {
+	   		fmt.Printf("%s\n", filenames[i])
+			   replace(filenames[i], "^\\s*api_key\\s*=.*$",             fmt.Sprintf("  api_key  = \"%s\"", v["admin_api_key"]))	
+   		}
+   	}
+	}
 
    // update non-secret keys in source files
 
@@ -1040,6 +1052,7 @@ func config(env Environment, regexes []string) {
    	filenames = []string {
    		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", envs[i]),
    		fmt.Sprintf("terraform/%s/relays/terraform.tfvars", envs[i]),
+   		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
    	}
 
    	for i := range filenames {
@@ -1054,8 +1067,23 @@ func config(env Environment, regexes []string) {
 			   replace(filenames[i], "^\\s*relay_artifacts_bucket\\s*=.*$",  fmt.Sprintf("relay_artifacts_bucket      = \"%s_network_next_relay_artifacts\"", config.CompanyName))
 			   if envs[i] != "prod" {
 				   replace(filenames[i], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay-%s.%s\"", envs[i], config.CloudflareDomain))
-			   } else {
+  			   } else {
 				   replace(filenames[i], "^\\s*relay_backend_url\\s*=.*$",    fmt.Sprintf("relay_backend_url           = \"relay.%s\"", config.CloudflareDomain))			   	
+			   }
+   		}
+   	}
+
+   	filenames = []string {
+   		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
+   	}
+
+   	for i := range filenames {
+   		if fileExists(filenames[i]) {
+	   		fmt.Printf("%s\n", filenames[i])
+			   if envs[i] != "prod" {
+				   replace(filenames[i], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api-%s.%s\"", envs[i], config.CloudflareDomain))
+  			   } else {
+				   replace(filenames[i], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api.%s\"", config.CloudflareDomain))
 			   }
    		}
    	}
@@ -1162,8 +1190,6 @@ func config(env Environment, regexes []string) {
    	fmt.Printf("\nerror: could not generate staging.sql\n\n")
    	os.Exit(1)
    }
-
-   // todo: update keys in staging.sql
 
    bash("cat schemas/sql/staging.sql")
 

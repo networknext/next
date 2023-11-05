@@ -28,14 +28,14 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "test_network_next_terraform"
+    bucket  = "auspicious_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
 
 provider "networknext" {
-  hostname = "https://api.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
+  hostname = "api-local.spacecats.net"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTA0N30.rPaSoyTsE3ehQOj5NLpyt8mFcEuLsjZ2s8Pn3njtGsc"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ module "google_relays" {
   credentials         = local.google_credentials
   source              = "../../sellers/google"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
+ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ module "amazon_relays" {
   profile             = local.amazon_profile
   source              = "./amazon"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
+ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -205,7 +205,7 @@ module "akamai_relays" {
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
+ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 }
 
 # ----------------------------------------------------------------------------------------
