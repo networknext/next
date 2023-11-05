@@ -9,7 +9,6 @@ google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]
 google_artifacts_bucket     = "gs://auspicious_network_next_terraform"
-google_artifacts_bucket     = "gs://auspicious_network_next_terraform"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
