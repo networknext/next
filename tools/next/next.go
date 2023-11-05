@@ -685,10 +685,13 @@ func keygen(env Environment, regexes []string) {
 
    	fmt.Printf("%s:\n\n", k)
 
+   	writeSecret(k, v, "relay_backend_public_key")
    	writeSecret(k, v, "relay_backend_private_key")
+   	writeSecret(k, v, "server_backend_public_key")
    	writeSecret(k, v, "server_backend_private_key")
    	writeSecret(k, v, "api_private_key")
    	writeSecret(k, v, "admin_api_key")
+   	writeSecret(k, v, "portal_api_key")
    	writeSecret(k, v, "ping_key")
 
 		fmt.Printf("\n")
