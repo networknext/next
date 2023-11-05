@@ -1262,12 +1262,20 @@ func secrets() {
 
 	// zip up all secrets so we can upload them to semaphore ci in a single artifact
 
-	fmt.Printf("zipping up secrets\n\n")
+	fmt.Printf("copying secrets from terraform/projects to ~/secrets...\n")
+
+	bash("cp -f terraform/projects/*.json ~/secrets")
+
+	fmt.Printf("\nzipping up secrets -> secrets.tar.gz\n\n")
 
    if !bash("cd ~/secrets && rm -f secrets.tar.gz && tar -czvf secrets.tar.gz . 2> /dev/null") {
 		fmt.Printf("\nerror: failed to tar gzip secrets :(\n\n")
 		os.Exit(1)
    }
+
+   bash("mv -f ~/secrets/secrets.tar.gz .")
+
+   fmt.Printf("secrets.tar.gz is ready\n\n")
 }
 
 // -------------------------------------------------------------------------------------------------------
