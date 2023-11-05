@@ -744,6 +744,8 @@ func keygen(env Environment, regexes []string) {
 				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:])))
 				replace(filenames[i], "^\\s*load_test_buyer_public_key\\s*=.*$",  fmt.Sprintf("load_test_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 				replace(filenames[i], "^\\s*load_test_buyer_private_key\\s*=.*$", fmt.Sprintf("load_test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+				replace(filenames[i], "^\\s*relay_public_key\\s*=.*$",  fmt.Sprintf("relay_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+				replace(filenames[i], "^\\s*relay_private_key\\s*=.*$", fmt.Sprintf("relay_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
    		}
    	}
 
