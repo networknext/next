@@ -141,6 +141,16 @@ func main() {
 		},
 	}
 
+	var secretsCommand = &ffcli.Command{
+		Name:       "secrets",
+		ShortUsage: "next secrets",
+		ShortHelp:  "Zip up secrets directory",
+		Exec: func(ctx context.Context, args []string) error {
+			secrets()
+			return nil
+		},
+	}
+
 	var envCommand = &ffcli.Command{
 		Name:       "env",
 		ShortUsage: "next env",
@@ -417,6 +427,7 @@ func main() {
 	var commands = []*ffcli.Command{
 		keygenCommand,
 		configCommand,
+		secretsCommand,
 		selectCommand,
 		envCommand,
 		pingCommand,
@@ -850,13 +861,6 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
-	// zip up all secrets so we can upload them to semaphore ci in a single artifact
-
-   if !bash("cd ~/secrets && rm -f secrets.tar.gz && tar -czvf secrets.tar.gz . 2> /dev/null") {
-		fmt.Printf("\nerror: failed to tar gzip secrets :(\n\n")
-		os.Exit(1)
-   }
-
    fmt.Printf("*** KEYGEN COMPLETE ***\n\n")
 }
 
@@ -1123,17 +1127,17 @@ func config(env Environment, regexes []string) {
 
    fmt.Printf(".semaphore/upload-artifacts.yml\n")
    {
-   	replace(".semaphore/upload-artifacts.yml", "^\\s*- export ARTIFACT_BUCKET=gs://[a-zA-Z_]+?_network_next_backend_artifacts\\s*$", fmt.Sprintf(" - export ARTIFACT_BUCKET=gs://%s_network_next_backend_artifacts", config.CompanyName))
+   	replace(".semaphore/upload-artifacts.yml", "^\\s*- export ARTIFACT_BUCKET=gs://[a-zA-Z_]+?_network_next_backend_artifacts\\s*$", fmt.Sprintf("            - export ARTIFACT_BUCKET=gs://%s_network_next_backend_artifacts", config.CompanyName))
    }
 
 	fmt.Printf(".semaphore/upload-relay.yml\n")
 	{
-		replace(".semaphore/upload-relay.yml", "^\\s*-\\s*export RELAY_BUCKET=gs://[a-zA-Z_]+?_network_next_relay_artifacts\\s*$", fmt.Sprintf("            - export RELAY_BUCKET=gs://%s_network_next_relay_artifacts", config.CompanyName))
+		replace(".semaphore/upload-relay.yml", "^\\s*-\\s*export RELAY_BUCKET=gs://[a-zA-Z_]+?_network_next_relay_artifacts\\s*$",       fmt.Sprintf("            - export RELAY_BUCKET=gs://%s_network_next_relay_artifacts", config.CompanyName))
 	}
 
 	fmt.Printf(".semaphore/upload-config.yml\n")
 	{
-   	replace(".semaphore/upload-config.yml", "^\\s*- export SDK_CONFIG_BUCKET=gs://[a-zA-Z_]+?_network_next_sdk_config\\s*$", fmt.Sprintf("            - export SDK_CONFIG_BUCKET=gs://%s_network_next_sdk_config", config.CompanyName))
+   	replace(".semaphore/upload-config.yml", "^\\s*- export SDK_CONFIG_BUCKET=gs://[a-zA-Z_]+?_network_next_sdk_config\\s*$",         fmt.Sprintf("            - export SDK_CONFIG_BUCKET=gs://%s_network_next_sdk_config", config.CompanyName))
 	}
 
    // update config in portal .env files
@@ -1250,6 +1254,20 @@ func config(env Environment, regexes []string) {
    fmt.Printf("--------------------------------------------\n\n")
 
    fmt.Printf("*** CONFIGURATION COMPLETE ***\n\n")
+}
+
+// -------------------------------------------------------------------------------------------------------
+
+func secrets() {
+
+	// zip up all secrets so we can upload them to semaphore ci in a single artifact
+
+	fmt.Printf("zipping up secrets\n\n")
+
+   if !bash("cd ~/secrets && rm -f secrets.tar.gz && tar -czvf secrets.tar.gz . 2> /dev/null") {
+		fmt.Printf("\nerror: failed to tar gzip secrets :(\n\n")
+		os.Exit(1)
+   }
 }
 
 // -------------------------------------------------------------------------------------------------------
