@@ -28,6 +28,9 @@ variable "server_backend_public_key" { type = string }
 variable "load_test_buyer_public_key" { type = string }
 variable "load_test_buyer_private_key" { type = string }
 
+variable "relay_public_key" { type = string }
+variable "relay_private_key" { type = string }
+
 variable "ip2location_bucket_name" { type = string }
 
 locals {
@@ -909,7 +912,7 @@ module "load_test_relays" {
     cat <<EOF > /app/app.env
     RELAY_BACKEND_URL="https://relay-staging.${var.cloudflare_domain}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
-    RELAY_PRIVATE_KEY=lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=
+    RELAY_PRIVATE_KEY=${var.relay_private_key}
     NUM_RELAYS=1000
     EOF
     sudo systemctl start app.service
