@@ -1062,7 +1062,7 @@ func config(env Environment, regexes []string) {
    	for i := range filenames {
    		if fileExists(filenames[i]) {
 	   		fmt.Printf("%s\n", filenames[i])
-			   replace(filenames[i], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_terraform\"", config.CompanyName))
+			   replace(filenames[i], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_backend_artifacts\"", config.CompanyName))
 			   replace(filenames[i], "^\\s*google_database_bucket\\s*=.*$",  fmt.Sprintf("google_database_bucket      = \"gs://%s_network_next_database_files\"", config.CompanyName))
 			   replace(filenames[i], "^\\s*cloudflare_domain\\s*=.*$",       fmt.Sprintf("cloudflare_domain           = \"%s\"", config.CloudflareDomain))
 			   replace(filenames[i], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))

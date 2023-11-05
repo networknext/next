@@ -8,7 +8,7 @@ google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"] 	# IMPORTANT: c3 family is only available in these zones, not us-central1-f
-google_artifacts_bucket     = "gs://auspicious_network_next_terraform"
+google_artifacts_bucket     = "gs://auspicious_network_next_backend_artifacts"
 google_database_bucket      = "gs://auspicious_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
