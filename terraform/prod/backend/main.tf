@@ -1024,7 +1024,7 @@ module "raspberry_server" {
     NEXT_DATACENTER=cloud
     NEXT_BUYER_PRIVATE_KEY=${var.raspberry_buyer_private_key}
     NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"
-    NEXT_SERVER_BACKEND_PUBLIC_KEY=var.server_backend_public_key
+    NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
