@@ -13,13 +13,13 @@ google_artifacts_bucket     = "gs://auspicious_network_next_terraform"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
-cloudflare_domain           = "spacecats.net"
+cloudflare_domain           = "virtualgo.net"
 
-relay_backend_public_key    = "ZUJYHyNI/ljYI2Xx0XQM33p16QqjnGxrtN10B/4Q7Hs="
+relay_backend_public_key    = "uCy7rbmG396VzPqmZgj+MZoGPQgYPJ7+w72QBXR2fyc="
 
-server_backend_public_key   = "fR9dJ5gwMfsBI3k+3wvTGI97dBYMhryQk4rplx+HFiE="
+server_backend_public_key   = "RlsWe6kJIovRSaLbcOo5/fEsXSwrXtFbVIUM7DJAaAA="
 
-load_test_buyer_public_key  = "N/d4A0szNUg42dQ8VLUhy6GvBW5e/84T1ncLB86TAww37+0ZBZ6b/g=="
-load_test_buyer_private_key = "N/d4A0szNUgB2PHwkWdKC8jdw7mzNjo0YRA7Tkqk5W8lF/m57ygHLjjZ1DxUtSHLoa8Fbl7/zhPWdwsHzpMDDDfv7RkFnpv+"
+load_test_buyer_public_key  = "GHV58rv7TXENRa7yp+0+M3fvoo1rpITj8ZW6tF1NBqFvhulAMGLorQ=="
+load_test_buyer_private_key = "GHV58rv7TXENBEGJXojuMx3KrMX7b+uktlMa09WhFiRjKfet5vCvjQ1FrvKn7T4zd++ijWukhOPxlbq0XU0GoW+G6UAwYuit"
 
 ip2location_bucket_name     = "auspicious_network_next_local"

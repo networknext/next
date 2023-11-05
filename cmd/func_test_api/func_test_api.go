@@ -24,9 +24,9 @@ import (
 )
 
 const Hostname = "http://127.0.0.1:50000"
-const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTA0N30.kW4Gyw1i_39lA4AJEJyJsPfrMANDkVhu5LDXlJChDSk"
-const TestAPIPrivateKey = "jUnXwxRfGFwNWgYsnfYZsRIyYUeqdAEwYpFFaKdmXsWBUMNCEomAeGtnBvOLRmLH"
-const TestBuyerPublicKey = "N/d4A0szNUg42dQ8VLUhy6GvBW5e/84T1ncLB86TAww37+0ZBZ6b/g=="
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTExOX0.qmZfOkK3JXOyl8gWamSMjKQK9P1Fgbqxo63Gjhwp2nI"
+const TestAPIPrivateKey = "WQGVmSVVziVZuIMKCOiyTXLhHuExELeSfPxKwvSRwopZYYsVAIICOwUbKxEwjrAb"
+const TestBuyerPublicKey = "GHV58rv7TXENRa7yp+0+M3fvoo1rpITj8ZW6tF1NBqFvhulAMGLorQ=="
 
 // ----------------------------------------------------------------------------------------
 

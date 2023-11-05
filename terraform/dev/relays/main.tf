@@ -32,8 +32,8 @@ terraform {
 }
 
 provider "networknext" {
-  hostname = "api-local.spacecats.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTA0N30.AnWkdE84AGp9Qp66n8fR3Ll6Q7XGM8SGkZNqgCUaS1g"
+  hostname = "api-local.virtualgo.net"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTExOX0.UZ0aceoEWcLGe32IFG5eg_kVQmfcLf8p0i6zm8ktoV0"
 }
 
 # ----------------------------------------------------------------------------------------
