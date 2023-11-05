@@ -1025,6 +1025,7 @@ module "raspberry_server" {
     NEXT_BUYER_PRIVATE_KEY=${var.raspberry_buyer_private_key}
     NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"
     NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
+    NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
@@ -1064,6 +1065,8 @@ module "raspberry_client" {
     NEXT_BUYER_PUBLIC_KEY=${var.raspberry_buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=256
+    NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
+    NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
