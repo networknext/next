@@ -367,6 +367,8 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 
 		endpoint(w, r)
 
+		// todo: sort out auth
+		/*
 		auth := r.Header.Get("Authorization")
 
 		split := strings.Split(auth, "Bearer ")
@@ -397,6 +399,7 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http
 			fmt.Fprintf(w, "Not Authorized")
 
 		}
+		*/
 	}
 }
 
