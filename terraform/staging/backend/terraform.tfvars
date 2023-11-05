@@ -22,4 +22,4 @@ server_backend_public_key   = "RlsWe6kJIovRSaLbcOo5/fEsXSwrXtFbVIUM7DJAaAA="
 load_test_buyer_public_key  = "GHV58rv7TXENRa7yp+0+M3fvoo1rpITj8ZW6tF1NBqFvhulAMGLorQ=="
 load_test_buyer_private_key = "GHV58rv7TXENBEGJXojuMx3KrMX7b+uktlMa09WhFiRjKfet5vCvjQ1FrvKn7T4zd++ijWukhOPxlbq0XU0GoW+G6UAwYuit"
 
-ip2location_bucket_name     = "auspicious_network_next_local"
+ip2location_bucket_name     = "auspicious_network_next_staging"

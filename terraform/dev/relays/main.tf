@@ -32,7 +32,7 @@ terraform {
 }
 
 provider "networknext" {
-  hostname = "api-dev.virtualgo.net"
+  hostname = "https://api-dev.virtualgo.net"
   api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTE0OTExOX0.UZ0aceoEWcLGe32IFG5eg_kVQmfcLf8p0i6zm8ktoV0"
 }
 
@@ -139,7 +139,7 @@ module "google_relays" {
   credentials         = local.google_credentials
   source              = "../../sellers/google"
   vpn_address         = var.vpn_address
-ssh_public_key_file         = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/.ssh/id_rsa.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -164,7 +164,7 @@ module "amazon_relays" {
   profile             = local.amazon_profile
   source              = "./amazon"
   vpn_address         = var.vpn_address
-ssh_public_key_file         = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/.ssh/id_rsa.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ module "akamai_relays" {
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
-ssh_public_key_file         = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/.ssh/id_rsa.pub"
 }
 
 # ----------------------------------------------------------------------------------------

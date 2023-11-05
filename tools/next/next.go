@@ -1056,8 +1056,7 @@ func config(env Environment, regexes []string) {
    	filenames = []string {
    		fmt.Sprintf("terraform/%s/backend/terraform.tfvars", envs[i]),
    		fmt.Sprintf("terraform/%s/relays/terraform.tfvars", envs[i]),
-   		fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
-   	}
+     	}
 
    	for j := range filenames {
    		if fileExists(filenames[j]) {
@@ -1085,10 +1084,11 @@ func config(env Environment, regexes []string) {
    		if fileExists(filenames[j]) {
 	   		fmt.Printf("%s\n", filenames[j])
 			   if envs[i] != "prod" {
-				   replace(filenames[j], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api-%s.%s\"", envs[i], config.CloudflareDomain))
+				   replace(filenames[j], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"https://api-%s.%s\"", envs[i], config.CloudflareDomain))
   			   } else {
-				   replace(filenames[j], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"api.%s\"", config.CloudflareDomain))
+				   replace(filenames[j], "^\\s*hostname\\s*=.*$",             fmt.Sprintf("  hostname = \"https://api.%s\"", config.CloudflareDomain))
 			   }
+			   replace(filenames[j], "^\\s*ssh_public_key_file\\s*=.*$",     fmt.Sprintf("  ssh_public_key_file = \"~/.ssh/%s.pub\"", config.SSHKey))
    		}
    	}
    }

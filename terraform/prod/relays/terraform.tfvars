@@ -8,7 +8,7 @@ ssh_private_key_file        = "~/.ssh/id_rsa"
 relay_version               = "relay-release-1.0.28"
 relay_artifacts_bucket      = "auspicious_network_next_relay_artifacts"
 relay_backend_public_key    = "PJ7o9YC/JDWY707D7mSWZneSXds5glKJFMROJtlb/BY="
-relay_backend_url           = "relay-dev.virtualgo.net"
+relay_backend_url           = "relay.virtualgo.net"
 
 raspberry_buyer_public_key  = "2QUAl0H5x2+BSNq/utL48vNQ5irBoKmLB7t9cANZVJmY2VVxf4KnUg=="
 

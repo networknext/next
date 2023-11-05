@@ -18,7 +18,7 @@ cloudflare_domain           = "virtualgo.net"
 raspberry_buyer_public_key  = "2QUAl0H5x2+BSNq/utL48vNQ5irBoKmLB7t9cANZVJmY2VVxf4KnUg=="
 raspberry_buyer_private_key = "2QUAl0H5x2+0+TGHyjGRVwZfNZlTCDkgpSKergLaFhNZE7zK39CpmIFI2r+60vjy81DmKsGgqYsHu31wA1lUmZjZVXF/gqdS"
 
-ip2location_bucket_name     = "auspicious_network_next_local"
+ip2location_bucket_name     = "auspicious_network_next_dev"
 
 relay_backend_public_key    = "Lkvk62JlEG1tkpVDOjBGVKCM3PKbIoXisPlk36LBTxA="
 
