@@ -128,6 +128,9 @@ func client(config *ClientConfig) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer) {
 
 	cmd.Env = os.Environ()
 
+	cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_SERVER_BACKEND_PUBLIC_KEY=%s", TestServerBackendPublicKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
+
 	if config.duration != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("CLIENT_DURATION=%d", config.duration))
 	}
@@ -228,6 +231,8 @@ func server(config *ServerConfig) (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "NEXT_PORT=45000")
 	cmd.Env = append(cmd.Env, "NEXT_BUYER_PRIVATE_KEY=no")
 	cmd.Env = append(cmd.Env, "NEXT_BUYER_PUBLIC_KEY=no")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_SERVER_BACKEND_PUBLIC_KEY=%s", TestServerBackendPublicKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("NEXT_RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 
 	if config.duration != 0 {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("SERVER_DURATION=%d", config.duration))
