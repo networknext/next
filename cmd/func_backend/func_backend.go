@@ -40,6 +40,7 @@ func Base64String(value string) []byte {
 	return data
 }
 
+// todo; this needs passing over and updating in "next keygen"
 var TestRelayPublicKey = Base64String("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 var TestRelayPrivateKey = Base64String("lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
 var TestRelayBackendPublicKey = Base64String("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
