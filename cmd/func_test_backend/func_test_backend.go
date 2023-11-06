@@ -1427,44 +1427,6 @@ func test_relay_backend() {
 	}
 }
 
-type City struct {
-	Location struct {
-		Latitude  float64 `maxminddb:"latitude"`
-		Longitude float64 `maxminddb:"longitude"`
-	} `maxminddb:"location"`
-}
-
-type ISP struct {
-	ISP string `maxminddb:"isp"`
-}
-
-func test_ip2location() {
-
-	fmt.Printf("test_ip2location\n")
-
-	licenseKey := envvar.GetString("MAXMIND_LICENSE_KEY", "")
-
-	err := ip2location.DownloadDatabases_MaxMind(licenseKey)
-	if err != nil {
-		panic(err)
-	}
-
-	isp_db, city_db, err := ip2location.LoadDatabases()
-	if err != nil {
-		panic(err)
-	}
-
-	ip := core.ParseAddress("104.228.29.134").IP
-
-	isp := ip2location.GetISP(isp_db, ip)
-
-	latitude, longitude := ip2location.GetLocation(city_db, ip)
-
-	fmt.Printf("isp = %s\n", isp)
-	fmt.Printf("latitude = %.2f\n", latitude)
-	fmt.Printf("longitude = %.2f\n", longitude)
-}
-
 type test_function func()
 
 var googleProjectID string
@@ -1483,7 +1445,6 @@ func main() {
 		test_relay_manager,
 		test_optimize,
 		test_relay_backend,
-		test_ip2location,
 	}
 
 	var tests []test_function
