@@ -1129,7 +1129,7 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
-	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestPingKey))
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("PING_KEY=%s", TestPingKey))
 
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output

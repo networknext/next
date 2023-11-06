@@ -23,6 +23,7 @@ import (
 	db "github.com/networknext/next/modules/database"
 )
 
+// todo: make sure these are updated
 const Hostname = "http://127.0.0.1:50000"
 const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTI4NTM3OH0.F8KYfm6hM3U_uq6BO6ZeAOf5CS9Cek-HDF5qie6iAGU"
 const TestAPIPrivateKey = "fTgkDlfZVpoHDhByeHEGQTNjRImUmcnTMIiaYXsjiPFkUYnbrdjYRrFIlOAzswNH"

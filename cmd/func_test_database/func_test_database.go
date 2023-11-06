@@ -21,8 +21,8 @@ import (
 	db "github.com/networknext/next/modules/database"
 )
 
+// todo: these need updating or generation
 var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-
 var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
 
 // ----------------------------------------------------------------------------------------

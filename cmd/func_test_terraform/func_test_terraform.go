@@ -15,7 +15,9 @@ import (
 	"time"
 )
 
+// todo: check that this is updated
 const APIPrivateKey = "fTgkDlfZVpoHDhByeHEGQTNjRImUmcnTMIiaYXsjiPFkUYnbrdjYRrFIlOAzswNH"
+
 
 // ----------------------------------------------------------------------------------------
 
@@ -96,7 +98,7 @@ terraform {
 
 provider "networknext" {
   hostname = "http://localhost:50000"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTI4NTM3OH0.F8KYfm6hM3U_uq6BO6ZeAOf5CS9Cek-HDF5qie6iAGU"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTI4NTM3OH0.F8KYfm6hM3U_uq6BO6ZeAOf5CS9Cek-HDF5qie6iAGU"     // todo: this needs updating
 }
 
 # ---------------------------------------------------------
@@ -242,7 +244,7 @@ terraform {
 
 provider "networknext" {
   hostname = "http://localhost:50000"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTI4NTM3OH0.F8KYfm6hM3U_uq6BO6ZeAOf5CS9Cek-HDF5qie6iAGU"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTI4NTM3OH0.F8KYfm6hM3U_uq6BO6ZeAOf5CS9Cek-HDF5qie6iAGU"			// todo: this needs updating
 }
 
 # ---------------------------------------------------------
