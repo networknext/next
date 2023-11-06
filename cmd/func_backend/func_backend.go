@@ -40,13 +40,12 @@ func Base64String(value string) []byte {
 	return data
 }
 
-// todo; this needs passing over and updating in "next keygen"
-var TestRelayPublicKey = Base64String("9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
-var TestRelayPrivateKey = Base64String("lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8=")
-var TestRelayBackendPublicKey = Base64String("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
-var TestRelayBackendPrivateKey = Base64String("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
-var TestServerBackendPublicKey = Base64String("TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A=")
-var TestServerBackendPrivateKey = Base64String("FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA==")
+const TestRelayPublicKey = Base64String("lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=")
+const TestRelayPublicKey = Base64String("lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=")
+const TestRelayBackendPublicKey = Base64String("FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=")
+const TestRelayBackendPrivateKey = Base64String("+JISyyUig1eJsIG35IvNoavJoTrxbdi2y40R2OEu8kM=")
+const TestServerBackendPublicKey = Base64String("7zzSh2JUq2zFnQavLtfgR7VylPpHO0pPFI4OS+BLdUQ=")
+const TestServerBackendPrivateKey = Base64String("027342gOGsc3zdoySYN6ISc3PWxpYLmpI6GCR45hs2jvPNKHYlSrbMWdBq8u1+BHtXKU+kc7Sk8Ujg5L4Et1RA==")
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000

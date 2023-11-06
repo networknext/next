@@ -1,4 +1,4 @@
-/*
+ /*
    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
 */
 
@@ -856,6 +856,16 @@ func keygen(env Environment, regexes []string) {
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPrivateKey = \".*$",  fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPublicKey = \".*$",  fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPrivateKey = \".*$",  fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_backend/func_backend.go\n")
+	{
+	   replace("cmd/func_backend/func_backend.go", "const TestRelayPublicKey =",   fmt.Sprintf("const TestRelayPublicKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("cmd/func_backend/func_backend.go", "const TestRelayPrivateKey =",   fmt.Sprintf("const TestRelayPrivateKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	   replace("cmd/func_backend/func_backend.go", "const TestRelayBackendPublicKey =",   fmt.Sprintf("const TestRelayBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_public_key"]))
+	   replace("cmd/func_backend/func_backend.go", "const TestRelayBackendPrivateKey =",   fmt.Sprintf("const TestRelayBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_private_key"]))
+	   replace("cmd/func_backend/func_backend.go", "const TestServerBackendPublicKey =",   fmt.Sprintf("const TestServerBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["server_backend_public_key"]))
+	   replace("cmd/func_backend/func_backend.go", "const TestServerBackendPrivateKey =",   fmt.Sprintf("const TestServerBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["server_backend_private_key"]))
 	}
 
 	fmt.Printf("cmd/func_test_terraform/func_test_terraform.go\n")

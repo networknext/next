@@ -15,14 +15,14 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-relay_backend_public_key    = "+qOB7SA7Bzg7tiN72lwEVJ2gVhaI6zhFqEkvG9SrJAE="
+relay_backend_public_key    = "xvCMS55jcVYVOzjrhdyokFVugbgCiij1nSRA2qQE3Tw="
 
-server_backend_public_key   = "XkE+xWyskCf8jq3tQ1L3im1224RgDhoKBbEp1+cc6lI="
+server_backend_public_key   = "UKiSft2agzQt75fRuwrvt3Cqaw25i6imvhQpRHctQtk="
 
-load_test_buyer_public_key  = "XS1IFDqcGudRvHbJltGmfnsO78MRB4tiLHqzsHgFCbxqwgKzNesDwg=="
-load_test_buyer_private_key = "XS1IFDqcGuf1cCsPYwRyeMJxjOcWSr7Tr91M+slYCDr4XVnXM8OCCFG8dsmW0aZ+ew7vwxEHi2IserOweAUJvGrCArM16wPC"
+load_test_buyer_public_key  = "0xfkba1joh0OB0lnGgMWT84n/9ob5KbbBZTpPaKSKZYv96IV1JyzBg=="
+load_test_buyer_private_key = "0xfkba1joh1qT1NXRyNteMhtDbfkNJKVwKxO/T/kUf7DFA9g0Zbdsw4HSWcaAxZPzif/2hvkptsFlOk9opIpli/3ohXUnLMG"
 
 ip2location_bucket_name     = "auspicious_network_next_staging"
 
-relay_public_key            = "V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc="
-relay_private_key           = "A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0="
+relay_public_key  = "lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0="
+relay_private_key = "Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U="

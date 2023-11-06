@@ -49,9 +49,9 @@ services:
       - REDIS_HOSTNAME=redis:6379
       - MAGIC_URL=http://magic_backend/magic
       - MAGIC_INTERVAL=10s
-      - RELAY_BACKEND_PUBLIC_KEY=P1kB4UG2fHq57e/u70o1LkHEIQmp/UQmc6ZfC9KkdEM=
-      - RELAY_BACKEND_PRIVATE_KEY=1IgVkAdnfkwAoseFfb2o6/D5qjyKN55KNGBFOMQ4vmc=
-      - PING_KEY=iJ2rb7LQK7UdhPr0LIju1vqxkgv7feTBuDmGazWbfvw=
+      - RELAY_BACKEND_PUBLIC_KEY=FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=
+      - RELAY_BACKEND_PRIVATE_KEY=+JISyyUig1eJsIG35IvNoavJoTrxbdi2y40R2OEu8kM=
+      - PING_KEY=31D/5tWDeoIVo0MJROioLACD0mjna7YBHjhCVQhFgmk=
     networks:
       - default
       - relays
@@ -87,11 +87,11 @@ services:
       - MAGIC_INTERVAL=10s
       - ROUTE_MATRIX_INTERVAL=10s
       - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
-      - SERVER_BACKEND_PUBLIC_KEY=9J8dDkw5Sll3OSgkaifk+LiH1M+cD9TfmCnAWSYOcWY=
-      - SERVER_BACKEND_PRIVATE_KEY=j2lWBGvvfkSU+w50S/xFJAooup/XcGzEhvflFMxw2bL0nx0OTDlKWXc5KCRqJ+T4uIfUz5wP1N+YKcBZJg5xZg==
-      - RELAY_BACKEND_PRIVATE_KEY=1IgVkAdnfkwAoseFfb2o6/D5qjyKN55KNGBFOMQ4vmc=
+      - SERVER_BACKEND_PUBLIC_KEY=7zzSh2JUq2zFnQavLtfgR7VylPpHO0pPFI4OS+BLdUQ=
+      - SERVER_BACKEND_PRIVATE_KEY=027342gOGsc3zdoySYN6ISc3PWxpYLmpI6GCR45hs2jvPNKHYlSrbMWdBq8u1+BHtXKU+kc7Sk8Ujg5L4Et1RA==
+      - RELAY_BACKEND_PRIVATE_KEY=+JISyyUig1eJsIG35IvNoavJoTrxbdi2y40R2OEu8kM=
       - SERVER_BACKEND_ADDRESS=10.5.0.100:40000
-      - PING_KEY=iJ2rb7LQK7UdhPr0LIju1vqxkgv7feTBuDmGazWbfvw=
+      - PING_KEY=31D/5tWDeoIVo0MJROioLACD0mjna7YBHjhCVQhFgmk=
     networks:
       default:
       relays:
@@ -120,10 +120,10 @@ services:
     environment:
       - RELAY_NAME=relay_1
       - RELAY_PUBLIC_ADDRESS=10.5.0.5:40000
-      - RELAY_PUBLIC_KEY=V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc=
-      - RELAY_PRIVATE_KEY=A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0=
+      - RELAY_PUBLIC_KEY=lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=
+      - RELAY_PRIVATE_KEY=Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U=
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_BACKEND_PUBLIC_KEY=P1kB4UG2fHq57e/u70o1LkHEIQmp/UQmc6ZfC9KkdEM=
+      - RELAY_BACKEND_PUBLIC_KEY=FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=
     networks:
       relays:
         ipv4_address: 10.5.0.5
@@ -138,10 +138,10 @@ services:
     environment:
       - RELAY_NAME=relay_2
       - RELAY_PUBLIC_ADDRESS=10.5.0.6:40000
-      - RELAY_PUBLIC_KEY=V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc=
-      - RELAY_PRIVATE_KEY=A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0=
+      - RELAY_PUBLIC_KEY=lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=
+      - RELAY_PRIVATE_KEY=Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U=
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_BACKEND_PUBLIC_KEY=P1kB4UG2fHq57e/u70o1LkHEIQmp/UQmc6ZfC9KkdEM=
+      - RELAY_BACKEND_PUBLIC_KEY=FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=
     networks:
       relays:
         ipv4_address: 10.5.0.6
@@ -156,10 +156,10 @@ services:
     environment:
       - RELAY_NAME=relay_3
       - RELAY_PUBLIC_ADDRESS=10.5.0.7:40000
-      - RELAY_PUBLIC_KEY=V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc=
-      - RELAY_PRIVATE_KEY=A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0=
+      - RELAY_PUBLIC_KEY=lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=
+      - RELAY_PRIVATE_KEY=Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U=
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_BACKEND_PUBLIC_KEY=P1kB4UG2fHq57e/u70o1LkHEIQmp/UQmc6ZfC9KkdEM=
+      - RELAY_BACKEND_PUBLIC_KEY=FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=
     networks:
       relays:
         ipv4_address: 10.5.0.7
@@ -174,10 +174,10 @@ services:
     environment:
       - RELAY_NAME=relay_4
       - RELAY_PUBLIC_ADDRESS=10.5.0.8:40000
-      - RELAY_PUBLIC_KEY=V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc=
-      - RELAY_PRIVATE_KEY=A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0=
+      - RELAY_PUBLIC_KEY=lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=
+      - RELAY_PRIVATE_KEY=Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U=
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_BACKEND_PUBLIC_KEY=P1kB4UG2fHq57e/u70o1LkHEIQmp/UQmc6ZfC9KkdEM=
+      - RELAY_BACKEND_PUBLIC_KEY=FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=
     networks:
       relays:
         ipv4_address: 10.5.0.8
@@ -192,10 +192,10 @@ services:
     environment:
       - RELAY_NAME=relay_5
       - RELAY_PUBLIC_ADDRESS=10.5.0.9:40000
-      - RELAY_PUBLIC_KEY=V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc=
-      - RELAY_PRIVATE_KEY=A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0=
+      - RELAY_PUBLIC_KEY=lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0=
+      - RELAY_PRIVATE_KEY=Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U=
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_BACKEND_PUBLIC_KEY=P1kB4UG2fHq57e/u70o1LkHEIQmp/UQmc6ZfC9KkdEM=
+      - RELAY_BACKEND_PUBLIC_KEY=FsuOwHmEJOA1GTG/TyWTcJpeBqAbFDDJxI3FuFStpU8=
     networks:
       relays:
         ipv4_address: 10.5.0.9
@@ -211,8 +211,8 @@ services:
       - NEXT_DELAY=1
       - NEXT_DATACENTER=local
       - NEXT_SERVER_ADDRESS=10.5.0.20
-      - NEXT_BUYER_PUBLIC_KEY=XS1IFDqcGudRvHbJltGmfnsO78MRB4tiLHqzsHgFCbxqwgKzNesDwg==
-      - NEXT_BUYER_PRIVATE_KEY=XS1IFDqcGuf1cCsPYwRyeMJxjOcWSr7Tr91M+slYCDr4XVnXM8OCCFG8dsmW0aZ+ew7vwxEHi2IserOweAUJvGrCArM16wPC
+      - NEXT_BUYER_PUBLIC_KEY=0xfkba1joh0OB0lnGgMWT84n/9ob5KbbBZTpPaKSKZYv96IV1JyzBg==
+      - NEXT_BUYER_PRIVATE_KEY=0xfkba1joh1qT1NXRyNteMhtDbfkNJKVwKxO/T/kUf7DFA9g0Zbdsw4HSWcaAxZPzif/2hvkptsFlOk9opIpli/3ohXUnLMG
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
     networks:
       relays:
@@ -228,7 +228,7 @@ services:
     environment:
       - NEXT_DELAY=1
       - NEXT_CONNECT_ADDRESS=10.5.0.20:30000
-      - NEXT_BUYER_PUBLIC_KEY=XS1IFDqcGudRvHbJltGmfnsO78MRB4tiLHqzsHgFCbxqwgKzNesDwg==
+      - NEXT_BUYER_PUBLIC_KEY=0xfkba1joh0OB0lnGgMWT84n/9ob5KbbBZTpPaKSKZYv96IV1JyzBg==
     networks:
       relays:
         ipv4_address: 10.5.0.30
