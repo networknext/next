@@ -27,14 +27,14 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "Y3L2D92gGoH/GzIT/LMEHCFSF81BGfpHGZr+MOhtOik="
-const TestRelayPrivateKey = "yg9OZ4NEvHGjfuuz/KDAT9lPWF13/ilVMljZojP51YM="
-const TestRelayBackendPublicKey = "VV0EZmtfUhF220LBlUq3dcZbNIjmKQKj7uIzOpCPXyA="
-const TestRelayBackendPrivateKey = "1illMoF8RNpSZXT5QvqpiqrJaNFl4CLupE5vcM7dhvo="
-const TestServerBackendPublicKey = "CmGM8DWsoPHLc5AdjkgFDabH5O1ENDYEh25ybmMUzew="
-const TestServerBackendPrivateKey = "uyinhclN+mw0DrAJcEDmHHEeVpNv/ZfRt6VE4jEIoqMKYYzwNayg8ctzkB2OSAUNpsfk7UQ0NgSHbnJuYxTN7A=="
-const TestBuyerPublicKey = "GLPP7IXT09HXFk8T1T8vBPC5Pe/YFSgWZtjPFRYFJ6klHS2b3ZNc5Q=="
-const TestBuyerPrivateKey = "GLPP7IXT09H/IkzKXra+698dNfpoumU13z9BnTssEsikw/GHEcWnPdcWTxPVPy8E8Lk979gVKBZm2M8VFgUnqSUdLZvdk1zl"
+const TestRelayPublicKey = "bs6r40PQCSz0f2wgLSJ/Kv2Y2ouR94CJnnO7g5LZ8j4="
+const TestRelayPrivateKey = "1YOQ3O+SrwdfmxxBxvqSTIpb+/Y5gzoqGRkvvFduYVQ="
+const TestRelayBackendPublicKey = "zau4Ob+2H2XjY5hDe6MfT+Cc+HwvS4FuYm5eV16SjQc="
+const TestRelayBackendPrivateKey = "YfL3FljIEh6ufWETzixle9Gvz4s4ali6xTHEeZwGpLs="
+const TestServerBackendPublicKey = "OMaQuweEc3Gflei1yVOWOXj3yHMJ/bTJewKXI4YbNF4="
+const TestServerBackendPrivateKey = "a4RLUSxP6oB5wLji80NLN0GmHzv45pSDhtS8U+5c01w4xpC7B4RzcZ+V6LXJU5Y5ePfIcwn9tMl7Apcjhhs0Xg=="
+const TestBuyerPublicKey = "9bR0O5cFm8VPNU+tb5neR83LW8g/uLMBmHn/tNuUFUvCE5FB8daA5w=="
+const TestBuyerPrivateKey = "9bR0O5cFm8U42EN+ewsdvGksKcUxrGN41oCOX2GPA5wOeYgI4idsZE81T61vmd5HzctbyD+4swGYef+025QVS8ITkUHx1oDn"
 
 const (
 	relayBin   = "./relay-debug"
@@ -2404,7 +2404,7 @@ func test_server_ready_success() {
 	fmt.Printf("test_server_ready_success\n")
 
 	serverConfig := &ServerConfig{}
-	serverConfig.buyer_private_key = TestBuyerPublicKey
+	serverConfig.buyer_private_key = TestBuyerPrivateKey
 
 	server_cmd, server_stdout := server(serverConfig)
 

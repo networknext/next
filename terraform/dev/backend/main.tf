@@ -54,7 +54,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "auspicious_network_next_terraform"
+    bucket  = "mindful_network_next_terraform"
     prefix  = "dev"
   }
 }

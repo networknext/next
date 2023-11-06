@@ -26,12 +26,12 @@
 #include "next.h"
 
 #define NEXT_PROD_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
-#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "KZOUnBWHFcUGmqTGU5AhgYL2cRA+c5G/Khai9hpb+i8="
-#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "SL1l3HwQMeVf8C4FNmi1ne+piEUfii27uMES2jqPWFY="
+#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "z6bQyittrgarVMmOaOoUNdFmAe2wgyCWvz/GDezXJys="
+#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "ogy0lpZgLxogkp1M5SmOCx8PtbIFFHyGHCefOe11+WU="
 
 #define NEXT_DEV_SERVER_BACKEND_HOSTNAME "server-dev.virtualgo.net"
-#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "+aXS85Lfwss3+/g1enrPXj8OyFm/vS7HYfefqvfhMxk="
-#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "zRblD5fjEXW9je6q3NXeq8EEdVF3vhmLMotFUUu9ahA="
+#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "1R+PhwjfXgNF+p8SAv7Ur1uiYz75fWqSJgBRWitqWGk="
+#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "7SwvfHsSnPydDk+mFIu2Yo4V3TfQU2lembc+BqYXB28="
 
 #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME   NEXT_PROD_SERVER_BACKEND_HOSTNAME
@@ -43,7 +43,7 @@
 #define NEXT_RELAY_BACKEND_PUBLIC_KEY  NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY
 #endif // #if !NEXT_DEVELOPMENT
 
-#define NEXT_CONFIG_BUCKET_NAME "auspicious_network_next_sdk_config"
+#define NEXT_CONFIG_BUCKET_NAME "mindful_network_next_sdk_config"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
