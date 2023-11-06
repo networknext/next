@@ -43,8 +43,8 @@ const int MaxClients = 1000;
 
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "127.0.0.1";
-const char * buyer_public_key = "8eONd6nhkfFG8hBpFnZQa+VNRRvGQn541iN/+AWXGPD2PkBF4sXNs3DvWKeAYr1D/hgOAoUznHuh3DSJi/xYSGOl0XacQZiA";
-const char * buyer_private_key = "8eONd6nhkfFG8hBpFnZQa+VNRRvGQn541iN/+AWXGPD2PkBF4sXNs3DvWKeAYr1D/hgOAoUznHuh3DSJi/xYSGOl0XacQZiA";
+const char * buyer_public_key = "2Zlc0dVlkH7EcOeBYPpLAN2NabD8G/txrKh4vDC0okLqmzZX1JSq+NhOnGuF/qexeQOO3AtQX10UGlQYjhijCxt5g6yDeX2R";
+const char * buyer_private_key = "2Zlc0dVlkH7EcOeBYPpLAN2NabD8G/txrKh4vDC0okLqmzZX1JSq+NhOnGuF/qexeQOO3AtQX10UGlQYjhijCxt5g6yDeX2R";
 
 #define FUZZ_TEST 1
 

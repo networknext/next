@@ -64,12 +64,13 @@ func Base64String(value string) []byte {
 	return data
 }
 
-var TestRelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14="
-var TestRelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8="
-var TestRelayBackendPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-var TestRelayBackendPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
-var TestServerBackendPublicKey = "TGHKjEeHPtSgtZfDyuDPcQgtJTyRDtRvGSKvuiWWo0A="
-var TestServerBackendPrivateKey = "FXwFqzjGlIwUDwiq1N5Um5VUesdr4fP2hVV2cnJ+yARMYcqMR4c+1KC1l8PK4M9xCC0lPJEO1G8ZIq+6JZajQA=="
+const TestRelayPublicKey = "XW18jSTt64uK+XGqOxAlY4zY01TCRKCKSTrNIT/ZOFM="
+const TestRelayPrivateKey = "nG2dJRaobo42SbyO59xxd4QGcRIWNrslnFKkK9kh0GY="
+const TestRelayBackendPublicKey = "5XbD5IPoTOM7Nz6wXP/6VBviaui7x4bMZ970ARBzhXk="
+const TestRelayBackendPrivateKey = "YUjqgZ9jhdrXY24G/sDCjsR6q0eESjNLyxefwFk1Uws="
+const TestServerBackendPublicKey = "/qCa8EExQrojIcf4k/zfH9wv6r6NZcapyv7nvmnl+Gw="
+const TestServerBackendPrivateKey = "xSN02xef84q/vzY79/sNFVsIx65ekiUhnIpPEMIjAOH+oJrwQTFCuiMhx/iT/N8f3C/qvo1lxqnK/ue+aeX4bA=="
+const TestPingKey = "vQiTdXweTclqS5vaPJ9W5YXNIomf8SpA3fux4htWHUo="
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
 	if !strings.Contains(stdout.String(), substring) {
@@ -1128,7 +1129,7 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "HTTP_PORT=30000")
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
-	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, "PING_KEY=56MoxCiExN8NCq/+Zlt7mtTsiu+XXSqk8lOHUOm3I64=")
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestPingKey))
 
 	var relay_gateway_output bytes.Buffer
 	relay_gateway_cmd.Stdout = &relay_gateway_output

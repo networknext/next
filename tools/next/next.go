@@ -876,6 +876,17 @@ func keygen(env Environment, regexes []string) {
 	   replace("cmd/func_backend/func_backend.go", "var TestServerBackendPrivateKey =",   fmt.Sprintf("var TestServerBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["server_backend_private_key"]))
 	}
 
+	fmt.Printf("cmd/func_test_backend/func_test_backend.go\n")
+	{
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayPublicKey = \".*$",   fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayPrivateKey = \".*$",  fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayBackendPublicKey = \".*$",  fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayBackendPrivateKey = \".*$",  fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestServerBackendPublicKey = \".*$",  fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestServerBackendPrivateKey = \".*$",  fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
+	   replace("cmd/func_test_backend/func_test_backend.go", "const TestPingKey = \".*$",  fmt.Sprintf("const TestPingKey = \"%s\"", keypairs["local"]["ping_key"]))
+	}
+
 	fmt.Printf("cmd/func_test_terraform/func_test_terraform.go\n")
 	{
 	   replace("cmd/func_test_terraform/func_test_terraform.go", "^const APIPrivateKey = \".*$",   fmt.Sprintf("const APIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
