@@ -821,7 +821,7 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/func_test_backend dist/magic_backend dist/relay_gateway dist/relay_backend
+            - make dist/func_test_backend dist/magic_backend dist/relay_gateway dist/relay_backend
 
             - artifact push workflow dist/func_test_backend --force
             - artifact push workflow dist/magic_backend --force
@@ -935,7 +935,7 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/api dist/func_test_database
+            - make dist/api dist/func_test_database
 
             - tar -zcvf functional_test_database.tar.gz dist/api dist/func_test_database schemas/sql/*.sql
 
@@ -1011,7 +1011,7 @@ blocks:
 
             - make clean
             
-            - make -j dist/api dist/func_test_api
+            - make dist/api dist/func_test_api
 
             - tar -zcvf functional_test_api.tar.gz dist/api dist/func_test_api schemas/sql/*.sql
 
@@ -1101,7 +1101,7 @@ blocks:
             - cp envs/local.env .env
 
             - make clean
-            - make -j dist/api dist/session_cruncher dist/server_cruncher dist/func_test_portal 
+            - make dist/api dist/session_cruncher dist/server_cruncher dist/func_test_portal 
             - cd ./dist && ./func_test_portal test_portal
 
             - killall api || true
@@ -1132,7 +1132,7 @@ blocks:
 
             - make clean
             
-            - make -j dist/api dist/func_test_terraform
+            - make dist/api dist/func_test_terraform
 
             - tar -zcvf functional_test_terraform.tar.gz dist/api dist/func_test_terraform schemas/sql/*.sql
 
