@@ -1227,10 +1227,6 @@ blocks:
 
       jobs:
 
-        - name: "Load Test Portal"
-          commands:
-            - ./run load-test-portal
-
         - name: "Load Test Redis Data"
           commands:
             - ./run load-test-redis-data
