@@ -1148,6 +1148,7 @@ func test_relay_backend() {
 	relay_backend_cmd.Env = os.Environ()
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "INITIAL_DELAY=5")
 
 	var relay_backend_output bytes.Buffer
 	relay_backend_cmd.Stdout = &relay_backend_output
@@ -1381,9 +1382,9 @@ func test_relay_backend() {
 		}
 	}()
 
-	// wait for 60 seconds
+	// wait for 45 seconds
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(45 * time.Second)
 
 	// wait for all goroutines to finish
 
