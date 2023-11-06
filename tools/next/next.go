@@ -846,6 +846,18 @@ func keygen(env Environment, regexes []string) {
 	   replace("cmd/func_test_api/func_test_api.go", "const TestBuyerPublicKey = \".*$",   fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 	}
 
+	fmt.Printf("cmd/func_test_database/func_test_database.go\n")
+	{
+	   replace("cmd/func_test_database/func_test_database.go", "const TestAPIKey = \".*$",   fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
+	   replace("cmd/func_test_database/func_test_database.go", "const TestAPIPrivateKey = \".*$",   fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_portal/func_test_portal.go\n")
+	{
+	   replace("cmd/func_test_portal/func_test_portal.go", "const TestAPIKey = \".*$",   fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
+	   replace("cmd/func_test_portal/func_test_portal.go", "const TestAPIPrivateKey = \".*$",   fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+	}
+
 	fmt.Printf("cmd/func_test_sdk/func_test_sdk.go\n")
 	{
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPublicKey = \".*$",   fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))

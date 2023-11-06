@@ -40,12 +40,12 @@ func Base64String(value string) []byte {
 	return data
 }
 
-var TestRelayPublicKey = Base64String("XW18jSTt64uK+XGqOxAlY4zY01TCRKCKSTrNIT/ZOFM=")
-var TestRelayPrivateKey = Base64String("nG2dJRaobo42SbyO59xxd4QGcRIWNrslnFKkK9kh0GY=")
-var TestRelayBackendPublicKey = Base64String("5XbD5IPoTOM7Nz6wXP/6VBviaui7x4bMZ970ARBzhXk=")
-var TestRelayBackendPrivateKey = Base64String("YUjqgZ9jhdrXY24G/sDCjsR6q0eESjNLyxefwFk1Uws=")
-var TestServerBackendPublicKey = Base64String("/qCa8EExQrojIcf4k/zfH9wv6r6NZcapyv7nvmnl+Gw=")
-var TestServerBackendPrivateKey = Base64String("xSN02xef84q/vzY79/sNFVsIx65ekiUhnIpPEMIjAOH+oJrwQTFCuiMhx/iT/N8f3C/qvo1lxqnK/ue+aeX4bA==")
+var TestRelayPublicKey = Base64String("6M3UU558N5GP7nEueVvDCGPyXXrZohJK2USI+Dv25T4=")
+var TestRelayPrivateKey = Base64String("TO4B9fx9x8X6Knwbh3pusFhzOhKFv6hX3ANoOU+bWi8=")
+var TestRelayBackendPublicKey = Base64String("AYmaQ0fDGtyBNbI638VEpJY1rfBbRTJ/r+ElmIru/w4=")
+var TestRelayBackendPrivateKey = Base64String("Wy3h6RUI42hHlVbbFUesvsn2tTbXBa5cmZ+FZgh9R3M=")
+var TestServerBackendPublicKey = Base64String("5t9y7u6bkjMOfFTue1Tl/J3J+JJe1dYHdOxQ+C2GVvw=")
+var TestServerBackendPrivateKey = Base64String("QJNappOCkCMExdpSWtI7WWm4dueGNrdZwuCzFmO39Inm33Lu7puSMw58VO57VOX8ncn4kl7V1gd07FD4LYZW/A==")
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000

@@ -21,9 +21,8 @@ import (
 	db "github.com/networknext/next/modules/database"
 )
 
-// todo: these need updating or generation
-var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTMwMzI4NH0.LloFMHSsLVhCGLlDO82cwiHkyWqy00SSSTu_pqTPn8o"
+const TestAPIPrivateKey = "LXzwBAIvUkUvEGNUtlrWsmOEXYKvZdClwKrXlDHAancrWCLBnpbPjcjmyhyLZEin"
 
 // ----------------------------------------------------------------------------------------
 
@@ -55,7 +54,7 @@ func api() (*exec.Cmd, *bytes.Buffer) {
 	cmd.Env = append(cmd.Env, "ENABLE_PORTAL=false")
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", TestAPIPrivateKey))
 
 	var output bytes.Buffer
 	cmd.Stdout = &output
@@ -110,7 +109,7 @@ func GetJSON(url string, object interface{}) {
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Authorization", "Bearer "+TestAPIKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {
@@ -146,7 +145,7 @@ func GetBinary(url string) []byte {
 	var response *http.Response
 	for i := 0; i < 30; i++ {
 		req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Authorization", "Bearer "+TestAPIKey)
 		client := &http.Client{}
 		response, err = client.Do(req)
 		if err == nil {

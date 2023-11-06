@@ -27,10 +27,8 @@ import (
 
 var SessionCruncherURL = "http://127.0.0.1:40200"
 var ServerCruncherURL = "http://127.0.0.1:40300"
-
-// todo: these need updating
-var apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZGF0YWJhc2UiOnRydWUsInBvcnRhbCI6dHJ1ZX0.QFPdb-RcP8wyoaOIBYeB_X6uA7jefGPVxm2VevJvpwU"
-var apiPrivateKey = "this is the private key that generates API keys. make sure you change this value in production"
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTMwMzI4NH0.LloFMHSsLVhCGLlDO82cwiHkyWqy00SSSTu_pqTPn8o"
+const TestAPIPrivateKey = "LXzwBAIvUkUvEGNUtlrWsmOEXYKvZdClwKrXlDHAancrWCLBnpbPjcjmyhyLZEin"
 
 // ----------------------------------------------------------------------------------------
 
@@ -130,7 +128,7 @@ func api() *exec.Cmd {
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", apiPrivateKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("API_PRIVATE_KEY=%s", TestAPIPrivateKey))
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
@@ -297,7 +295,7 @@ func Get(url string, object interface{}) {
 		panic(err)
 	}
 
-	request.Header.Set("Authorization", "Bearer "+apiKey)
+	request.Header.Set("Authorization", "Bearer "+TestAPIKey)
 
 	client := &http.Client{}
 
@@ -343,7 +341,7 @@ func GetBinary(url string) []byte {
 	var err error
 	var response *http.Response
 	req, err := http.NewRequest("GET", url, bytes.NewBuffer(nil))
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+TestAPIKey)
 	client := &http.Client{}
 	response, err = client.Do(req)
 
