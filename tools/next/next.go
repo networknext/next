@@ -557,7 +557,13 @@ func writeSecret(k string, v map[string]string, name string) {
 }
 
 func secretsAlreadyExist() bool {
-	return true
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	filename := fmt.Sprintf("%s/secrets/local-relay-backend-public-key.txt", homeDir)
+	return fileExists(filename)
 }
 
 func keygen(env Environment, regexes []string) {
@@ -566,7 +572,7 @@ func keygen(env Environment, regexes []string) {
 
 	if secretsAlreadyExist() {
 		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Secrets already exist.\n\nRunning keygen will overwrite your secrets, and you'll lose control of any system that you've already deployed.\n\nAre you sure you want to continue? (yes/no): ")
+		fmt.Print("*** WARNING ***\n\nSecrets already exist.\n\nRunning keygen will overwrite your secrets, and you'll lose control of any system that you've already deployed.\n\nAre you sure you want to continue? (yes/no): ")
 		text, _ := reader.ReadString('\n')
 		if strings.TrimSpace(text) != "yes" {
 			fmt.Printf("\nAborted.\n\n")
@@ -575,8 +581,6 @@ func keygen(env Environment, regexes []string) {
 	}
 
 	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
-
-	// todo: if ~/secrets/somefile already exists, ask for confirmation
 
 	bash("mkdir -p ~/secrets")
 
