@@ -1238,14 +1238,6 @@ blocks:
           commands:
             - ./run load-test-redis-data
             
-        - name: "Load Test Redis Pubsub"
-          commands:
-            - ./run load-test-redis-pubsub
-
-        - name: "Load Test Redis Streams"
-          commands:
-            - ./run load-test-redis-streams
-
         - name: "Load Test Redis Optimize"
           commands:
             - ./run load-test-optimize
