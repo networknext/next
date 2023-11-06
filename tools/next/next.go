@@ -858,6 +858,14 @@ func keygen(env Environment, regexes []string) {
 	   replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPrivateKey = \".*$",  fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
 	}
 
+	fmt.Printf("cmd/func_test_relay/func_test_relay.go\n")
+	{
+	   replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayPublicKey = \".*$",   fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayPrivateKey = \".*$",  fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	   replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayBackendPublicKey = \".*$",  fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+	   replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayBackendPrivateKey = \".*$",  fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+	}
+
 	fmt.Printf("cmd/func_backend/func_backend.go\n")
 	{
 	   replace("cmd/func_backend/func_backend.go", "var TestRelayPublicKey =",   fmt.Sprintf("var TestRelayPublicKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))

@@ -40,10 +40,10 @@ func Base64String(value string) []byte {
 	return data
 }
 
-var TestRelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14="
-var TestRelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8="
-var TestRelayBackendPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-var TestRelayBackendPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
+const TestRelayPublicKey = "b6zQWGulFgsdNC7Mm42Mm3vqXsGFuFAJ5AiTosuuzTM="
+const TestRelayPrivateKey = "hQJ5cFtANfTw35qPBiWCszbAMZ/df35rquwZab4eb4o="
+const TestRelayBackendPublicKey = "K5u48CfX/7sr6ElbBzjLlzASNK2T+Fk1q4vF8Rbm60U="
+const TestRelayBackendPrivateKey = "NBqRmTfsCiRdCyZ4YU8XxEQzFCPcEuYjHRRgYHOWr58="
 
 const (
 	relayBin   = "./relay-debug"
@@ -203,7 +203,7 @@ func test_initialize_success() {
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_cmd.Process.Signal(os.Interrupt)
