@@ -127,6 +127,7 @@ func api() *exec.Cmd {
 	}
 
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
@@ -149,6 +150,7 @@ func session_cruncher() *exec.Cmd {
 	}
 
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=40200")
 
 	cmd.Stdout = os.Stdout
@@ -168,6 +170,7 @@ func server_cruncher() *exec.Cmd {
 	}
 
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=40300")
 
 	cmd.Stdout = os.Stdout

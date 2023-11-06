@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"os"
+	"os/exec"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/envvar"
@@ -300,11 +302,54 @@ func RunPollThread(ctx context.Context) {
 	}()
 }
 
+func session_cruncher() *exec.Cmd {
+
+	cmd := exec.Command("./dist/session_cruncher")
+	if cmd == nil {
+		panic("could not create session cruncher!\n")
+		return nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40200")
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	cmd.Start()
+
+	return cmd
+}
+
+func server_cruncher() *exec.Cmd {
+
+	cmd := exec.Command("./dist/server_cruncher")
+	if cmd == nil {
+		panic("could not create server cruncher!\n")
+		return nil
+	}
+
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
+	cmd.Env = append(cmd.Env, "HTTP_PORT=40300")
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
+
+	cmd.Start()
+
+	return cmd
+}
+
 func main() {
 
 	threadCount := envvar.GetInt("THREAD_COUNT", 1)
 
 	ctx := context.Background()
+
+	session_cruncher_cmd := session_cruncher()
+	server_cruncher_cmd := server_cruncher()
 
 	RunSessionInsertThreads(ctx, threadCount)
 
@@ -314,5 +359,11 @@ func main() {
 
 	RunPollThread(ctx)
 
-	time.Sleep(time.Minute * 10)
+	time.Sleep(time.Minute * 2)
+
+	session_cruncher_cmd.Process.Signal(os.Interrupt)
+	server_cruncher_cmd.Process.Signal(os.Interrupt)
+
+	session_cruncher_cmd.Wait()
+	server_cruncher_cmd.Wait()
 }
