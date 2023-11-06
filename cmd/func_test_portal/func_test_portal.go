@@ -127,7 +127,6 @@ func api() *exec.Cmd {
 	}
 
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
 	cmd.Env = append(cmd.Env, "ENABLE_ADMIN=false")
 	cmd.Env = append(cmd.Env, "ENABLE_DATABASE=false")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=50000")
@@ -150,7 +149,6 @@ func session_cruncher() *exec.Cmd {
 	}
 
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=40200")
 
 	cmd.Stdout = os.Stdout
@@ -170,7 +168,6 @@ func server_cruncher() *exec.Cmd {
 	}
 
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "ENABLE_REDIS_TIME_SERIES=true")
 	cmd.Env = append(cmd.Env, "HTTP_PORT=40300")
 
 	cmd.Stdout = os.Stdout
@@ -565,53 +562,38 @@ func test_portal() {
 
 		ready = true
 
-		if sessionCountsResponse.NextSessionCount < 10 {
+		if len(sessionsResponse.Sessions) < 10 {
 			fmt.Printf("A\n")
 			ready = false
 		}
 
-		if sessionCountsResponse.TotalSessionCount < 10 {
+		if sessionDataResponse.SessionData == nil {
 			fmt.Printf("B\n")
 			ready = false
 		}
 
-		if len(sessionsResponse.Sessions) < 10 {
+		if len(sessionDataResponse.SliceData) == 0 {
 			fmt.Printf("C\n")
 			ready = false
 		}
 
-		if sessionDataResponse.SessionData == nil {
+		if len(sessionDataResponse.NearRelayData) == 0 {
 			fmt.Printf("D\n")
 			ready = false
 		}
 
-		if len(sessionDataResponse.SliceData) == 0 {
+		if len(serverDataResponse.ServerSessionIds) < 10 {
 			fmt.Printf("E\n")
 			ready = false
 		}
 
-		if len(sessionDataResponse.NearRelayData) == 0 {
+		if relayCountResponse.RelayCount < 10 {
 			fmt.Printf("F\n")
 			ready = false
 		}
 
-		if serverCountResponse.ServerCount != 1 {
-			fmt.Printf("G\n")
-			ready = false
-		}
-
-		if len(serverDataResponse.ServerSessionIds) < 10 {
-			fmt.Printf("H\n")
-			ready = false
-		}
-
-		if relayCountResponse.RelayCount < 10 {
-			fmt.Printf("I\n")
-			ready = false
-		}
-
 		if len(mapData) == 0 {
-			fmt.Printf("J\n")
+			fmt.Printf("H\n")
 			ready = false
 		}
 
