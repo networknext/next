@@ -1086,7 +1086,7 @@ blocks:
         - name: "test_portal"
           commands:
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo apt-get install -y libsodium-dev redis
 
             - cache restore golang
 
