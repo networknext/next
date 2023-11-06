@@ -1382,9 +1382,9 @@ func test_relay_backend() {
 		}
 	}()
 
-	// wait for 45 seconds
+	// wait for 60 seconds
 
-	time.Sleep(45 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	// wait for all goroutines to finish
 
@@ -1408,7 +1408,7 @@ func test_relay_backend() {
 
 	fmt.Printf("waiting for relay backend\n")
 
-	relay_backend_cmd.Process.Signal(os.Interrupt)
+	relay_backend_cmd.Process.Signal(os.Kill)
 	relay_backend_cmd.Wait()
 
 	if errorCount != 0 {
@@ -1422,7 +1422,7 @@ func test_relay_backend() {
 		panic("error count is not zero")
 	}
 
-	if routeMatrixCounter < 30 {
+	if routeMatrixCounter < 45 {
 		panic("not enough valid route matrices")
 	}
 }
