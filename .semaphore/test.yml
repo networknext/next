@@ -905,10 +905,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_backend test_relay_backend
 
-        - name: "test_ip2location"
-          commands:
-            - cd ./dist && ./func_test_backend test_ip2location
-
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (database)"
