@@ -428,7 +428,7 @@ func machineIsHealthy() bool {
 
 func ready() bool {
 	routeMatrix, database := service.RouteMatrixAndDatabase()
-	return routeMatrix != nil && len(routeMatrix.RelayIds) > 0 && database != nil
+	return routeMatrix != nil && database != nil
 }
 
 func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {

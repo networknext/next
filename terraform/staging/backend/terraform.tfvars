@@ -23,3 +23,6 @@ load_test_buyer_public_key  = "XS1IFDqcGudRvHbJltGmfnsO78MRB4tiLHqzsHgFCbxqwgKzN
 load_test_buyer_private_key = "XS1IFDqcGuf1cCsPYwRyeMJxjOcWSr7Tr91M+slYCDr4XVnXM8OCCFG8dsmW0aZ+ew7vwxEHi2IserOweAUJvGrCArM16wPC"
 
 ip2location_bucket_name     = "auspicious_network_next_staging"
+
+relay_public_key            = "V15nmt6Q3X0j1SrcZNckpvieWEQmFkRTz0VNs50YDRc="
+relay_private_key           = "A2ek112nPz8IQCfC+aYHnjSrfDZgX6lFvGcvGviil+0="
