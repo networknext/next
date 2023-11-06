@@ -820,8 +820,8 @@ blocks:
             - checkout
             - cp envs/local.env .env
 
-            - ls cmd/relay_backend/*
             - make clean
+            - make update-schemas
             - make dist/func_test_backend dist/magic_backend dist/relay_gateway dist/relay_backend
 
             - artifact push workflow dist/func_test_backend --force
