@@ -8,9 +8,9 @@ import (
 )
 
 const NumRelays = 1000
-const BuyerPublicKeyBase64 = "0xfkba1joh0OB0lnGgMWT84n/9ob5KbbBZTpPaKSKZYv96IV1JyzBg=="
-const RelayPublicKeyBase64 = "lFA+GivH+HnvoxFRiVDQZxd7WnKeuh5FUtsQf13/Mz0="
-const RelayPrivateKeyBase64 = "Yxhh6xYA3skmlWvZuN44Eeyvj9U2v+a6OsWUqsyqK0U="
+const BuyerPublicKeyBase64 = "GLPP7IXT09HXFk8T1T8vBPC5Pe/YFSgWZtjPFRYFJ6klHS2b3ZNc5Q=="
+const RelayPublicKeyBase64 = "Y3L2D92gGoH/GzIT/LMEHCFSF81BGfpHGZr+MOhtOik="
+const RelayPrivateKeyBase64 = "yg9OZ4NEvHGjfuuz/KDAT9lPWF13/ilVMljZojP51YM="
 
 func main() {
 

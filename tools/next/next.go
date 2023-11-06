@@ -860,12 +860,12 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("cmd/func_backend/func_backend.go\n")
 	{
-	   replace("cmd/func_backend/func_backend.go", "const TestRelayPublicKey =",   fmt.Sprintf("const TestRelayPublicKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-	   replace("cmd/func_backend/func_backend.go", "const TestRelayPrivateKey =",   fmt.Sprintf("const TestRelayPrivateKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-	   replace("cmd/func_backend/func_backend.go", "const TestRelayBackendPublicKey =",   fmt.Sprintf("const TestRelayBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_public_key"]))
-	   replace("cmd/func_backend/func_backend.go", "const TestRelayBackendPrivateKey =",   fmt.Sprintf("const TestRelayBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_private_key"]))
-	   replace("cmd/func_backend/func_backend.go", "const TestServerBackendPublicKey =",   fmt.Sprintf("const TestServerBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["server_backend_public_key"]))
-	   replace("cmd/func_backend/func_backend.go", "const TestServerBackendPrivateKey =",   fmt.Sprintf("const TestServerBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["server_backend_private_key"]))
+	   replace("cmd/func_backend/func_backend.go", "var TestRelayPublicKey =",   fmt.Sprintf("var TestRelayPublicKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+	   replace("cmd/func_backend/func_backend.go", "var TestRelayPrivateKey =",   fmt.Sprintf("var TestRelayPrivateKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+	   replace("cmd/func_backend/func_backend.go", "var TestRelayBackendPublicKey =",   fmt.Sprintf("var TestRelayBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_public_key"]))
+	   replace("cmd/func_backend/func_backend.go", "var TestRelayBackendPrivateKey =",   fmt.Sprintf("var TestRelayBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_private_key"]))
+	   replace("cmd/func_backend/func_backend.go", "var TestServerBackendPublicKey =",   fmt.Sprintf("var TestServerBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["server_backend_public_key"]))
+	   replace("cmd/func_backend/func_backend.go", "var TestServerBackendPrivateKey =",   fmt.Sprintf("var TestServerBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["server_backend_private_key"]))
 	}
 
 	fmt.Printf("cmd/func_test_terraform/func_test_terraform.go\n")
