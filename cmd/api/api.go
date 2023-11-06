@@ -424,10 +424,14 @@ type PortalSessionCountsResponse struct {
 
 func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalSessionCountsResponse{}
-	adminCountersWatcher.Lock()
-	sessionUpdate := adminCountersWatcher.GetFloatValue("session_update")
-	nextSessionUpdate := adminCountersWatcher.GetFloatValue("next_session_update")
-	adminCountersWatcher.Unlock()
+	var sessionUpdate float64
+	var nextSessionUpdate float64
+	if enableRedisTimeSeries {
+		adminCountersWatcher.Lock()
+		sessionUpdate = adminCountersWatcher.GetFloatValue("session_update")
+		nextSessionUpdate = adminCountersWatcher.GetFloatValue("next_session_update")
+		adminCountersWatcher.Unlock()
+	}
 	response.TotalSessionCount = int(math.Ceil(sessionUpdate * 10.0 / 60.0))
 	response.NextSessionCount = int(math.Ceil(nextSessionUpdate * 10.0 / 60.0))
 	w.WriteHeader(http.StatusOK)
@@ -662,9 +666,12 @@ type PortalServerCountResponse struct {
 
 func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalServerCountResponse{}
-	adminCountersWatcher.Lock()
-	serverUpdate := adminCountersWatcher.GetFloatValue("server_update")
-	adminCountersWatcher.Unlock()
+	var serverUpdate float64
+	if enableRedisTimeSeries {
+		adminCountersWatcher.Lock()
+		serverUpdate = adminCountersWatcher.GetFloatValue("server_update")
+		adminCountersWatcher.Unlock()
+	}
 	response.ServerCount = int(math.Ceil(serverUpdate * 10.0 / 60.0))
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -861,7 +868,7 @@ func upgradePortalRelayData(database *db.Database, input *portal.RelayData, outp
 			output.Longitude = relay.Datacenter.Longitude
 		}
 	}
-	if withTimeSeries {
+	if withTimeSeries && enableRedisTimeSeries {
 		relayTimeSeriesWatcher.Lock()
 		relayTimeSeriesWatcher.GetIntValues(&output.SessionCount_Timestamps, &output.SessionCount_Values, fmt.Sprintf("relay_%016x_session_count", input.RelayId))
 		relayTimeSeriesWatcher.GetIntValues(&output.BandwidthSentKbps_Timestamps, &output.BandwidthSentKbps_Values, fmt.Sprintf("relay_%016x_bandwidth_sent_kbps", input.RelayId))
