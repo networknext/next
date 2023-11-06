@@ -556,9 +556,23 @@ func writeSecret(k string, v map[string]string, name string) {
 	}
 }
 
+func secretsAlreadyExist() bool {
+	return true
+}
+
 func keygen(env Environment, regexes []string) {
 		
 	math_rand.Seed(time.Now().UnixNano())
+
+	if secretsAlreadyExist() {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Secrets already exist.\n\nRunning keygen will overwrite your secrets, and you'll lose control of any system that you've already deployed.\n\nAre you sure you want to continue? (yes/no): ")
+		text, _ := reader.ReadString('\n')
+		if strings.TrimSpace(text) != "yes" {
+			fmt.Printf("\nAborted.\n\n")
+			os.Exit(1)
+		}
+	}
 
 	fmt.Printf("------------------------------------------\n           generating keypairs\n------------------------------------------\n\n")
 
