@@ -165,16 +165,6 @@ async function getData() {
 
     const url = process.env.VUE_APP_API_URL + '/portal/admin_data'
 
-    const api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6ZmFsc2UsInBvcnRhbCI6dHJ1ZSwiaXNzIjoibmV4dCBrZXlnZW4iLCJpYXQiOjE2OTkzMDQzODl9.NUQedMItTVhVIQ29kUI6TmSBCQXfh-weDf3s9hpjfBM"
-
-    /*
-    const config = {
-      "Authorization": `Bearer ${api_key}`,
-    };
-    */    
-
-    axios.defaults.headers.common = {'Authorization': `Bearer ${api_key}`}
-
     const res = await axios.get(url)
 
     let data = {}

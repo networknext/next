@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -11,7 +12,6 @@ import (
 	"runtime"
 	"sync"
 	"time"
-	_ "embed"
 
 	"github.com/gorilla/mux"
 
@@ -23,8 +23,8 @@ import (
 	"github.com/networknext/next/modules/packets"
 	"github.com/networknext/next/modules/portal"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/hamba/avro"
+	"github.com/redis/go-redis/v9"
 )
 
 var maxJitter int32
@@ -96,7 +96,7 @@ var relayUpdateSchema avro.Schema
 var routeMatrixUpdateSchema avro.Schema
 var relayToRelayPingSchema avro.Schema
 
-var lastTimeSeriesUpdateTime map[uint64]int64	// IMPORTANT: per-relay, we only send time series stats once per-minute, otherwise we overload the time series redis @ 1000 relays
+var lastTimeSeriesUpdateTime map[uint64]int64 // IMPORTANT: per-relay, we only send time series stats once per-minute, otherwise we overload the time series redis @ 1000 relays
 
 func main() {
 
@@ -482,7 +482,7 @@ func PostRelayUpdateRequest(service *common.Service) {
 					sendTimeSeries := false
 					currentTime := time.Now().Unix()
 					lastUpdateTime, exists := lastTimeSeriesUpdateTime[message.RelayId]
-					if !exists || lastUpdateTime + 60 < currentTime {
+					if !exists || lastUpdateTime+60 < currentTime {
 						lastTimeSeriesUpdateTime[message.RelayId] = currentTime
 						sendTimeSeries = true
 					}

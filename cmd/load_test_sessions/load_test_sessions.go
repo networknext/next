@@ -80,8 +80,7 @@ func RunSession(index int) {
 
 	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
 
-	// todo
-	// time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
+	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, basePort+index))
 

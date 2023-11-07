@@ -11,8 +11,8 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -22,9 +22,9 @@ import (
 	"github.com/networknext/next/modules/envvar"
 	"github.com/networknext/next/modules/portal"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 var redisPortalClient redis.Cmdable
@@ -364,7 +364,7 @@ func main() {
 type Claims struct {
 	Admin  bool `json:"admin"`
 	Portal bool `json:"portal"`
-	jwt.RegisteredClaims			
+	jwt.RegisteredClaims
 }
 
 func isAdminAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http.ResponseWriter, r *http.Request) {
@@ -409,40 +409,28 @@ func isPortalAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		core.Log("isPortalAuthorized")
-
 		auth := r.Header.Get("Authorization")
 
-		core.Log("Authorization = '%s'", auth)
-
 		split := strings.Split(auth, "Bearer ")
-
-		core.Log("split = '%+v'", split)
 
 		if len(split) == 2 {
 
 			apiKey := split[1]
 
-			core.Log("api is '%s'", apiKey)
-
 			claims := Claims{}
 
 			token, err := jwt.ParseWithClaims(apiKey, &claims, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					core.Log("signature check failed")
 					return nil, fmt.Errorf("There was an error")
 				}
 				return []byte(privateKey), nil
 			})
 
 			if token == nil || err != nil || !claims.Portal {
-				core.Log("not authorized")
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, err.Error())
 				return
 			}
-
-			core.Log("authorized")
 
 			endpoint(w, r)
 

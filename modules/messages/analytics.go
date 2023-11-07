@@ -22,13 +22,13 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// next only
 
-	NextRTT          float32  `avro:"next_rtt"`
-	NextJitter       float32  `avro:"next_jitter"`
-	NextPacketLoss   float32  `avro:"next_packet_loss"`
-	NextKbpsUp       int32    `avro:"next_kbps_up"`
-	NextKbpsDown     int32    `avro:"next_kbps_down"`
-	NextPredictedRTT float32  `avro:"next_predicted_rtt"`
-	NextRouteRelays  []int64  `avro:"next_route_relays"`
+	NextRTT          float32 `avro:"next_rtt"`
+	NextJitter       float32 `avro:"next_jitter"`
+	NextPacketLoss   float32 `avro:"next_packet_loss"`
+	NextKbpsUp       int32   `avro:"next_kbps_up"`
+	NextKbpsDown     int32   `avro:"next_kbps_down"`
+	NextPredictedRTT float32 `avro:"next_predicted_rtt"`
+	NextRouteRelays  []int64 `avro:"next_route_relays"`
 
 	// flags
 

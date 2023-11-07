@@ -52,9 +52,6 @@ func main() {
 
 	serverAddress = DetectGoogleServerAddress(serverAddress)
 
-	// todo
-	core.Log("buyer private key is %d bytes", len(buyerPrivateKey))
-
 	buyerId = binary.LittleEndian.Uint64(buyerPrivateKey[0:8])
 
 	buyerPrivateKey = buyerPrivateKey[8:]
@@ -134,8 +131,7 @@ func RunServer(index int) {
 
 	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
 
-	// todo
-	// time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
+	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", serverAddress, 10000+index))
 

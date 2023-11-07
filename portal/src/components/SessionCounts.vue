@@ -16,8 +16,10 @@
 
 <script>
 
-//import axios from "axios";
+import axios from "axios";
 import update from "@/update.js"
+
+axios.defaults.headers.common = {'Authorization': `Bearer ${process.env.VUE_APP_PORTAL_API_KEY}`}
 
 export default {
 
@@ -39,8 +41,6 @@ export default {
   methods: {
 
     async update() {
-      // todo
-      /*
       try {
         const res = await axios.get(process.env.VUE_APP_API_URL + '/portal/session_counts')
         this.total_sessions = res.data.total_session_count.toLocaleString()
@@ -49,7 +49,6 @@ export default {
       } catch (error) {
         console.log(error);
       }
-      */
     }
   },
 

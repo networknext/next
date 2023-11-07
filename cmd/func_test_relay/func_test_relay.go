@@ -40,10 +40,10 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "xWCx2sztuBjmPM4Pevwff1XhdaGzhc+mE2PSyuR7oyI="
-const TestRelayPrivateKey = "Siz1YyCV5oNmbv58EOO3k+0hCLj9rG0EvPZhVVgPP3k="
-const TestRelayBackendPublicKey = "Vl+K03QIwq3Cl+Y4EKlUQiQBkAd97H8U3QrPqgh9IQo="
-const TestRelayBackendPrivateKey = "GQQRzvkxYvachOviZ+piSanU3Cj8eSWGJcjuwHFJdZU="
+const TestRelayPublicKey = "smlC9vXuLQepLM1KYMIfYBczEWbvX5jItU/Kj+RK3Gw="
+const TestRelayPrivateKey = "QD1t8t1wEBOTOhQXzuxuHi9ight+2gZHslwPMOokBak="
+const TestRelayBackendPublicKey = "aeHAT90/TTcme4Vsf0wdKpQ1GOtjOadfqBBSGDauWDw="
+const TestRelayBackendPrivateKey = "DAmCZStYc0GK3jy7QSlw6qmVu0blVxOc+iEHFvv5n0A="
 
 const (
 	relayBin   = "./relay-debug"

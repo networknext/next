@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	_ "embed"
 	"fmt"
 	"net"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	_ "embed"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -19,8 +19,8 @@ import (
 	"github.com/networknext/next/modules/messages"
 	"github.com/networknext/next/modules/portal"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/hamba/avro"
+	"github.com/redis/go-redis/v9"
 )
 
 var service *common.Service
@@ -195,7 +195,7 @@ func main() {
 		pingKey[31],
 	)
 
-	// initialize avro schemas for sending analytics data to pubsub -> bigquery ingestion	
+	// initialize avro schemas for sending analytics data to pubsub -> bigquery ingestion
 
 	if enableGooglePubsub {
 

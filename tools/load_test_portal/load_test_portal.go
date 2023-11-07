@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"time"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/envvar"

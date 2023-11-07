@@ -146,7 +146,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	state.StartTimestampNano = uint64(time.Now().UnixNano())
 
-	state.StartTimestamp = state.StartTimestampNano / 1000000000	// nano -> seconds
+	state.StartTimestamp = state.StartTimestampNano / 1000000000 // nano -> seconds
 
 	/*
 		Read session data first
@@ -1389,7 +1389,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.SessionDuration = int32((state.Request.SliceNumber - 1) * packets.SDK_SliceSeconds)
 	message.TotalNextEnvelopeBytesUp = int64(state.Input.NextEnvelopeBytesUpSum)
 	message.TotalNextEnvelopeBytesDown = int64(state.Input.NextEnvelopeBytesDownSum)
-	message.DurationOnNext = int32(state.Input.DurationOnNext) // seconds
+	message.DurationOnNext = int32(state.Input.DurationOnNext)           // seconds
 	message.StartTimestamp = int64(state.Input.StartTimestamp * 1000000) // seconds -> microseconds
 	message.Error = int64(state.Input.Error)
 
