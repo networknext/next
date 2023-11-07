@@ -413,7 +413,11 @@ func isPortalAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(
 
 		auth := r.Header.Get("Authorization")
 
+		core.Log("Authorization = '%s'", auth)
+
 		split := strings.Split(auth, "Bearer ")
+
+		core.Log("split = '%+v'", split)
 
 		if len(split) == 2 {
 
