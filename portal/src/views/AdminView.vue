@@ -165,7 +165,16 @@ async function getData() {
 
     const url = process.env.VUE_APP_API_URL + '/portal/admin_data'
 
-    const res = await axios.get(url);
+    const config = {
+      headers: {
+        "Content-type": "application/json",
+        "Authorization": `Bearer ${process.env.VUE_APP_PORTAL_API_KEY}`,
+      },
+    };    
+
+    console.log(config)
+
+    const res = await axios.get(url, null, config)
 
     let data = {}
 

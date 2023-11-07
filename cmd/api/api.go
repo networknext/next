@@ -391,6 +391,7 @@ func isAdminAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w
 			if token == nil || err != nil || !claims.Admin {
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, err.Error())
+				return
 			}
 
 			endpoint(w, r)
@@ -408,6 +409,8 @@ func isPortalAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		core.Log("isPortalAuthorized")
+
 		auth := r.Header.Get("Authorization")
 
 		split := strings.Split(auth, "Bearer ")
@@ -416,19 +419,26 @@ func isPortalAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(
 
 			apiKey := split[1]
 
+			core.Log("api is '%s'", apiKey)
+
 			claims := Claims{}
 
 			token, err := jwt.ParseWithClaims(apiKey, &claims, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					core.Log("signature check failed")
 					return nil, fmt.Errorf("There was an error")
 				}
 				return []byte(privateKey), nil
 			})
 
 			if token == nil || err != nil || !claims.Portal {
+				core.Log("not authorized")
 				w.WriteHeader(http.StatusUnauthorized)
 				fmt.Fprintf(w, err.Error())
+				return
 			}
+
+			core.Log("authorized")
 
 			endpoint(w, r)
 

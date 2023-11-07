@@ -669,8 +669,8 @@ func keygen(env Environment, regexes []string) {
 		fmt.Printf("	Server backend public key      = %s\n", base64.StdEncoding.EncodeToString(serverBackendPublicKey[:]))
 		fmt.Printf("	Server backend private key     = %s\n", base64.StdEncoding.EncodeToString(serverBackendPrivateKey[:]))
 		fmt.Printf("	API private key                = %s\n", apiPrivateKey)
-		fmt.Printf("	Admin API key                  = %s\n", portalAPIKey)
-		fmt.Printf("	Portal API key                 = %s\n", adminAPIKey)
+		fmt.Printf("	Admin API key                  = %s\n", adminAPIKey)
+		fmt.Printf("	Portal API key                 = %s\n", portalAPIKey)
 		fmt.Printf("	Ping key                       = %s\n\n", base64.StdEncoding.EncodeToString(pingKey[:]))
 
    	m := make(map[string]string)
@@ -742,9 +742,11 @@ func keygen(env Environment, regexes []string) {
 		}
    }
 
+   // todo: go over the portal .env files
+
    // update non-secret keys in terraform files
 
-	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
+ 	 fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
 
    for k,v := range keypairs {
 
