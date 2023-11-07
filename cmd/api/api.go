@@ -371,8 +371,6 @@ func isAdminAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		endpoint(w, r)
-
 		auth := r.Header.Get("Authorization")
 
 		split := strings.Split(auth, "Bearer ")
@@ -409,8 +407,6 @@ func isAdminAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w
 func isPortalAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		endpoint(w, r)
 
 		auth := r.Header.Get("Authorization")
 
