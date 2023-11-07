@@ -39,7 +39,7 @@ func main() {
 
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
 
-	buyerPrivateKey := envvar.GetBase64("NEXT_BUYER_PRIVATE_KEY", nil)
+	buyerPrivateKey = envvar.GetBase64("NEXT_BUYER_PRIVATE_KEY", nil)
 
 	core.Log("num relays = %d", numRelays)
 	core.Log("num servers = %d", numServers)
@@ -51,6 +51,9 @@ func main() {
 	}
 
 	serverAddress = DetectGoogleServerAddress(serverAddress)
+
+	// todo
+	core.Log("buyer private key is %d bytes", len(buyerPrivateKey))
 
 	buyerId = binary.LittleEndian.Uint64(buyerPrivateKey[0:8])
 
@@ -131,7 +134,8 @@ func RunServer(index int) {
 
 	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
 
-	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
+	// todo
+	// time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", serverAddress, 10000+index))
 

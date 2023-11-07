@@ -49,7 +49,7 @@ func main() {
 	core.Log("client address = %s", clientAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
 
-	buyerPrivateKey := envvar.GetBase64("NEXT_BUYER_PRIVATE_KEY", nil)
+	buyerPrivateKey = envvar.GetBase64("NEXT_BUYER_PRIVATE_KEY", nil)
 
 	if buyerPrivateKey == nil {
 		panic("you must supply the buyer private key")
@@ -80,7 +80,8 @@ func RunSession(index int) {
 
 	time.Sleep(time.Duration(r.Intn(1000)) * time.Millisecond) // jitter delay
 
-	time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
+	// todo
+	// time.Sleep(time.Duration(r.Intn(360)) * time.Second) // initial delay
 
 	address := core.ParseAddress(fmt.Sprintf("%s:%d", clientAddress, basePort+index))
 

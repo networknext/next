@@ -951,8 +951,9 @@ module "load_test_servers" {
     chmod +x bootstrap.sh
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
     cat <<EOF > /app/app.env
+    DEBUG_LOGS=1
     NUM_RELAYS=1000
-    NUM_SERVERS=50000
+    NUM_SERVERS=1
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_BUYER_PRIVATE_KEY=${var.load_test_buyer_private_key}
     EOF
@@ -969,7 +970,7 @@ module "load_test_servers" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 2
+  target_size        = 1
 
   depends_on = [
     google_redis_cluster.portal,
@@ -993,7 +994,7 @@ module "load_test_sessions" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
     cat <<EOF > /app/app.env
     NUM_RELAYS=1000
-    NUM_SESSIONS=50000
+    NUM_SESSIONS=1
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_BUYER_PRIVATE_KEY=${var.load_test_buyer_private_key}
     EOF
@@ -1010,7 +1011,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 2
+  target_size        = 1
 
   depends_on = [
     google_redis_cluster.portal,
