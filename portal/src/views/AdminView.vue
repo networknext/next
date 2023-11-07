@@ -167,14 +167,15 @@ async function getData() {
 
     const api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6ZmFsc2UsInBvcnRhbCI6dHJ1ZSwiaXNzIjoibmV4dCBrZXlnZW4iLCJpYXQiOjE2OTkzMDQzODl9.NUQedMItTVhVIQ29kUI6TmSBCQXfh-weDf3s9hpjfBM"
 
+    /*
     const config = {
-      headers: {
-        "Content-type": "application/json",
-        "Authorization": `Bearer ${api_key}`,
-      },
-    };    
+      "Authorization": `Bearer ${api_key}`,
+    };
+    */    
 
-    const res = await axios.get(url, config)
+    axios.defaults.headers.common = {'Authorization': `Bearer ${api_key}`}
+
+    const res = await axios.get(url)
 
     let data = {}
 

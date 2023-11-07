@@ -434,6 +434,7 @@ func (service *Service) StartWebServer() {
 			core.Log("allowed origin: %s", allowedOrigin)
 			c := cors.New(cors.Options{
 				AllowedOrigins:   []string{allowedOrigin},
+				AllowedHeaders:   []string{"*"},
 				AllowCredentials: true,
 			})
 			err := http.ListenAndServe(bindAddress, c.Handler(&service.Router))
