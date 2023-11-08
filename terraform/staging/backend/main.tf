@@ -61,7 +61,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "mindful_network_next_terraform"
+    bucket  = "memento_network_next_terraform"
     prefix  = "staging"
   }
 }

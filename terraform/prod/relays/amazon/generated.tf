@@ -1703,6 +1703,17 @@ locals {
       seller_code = "amazon"
     }
 
+    "amazon.lasvegas.2" = {
+      azid        = "usw2-las1-az2"
+      zone        = "us-west-2-las-1b"
+      region      = "us-west-2"
+      native_name = "usw2-las1-az2 (us-west-2-las-1b)"
+      latitude    = 36.17
+      longitude   = -115.14
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
     "amazon.losangeles.1" = {
       azid        = "usw2-lax1-az1"
       zone        = "us-west-2-lax-1a"
@@ -1795,12 +1806,12 @@ locals {
 
   relays = {
 
+    "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
     "amazon.ohio.2" = { datacenter_name = "amazon.ohio.2" },
     "amazon.oregon.1" = { datacenter_name = "amazon.oregon.1" },
     "amazon.sanjose.1" = { datacenter_name = "amazon.sanjose.1" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
-    "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
   }
 
 }
@@ -1895,6 +1906,21 @@ module "relay_amazon_oregon_1" {
 
 	  value = {
 
+	    "amazon.virginia.2" = {
+	      "relay_name"       = "amazon.virginia.2"
+	      "datacenter_name"  = "amazon.virginia.2"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_virginia_2.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_virginia_2.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "us-east-1"
+	      "ssh_ip"           = module.relay_amazon_virginia_2.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
 	    "amazon.ohio.1" = {
 	      "relay_name"       = "amazon.ohio.1"
 	      "datacenter_name"  = "amazon.ohio.1"
@@ -1966,21 +1992,6 @@ module "relay_amazon_oregon_1" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "us-east-1"
 	      "ssh_ip"           = module.relay_amazon_virginia_1.public_address
-	      "ssh_port"         = 22
-	      "ssh_user"         = "ubuntu"
-	    }
-
-	    "amazon.virginia.2" = {
-	      "relay_name"       = "amazon.virginia.2"
-	      "datacenter_name"  = "amazon.virginia.2"
-	      "seller_name"      = "Amazon"
-	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_virginia_2.public_address
-	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_virginia_2.internal_address
-	      "internal_port"    = 40000
-	      "internal_group"   = "us-east-1"
-	      "ssh_ip"           = module.relay_amazon_virginia_2.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }
