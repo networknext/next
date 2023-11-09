@@ -965,14 +965,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
-		If we have already wrote the session summary, there is nothing more to do...
-	*/
-
-	if state.Input.WroteSummary {
-		return
-	}
-
-	/*
 		Logic for sending near relay messages to portal
 		This is somewhat complicated because at scale we usually only send next sessions to the portal
 		Thus, we send it right away if that flag is off, OR, if we are at scale, we must remember to send it only once
