@@ -61,7 +61,6 @@ services:
       - REDIS_HOSTNAME=redis:6379
       - MAGIC_URL=http://magic_backend/magic
       - MAGIC_INTERVAL=10s
-      # todo: make sure we get these keys
       - RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
       - RELAY_BACKEND_PRIVATE_KEY=ddl/8ski0NCedCRyq/CWiElApMXecJCVYzy9CvZjqMg=
       - PING_KEY=qizi4jbiHkg/v3xPnDPtJBhTi3/92OacXJ/nknyHAUQ=
@@ -125,7 +124,6 @@ services:
       - MAGIC_INTERVAL=10s
       - ROUTE_MATRIX_INTERVAL=10s
       - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
-      # todo: need to make sure we got all these keys
       - SERVER_BACKEND_PUBLIC_KEY=jiAJGx7iWApPM4IQbkFw4u92BsttFH95OZQHUqQMLlc=
       - SERVER_BACKEND_PRIVATE_KEY=UHMg1KA/9g+jwriAGf7rbN5nGbL2sMtaW8rktJudyK6OIAkbHuJYCk8zghBuQXDi73YGy20Uf3k5lAdSpAwuVw==
       - RELAY_BACKEND_PRIVATE_KEY=ddl/8ski0NCedCRyq/CWiElApMXecJCVYzy9CvZjqMg=
@@ -156,7 +154,6 @@ services:
       - PGSQL_CONFIG=host=postgres port=5432 user=Postgres password=Postgres dbname=postgres sslmode=disable
       - SESSION_CRUNCHER_URL=http://session_cruncher
       - SERVER_CRUNCHER_URL=http://server_cruncher
-      # todo: we missed one. this needs to be updated with keygen
       - API_PRIVATE_KEY=VywxIjzyZDHnvbLwkmXSexjcVYuUmvBZJBJeqvRHCzDLsGPRHItbENozdIokQzIt
     restart: always
 
@@ -168,7 +165,6 @@ services:
       - RELAY_NAME=relay_1
       - RELAY_PUBLIC_ADDRESS=10.5.0.5:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      # todo: make sure we get these keys
       - RELAY_PUBLIC_KEY=swNl9YuThlOMQ4jDcbxQYt2uvmv08OZqrgMRzrXtriA=
       - RELAY_PRIVATE_KEY=2h7RT4KEtPSA9z+L5iSOvAWOtb9LBDSThYO0pHzzQC8=
       - RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
@@ -188,7 +184,6 @@ services:
       - RELAY_NAME=relay_2
       - RELAY_PUBLIC_ADDRESS=10.5.0.6:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      # todo: make sure we get these keys
       - RELAY_PUBLIC_KEY=swNl9YuThlOMQ4jDcbxQYt2uvmv08OZqrgMRzrXtriA=
       - RELAY_PRIVATE_KEY=2h7RT4KEtPSA9z+L5iSOvAWOtb9LBDSThYO0pHzzQC8=
       - RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
@@ -208,7 +203,6 @@ services:
       - RELAY_NAME=relay_3
       - RELAY_PUBLIC_ADDRESS=10.5.0.7:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      # todo: make sure we get these keys
       - RELAY_PUBLIC_KEY=swNl9YuThlOMQ4jDcbxQYt2uvmv08OZqrgMRzrXtriA=
       - RELAY_PRIVATE_KEY=2h7RT4KEtPSA9z+L5iSOvAWOtb9LBDSThYO0pHzzQC8=
       - RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
@@ -228,7 +222,6 @@ services:
       - RELAY_NAME=relay_4
       - RELAY_PUBLIC_ADDRESS=10.5.0.8:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      # todo: make sure we get these keys
       - RELAY_PUBLIC_KEY=swNl9YuThlOMQ4jDcbxQYt2uvmv08OZqrgMRzrXtriA=
       - RELAY_PRIVATE_KEY=2h7RT4KEtPSA9z+L5iSOvAWOtb9LBDSThYO0pHzzQC8=
       - RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
@@ -248,7 +241,6 @@ services:
       - RELAY_NAME=relay_5
       - RELAY_PUBLIC_ADDRESS=10.5.0.9:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      # todo: make sure we get these keys
       - RELAY_PUBLIC_KEY=swNl9YuThlOMQ4jDcbxQYt2uvmv08OZqrgMRzrXtriA=
       - RELAY_PRIVATE_KEY=2h7RT4KEtPSA9z+L5iSOvAWOtb9LBDSThYO0pHzzQC8=
       - RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
@@ -269,7 +261,6 @@ services:
       - NEXT_DATACENTER=local
       - NEXT_SERVER_ADDRESS=10.5.0.20
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
-      # todo: make sure we get these keys
       - NEXT_BUYER_PUBLIC_KEY=AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A==
       - NEXT_BUYER_PRIVATE_KEY=AN+VWuqgAQdhmzB4XOT89baswrIaX6WS7dTIW8U6deMZdoemQh9qoN3l35B5Ppqk1/4Ztv2uoUEy2Tkz4agy/BLUSrPvrhf8
     networks:
@@ -287,7 +278,6 @@ services:
     environment:
       - NEXT_DELAY=1
       - NEXT_CONNECT_ADDRESS=10.5.0.20:30000
-      # todo: make sure we get this key
       - NEXT_BUYER_PUBLIC_KEY=AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A==
     networks:
       relays:
