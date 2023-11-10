@@ -24,6 +24,9 @@ func main() {
 
 	service.Router.HandleFunc("/magic", magicHandler).Methods("GET")
 
+	// todo
+	core.Log("magic backend is ready")
+
 	service.StartWebServer()
 
 	service.WaitForShutdown()

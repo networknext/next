@@ -126,6 +126,10 @@ func main() {
 
 func UpdateAcceleratedPercent(service *common.Service) {
 
+	if !enableRedisTimeSeries {
+		return
+	}
+
 	// calculate accelerated percent once per-second from counters
 
 	countersConfig := common.RedisCountersConfig{

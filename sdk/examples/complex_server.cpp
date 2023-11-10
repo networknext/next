@@ -36,7 +36,7 @@ const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "server-dev.virtualgo.net";
-const char * buyer_private_key = "468kCDmMIj0t6IBjVtcEuxBTlkcvhr15fecY7HFI0mS7Lx6SBAtAW1ArmOcPOFB+hGv+/KLHzNAYFXuefzYKPDDVyHe2uJJ0";
+const char * buyer_private_key = "AN+VWuqgAQdhmzB4XOT89baswrIaX6WS7dTIW8U6deMZdoemQh9qoN3l35B5Ppqk1/4Ztv2uoUEy2Tkz4agy/BLUSrPvrhf8";
 
 // -------------------------------------------------------------
 

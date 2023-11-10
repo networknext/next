@@ -15,11 +15,11 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-raspberry_buyer_public_key  = "BsLPRMwxGJfGvuxGSQQ4SKOy88JqbSTFGxPkJJkIQWaa5h5+W6xXqg=="
-raspberry_buyer_private_key = "BsLPRMwxGJeCVSYT7UaFiBKAHsO+eQw6O0dr0nxdlclKHBOc2f5Keca+7EZJBDhIo7LzwmptJMUbE+QkmQhBZprmHn5brFeq"
+raspberry_buyer_public_key  = "Df/gqFQMDkNp8GH28WjVEl4I6aB5KxsVipZKow0PhCmQIQIMEeUkOg=="
+raspberry_buyer_private_key = "Df/gqFQMDkMA8NLq4ZwJhdcufKBIjVRTQXylBQfpg1QF/BfW3Gr982nwYfbxaNUSXgjpoHkrGxWKlkqjDQ+EKZAhAgwR5SQ6"
 
 ip2location_bucket_name     = "memento_network_next_dev"
 
-relay_backend_public_key    = "TNBiEpx62+2zJ18IdOt3yjpnnJWjUQVV/7dmXWMMVRY="
+relay_backend_public_key    = "0Ad0T86N1X8uRF4XnusUbM19k6Srnk/BxihgZT0Pvlo="
 
-server_backend_public_key   = "tNtw+54SAIGpyGAvp2sT1W1uY1v7kxEJOhxNl/7y278="
+server_backend_public_key   = "SKGFCcLwk/p9kykEyRHV4vnOql/shPx6F0oz5QYP8+Q="

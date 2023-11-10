@@ -842,6 +842,7 @@ func keygen(env Environment, regexes []string) {
 		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PRIVATE_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 		replace("docker-compose.yml", "^\\s* - RELAY_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
 		replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$", fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+		replace("docker-compose.yml", "^\\s* - API_PRIVATE_KEY=.*$", fmt.Sprintf("      - API_PRIVATE_KEY=%s", keypairs["local"]["api_private_key"]))
 	}
 
 	fmt.Printf("schemas/sql/local.sql\n")
@@ -1221,7 +1222,11 @@ func config(env Environment, regexes []string) {
 		if fileExists(filename) {
 			fmt.Printf("%s\n", filename)
 			if envs[i] != "prod" {
-				replace(filename, "^VUE_APP_API_URL=.*$", fmt.Sprintf("VUE_APP_API_URL=https://api-%s.%s", envs[i], config.CloudflareDomain))
+				if envs[i] == "local" {
+					replace(filename, "^VUE_APP_API_URL=.*$", "VUE_APP_API_URL=http://127.0.0.1:50000")
+				} else {
+					replace(filename, "^VUE_APP_API_URL=.*$", fmt.Sprintf("VUE_APP_API_URL=https://api-%s.%s", envs[i], config.CloudflareDomain))
+				}
 			} else {
 				replace(filename, "^VUE_APP_API_URL=.*$", fmt.Sprintf("VUE_APP_API_URL=https://api.%s", config.CloudflareDomain))
 			}

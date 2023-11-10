@@ -7,10 +7,10 @@ ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 ssh_private_key_file        = "~/.ssh/id_rsa"
 relay_version               = "relay-debug-1.0.28"
 relay_artifacts_bucket      = "memento_network_next_relay_artifacts"
-relay_backend_public_key    = "TNBiEpx62+2zJ18IdOt3yjpnnJWjUQVV/7dmXWMMVRY="
+relay_backend_public_key    = "0Ad0T86N1X8uRF4XnusUbM19k6Srnk/BxihgZT0Pvlo="
 relay_backend_url           = "relay-dev.virtualgo.net"
 
-raspberry_buyer_public_key  = "BsLPRMwxGJfGvuxGSQQ4SKOy88JqbSTFGxPkJJkIQWaa5h5+W6xXqg=="
+raspberry_buyer_public_key  = "Df/gqFQMDkNp8GH28WjVEl4I6aB5KxsVipZKow0PhCmQIQIMEeUkOg=="
 
 raspberry_datacenters = [
 	"google.iowa.1",
@@ -19,7 +19,7 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-test_buyer_public_key       = "468kCDmMIj1QK5jnDzhQfoRr/vyix8zQGBV7nn82Cjww1ch3triSdA=="
+test_buyer_public_key       = "AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A=="
 
 test_datacenters = [
 	"google.iowa.1",
