@@ -18,31 +18,11 @@ You can run a Network Next test environment locally with docker compose on any O
 
    `docker compose up`
 
-After about one minute, you should see output like:
-
-```console
-next-client-1           | 0.557106: info: client upgraded to session 3fd88eb577d0826
-next-client-1           | 3.449071: info: client pinging 5 near relays
-next-client-1           | 3.449525: info: client direct route
-next-client-1           | 13.464149: info: client near relay pings completed
-next-client-1           | 13.464641: info: client direct route
-next-client-1           | 23.483219: info: client direct route
-next-client-1           | 33.480910: info: client direct route
-next-client-1           | 43.494686: info: client direct route
-next-client-1           | 53.525247: info: client direct route
-next-client-1           | 63.549006: info: client next route
-next-client-1           | 63.549072: info: client multipath enabled
-next-client-1           | 73.517053: info: client continues route
-next-client-1           | 83.499405: info: client continues route
-```
-
-An entire network next backend, relays and test client and server are now running inside docker compose on your local machine.
-
 5. View the portal
 
 _todo: this portion is not ready yet_
 
-Navigate to the network next portal at http://127.0.0.1:40001
+Navigate to the network next portal at http://127.0.0.1:8080
 
 You should see (todo: image)
 
