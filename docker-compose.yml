@@ -113,7 +113,7 @@ services:
       dockerfile: docker/server_backend.Dockerfile
     ports:
       - "13000:80/tcp"
-      - "45000:40000/udp"
+      - "40000:40000/udp"
     depends_on:
       - base
       - magic_backend
@@ -296,3 +296,15 @@ services:
     depends_on:
       - api
     restart: always
+
+  raspberry_backend:
+    build: 
+      context: .
+      dockerfile: docker/raspberry_backend.Dockerfile
+    depends_on:
+      - base
+    ports:
+      - "40100:80"
+    environment:
+      - REDIS_HOSTNAME=redis:6379
+
