@@ -22,6 +22,8 @@ We will add your github id to the list of accounts authorized to access the netw
 
 4. Fork the repository to your own github account
 
+It's OK to fork only the "main" branch. You'll create your own branches in your fork.
+
 5. Clone the forked repository into your home directory
 
 It will create a subdirectory called "next". You can change to this directory at the console with `cd ~/next` at any time.
