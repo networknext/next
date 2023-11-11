@@ -323,3 +323,25 @@ services:
       - "40100:80"
     environment:
       - REDIS_HOSTNAME=redis:6379
+
+  server:
+    build: 
+      context: .
+      dockerfile: docker/raspberry_server.Dockerfile
+    environment:
+      - NEXT_DATACENTER=local
+      - NEXT_SERVER_ADDRESS=10.5.0.40:40000
+      - NEXT_BIND_ADDRESS=0.0.0.0:40000
+      - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
+      - NEXT_BUYER_PUBLIC_KEY=AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A==
+      - NEXT_BUYER_PRIVATE_KEY=AN+VWuqgAQdhmzB4XOT89baswrIaX6WS7dTIW8U6deMZdoemQh9qoN3l35B5Ppqk1/4Ztv2uoUEy2Tkz4agy/BLUSrPvrhf8
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=jiAJGx7iWApPM4IQbkFw4u92BsttFH95OZQHUqQMLlc=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
+      - RASPBERRY_BACKEND_URL=http://raspberry_backend
+    networks:
+      relays:
+        ipv4_address: 10.5.0.40
+    depends_on:
+      - base
+      - server_backend
+    restart: always
