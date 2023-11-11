@@ -467,7 +467,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.LocateIP = locateIP_Local
 	if service.Env == "dev" {
 		handler.LocateIP = locateIP_Dev
-	} else if service.Env != "local" {
+	} else if service.Env != "local" && service.Env != "docker" {
 		handler.LocateIP = locateIP_Real
 	}
 
