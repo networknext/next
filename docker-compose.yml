@@ -119,6 +119,7 @@ services:
       - magic_backend
       - relay_gateway
     environment:
+      - DEBUG_LOGS=1
       - REDIS_HOSTNAME=redis:6379
       - MAGIC_URL=http://magic_backend/magic
       - MAGIC_INTERVAL=10s
@@ -257,12 +258,15 @@ services:
       context: .
       dockerfile: docker/server.Dockerfile
     environment:
+      - NEXT_LOG_LEVEL=4
       - NEXT_DELAY=1
       - NEXT_DATACENTER=local
       - NEXT_SERVER_ADDRESS=10.5.0.20
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
       - NEXT_BUYER_PUBLIC_KEY=AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A==
       - NEXT_BUYER_PRIVATE_KEY=AN+VWuqgAQdhmzB4XOT89baswrIaX6WS7dTIW8U6deMZdoemQh9qoN3l35B5Ppqk1/4Ztv2uoUEy2Tkz4agy/BLUSrPvrhf8
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=jiAJGx7iWApPM4IQbkFw4u92BsttFH95OZQHUqQMLlc=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
     networks:
       relays:
         ipv4_address: 10.5.0.20
@@ -279,6 +283,8 @@ services:
       - NEXT_DELAY=1
       - NEXT_CONNECT_ADDRESS=10.5.0.20:30000
       - NEXT_BUYER_PUBLIC_KEY=AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A==
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=jiAJGx7iWApPM4IQbkFw4u92BsttFH95OZQHUqQMLlc=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=vvAdjFQOyywWcWIJlNe0T1cPyBXa4SVajpQTPYSWNhg=
     networks:
       relays:
         ipv4_address: 10.5.0.30
@@ -307,4 +313,3 @@ services:
       - "40100:80"
     environment:
       - REDIS_HOSTNAME=redis:6379
-

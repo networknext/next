@@ -840,6 +840,8 @@ func keygen(env Environment, regexes []string) {
 		replace("docker-compose.yml", "^\\s* - PING_KEY=.*$", fmt.Sprintf("      - PING_KEY=%s", keypairs["local"]["ping_key"]))
 		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PRIVATE_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+		replace("docker-compose.yml", "^\\s* - NEXT_RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
+		replace("docker-compose.yml", "^\\s* - NEXT_SERVER_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_SERVER_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["server_backend_public_key"]))
 		replace("docker-compose.yml", "^\\s* - RELAY_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
 		replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$", fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
 		replace("docker-compose.yml", "^\\s* - API_PRIVATE_KEY=.*$", fmt.Sprintf("      - API_PRIVATE_KEY=%s", keypairs["local"]["api_private_key"]))

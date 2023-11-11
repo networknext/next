@@ -6,6 +6,8 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/networknext/next/modules/core"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -24,6 +26,8 @@ type UDPServer struct {
 }
 
 func CreateUDPServer(ctx context.Context, config UDPServerConfig, packetHandler func(conn *net.UDPConn, from *net.UDPAddr, packet []byte)) *UDPServer {
+
+	core.Log("started udp server on %s", config.BindAddress.String())
 
 	udpServer := UDPServer{}
 	udpServer.config = config

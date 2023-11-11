@@ -829,6 +829,7 @@ module "server_backend" {
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     PORTAL_NEXT_SESSIONS_ONLY=true
+    ENABLE_IP2LOCATION=true
     EOF
     sudo systemctl start app.service
   EOF1

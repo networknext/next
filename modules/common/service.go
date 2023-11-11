@@ -124,7 +124,7 @@ func CreateService(serviceName string) *Service {
 
 	core.Log("env: %s", env)
 
-	service.Local = env == "local" || env == "docker"
+	service.Local = env == "local"
 
 	service.Env = env
 
@@ -419,6 +419,9 @@ func (service *Service) StartWebServer() {
 	core.Log("starting http server on port %s", port)
 	go func() {
 		bindAddress := ":" + port
+		if service.Local {
+			bindAddress = "127.0.0.1:" + port
+		}
 		if allowedOrigin == "" {
 			// standard
 			err := http.ListenAndServe(bindAddress, &service.Router)

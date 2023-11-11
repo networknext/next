@@ -94,6 +94,8 @@ var serverInitSchema avro.Schema
 var sessionUpdateSchema avro.Schema
 var sessionSummarySchema avro.Schema
 
+var enableIP2Location bool
+
 func main() {
 
 	startTime = time.Now().Unix()
@@ -123,6 +125,7 @@ func main() {
 	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
 	initialDelay = envvar.GetInt("INITIAL_DELAY", 90)
+	enableIP2Location = envvar.GetBool("ENABLE_IP2LOCATION", false)
 
 	if enableRedisTimeSeries {
 		core.Debug("redis time series cluster: %s", redisTimeSeriesCluster)
@@ -142,6 +145,7 @@ func main() {
 	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
 	core.Debug("server insert batch size: %d", serverInsertBatchSize)
 	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
+	core.Debug("enable ip2location: %v", enableIP2Location)
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -278,7 +282,7 @@ func main() {
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy, ready)
 
-	if !service.Local {
+	if enableIP2Location {
 		service.LoadIP2Location()
 	}
 
