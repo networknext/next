@@ -120,6 +120,14 @@ int main()
     char server_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_copy_string( server_address, "127.0.0.1", sizeof(server_address) );
 
+    // look for a server address override (used in docker env...)
+
+    const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
+    if ( server_address_override )
+    {
+        next_copy_string( server_address, server_address_override, sizeof(server_address) );
+    }
+
     // if we are running in google cloud, detect google cloud public IP address
 
     FILE * file = popen( "curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
