@@ -12,7 +12,7 @@ terraform {
 locals {
   org_id = "434699063105"
   billing_account = "012279-A33489-722F96"
-  company_name = "memento"
+  company_name = "solaris"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -382,14 +382,6 @@ resource "local_file" "dev_runtime_service_account" {
   content  =  google_service_account.dev_runtime.email
 }
 
-# give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
-
-resource "google_project_iam_member" "dev_pubsub_bigquery_admin" {
-  project = google_project.dev.project_id
-  role    = "roles/bigquery.admin"
-  member  = "serviceAccount:service-${google_project.dev.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
-}
-
 # give the dev runtime service account permission to publish pubsub messages
 
 resource "google_project_iam_member" "dev_pubsub_publish" {
@@ -556,14 +548,6 @@ resource "local_file" "staging_runtime_service_account" {
   content  =  google_service_account.staging_runtime.email
 }
 
-# give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
-
-resource "google_project_iam_member" "staging_pubsub_bigquery_admin" {
-  project = google_project.staging.project_id
-  role    = "roles/bigquery.admin"
-  member  = "serviceAccount:service-${google_project.staging.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
-}
-
 # give the staging runtime service account permission to publish pubsub messages
 
 resource "google_project_iam_member" "staging_pubsub_publish" {
@@ -676,14 +660,6 @@ resource "local_file" "prod_project" {
 resource "local_file" "prod_runtime_service_account" {
   filename = "prod-runtime-service-account.txt"
   content  =  google_service_account.prod_runtime.email
-}
-
-# give the existing internal pubsub service account bigquery admin permissions (otherwise, we can't create the pubsub subscriptions that write to bigquery...)
-
-resource "google_project_iam_member" "prod_pubsub_bigquery_admin" {
-  project = google_project.prod.project_id
-  role    = "roles/bigquery.admin"
-  member  = "serviceAccount:service-${google_project.prod.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 # give the prod runtime service account permission to publish pubsub messages

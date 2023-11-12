@@ -58,7 +58,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "memento_network_next_terraform"
+    bucket  = "solaris_network_next_terraform"
     prefix  = "production"
   }
 }
@@ -402,6 +402,14 @@ resource "google_pubsub_topic" "pubsub_topic" {
   depends_on = [google_pubsub_schema.pubsub_schema]
 } 
 
+# todo: hook up
+resource "google_project_iam_member" "pubsub_bigquery_admin" {
+  project    = google_project.prod.project_id
+  role       = "roles/bigquery.admin"
+  member     = "serviceAccount:service-${google_project.prod.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+  depends_on = ["google_pubsub_topic.pubsub_topic"]
+}
+
 resource "google_pubsub_subscription" "pubsub_subscription" {
   count                       = length(local.pubsub_channels)
   name                        = local.pubsub_channels[count.index]
@@ -417,6 +425,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
+  depends_on = ["google_project_iam_member.pubsub_bigquery_admin"]
 }
 
 # ----------------------------------------------------------------------------------------

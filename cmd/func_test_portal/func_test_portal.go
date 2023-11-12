@@ -28,8 +28,8 @@ import (
 var SessionCruncherURL = "http://127.0.0.1:40200"
 var ServerCruncherURL = "http://127.0.0.1:40300"
 
-const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTY1MTQ0MH0.LiUETHLLcvPpEkieUqaHqCbyMmh31yJrqk1B1bM7_XA"
-const TestAPIPrivateKey = "VywxIjzyZDHnvbLwkmXSexjcVYuUmvBZJBJeqvRHCzDLsGPRHItbENozdIokQzIt"
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTgwNDY3OX0.51HKWGHQcRfFMhgIqFSvA7lhcSirhafvsGmYHCcG4pQ"
+const TestAPIPrivateKey = "dpNImucuveAakrwffGwGbUvyGSniZOPQtyGRHnJjEIJmbBYHcJAbkxMmVxxcVrqD"
 
 // ----------------------------------------------------------------------------------------
 

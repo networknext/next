@@ -8,21 +8,21 @@ google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"] 	# IMPORTANT: c3 family is only available in these zones, not us-central1-f
-google_artifacts_bucket     = "gs://memento_network_next_backend_artifacts"
-google_database_bucket      = "gs://memento_network_next_database_files"
+google_artifacts_bucket     = "gs://solaris_network_next_backend_artifacts"
+google_database_bucket      = "gs://solaris_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-relay_backend_public_key    = "asuVKW6Z5C6CrQ9xxfhkZUlgiR+/m5E2Hvs5S8oWYnI="
+relay_backend_public_key    = "TGmsqemngRky2w5HvOWnXO2fa+mLtrEHnwDguiBEpwQ="
 
-server_backend_public_key   = "vYmvYMNJgjWzE4POciiZvlrdgIaO8jpgmq7b8eSNpqM="
+server_backend_public_key   = "62gHZrwcZHgaH1p3fov9oacBdK5Expd2tLxqTzdyFr8="
 
-load_test_buyer_public_key  = "AN+VWuqgAQfd5d+QeT6apNf+Gbb9rqFBMtk5M+GoMvwS1Eqz764X/A=="
-load_test_buyer_private_key = "AN+VWuqgAQdhmzB4XOT89baswrIaX6WS7dTIW8U6deMZdoemQh9qoN3l35B5Ppqk1/4Ztv2uoUEy2Tkz4agy/BLUSrPvrhf8"
+load_test_buyer_public_key  = "n3t//PqEF3yRw1ifWMlt9KMVNe7Q0nH+tgJNeaNDY0IP0/A33ytcEA=="
+load_test_buyer_private_key = "n3t//PqEF3x+An7p/9F9SgxIsB6g5ul5foCRp4ktJvz0Z4u6aFQ8TpHDWJ9YyW30oxU17tDScf62Ak15o0NjQg/T8DffK1wQ"
 
-ip2location_bucket_name     = "memento_network_next_staging"
+ip2location_bucket_name     = "solaris_network_next_staging"
 
-relay_public_key  = "swNl9YuThlOMQ4jDcbxQYt2uvmv08OZqrgMRzrXtriA="
-relay_private_key = "2h7RT4KEtPSA9z+L5iSOvAWOtb9LBDSThYO0pHzzQC8="
+relay_public_key  = "S1zu8lZCkT2TbS+133zdh/1/9iTjmYsCDTRKMpDQq1U="
+relay_private_key = "rVgz/JvjN0PM4GVdyely+iEimuV/VnMvp25xVpD7Ruk="
