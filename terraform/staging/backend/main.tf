@@ -374,11 +374,15 @@ resource "google_pubsub_topic" "pubsub_topic" {
   depends_on = [google_pubsub_schema.pubsub_schema]
 } 
 
+data "google_project" "project" {
+  project_id = local.google_project
+}
+
 resource "google_project_iam_member" "pubsub_bigquery_admin" {
   project    = local.google_project
   role       = "roles/bigquery.admin"
-  member     = "serviceAccount:service-${google_project.staging.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
-  depends_on = ["google_pubsub_topic.pubsub_topic"]
+  member     = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+  depends_on = [google_pubsub_topic.pubsub_topic]
 }
 
 resource "google_pubsub_subscription" "pubsub_subscription" {
