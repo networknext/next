@@ -386,7 +386,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
-  depends_on = [google.project_iam_member.pubsub_bigquery_admin]
+  depends_on = [google_project_iam_member.pubsub_bigquery_admin]
 }
 
 # ----------------------------------------------------------------------------------------
