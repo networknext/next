@@ -576,7 +576,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 			userHash := message.UserHash
 
 			var isp string
-			if !service.Local {
+			if enableIP2Location {
 				isp = service.GetISP(message.ClientAddress.IP)
 			} else {
 				isp = "Local"

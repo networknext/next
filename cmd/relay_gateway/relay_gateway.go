@@ -186,7 +186,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relay, ok := relayData.RelayHash[relayId]
 		if !ok {
-			core.Error("[%s] unknown relay %x", request.RemoteAddr, relayId)
+			core.Error("[%s] unknown relay %s [%x]", request.RemoteAddr, relayAddress.String(), relayId)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}

@@ -74,15 +74,13 @@ void server_update_thread( void * data )
     const char * raspberry_backend_url = thread_data->raspberry_backend_url;
     
     char command_line[1024];
-    snprintf( command_line, sizeof(command_line), "curl -s -d \"%s\" -X POST %s/server_update --max-time 10 2>/dev/null", server_address, raspberry_backend_url );
+    snprintf( command_line, sizeof(command_line), "curl -s -d \"%s\" -X POST %s/server_update --max-time 10 -v 2>/dev/null", server_address, raspberry_backend_url );
 
     while ( !quit )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "sending raspberry server update: %s", server_address );
 
-        FILE * file = popen( command_line, "r" );
-        if ( file )
-            pclose( file );
+        system( command_line );
 
         next_platform_sleep( 10.0 );
     }

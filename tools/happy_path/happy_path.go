@@ -96,7 +96,7 @@ func happy_path(wait bool) int {
 
 	// initialize session cruncher
 
-	fmt.Printf("\nstarting session cruncher:\n\n")
+	fmt.Printf("starting session cruncher:\n\n")
 
 	session_cruncher_stdout := run("session-cruncher", "logs/session_cruncher")
 

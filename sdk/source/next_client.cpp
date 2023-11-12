@@ -2377,10 +2377,13 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
     }
 
+    // todo: set this to be disabled by default
+    /*
     if ( next_platform_thread_high_priority( client->thread ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "client increased thread priority" );
     }
+    */
 
     next_bandwidth_limiter_reset( &client->direct_send_bandwidth );
     next_bandwidth_limiter_reset( &client->direct_receive_bandwidth );

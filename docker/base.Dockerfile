@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 
 WORKDIR /app
 
-RUN apt update -y && apt install libsodium-dev ca-certificates build-essential libcurl4-openssl-dev wget pkg-config -y
+RUN apt update -y && apt install libsodium-dev ca-certificates build-essential curl libcurl4-openssl-dev wget pkg-config -y
 
 RUN wget https://go.dev/dl/go1.21.4.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.21.4.linux-amd64.tar.gz

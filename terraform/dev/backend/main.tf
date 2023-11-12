@@ -599,6 +599,7 @@ module "relay_backend" {
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
+    ENABLE_RELAY_HISTORY=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     GOOGLE_PROJECT_ID=${local.google_project}
@@ -799,7 +800,6 @@ module "server_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
-    #DEBUG_LOGS=1
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     UDP_NUM_THREADS=2

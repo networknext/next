@@ -1496,7 +1496,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		if debug != nil {
 			*debug += "try to reduce latency\n"
 		}
-		maxCost = directLatency - (routeShader.LatencyReductionThreshold + routeShader.RouteSelectThreshold)
+		maxCost = directLatency - routeShader.LatencyReductionThreshold
 		reduceLatency = true
 	} else {
 		if debug != nil {
@@ -1522,7 +1522,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
-		maxCost = directLatency + routeShader.MaxLatencyTradeOff - routeShader.RouteSelectThreshold
+		maxCost = directLatency + routeShader.MaxLatencyTradeOff
 		reducePacketLoss = true
 	}
 
@@ -1639,7 +1639,7 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
 
-	if predictedLatency > 0 && nextLatency >= predictedLatency+10 {
+	if !routeShader.ForceNext && predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
 		if routeState.MispredictCounter == 3 {
 			if debug != nil {

@@ -17,7 +17,7 @@ func TestRelayManager_Local(t *testing.T) {
 
 	t.Parallel()
 
-	relayManager := common.CreateRelayManager(true)
+	relayManager := common.CreateRelayManager(false)
 
 	// 10 database relays. A B C D E F G H I J
 
@@ -136,7 +136,7 @@ func TestRelayManager_Real(t *testing.T) {
 
 	t.Parallel()
 
-	relayManager := common.CreateRelayManager(false)
+	relayManager := common.CreateRelayManager(true)
 
 	// 10 database relays. A B C D E F G H I J
 

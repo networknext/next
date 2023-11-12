@@ -98,6 +98,8 @@ var relayToRelayPingSchema avro.Schema
 
 var lastTimeSeriesUpdateTime map[uint64]int64 // IMPORTANT: per-relay, we only send time series stats once per-minute, otherwise we overload the time series redis @ 1000 relays
 
+var enableRelayHistory bool
+
 func main() {
 
 	service := common.CreateService("relay_backend")
@@ -117,6 +119,8 @@ func main() {
 	analyticsRelayToRelayPingGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_TOPIC", "relay_to_relay_ping")
 	analyticsRelayToRelayPingGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
 	analyticsRelayToRelayPingReps = envvar.GetInt("ANALYTICS_RELAY_TO_RELAY_PING_REPS", 16)
+
+	enableRelayHistory = envvar.GetBool("ENABLE_RELAY_HISTORY", false)
 
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 
@@ -258,7 +262,7 @@ func main() {
 
 	initCounterNames()
 
-	relayManager := common.CreateRelayManager(service.Local)
+	relayManager := common.CreateRelayManager(enableRelayHistory)
 
 	service.Router.HandleFunc("/relay_update", relayUpdateHandler(service, relayManager)).Methods("POST")
 	service.Router.HandleFunc("/health_fanout", healthFanoutHandler)

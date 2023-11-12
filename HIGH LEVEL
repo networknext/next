@@ -86,6 +86,8 @@ DONE
 
 	Configure script to setup company name, billing id, roll keypairs etc.
 
+	Setup docker environment to have fully working portal + synthetic session data
+
 TODO
 
 	Portal map
