@@ -138,9 +138,9 @@ services:
       - SERVER_BACKEND_ADDRESS=10.20.0.100:40000
       - SESSION_CRUNCHER_URL=http://session_cruncher
       - SERVER_CRUNCHER_URL=http://server_cruncher
+      - REDIS_PORTAL_HOSTNAME=redis:6379
       - ENABLE_REDIS_TIME_SERIES=true
       - REDIS_TIME_SERIES_HOSTNAME=redis:6379
-      - REDIS_PORTAL_HOSTNAME=redis:6379
     networks:
       default:
       relays:
@@ -160,8 +160,8 @@ services:
       - server_cruncher
       - session_cruncher
     environment:
-      - ENABLE_REDIS_TIME_SERIES=true
       - REDIS_PORTAL_HOSTNAME=redis:6379
+      - ENABLE_REDIS_TIME_SERIES=true
       - REDIS_TIME_SERIES_HOSTNAME=redis:6379
       - PGSQL_CONFIG=host=postgres port=5432 user=Postgres password=Postgres dbname=postgres sslmode=disable
       - SESSION_CRUNCHER_URL=http://session_cruncher

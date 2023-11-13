@@ -271,20 +271,12 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 			values := make([][]float64, len(keys))
 
 			for i := range keys {
-				if exists[i] {
-					keyToIndex[keys[i]] = i
-				}
+				keyToIndex[keys[i]] = i
 			}
 
 			index := 0
 
 			for i := range keys {
-
-				if !exists[i] {
-					continue
-				}
-
-				data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
 
 				startTimestamp := uint64(currentTime) - uint64(watcher.config.DisplayWindow)
 				startTimestamp -= startTimestamp % uint64(watcher.config.SumWindow)
@@ -294,26 +286,37 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 				endTimestamp -= endTimestamp % uint64(watcher.config.SumWindow)
 				endTimestamp -= uint64(watcher.config.SumWindow) * 2
 
-				valueMap := make(map[uint64]float64)
+				if exists[i] {
 
-				for j := range data {
-					valueMap[uint64(data[j].Timestamp)] = data[j].Value
-				}
+					data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
 
-				timestamps[i] = make([]uint64, 0)
-				values[i] = make([]float64, 0)
+					valueMap := make(map[uint64]float64)
 
-				for timestamp := startTimestamp; timestamp < endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
-					timestamps[i] = append(timestamps[i], timestamp)
-					value, exists := valueMap[timestamp]
-					if exists {
-						values[i] = append(values[i], value)
-					} else {
-						values[i] = append(values[i], 0.0)
+					for j := range data {
+						valueMap[uint64(data[j].Timestamp)] = data[j].Value
 					}
-				}
 
-				index++
+					timestamps[i] = make([]uint64, 0)
+					values[i] = make([]float64, 0)
+
+					for timestamp := startTimestamp; timestamp < endTimestamp; timestamp += uint64(watcher.config.SumWindow) {
+						timestamps[i] = append(timestamps[i], timestamp)
+						value, exists := valueMap[timestamp]
+						if exists {
+							values[i] = append(values[i], value)
+						} else {
+							values[i] = append(values[i], 0.0)
+						}
+					}
+
+					index++
+
+				} else {
+
+					timestamps[i] = []uint64{startTimestamp, endTimestamp}
+					values[i] = []float64{0.0, 0.0}
+					
+				}
 			}
 
 			watcher.mutex.Lock()

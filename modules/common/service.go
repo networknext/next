@@ -282,6 +282,8 @@ func (service *Service) LoadIP2Location() {
 				service.ip2location_city_db = city_db
 				service.ip2location_mutex.Unlock()
 
+				ip2location.RemoveOldDatabaseFiles()
+
 			sleep:
 
 				time.Sleep(time.Hour)

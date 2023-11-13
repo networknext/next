@@ -3,8 +3,10 @@ package ip2location
 import (
 	"fmt"
 	"net"
+	"time"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/networknext/next/modules/core"
 
@@ -136,6 +138,25 @@ func DownloadDatabases_CloudStorage(bucketName string) (error, *maxminddb.Reader
 	}
 
 	return nil, isp_db, city_db
+}
+
+func RemoveOldDatabaseFiles() {
+	currentTime := time.Now()
+	matches, _ := filepath.Glob("/tmp/database-*")
+	var dirs []string
+	for _, match := range matches {
+	    f, _ := os.Stat(match)
+	    if f.IsDir() && currentTime.Sub(f.ModTime()) > 2 * time.Hour {
+	        dirs = append(dirs, match)
+	    }
+	}
+	for i := range dirs {
+		// SAFETY. We don't want to accidentally rm -rf /
+		if dirs[i][0] == '/' && dirs[i][1] == 't' && dirs[i][2] != 'm' && dirs[i][3] == 'p' && dirs[i][4] == '/' {
+			core.Log("cleaning up old ip2location database: '%s'", dirs[i])
+			os.RemoveAll(dirs[i])
+		}
+	}
 }
 
 func LoadDatabases() (*maxminddb.Reader, *maxminddb.Reader, error) {

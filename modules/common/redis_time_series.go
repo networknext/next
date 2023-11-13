@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 
 	"github.com/networknext/next/modules/core"
 
@@ -19,6 +20,7 @@ type RedisTimeSeriesConfig struct {
 	MessageChannelSize int
 	Retention          int
 	DisplayWindow      int
+	AverageWindow      int // the time period to average samples into a single sample in milliseconds. default is 1 minute.
 }
 
 // -------------------------------------------------------------------------------
@@ -75,6 +77,10 @@ func CreateRedisTimeSeriesPublisher(ctx context.Context, config RedisTimeSeriesC
 
 	if config.Retention == 0 {
 		config.Retention = 3600 * 1000 // 1 hour in milliseconds
+	}
+
+	if config.AverageWindow == 0 {
+		config.AverageWindow = 60 * 1000 // 60 seconds in milliseconds
 	}
 
 	publisher.config = config
@@ -140,7 +146,9 @@ func (publisher *RedisTimeSeriesPublisher) sendBatch(ctx context.Context) {
 		options := redis.TSOptions{}
 		options.Retention = publisher.config.Retention
 		options.DuplicatePolicy = "MAX"
+		pipeline.TSCreateWithArgs(ctx, fmt.Sprintf("%s-internal", newKeys[i]), &options)
 		pipeline.TSCreateWithArgs(ctx, newKeys[i], &options)
+		pipeline.TSCreateRule(ctx, fmt.Sprintf("%s-internal", newKeys[i]), newKeys[i], redis.Avg, publisher.config.AverageWindow)
 	}
 
 	for i := range publisher.messageBatch {
@@ -216,6 +224,10 @@ func CreateRedisTimeSeriesWatcher(ctx context.Context, config RedisTimeSeriesCon
 
 	if config.DisplayWindow == 0 {
 		config.DisplayWindow = 3600 * 1000 // 1 hour in milliseconds
+	}
+
+	if config.AverageWindow == 0 {
+		config.AverageWindow = 60 * 1000 // 60 seconds in milliseconds
 	}
 
 	watcher := &RedisTimeSeriesWatcher{}
@@ -304,24 +316,68 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 			values := make([][]float64, len(keys))
 
 			for i := range keys {
-				if exists[i] {
-					keyToIndex[keys[i]] = i
-				}
+				keyToIndex[keys[i]] = i
 			}
 
 			index := 0
 			for i := range keys {
-				if !exists[i] {
-					continue
+
+				sampleRate := uint64(watcher.config.AverageWindow)
+
+				startTimestamp := uint64(currentTime) - uint64(watcher.config.DisplayWindow)
+				startTimestamp -= startTimestamp % uint64(sampleRate)
+				startTimestamp += uint64(sampleRate)
+
+				endTimestamp := startTimestamp + uint64(watcher.config.DisplayWindow)
+				endTimestamp -= endTimestamp % uint64(sampleRate)
+				endTimestamp -= uint64(sampleRate) * 2
+
+				if exists[i] {
+
+					// time series exists
+
+					data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
+
+					dataLength := len(data)
+					firstTimestamp := uint64(data[0].Timestamp)
+					lastTimestamp := uint64(data[dataLength-1].Timestamp)
+
+					timestamps[i] = make([]uint64, 0)
+					values[i] = make([]float64, 0)
+
+					// pad in front with zero samples
+
+					for timestamp := startTimestamp; timestamp < firstTimestamp; timestamp += sampleRate {
+						timestamps[i] = append(timestamps[i], timestamp)
+						values[i] = append(values[i], 0.0)
+					}
+
+					// insert real samples in middle
+
+					for j := range data {
+						timestamps[i] = append(timestamps[i], uint64(data[j].Timestamp))
+						values[i] = append(values[i], data[j].Value)
+					}
+
+					// pad after with zero samples
+
+					for timestamp := lastTimestamp + sampleRate; timestamp <= endTimestamp; timestamp += sampleRate {
+						timestamps[i] = append(timestamps[i], timestamp)
+						values[i] = append(values[i], 0.0)
+					}
+
+					index++
+
+				} else {
+
+					// does not exist
+					numSamples := 2
+					timestamps[i] = make([]uint64, numSamples)
+					values[i] = make([]float64, numSamples)
+					timestamps[i][0] = uint64(startTimestamp)
+					timestamps[i][1] = uint64(endTimestamp)
+
 				}
-				data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
-				timestamps[i] = make([]uint64, len(data))
-				values[i] = make([]float64, len(data))
-				for j := range data {
-					timestamps[i][j] = uint64(data[j].Timestamp)
-					values[i][j] = data[j].Value
-				}
-				index++
 			}
 
 			watcher.mutex.Lock()
