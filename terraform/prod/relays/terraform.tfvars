@@ -6,11 +6,11 @@ vpn_address                 = "45.79.157.168"
 ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 ssh_private_key_file        = "~/.ssh/id_rsa"
 relay_version               = "relay-release-1.0.28"
-relay_artifacts_bucket      = "solaris_network_next_relay_artifacts"
-relay_backend_public_key    = "Nze8p0TuFD0OSCzgf4lsuhqdcmtIBv5crqfFGKSJJx0="
+relay_artifacts_bucket      = "alocasia_network_next_relay_artifacts"
+relay_backend_public_key    = "8ZCxIJpt8Y65NbinaIj/vyDB+lGV5BOn9TNcKTo0GhQ="
 relay_backend_url           = "relay.virtualgo.net"
 
-raspberry_buyer_public_key  = "wNC7TgbyyGAkKvnImeFBbB4vkNSXw0STe4qAAYic/duERThtam7RQA=="
+raspberry_buyer_public_key  = "d57/wLdTcI/S0XqCqsxNt2iLeFaszI5DkCy9/0fWIsOoaVPt141SWA=="
 
 raspberry_datacenters = [
 	"google.iowa.1",
@@ -19,7 +19,7 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-test_buyer_public_key       = "n3t//PqEF3yRw1ifWMlt9KMVNe7Q0nH+tgJNeaNDY0IP0/A33ytcEA=="
+test_buyer_public_key       = "0/bHg4VPjOrB+Jp8kiyAkyPhrSnfOZi9jTNLFNbsTbS2e3MSeQdv7Q=="
 
 test_datacenters = [
 	"google.iowa.1",

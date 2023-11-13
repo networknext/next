@@ -54,7 +54,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "solaris_network_next_terraform"
+    bucket  = "alocasia_network_next_terraform"
     prefix  = "dev"
   }
 }
