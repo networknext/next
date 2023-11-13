@@ -371,7 +371,7 @@ resource "google_storage_bucket_iam_member" "terraform_dev_object_admin" {
 # write the dev project id to "dev-project-id.txt"
 
 resource "local_file" "dev_project_id" {
-  filename = "dev-project.txt"
+  filename = "dev-project-id.txt"
   content  = replace(google_project.dev.id, "projects/", "")
 }
 
@@ -442,11 +442,18 @@ resource "local_file" "terraform_dev_relays_json" {
     content  =  base64decode(google_service_account_key.terraform_dev_relays.private_key)
 }
 
-# write the dev relays project id to "dev-relays-project.txt"
+# write the dev relays project id to "dev-relays-project-id.txt"
 
-resource "local_file" "dev_relays_project" {
-  filename = "dev-relays-project.txt"
+resource "local_file" "dev_relays_project_id" {
+  filename = "dev-relays-project-id.txt"
   content  = replace(google_project.dev_relays.id, "projects/", "")
+}
+
+# write the dev relays project number to "dev-relays-project-number.txt"
+
+resource "local_file" "dev_relays_project_number" {
+  filename = "dev-relays-project-number.txt"
+  content  = google_project.dev_relays.number
 }
 
 # ----------------------------------------------------------------------------------------
@@ -541,11 +548,18 @@ resource "google_storage_bucket_iam_member" "terraform_staging_object_admin" {
   depends_on = [google_storage_bucket.terraform]
 }
 
-# write the staging project id to "staging-project.txt"
+# write the staging project id to "staging-project-id.txt"
 
 resource "local_file" "staging_project" {
-  filename = "staging-project.txt"
+  filename = "staging-project-id.txt"
   content  = replace(google_project.staging.id, "projects/", "")
+}
+
+# write the staging project number to "staging-project-number.txt"
+
+resource "local_file" "staging_project_number" {
+  filename = "staging-project-number.txt"
+  content  = google_project.staging.number
 }
 
 # write the staging runtime service account email to "staging-runtime-service-account.txt"
@@ -655,11 +669,18 @@ resource "google_storage_bucket_iam_member" "terraform_prod_object_admin" {
   depends_on = [google_storage_bucket.terraform]
 }
 
-# write the prod project id to "prod-project.txt"
+# write the prod project id to "prod-project-id.txt"
 
-resource "local_file" "prod_project" {
-  filename = "prod-project.txt"
+resource "local_file" "prod_project_id" {
+  filename = "prod-project-id.txt"
   content  = replace(google_project.prod.id, "projects/", "")
+}
+
+# write the prod project number to "prod-project-number.txt"
+
+resource "local_file" "prod_project_number" {
+  filename = "prod-project-number.txt"
+  content  = google_project.prod.number
 }
 
 # write the prod runtime service account email to "prod-runtime-service-account.txt"
@@ -722,11 +743,18 @@ resource "local_file" "terraform_prod_relays_json" {
     content  =  base64decode(google_service_account_key.terraform_prod_relays.private_key)
 }
 
-# write the prod relays project id to "prod-relays-project.txt"
+# write the prod relays project id to "prod-relays-project-id.txt"
 
-resource "local_file" "prod_relays_project" {
-  filename = "prod-relays-project.txt"
+resource "local_file" "prod_relays_project_id" {
+  filename = "prod-relays-project-id.txt"
   content  = replace(google_project.prod_relays.id, "projects/", "")
+}
+
+# write the prod relays project number to "prod-relays-project-number.txt"
+
+resource "local_file" "prod_relays_project_number" {
+  filename = "prod-relays-project-number.txt"
+  content  = google_project.prod_relays.number
 }
 
 # ----------------------------------------------------------------------------------------
