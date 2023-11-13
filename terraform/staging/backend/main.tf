@@ -36,6 +36,7 @@ variable "ip2location_bucket_name" { type = string }
 locals {
   google_project_id          = file("../../projects/staging-project-id.txt")
   google_project_number      = file("../../projects/staging-project-number.txt")
+  google_service_account     = file("~/secrets/staging-runtime-service-account.txt")
   maxmind_license_key        = file("~/secrets/maxmind.txt")
   relay_backend_private_key  = file("~/secrets/staging-relay-backend-private-key.txt")
   server_backend_private_key = file("~/secrets/staging-server-backend-private-key.txt")
@@ -375,7 +376,7 @@ resource "google_pubsub_topic" "pubsub_topic" {
 } 
 
 resource "google_project_iam_member" "pubsub_bigquery_admin" {
-  project    = local.google_project
+  project    = local.google_project_id
   role       = "roles/bigquery.admin"
   member     = "serviceAccount:service-${local.google_project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"
   depends_on = [google_pubsub_topic.pubsub_topic]
@@ -396,7 +397,7 @@ resource "google_pubsub_subscription" "pubsub_subscription" {
     use_topic_schema    = true
     drop_unknown_fields = true    
   }
-  depends_on = ["google_project_iam_member.pubsub_bigquery_admin"]
+  depends_on = [google_project_iam_member.pubsub_bigquery_admin]
 }
 
 # ----------------------------------------------------------------------------------------
