@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -81,6 +80,8 @@ var enableRedisTimeSeries bool
 var redisTimeSeriesCluster []string
 var redisTimeSeriesHostname string
 
+var service *common.Service
+
 func main() {
 
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
@@ -92,7 +93,7 @@ func main() {
 		core.Debug("redis time series hostname: %s", redisTimeSeriesHostname)
 	}
 
-	service := common.CreateService("session_cruncher")
+	service = common.CreateService("session_cruncher")
 
 	service.LoadDatabase()
 
@@ -154,68 +155,64 @@ func UpdateAcceleratedPercent(service *common.Service) {
 		os.Exit(1)
 	}
 
-	go func(ctx context.Context) {
-		ticker := time.NewTicker(time.Minute)
-		for {
-			select {
-			case <-ctx.Done():
+	go func() {
+
+		minuteTicker := common.NewMinuteTicker()
+		minuteTicker.Run(service.Context, func() {
+
+			database := service.Database()
+			if database == nil {
+				core.Error("database is nil")
 				return
-			case <-ticker.C:
+			}
 
-				database := service.Database()
-				if database == nil {
-					core.Error("database is nil")
-					break
+			keys := []string{
+				"session_update",
+				"next_session_update",
+			}
+
+			buyerIds := database.GetBuyerIds()
+			for i := range buyerIds {
+				keys = append(keys, fmt.Sprintf("session_update_%016x", buyerIds[i]))
+				keys = append(keys, fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
+			}
+
+			countersWatcher.SetKeys(keys)
+
+			keys = []string{}
+			values := []float64{}
+
+			sessionUpdates := countersWatcher.GetFloatValue("session_update")
+			nextSessionUpdates := countersWatcher.GetFloatValue("next_session_update")
+			if sessionUpdates > 0 {
+				acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
+				if acceleratedPercent > 100.0 {
+					acceleratedPercent = 100.0
 				}
+				keys = append(keys, "accelerated_percent")
+				values = append(values, acceleratedPercent)
+			}
 
-				keys := []string{
-					"session_update",
-					"next_session_update",
-				}
-
-				buyerIds := database.GetBuyerIds()
-				for i := range buyerIds {
-					keys = append(keys, fmt.Sprintf("session_update_%016x", buyerIds[i]))
-					keys = append(keys, fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
-				}
-
-				countersWatcher.SetKeys(keys)
-
-				keys = []string{}
-				values := []float64{}
-
-				sessionUpdates := countersWatcher.GetFloatValue("session_update")
-				nextSessionUpdates := countersWatcher.GetFloatValue("next_session_update")
+			for i := range buyerIds {
+				sessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("session_update_%016x", buyerIds[i]))
+				nextSessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
 				if sessionUpdates > 0 {
 					acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
 					if acceleratedPercent > 100.0 {
 						acceleratedPercent = 100.0
 					}
-					keys = append(keys, "accelerated_percent")
+					keys = append(keys, fmt.Sprintf("accelerated_percent_%016x", buyerIds[i]))
 					values = append(values, acceleratedPercent)
 				}
-
-				for i := range buyerIds {
-					sessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("session_update_%016x", buyerIds[i]))
-					nextSessionUpdates := countersWatcher.GetFloatValue(fmt.Sprintf("next_session_update_%016x", buyerIds[i]))
-					if sessionUpdates > 0 {
-						acceleratedPercent := nextSessionUpdates / sessionUpdates * 100.0
-						if acceleratedPercent > 100.0 {
-							acceleratedPercent = 100.0
-						}
-						keys = append(keys, fmt.Sprintf("accelerated_percent_%016x", buyerIds[i]))
-						values = append(values, acceleratedPercent)
-					}
-				}
-
-				message := common.RedisTimeSeriesMessage{}
-				message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
-				message.Keys = keys
-				message.Values = values
-				timeSeriesPublisher.MessageChannel <- &message
 			}
-		}
-	}(service.Context)
+
+			message := common.RedisTimeSeriesMessage{}
+			message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
+			message.Keys = keys
+			message.Values = values
+			timeSeriesPublisher.MessageChannel <- &message			
+		})
+	}()
 }
 
 func TestThread() {
@@ -300,90 +297,87 @@ func UpdateMapData(newMapPoints *MapPoints) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(60 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
+	minuteTicker := common.NewMinuteTicker()
+	minuteTicker.Run(service.Context, func() {
 
-			core.Debug("-------------------------------------------------------------------")
+		core.Debug("-------------------------------------------------------------------")
 
-			totalSessions := make([]*SortedSet, NumBuckets)
-			mapEntries := make([]map[uint64]MapEntry, NumBuckets)
+		totalSessions := make([]*SortedSet, NumBuckets)
+		mapEntries := make([]map[uint64]MapEntry, NumBuckets)
 
-			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Lock()
-			}
+		for i := 0; i < NumBuckets; i++ {
+			buckets[i].mutex.Lock()
+		}
 
-			for i := 0; i < NumBuckets; i++ {
-				totalSessions[i] = buckets[i].totalSessions
-				mapEntries[i] = buckets[i].mapEntries
-				buckets[i].totalSessions = NewSortedSet()
-				buckets[i].mapEntries = make(map[uint64]MapEntry, TopSessionsCount)
-			}
+		for i := 0; i < NumBuckets; i++ {
+			totalSessions[i] = buckets[i].totalSessions
+			mapEntries[i] = buckets[i].mapEntries
+			buckets[i].totalSessions = NewSortedSet()
+			buckets[i].mapEntries = make(map[uint64]MapEntry, TopSessionsCount)
+		}
 
-			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Unlock()
-			}
+		for i := 0; i < NumBuckets; i++ {
+			buckets[i].mutex.Unlock()
+		}
 
-			start := time.Now()
+		start := time.Now()
 
-			// build top sessions list
+		// build top sessions list
 
-			totalSessionsMap := make(map[uint64]bool, TopSessionsCount)
+		totalSessionsMap := make(map[uint64]bool, TopSessionsCount)
 
-			type Session struct {
-				sessionId uint64
-				score     uint32
-			}
+		type Session struct {
+			sessionId uint64
+			score     uint32
+		}
 
-			sessions := make([]Session, 0, TopSessionsCount)
+		sessions := make([]Session, 0, TopSessionsCount)
 
-			for i := 0; i < NumBuckets; i++ {
-				bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
-				for j := range bucketTotalSessions {
-					if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
-						totalSessionsMap[bucketTotalSessions[j].Key] = true
-						sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
-						if len(sessions) >= TopSessionsCount {
-							goto done
-						}
+		for i := 0; i < NumBuckets; i++ {
+			bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
+			for j := range bucketTotalSessions {
+				if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
+					totalSessionsMap[bucketTotalSessions[j].Key] = true
+					sessions = append(sessions, Session{sessionId: bucketTotalSessions[j].Key, score: bucketTotalSessions[j].Score})
+					if len(sessions) >= TopSessionsCount {
+						goto done
 					}
 				}
 			}
-
-		done:
-
-			sort.Slice(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
-			sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score < sessions[j].score })
-
-			newTopSessions := &TopSessions{}
-			newTopSessions.numTopSessions = len(sessions)
-			for i := range sessions {
-				newTopSessions.topSessions[i] = sessions[i].sessionId
-			}
-
-			UpdateTopSessions(newTopSessions)
-
-			// build data for the map, derived from the top sessions list
-
-			newMapPoints := MapPoints{}
-			newMapPoints.numMapPoints = len(sessions)
-			for i := range sessions {
-				newMapPoints.mapPoints[i].sessionId = sessions[i].sessionId
-				score := sessions[i].score
-				entry := mapEntries[score][sessions[i].sessionId]
-				newMapPoints.mapPoints[i].next = entry.next
-				newMapPoints.mapPoints[i].latitude = entry.latitude
-				newMapPoints.mapPoints[i].longitude = entry.longitude
-			}
-
-			UpdateMapData(&newMapPoints)
-
-			duration := time.Since(start)
-
-			core.Debug("top %d sessions (%.6fms)", len(sessions), float64(duration.Nanoseconds())/1000000.0)
 		}
-	}
+
+	done:
+
+		sort.Slice(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
+		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score < sessions[j].score })
+
+		newTopSessions := &TopSessions{}
+		newTopSessions.numTopSessions = len(sessions)
+		for i := range sessions {
+			newTopSessions.topSessions[i] = sessions[i].sessionId
+		}
+
+		UpdateTopSessions(newTopSessions)
+
+		// build data for the map, derived from the top sessions list
+
+		newMapPoints := MapPoints{}
+		newMapPoints.numMapPoints = len(sessions)
+		for i := range sessions {
+			newMapPoints.mapPoints[i].sessionId = sessions[i].sessionId
+			score := sessions[i].score
+			entry := mapEntries[score][sessions[i].sessionId]
+			newMapPoints.mapPoints[i].next = entry.next
+			newMapPoints.mapPoints[i].latitude = entry.latitude
+			newMapPoints.mapPoints[i].longitude = entry.longitude
+		}
+
+		UpdateMapData(&newMapPoints)
+
+		duration := time.Since(start)
+
+		core.Debug("top %d sessions (%.6fms)", len(sessions), float64(duration.Nanoseconds())/1000000.0)
+	})
 }
 
 func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {

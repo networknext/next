@@ -6,6 +6,8 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"net"
+	"time"
+	"context"
 
 	"github.com/networknext/next/modules/core"
 )
@@ -86,3 +88,33 @@ func DatacenterId(datacenterName string) uint64 {
 func RelayId(relayAddress string) uint64 {
 	return HashString(relayAddress)
 }
+
+// ---------------------------------------------------------------
+
+type MinuteTicker struct {
+	ticker     *time.Ticker
+	nextMinute time.Time
+}
+
+func NewMinuteTicker() *MinuteTicker {
+	minuteTicker := MinuteTicker{}
+	minuteTicker.ticker = time.NewTicker(time.Second)
+	minuteTicker.nextMinute = time.Now().Truncate(time.Minute).Add(time.Minute)
+	return &minuteTicker
+}
+
+func (minuteTicker *MinuteTicker) Run(ctx context.Context, tick func()) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-minuteTicker.ticker.C:
+			if time.Now().Unix() > minuteTicker.nextMinute.Unix() {
+				go tick()
+				minuteTicker.nextMinute = minuteTicker.nextMinute.Add(time.Minute)
+			}
+		}
+	}
+}
+
+// ---------------------------------------------------------------

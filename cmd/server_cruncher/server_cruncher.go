@@ -45,9 +45,11 @@ var topServersMutex sync.Mutex
 var topServers *TopServers
 var topServersData []byte
 
+var service *common.Service
+
 func main() {
 
-	service := common.CreateService("server_cruncher")
+	service = common.CreateService("server_cruncher")
 
 	service.Router.HandleFunc("/server_batch", serverBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_servers", topServersHandler).Methods("GET")
@@ -130,69 +132,66 @@ func UpdateTopServers(newTopServers *TopServers) {
 }
 
 func TopSessionsThread() {
-	ticker := time.NewTicker(60 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
+	minuteTicker := common.NewMinuteTicker()
+	minuteTicker.Run(service.Context, func() {
 
-			core.Debug("-------------------------------------------------------------------")
+		core.Debug("-------------------------------------------------------------------")
 
-			servers := make([]*SortedSet, NumBuckets)
+		servers := make([]*SortedSet, NumBuckets)
 
-			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Lock()
-			}
+		for i := 0; i < NumBuckets; i++ {
+			buckets[i].mutex.Lock()
+		}
 
-			for i := 0; i < NumBuckets; i++ {
-				servers[i] = buckets[i].servers
-				buckets[i].servers = NewSortedSet()
-			}
+		for i := 0; i < NumBuckets; i++ {
+			servers[i] = buckets[i].servers
+			buckets[i].servers = NewSortedSet()
+		}
 
-			for i := 0; i < NumBuckets; i++ {
-				buckets[i].mutex.Unlock()
-			}
+		for i := 0; i < NumBuckets; i++ {
+			buckets[i].mutex.Unlock()
+		}
 
-			start := time.Now()
+		start := time.Now()
 
-			// calculate server count and the set of top servers
+		// calculate server count and the set of top servers
 
-			serversMap := make(map[string]bool, TopServersCount)
+		serversMap := make(map[string]bool, TopServersCount)
 
-			type Server struct {
-				serverAddress string
-				score         uint32
-			}
+		type Server struct {
+			serverAddress string
+			score         uint32
+		}
 
-			topServers := make([]Server, 0, TopServersCount)
+		topServers := make([]Server, 0, TopServersCount)
 
-			for i := 0; i < NumBuckets; i++ {
-				bucketServers := servers[i].GetByRankRange(1, -1)
-				for j := range bucketServers {
-					if _, exists := serversMap[bucketServers[j].Key]; !exists {
-						serversMap[bucketServers[j].Key] = true
-						topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
-						if len(topServers) >= TopServersCount {
-							goto done
-						}
+		for i := 0; i < NumBuckets; i++ {
+			bucketServers := servers[i].GetByRankRange(1, -1)
+			for j := range bucketServers {
+				if _, exists := serversMap[bucketServers[j].Key]; !exists {
+					serversMap[bucketServers[j].Key] = true
+					topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
+					if len(topServers) >= TopServersCount {
+						goto done
 					}
 				}
 			}
-
-		done:
-
-			newTopServers := &TopServers{}
-			newTopServers.numTopServers = len(topServers)
-			for i := range topServers {
-				newTopServers.topServers[i] = topServers[i].serverAddress
-			}
-
-			UpdateTopServers(newTopServers)
-
-			duration := time.Since(start)
-
-			core.Debug("top %d servers (%.6fms)", len(topServers), float64(duration.Nanoseconds())/1000000.0)
 		}
-	}
+
+	done:
+
+		newTopServers := &TopServers{}
+		newTopServers.numTopServers = len(topServers)
+		for i := range topServers {
+			newTopServers.topServers[i] = topServers[i].serverAddress
+		}
+
+		UpdateTopServers(newTopServers)
+
+		duration := time.Since(start)
+
+		core.Debug("top %d servers (%.6fms)", len(topServers), float64(duration.Nanoseconds())/1000000.0)
+	})
 }
 
 func serverBatchHandler(w http.ResponseWriter, r *http.Request) {

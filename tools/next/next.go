@@ -2702,7 +2702,7 @@ func secureShell(user string, address string, port int) {
 // level 1: program error
 func handleRunTimeError(msg string, level int) {
 	fmt.Printf(msg)
-	fmt.Printf("\n\n")
+	fmt.Printf("\n")
 	os.Exit(level)
 }
 
