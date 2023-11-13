@@ -141,6 +141,9 @@ func DownloadDatabases_CloudStorage(bucketName string) (error, *maxminddb.Reader
 }
 
 func RemoveOldDatabaseFiles() {
+	// IMPORTANT: WE need to cleanup ip2location database files lazily, because they are accessed via memory mapped files
+	// If we delete them while in use, we get undefined behavior. Since we update ip2location dbs no more than once every 1hr,
+	// it is safe to delete ip2location database files older than 2 hours
 	currentTime := time.Now()
 	matches, _ := filepath.Glob("/tmp/database-*")
 	var dirs []string
