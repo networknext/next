@@ -36,7 +36,7 @@ variable "ip2location_bucket_name" { type = string }
 locals {
   google_project_id          = file("../../projects/staging-project-id.txt")
   google_project_number      = file("../../projects/staging-project-number.txt")
-  google_service_account     = file("~/secrets/staging-runtime-service-account.txt")
+  google_service_account     = file("../../projects/staging-runtime-service-account.txt")
   maxmind_license_key        = file("~/secrets/maxmind.txt")
   relay_backend_private_key  = file("~/secrets/staging-relay-backend-private-key.txt")
   server_backend_private_key = file("~/secrets/staging-server-backend-private-key.txt")
