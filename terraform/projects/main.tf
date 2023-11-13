@@ -368,11 +368,18 @@ resource "google_storage_bucket_iam_member" "terraform_dev_object_admin" {
   depends_on = [google_storage_bucket.terraform]
 }
 
-# write the dev project id to "dev-project.txt"
+# write the dev project id to "dev-project-id.txt"
 
-resource "local_file" "dev_project" {
+resource "local_file" "dev_project_id" {
   filename = "dev-project.txt"
   content  = replace(google_project.dev.id, "projects/", "")
+}
+
+# write the dev project number to "dev-project-number.txt"
+
+resource "local_file" "dev_project_number" {
+  filename = "dev-project-number.txt"
+  content  = google_project.dev.number
 }
 
 # write the dev runtime service account email to "dev-runtime-service-account.txt"

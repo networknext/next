@@ -743,6 +743,7 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 	databaseURL := envvar.GetString("DATABASE_URL", "")
 
 	if databaseURL == "" {
+		core.Debug("not updating database, no DATABASE_URL specified")
 		return
 	}
 

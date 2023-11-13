@@ -1352,6 +1352,8 @@ func secrets() {
 		os.Exit(1)
 	}
 
+	bash("rm -f secrets.tar.gz")
+
 	bash("mv -f ~/secrets/secrets.tar.gz .")
 
 	fmt.Printf("secrets.tar.gz is ready\n\n")
