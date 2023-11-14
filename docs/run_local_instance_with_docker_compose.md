@@ -8,7 +8,7 @@ You can run a Network Next test environment locally with docker compose on any O
 
 1. Install Docker from http://docker.com
 
-2. Change into the 'next' directory at the command line where you cloned the source
+2. Change into the directory where you cloned the source
 
    `cd ~/next`
 
