@@ -80,5 +80,4 @@ git commit -am "config"
 git push origin
 ```
 
-You are now ready to [Setup Google Cloud Projects with Terraform](docs/setup_google_cloud_projects_with_terraform.md)
-
+You are now ready to [Create Google Cloud Projects with Terraform](docs/create_google_cloud_projects_with_terraform.md)
