@@ -229,7 +229,7 @@ This API token will be used when terraform creates relays under linode.
 
 Log in to your cloudflare account and click on the user icon in the top right, and select "My Profile".
 
-<img width="572" alt="image" src="https://github.com/networknext/next/assets/696656/c73ce25f-1abf-4444-819f-63cd87197f32">
+<img width="385" alt="image" src="https://github.com/networknext/next/assets/696656/71af13fb-c778-455c-a983-9006eeb8d3ff">
 
 In the profile page, click on "API Tokens" in the left side menu:
 
@@ -265,7 +265,7 @@ This API token will be used when your domain name is pointed to backend services
 4. You have requested increased quotas in google cloud and these quotas have been approved
 5. You have a working AWS account and 'aws' is working locally
 6. You have exported a linode API token to ~/secrets/terraform-akamai.txt
-7. You have exported a Cloudflare API token to ~/secrets/terraform-cloudflare.txt
+7. You have exported a cloudflare API token to ~/secrets/terraform-cloudflare.txt
 8. You have backed up your secrets somewhere
 9. You have setup a semaphoreci.com account
 10. You have installed terraform on your dev machine
