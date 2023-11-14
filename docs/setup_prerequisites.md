@@ -211,4 +211,57 @@ gaffer@batman docs % aws ec2 describe-regions --all-regions
         },
         (etc...)
 ```
+## 8. Export linode API token
+
+Log in to your linode account, then click on your user profile in the top right corner and select "API Tokens":
+
+<img width="467" alt="image" src="https://github.com/networknext/next/assets/696656/67c66d2d-ffae-4833-b54c-c2c43c99f06d">
+
+Click on the "Create a Personal Access Token" button and create a new token called "Terraform" with read/write access to all resources that never expires.
+
+<img width="467" alt="image" src="https://github.com/networknext/next/assets/696656/04b0a9f4-5824-441f-8890-1b3b617fb70a">
+
+Download this API token and save it under your home directory as: ~/secrets/terraform-akamai.txt
+
+This API token will be used when terraform creates relays under linode.
+
+## 9. Setup cloudflare API token
+
+Log in to your cloudflare account and click on the user icon in the top right, and select "My Profile".
+
+<img width="572" alt="image" src="https://github.com/networknext/next/assets/696656/c73ce25f-1abf-4444-819f-63cd87197f32">
+
+In the profile page, click on "API Tokens" in the left side menu:
+
+<img width="279" alt="image" src="https://github.com/networknext/next/assets/696656/f66fdc97-f7ef-4cc9-8c36-9444945c30f9">
+
+Click on the "Create Token" button:
+
+<img width="1092" alt="image" src="https://github.com/networknext/next/assets/696656/1c86a3ca-241d-4e66-a201-c3835bb923c2">
+
+Select the "Edit Zone DNS" template:
+
+<img width="745" alt="image" src="https://github.com/networknext/next/assets/696656/832b916c-00c7-4c6b-b189-1400c29e817d">
+
+Configure the token to apply to all zones, or if you want to be specific, point it at the zone corresponding to your domain name:
+
+<img width="934" alt="image" src="https://github.com/networknext/next/assets/696656/3fa33270-cd87-472f-b561-e890d12a0120">
+
+Create the token then copy the text and save the text to ~/secrets/terraform-cloudflare.txt
+
+This API token will be used when your domain name is pointed to backend services running in google cloud.
+
+## 10. Final checks
+
+1. Your have a VPN setup and you have recorded its IP address
+2. You have created a new domain and it is imported and managed by cloudflare
+3. You have a working google account with test project and 'gcloud' is working locally
+4. You have requested increased quotas in google cloud and these quotas have been approved
+5. You have a working AWS account and 'aws' is working locally
+6. You have exported a linode API token to ~/secrets/terraform-akamai.txt
+7. You have exported a Cloudflare API token to ~/secrets/terraform-cloudflare.txt
+8. You have backed up your secrets somewhere
+
+Once all these prerequesites are met, you can proceed to the next section: [docs/configure_network_next.md](Configure Network Next).
+
 
