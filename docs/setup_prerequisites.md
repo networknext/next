@@ -6,13 +6,13 @@
 
 Before you can setup network next, you need the following things:
 
-* A OpenVPN instance running on linode to secure access to your network next backend
-* A domain name that you control where you will host network next
+* A OpenVPN instance
+* A domain name
 * A cloudflare account
 * An AWS account with the (whatever tool AWS uses setup locally)
 * A google account with the "gcloud" tool setup locally
-* A linode account.
-* Increased google cloud quotes so you can create enough resources in google cloud to run the environment.
+* A linode account
+* A semaphoreci startup account
 * Terraform installed locally on your machine.
 
 Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
