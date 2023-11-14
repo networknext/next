@@ -13,7 +13,7 @@ Before you can setup network next, you need the following things:
 * A google account with the "gcloud" tool setup locally
 * A linode account
 * A semaphoreci startup account
-* Terraform installed locally on your machine.
+* Terraform installed on your development machine
 
 Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
 
