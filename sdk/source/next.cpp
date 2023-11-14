@@ -512,9 +512,12 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    config.high_priority_client_thread = config_in->high_priority_client_thread;
-    config.high_priority_server_thread = config_in->high_priority_server_thread;
-
+    if ( config_in )
+    {
+        config.high_priority_client_thread = config_in->high_priority_client_thread;
+        config.high_priority_server_thread = config_in->high_priority_server_thread;
+    }
+    
     next_global_config = config;
 
     next_signed_packets[NEXT_UPGRADE_REQUEST_PACKET] = 1;
