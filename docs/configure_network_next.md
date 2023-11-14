@@ -76,7 +76,7 @@ Please review the changes with:
 And commit these changes to the repository:
 
 ```
-git commit -am "config"`
+git commit -am "config"
 git push origin
 ```
 
