@@ -151,7 +151,7 @@ Request increases to the following quotas:
 * Health checks -> 256
 * Regional managed instance groups (US-Central) -> 256
   
-The requests above are moderately aggressive and they will likely respond with lower numbers, accept the lower numbers. You can make another quota increase request later if needed.
+The requests above are moderately aggressive and they will likely respond with lower numbers, accept the lower numbers. This process will likely take several days to complete. 
 
 ## 7. Setup an AWS account
 
