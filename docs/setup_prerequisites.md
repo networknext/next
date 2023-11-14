@@ -163,4 +163,52 @@ Verify that the aws command line tool is setup correctly by running this command
 
 `aws ec2 describe-regions --all-regions`
 
-You should see a json output to the console listing all AWS regions available to your account.
+You should see a json output to the console listing all AWS regions available to your account:
+
+```console
+gaffer@batman docs % aws ec2 describe-regions --all-regions
+{
+    "Regions": [
+        {
+            "Endpoint": "ec2.ap-south-2.amazonaws.com",
+            "RegionName": "ap-south-2",
+            "OptInStatus": "opted-in"
+        },
+        {
+            "Endpoint": "ec2.ap-south-1.amazonaws.com",
+            "RegionName": "ap-south-1",
+            "OptInStatus": "opt-in-not-required"
+        },
+        {
+            "Endpoint": "ec2.eu-south-1.amazonaws.com",
+            "RegionName": "eu-south-1",
+            "OptInStatus": "opted-in"
+        },
+        {
+            "Endpoint": "ec2.eu-south-2.amazonaws.com",
+            "RegionName": "eu-south-2",
+            "OptInStatus": "opted-in"
+        },
+        {
+            "Endpoint": "ec2.me-central-1.amazonaws.com",
+            "RegionName": "me-central-1",
+            "OptInStatus": "opted-in"
+        },
+        {
+            "Endpoint": "ec2.il-central-1.amazonaws.com",
+            "RegionName": "il-central-1",
+            "OptInStatus": "not-opted-in"
+        },
+        {
+            "Endpoint": "ec2.ca-central-1.amazonaws.com",
+            "RegionName": "ca-central-1",
+            "OptInStatus": "opt-in-not-required"
+        },
+        {
+            "Endpoint": "ec2.eu-central-1.amazonaws.com",
+            "RegionName": "eu-central-1",
+            "OptInStatus": "opt-in-not-required"
+        },
+        (etc...)
+```
+
