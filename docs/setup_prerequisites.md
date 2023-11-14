@@ -253,6 +253,24 @@ This API token will be used when your domain name is pointed to backend services
 
 ## 10. Setup semaphore ci
 
+Navigate to https://semaphoreci.com and sign up for a new account.
+
+Click "Sign up for a free 15 day trial" and log in with your github account.
+
+Click on the "Create new / Add new organization" button:
+
+<img width="309" alt="image" src="https://github.com/networknext/next/assets/696656/c2451bc5-6770-40fa-ae20-56e34bddad41">
+
+Finish the account setup and select the "Startup Plan".
+
+Once your account is created, log in and select "Create new..." from the top menu:
+
+<img width="585" alt="image" src="https://github.com/networknext/next/assets/696656/7c41fb2a-fd28-49a5-88d0-eaef168c013c">
+
+Create a new semaphore project pointing at your forked "next" repository.
+
+Use the existing semaphoreci configuration in the repository.
+
 ## 11. Install terraform
 
 ...
