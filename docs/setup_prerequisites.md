@@ -69,13 +69,19 @@ Once the account is setup, create a test project in the google cloud console:
 
 <img width="587" alt="image" src="https://github.com/networknext/next/assets/696656/6cfdf331-3856-4e53-93d0-9b2b56902cbd">
 
-Now install the "gcloud" utility from here: [https://cloud.google.com/sdk/docs/install]
+## 5. Install "gcloud" utility to manage Google Cloud
 
+Install the "gcloud" utility from here: [https://cloud.google.com/sdk/docs/install]
 
+On the command line, initialize gcloud with your admin email address and test account to a configuration called "test":
 
-#4. Increase google cloud quotas
+`gcloud init`
 
-When you create the dev environment, you'll likely be very close to the number of resources required to run it. This may stall out terraform, because it cannot allocate a VM because you are over quota.
+Follow the prompts in the command line to create a new configuration called "test" that points at your "Test" project.
+
+## 6. Request increase for google cloud quotas
+
+By default your google cloud account will have very low limits on the resources you can use in Google Cloud.
 
 To fix this, go to the "IAM & Admin" -> "Quotas" page in google cloud.
 
@@ -95,6 +101,7 @@ Request increases to the following quotas:
 * Health checks -> 256
 * Regional managed instance groups (US-Central) -> 256
   
-The requests above are aggressive and they will likely respond with lower numbers, accept these, then deploy the dev environment. Then, before you deploy the staging or production environments, request another aggressive quota increase. If they complain again, tell them you are doing a load test and these are the absolute numbers you need and this will likely get approved.
+The requests above are moderately aggressive and they will likely respond with lower numbers, accept these lower numbers. 
 
-  
+Later on you can make another quota increase request if you start hitting quota limits.
+
