@@ -30,10 +30,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#ifndef NEXT_PACKET_TAGGING
-#define NEXT_PACKET_TAGGING                                       1
-#endif // #if NEXT_PACKET_TAGGING
-
 #if !defined(NEXT_DEVELOPMENT)
 
     #define NEXT_VERSION_FULL                               "1.0.0"

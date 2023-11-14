@@ -156,9 +156,8 @@ func RemoveOldDatabaseFiles() {
 	    }
 	}
 	for i := range dirs {
-		// SAFETY. We don't want to accidentally rm -rf /
-		if dirs[i][0] == '/' && dirs[i][1] == 't' && dirs[i][2] != 'm' && dirs[i][3] == 'p' && dirs[i][4] == '/' {
-			core.Debug("removing old ip2location files: '%s'", dirs[i])
+		if dirs[i][0] == '/' && dirs[i][1] == 't' && dirs[i][2] == 'm' && dirs[i][3] == 'p' && dirs[i][4] == '/' {
+			core.Debug("removed old ip2location file '%s'", dirs[i])
 			os.RemoveAll(dirs[i])
 		}
 	}
