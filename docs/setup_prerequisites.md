@@ -57,7 +57,7 @@ This domain name will not be player facing, but it will be visible to your organ
 
 We will use cloudflare to manage your domain. Create a new account at https://cloudflare.com and import your domain name.
 
-This will take a few hours to a few days. Once the domain are managed by cloudflare you can proceed to the next step.
+This will take a few hours to a few days. It's OK to work on other steps in this list in parallel.
 
 ## 4. Create a google cloud account
 
