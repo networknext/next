@@ -79,6 +79,56 @@ On the command line, initialize gcloud with your admin email address and test ac
 
 Follow the prompts in the command line to create a new configuration called "test" that points at your "Test" project.
 
+Verify that gcloud is properly configured by running the following command:
+
+`gcloud compute regions list`
+
+You should see a table of available google cloud regions printed to your console.
+
+```console
+gaffer@batman docs % gcloud compute regions list
+NAME                     CPUS    DISKS_GB  ADDRESSES  RESERVED_ADDRESSES  STATUS  TURNDOWN_DATE
+asia-east1               0/2400  0/204800  0/2300     0/700               UP
+asia-east2               0/2400  0/204800  0/2300     0/700               UP
+asia-northeast1          0/2400  0/204800  0/2300     0/700               UP
+asia-northeast2          0/2400  0/204800  0/2300     0/700               UP
+asia-northeast3          0/2400  0/204800  0/2300     0/700               UP
+asia-south1              0/2400  0/204800  0/2300     0/700               UP
+asia-south2              0/500   0/204800  0/575      0/575               UP
+asia-southeast1          0/2400  0/204800  0/2300     0/700               UP
+asia-southeast2          0/2400  0/204800  0/2300     0/700               UP
+australia-southeast1     0/2400  0/204800  0/2300     0/700               UP
+australia-southeast2     0/500   0/204800  0/575      0/575               UP
+europe-central2          0/500   0/204800  0/575      0/575               UP
+europe-north1            0/2400  0/204800  0/2300     0/700               UP
+europe-southwest1        0/500   0/204800  0/575      0/575               UP
+europe-west1             0/2400  0/204800  0/2300     0/700               UP
+europe-west10            0/500   0/204800  0/575      0/575               UP
+europe-west12            0/500   0/204800  0/575      0/575               UP
+europe-west2             0/2400  0/204800  0/2300     0/700               UP
+europe-west3             0/2400  0/204800  0/2300     0/700               UP
+europe-west4             0/2400  0/204800  0/2300     0/700               UP
+europe-west6             0/2400  0/204800  0/2300     0/700               UP
+europe-west8             0/500   0/204800  0/575      0/575               UP
+europe-west9             0/500   0/204800  0/575      0/575               UP
+me-central1              0/500   0/204800  0/575      0/575               UP
+me-central2              0/500   0/204800  0/575      0/575               UP
+me-west1                 0/500   0/204800  0/575      0/575               UP
+northamerica-northeast1  0/2400  0/204800  0/2300     0/700               UP
+northamerica-northeast2  0/500   0/204800  0/575      0/575               UP
+southamerica-east1       0/2400  0/204800  0/2300     0/700               UP
+southamerica-west1       0/500   0/204800  0/575      0/575               UP
+us-central1              0/2400  0/204800  0/2300     0/700               UP
+us-east1                 0/2400  0/204800  0/2300     0/700               UP
+us-east4                 0/2400  0/204800  0/2300     0/700               UP
+us-east5                 0/500   0/204800  0/575      0/575               UP
+us-south1                0/500   0/204800  0/575      0/575               UP
+us-west1                 0/3000  0/204800  0/2300     0/700               UP
+us-west2                 0/2400  0/204800  0/2300     0/700               UP
+us-west3                 0/2400  0/204800  0/2300     0/700               UP
+us-west4                 0/2400  0/204800  0/2300     0/700               UP
+```
+
 ## 6. Request increase for google cloud quotas
 
 By default your google cloud account will have very low limits on the resources you can use in Google Cloud.
@@ -109,3 +159,8 @@ Setup a new AWS account at [https://aws.amazon.com]
 
 Once the account is created, download and follow the instructions to setup the aws command line tool here: [https://aws.amazon.com/cli/]
 
+Verify that the aws command line tool is setup correctly by running this command:
+
+`aws ec2 describe-regions --all-regions`
+
+You should see a json output to the console listing all AWS regions available to your account.
