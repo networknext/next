@@ -43,33 +43,21 @@ By default it should contain something like this:
 }
 ```
 
-1. Set *company_name* to be some unique identifier.
-  
-It could be your company name or a random word. It is not publicly visible, has must be unique. It may contain only letters and underscores.
+1. Set *company_name* to be some unique identifier. It could be your company name or a random word. It is not publicly visible, but it must be unique. It may contain only letters and underscores.
 
 2. Set *vpn_address* to the IP address of the OpenVPN that you setup in the previous section
    
-3. Set *cloudflare_zone_id* to the zone id for your domain managed by cloudflare.
+3. Set *cloudflare_zone_id* to the zone id for your domain managed by cloudflare. You can find the zone id in the cloudflare portal.
 
-You can find the zone id in the cloudflare portal.
+6. Set *cloudflare_domain* to the domain name you are using with network next. This domain must correspond to the zone id in cloudflare.
 
-6. Set *cloudflare_domain* to the domain name you are using with network next.
+7. Set *google_billing_account* to one of your linked billing accounts in google cloud. Run `gcloud billing accounts list` to list the set of billing accounts linked to your google cloud account. There is usually only one.
 
-This domain must correspond to the zone id in cloudflare.
+8. Set *google_org_id" to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
 
-7. Set *google_billing_account* to one of your linked billing accounts in google cloud.
+9. Set *ssh_key* to the name of the ssh keypair to use when accessing relays. By default, ~/.ssh/id_rsa keypair is used when SSHing into relays. You can change this here by generating your own unique key under the .ssh directory.
 
-Run `gcloud billing accounts list` to list the set of billing accounts linked to your google cloud account. There is usually only one.
-
-8. Set *google_org_id" to your google organization id.
-
-Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
-
-9. Set *ssh_key* to the name of the ssh keypair to use when accessing relays
-
-By default, ~/.ssh/id_rsa keypair is used when SSHing into relays. You can change this here by generating your own unique key under the .ssh directory.
-
-If you haven't already generated an SSH key, please do so now by follwing these instructions: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+If you haven't already generated an SSH key, please do so now by following these instructions: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 
 ## 3. Run the configure script
 
