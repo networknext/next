@@ -53,14 +53,23 @@ Create a domain name using a domain name registrar, for example https://namechea
 
 This domain name will not be player facing, but it will be visible to your organization when they go to the network next portal (eg. https://portal.[yourdomain])
 
-##3. Setup a cloudflare account and import your new domains
+## 3. Import your new domain into cloudflare
 
-We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain name.
+We will use cloudflare to manage your domain. Create a new account at https://cloudflare.com and import your domain name.
 
-This will take a few hours to a few days. Once the domains are managed by cloudflare you can proceed to the next step.
+This will take a few hours to a few days. Once the domain are managed by cloudflare you can proceed to the next step.
 
+## 4. Create a google cloud account
 
-(more...)
+Go to https://cloud.google.com/ and sign up to create a new google account. It must have an organization associated with it.
+
+Once the account is setup, create a test project in the google cloud console:
+
+[https://console.google.com](https://developers.google.com/workspace/guides/create-project)
+
+<img width="587" alt="image" src="https://github.com/networknext/next/assets/696656/6cfdf331-3856-4e53-93d0-9b2b56902cbd">
+
+Now install the "gcloud" utility from here: [https://cloud.google.com/sdk/docs/install]
 
 
 
