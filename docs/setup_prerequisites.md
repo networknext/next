@@ -133,7 +133,7 @@ us-west4                 0/2400  0/204800  0/2300     0/700               UP
 
 By default your google cloud account will have very low limits on the resources you can use in Google Cloud.
 
-To fix this, go to the "IAM & Admin" -> "Quotas" page in google cloud.
+To fix this, go to the "IAM & Admin" -> "Quotas" page in google cloud: https://console.cloud.google.com/iam-admin/quotas
 
 <img width="1988" alt="image" src="https://github.com/networknext/next/assets/696656/cb20b82b-3768-47e5-af0a-dab609ed1657">
 
