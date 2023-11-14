@@ -17,7 +17,7 @@ Before you can setup network next, you need the following things:
 
 Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
 
-##1. Setup a VPN on Linode
+## 1. Setup a VPN on Linode
 
 Create a new linode account at https://linode.com (they have been acquired by Akamai)
 
@@ -45,9 +45,11 @@ Once the OpenVPN server is up and running, setup your OpenVPN client so you can 
 
 Later on, we're going to secure your network next instance such that the REST APIs, portal and relay are only accessible from your VPN IP address.
 
-##2. Create domain 
+## 2. Register domain
 
-Create a domain name using a domain name registrar, for example https://namecheap.com0
+Create a domain name using a domain name registrar, for example https://namecheap.com
+
+This domain name will not be user facing, but will be visible to your organization when they go to the network next portal (eg. https://portal.[yourdomain])
 
 ##3. Setup a cloudflare account and import your new domains
 
