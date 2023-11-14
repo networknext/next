@@ -948,8 +948,6 @@ type Config struct {
 	CloudflareDomain     string `json:"cloudflare_domain"`
 	GoogleBillingAccount string `json:"google_billing_account"`
 	GoogleOrgId          string `json:"google_org_id"`
-	BuyerName            string `json:"buyer_name"`
-	BuyerId              string `json:"buyer_id"`
 	SSHKey               string `json:"ssh_key"`
 }
 
@@ -1028,20 +1026,6 @@ func config(env Environment, regexes []string) {
 
 	if config.GoogleOrgId == "" {
 		fmt.Printf("\nerror: you must supply a google org id\n\n")
-		os.Exit(1)
-	}
-
-	fmt.Printf("    buyer name = \"%s\"\n", config.BuyerName)
-
-	if config.BuyerName == "" {
-		fmt.Printf("\nerror: you must supply a buyer name\n\n")
-		os.Exit(1)
-	}
-
-	fmt.Printf("    buyer id = \"%s\"\n", config.BuyerId)
-
-	if result, _ := regexp.MatchString(`^[a-zA-Z]+$`, config.BuyerId); !result {
-		fmt.Printf("\nerror: buyer id must contain only A-Z, a-z\n\n")
 		os.Exit(1)
 	}
 
