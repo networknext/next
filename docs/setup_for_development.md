@@ -4,9 +4,9 @@
 
 # Setup for Development
 
-In this section you will setup your local development environment so you can build the Network Next system, run unit tests, and run the "happy path" which verifies that the system is working end-to-end on your local machine.
+In this section you will setup your local development environment so you can build the Network Next source, run unit tests, and run the "happy path" to verify the system is working correctly.
 
-Setup depends on whether you are developing on Linux or MacOS. Development on Windows is not supported. If you are brave you could try WSL, or just work inside a Linux VM (recommended).
+Setup depends on whether you are developing on Linux or MacOS. Development on Windows is not supported.
 
 # Setup on Linux (Ubuntu 22.04 LTS)
 
@@ -44,29 +44,19 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
    `sudo systemctl restart postgresql`
 
-6. Setup SSH keys on your Linux box for Github
+6. Go to the next directory at the command line
 
-   Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
-
-7. Clone repo and cd into it
-
-	`git clone git@github.com:networknext/next.git`
-
-	`cd next`
+    `cd ~/next`
 
 8. Select local environment
 
    `next select local`
 
-9. Make everything and run tests
+9. Build and run unit tests
 
-	`make`
+   `make`
 
-10. Build everything and run unit tests
-
-	`make`
-
-	You should see output like:
+You should see output like:
 
 ```console
 root@linux:~/next# make build
