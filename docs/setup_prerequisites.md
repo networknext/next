@@ -263,7 +263,7 @@ Click on the "Create new / Add new organization" button:
 
 Finish the account setup and select the "Startup Plan".
 
-Once your account is created, log in and select "Create new..." from the top menu:
+Once your account is created, log in and select "Create new" from the top menu:
 
 <img width="585" alt="image" src="https://github.com/networknext/next/assets/696656/7c41fb2a-fd28-49a5-88d0-eaef168c013c">
 
