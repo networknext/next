@@ -253,9 +253,9 @@ This API token will be used when your domain name is pointed to backend services
 
 ## 10. Final checks
 
-1. Your have a VPN setup and you have recorded its IP address
+1. You have OpenVPN setup and you have recorded the VPN IP address somewhere
 2. You have created a new domain and it is imported and managed by cloudflare
-3. You have a working google account with test project and 'gcloud' is working locally
+3. You have a working google account with "Test" project and 'gcloud' is working locally
 4. You have requested increased quotas in google cloud and these quotas have been approved
 5. You have a working AWS account and 'aws' is working locally
 6. You have exported a linode API token to ~/secrets/terraform-akamai.txt
