@@ -22,7 +22,7 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
 	Find the latest Linux golang download here: https://go.dev/doc/install
 
-	Then do this, with the latest download URL:
+	Then do this, with the latest download URL for your platform:
 
 	`wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go*.tar.gz`
 
@@ -60,51 +60,76 @@ You should see output like:
 
 ```console
 root@linux:~/next# make build
+dist/func_test_terraform
 dist/func_test_sdk
-dist/relay
+dist/func_test_database
+dist/relay-debug
+dist/func_test_api
 dist/func_backend
-dist/libnext.so
-dist/analytics
-dist/magic_backend
-dist/client
-dist/test
-dist/raspberry_client
-dist/func_client
-dist/raspberry_server
-dist/server
-dist/api
+dist/func_test_portal
 dist/func_test_backend
-dist/func_server
-dist/raspberry_backend
-dist/server_backend
+dist/ip2location
+dist/load_test_relays
+dist/load_test_servers
+dist/load_test_sessions
 dist/relay_gateway
+dist/magic_backend
+dist/raspberry_backend
+dist/server_cruncher
+dist/api
+dist/session_cruncher
+dist/func_test_relay
+dist/libnext.so
+dist/soak_test_relay
+dist/test
+dist/raspberry_server
+dist/client
+dist/server
+dist/func_client
+dist/raspberry_client
+dist/server_backend
 dist/relay_backend
+dist/relay-release
+dist/func_server
 ./run test
+
 ?   	github.com/networknext/next/modules/admin	[no test files]
 ?   	github.com/networknext/next/modules/constants	[no test files]
+ok  	github.com/networknext/next/modules/common	(cached)
 ?   	github.com/networknext/next/modules/database	[no test files]
 ?   	github.com/networknext/next/modules/envvar	[no test files]
-ok  	github.com/networknext/next/modules/common	0.210s
-ok  	github.com/networknext/next/modules/core		0.382s
-ok  	github.com/networknext/next/modules/crypto	0.379s
-ok  	github.com/networknext/next/modules/encoding	0.255s
-ok  	github.com/networknext/next/modules/handlers	0.306s
-ok  	github.com/networknext/next/modules/messages	0.223s
-ok  	github.com/networknext/next/modules/packets	0.885s
-ok  	github.com/networknext/next/modules/portal	0.281s
+ok  	github.com/networknext/next/modules/core	(cached)
+ok  	github.com/networknext/next/modules/crypto	(cached)
+ok  	github.com/networknext/next/modules/encoding	(cached)
+?   	github.com/networknext/next/modules/ip2location	[no test files]
+ok  	github.com/networknext/next/modules/handlers	(cached)
+ok  	github.com/networknext/next/modules/messages	(cached)
+ok  	github.com/networknext/next/modules/packets	(cached)
+ok  	github.com/networknext/next/modules/portal	(cached)
 ```
 
 11. Run happy path
 
     `run happy-path`
 
-    You should see something like:
+You should output like:
 
 ```console
 root@linux:~/next# run happy-path
 
 don't worry. be happy.
 
+starting session cruncher:
+
+   run session-cruncher
+
+verifying session cruncher ... OK
+
+starting server cruncher:
+
+   run server-cruncher
+
+verifying server cruncher ... OK
 starting api:
 
    run api
@@ -116,25 +141,22 @@ starting relay backend services:
    run magic-backend
    run relay-gateway
    run relay-backend
-   run relay-backend HTTP_PORT=30002
 
 verifying magic backend ... OK
 verifying relay gateway ... OK
-verifying relay backend 1 ... OK
-verifying relay backend 2 ... OK
+verifying relay backend ... OK
 
 starting relays:
 
-   run relay
-   run relay RELAY_PORT=2001
-   run relay RELAY_PORT=2002
-   run relay RELAY_PORT=2003
-   run relay RELAY_PORT=2004
+   run relay RELAY_PORT=2000 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1
+   run relay RELAY_PORT=2001 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1
+   run relay RELAY_PORT=2002 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1
+   run relay RELAY_PORT=2003 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1
+   run relay RELAY_PORT=2004 RELAY_LOG_LEVEL=3 RELAY_PRINT_COUNTERS=1
 
 verifying relays ... OK
 verifying relay gateway sees relays ... OK
-verifying relay backend 1 sees relays ... OK
-verifying relay backend 2 sees relays ... OK
+verifying relay backend sees relays ... OK
 
 starting server backend:
 
@@ -142,25 +164,8 @@ starting server backend:
 
 verifying server backend ... OK
 
-starting portal cruncher:
-
-   run portal-cruncher
-   run portal-cruncher HTTP_PORT=40013
-
-verifying portal cruncher 1 ... OK
-verifying portal cruncher 2 ... OK
-
-starting analytics:
-
-   run analytics
-   run analytics HTTP_PORT=40002
-
-verifying analytics 1 ... OK
-verifying analytics 2 ... OK
-
 waiting for leader election
 
-    analytics ... OK
     relay backend ... OK
 
 starting client and server:
@@ -170,16 +175,6 @@ starting client and server:
 
 verifying server ... OK
 verifying client ... OK
-
-post validation:
-
-verifying leader election in relay backend ... OK
-verifying leader election in analytics ... OK
-verifying leader election in analytics ... OK
-verifying portal cruncher received session update messages ... OK
-verifying portal cruncher received server update messages ... OK
-verifying portal cruncher received relay update messages ... OK
-verifying portal cruncher received near relay update messages ... OK
 
 *** SUCCESS! ***
 
