@@ -19,7 +19,7 @@ Once these prerequisites are met, actually setting up your network next instance
 
 ## 1. Setup a VPN on Linode
 
-Create a new linode account at https://linode.com (they have been acquired by Akamai)
+Create a new linode account at https://linode.com
 
 Select "Marketplace" in the navigation menu on the left and search for "OpenVPN":
 
