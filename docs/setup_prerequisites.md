@@ -63,7 +63,7 @@ This will take a few hours to a few days. It's OK to work on other steps in this
 
 Go to https://cloud.google.com/ and sign up to create a new google account. It must have an organization associated with it.
 
-Once the account is setup, create a test project in the google cloud console:
+Once the account is setup, click on this link and create a test project in the google cloud console:
 
 [https://console.google.com](https://developers.google.com/workspace/guides/create-project)
 
@@ -71,7 +71,7 @@ Once the account is setup, create a test project in the google cloud console:
 
 ## 5. Install "gcloud" utility to manage Google Cloud
 
-Install the "gcloud" utility from here: [https://cloud.google.com/sdk/docs/install]
+Install the "gcloud" utility from here: https://cloud.google.com/sdk/docs/install
 
 On the command line, initialize gcloud with your admin email address and test account to a configuration called "test":
 
@@ -155,9 +155,9 @@ The requests above are moderately aggressive and they will likely respond with l
 
 ## 7. Setup an AWS account
 
-Setup a new AWS account at [https://aws.amazon.com]
+Setup a new AWS account at https://aws.amazon.com
 
-Once the account is created, download and follow the instructions to setup the aws command line tool here: [https://aws.amazon.com/cli/]
+Once the account is created, download and follow the instructions to setup the aws command line tool here: https://aws.amazon.com/cli/
 
 Verify that the aws command line tool is setup correctly by running this command:
 
@@ -290,6 +290,4 @@ https://developer.hashicorp.com/terraform/install
 9. You have setup a semaphoreci.com account
 10. You have installed terraform on your dev machine
 
-Once all these prerequesites are met, you can proceed to the next section: [docs/configure_network_next.md](Configure Network Next).
-
-
+Once all these prerequisites are met, you can proceed to the next section: [docs/configure_network_next.md](Configure Network Next).
