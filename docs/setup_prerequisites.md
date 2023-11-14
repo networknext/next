@@ -9,8 +9,8 @@ Before you can setup network next, you need the following things:
 * A OpenVPN instance
 * A domain name
 * A cloudflare account
-* An AWS account with the (whatever tool AWS uses setup locally)
-* A google account with the "gcloud" tool setup locally
+* A google cloud account
+* An AWS account
 * A linode account
 * A semaphoreci startup account
 * Terraform installed on your development machine
@@ -39,9 +39,11 @@ Once the linode is created, take note of the IP address of your linode. You'll n
 
 <img width="1445" alt="Screenshot 2023-08-07 at 12 25 53 PM" src="https://github.com/networknext/next/assets/696656/9029c207-1b39-4ac4-8e7a-fc4566936d7b">
 
-You can finish the rest of the OpenVPN configuration by following this guide: https://www.linode.com/docs/products/tools/marketplace/guides/openvpn/
+Follow this guide to finish the rest of the OpenVPN configuration: https://www.linode.com/docs/products/tools/marketplace/guides/openvpn/
 
-Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. While you are on the VPN your IP address will appear as the VPN address. 
+Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. 
+
+I recommend OpenVPN Connect: http://openvpn.net/client/
 
 Later on, we're going to secure your network next instance such that the REST APIs, portal and relay are only accessible from your VPN IP address.
 
@@ -49,7 +51,7 @@ Later on, we're going to secure your network next instance such that the REST AP
 
 Create a domain name using a domain name registrar, for example https://namecheap.com
 
-This domain name will not be user facing, but will be visible to your organization when they go to the network next portal (eg. https://portal.[yourdomain])
+This domain name will not be player facing, but it will be visible to your organization when they go to the network next portal (eg. https://portal.[yourdomain])
 
 ##3. Setup a cloudflare account and import your new domains
 
