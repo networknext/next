@@ -2,20 +2,22 @@
 
 <br>
 
-# Setup prerequisites for development environment
+# Setup prerequisites for network next
 
-Before we can setup your dev environment, we need to setup some prerequites.
-
-These include:
+Before you can setup network next, you need the following things:
 
 * A OpenVPN instance running on linode to secure access to your network next backend
-* Three domain names for different parts of your network next instance
-* A cloudflare account so you can point "dev.[domain]" to three different components in your dev backend.
-* Increased quotes so your google cloud account can create enough resources to run the environment.
+* A domain name that you control where you will host network next
+* A cloudflare account
+* An AWS account with the (whatever tool AWS uses setup locally)
+* A google account with the "gcloud" tool setup locally
+* A linode account.
+* Increased google cloud quotes so you can create enough resources in google cloud to run the environment.
+* Terraform installed locally on your machine.
 
-Once these prerequisites are created, the actual setup of your development backend is easy, as it is performed with terraform scripts.
+Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
 
-1. Setup a VPN on Linode
+##1. Setup a VPN on Linode
 
 Create a new linode account at https://linode.com (they have been acquired by Akamai)
 
@@ -41,31 +43,24 @@ You can finish the rest of the OpenVPN configuration by following this guide: ht
 
 Once the OpenVPN server is up and running, setup your OpenVPN client so you can access the VPN. While you are on the VPN your IP address will appear as the VPN address. 
 
-Later on, we're going to secure the dev environment such that the REST APIs and portal are only accessible from your VPN IP address.
+Later on, we're going to secure your network next instance such that the REST APIs, portal and relay are only accessible from your VPN IP address.
 
-2. Create three domains
+##2. Create domain 
 
-Create three silly domain names of your choice using a domain name registrar, for example https://namecheap.com
+Create a domain name using a domain name registrar, for example https://namecheap.com0
 
-Each of these domains will be used for different components of your network next backend instance.
+##3. Setup a cloudflare account and import your new domains
 
-For example:
-
-* losangelesfreewaysatnight.com -> relay backend load balancer
-* spacecats.net -> server backend load balancer
-* virtualgo.net -> REST API and portal
-
-Try to make sure that registration for each of these domains is anonymized and protected. Ideally, an attacker wouldn't be able to discover the full set of domains or link them together in any way.
-
-3. Setup a cloudflare account and import your new domains
-
-We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain names.
+We will use cloudflare to manage your domains. Create a new account at https://cloudflare.com and import your domain name.
 
 This will take a few hours to a few days. Once the domains are managed by cloudflare you can proceed to the next step.
 
-Next step: [setup your dev environment](setup_dev_environment.md)
 
-4. Increase google cloud quotas
+(more...)
+
+
+
+#4. Increase google cloud quotas
 
 When you create the dev environment, you'll likely be very close to the number of resources required to run it. This may stall out terraform, because it cannot allocate a VM because you are over quota.
 
