@@ -144,10 +144,12 @@ func RemoveOldDatabaseFiles() {
 	// IMPORTANT: WE need to cleanup ip2location database files lazily, because they are accessed via memory mapped files
 	// If we delete them while in use, we get undefined behavior. Since we update ip2location dbs no more than once every 1hr,
 	// it is safe to delete ip2location database files older than 2 hours
+	core.Debug("looking for old ip2location files...")
 	currentTime := time.Now()
 	matches, _ := filepath.Glob("/tmp/database-*")
 	var dirs []string
 	for _, match := range matches {
+		core.Debug("found '%s'", match)
 	    f, _ := os.Stat(match)
 	    if f.IsDir() && currentTime.Sub(f.ModTime()) > 2 * time.Hour {
 	        dirs = append(dirs, match)
@@ -156,7 +158,7 @@ func RemoveOldDatabaseFiles() {
 	for i := range dirs {
 		// SAFETY. We don't want to accidentally rm -rf /
 		if dirs[i][0] == '/' && dirs[i][1] == 't' && dirs[i][2] != 'm' && dirs[i][3] == 'p' && dirs[i][4] == '/' {
-			core.Log("cleaning up old ip2location database: '%s'", dirs[i])
+			core.Debug("removing old ip2location files: '%s'", dirs[i])
 			os.RemoveAll(dirs[i])
 		}
 	}

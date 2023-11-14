@@ -157,7 +157,7 @@ locals {
 module "amazon_relays" {
 
   # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
-  # So for AWS, see sellers/amazon.go for the set of dev relays -> amazon/generated.tf
+  # Please edit sellers/amazon.go for the set of dev relays, then run "next config" to generate amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
