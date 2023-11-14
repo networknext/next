@@ -251,7 +251,13 @@ Create the token then copy the text and save the text to ~/secrets/terraform-clo
 
 This API token will be used when your domain name is pointed to backend services running in google cloud.
 
-## 10. Final checks
+## 10. Setup semaphore ci
+
+## 11. Install terraform
+
+...
+
+## 12. Final checks
 
 1. You have OpenVPN setup and you have recorded the VPN IP address somewhere
 2. You have created a new domain and it is imported and managed by cloudflare
@@ -261,6 +267,8 @@ This API token will be used when your domain name is pointed to backend services
 6. You have exported a linode API token to ~/secrets/terraform-akamai.txt
 7. You have exported a Cloudflare API token to ~/secrets/terraform-cloudflare.txt
 8. You have backed up your secrets somewhere
+9. You have setup a semaphoreci.com account
+10. You have installed terraform on your dev machine
 
 Once all these prerequesites are met, you can proceed to the next section: [docs/configure_network_next.md](Configure Network Next).
 
