@@ -10,6 +10,8 @@ You can run a Network Next test environment locally with docker compose on any O
 
 2. Change into the 'next' directory at the command line where you cloned the source
 
+   `cd ~/next`
+
 3. Build the system
 
    `docker compose build`
@@ -19,8 +21,6 @@ You can run a Network Next test environment locally with docker compose on any O
    `docker compose up`
 
 5. View the portal
-
-_todo: this portion is not ready yet_
 
 Navigate to the network next portal at http://127.0.0.1:8080
 
