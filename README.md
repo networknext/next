@@ -8,7 +8,7 @@ Network Next is a network accelerator for multiplayer games.
 
 1. [Fork the network next repository on github](docs/fork_next_repository.md)
 2. [Run a local instance with docker compose](docs/run_local_instance_with_docker_compose.md)
-3. [Get your local machine setup for development](docs/setup_for_development.md)
+3. [Setup your local machine for development](docs/setup_for_development.md)
 4. [Setup prerequisites](docs/setup_prerequisites.md)
 5. [Configure network next](docs/configure_network_next.md)
 
