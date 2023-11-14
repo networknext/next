@@ -290,4 +290,4 @@ https://developer.hashicorp.com/terraform/install
 9. You have setup a semaphoreci.com account
 10. You have installed terraform on your dev machine
 
-Once all these prerequisites are met, you can proceed to the next section: [docs/configure_network_next.md](Configure Network Next).
+Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](docs/configure_network_next.md).
