@@ -273,7 +273,9 @@ Use the existing semaphoreci configuration in the repository.
 
 ## 11. Install terraform
 
-...
+Follow the instructions here to install terraform:
+
+[https://developer.hashicorp.com/terraform/install]
 
 ## 12. Final checks
 
