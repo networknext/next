@@ -11,7 +11,3 @@ Network Next is a network accelerator for multiplayer games.
 3. [Setup your local machine for development](docs/setup_for_development.md)
 4. [Setup prerequisites](docs/setup_prerequisites.md)
 5. [Configure network next](docs/configure_network_next.md)
-
--------------------
-
-5. [Setup semaphoreci](docs/setup_semaphoreci.md)
