@@ -101,7 +101,11 @@ Request increases to the following quotas:
 * Health checks -> 256
 * Regional managed instance groups (US-Central) -> 256
   
-The requests above are moderately aggressive and they will likely respond with lower numbers, accept these lower numbers. 
+The requests above are moderately aggressive and they will likely respond with lower numbers, accept the lower numbers. You can make another quota increase request later if needed.
 
-Later on you can make another quota increase request if you start hitting quota limits.
+## 7. Setup an AWS account
+
+Setup a new AWS account at [https://aws.amazon.com]
+
+Once the account is created, download and follow the instructions to setup the aws command line tool here: [https://aws.amazon.com/cli/]
 
