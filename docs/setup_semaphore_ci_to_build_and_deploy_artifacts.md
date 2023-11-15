@@ -64,7 +64,9 @@ Once the golang cache is updated, click on "Upload Config" and "Upload Relay" jo
 
 <img width="899" alt="image" src="https://github.com/networknext/next/assets/696656/d1213c24-de8f-4dbe-a56e-49e23de5c507">
 
-These tasks upload some files to google cloud buckets needed by later deploy steps. Once these tasks complete and turn green, you can be confident that secrets are setup correctly.
+These tasks upload some files to google cloud buckets needed by later deploy steps.
+
+Once these tasks complete and turn green, you can be confident that secrets are setup correctly.
 
 (next step)
 
