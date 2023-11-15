@@ -17,7 +17,7 @@ git push origin dev-001
 
 ## 2. Initialize the postgres database
 
-Go to https://console.google.com and go to "SQL" under the "Developement" project.
+Go to https://console.google.com and go to "SQL" under the "Development" project.
 
 Click on the "postgres" database and click on "Import".
 
