@@ -37,9 +37,9 @@ Wait until all certificates are in the "ACTIVE" state before going to the next s
 
 ## 4. Verify that all services are green
 
-Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging Project".
+Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging".
 
-You should see all services up and running and green. 
+You should see all services up and running and green.
 
 If some services are not able to allocate all the VMs they need, you may need to increase quotes.
 
@@ -49,6 +49,6 @@ In this case, go to the IAM -> Quotas page in the google cloud console and reque
 
 Go to https://portal-staging.[yourdomain.com]
 
-Your staging environment is now online with 1000 simulated relays, 100k simulated servers, 100k simulated sessions (CCU).
+Your staging environment is now online with 1000 simulated relays, 100k simulated servers and 100k simulated sessions (CCU).
 
 Next step: [Deploy to Production](deploy_to_production.md)
