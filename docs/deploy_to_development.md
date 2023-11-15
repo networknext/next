@@ -221,7 +221,7 @@ Connection to 34.94.80.8 closed.
 etc...
 ```
 
-Once everything is working correctly, you'll be able to see that all relays are online:
+Afte a few minutes, you'll see that all relays are online:
 
 ```console
 gaffer@batman next % next relays
