@@ -87,7 +87,7 @@ And then while you are in the "dev" configuration for gcloud, run:
 
 `gcloud compute ssl-certificates list`
 
-While they are provisioning, you will see their status column as "PROVISIONING". Do not be concerned if you see an error "FAILED_NOT_VISIBLE" this is just a benign race condition between the cloudflare DNS propagation your domains, and the google SSL certificate verification process.
+While they are provisioning, you will see their status column as "PROVISIONING". Do not be concerned if you see an error "FAILED_NOT_VISIBLE" this is just a benign race condition between the cloudflare DNS propagation and the google SSL certificate verification process.
 
 Once the certificates are all in the "ACTIVE" state you are ready to go to the next step.
 
