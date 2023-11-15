@@ -23,7 +23,7 @@ Click on the "postgres" database and click on "Import".
 
 In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
-Wait for the import to complete, then import a second file: "[company_name]_network_next_sql_files/staging.sql" to the the same database.
+Wait for the import to complete, then import "[company_name]_network_next_sql_files/staging.sql" to the the same database.
 
 ## 3. Wait for SSL certificates to provision
 
