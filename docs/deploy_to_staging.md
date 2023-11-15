@@ -2,22 +2,22 @@
 
 <br>
 
-# Deploy to Development
+# Deploy to Staging
 
 ## 1. Deploy the backend
 
-Create a new dev branch and tag it as "dev-001":
+Create a new staging branch and tag it as "staging-001":
 
 ```console
-git checkout -b dev
+git checkout -b staging
 git push origin
-git tag dev-001
-git push origin dev-001
+git tag staging-001
+git push origin staging-001
 ```
 
 ## 2. Initialize the postgres database
 
-Go to https://console.google.com and go to "SQL" under the "Developement" project.
+Go to https://console.google.com and navigate to "SQL" under the "Staging" project.
 
 Click on the "postgres" database and click on "Import".
 
@@ -25,7 +25,7 @@ In the import dialog, enter the filename to import the file: "[company_name]_net
 
 ## 3. Wait for SSL certificates to provision
 
-Setup a new "dev" gcloud configuration on the command line, that points to your new "Development" project:
+Setup a new "staging" gcloud configuration on the command line, that points to your new "Staging" project:
 
 `gcloud init`
 
@@ -35,59 +35,20 @@ Now you can check the status of your SSL certificates:
 
 Wait until all certificates are in the "ACTIVE" state before going to the next step.
 
-## 4. Setup relays and database
+## 4. Verify that all services are green
 
-Run the terraform script:
+Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging".
 
-```console
-cd ~/next/terraform/dev/relays
-terraform init
-terraform apply
-```
+You should see all services up and running and green.
 
-## 5. Commit the database changes to the backend
+If some services are not able to allocate all the VMs they need, you may need to increase quotes.
 
-```console
-cd ~/next
-next select dev
-next database
-next commit
-```
-
-## 6. Setup the relays
-
-```console
-next setup
-```
-
-Shortly after `next setup` completes, you should see that all relays are online:
-
-```console
-gaffer@batman next % next relays
-
-┌────────────────────────┬──────────────────────┬──────────────────┬──────────────────┬────────┐
-│ Name                   │ PublicAddress        │ InternalAddress  │ Id               │ Status │
-├────────────────────────┼──────────────────────┼──────────────────┼──────────────────┼────────┤
-│ akamai.atlanta         │ 74.207.225.61:40000  │                  │ 57eacb07e26af413 │ online │
-│ akamai.dallas          │ 69.164.203.153:40000 │                  │ acae7ede913e1c61 │ online │
-│ akamai.fremont         │ 45.56.92.195:40000   │                  │ 2c963c503cf8fbd5 │ online │
-│ akamai.newyork         │ 97.107.132.170:40000 │                  │ f779a2db87b24b89 │ online │
-│ google.dallas.1        │ 34.174.171.113:40000 │ 10.206.0.3:40000 │ 4dd2dfb17cbea566 │ online │
-│ google.iowa.1          │ 34.28.83.51:40000    │ 10.128.0.9:40000 │ b21f535edb4bdf65 │ online │
-│ google.iowa.2          │ 34.42.182.189:40000  │ 10.128.0.7:40000 │ dc42ad10d1f6bd49 │ online │
-│ google.iowa.3          │ 34.173.212.153:40000 │ 10.128.0.6:40000 │ dbccf67c4e490a19 │ online │
-│ google.iowa.6          │ 35.222.169.18:40000  │ 10.128.0.8:40000 │ 693255b1c056b806 │ online │
-│ google.losangeles.1    │ 34.94.80.8:40000     │ 10.168.0.3:40000 │ cc3fb71d77575835 │ online │
-│ google.ohio.1          │ 34.162.102.38:40000  │ 10.202.0.3:40000 │ 65cdca8e934c3f83 │ online │
-│ google.oregon.1        │ 35.233.229.153:40000 │ 10.138.0.3:40000 │ 6f5870a39d40e935 │ online │
-│ google.saltlakecity.1  │ 34.106.48.99:40000   │ 10.180.0.3:40000 │ f2007465ecfb8429 │ online │
-│ google.southcarolina.2 │ 35.243.195.72:40000  │ 10.142.0.3:40000 │ 28584bdf56d8f4e0 │ online │
-│ google.virginia.1      │ 35.199.4.54:40000    │ 10.150.0.3:40000 │ f5bc89cadf8dbdb1 │ online │
-└────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
-```
+In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete.
 
 ## 5. View the portal
 
-Go to https://portal.[yourdomain.com]
+Go to https://portal-staging.[yourdomain.com]
 
-Your development environment is now online.
+Your staging environment is now online with 1000 simulated relays, 100k simulated servers and 100k simulated sessions (CCU).
+
+Next step: [Deploy to Production](deploy_to_production.md)
