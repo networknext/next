@@ -6,7 +6,7 @@ Network Next is a network accelerator for multiplayer games.
 
 # Introduction
 
-1. [What benefit does Network Next provider for games?](docs/what_benefit_does_network_next_provide_for_games.md)
+1. [What benefit does Network Next provide for games?](docs/what_benefit_does_network_next_provide_for_games.md)
 2. [How does Network Next work?](docs/how_does_network_next_work.md)
 3. [Core concepts and architecture](docs/core_concepts_and_architecture.md)
 
