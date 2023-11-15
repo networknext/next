@@ -19,7 +19,7 @@ git tag dev-001
 git push origin dev-001
 ```
 
-Once you have pushed a tag, go to https://semaphoreci.com and you should see a build process running on your dev tag:
+Once you have pushed a tag, go to https://semaphoreci.com and you should see a build job running on your dev tag:
 
 <img width="638" alt="image" src="https://github.com/networknext/next/assets/696656/868cbef3-1dc1-4c6e-a50a-efeaf54556a9">
 
