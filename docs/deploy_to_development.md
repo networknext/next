@@ -23,7 +23,7 @@ Once you have pushed a tag, go to https://semaphoreci.com and you should see a b
 
 <img width="638" alt="image" src="https://github.com/networknext/next/assets/696656/868cbef3-1dc1-4c6e-a50a-efeaf54556a9">
 
-What is going on now is that semaphore builds and runs unit test first. Once these pass, semaphore detects there is a tag matching "dev-[n]" and promotes to the "Upload Artifacts" job automatically. This job uploads the results of the build (the artifacts) to the google cloud storage bucket named "[company_name]_network_next_backend_artifacts" in the "Storage" project under a subdirectory with your tag name "dev-001".
+What is going on now is that semaphore builds and runs unit tests first. Once tests pass, semaphore detects there is a tag matching "dev-[n]" and promotes to the "Upload Artifacts" job automatically. This job uploads the results of the build (the artifacts) to the google cloud storage bucket named "[company_name]_network_next_backend_artifacts" in the "Storage" project under a subdirectory with your tag name "dev-001".
 
 <img width="1206" alt="image" src="https://github.com/networknext/next/assets/696656/1438b80b-b2fb-4661-bfca-3095d941949f">
 
