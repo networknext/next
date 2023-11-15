@@ -63,7 +63,7 @@ Click on "postgres" to view the database, then select "Import" from the list of 
 
 <img width="953" alt="image" src="https://github.com/networknext/next/assets/696656/e0e21b98-c968-4d34-8d20-a9db7f824c8f">
 
-In the import dialog, enter the filename to import as: "[company_name]_network_next_sql_files/create.sql", and then select to import it to the "database" database instance (not "postgres" database instance).
+In the import dialog, enter the filename to import as: "[company_name]_network_next_sql_files/create.sql", and import it to the "database" db instance (not "postgres").
 
 For example:
 
