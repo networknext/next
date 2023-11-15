@@ -15,11 +15,11 @@ Network Next runs across multiple projects in google cloud:
 
 "Development" is a low cost development only backend used for testing. "Staging" is for load testing. It has been tested to scale up to 1000 relays, 2.5M servers and 25M sessions (CCU). "Production" contains your production backend. Out of the box it can handle 1M CCU and can scale up to 25M+.
 
-Google cloud relays for the development environment are created in the "Development Relays" project. Google cloud relays for production environment relays go in "Production Relays" project. Staging doesn't have any relays because it runs a simulation of relay and server load, so it's possible to load test the system for a lower cost than actually running 25 million clients.
+Google cloud relays for the development environment are created in the "Development Relays" project. Google cloud relays for production go in "Production Relays". Staging doesn't have any relays because it runs a simulation of relay and server load, so it's possible to load test the system for a lower cost than actually running 25 million clients.
 
 All of these projects pull data and configuration from google cloud storage buckets in the "Storage" project. 
 
-The configuration of all the permissions, service accounts and cloud storage buckets across all these projects is highly complex, so we have created a terraform script to do it all for you automatically.
+The configuration of all the permissions, service accounts and cloud storage buckets across all these projects is highly complex, so we have created a terraform script to set this all up for you automatically.
 
 _You need to perform this step only once._
 
