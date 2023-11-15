@@ -91,3 +91,5 @@ gaffer@batman next % next relays
 Go to https://portal.[yourdomain.com]
 
 Your development environment is now online.
+
+Next step: [Deploy to Staging](deploy_to_staging.md)
