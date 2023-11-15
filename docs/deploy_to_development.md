@@ -6,7 +6,7 @@
 
 ## 1. Deploy the development backend
 
-Network Next uses tag based deployments to trigger backend system deploys from branches.
+Network Next uses tag based deployments from branches.
 
 To deploy to dev, first you merge your code into the "dev" branch. Then in the dev branch, tag something as "dev-[n]", where n increases with each deployment, for example: "dev-001", "dev-002" and so on.
 
