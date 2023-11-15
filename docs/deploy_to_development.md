@@ -4,7 +4,7 @@
 
 # Deploy to Development
 
-## 1. Deploy to the development backend
+## 1. Deploy the development backend
 
 Network Next uses tag based deployments to trigger backend system deploys from branches.
 
