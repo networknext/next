@@ -76,4 +76,4 @@ And commit these changes to the repository:
 `git commit -am "config"`
 `git push origin`
 
-You are now ready to [Create Google Cloud Projects with Terraform](docs/create_google_cloud_projects_with_terraform.md)
+You are now ready to [Create Google Cloud Projects with Terraform](create_google_cloud_projects_with_terraform.md)
