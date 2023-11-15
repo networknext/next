@@ -46,7 +46,7 @@ Save the secret. Now the semaphore jobs (defined in ~/next/.semaphore/*.yml) wil
 
 ## 3. Verify semaphore is working
 
-In the main page of semaphoreci.com while you are logged in, you should see a list of jobs that have run, chronologically.
+In the main page of semaphoreci.com while you are logged in, you should see a list of jobs that have run, chronologically from most recent to oldest top to bottom.
 
 Semaphore is already configured to build and run tests on each commit, so you should see tests that succeeded for your "keygen" and "config" commits earlier.
 
