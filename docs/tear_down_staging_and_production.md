@@ -2,92 +2,48 @@
 
 <br>
 
-# Deploy to Development
+# Tear down Staging and Production
 
-## 1. Deploy the backend
+## 1. Tear down Staging
 
-Create a new dev branch and tag it as "dev-001":
+Staging is meant to be used for load testing, and testing configuration changes before pushing them to production. In its default configuration, it is as expensive as a production backend that can handle 1M CCU.
 
-```console
-git checkout -b dev
-git push origin
-git tag dev-001
-git push origin dev-001
-```
+Do not leave staging running. Bring it up only when you need it for testing, then tear it down.
 
-## 2. Initialize the postgres database
-
-Go to https://console.google.com and go to "SQL" under the "Developement" project.
-
-Click on the "postgres" database and click on "Import".
-
-In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
-
-## 3. Wait for SSL certificates to provision
-
-Setup a new "dev" gcloud configuration on the command line, that points to your new "Development" project:
-
-`gcloud init`
-
-Now you can check the status of your SSL certificates:
-
-`gcloud compute ssl-certificates list`
-
-Wait until all certificates are in the "ACTIVE" state before going to the next step.
-
-## 4. Setup relays and database
-
-Run the terraform script:
+To tear down staging:
 
 ```console
-cd ~/next/terraform/dev/relays
+cd ~/next/terraform/staging/backend
 terraform init
-terraform apply
+terraform destroy
 ```
 
-## 5. Commit the database changes to the backend
+You will be asked to enter a tag. Tag is not used when destroying the environment. Enter _any_ string and press ENTER. 
+
+## 2. Tear down Production
+
+Production is a relatively expensive environment to run. Unless you plan to take your game to production immediately, you should shut it down to save on cost.
+
+First, tear down the production relays:
 
 ```console
-cd ~/next
-next select dev
-next database
-next commit
+cd ~/next/terraform/production/relays
+terraform destroy
 ```
 
-## 6. Setup the relays
+Then tear down the production backend:
 
 ```console
-next setup
+cd ~/next/terraform/production/backend
+terraform init
+terraform destroy
 ```
 
-Shortly after `next setup` completes, you should see that all relays are online:
+Do _NOT_ tear the backend down before you destroy the relays, otherwise you will be stuck manually deleting relay resources from google cloud, AWS and akamai accounts. I've been there, and it's very painful.
 
-```console
-gaffer@batman next % next relays
+Congratulations. You have configured and setup your own instance of network next. You have successfully deployed dev, staging and production environments, and made sure that you have sufficient google cloud quota to support at least 1M CCU going through your production backend.
 
-┌────────────────────────┬──────────────────────┬──────────────────┬──────────────────┬────────┐
-│ Name                   │ PublicAddress        │ InternalAddress  │ Id               │ Status │
-├────────────────────────┼──────────────────────┼──────────────────┼──────────────────┼────────┤
-│ akamai.atlanta         │ 74.207.225.61:40000  │                  │ 57eacb07e26af413 │ online │
-│ akamai.dallas          │ 69.164.203.153:40000 │                  │ acae7ede913e1c61 │ online │
-│ akamai.fremont         │ 45.56.92.195:40000   │                  │ 2c963c503cf8fbd5 │ online │
-│ akamai.newyork         │ 97.107.132.170:40000 │                  │ f779a2db87b24b89 │ online │
-│ google.dallas.1        │ 34.174.171.113:40000 │ 10.206.0.3:40000 │ 4dd2dfb17cbea566 │ online │
-│ google.iowa.1          │ 34.28.83.51:40000    │ 10.128.0.9:40000 │ b21f535edb4bdf65 │ online │
-│ google.iowa.2          │ 34.42.182.189:40000  │ 10.128.0.7:40000 │ dc42ad10d1f6bd49 │ online │
-│ google.iowa.3          │ 34.173.212.153:40000 │ 10.128.0.6:40000 │ dbccf67c4e490a19 │ online │
-│ google.iowa.6          │ 35.222.169.18:40000  │ 10.128.0.8:40000 │ 693255b1c056b806 │ online │
-│ google.losangeles.1    │ 34.94.80.8:40000     │ 10.168.0.3:40000 │ cc3fb71d77575835 │ online │
-│ google.ohio.1          │ 34.162.102.38:40000  │ 10.202.0.3:40000 │ 65cdca8e934c3f83 │ online │
-│ google.oregon.1        │ 35.233.229.153:40000 │ 10.138.0.3:40000 │ 6f5870a39d40e935 │ online │
-│ google.saltlakecity.1  │ 34.106.48.99:40000   │ 10.180.0.3:40000 │ f2007465ecfb8429 │ online │
-│ google.southcarolina.2 │ 35.243.195.72:40000  │ 10.142.0.3:40000 │ 28584bdf56d8f4e0 │ online │
-│ google.virginia.1      │ 35.199.4.54:40000    │ 10.150.0.3:40000 │ f5bc89cadf8dbdb1 │ online │
-└────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
-```
+[Return to main documentation](../README.md)
 
-## 5. View the portal
 
-Go to https://portal.[yourdomain.com]
 
-Your development environment is now online.
