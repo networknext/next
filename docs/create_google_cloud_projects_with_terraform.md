@@ -4,17 +4,26 @@
 
 # Create Google Cloud Projects with Terraform
 
-Network Next runs across multiple projects in google cloud.
+Network Next runs across multiple projects in google cloud:
 
-There is a "Development" project that runs the development backend, a "Staging" project for load testing, and a "Production" project for your production environment.
+* Development
+* Development Relays
+* Staging
+* Production
+* Production Relays
+* Storage
 
-Relays for the development backend are created in the "Development Relays" project. The production environment relays go in "Production Relays". Staging project doesn't have any relays, and runs simulated servers and relays to make load testing more efficient.
+"Development" is a low cost development only backend used for testing. "Staging" for load testing. It has been tested to scale up to 1000 relays, 2.5M servers and 25M sessions (CCU). "Production" contains your production backend. Out of the box it can handle 1M CCU and can scale up to 25M+.
 
-All of these projects pull data and configuration from google cloud storage buckets in the "Storage" project. The configuration of all the permissions, service accounts and cloud storage buckets across all these projects is highly complex, so we have created a terraform script to do it all for you automatically.
+Google cloud relays for the development environment are created in the "Development Relays" project. Google cloud relays for production environment relays go in "Production Relays" project. Staging doesn't have any relays because it runs a simulation of relay and server load, so it's possible to load test the system for a lower cost than actually running 25 million clients connections.
 
-You need to perform this step only once.
+All of these projects pull data and configuration from google cloud storage buckets in the "Storage" project. 
 
-At the console, run this:
+The configuration of all the permissions, service accounts and cloud storage buckets across all these projects is highly complex, so we have created a terraform script to do it all for you automatically.
+
+_You need to perform this step only once._
+
+At the console:
 
 ```console
 cd ~/next/terraform/projects
@@ -28,12 +37,12 @@ Once the projects are created, go to https://console.google.com and click on the
 
 ![image](https://github.com/networknext/next/assets/696656/0ecc1ac6-f315-4348-95cc-63ee8669d25b)
 
-You should now be able to see under the tab "ALL" the projects have been created in google cloud:
+You should now be able to see under the tab "ALL" that the projects have been created:
 
 <img width="739" alt="image" src="https://github.com/networknext/next/assets/696656/888f0cd6-6d77-4372-b7ab-a2345d81bbeb">
 
-Inside these projects service accounts have been created with appropriate permissions as needed by terraform to complete the per-project setup, and the google cloud storage buckets have been created under "Storage" project, with some files uploaded to them.
+Inside these projects service accounts have been created with appropriate permissions as needed by terraform to complete the per-project setup, and the google cloud storage buckets have been created under "Storage" project, with files uploaded to some of them.
 
-The "Development", "Staging" and "Production" projects are at this point just a skeleton. No backend services are running yet.
+The "Development", "Development Relays", "Staging", "Production" and "Production Relays" projects are at this point just a skeleton. No relays or backend services are running yet.
 
 (next step)
