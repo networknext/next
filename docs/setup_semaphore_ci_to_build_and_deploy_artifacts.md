@@ -62,7 +62,9 @@ Click on "Update Golang Cache" and wait for the task to complete. This may take 
 
 Once the golang cache is updated, click on "Upload Config" and "Upload Relay" jobs and wait for these to succeed. They should complete quickly.
 
-These tasks will upload some files to google cloud buckets needed by later deploy steps. When they succeed, you can be certain that you have configured semaphore secrets correctly.
+<img width="899" alt="image" src="https://github.com/networknext/next/assets/696656/d1213c24-de8f-4dbe-a56e-49e23de5c507">
+
+These tasks will upload some files to google cloud buckets needed by later deploy steps. When these tasks succeed it verifies that semaphore is setup correctly with your secrets.
 
 (next step)
 
