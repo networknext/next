@@ -159,7 +159,7 @@ Do you want to perform these actions?
 
 Say "yes".
 
-This will take several minutes to run. Terraform communicates with your development network next API service, and google cloud, AWS and linode REST APIs to provision relays and setup the postgres database will all information  it needs to run.
+This will take several minutes to run. Terraform communicates with your development network next API service, and google cloud, AWS and linode REST APIs to provision relays and setup the postgres database will all information it needs to run.
 
 Once it completes successfully, the postgres database is setup, and the relays are provisioned in google cloud, AWS and linode (akamai) for you, but they are not yet linked up to the backend runtime.
 
@@ -180,15 +180,13 @@ The steps are as follows:
 
 3. Commit this database.bin to the backend. It becomes active with the development backend runtime within one minute.
 
-Next, you must connect to your VPN to setup the relays, as they have already been configured by terraform to only allow SSH from your VPN address.
-
-While connected to your VPN:
+Now we need to load the relay binary to the relays and run it as a service. To do this, while connected to your VPN, run:
 
 ```console
 next setup
 ```
 
-The code pass over each relay defined in the postgres database, SSH's into it, downloads the relay binary and sets it up to run as a service and starts the service.
+This passes over each relay defined in the postgres database, and SSH's into it, downloading the relay binary and starting it as a service.
 
 ```console
 gaffer@batman next % next setup
@@ -221,7 +219,7 @@ Connection to 34.94.80.8 closed.
 etc...
 ```
 
-Afte a few minutes, you'll see that all relays are online:
+Shortly after `next setup` completes, you should see that all relays are online:
 
 ```console
 gaffer@batman next % next relays
