@@ -34,7 +34,10 @@ What is going on now is:
 
 You can view these artifacts by going to https://console.google.com and selecting the "Storage" project, and under "Cloud Storage" in the left window, then selecting the "*_backend_artifacts" storage bucket once the "Upload Artifacts" job succeeds.
 
-Once the artifacts are uploaded, semaphore again detects that there is a tag "dev-[n]" and promotes the job "Deploy to Development" automatically. This job runs terraform internally in the subdirectory "~/next/terraform/dev/backend", with the terraform state stored in another google cloud bucket, so that terraform can be run from multiple locations (locally, on your dev machine, or inside semaphore) without conflicts.
+Once the artifacts are uploaded:
+
+4. semaphore again detects that there is a tag "dev-[n]" and promotes the job "Deploy to Development" automatically.
+5. This job runs terraform internally in the subdirectory "~/next/terraform/dev/backend", with the terraform state stored in another google cloud bucket, so that terraform can be run from multiple locations (locally, on your dev machine, or inside semaphore) without conflicts.
 
 <img width="2080" alt="image" src="https://github.com/networknext/next/assets/696656/2afbebca-5d17-45f6-b95e-35af322413bc">
 
