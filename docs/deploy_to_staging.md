@@ -40,3 +40,5 @@ Wait until all certificates are in the "ACTIVE" state before going to the next s
 Go to https://portal-staging.[yourdomain.com]
 
 Your staging environment is now online with 1000 simulated relays, 100k simulated servers, 100k simulated sessions (CCU).
+
+Next step: [Deploy to Production](deploy_to_production.md)
