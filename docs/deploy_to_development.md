@@ -27,7 +27,8 @@ What is going on now is:
 
 1. semaphore builds and runs unit tests
 2. Once tests pass, semaphore detects there is a tag matching "dev-[n]" and promotes to the "Upload Artifacts" job automatically.
-3. This job uploads the results of the build (the artifacts) to the google cloud storage bucket named "<your_company_name>_network_next_backend_artifacts" in the "Storage" project under a subdirectory with your tag name.
+3. This job uploads the results of the build (the artifacts) to the google cloud storage bucket named
+   "<your_company_name>_network_next_backend_artifacts" in the "Storage" project under a subdirectory with your tag name.
 
 <img width="1206" alt="image" src="https://github.com/networknext/next/assets/696656/1438b80b-b2fb-4661-bfca-3095d941949f">
 
