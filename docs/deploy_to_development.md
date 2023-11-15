@@ -2,72 +2,105 @@
 
 <br>
 
-# Setup Semaphore CI to Build and Deploy Artifacts
+# Deploy to Development
 
-Network Next uses semaphore ci to run tests, build artifacts and upload them to google cloud storage buckets.
+## 1. Deploy to the development backend
 
-You should already have a semaphore ci account setup. Now we're going to setup that account with secrets, so it has permission to upload to google cloud and interact with terraform to perform deploys on your behalf.
+Network Next uses tag based deployments to trigger backend system deploys from branches.
 
-## 1. Build secrets.tar.gz
+To deploy to dev, first you merge your code into the "dev" branch. Then in the dev branch, tag something as "dev-[n]", where n increases with each deployment, for example: "dev-001", "dev-002" and so on.
 
-Run this at the command line:
-
-`cd ~/next && next secrets`
-
-This program will run and provide you with output like this:
+Let's get started with a tag "dev-001":
 
 ```console
-gaffer@batman next % next secrets
-
-copying secrets from terraform/projects to ~/secrets...
-
-zipping up secrets -> secrets.tar.gz
-
-secrets.tar.gz is ready
+git checkout -b dev
+git push origin
+git tag dev-001
+git push origin dev-001
 ```
 
-In the ~/next directory you will now see a secrets.tar.gz file. This is just a zip containing the contents of your ~/secrets directory. Please back this file up somewhere.
+Once you have pushed a tag, go to https://semaphoreci.com and you should see a build process running on your dev tag:
 
-## 2. Upload secrets to semaphore ci
+<img width="638" alt="image" src="https://github.com/networknext/next/assets/696656/868cbef3-1dc1-4c6e-a50a-efeaf54556a9">
 
-Go to https://semaphoreci.com, click on your organization icon in the the top right, and select "Settings" in the drop down menu:
+What is going on now is that semaphore builds and runs unit test first. Once these pass, semaphore detects there is a tag matching "dev-[n]" and promotes to the "Upload Artifacts" job automatically. This job uploads the results of the build (the artifacts) to the google cloud storage bucket named "[company_name]_network_next_backend_artifacts" in the "Storage" project under a subdirectory with your tag name "dev-001".
 
-<img width="734" alt="image" src="https://github.com/networknext/next/assets/696656/163b810a-b0dc-44ef-a82a-5c325233c646">
+<img width="1206" alt="image" src="https://github.com/networknext/next/assets/696656/1438b80b-b2fb-4661-bfca-3095d941949f">
 
-Now in the left menu, select "Secrets":
+You can view these artifacts by going to https://console.google.com and selecting the "Storage" project, and under "Cloud Storage" in the left window, then selecting the "*_backend_artifacts" storage bucket once the "Upload Artifacts" job succeeds.
 
-![image](https://github.com/networknext/next/assets/696656/b6043b4c-2246-48b2-b16a-c2648416b300)
+Once the artifacts are uploaded, semaphore again detects that there is a tag "dev-[n]" and promotes the job "Deploy to Development" automatically. This job runs terraform internally in the subdirectory "~/next/terraform/dev/backend", with the terraform state stored in another google cloud bucket, so that terraform can be run from multiple locations (locally, on your dev machine, or inside semaphore) without conflicts.
 
-Click on the blue "Create Secret" button, and in the dialog, set the name of the secret to "secrets", give the secret a configuration filename of "/home/semaphore/secrets/secrets.tar.gz", and upload the secrets.tar.gz file you generated in the previous step.
+<img width="2080" alt="image" src="https://github.com/networknext/next/assets/696656/2afbebca-5d17-45f6-b95e-35af322413bc">
 
-<img width="611" alt="image" src="https://github.com/networknext/next/assets/696656/4274ff60-8e11-4918-8293-9a52d70f1fc1">
+This whole build process can take 10-15 minutes to run start for the first deploy. Most of the time is spent initializing redis instances and the postgres database.
 
-Save the secret. Now the semaphore jobs (defined in ~/next/.semaphore/*.yml) will have access to secrets, so they can upload files and perform deploys.
+Once the deploy has completed successfully, you can navigate to https://console.cloud.com, select the "Development" project and you'll see under "Compute Engine -> Managed Instance Groups" the following set of backend services running:
 
-## 3. Verify semaphore is working
+<img width="1210" alt="image" src="https://github.com/networknext/next/assets/696656/ebf0bbc8-88bb-40ff-b31c-e7a670cc0d3f">
 
-In the main page of semaphoreci.com while you are logged in, you should see a list of jobs that have run, chronologically from most recent to oldest top to bottom.
+## 2. Initialize the postgres database
 
-Semaphore is already configured to build and run tests on each commit, so you should see tests that succeeded for your "keygen" and "config" commits earlier.
+Unfortunately, it is not possible to automatically initialize the postgres database in google cloud with terraform, so it must be done manually.
 
-Click on the most recent successful job.
+Go to https://console.google.com and select the "Development" project.
 
-<img width="778" alt="image" src="https://github.com/networknext/next/assets/696656/a2d50665-3763-4e1b-9ce4-4a0ab4e10508">
+Click on the hamburger menu in the top left and select "SQL" in the left menu bar.
 
-You should see something like this:
+You should now see the postgres instance created by terraform to managed configuration of your development network next environment.
 
-![image](https://github.com/networknext/next/assets/696656/8f74897a-3b6b-4339-94ef-265ebc6df81b)
+<img width="641" alt="image" src="https://github.com/networknext/next/assets/696656/0e12bcda-861a-48b7-b8cd-38f661ebd7ae">
 
-Click on "Update Golang Cache" and wait for the task to complete. This will take around 5 minutes, but after it completes, golang builds in semaphore will run much more quickly, finishing build and test in less than one minute for each commit.
+Click on "postgres" to view the database, then select "Import" from the list of items at the top of the screen:
 
-Once the golang cache is updated, click on "Upload Config" and "Upload Relay" jobs and wait for these to succeed and turn green.
+<img width="953" alt="image" src="https://github.com/networknext/next/assets/696656/e0e21b98-c968-4d34-8d20-a9db7f824c8f">
 
-<img width="899" alt="image" src="https://github.com/networknext/next/assets/696656/d1213c24-de8f-4dbe-a56e-49e23de5c507">
+In the import dialog, enter the filename to import as: "[company_name]_network_next_sql_files/create.sql", and then select to import it to the "database" database instance (not "postgres" database instance).
 
-These tasks upload some files to google cloud buckets needed by later deploy steps.
+For example:
 
-Once these tasks complete and turn green, you can be confident that secrets are setup correctly.
+<img width="840" alt="image" src="https://github.com/networknext/next/assets/696656/8571b102-249d-4dd9-a37a-71db6d6fdfec">
 
-(next step)
+It will take just a few seconds to import. Once this is completed your postgres database is initialized with the correct schema.
+
+## 3. Wait for SSL certificates to provision
+
+The terraform scripts that deploy to dev automatically setup google cloud managed SSL certificates for your backend instances.
+
+It takes time for these SSL certificates to become active. Typically, around 1 hour.
+
+You now need to wait for these certificates to become active.
+
+You can check their status by creating a new "dev" gcloud configuration on the command line, that points to your new "Development" project:
+
+`gcloud init`
+
+And then while you are in the "dev" configuration for gcloud, run:
+
+`gcloud compute ssl-certificates list`
+
+While they are provisioning, you will see their status column as "PROVISIONING". Do not be concerned if you see an error "FAILED_NOT_VISIBLE" this is just a benign race condition between your cloudflare DNS propagation for the domains, and the google SSL certificate verification process.
+
+Once the certificates are all in the "ACTIVE" state you are ready to go to the next step.
+
+```console
+gaffer@batman docs % gcloud compute ssl-certificates list
+NAME           TYPE     CREATION_TIMESTAMP             EXPIRE_TIME                    REGION  MANAGED_STATUS
+api-dev        MANAGED  2023-11-13T12:17:11.657-08:00  2024-02-11T12:55:36.000-08:00          ACTIVE
+    api-dev.virtualgo.net: ACTIVE
+portal-dev     MANAGED  2023-11-13T12:17:23.310-08:00  2024-02-11T12:56:07.000-08:00          ACTIVE
+    portal-dev.virtualgo.net: ACTIVE
+raspberry-dev  MANAGED  2023-11-13T12:17:11.657-08:00  2024-02-11T12:55:36.000-08:00          ACTIVE
+    raspberry-dev.virtualgo.net: ACTIVE
+relay-dev      MANAGED  2023-11-13T12:17:23.616-08:00  2024-02-11T12:55:46.000-08:00          ACTIVE
+    relay-dev.virtualgo.net: ACTIVE
+```
+
+## 4. Setup the development relays and database
+
+We now use terraform to configure your network next development instance postgres database, and create a small amount of demonstration relays in google cloud, aws and linode (akamai).
 
 
+
+
+```
