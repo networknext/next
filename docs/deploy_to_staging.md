@@ -17,7 +17,7 @@ git push origin staging-001
 
 ## 2. Initialize the postgres database
 
-Go to https://console.google.com and go to "SQL" under the "Staging" project.
+Go to https://console.google.com and navigate to "SQL" under the "Staging" project.
 
 Click on the "postgres" database and click on "Import".
 
@@ -35,7 +35,17 @@ Now you can check the status of your SSL certificates:
 
 Wait until all certificates are in the "ACTIVE" state before going to the next step.
 
-## 3. View the portal
+## 4. Verify that all services are green
+
+Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging Project".
+
+You should see all services up and running and green. 
+
+If some services are not able to allocate all the VMs they need, you may need to increase quotes.
+
+In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete.
+
+## 5. View the portal
 
 Go to https://portal-staging.[yourdomain.com]
 
