@@ -13,3 +13,6 @@ Network Next is a network accelerator for multiplayer games.
 5. [Configure network next](docs/configure_network_next.md)
 6. [Create google cloud projects with terraform](docs/create_google_cloud_projects_with_terraform.md)
 7. [Setup Semaphore CI to build and deploy artifacts](docs/setup_semaphore_ci_to_build_and_deploy_artifacts.md)
+8. [Deploy to Development](docs/deploy_to_development.md)
+9. [Deploy to Staging](docs/deploy_to_staging.md)
+10. [Deploy to Production](docs/deploy_to_production.md)
