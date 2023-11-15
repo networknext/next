@@ -21,9 +21,9 @@ Go to https://console.google.com and navigate to "SQL" under the "Staging" proje
 
 Click on the "postgres" database and click on "Import".
 
-In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
+In the import dialog, enter the filename to import as "[company_name]_network_next_sql_files/create.sql" and set the database to "database".
 
-Wait for the import to complete, then import "[company_name]_network_next_sql_files/staging.sql" to the the same database.
+Wait for the import to complete, then import "[company_name]_network_next_sql_files/staging.sql" to the same database.
 
 ## 3. Wait for SSL certificates to provision
 
