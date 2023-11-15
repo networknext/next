@@ -35,7 +35,7 @@ Now you can check the status of your SSL certificates:
 
 Wait until all certificates are in the "ACTIVE" state before going to the next step.
 
-## 4. Setup the production relays and database
+## 4. Setup the relays and database
 
 Run the terraform script:
 
