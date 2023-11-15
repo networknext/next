@@ -16,3 +16,4 @@ Network Next is a network accelerator for multiplayer games.
 8. [Deploy to Development](docs/deploy_to_development.md)
 9. [Deploy to Staging](docs/deploy_to_staging.md)
 10. [Deploy to Production](docs/deploy_to_production.md)
+11. [Tear down Staging and Production](docs/tear_down_staging_and_production.md)
