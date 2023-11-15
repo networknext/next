@@ -238,3 +238,13 @@ gaffer@batman next % next relays
 │ google.virginia.1      │ 35.199.4.54:40000    │ 10.150.0.3:40000 │ f5bc89cadf8dbdb1 │ offline │
 └────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴─────────┘
 ```
+
+## 5. View the portal
+
+Go to https://portal-dev.[yourdomain.com]
+
+You should see a map
+
+(image of map, with session counts).
+
+The system is setup to run with synthetic data from 1024 clients, with roughly 10% accelerated at any time.
