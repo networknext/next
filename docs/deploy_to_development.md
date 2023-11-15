@@ -33,7 +33,7 @@ Now you can check the status of your SSL certificates:
 
 `gcloud compute ssl-certificates list`
 
-Wait until all certificates are in the "ACTIVE" state before going to the next step.
+Wait until all certificates are in the "ACTIVE" state before going to the next step. This usually takes around one hour.
 
 ## 4. Setup relays and database
 
