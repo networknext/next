@@ -218,23 +218,23 @@ Once everything is working correctly, you'll be able to see that all relays are 
 ```console
 gaffer@batman next % next relays
 
-┌────────────────────────┬──────────────────────┬──────────────────┬───────────────┬──────────────────┬─────────┐
-│ Name                   │ PublicAddress        │ InternalAddress  │ InternalGroup │ Id               │ Status  │
-├────────────────────────┼──────────────────────┼──────────────────┼───────────────┼──────────────────┼─────────┤
-│ akamai.atlanta         │ 74.207.225.61:40000  │                  │               │ 57eacb07e26af413 │ offline │
-│ akamai.dallas          │ 69.164.203.153:40000 │                  │               │ acae7ede913e1c61 │ offline │
-│ akamai.fremont         │ 45.56.92.195:40000   │                  │               │ 2c963c503cf8fbd5 │ offline │
-│ akamai.newyork         │ 97.107.132.170:40000 │                  │               │ f779a2db87b24b89 │ offline │
-│ google.dallas.1        │ 34.174.171.113:40000 │ 10.206.0.3:40000 │               │ 4dd2dfb17cbea566 │ offline │
-│ google.iowa.1          │ 34.28.83.51:40000    │ 10.128.0.9:40000 │               │ b21f535edb4bdf65 │ offline │
-│ google.iowa.2          │ 34.42.182.189:40000  │ 10.128.0.7:40000 │               │ dc42ad10d1f6bd49 │ offline │
-│ google.iowa.3          │ 34.173.212.153:40000 │ 10.128.0.6:40000 │               │ dbccf67c4e490a19 │ offline │
-│ google.iowa.6          │ 35.222.169.18:40000  │ 10.128.0.8:40000 │               │ 693255b1c056b806 │ offline │
-│ google.losangeles.1    │ 34.94.80.8:40000     │ 10.168.0.3:40000 │               │ cc3fb71d77575835 │ offline │
-│ google.ohio.1          │ 34.162.102.38:40000  │ 10.202.0.3:40000 │               │ 65cdca8e934c3f83 │ offline │
-│ google.oregon.1        │ 35.233.229.153:40000 │ 10.138.0.3:40000 │               │ 6f5870a39d40e935 │ offline │
-│ google.saltlakecity.1  │ 34.106.48.99:40000   │ 10.180.0.3:40000 │               │ f2007465ecfb8429 │ offline │
-│ google.southcarolina.2 │ 35.243.195.72:40000  │ 10.142.0.3:40000 │               │ 28584bdf56d8f4e0 │ offline │
-│ google.virginia.1      │ 35.199.4.54:40000    │ 10.150.0.3:40000 │               │ f5bc89cadf8dbdb1 │ offline │
-└────────────────────────┴──────────────────────┴──────────────────┴───────────────┴──────────────────┴─────────┘
+┌────────────────────────┬──────────────────────┬──────────────────┬──────────────────┬─────────┐
+│ Name                   │ PublicAddress        │ InternalAddress  │ Id               │ Status  │
+├────────────────────────┼──────────────────────┼──────────────────┼──────────────────┼─────────┤
+│ akamai.atlanta         │ 74.207.225.61:40000  │                  │ 57eacb07e26af413 │ offline │
+│ akamai.dallas          │ 69.164.203.153:40000 │                  │ acae7ede913e1c61 │ offline │
+│ akamai.fremont         │ 45.56.92.195:40000   │                  │ 2c963c503cf8fbd5 │ offline │
+│ akamai.newyork         │ 97.107.132.170:40000 │                  │ f779a2db87b24b89 │ offline │
+│ google.dallas.1        │ 34.174.171.113:40000 │ 10.206.0.3:40000 │ 4dd2dfb17cbea566 │ offline │
+│ google.iowa.1          │ 34.28.83.51:40000    │ 10.128.0.9:40000 │ b21f535edb4bdf65 │ offline │
+│ google.iowa.2          │ 34.42.182.189:40000  │ 10.128.0.7:40000 │ dc42ad10d1f6bd49 │ offline │
+│ google.iowa.3          │ 34.173.212.153:40000 │ 10.128.0.6:40000 │ dbccf67c4e490a19 │ offline │
+│ google.iowa.6          │ 35.222.169.18:40000  │ 10.128.0.8:40000 │ 693255b1c056b806 │ offline │
+│ google.losangeles.1    │ 34.94.80.8:40000     │ 10.168.0.3:40000 │ cc3fb71d77575835 │ offline │
+│ google.ohio.1          │ 34.162.102.38:40000  │ 10.202.0.3:40000 │ 65cdca8e934c3f83 │ offline │
+│ google.oregon.1        │ 35.233.229.153:40000 │ 10.138.0.3:40000 │ 6f5870a39d40e935 │ offline │
+│ google.saltlakecity.1  │ 34.106.48.99:40000   │ 10.180.0.3:40000 │ f2007465ecfb8429 │ offline │
+│ google.southcarolina.2 │ 35.243.195.72:40000  │ 10.142.0.3:40000 │ 28584bdf56d8f4e0 │ offline │
+│ google.virginia.1      │ 35.199.4.54:40000    │ 10.150.0.3:40000 │ f5bc89cadf8dbdb1 │ offline │
+└────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴─────────┘
 ```
