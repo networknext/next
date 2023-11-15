@@ -56,9 +56,9 @@ Click on the most recent successful job.
 
 You should see something like this:
 
-<img width="946" alt="image" src="https://github.com/networknext/next/assets/696656/71d96980-336b-4aaf-b1b5-e41bb4c4d720">
+![image](https://github.com/networknext/next/assets/696656/8f74897a-3b6b-4339-94ef-265ebc6df81b)
 
-Click on "Update Golang Cache" and wait for the task to complete. This will take around 5 minutes, but after this task completes, golang builds in semaphore will run much more quickly, finishing build and test in less than one minute for each commit.
+Click on "Update Golang Cache" and wait for the task to complete. This will take around 5 minutes, but after it completes, golang builds in semaphore will run much more quickly, finishing build and test in less than one minute for each commit.
 
 <img width="899" alt="image" src="https://github.com/networknext/next/assets/696656/d1213c24-de8f-4dbe-a56e-49e23de5c507">
 
