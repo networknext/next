@@ -58,13 +58,13 @@ You should see something like this:
 
 <img width="946" alt="image" src="https://github.com/networknext/next/assets/696656/71d96980-336b-4aaf-b1b5-e41bb4c4d720">
 
-Click on "Update Golang Cache" and wait for the task to complete. This may take around 5 minutes, but after this task completes, golang builds in semaphore will run much more quickly, finishing build and test in less than one minute for each commit.
-
-Once the golang cache is updated, click on "Upload Config" and "Upload Relay" jobs and wait for these to succeed. They should complete quickly.
+Click on "Update Golang Cache" and wait for the task to complete. This will take around 5 minutes, but after this task completes, golang builds in semaphore will run much more quickly, finishing build and test in less than one minute for each commit.
 
 <img width="899" alt="image" src="https://github.com/networknext/next/assets/696656/d1213c24-de8f-4dbe-a56e-49e23de5c507">
 
-These tasks will upload some files to google cloud buckets needed by later deploy steps. When these tasks succeed it verifies that semaphore is setup correctly with your secrets.
+Once the golang cache is updated, click on "Upload Config" and "Upload Relay" jobs and wait for these to succeed and turn green. They should complete quickly.
+
+These tasks upload some files to google cloud buckets needed by later deploy steps. Once these tasks complete and turn green, you can be confident that secrets are setup correctly.
 
 (next step)
 
