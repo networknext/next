@@ -4,7 +4,7 @@
 
 # Deploy to Development
 
-## 1. Deploy the development backend
+## 1. Deploy the backend
 
 Network Next uses tag based deployments from branches.
 
