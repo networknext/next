@@ -30,4 +30,4 @@ Packet loss is different. Across all games we've worked with, the curve for pack
 
 Network Next platform monitors your players, and when they would otherwise experience high latency or packet loss, _we fix it_ by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss. Player frustration is reduced. Player engagment, retention and monetization go up.
 
-Next: [How does it work?](how_does_it_work.md)
+Next: [How does Network Next work?](how_does_network_next_work.md)
