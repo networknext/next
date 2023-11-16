@@ -26,8 +26,8 @@ However for latency, games often display a "sweet spot" or a range where latency
 
 <img width="1112" alt="image" src="https://github.com/networknext/next/assets/696656/3c00fd6f-8825-430c-b34a-bac37c68d916">
 
+In this case, acceleration of latency that is already below 100ms is pointless, however, players above 100ms should be reduced below 100ms where possible.
+
 ## We accelerate players only when it matters
 
-Network Next is designed to solve this problem. When a player is routed the wrong way or encounters higher packet loss or jitter than usual, we route them anothre way. We combat packet loss by sending packets redundantly down multiple distinct routes, and we only accelerate players when they would otherwise experience 
-
-
+Network Next is designed to solve this problem. 
