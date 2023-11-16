@@ -18,22 +18,18 @@ Data from multiple games using Network Next shows a consistent link between netw
 
 ![image](https://github.com/networknext/next/assets/696656/c21bf22d-6352-4162-a085-709c4571cbe9)
 
-Across all games we've worked with, the curve for packet loss is always the same. Basically, any amount of non-trivial packet loss reduces engagement, retention and monetization:
-
-![image](https://github.com/networknext/next/assets/696656/e224ef24-e52c-4613-82bf-576b005adaf9)
-
-However for latency, games often display a "sweet spot" or a range where latency is acceptable:
+Games often display a "sweet spot" or a range where latency is acceptable. For example, acceleration of latency that is already below 100ms is pointless because it provides no benefit, however, players above 100ms should be reduced below 100ms when possible:
 
 <img width="1112" alt="image" src="https://github.com/networknext/next/assets/696656/3c00fd6f-8825-430c-b34a-bac37c68d916">
 
-In this case, acceleration of latency that is already below 100ms is pointless, however, players above 100ms should be reduced below 100ms where possible.
+Packet loss is different. Across all games we've worked with, the curve for packet loss is always the same. Basically, any amount of non-trivial packet loss reduces engagement, retention and monetization:
+
+![image](https://github.com/networknext/next/assets/696656/e224ef24-e52c-4613-82bf-576b005adaf9)
 
 ## So, what benefit does Network Next provide for my game?
 
-We monitor your players, and when they would otherwise experience high latency or packet loss, we fix it by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss.
+The Network Next platform monitor your players, and when they would otherwise experience high latency or packet loss, we fix it by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss.
 
-You decide what the acceptable latency is for your game, and what amount of latency reduction is significant, and we'll only accelerate players when the acceleration is meaningful, and impactful to your engagement, retention and monetization for yoru game.
+You get to decide what the acceptable latency is for your game, and what amount of latency reduction is significant enough to warrant acceleration, and we'll only accelerate players when these conditions are met. Providing you with acceleration only when it really counts. For most games, we end up accelerating 10-15% of players at any time, and each month at least _60% of players see an improvement in their network performance at least once_.
 
-For most games, we end up accelerating 10-15% of players at any time, and each month at least _60% of players see an improvement in their network performance at least once_.
-
-In short, what benefit do we provide? When your players would otherwise experience bad network performance that would reduce engagement, retention and monetization for your game -- *we fix it*.
+So what benefit do we provide? When your players would otherwise experience bad network performance that would reduce engagement, retention and monetization for your game -- *we fix it*.
