@@ -13,7 +13,7 @@ Before you can setup network next, you need the following things:
 * An AWS account
 * A linode account
 * A semaphoreci account
-* A maxmind account with subscriptions to their ISP and City databases
+* A maxmind account
 * Terraform installed on your development machine
 
 Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
