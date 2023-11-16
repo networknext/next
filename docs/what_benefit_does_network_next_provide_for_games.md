@@ -2,78 +2,12 @@
 
 <br>
 
-# Configure Network Next
+# What benefit does Network Next provide for your game?
 
-## 1. Generate keypairs
+The Internet is a technological marvel, but it was never designed for realtime traffic like multiplayer games. Instead, it is focused on providing bursts of reliable-ordered, non-realtime services like websites and streaming video. In 2023, bandwidth available has never been higher, but progress on quality of service (QoS) metrics such as latency, jitter and packet loss are virtually non-existant. The Interent literally doesn't care about your game.
 
-Change to the "~/next" directory and run:
+The average packet loss around the world is 0.15%. In many areas of the world, the average packet loss is significantly higher. Of course, averages lie and players experience _worse_ than the average on a regular basis. Every month, 90% of your players will experience high packet loss at some point.
 
-  `next keygen`
+Latency too is terrible. Players in Sao Paulo, Brazil will experience 200ms+ additional latency to servers hosted in... Sao Paulo, as their ISP routes their traffic the wrong way. But for these players it only happens 1 in every 5 or so matches because the hash of IP addresses and ports load balances their traffic up a higher latency upstream link for their ISP. Friday night, the entire Comcast backbone goes down on the East Coast, and players get an additional 100ms latency while playing until it's fixed, sometime next week. Players in Dubai randomly transit to datacenters in Dubai, via Frankfurt. Korean players get higher latency than necessary when playing with players in Japan, and vice versa because historical geopolicitics between the two countries is poor and optimal interlinks between the countries are not planned. And don't get us started about players in the Middle East. Heirarchical routing means that players in Sao Paulo transit to Miami through New York, because the cheapest link from Sao Paulo to the USA is through New York. The list goes on. We have seen things you people would _never_ believe.
 
-This will generate a completely fresh set of keypairs for your network next instance, so that it uniquely secured vs. other network next instances.
 
-Secrets will be generated and stored under ~/secrets. Safe values such as public keys will be written to source code files across the repository.
-
-You can review the changes to the source code with:
-
-  `git diff`
-  
-Once you are satisfied with the changes, commit them to the repository:
-
-`git commit -am "keygen"`
-`git push origin`
-
-Back up the secrets directory somewhere. If you lose it, you will not be able to administer your network next instance.
-
-## 2. Edit config.json
-
-Edit the config.json file at the root fo the next repository.
-
-By default it should contain something like this:
-
-```
-{
-  "company_name": "alocasia",
-  "vpn_address": "45.79.157.168",
-  "cloudflare_zone_id": "eba5d882ea2aa23f92dfb50fbf7e3cf4",
-  "cloudflare_domain": "virtualgo.net",
-  "google_billing_account": "012279-A33489-722F96",
-  "google_org_id": "434699063105",
-  "ssh_key": "id_rsa"
-}
-```
-
-1. Set *company_name* to be some unique identifier. It could be your company name or a random word. It is not publicly visible, but it must be unique. It may contain only letters and underscores.
-
-2. Set *vpn_address* to the IP address of the OpenVPN that you setup in the previous section
-   
-3. Set *cloudflare_zone_id* to the zone id for your domain managed by cloudflare. You can find the zone id in the cloudflare portal.
-
-6. Set *cloudflare_domain* to the domain name you are using with network next. This domain must correspond to the zone id in cloudflare.
-
-7. Set *google_billing_account* to one of your linked billing accounts in google cloud. Run `gcloud billing accounts list` to list the set of billing accounts linked to your google cloud account. There is usually only one.
-
-8. Set *google_org_id" to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
-
-9. Set *ssh_key* to the name of the ssh keypair to use when accessing relays. By default, ~/.ssh/id_rsa keypair is used when SSHing into relays. You can change this here by generating your own unique key under the .ssh directory.
-
-If you haven't already generated an SSH key, please do so now by following these instructions: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
-
-## 3. Run the configure script
-
-Change to "~/next" and run:
-
-`next config`
-
-This config will modify source files throughout the repository.
-
-Please review the changes with:
-
-`git diff`
-
-And commit these changes to the repository:
-
-`git commit -am "config"`
-`git push origin`
-
-You are now ready to [Create Google Cloud Projects with Terraform](create_google_cloud_projects_with_terraform.md)
