@@ -10,7 +10,6 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 1. [What benefit does Network Next provide for my game?](docs/what_benefit_does_network_next_provide_for_my_game.md)
 2. [How does Network Next work?](docs/how_does_network_next_work.md)
-3. [Core concepts and architecture](docs/core_concepts_and_architecture.md)
 
 # Installation
 
