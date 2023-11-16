@@ -2,6 +2,6 @@
 
 <br>
 
-# How does it work?
+# How does Network Next work?
 
 ...
