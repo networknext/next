@@ -2,6 +2,8 @@
 
 <br>
 
+# What benefit does Network Next provide for my game?
+
 ## The Internet doesn't care about your game
 
 The Internet is a technological marvel, in 2023 we can watch streaming video, zoom with friends on the other side of the world and chat with friends wherever they are. Bandwidth available has never been higher, and we can download large files that just 20 years ago would have taken days. But, in the same time period, progress on quality of service (QoS) metrics such as latency, jitter and packet loss have been virtually non-existant.
