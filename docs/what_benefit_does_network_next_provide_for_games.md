@@ -12,7 +12,7 @@ But just how bad is it? The average packet loss around the world is 0.15%. But i
 
 ## Bad network performance reduces engagement, retention and monetization
 
-Data from multiple games using Network Next shows a consistent link between network performance and reduced engagement, retention and monetization:
+Data from multiple games using Network Next shows a consistent link between network performance and reduced engagement, retention and monetization. As latency increases, engagement, retention and monetization are reduced:
 
 ![image](https://github.com/networknext/next/assets/696656/c21bf22d-6352-4162-a085-709c4571cbe9)
 
@@ -30,6 +30,8 @@ In this case, acceleration of latency that is already below 100ms is pointless, 
 
 We monitor your players, and when they would otherwise experience high latency or packet loss, we fix it by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss.
 
-For most games, we accelerate 10-15% of players at any time, and each month at least _60% of players see an improvement in their network performance at least once_.
+You decide what the acceptable latency is for your game, and what amount of latency reduction is significant, and we'll only accelerate players when the acceleration is meaningful, and impactful to your engagement, retention and monetization for yoru game.
 
-In short, when your players would otherwise experience bad network performance that would reduce engagement, retention and monetization for your game -- *we fix it*.
+For most games, we end up accelerating 10-15% of players at any time, and each month at least _60% of players see an improvement in their network performance at least once_.
+
+In short, what benefit do we provide? When your players would otherwise experience bad network performance that would reduce engagement, retention and monetization for your game -- *we fix it*.
