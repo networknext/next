@@ -46,7 +46,7 @@ Once the OpenVPN server is up and running, setup your OpenVPN client so you can 
 
 I recommend OpenVPN Connect: http://openvpn.net/client/
 
-Later on, we're going to secure your network next instance such that the REST APIs, portal and relay are only accessible from your VPN IP address.
+Later on, we're going to secure your network next instance such that the REST APIs, portal and relays are only accessible from your VPN IP address.
 
 ## 2. Register domain
 
