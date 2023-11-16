@@ -4,11 +4,11 @@
 
 # What benefit does Network Next provide for your game?
 
-The Internet is a technological marvel, but it was never designed for realtime traffic like multiplayer games. Instead, it's focused on providing non-realtime services like websites and streaming video. In 2023, bandwidth available has never been higher, but progress on quality of service (QoS) metrics such as latency, jitter and packet loss are virtually non-existant.
+The Internet is a technological marvel, we can watch streaming video, zoom with friends on the other side of the world and chat with friends wherever they are. In 2023, bandwidth available has never been higher, but progress on quality of service (QoS) metrics such as latency, jitter and packet loss are virtually non-existant.
 
-Data from more than 30M players through Network Next shows that at any time, around 10% of your players are experiencing significantly degraded network performance. That is, higher latency, jitter and packet loss than usual.
+Data from more than 25M unique players shows that at any time, around 10% of your player experience significantly degraded network performance. This is true no matter where you host your game servers. In cloud, bare metal, even if that network provider claims to have the best network in the world with their own private backbone.
 
-Furthermore, each month, more than 60% of your players experience bad network performance. What this means is that bad network performance moves around, and doesn't just affect the same 10% of players all the time. It really is, a systemic problems in the Internet that randomly gives your players a bad experience playing your game.
+Each month, no matter where you host your servers, more than 60% of your players experience bad network performance. What this means is that bad network performance moves around, and doesn't just affect the same 10% of players all the time. It really is, a systemic problems in the Internet that randomly gives your players a bad experience playing your game.
 
 The average packet loss around the world is 0.15%. In many areas of the world, the average packet loss is significantly higher. Of course, averages lie and players experience _worse_ than the average on a regular basis. Every month, 90% of your players will experience high packet loss at some point.
 
