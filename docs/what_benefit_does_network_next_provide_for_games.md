@@ -18,11 +18,11 @@ Data from multiple games using Network Next shows a consistent link between netw
 
 ![image](https://github.com/networknext/next/assets/696656/c21bf22d-6352-4162-a085-709c4571cbe9)
 
-Games often display a "sweet spot" or a range where latency is acceptable. For example, acceleration of latency that is already below 100ms is pointless because it provides no benefit, however, players above 100ms should be reduced below 100ms when possible:
+Games often display a "sweet spot" or a range where latency is acceptable. For example, for this game acceleration of latency that is already below 100ms provides no benefit, however, players above 100ms should be reduced below 100ms when possible:
 
 <img width="1112" alt="image" src="https://github.com/networknext/next/assets/696656/3c00fd6f-8825-430c-b34a-bac37c68d916">
 
-Packet loss is different. Across all games we've worked with, the curve for packet loss is always the same. Basically, any amount of non-trivial packet loss reduces engagement, retention and monetization:
+Packet loss is different. Across all games we've worked with, the curve for packet loss is always the same. Any amount of non-trivial packet loss reduces engagement, retention and monetization:
 
 ![image](https://github.com/networknext/next/assets/696656/e224ef24-e52c-4613-82bf-576b005adaf9)
 
