@@ -272,13 +272,26 @@ Create a new semaphore project pointing at your forked "next" repository.
 
 Use the existing semaphoreci configuration in the repository.
 
-## 11. Install terraform
+## 11. Setup maxmind.com subscriptions
+
+Create an account on maxmind.com and purchase a monthly subscription to:
+
+* GeoIP2 City Database
+* GeoIP2 ISP Database
+
+These are two separate items you'll need to purchase, each billed monthly. You need the subscription because these databases are updated frequently, and you always want to use the most recent data for accuracy.
+
+Before you get access to download these databases, your account will need to get approved by maxmind.com and this process can take a day or two.
+
+Now, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on when downloading the most recent versions of the maxmind databases, once per-hour on your behalf.
+
+## 12. Install terraform
 
 Follow the instructions here to install terraform:
 
 https://developer.hashicorp.com/terraform/install
 
-## 12. Final checks
+## 13. Final checks
 
 1. You have OpenVPN setup and you have recorded the VPN IP address somewhere
 2. You have created a new domain and it is imported and managed by cloudflare
