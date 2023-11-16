@@ -2,7 +2,7 @@
 
 <br>
 
-# What benefit does Network Next provide for my game?
+# Introduction
 
 ## The Internet doesn't care about your game
 
