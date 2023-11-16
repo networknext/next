@@ -14,7 +14,7 @@ But just how bad is it? The average packet loss around the world is 0.15%. But i
 
 ## Bad network performance reduces engagement, retention and monetization
 
-Data from multiple games using Network Next shows a consistent link between network performance and reduced engagement, retention and monetization. As latency increases, engagement, retention and monetization are reduced:
+Data from multiple games using Network Next show a consistent link between network performance and reduced engagement, retention and monetization. As latency increases, engagement, retention and monetization are reduced:
 
 ![image](https://github.com/networknext/next/assets/696656/c21bf22d-6352-4162-a085-709c4571cbe9)
 
