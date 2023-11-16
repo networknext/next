@@ -279,11 +279,13 @@ Create an account on maxmind.com and purchase a monthly subscription to:
 * GeoIP2 City Database
 * GeoIP2 ISP Database
 
-These are two separate items you'll need to purchase, each billed monthly. You need the subscription because these databases are updated frequently, and you always want to use the most recent data for accuracy.
+These are two separate database subscriptions you'll need to purchase, each billed monthly.
 
 Before you get access to download these databases, your account will need to get approved by maxmind.com and this process can take a day or two.
 
-Now, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on when downloading the most recent versions of the maxmind databases, once per-hour on your behalf.
+While you wait, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on when downloading the most recent versions of the maxmind databases on your behalf.
+
+<img width="1439" alt="image" src="https://github.com/networknext/next/assets/696656/ce46bed5-4e41-4b5e-9972-ef5e1e0e0123">
 
 ## 12. Install terraform
 
