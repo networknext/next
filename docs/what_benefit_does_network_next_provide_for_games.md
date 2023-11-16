@@ -28,8 +28,6 @@ Packet loss is different. Across all games we've worked with, the curve for pack
 
 ## So, what benefit does Network Next provide for my game?
 
-The Network Next platform monitor your players, and when they would otherwise experience high latency or packet loss, we fix it by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss.
+When your players would otherwise experience bad network performance that would reduce engagement, retention and monetization for your game -- *we fix it*.
 
-You get to decide what the acceptable latency is for your game, and what amount of latency reduction is significant enough to warrant acceleration, and we'll only accelerate players when these conditions are met. Providing you with acceleration only when it really counts. For most games, we end up accelerating 10-15% of players at any time, and each month at least _60% of players see an improvement in their network performance at least once_.
-
-So what benefit do we provide? When your players would otherwise experience bad network performance that would reduce engagement, retention and monetization for your game -- *we fix it*.
+Network Next platform monitors your players, and when they would otherwise experience high latency or packet loss, _we fix it_ by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss. Player frustration is reduced. Engagment, retention and monetization goes up.
