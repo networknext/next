@@ -4,11 +4,12 @@
 
 Network Next is a network accelerator for multiplayer games. It reduces latency, jitter and packet loss for players when their network performance would otherwise reduce engagement, retention and monetization.
 
+To use Network Next, your game must have a client/server architecture and use UDP for its network transport layer.
+
 # Introduction
 
 1. [What benefit does Network Next provide for my game?](docs/what_benefit_does_network_next_provide_for_my_game.md)
 2. [How does Network Next work?](docs/how_does_network_next_work.md)
-3. [Core concepts and architecture](docs/core_concepts_and_architecture.md)
 
 # Installation
 
@@ -23,6 +24,10 @@ Network Next is a network accelerator for multiplayer games. It reduces latency,
 9. [Deploy to Staging](docs/deploy_to_staging.md)
 10. [Deploy to Production](docs/deploy_to_production.md)
 11. [Tear down Staging and Production](docs/tear_down_staging_and_production.md)
+
+--------------------------------------------------------------
+
+... _WIP BELOW HERE_ ...
 
 # Integrating Network Next with your game
 

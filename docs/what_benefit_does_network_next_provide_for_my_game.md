@@ -6,7 +6,7 @@
 
 ## The Internet doesn't care about your game
 
-The Internet is a technological marvel, in 2023 we can watch streaming video, zoom with friends on the other side of the world and chat with friends wherever they are. Bandwidth available has never been higher, and we can download large files that just 20 years ago would have taken days. But, in the same time period, progress on quality of service (QoS) metrics such as latency, jitter and packet loss have been virtually non-existant.
+The Internet is a technological marvel. In 2023 we can watch streaming video, zoom with friends on the other side of the world and chat with friends wherever they are. Bandwidth available has never been higher, and we can quickly download large files that just 20 years ago would have taken days. But, in the same time period, progress on quality of service (QoS) metrics such as latency, jitter and packet loss has been virtually non-existant. The Internet still provides no quality of service. Best effort delivery only.
 
 Data from more than 25M unique players through Network Next shows that _at any time 10% of players are experiencing significantly degraded network performance_. This is true no matter where you host your game servers. In cloud, bare metal, even if that network provider claims to have the best network in the world. And each month, this bad network performance moves around, affecting more than _60% of your players at least once_.
 
@@ -14,7 +14,7 @@ But just how bad is it? The average packet loss around the world is 0.15%. But i
 
 ## Bad network performance reduces engagement, retention and monetization
 
-Data from multiple games using Network Next shows a consistent link between network performance and reduced engagement, retention and monetization. As latency increases, engagement, retention and monetization are reduced:
+Data from multiple games using Network Next show a consistent link between network performance and reduced engagement, retention and monetization. As latency increases, engagement, retention and monetization are reduced:
 
 ![image](https://github.com/networknext/next/assets/696656/c21bf22d-6352-4162-a085-709c4571cbe9)
 
@@ -28,6 +28,6 @@ Packet loss is different. Across all games we've worked with, the curve for pack
 
 ## So, what benefit does Network Next provide for my game?
 
-Network Next platform monitors your players, and when they would otherwise experience high latency or packet loss, _we fix it_ by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss. Player frustration is reduced. Player engagment, retention and monetization go up.
+Network Next monitors your players, and when they would otherwise experience high latency or packet loss, _we fix it_ by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss. Player frustration is reduced. Player engagment, retention and monetization go up.
 
-Next: [How does it work?](how_does_it_work.md)
+Next: [How does Network Next work?](how_does_network_next_work.md)

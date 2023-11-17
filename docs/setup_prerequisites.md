@@ -13,6 +13,7 @@ Before you can setup network next, you need the following things:
 * An AWS account
 * A linode account
 * A semaphoreci account
+* A maxmind account
 * Terraform installed on your development machine
 
 Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
@@ -45,7 +46,7 @@ Once the OpenVPN server is up and running, setup your OpenVPN client so you can 
 
 I recommend OpenVPN Connect: http://openvpn.net/client/
 
-Later on, we're going to secure your network next instance such that the REST APIs, portal and relay are only accessible from your VPN IP address.
+Later on, we're going to secure your network next instance such that the REST APIs, portal and relays are only accessible from your VPN IP address.
 
 ## 2. Register domain
 
@@ -271,13 +272,28 @@ Create a new semaphore project pointing at your forked "next" repository.
 
 Use the existing semaphoreci configuration in the repository.
 
-## 11. Install terraform
+## 11. Setup maxmind.com subscriptions
+
+Create an account on maxmind.com and purchase a monthly subscription to:
+
+* GeoIP2 City Database
+* GeoIP2 ISP Database
+
+These are two separate database subscriptions you'll need to purchase, each billed monthly.
+
+Before you get access to download these databases, your account will need to get approved by maxmind.com and this process can take a day or two.
+
+While you wait, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on when downloading the most recent versions of the maxmind databases on your behalf.
+
+<img width="1439" alt="image" src="https://github.com/networknext/next/assets/696656/ce46bed5-4e41-4b5e-9972-ef5e1e0e0123">
+
+## 12. Install terraform
 
 Follow the instructions here to install terraform:
 
 https://developer.hashicorp.com/terraform/install
 
-## 12. Final checks
+## 13. Final checks
 
 1. You have OpenVPN setup and you have recorded the VPN IP address somewhere
 2. You have created a new domain and it is imported and managed by cloudflare
@@ -288,6 +304,9 @@ https://developer.hashicorp.com/terraform/install
 7. You have exported a cloudflare API token to ~/secrets/terraform-cloudflare.txt
 8. You have backed up your secrets somewhere
 9. You have setup a semaphoreci.com account
-10. You have installed terraform on your dev machine
+10. You have a maxmind license key saved to ~/secrets/maxmind.txt
+11. You have a monthly subscription to the GeoIP2-City database from maxmind
+12. You have a monthly subscription to the GeoIP2-ISP database from maxmind
+13. You have installed terraform on your dev machine
 
 Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](docs/configure_network_next.md).
