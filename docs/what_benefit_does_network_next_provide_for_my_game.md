@@ -6,7 +6,7 @@
 
 ## The Internet doesn't care about your game
 
-The Internet is a technological marvel. In 2023 we can watch streaming video, zoom with friends on the other side of the world and chat with friends wherever they are. Bandwidth available has never been higher, and we can download large files that just 20 years ago would have taken days. But, in the same time period, progress on quality of service (QoS) metrics such as latency, jitter and packet loss has been virtually non-existant. The Internet still provides no quality of service. Best effort delivery only.
+The Internet is a technological marvel. In 2023 we can watch streaming video, zoom with friends on the other side of the world and chat with friends wherever they are. Bandwidth available has never been higher, and we can quickly download large files that just 20 years ago would have taken days. But, in the same time period, progress on quality of service (QoS) metrics such as latency, jitter and packet loss has been virtually non-existant. The Internet still provides no quality of service. Best effort delivery only.
 
 Data from more than 25M unique players through Network Next shows that _at any time 10% of players are experiencing significantly degraded network performance_. This is true no matter where you host your game servers. In cloud, bare metal, even if that network provider claims to have the best network in the world. And each month, this bad network performance moves around, affecting more than _60% of your players at least once_.
 
