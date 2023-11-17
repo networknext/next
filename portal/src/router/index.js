@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import MapView from '../views/MapView.vue'
 import SessionsView from '../views/SessionsView.vue'
 import SessionView from '../views/SessionView.vue'
 import UserView from '../views/UserView.vue'
@@ -19,12 +18,7 @@ const routes = [
   {
     path: '/',
     name: 'index',
-    component: MapView
-  },
-  {
-    path: '/map',
-    name: 'map',
-    component: MapView
+    component: SessionsView
   },
   {
     path: '/sessions/:page?',
