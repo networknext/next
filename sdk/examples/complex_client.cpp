@@ -33,7 +33,7 @@
 
 const char * bind_address = "0.0.0.0:0";
 const char * server_address = "127.0.0.1:50000";
-const char * buyer_public_key = "0/bHg4VPjOrB+Jp8kiyAkyPhrSnfOZi9jTNLFNbsTbS2e3MSeQdv7Q==";
+const char * buyer_public_key = "hc/OIfQ3E+IkueTZ8kW5Y0e/Y54luqQushYWjzyfYV5JxYc1RNI5lg==";
 
 // -------------------------------------------------------------
 
