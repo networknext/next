@@ -24,9 +24,9 @@ You can run a Network Next test environment locally with docker compose on any O
 
 Navigate to the network next portal at http://127.0.0.1:8080
 
-It will take a few minutes for the system to fully initialize. Once everything has started up, you should see this:
+It will take a few minutes for the system to fully initialize. Once everything has started up, you should see something like this:
 
-
+<img width="1582" alt="image" src="https://github.com/networknext/next/assets/696656/0567f170-0beb-4e3b-bc33-6cffcc15d133">
 
 Congratulations! Network Next up is up and running in docker!
 
