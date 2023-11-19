@@ -24,9 +24,9 @@ You can run a Network Next test environment locally with docker compose on any O
 
 Navigate to the network next portal at http://127.0.0.1:8080
 
-You should see (todo: image)
+It will take a few minutes to initialize. Once everything has started up, you'll see this:
 
-_todo: this portion is not ready yet_
+
 
 6. Take the system down
 

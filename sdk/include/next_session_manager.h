@@ -287,7 +287,7 @@ inline void next_session_entry_initialize_sentinels( next_session_entry_t * entr
     NEXT_INITIALIZE_SENTINEL( entry, 28 )
     NEXT_INITIALIZE_SENTINEL( entry, 29 )
     NEXT_INITIALIZE_SENTINEL( entry, 30 )
-    NEXT_INITIALIZE_SENTINEL( entry, 21 )
+    NEXT_INITIALIZE_SENTINEL( entry, 31 )
     next_replay_protection_initialize_sentinels( &entry->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->special_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->internal_replay_protection );

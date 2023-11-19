@@ -10,14 +10,10 @@ solution "next"
 	defines { "NEXT_DEVELOPMENT" }
 	filter "configurations:Debug"
 		symbols "On"
-		defines { "_DEBUG" }
+		defines { "_DEBUG", "NEXT_ENABLE_MEMORY_CHECKS=1", "NEXT_ASSERTS=1" }
 	filter "configurations:Release"
 		optimize "Speed"
 		defines { "NDEBUG" }
-		editandcontinue "Off"
-	filter "configurations:MemoryCheck"
-		optimize "Speed"
-		defines { "NDEBUG", "NEXT_ENABLE_MEMORY_CHECKS=1", "NEXT_ASSERTS=1" }
 		editandcontinue "Off"
 	filter "system:windows"
 		location ("visualstudio")
