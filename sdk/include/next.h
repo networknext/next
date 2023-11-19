@@ -27,6 +27,9 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
+// todo: temporary
+#define NEXT_ENABLE_MEMORY_CHECKS 1
+
 #include <stdint.h>
 #include <stddef.h>
 

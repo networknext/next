@@ -15,10 +15,6 @@ solution "next"
 		optimize "Speed"
 		defines { "NDEBUG" }
 		editandcontinue "Off"
-	filter "configurations:Release"
-		optimize "Speed"
-		defines { "NDEBUG" }
-		editandcontinue "Off"
 	filter "configurations:MemoryCheck"
 		optimize "Speed"
 		defines { "NDEBUG", "NEXT_ENABLE_MEMORY_CHECKS=1", "NEXT_ASSERTS=1" }
