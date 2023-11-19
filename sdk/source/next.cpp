@@ -301,6 +301,38 @@ void next_default_config( next_config_t * config )
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 }
 
+const char * next_platform_string( int platform_id )
+{
+    switch ( platform_id )
+    {
+        case NEXT_PLATFORM_WINDOWS:       return "windows";
+        case NEXT_PLATFORM_MAC:           return "mac";
+        case NEXT_PLATFORM_LINUX:         return "linux";
+        case NEXT_PLATFORM_SWITCH:        return "switch";
+        case NEXT_PLATFORM_PS4:           return "ps4";
+        case NEXT_PLATFORM_PS5:           return "ps5";
+        case NEXT_PLATFORM_IOS:           return "ios";
+        case NEXT_PLATFORM_XBOX_ONE:      return "xboxone";
+        case NEXT_PLATFORM_XBOX_SERIES_X: return "seriesx";
+        default:
+            break;
+    }
+    return "unknown";
+}
+
+const char * next_connection_string( int connection_type )
+{
+    switch ( connection_type )
+    {
+        case NEXT_CONNECTION_TYPE_WIRED:    return "wired";
+        case NEXT_CONNECTION_TYPE_WIFI:     return "wi-fi";
+        case NEXT_CONNECTION_TYPE_CELLULAR: return "cellular";
+        default:
+            break;
+    }
+    return "unknown";
+}
+
 int next_init( void * context, next_config_t * config_in )
 {
     next_assert( next_global_context == NULL );
@@ -315,6 +347,11 @@ int next_init( void * context, next_config_t * config_in )
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize platform" );
         return NEXT_ERROR;
     }
+
+    const char * platform_string = next_platform_string( next_platform_id() );
+    const char * connection_string = next_connection_string( next_platform_connection_type() );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "platform is %s (%s)", platform_string, connection_string );
 
     if ( next_crypto_init() == -1 )
     {
