@@ -311,4 +311,4 @@ https://developer.hashicorp.com/terraform/install
 12. You have a monthly subscription to the GeoIP2-ISP database from maxmind
 13. You have installed terraform on your dev machine
 
-Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](docs/configure_network_next.md).
+Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](configure_network_next.md).
