@@ -16,7 +16,7 @@ Before you can setup network next, you need the following things:
 * A maxmind account
 * Terraform installed on your development machine
 
-Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
+Once these prerequisites are met, actually setting up your network next instance is easy. It's all done automatically with terraform scripts.
 
 ## 1. Setup a VPN on Linode
 
