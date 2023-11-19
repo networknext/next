@@ -285,7 +285,7 @@ These are two separate database subscriptions you'll need to purchase, each bill
 
 Before you get access to download these databases, your account will need to get approved by maxmind.com and this process can take a day or two.
 
-While you wait, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on when downloading the most recent versions of the maxmind databases on your behalf.
+While you wait, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on to download the most recent versions of the maxmind databases on your behalf.
 
 <img width="1439" alt="image" src="https://github.com/networknext/next/assets/696656/ce46bed5-4e41-4b5e-9972-ef5e1e0e0123">
 
