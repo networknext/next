@@ -1,12 +1,18 @@
-FROM node:lts-alpine
+# syntax=docker/dockerfile:1
+
+FROM node
 
 WORKDIR /app
+
+COPY portal/package*.json ./
+
+RUN npm install
+
 COPY portal/*.js ./
 COPY portal/*.json ./
 COPY portal/.env.* ./
 COPY portal/src ./src
 COPY portal/public ./public
-RUN yarn install
 
 EXPOSE 8080
 
