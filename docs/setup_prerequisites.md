@@ -16,7 +16,7 @@ Before you can setup network next, you need the following things:
 * A maxmind account
 * Terraform installed on your development machine
 
-Once these prerequisites are met, actually setting up your network next instance is easy as it is all performed with terraform scripts.
+Once these prerequisites are met, actually setting up your network next instance is easy. It's all done automatically with terraform scripts.
 
 ## 1. Setup a VPN on Linode
 
@@ -152,7 +152,9 @@ Request increases to the following quotas:
 * Health checks -> 256
 * Regional managed instance groups (US-Central) -> 256
   
-The requests above are moderately aggressive and they will likely respond with lower numbers, accept the lower numbers. This process will likely take several days to complete. 
+The requests above are moderately aggressive and they will likely respond with lower numbers. Don't worry about it and just accept the lower numbers. You can always request another quota increase later.
+
+_This process will likely take several days to complete._
 
 ## 7. Setup an AWS account
 
@@ -283,7 +285,7 @@ These are two separate database subscriptions you'll need to purchase, each bill
 
 Before you get access to download these databases, your account will need to get approved by maxmind.com and this process can take a day or two.
 
-While you wait, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on when downloading the most recent versions of the maxmind databases on your behalf.
+While you wait, create a license key for maxmind.com and save it to ~/secrets/maxmind.txt. The network next backend will use this key later on to download the most recent versions of the maxmind databases on your behalf.
 
 <img width="1439" alt="image" src="https://github.com/networknext/next/assets/696656/ce46bed5-4e41-4b5e-9972-ef5e1e0e0123">
 
@@ -309,4 +311,4 @@ https://developer.hashicorp.com/terraform/install
 12. You have a monthly subscription to the GeoIP2-ISP database from maxmind
 13. You have installed terraform on your dev machine
 
-Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](docs/configure_network_next.md).
+Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](configure_network_next.md).

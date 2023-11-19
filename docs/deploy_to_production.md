@@ -91,3 +91,5 @@ gaffer@batman next % next relays
 Go to https://portal.[yourdomain.com]
 
 Your production environment is now online.
+
+Next step: [Tear down Staging and Production](tear_down_staging_and_production.md)

@@ -354,5 +354,5 @@ verifying client ... OK
 
 ```
 
-_You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
+_You are now ready to [setup prerequisites](setup_prerequisites.md)._
 

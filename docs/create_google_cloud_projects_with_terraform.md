@@ -45,4 +45,4 @@ Inside these projects service accounts have been created with appropriate permis
 
 The "Development", "Development Relays", "Staging", "Production" and "Production Relays" projects are at this point just a skeleton. No relays or backend services are running yet.
 
-(next step)
+Next step: [Setup semaphore ci to build and deploy artifacts](setup_semaphore_ci_to_build_and_deploy_artifacts.md)
