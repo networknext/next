@@ -15,6 +15,12 @@ git tag staging-001
 git push origin staging-001
 ```
 
+## 2. Wait for the semaphore ci deploy to complete
+
+Wait until "Deploy to Staging" is green in semaphore ci:
+
+<img width="622" alt="image" src="https://github.com/networknext/next/assets/696656/9d98c3f8-180d-4248-b2a6-ee799ff3668b">
+
 ## 2. Initialize the postgres database
 
 Go to https://console.google.com and navigate to "SQL" under the "Staging" project.
