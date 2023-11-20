@@ -25,13 +25,14 @@ To use Network Next, your game must have a client/server architecture and use UD
 10. [Deploy to Production](docs/deploy_to_production.md)
 11. [Tear down Staging and Production](docs/tear_down_staging_and_production.md)
 
+# Integrating Network Next with your game
+
+* [Native C++ SDK](docs/native_cpp_sdk.md)
+
 --------------------------------------------------------------
 
 ... _WIP BELOW HERE_ ...
 
-# Integrating Network Next with your game
-
-* [Native C++ SDK](docs/native_cpp_sdk.md)
 * [Unreal Engine 5 plugin](docs/native_ue5_plugin.md)
 
 # Operating Network Next
