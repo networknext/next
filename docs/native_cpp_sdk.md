@@ -2,94 +2,36 @@
 
 <br>
 
-# Deploy to Development
+# Native C++ SDK
 
-## 1. Deploy the backend
+## Introduction
 
-Create a new dev branch and tag it as "dev-001":
+The Network Next SDK integrates with your game's client and server, and takes over sending and receiving UDP packets on behalf of your game. 
 
-```console
-git checkout -b dev
-git push origin
-git tag dev-001
-git push origin dev-001
-```
+It supports the following platforms:
 
-## 2. Initialize the postgres database
+1. Windows
+2. Mac
+3. Linux
+4. iOS
+5. PS4
+6. PS5
+7. XBox One
+8. XBox Series X
+9. Nintendo Switch
 
-Go to https://console.google.com and go to "SQL" under the "Development" project.
+The SDK lives under the "sdk" directory of the main repo, and as part of the `next keygen` and `next config` steps the source code has been customized with your domain names and keypairs already.
 
-Click on the "postgres" database and click on "Import".
+When you run SDK examples, they will attempt to connect by default with your development backend instance. Make sure dev is up when you run the SDK examples. 
 
-In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
+To connect to prod instances, simply make sure that NEXT_DEVELOPMENT is not defined in your source code, and the SDK code will automatically point at your production backends. For security reasons, no private keys have been embedded in your source code, so you may need to ensure that NEXT_BUYER_PRIVATE_KEY is set on the command line ahead of time when you run the examples. You can find your per-environment private keys under the ~/secrets directory.
 
-## 3. Wait for SSL certificates to provision
+To get started, view the documentation for instructions on how to build the SDK, then view the example programs: [Network Next SDK Documentation](https://network-next-sdk.readthedocs-hosted.com/en/latest/index.html)
 
-Setup a new "dev" gcloud configuration on the command line, that points to your new "Development" project:
+## Datacenters
 
-`gcloud init`
+....
 
-Now you can check the status of your SSL certificates:
+## Autodetection support
 
-`gcloud compute ssl-certificates list`
-
-Wait until all certificates are in the "ACTIVE" state before going to the next step. This usually takes around one hour.
-
-## 4. Setup relays and database
-
-Run the terraform script:
-
-```console
-cd ~/next/terraform/dev/relays
-terraform init
-terraform apply
-```
-
-## 5. Commit the database changes to the backend
-
-```console
-cd ~/next
-next select dev
-next database
-next commit
-```
-
-## 6. Setup the relays
-
-```console
-next setup
-```
-
-Shortly after `next setup` completes, you should see that all relays are online:
-
-```console
-gaffer@batman next % next relays
-
-┌────────────────────────┬──────────────────────┬──────────────────┬──────────────────┬────────┐
-│ Name                   │ PublicAddress        │ InternalAddress  │ Id               │ Status │
-├────────────────────────┼──────────────────────┼──────────────────┼──────────────────┼────────┤
-│ akamai.atlanta         │ 74.207.225.61:40000  │                  │ 57eacb07e26af413 │ online │
-│ akamai.dallas          │ 69.164.203.153:40000 │                  │ acae7ede913e1c61 │ online │
-│ akamai.fremont         │ 45.56.92.195:40000   │                  │ 2c963c503cf8fbd5 │ online │
-│ akamai.newyork         │ 97.107.132.170:40000 │                  │ f779a2db87b24b89 │ online │
-│ google.dallas.1        │ 34.174.171.113:40000 │ 10.206.0.3:40000 │ 4dd2dfb17cbea566 │ online │
-│ google.iowa.1          │ 34.28.83.51:40000    │ 10.128.0.9:40000 │ b21f535edb4bdf65 │ online │
-│ google.iowa.2          │ 34.42.182.189:40000  │ 10.128.0.7:40000 │ dc42ad10d1f6bd49 │ online │
-│ google.iowa.3          │ 34.173.212.153:40000 │ 10.128.0.6:40000 │ dbccf67c4e490a19 │ online │
-│ google.iowa.6          │ 35.222.169.18:40000  │ 10.128.0.8:40000 │ 693255b1c056b806 │ online │
-│ google.losangeles.1    │ 34.94.80.8:40000     │ 10.168.0.3:40000 │ cc3fb71d77575835 │ online │
-│ google.ohio.1          │ 34.162.102.38:40000  │ 10.202.0.3:40000 │ 65cdca8e934c3f83 │ online │
-│ google.oregon.1        │ 35.233.229.153:40000 │ 10.138.0.3:40000 │ 6f5870a39d40e935 │ online │
-│ google.saltlakecity.1  │ 34.106.48.99:40000   │ 10.180.0.3:40000 │ f2007465ecfb8429 │ online │
-│ google.southcarolina.2 │ 35.243.195.72:40000  │ 10.142.0.3:40000 │ 28584bdf56d8f4e0 │ online │
-│ google.virginia.1      │ 35.199.4.54:40000    │ 10.150.0.3:40000 │ f5bc89cadf8dbdb1 │ online │
-└────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
-```
-
-## 5. View the portal
-
-Go to https://portal.[yourdomain.com]
-
-Your development environment is now online.
-
-Next step: [Deploy to Staging](deploy_to_staging.md)
+...
