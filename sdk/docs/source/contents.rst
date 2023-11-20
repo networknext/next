@@ -1,9 +1,9 @@
 Introduction
 ============
 
-Network Next works by taking over sending and receiving of UDP packets.
+Welcome to the Network Next SDK!
 
-To get started, build the SDK and check out the example programs to see how it's used.
+To get started, build the SDK and check out the example programs below.
 
 Read more 
 ---------
