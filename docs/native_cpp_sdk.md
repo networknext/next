@@ -6,7 +6,7 @@
 
 ## Introduction
 
-The Network Next SDK integrates with your game's client and server, and takes over sending and receiving UDP packets on behalf of your game. 
+The Network Next SDK integrates with your game's client and server and takes over sending and receiving UDP packets.
 
 It supports the following platforms:
 
@@ -20,13 +20,13 @@ It supports the following platforms:
 8. XBox Series X
 9. Nintendo Switch
 
-The SDK lives under the "sdk" directory of the main repo, and as part of the `next keygen` and `next config` steps the source code has been customized with your domain names and keypairs already.
+The SDK lives under the "sdk" directory of the main repo, and as part of the `next keygen` and `next config` steps the source code has already been customized with your domain names and keypairs.
 
-When you run SDK examples, they will attempt to connect with your development backend instance. Please make sure you have the dev environment up when you run the SDK examples. 
+When you run the SDK examples, they will attempt to connect with your development backend instance. Please make sure you have the dev environment up when you run the SDK examples. 
 
-To connect to your production backend, simply make sure that NEXT_DEVELOPMENT is not defined in your source code, and the code is already pointing at your production backend instance.
+To connect to your production backend, simply make sure that NEXT_DEVELOPMENT is not defined, and the code will automatically point at your production backend instance.
 
-For security reasons, no private keys have been embedded in your source code, so you may need to ensure that NEXT_BUYER_PRIVATE_KEY is set on the command line ahead of time when you run the server examples. Only the server requires the private key, and the clients already have the public key embedded (this is safe). You can find your per-environment private keys under the ~/secrets directory.
+For security reasons, no private keys have been embedded in your source code, so you may need to ensure that NEXT_BUYER_PRIVATE_KEY is set on the command line ahead of time when you run the server examples. Only the server requires the private key, and the clients already have the public key embedded (this is safe). You can find your per-environment buyer private keys under the ~/secrets directory.
 
 To get started, view the documentation for instructions on how to build the SDK, then study and run the example programs: [Network Next SDK Documentation](https://network-next-sdk.readthedocs-hosted.com/en/latest/index.html)
 
