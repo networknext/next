@@ -52,7 +52,7 @@ Later on, we're going to secure your network next instance such that the REST AP
 
 Create a domain name using a domain name registrar, for example https://namecheap.com
 
-This domain name will not be player facing, but it will be visible to your organization when they go to the network next portal (eg. https://portal.[yourdomain])
+This domain name will not be player facing, but it will be visible to your organization when they go to the network next portal (eg. https://portal.[yourdomain.com])
 
 ## 3. Import your new domain into cloudflare
 
