@@ -25,9 +25,7 @@ Wait until "Deploy to Staging" is green in semaphore ci:
 
 Go to https://console.cloud.google.com and navigate to "SQL" under the "Staging" project.
 
-Click on the "postgres" database and click on "Import".
-
-Import two files into "database", in order:
+Click on the "postgres" database and import two files into "database", in order:
 
 1. "[company_name]_network_next_sql_files/create.sql"
 2. "[company_name]_network_next_sql_files/staging.sql"
