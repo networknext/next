@@ -126,7 +126,7 @@ gaffer@batman next % next relays
 
 ## 9. View the portal
 
-Go to https://portal.[yourdomain.com]
+Go to https://portal-dev.[yourdomain.com]
 
 (portal screenshot)
 
