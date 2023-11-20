@@ -53,7 +53,7 @@ By default it should contain something like this:
 
 7. Set *google_billing_account* to one of your linked billing accounts in google cloud. Run `gcloud billing accounts list` to list the set of billing accounts linked to your google cloud account. There is usually only one.
 
-8. Set *google_org_id" to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
+8. Set *google_org_id* to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
 
 9. Set *ssh_key* to the name of the ssh keypair to use when accessing relays. By default, ~/.ssh/id_rsa keypair is used when SSHing into relays. You can change this here by generating your own unique key under the .ssh directory.
 
