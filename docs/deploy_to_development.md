@@ -29,7 +29,7 @@ Wait until "Deploy to Development" turns green. This can take 10-15 minutes on t
 
 Go to https://console.google.com and go to "SQL" under the "Development" project.
 
-Click on the "postgres" database and click on "Import".
+Click on the "postgres" database then click on "Import".
 
 In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
