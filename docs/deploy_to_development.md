@@ -15,15 +15,27 @@ git tag dev-001
 git push origin dev-001
 ```
 
-## 2. Initialize the postgres database
+## 2. Wait for the deploy to finish
 
-Go to https://console.google.com and go to "SQL" under the "Development" project.
+Log in to https://semaphoreci.com
 
-Click on the "postgres" database and click on "Import".
+You should see a build job run on your tag, then transition to "Upload Artifacts", and then "Deploy to Development".
+
+<img width="895" alt="image" src="https://github.com/networknext/next/assets/696656/f74cd3dc-8765-4672-bced-3d5f38098f79">
+
+Wait until "Deploy to Development" turns green. This can take 10-15 minutes on the first deploy.
+
+## 3. Initialize the postgres database
+
+Go to [https://console.google.com](https://console.cloud.google.com/) and go to "SQL" under the "Development" project.
+
+<img width="656" alt="image" src="https://github.com/networknext/next/assets/696656/41d5e129-9839-45e0-a95c-a6e80d1a0800">
+
+Click on the "postgres" database then click on "Import".
 
 In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
-## 3. Wait for SSL certificates to provision
+## 4. Wait for SSL certificates to provision
 
 Setup a new "dev" gcloud configuration on the command line, that points to your new "Development" project:
 
@@ -35,7 +47,30 @@ Now you can check the status of your SSL certificates:
 
 Wait until all certificates are in the "ACTIVE" state before going to the next step. This usually takes around one hour.
 
-## 4. Setup relays and database
+## 5. Select dev environment and ping it
+
+```console
+next select dev
+next ping
+```
+
+You should see a "pong" response from the backend, matching the tag you deployed to trigger the build:
+
+```console
+gaffer@batman next % next ping
+
+pong [dev-633]
+```
+
+If `next select dev` fails, wait for DNS propagation to complete and try again.
+
+## 5. Initialize the gcloud default service account
+
+Terraform is configured to store state in a google cloud bucket. To give it permission to do this, setup the application default login like so:
+
+`gcloud auth application-default login`
+
+## 6. Setup relays and database
 
 Run the terraform script:
 
@@ -45,16 +80,19 @@ terraform init
 terraform apply
 ```
 
-## 5. Commit the database changes to the backend
+## 7. Commit the database changes to the backend
 
 ```console
 cd ~/next
-next select dev
 next database
 next commit
 ```
 
-## 6. Setup the relays
+## 8. Setup the relays
+
+Connect to the OpenVPN instance you setup. This is necessary for the setup script to be able to SSH into the relays.
+
+Run the relay setup script:
 
 ```console
 next setup
@@ -86,10 +124,12 @@ gaffer@batman next % next relays
 └────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
 ```
 
-## 5. View the portal
+## 9. View the portal
 
-Go to https://portal.[yourdomain.com]
+Go to https://portal-dev.[yourdomain.com]
 
-Your development environment is now online.
+<img width="1600" alt="image" src="https://github.com/networknext/next/assets/696656/b96ad772-fc49-4416-98b4-065ddd28c622">
+
+Congratulations! Your development environment is now online!
 
 Next step: [Deploy to Staging](deploy_to_staging.md)

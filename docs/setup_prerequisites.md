@@ -66,7 +66,7 @@ Go to https://cloud.google.com/ and sign up to create a new google account. It m
 
 Once the account is setup, click on this link and create a test project in the google cloud console:
 
-[https://console.google.com](https://developers.google.com/workspace/guides/create-project)
+https://developers.google.com/workspace/guides/create-project
 
 <img width="587" alt="image" src="https://github.com/networknext/next/assets/696656/6cfdf331-3856-4e53-93d0-9b2b56902cbd">
 

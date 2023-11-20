@@ -17,11 +17,11 @@ git push origin prod-001
 
 ## 2. Initialize the postgres database
 
-Go to https://console.google.com and go to "SQL" under the "Production" project.
+Go to https://console.cloud.google.com and go to "SQL" under the "Production" project.
 
 Click on the "postgres" database and click on "Import".
 
-In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
+In the import dialog, import the file "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
 ## 3. Wait for SSL certificates to provision
 
@@ -55,6 +55,8 @@ next commit
 ```
 
 ## 6. Setup the relays
+
+Connect to OpenVPN, then run:
 
 ```console
 next setup
@@ -90,6 +92,8 @@ gaffer@batman next % next relays
 
 Go to https://portal.[yourdomain.com]
 
-Your production environment is now online.
+<img width="1547" alt="image" src="https://github.com/networknext/next/assets/696656/4e4ae481-5227-4176-897e-60f2cc17704f">
+
+Congratulations! Your production environment is now online!
 
 Next step: [Tear down Staging and Production](tear_down_staging_and_production.md)

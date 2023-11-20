@@ -15,15 +15,20 @@ git tag staging-001
 git push origin staging-001
 ```
 
+## 2. Wait for the semaphore ci deploy to complete
+
+Wait until "Deploy to Staging" is green in semaphore ci:
+
+<img width="622" alt="image" src="https://github.com/networknext/next/assets/696656/9d98c3f8-180d-4248-b2a6-ee799ff3668b">
+
 ## 2. Initialize the postgres database
 
-Go to https://console.google.com and navigate to "SQL" under the "Staging" project.
+Go to https://console.cloud.google.com and navigate to "SQL" under the "Staging" project.
 
-Click on the "postgres" database and click on "Import".
+Click on the "postgres" database and import two files into "database", in order:
 
-In the import dialog, enter the filename to import as "[company_name]_network_next_sql_files/create.sql" and set the database to "database".
-
-Wait for the import to complete, then import "[company_name]_network_next_sql_files/staging.sql" to the same database.
+1. "[company_name]_network_next_sql_files/create.sql"
+2. "[company_name]_network_next_sql_files/staging.sql"
 
 ## 3. Wait for SSL certificates to provision
 
@@ -39,18 +44,18 @@ Wait until all certificates are in the "ACTIVE" state before going to the next s
 
 ## 4. Verify that all services are green
 
-Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging".
+Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging" project.
 
-You should see all services up and running and green.
+You should see all services up and running and green:
 
-If some services are not able to allocate all the VMs they need, you may need to increase quotes.
-
-In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete.
+<img width="960" alt="image" src="https://github.com/networknext/next/assets/696656/e190ae8f-2bf1-4ec3-bc1d-ef7c7f630797">
 
 ## 5. View the portal
 
 Go to https://portal-staging.[yourdomain.com]
 
-Your staging environment is now online with 1000 simulated relays, 100k simulated servers and 100k simulated sessions (CCU).
+<img width="1547" alt="image" src="https://github.com/networknext/next/assets/696656/3b7ea95b-6c8d-4422-b2a6-519450738b5f">
+
+Congratulations! Your staging environment is now online with 1000 simulated relays, 100k simulated servers and 100k simulated sessions!
 
 Next step: [Deploy to Production](deploy_to_production.md)

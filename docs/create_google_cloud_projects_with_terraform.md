@@ -33,7 +33,7 @@ terraform apply
 
 This step can take around 5-10 minutes to complete.
 
-Once the projects are created, go to https://console.google.com and click on the project selector at the top-left of the screen:
+Once the projects are created, go to https://console.cloud.google.com and click on the project selector at the top-left of the screen:
 
 ![image](https://github.com/networknext/next/assets/696656/0ecc1ac6-f315-4348-95cc-63ee8669d25b)
 
