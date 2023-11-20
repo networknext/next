@@ -41,9 +41,7 @@ terraform destroy
 
 Do _NOT_ tear the backend down before you destroy the relays, otherwise you will be stuck manually deleting relay resources from google cloud, AWS and akamai accounts. I've been there, and it's very painful.
 
-Congratulations. You have configured and setup your own instance of Network Next. You have successfully deployed dev, staging and production environments, and made sure that you have sufficient google cloud quota to support at least 1M CCU going through your production backend.
-
-[Return to main documentation](../README.md)
+Return to main documentation](../README.md)
 
 
 
