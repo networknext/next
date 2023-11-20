@@ -41,7 +41,7 @@ terraform destroy
 
 Do _NOT_ tear the backend down before you destroy the relays, otherwise you will be stuck manually deleting relay resources from google cloud, AWS and akamai accounts. I've been there, and it's very painful.
 
-Return to main documentation](../README.md)
+[Return to main documentation](../README.md)
 
 
 
