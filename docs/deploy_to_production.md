@@ -56,6 +56,8 @@ next commit
 
 ## 6. Setup the relays
 
+Connect to your OpenVPN instance, then run:
+
 ```console
 next setup
 ```
@@ -89,6 +91,8 @@ gaffer@batman next % next relays
 ## 5. View the portal
 
 Go to https://portal.[yourdomain.com]
+
+(screenshot)
 
 Your production environment is now online.
 
