@@ -19,11 +19,11 @@ git push origin dev-001
 
 Log in to https://semaphoreci.com
 
-You should see your build job run on your tag, then transition to uploading artifacts, and then deploying to development.
+You should see a build job run on your tag, then transition to "Upload Artifacts", and then "Deploy to Development".
 
 <img width="895" alt="image" src="https://github.com/networknext/next/assets/696656/f74cd3dc-8765-4672-bced-3d5f38098f79">
 
-Once "Deploying to Development" turns green you are ready to go to the next step. This can take 10-15 minutes on the first deploy.
+Wait until "Deploy to Development" turns green. This can take 10-15 minutes on the first deploy.
 
 ## 3. Initialize the postgres database
 
