@@ -43,7 +43,7 @@
 #define NEXT_RELAY_BACKEND_PUBLIC_KEY  NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY
 #endif // #if !NEXT_DEVELOPMENT
 
-#define NEXT_CONFIG_BUCKET_NAME "alocasia_network_next_sdk_config"
+#define NEXT_CONFIG_BUCKET_NAME "dogfood_network_next_sdk_config"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0

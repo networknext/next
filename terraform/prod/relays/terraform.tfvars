@@ -6,7 +6,7 @@ vpn_address                 = "45.79.157.168"
 ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 ssh_private_key_file        = "~/.ssh/id_rsa"
 relay_version               = "relay-release-1.0.0"
-relay_artifacts_bucket      = "alocasia_network_next_relay_artifacts"
+relay_artifacts_bucket      = "dogfood_network_next_relay_artifacts"
 relay_backend_public_key    = "k4AuJrGEbDFpI3quMgL0jOLEUmeeDmEZUTEQz7lI/G4="
 relay_backend_url           = "relay.virtualgo.net"
 

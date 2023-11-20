@@ -59,7 +59,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "alocasia_network_next_terraform"
+    bucket  = "dogfood_network_next_terraform"
     prefix  = "production"
   }
 }
