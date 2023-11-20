@@ -15,7 +15,17 @@ git tag dev-001
 git push origin dev-001
 ```
 
-## 2. Initialize the postgres database
+## 2. Wait for the build and deploy to complete on semaphore ci
+
+Log in to https://semaphoreci.com
+
+You should see your build job run on your tag, then transition to uploading artifacts, and then deploying to development.
+
+<img width="895" alt="image" src="https://github.com/networknext/next/assets/696656/f74cd3dc-8765-4672-bced-3d5f38098f79">
+
+Once "Deploying to Development" turns green you are ready to go to the next step. This can take 10-15 minutes on the first deploy.
+
+## 3. Initialize the postgres database
 
 Go to https://console.google.com and go to "SQL" under the "Development" project.
 
@@ -23,7 +33,7 @@ Click on the "postgres" database and click on "Import".
 
 In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
-## 3. Wait for SSL certificates to provision
+## 4. Wait for SSL certificates to provision
 
 Setup a new "dev" gcloud configuration on the command line, that points to your new "Development" project:
 
@@ -35,7 +45,7 @@ Now you can check the status of your SSL certificates:
 
 Wait until all certificates are in the "ACTIVE" state before going to the next step. This usually takes around one hour.
 
-## 4. Setup relays and database
+## 5. Setup relays and database
 
 Run the terraform script:
 
@@ -45,7 +55,7 @@ terraform init
 terraform apply
 ```
 
-## 5. Commit the database changes to the backend
+## 6. Commit the database changes to the backend
 
 ```console
 cd ~/next
@@ -54,7 +64,7 @@ next database
 next commit
 ```
 
-## 6. Setup the relays
+## 7. Setup the relays
 
 ```console
 next setup
@@ -86,10 +96,12 @@ gaffer@batman next % next relays
 └────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
 ```
 
-## 5. View the portal
+## 8. View the portal
 
 Go to https://portal.[yourdomain.com]
 
-Your development environment is now online.
+
+
+Congratulations! Your development environment is now online!
 
 Next step: [Deploy to Staging](deploy_to_staging.md)
