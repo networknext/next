@@ -46,11 +46,13 @@ Wait until all certificates are in the "ACTIVE" state before going to the next s
 
 Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging".
 
-You should see all services up and running and green.
+You should see all services up and running and green:
 
-If some services are not able to allocate all the VMs they need, you may need to increase quotes.
+<img width="960" alt="image" src="https://github.com/networknext/next/assets/696656/e190ae8f-2bf1-4ec3-bc1d-ef7c7f630797">
 
-In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete.
+If some services are not able to allocate all the VMs they need they will be stuck with a spinning arrow to the left of the instance group, indicating that they are trying to create VMs. This means you need to increase google cloud quotas.
+
+In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete depending on the speed of google cloud support.
 
 ## 5. View the portal
 
