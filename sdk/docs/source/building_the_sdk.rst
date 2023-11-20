@@ -2,7 +2,7 @@
 Building the SDK
 ================
 
-To build the example programs, see the instructions below:
+To build the example programs, see the instructions for your platform below:
 
 Windows
 -------
