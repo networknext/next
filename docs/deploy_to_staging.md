@@ -23,7 +23,7 @@ Wait until "Deploy to Staging" is green in semaphore ci:
 
 ## 2. Initialize the postgres database
 
-Go to https://console.google.com and navigate to "SQL" under the "Staging" project.
+Go to https://console.cloud.google.com and navigate to "SQL" under the "Staging" project.
 
 Click on the "postgres" database and click on "Import".
 
