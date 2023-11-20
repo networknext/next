@@ -128,7 +128,7 @@ gaffer@batman next % next relays
 
 Go to https://portal-dev.[yourdomain.com]
 
-(portal screenshot)
+<img width="1903" alt="image" src="https://github.com/networknext/next/assets/696656/b5f925a3-d080-4137-86b6-6734466a1e96">
 
 Congratulations! Your development environment is now online!
 
