@@ -92,7 +92,7 @@ gaffer@batman next % next relays
 
 Go to https://portal.[yourdomain.com]
 
-(screenshot)
+<img width="1547" alt="image" src="https://github.com/networknext/next/assets/696656/4e4ae481-5227-4176-897e-60f2cc17704f">
 
 Congratulations! Your production environment is now online!
 
