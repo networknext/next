@@ -29,6 +29,8 @@ Wait until "Deploy to Development" turns green. This can take 10-15 minutes on t
 
 Go to [https://console.google.com](https://console.cloud.google.com/) and go to "SQL" under the "Development" project.
 
+<img width="656" alt="image" src="https://github.com/networknext/next/assets/696656/41d5e129-9839-45e0-a95c-a6e80d1a0800">
+
 Click on the "postgres" database then click on "Import".
 
 In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
