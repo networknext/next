@@ -38,7 +38,7 @@ Build the SDK:
 
 .. code-block:: console
 
-	$ make
+	$ make -j
 
 Run the unit tests:
 
@@ -67,7 +67,7 @@ Build the SDK:
 
 .. code-block:: console
 
-	$ make
+	$ make -j
 
 Run the unit tests:
 
