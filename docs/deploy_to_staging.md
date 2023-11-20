@@ -50,14 +50,12 @@ You should see all services up and running and green:
 
 <img width="960" alt="image" src="https://github.com/networknext/next/assets/696656/e190ae8f-2bf1-4ec3-bc1d-ef7c7f630797">
 
-If some services are not able to allocate all the VMs they need they will be stuck with a spinning arrow to the left of the instance group, indicating that the instance group is still trying to create VMs. This means you need to increase google cloud quotas.
-
-In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete depending on the speed of google cloud support.
-
 ## 5. View the portal
 
 Go to https://portal-staging.[yourdomain.com]
 
-Your staging environment is now online with 1000 simulated relays, 100k simulated servers and 100k simulated sessions (CCU).
+<img width="1547" alt="image" src="https://github.com/networknext/next/assets/696656/3b7ea95b-6c8d-4422-b2a6-519450738b5f">
+
+Congratulations! Your staging environment is now online with 1000 simulated relays, 100k simulated servers and 100k simulated sessions!
 
 Next step: [Deploy to Production](deploy_to_production.md)
