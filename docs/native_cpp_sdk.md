@@ -48,8 +48,10 @@ For Multiplay, you must ask them to pass in "cloud" when they are running your g
 
 Configuration that drives autodetect is defined in text files under "config".
 
-Most of these files are automatically generated when you run `next config`. They can be uploaded to Google Cloud SDK via semaphore CI, using the "Upload Config" job.
-
 When you run `next config` the code walks the set of AWS and Google Cloud datacenters available, and updates the config/amazon.txt and config/google.txt respectively.
 
 For multiplay, you need to manually determine the set of providers that multiplay is using (a starter set is included in config/multiplay.txt), this file acts as a mapping from the DNS results to the provider name, eg. "multiplay.[cityname]" turns into "inap.[cityname]" when we see "internap", "inap" or "INAP" in the DNS query results.
+
+They can be uploaded to Google Cloud Storage via semaphore CI, using the "Upload Config" job whenever they change.
+
+When the SDK runs, it downloads the config files on startup from Google Cloud Storage, so if you need to make changes to these files in production, they will become active to clients and servers running in production almost instantly, so you can adjust the set of datacenters available dynamically, without needing to deploy any code changes.
