@@ -54,9 +54,15 @@ next select dev
 next ping
 ```
 
-You should see a "pong" response from the backend, matching the tag you deployed to trigger the build. 
+You should see a "pong" response from the backend, matching the tag you deployed to trigger the build:
 
-If `next select dev` fails, wait another hour for DNS propagation to complete and try again until it works.
+```console
+gaffer@batman next % next ping
+
+pong [dev-633]
+```
+
+If `next select dev` fails, wait for DNS propagation to complete and try again.
 
 ## 5. Setup relays and database
 
