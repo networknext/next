@@ -44,7 +44,7 @@ Wait until all certificates are in the "ACTIVE" state before going to the next s
 
 ## 4. Verify that all services are green
 
-Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging".
+Go to https://console.google.com and navigate to "Compute Engine -> Instance Groups" under the "Staging" project.
 
 You should see all services up and running and green:
 
