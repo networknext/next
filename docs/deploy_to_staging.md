@@ -27,7 +27,7 @@ Go to https://console.cloud.google.com and navigate to "SQL" under the "Staging"
 
 Click on the "postgres" database and click on "Import".
 
-You need to import two files to "database", in order:
+Import two files into "database", in order:
 
 1. "[company_name]_network_next_sql_files/create.sql"
 2. "[company_name]_network_next_sql_files/staging.sql"
