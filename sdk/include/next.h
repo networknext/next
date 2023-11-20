@@ -30,10 +30,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#ifndef NEXT_PACKET_TAGGING
-#define NEXT_PACKET_TAGGING                                       1
-#endif // #if NEXT_PACKET_TAGGING
-
 #if !defined(NEXT_DEVELOPMENT)
 
     #define NEXT_VERSION_FULL                               "1.0.0"
@@ -261,6 +257,8 @@ struct next_config_t
     int socket_receive_buffer_size;
     bool disable_network_next;
     bool disable_autodetect;
+    bool high_priority_client_thread;
+    bool high_priority_server_thread;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( struct next_config_t * config );

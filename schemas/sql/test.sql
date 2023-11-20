@@ -38,8 +38,6 @@ INSERT INTO sellers(seller_name, seller_code) VALUES('Tencent', 'tencent');
 INSERT INTO sellers(seller_name, seller_code) VALUES('VULTR', 'vultr');
 INSERT INTO sellers(seller_name, seller_code) VALUES('Yandex', 'yandex');
 
--- todo: bring in some datacenter definitions for google (see below...)
-
 -- enable datacenters for buyers
 
 INSERT INTO buyer_datacenter_settings VALUES(

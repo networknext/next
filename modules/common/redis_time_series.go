@@ -339,8 +339,12 @@ func (watcher *RedisTimeSeriesWatcher) watcherThread(ctx context.Context) {
 					data := cmds[index].(*redis.TSTimestampValueSliceCmd).Val()
 
 					dataLength := len(data)
-					firstTimestamp := uint64(data[0].Timestamp)
-					lastTimestamp := uint64(data[dataLength-1].Timestamp)
+					firstTimestamp := endTimestamp
+					lastTimestamp := endTimestamp
+					if dataLength > 0 {
+						firstTimestamp = uint64(data[0].Timestamp)
+						lastTimestamp = uint64(data[dataLength-1].Timestamp)
+					}
 
 					timestamps[i] = make([]uint64, 0)
 					values[i] = make([]float64, 0)

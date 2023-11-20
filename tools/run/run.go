@@ -218,6 +218,8 @@ func main() {
 		redis_time_series()
 	} else if command == "load-relay-manager" {
 		load_relay_manager()
+	} else if command == "cleanup" {
+		cleanup()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -609,4 +611,8 @@ func redis_time_series() {
 
 func load_relay_manager() {
 	bash("go run tools/load_relay_manager/load_relay_manager.go")
+}
+
+func cleanup() {
+	bash("go run tools/cleanup/cleanup.go")
 }

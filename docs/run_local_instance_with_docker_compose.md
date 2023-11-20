@@ -8,7 +8,9 @@ You can run a Network Next test environment locally with docker compose on any O
 
 1. Install Docker from http://docker.com
 
-2. Change into the 'next' directory at the command line where you cloned the source
+2. Change into the directory where you cloned the source
+
+   `cd ~/next`
 
 3. Build the system
 
@@ -20,16 +22,16 @@ You can run a Network Next test environment locally with docker compose on any O
 
 5. View the portal
 
-_todo: this portion is not ready yet_
-
 Navigate to the network next portal at http://127.0.0.1:8080
 
-You should see (todo: image)
+It will take a few minutes for the system to fully initialize. Once everything has started up, you should see something like this:
 
-_todo: this portion is not ready yet_
+<img width="1582" alt="image" src="https://github.com/networknext/next/assets/696656/0567f170-0beb-4e3b-bc33-6cffcc15d133">
+
+Congratulations! Network Next up is up and running in docker!
 
 6. Take the system down
 
    `docker compose down`
 
-_You are now ready to [setup for development](setup_for_development.md)._
+_You are now ready to [setup your local machine for development](setup_your_local_machine_for_development.md)._

@@ -394,57 +394,6 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
     }
 }
 
-void next_platform_socket_send_packets( next_platform_socket_t * socket, const next_address_t * to, void ** packet_data, int * packet_bytes, int num_packets )
-{
-    next_assert( socket );
-    next_assert( to );
-    next_assert( packet_data );
-    next_assert( packet_bytes );
-    next_assert( num_packets >= 0 );
-
-    if ( num_packets == 0 )
-        return;
-
-    iovec * msg = (iovec*) alloca( sizeof(iovec) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        msg[i].iov_base = packet_data[i];
-        msg[i].iov_len = packet_bytes[i];
-    }
-
-    sockaddr_in * socket_address = (sockaddr_in*) alloca( sizeof(sockaddr_in) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        next_assert( to[i].type == NEXT_ADDRESS_IPV4 );                 // note: ipv6 not supported
-        memset( &socket_address[i], 0, sizeof(sockaddr_in) );
-        socket_address[i].sin_family = AF_INET;
-        socket_address[i].sin_addr.s_addr = ( ( (uint32_t) to[i].data.ipv4[0] ) )        | 
-                                            ( ( (uint32_t) to[i].data.ipv4[1] ) << 8 )   | 
-                                            ( ( (uint32_t) to[i].data.ipv4[2] ) << 16 )  | 
-                                            ( ( (uint32_t) to[i].data.ipv4[3] ) << 24 );
-        socket_address[i].sin_port = next_platform_htons( to->port );
-    }
-
-    mmsghdr * packet_array = (mmsghdr*) alloca( sizeof(mmsghdr) * num_packets );
-
-    for ( int i = 0; i < num_packets; ++i )
-    {
-        packet_array[i].msg_hdr.msg_name = &socket_address[i];
-        packet_array[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
-        packet_array[i].msg_hdr.msg_iov = &msg[i];
-        packet_array[i].msg_hdr.msg_iovlen = 1;
-    }
-
-    int result = sendmmsg( socket->handle, packet_array, num_packets, 0 );
-    
-    if ( result == -1 )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "sendmmsg failed to send packets" );
-    }
-}
-
 int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_address_t * from, void * packet_data, int max_packet_size )
 {
     next_assert( socket );

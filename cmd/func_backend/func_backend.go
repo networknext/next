@@ -40,12 +40,12 @@ func Base64String(value string) []byte {
 	return data
 }
 
-var TestRelayPublicKey = Base64String("JNH7qYX8mOPYy4enyN9ozjCL+0tCwACaiChfH3oP0Ek=")
-var TestRelayPrivateKey = Base64String("8qlMIoJNMxeLMJaj97E95vEAZhLRc6cmK/CtI3p3N7w=")
-var TestRelayBackendPublicKey = Base64String("wlF0M3FNnSJ15rTs1inaiq1FTPvcuFKovNqoln3LE3U=")
-var TestRelayBackendPrivateKey = Base64String("TwbgEWaZqOFK66HhKWy1fRROIAXlkZgWHWU/T0avRVM=")
-var TestServerBackendPublicKey = Base64String("3/KP8JpMzWGM2pZ7ufqB94zEtnQ0IBG3o5ncDPXjIDY=")
-var TestServerBackendPrivateKey = Base64String("d5pDLX76lhbv2E+4gLOFiA7h5+up8DeIhHu4ZEtzYhzf8o/wmkzNYYzalnu5+oH3jMS2dDQgEbejmdwM9eMgNg==")
+var TestRelayPublicKey = Base64String("/uUJOkyWefo3mjqseLDlexsPH9S9pD13OXrD8u6nIVw=")
+var TestRelayPrivateKey = Base64String("nqRXN42HoyZaPTrcCz69bu2BmjBheCpEDm21RPsW7CE=")
+var TestRelayBackendPublicKey = Base64String("/wgsh7bGHaIfmYvtBujyz97AOEQqYHMX4PEEEBqlayI=")
+var TestRelayBackendPrivateKey = Base64String("uGx6w8GEcQW2YpPm61xxLISOMVUkUkZPBQBr1ddFUDY=")
+var TestServerBackendPublicKey = Base64String("3Rec15Gs08vNZo5+Itf4SJFsVqNgXxVwJOh+DLtxylI=")
+var TestServerBackendPrivateKey = Base64String("xqbWZpOm+Hl/zuTEY85BdeGi8i8V3XJEd5qkS7s0PXPdF5zXkazTy81mjn4i1/hIkWxWo2BfFXAk6H4Mu3HKUg==")
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -946,7 +946,7 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	backend.relayManager = common.CreateRelayManager(true)
+	backend.relayManager = common.CreateRelayManager(false) // IMPORTANT: Create without history
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
 		backend.mode = BACKEND_MODE_FORCE_DIRECT

@@ -8,11 +8,11 @@
 
       <div>
         <div class="d-xxl-none">
-          <router-link class="navbar-brand" @click="nav_map()" to="/map"><img src="@/assets/n_black.png" style="width: 26.4; height:30px;"/></router-link>
+          <router-link class="navbar-brand" @click="nav_sessions()" to="/sessions"><img src="@/assets/n_black.png" style="width: 26.4; height:30px;"/></router-link>
           <SessionCounts/>
         </div>
         <div class="d-none d-xxl-block">
-          <router-link class="navbar-brand" @click="nav_map()" to="/map"><img src="@/assets/logo_black.png" style="width: 256.526946075px; height:30px;"/></router-link>
+          <router-link class="navbar-brand" @click="nav_sessions()" to="/sessions"><img src="@/assets/logo_black.png" style="width: 256.526946075px; height:30px;"/></router-link>
         </div>
       </div>
 
@@ -28,10 +28,6 @@
       <div class="navbar-collapse" :class="!this.visible?'collapse':''" id="navbarSupportedContent">
 
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
-          <li class="nav-item">
-            <router-link class="nav-link" @click="nav_map()" to="/map">Map</router-link>
-          </li>
 
           <li class="nav-item">
             <router-link class="nav-link" @click="nav_sessions()" to="/sessions">Sessions</router-link>
@@ -95,7 +91,7 @@ export default {
       visible: false,
       page: 0,
       num_pages: 1,
-      current_view: 'map',
+      current_view: 'sessions',
     }
   },
 

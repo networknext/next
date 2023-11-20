@@ -308,40 +308,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // socket is blocking with no timeout
     }
 
-#if NEXT_PACKET_TAGGING
-
-    // tag packet as low latency
-
-    if ( enable_packet_tagging )
-    {
-        if ( address->type == NEXT_ADDRESS_IPV6 )
-        {
-            #if defined(IPV6_TCLASS)
-            int tos = 0xA0;
-            if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv6)" );
-            }
-            #endif
-        }
-        else
-        {
-            #if defined(IP_TOS)
-            int tos = 0xA0;
-            if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)" );
-            }
-            #endif
-        }
-    }
-
-#else // #if NEXT_PACKET_TAGGING
-
-    (void) enable_packet_tagging;
-
-#endif // #if NEXT_PACKET_TAGGING
-
     return socket;
 }
 

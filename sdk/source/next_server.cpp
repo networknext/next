@@ -391,16 +391,16 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         return;
     }
 
+    server->resolve_hostname_start_time = next_platform_time();
+    server->resolving_hostname = true;
+    server->resolve_hostname_finished = false;
+
     server->resolve_hostname_thread = next_platform_thread_create( server->context, next_server_internal_resolve_hostname_thread_function, server );
     if ( !server->resolve_hostname_thread )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname thread" );
         return;
     }
-
-    server->resolve_hostname_start_time = next_platform_time();
-    server->resolving_hostname = true;
-    server->resolve_hostname_finished = false;
 }
 
 void next_server_internal_autodetect( next_server_internal_t * server )
@@ -411,15 +411,15 @@ void next_server_internal_autodetect( next_server_internal_t * server )
         return;
     }
 
+    server->autodetect_start_time = next_platform_time();
+    server->autodetecting = true;
+
     server->autodetect_thread = next_platform_thread_create( server->context, next_server_internal_autodetect_thread_function, server );
     if ( !server->autodetect_thread )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create autodetect thread" );
         return;
     }
-
-    server->autodetect_start_time = next_platform_time();
-    server->autodetecting = true;
 }
 
 void next_server_internal_initialize( next_server_internal_t * server )
@@ -659,6 +659,10 @@ void next_server_internal_destroy( next_server_internal_t * server )
     if ( server->resolve_hostname_thread )
     {
         next_platform_thread_destroy( server->resolve_hostname_thread );
+    }
+    if ( server->autodetect_thread )
+    {
+        next_platform_thread_destroy( server->autodetect_thread );
     }
     if ( server->command_queue )
     {
@@ -2592,9 +2596,9 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 {
     next_assert( context );
 
-    double start_time = next_platform_time();
-
     next_server_internal_t * server = (next_server_internal_t*) context;
+
+    double start_time = next_platform_time();
 
     const char * hostname = next_global_config.server_backend_hostname;
     const char * port = NEXT_SERVER_BACKEND_PORT;
@@ -3554,13 +3558,13 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
-    // todo: set this to be disabled by default
-    /*
-    if ( next_platform_thread_high_priority( server->thread ) )
+    if ( next_global_config.high_priority_server_thread )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server increased thread priority" );
+        if ( next_platform_thread_high_priority( server->thread ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server thread set to high priority" );
+        }
     }
-    */
 
     server->pending_session_manager = next_proxy_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )

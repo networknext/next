@@ -1,12 +1,19 @@
-FROM node:lts-alpine
+# syntax=docker/dockerfile:1
 
-RUN npm install -g http-server
+FROM node
 
 WORKDIR /app
+
 COPY portal/package*.json ./
+
 RUN npm install
-COPY portal/ .
-RUN npm run build-local
+
+COPY portal/*.js ./
+COPY portal/*.json ./
+COPY portal/.env.* ./
+COPY portal/src ./src
+COPY portal/public ./public
 
 EXPOSE 8080
-CMD [ "http-server", "dist" ]
+
+CMD [ "yarn", "serve-local" ]

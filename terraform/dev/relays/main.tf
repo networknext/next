@@ -26,14 +26,14 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "alocasia_network_next_terraform"
+    bucket  = "dogfood_network_next_terraform"
     prefix  = "dev_relays"
   }
 }
 
 provider "networknext" {
   hostname = "https://api-dev.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTY5OTkwMTU2Mn0.gIIQj0RXXg4E7eDyAXZeXt8cgX4ecVU5a85YorBg2ZM"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDUwMTg0M30.Gcu5VfVL4RmYQNGlTm8D6PjvzhjEEQt0HkM6eBBfqzQ"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ locals {
 module "amazon_relays" {
 
   # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
-  # So for AWS, see sellers/amazon.go for the set of dev relays -> amazon/generated.tf
+  # Please edit sellers/amazon.go for the set of dev relays, then run "next config" to generate amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
