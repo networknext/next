@@ -56,7 +56,7 @@ next commit
 
 ## 6. Setup the relays
 
-Connect to your OpenVPN instance, then run:
+Connect to your OpenVPN server, then run:
 
 ```console
 next setup
