@@ -354,5 +354,5 @@ verifying client ... OK
 
 ```
 
-_You are now ready to [setup prerequisites](setup_prerequisites.md)._
+Next step: [Setup prerequisites](setup_prerequisites.md).
 
