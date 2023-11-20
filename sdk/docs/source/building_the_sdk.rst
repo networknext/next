@@ -2,8 +2,6 @@
 Building the SDK
 ================
 
-Official binaries are included the "lib" directory.
-
 To build the example programs, see the instructions below:
 
 Windows
@@ -15,7 +13,7 @@ Generate a visual studio solution by running premake at the root directory of th
 
 .. code-block:: console
 
-    $ premake5 vs2017
+    $ premake5 vs2019
 
 Open the generated solution file under the "visualstudio" directory and build all.
 

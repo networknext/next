@@ -1,11 +1,25 @@
-.. include:: introduction.rst
+Building the SDK
+================
+
+To build the example programs, see the instructions below:
+
+Windows
+-------
+
+Install *premake5* from https://premake.github.io/download.html
+
+Generate a visual studio solution by running premake at the root directory of the SDK:
+
+.. code-block:: console
+
+    $ premake5 vs2019
+
+Open the generated solution file under the "visualstudio" directory and build all.
 
 .. toctree::
    :maxdepth: 1
 
-   getting_started
    building_the_sdk
-   how_it_works
    simple_client_example
    simple_server_example
    upgraded_client_example
