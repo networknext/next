@@ -1,7 +1,7 @@
 
-SET local.buyer_public_key_base64 = 'hc/OIfQ3E+IkueTZ8kW5Y0e/Y54luqQushYWjzyfYV5JxYc1RNI5lg==';
-SET local.relay_public_key_base64 = 'YUU0dPo+w2Yt+L8Q5EYa6oC6Ml6tC6V6gCTzF4kQ81A=';
-SET local.relay_private_key_base64 = 'QXpvbsevqS9qzmJ1FmmJwMiAc4fiIahVAveRzSbSQfs=';
+SET local.buyer_public_key_base64 = 'Lw4WO3aMP6VKgpMFYilu2KRcVwqyoMHodt3QFK+FXpR+c0+DGvITog==';
+SET local.relay_public_key_base64 = '/uUJOkyWefo3mjqseLDlexsPH9S9pD13OXrD8u6nIVw=';
+SET local.relay_private_key_base64 = 'nqRXN42HoyZaPTrcCz69bu2BmjBheCpEDm21RPsW7CE=';
 
 INSERT INTO route_shaders(route_shader_name, route_select_threshold, route_switch_threshold) VALUES('local', 300, 300);
 

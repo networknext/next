@@ -33,7 +33,7 @@ terraform {
 
 provider "networknext" {
   hostname = "https://api-dev.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDI1NzA3MH0.65T5A0YD6xKszIGS30qHB_kogtqk7qp6s-VSIKHsELs"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDUwMTg0M30.Gcu5VfVL4RmYQNGlTm8D6PjvzhjEEQt0HkM6eBBfqzQ"
 }
 
 # ----------------------------------------------------------------------------------------

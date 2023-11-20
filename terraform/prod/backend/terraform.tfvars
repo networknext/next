@@ -15,11 +15,11 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-raspberry_buyer_public_key  = "bZcUhYFYkrLqvbvB1eYpyrcZBH6Qfr/WMZExUnu4wo5AUhXuZQQxmQ=="
-raspberry_buyer_private_key = "bZcUhYFYkrK5HxET5Cy0F2qtbNuITF4Q4temJ/A54A6xf1ylXcrrNOq9u8HV5inKtxkEfpB+v9YxkTFSe7jCjkBSFe5lBDGZ"
+raspberry_buyer_public_key  = "yAh9zcMJ+lXnHtZpRwq1DdkTK4Oh9yoPWqxy4JIQLU6FTEKxB5YBLQ=="
+raspberry_buyer_private_key = "yAh9zcMJ+lV8X3od7nkrgIIXvj4uK4AGnXn05Ha1CU1pD64u+Lo4Hece1mlHCrUN2RMrg6H3Kg9arHLgkhAtToVMQrEHlgEt"
 
 ip2location_bucket_name     = "alocasia_network_next_prod"
 
-relay_backend_public_key    = "I+7H0XwZ4liC5yEdPQv8LYCOL+Y57+qfKKOG2iqJYCY="
+relay_backend_public_key    = "k4AuJrGEbDFpI3quMgL0jOLEUmeeDmEZUTEQz7lI/G4="
 
-server_backend_public_key   = "jot/6lToP2sX71lepqHSkqgrsjOElCJWSyqbIfKsGvk="
+server_backend_public_key   = "dmTKooG/YjkN4llA7Yow3eZ83SIay3vjsmPtG6vN8cc="

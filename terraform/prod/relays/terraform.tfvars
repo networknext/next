@@ -7,10 +7,10 @@ ssh_public_key_file         = "~/.ssh/id_rsa.pub"
 ssh_private_key_file        = "~/.ssh/id_rsa"
 relay_version               = "relay-release-1.0.0"
 relay_artifacts_bucket      = "alocasia_network_next_relay_artifacts"
-relay_backend_public_key    = "I+7H0XwZ4liC5yEdPQv8LYCOL+Y57+qfKKOG2iqJYCY="
+relay_backend_public_key    = "k4AuJrGEbDFpI3quMgL0jOLEUmeeDmEZUTEQz7lI/G4="
 relay_backend_url           = "relay.virtualgo.net"
 
-raspberry_buyer_public_key  = "bZcUhYFYkrLqvbvB1eYpyrcZBH6Qfr/WMZExUnu4wo5AUhXuZQQxmQ=="
+raspberry_buyer_public_key  = "yAh9zcMJ+lXnHtZpRwq1DdkTK4Oh9yoPWqxy4JIQLU6FTEKxB5YBLQ=="
 
 raspberry_datacenters = [
 	"google.iowa.1",
@@ -19,7 +19,7 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-test_buyer_public_key       = "hc/OIfQ3E+IkueTZ8kW5Y0e/Y54luqQushYWjzyfYV5JxYc1RNI5lg=="
+test_buyer_public_key       = "Lw4WO3aMP6VKgpMFYilu2KRcVwqyoMHodt3QFK+FXpR+c0+DGvITog=="
 
 test_datacenters = [
 	"google.iowa.1",
