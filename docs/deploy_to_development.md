@@ -15,7 +15,7 @@ git tag dev-001
 git push origin dev-001
 ```
 
-## 2. Wait for the build and deploy to complete on semaphore ci
+## 2. Wait for the deploy to finish
 
 Log in to https://semaphoreci.com
 
