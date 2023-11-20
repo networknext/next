@@ -1,18 +1,9 @@
 Introduction
 ============
 
-To build the example programs, see the instructions below:
+Network Next works by taking over sending and receiving of UDP packets.
 
-Windows
--------
-
-Install *premake5* from https://premake.github.io/download.html
-
-Generate a visual studio solution by running premake at the root directory of the SDK:
-
-.. code-block:: console
-
-    $ premake5 vs2019
+To get started, build the SDK and check out the example programs to see how it's used.
 
 Read more 
 ---------
@@ -27,7 +18,4 @@ Read more
    upgraded_server_example
    complex_client_example
    complex_server_example
-   hosting_in_google_cloud
-   hosting_in_aws
-   hosting_in_bare_metal
    reference
