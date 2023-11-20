@@ -180,6 +180,9 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("BACKEND_MODE=%s", mode))
 	}
 
+	// todo
+	cmd.Env = append(cmd.Env, "DEBUG_LOGS=1")
+
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
@@ -596,7 +599,7 @@ func test_cost_matrix() {
 
 	fmt.Printf("test_cost_matrix\n")
 
-	backend_cmd, _ := backend("DEFAULT")
+	backend_cmd, backend_stdout := backend("DEFAULT")
 
 	time.Sleep(time.Second)
 
@@ -608,7 +611,7 @@ func test_cost_matrix() {
 	relay_2_cmd, relay_2_stdout := relay("relay", 2001, config)
 	relay_3_cmd, relay_3_stdout := relay("relay", 2002, config)
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	costMatrix := getCostMatrix()
 
@@ -639,6 +642,9 @@ func test_cost_matrix() {
 	}
 
 	if costMatrix.Costs[0] > 5 || costMatrix.Costs[1] > 5 || costMatrix.Costs[2] > 5 {
+		fmt.Printf("--------------------------------------------------\n")
+		fmt.Printf("%s", backend_stdout.String())
+		fmt.Printf("--------------------------------------------------\n")
 		panic(fmt.Sprintf("cost matrix entries are invalid: %+v", costMatrix.Costs))
 	}
 }

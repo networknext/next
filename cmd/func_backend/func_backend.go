@@ -946,7 +946,7 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	backend.relayManager = common.CreateRelayManager(true)
+	backend.relayManager = common.CreateRelayManager(false) // IMPORTANT: Create without history
 
 	if os.Getenv("BACKEND_MODE") == "FORCE_DIRECT" {
 		backend.mode = BACKEND_MODE_FORCE_DIRECT
