@@ -34,7 +34,7 @@ To get started, view the documentation for instructions on how to build the SDK,
 
 In order to accelerate to the correct datacenter, Network Next needs to know the name of the datacenter the server is hosted in.
 
-For example, "google.iowa.1" is a default datacenter setup in the dev environment, and if you host your test server in that datacenter, you could simply set NEXT_DATACENTER="google.iowa.1" in the environment and Network Next will be able to accelerate traffic to your server.
+For example, "google.iowa.1" is a default datacenter setup in the dev environment, and if you host your test server in that datacenter, you could simply set NEXT_DATACENTER="google.iowa.1" in the environment and Network Next will be able to accelerate traffic.
 
 However, this can get cumbersome for multiple clouds, as well as being _literally impossible_ with a hosting provider like Multiplay who don't provide you with any way to know exactly which datacenter your server is being hosted in.
 
