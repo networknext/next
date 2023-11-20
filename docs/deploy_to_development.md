@@ -27,7 +27,7 @@ Wait until "Deploy to Development" turns green. This can take 10-15 minutes on t
 
 ## 3. Initialize the postgres database
 
-Go to https://console.google.com and go to "SQL" under the "Development" project.
+Go to [https://console.google.com](https://console.cloud.google.com/) and go to "SQL" under the "Development" project.
 
 Click on the "postgres" database then click on "Import".
 
