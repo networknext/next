@@ -50,7 +50,7 @@ You should see all services up and running and green:
 
 <img width="960" alt="image" src="https://github.com/networknext/next/assets/696656/e190ae8f-2bf1-4ec3-bc1d-ef7c7f630797">
 
-If some services are not able to allocate all the VMs they need they will be stuck with a spinning arrow to the left of the instance group, indicating that they are trying to create VMs. This means you need to increase google cloud quotas.
+If some services are not able to allocate all the VMs they need they will be stuck with a spinning arrow to the left of the instance group, indicating that the instance group is still trying to create VMs. This means you need to increase google cloud quotas.
 
 In this case, go to the IAM -> Quotas page in the google cloud console and request increases for any quotas as needed. The quota increase may take several days or a week to complete depending on the speed of google cloud support.
 
