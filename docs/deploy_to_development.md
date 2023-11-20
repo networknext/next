@@ -84,7 +84,6 @@ terraform apply
 
 ```console
 cd ~/next
-next select dev
 next database
 next commit
 ```
