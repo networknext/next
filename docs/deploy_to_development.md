@@ -90,6 +90,10 @@ next commit
 
 ## 8. Setup the relays
 
+Connect to the OpenVPN instance you setup. This is necessary for the setup script to be able to SSH into the relays.
+
+Run the relay setup:
+
 ```console
 next setup
 ```
