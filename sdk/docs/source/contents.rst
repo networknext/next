@@ -1,5 +1,5 @@
-Building the SDK
-================
+Introduction
+============
 
 To build the example programs, see the instructions below:
 
@@ -14,7 +14,8 @@ Generate a visual studio solution by running premake at the root directory of th
 
     $ premake5 vs2019
 
-Open the generated solution file under the "visualstudio" directory and build all.
+Read more 
+---------
 
 .. toctree::
    :maxdepth: 1
