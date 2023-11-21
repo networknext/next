@@ -180,7 +180,7 @@ verifying client ... OK
 
 ```
 
-_You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
+Next step: [Setup Prerequisites](setup_prerequisites.md).
 
 # Setup on MacOS
 
