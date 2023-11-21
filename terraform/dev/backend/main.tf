@@ -1099,7 +1099,7 @@ resource "google_compute_address" "test_server_address" {
 
 resource "google_compute_instance" "test_server" {
 
-  name         = "test-server"
+  name         = "test-server-${var.tag}"
   machine_type = "n1-standard-2"
   zone         = var.google_zone
   tags         = ["allow-ssh", "allow-udp-all"]
@@ -1141,10 +1141,6 @@ resource "google_compute_instance" "test_server" {
     ldconfig
     systemctl start app.service
     EOF2
-  }
-
-  lifecycle {
-    create_before_destroy = true
   }
 
   service_account {
