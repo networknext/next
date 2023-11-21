@@ -1117,7 +1117,7 @@ resource "google_compute_instance" "test_server" {
   }
 
   metadata = {
-    startup-script = <<-EOF
+    startup-script = <<-EOF2
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
@@ -1134,7 +1134,7 @@ resource "google_compute_instance" "test_server" {
     NEXT_SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
     EOF
     sudo systemctl start app.service
-    EOF
+    EOF2
   }
 
   lifecycle {
