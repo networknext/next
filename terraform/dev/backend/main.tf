@@ -97,14 +97,12 @@ resource "google_compute_managed_ssl_certificate" "portal-dev" {
   }
 }
 
-/*
 resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
   name = "raspberry-dev"
   managed {
     domains = ["raspberry-dev.${var.cloudflare_domain}"]
   }
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -159,14 +157,6 @@ resource "cloudflare_record" "relay_backend_domain" {
   proxied = false
 }
 
-resource "cloudflare_record" "raspberry_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "raspberry-dev"
-  value   = module.raspberry_backend.address
-  type    = "A"
-  proxied = false
-}
-
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-dev"
@@ -174,6 +164,16 @@ resource "cloudflare_record" "portal_domain" {
   type    = "A"
   proxied = false
 }
+
+/*
+resource "cloudflare_record" "raspberry_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "raspberry-dev"
+  value   = module.raspberry_backend.address
+  type    = "A"
+  proxied = false
+}
+*/
 
 # ----------------------------------------------------------------------------------------
 
