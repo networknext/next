@@ -874,6 +874,7 @@ output "server_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 module "raspberry_backend" {
 
   source = "../../modules/external_http_service"
@@ -1004,6 +1005,7 @@ module "raspberry_client" {
     module.raspberry_server
   ]
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
