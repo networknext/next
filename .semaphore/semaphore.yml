@@ -184,15 +184,25 @@ blocks:
 
       jobs:
 
-        - name: "Raspberry Server"
+        - name: "Client"
           commands:
-            - make -j dist/raspberry_server.tar.gz
-            - artifact push workflow dist/raspberry_server.tar.gz --force
+            - make -j dist/client.tar.gz
+            - artifact push workflow dist/client.tar.gz --force
+
+        - name: "Server"
+          commands:
+            - make -j dist/server.tar.gz
+            - artifact push workflow dist/server.tar.gz --force
 
         - name: "Raspberry Client"
           commands:
             - make -j dist/raspberry_client.tar.gz
             - artifact push workflow dist/raspberry_client.tar.gz --force
+
+        - name: "Raspberry Server"
+          commands:
+            - make -j dist/raspberry_server.tar.gz
+            - artifact push workflow dist/raspberry_server.tar.gz --force
 
 promotions:
 
