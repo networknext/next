@@ -97,12 +97,14 @@ resource "google_compute_managed_ssl_certificate" "portal-dev" {
   }
 }
 
+/*
 resource "google_compute_managed_ssl_certificate" "raspberry-dev" {
   name = "raspberry-dev"
   managed {
     domains = ["raspberry-dev.${var.cloudflare_domain}"]
   }
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
