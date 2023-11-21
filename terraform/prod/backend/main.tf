@@ -30,6 +30,8 @@ variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
+variable "test_server_tag" { type = string }
+
 locals {
   google_project_id          = file("../../projects/prod-project-id.txt")
   google_project_number      = file("../../projects/prod-project-number.txt")

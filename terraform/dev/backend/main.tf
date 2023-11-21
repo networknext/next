@@ -33,6 +33,8 @@ variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
+variable "test_server_tag" { type = string }
+
 locals {
   google_project_id          = file("../../projects/dev-project-id.txt")
   google_project_number      = file("../../projects/dev-project-number.txt")
@@ -1096,7 +1098,7 @@ resource "google_compute_address" "test_server_address" {
 
 resource "google_compute_instance" "test_server" {
 
-  name         = "test-server-${var.tag}"
+  name         = "test-server-${var.test_server_tag}"
   machine_type = "n1-standard-2"
   zone         = var.google_zone
   tags         = ["allow-ssh", "allow-udp-all"]

@@ -85,6 +85,12 @@ int main()
     {
         next_server_update( server );
 
+        if ( next_server_direct_only( server ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "detected server is in direct only mode. restarting..." );
+            break;
+        }
+
         next_platform_sleep( 0.001 );
 
         fflush( stdout );

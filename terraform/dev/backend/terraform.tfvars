@@ -26,3 +26,5 @@ ip2location_bucket_name     = "dogfood_network_next_dev"
 relay_backend_public_key    = "bRopR3WVFR8KXJVAfM4kUah3zmY0gMH/5AcnJVsN2kg="
 
 server_backend_public_key   = "9Bj2JpUkTUhhjvTS0ymUu3DgoLJJU8O0UwyDrYvvxBw="
+
+test_server_tag             = "001" # increment this when you need to redeploy the test server
