@@ -190,7 +190,7 @@ Next step: [Setup Prerequisites](setup_prerequisites.md).
 
 2. Install dependencies
 
-   `brew install golang redis libsodium postgresql@14`
+   `brew install golang redis libsodium pkg-config postgresql@14`
 
 3. Start redis
 
