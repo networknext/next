@@ -1098,7 +1098,7 @@ resource "google_compute_instance" "test_server" {
   name         = "test-server"
   machine_type = "n1-standard-2"
   zone         = var.google_zone
-  tags         = ["allow-ssh", "allow-udp-40000"]
+  tags         = ["allow-ssh", "allow-udp-all"]
 
   allow_stopping_for_update = true
 
@@ -1125,13 +1125,13 @@ resource "google_compute_instance" "test_server" {
     cat <<EOF > /app/app.env
     ENV=dev
     NEXT_LOG_LEVEL=4
-    NEXT_DATACENTER=cloud
-    NEXT_SERVER_ADDRESS="${google_compute_address.test_server_address.address}:40000"
+    NEXT_DATACENTER="cloud"
+    NEXT_SERVER_ADDRESS="${google_compute_address.test_server_address.address}:30000"
     NEXT_SERVER_BACKEND_HOSTNAME="server-dev.${var.cloudflare_domain}"
-    NEXT_BUYER_PUBLIC_KEY=${var.test_buyer_public_key}
-    NEXT_BUYER_PRIVATE_KEY=${var.test_buyer_private_key}
-    NEXT_RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
-    NEXT_SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
+    NEXT_BUYER_PUBLIC_KEY="${var.test_buyer_public_key}"
+    NEXT_BUYER_PRIVATE_KEY="${var.test_buyer_private_key}"
+    NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
+    NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
     EOF
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     ldconfig
@@ -1151,7 +1151,7 @@ resource "google_compute_instance" "test_server" {
 
 output "test_server_address" {
   description = "The IP address of the test server"
-  value = "${google_compute_address.test_server_address.address}:40000"
+  value = "${google_compute_address.test_server_address.address}:30000"
 }
 
 # ----------------------------------------------------------------------------------------
