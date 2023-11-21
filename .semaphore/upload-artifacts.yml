@@ -93,6 +93,16 @@ blocks:
             - artifact pull workflow raspberry_client.tar.gz
             - gsutil cp raspberry_client.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/raspberry_client.tar.gz
 
+        - name: "Client"
+          commands:
+            - artifact pull workflow client.tar.gz
+            - gsutil cp client.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/client.tar.gz
+
+        - name: "Server"
+          commands:
+            - artifact pull workflow server.tar.gz
+            - gsutil cp server.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/server.tar.gz
+
         - name: "IP2Location"
           commands:
             - artifact pull workflow ip2location.tar.gz
