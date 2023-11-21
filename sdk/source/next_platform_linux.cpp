@@ -823,7 +823,7 @@ static int classify_connection_type( next_vector_t<next_ifforward4_t> * route_ta
     }
     else
     {
-        return NEXT_CONNECTION_TYPE_UNKNOWN;
+        return NEXT_CONNECTION_TYPE_WIRED;
     }
 }
 

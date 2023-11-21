@@ -72,7 +72,7 @@ int main()
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_init( NULL, NULL ); 
-    
+
     next_server_t * server = next_server_create( NULL, "127.0.0.1:30000", "0.0.0.0:30000", "local", server_packet_received );
 
     if ( server == NULL )
