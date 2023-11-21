@@ -512,12 +512,12 @@ module "magic_backend" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a magic_backend.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a magic_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     EOF
-    sudo systemctl start app.service
+    systemctl start app.service
   EOF1
 
   tag                        = var.tag
@@ -552,7 +552,7 @@ module "relay_gateway" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh  -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_gateway.tar.gz
+    ./bootstrap.sh  -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_gateway.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -566,8 +566,8 @@ module "relay_gateway" {
     PING_KEY=${local.ping_key}
     RELAY_BACKEND_ADDRESS=""
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
-    sudo systemctl start app.service
+    gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    systemctl start app.service
   EOF1
 
   tag                      = var.tag
@@ -607,7 +607,7 @@ module "relay_backend" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -625,8 +625,8 @@ module "relay_backend" {
     MAX_PACKET_LOSS=0.1
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
-    sudo systemctl start app.service
+    gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    systemctl start app.service
   EOF1
 
   tag                        = var.tag
@@ -668,7 +668,7 @@ module "api" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -685,8 +685,8 @@ module "api" {
     API_PRIVATE_KEY=${local.api_private_key}
     ALLOWED_ORIGIN="*"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
-    sudo systemctl start app.service
+    gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    systemctl start app.service
   EOF1
 
   tag                        = var.tag
@@ -729,7 +729,7 @@ module "session_cruncher" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -739,8 +739,8 @@ module "session_cruncher" {
     DATABASE_URL="${var.google_database_bucket}/dev.bin"
     DATABASE_PATH="/app/database.bin"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
-    sudo systemctl start app.service
+    gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
+    systemctl start app.service
   EOF1
 
   tag                        = var.tag
@@ -774,12 +774,12 @@ module "server_cruncher" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     EOF
-    sudo systemctl start app.service
+    systemctl start app.service
   EOF1
 
   tag                        = var.tag
@@ -809,7 +809,7 @@ module "server_backend" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     UDP_PORT=40000
@@ -836,7 +836,7 @@ module "server_backend" {
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     ENABLE_IP2LOCATION=true
     EOF
-    sudo systemctl start app.service
+    systemctl start app.service
   EOF1
 
   tag                        = var.tag
@@ -884,13 +884,13 @@ module "raspberry_backend" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
     EOF
-    sudo systemctl start app.service
+    systemctl start app.service
   EOF1
 
   tag                      = var.tag
@@ -929,7 +929,7 @@ module "raspberry_server" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_server.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -938,9 +938,9 @@ module "raspberry_server" {
     NEXT_BUYER_PRIVATE_KEY=${var.raspberry_buyer_private_key}
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
-    sudo ldconfig
-    sudo systemctl start app.service
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
+    ldconfig
+    systemctl start app.service
   EOF1
 
   tag                = var.tag
@@ -973,7 +973,7 @@ module "raspberry_client" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_client.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
@@ -982,9 +982,9 @@ module "raspberry_client" {
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
     RASPBERRY_NUM_CLIENTS=256
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
-    sudo ldconfig
-    sudo systemctl start app.service
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
+    ldconfig
+    systemctl start app.service
   EOF1
 
   tag                = var.tag
@@ -1017,14 +1017,14 @@ module "ip2location" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a ip2location.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a ip2location.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     DEBUG_LOGS=1
     MAXMIND_LICENSE_KEY=${local.maxmind_license_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     EOF
-    sudo systemctl start app.service
+    systemctl start app.service
   EOF1
 
   tag                = var.tag
@@ -1121,7 +1121,7 @@ resource "google_compute_instance" "test_server" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
     NEXT_LOG_LEVEL=4
@@ -1133,9 +1133,9 @@ resource "google_compute_instance" "test_server" {
     NEXT_RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     NEXT_SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
     EOF
-    sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
-    sudo ldconfig
-    sudo systemctl start app.service
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
+    ldconfig
+    systemctl start app.service
     EOF2
   }
 
