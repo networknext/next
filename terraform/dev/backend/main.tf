@@ -1098,7 +1098,7 @@ resource "google_compute_instance" "test_server" {
   name         = "test-server"
   machine_type = "n1-standard-2"
   zone         = var.google_zone
-  tags         = ["allow-udp-40000"]
+  tags         = ["allow-ssh", "allow-udp-40000"]
 
   allow_stopping_for_update = true
 
