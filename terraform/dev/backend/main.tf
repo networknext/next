@@ -812,6 +812,7 @@ module "server_backend" {
     ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
+    DEBUG_LOGS=1
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     UDP_NUM_THREADS=2
