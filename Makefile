@@ -1,10 +1,10 @@
 # Network Next Makefile
 
-CXX_FLAGS := -g -Wall -Wextra "-I/opt/homebrew/include"
+CXX_FLAGS := -g -Wall -Wextra
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration -L/opt/homebrew/lib
+	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration
 	CXX = g++
 else
 	LDFLAGS = -lsodium -lcurl -lpthread -lm
