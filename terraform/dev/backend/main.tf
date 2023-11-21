@@ -1142,7 +1142,7 @@ resource "google_compute_instance" "test_server" {
   }
 
   service_account {
-    email  = var.service_account
+    email  = local.google_service_account
     scopes = ["cloud-platform"]
   }
 }
