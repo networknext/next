@@ -25,6 +25,9 @@ variable "relay_backend_public_key" { type = string }
 
 variable "server_backend_public_key" { type = string }
 
+variable "test_buyer_public_key" { type = string }
+variable "test_buyer_private_key" { type = string }
+
 variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_buyer_private_key" { type = string }
 
@@ -1082,6 +1085,71 @@ resource "google_compute_router_nat" "nat" {
   region                             = var.google_region
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_address" "test_server_address" {
+  name = "test-server-address"
+}
+
+resource "google_compute_instance" "test_server" {
+
+  name         = "test-server"
+  machine_type = "n1-standard-2"
+  zone         = var.google_zone
+  tags         = ["allow-udp-40000"]
+
+  allow_stopping_for_update = true
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    }
+  }
+
+  network_interface {
+    network    = var.default_network
+    subnetwork = var.default_subnetwork
+    access_config {
+      nat_ip = google_compute_address.test_server_address.address
+    }
+  }
+
+  metadata = {
+    startup-script = <<-EOF
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    NEXT_LOG_LEVEL=4
+    NEXT_DATACENTER=cloud
+    NEXT_SERVER_ADDRESS="${google_compute_address.test_server_address.address}:40000"
+    NEXT_SERVER_BACKEND_HOSTNAME="server-dev.${var.cloudflare_domain}
+    NEXT_BUYER_PUBLIC_KEY=${var.test_buyer_public_key}
+    NEXT_BUYER_PRIVATE_KEY=${var.test_buyer_private_key}
+    NEXT_RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    NEXT_SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
+    EOF
+    sudo systemctl start app.service
+    EOF
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  service_account {
+    email  = var.service_account
+    scopes = ["cloud-platform"]
+  }
+}
+
+output "test_server_address" {
+  description = "The IP address of the test server"
+  value = google_compute_instance.service.network_interface.0.network_ip
 }
 
 # ----------------------------------------------------------------------------------------

@@ -770,6 +770,8 @@ func keygen(env Environment, regexes []string) {
 				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:])))
 				replace(filenames[i], "^\\s*load_test_buyer_public_key\\s*=.*$", fmt.Sprintf("load_test_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 				replace(filenames[i], "^\\s*load_test_buyer_private_key\\s*=.*$", fmt.Sprintf("load_test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
+				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$", fmt.Sprintf("test_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+				replace(filenames[i], "^\\s*test_buyer_private_key\\s*=.*$", fmt.Sprintf("test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 				replace(filenames[i], "^\\s*relay_public_key\\s*=.*$", fmt.Sprintf("relay_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
 				replace(filenames[i], "^\\s*relay_private_key\\s*=.*$", fmt.Sprintf("relay_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
 			}
@@ -1078,14 +1080,14 @@ func config(env Environment, regexes []string) {
 				if envs[i] != "local" {
 					replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay-%s.%s\"", envs[i], config.CloudflareDomain))
-					replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
+					replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server-%s.%s\"", envs[i], config.CloudflareDomain))
 				}
 			} else {
 				replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay.%s\"", config.CloudflareDomain))
-				replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("NEXT_RASPBERRY_BACKEND_URL=\"https://raspberry.%s\"", config.CloudflareDomain))
+				replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RASPBERRY_BACKEND_URL=\"https://raspberry.%s\"", config.CloudflareDomain))
 			}
 			replace(envFile, "^\\s*VPN_ADDRESS\\s*=.*$", fmt.Sprintf("VPN_ADDRESS=\"%s\"", config.VPNAddress))
 			replace(envFile, "^\\s*SSH_KEY_FILE\\s*=.*$", fmt.Sprintf("SSH_KEY_FILE=\"~/.ssh/%s\"", config.SSHKey))
