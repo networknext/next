@@ -180,7 +180,7 @@ verifying client ... OK
 
 ```
 
-_You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
+Next step: [Setup Prerequisites](setup_prerequisites.md).
 
 # Setup on MacOS
 
@@ -190,7 +190,7 @@ _You are now ready to [setup semaphoreci](setup_semaphoreci.md)._
 
 2. Install dependencies
 
-   `brew install golang redis libsodium postgresql@14`
+   `brew install golang redis libsodium pkg-config postgresql@14`
 
 3. Start redis
 
@@ -354,4 +354,4 @@ verifying client ... OK
 
 ```
 
-Next step: [Setup Prerequisites](setup_prerequisites.md).
+Next step: [setup prerequisites](setup_prerequisites.md).
