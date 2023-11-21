@@ -1127,7 +1127,7 @@ resource "google_compute_instance" "test_server" {
     NEXT_LOG_LEVEL=4
     NEXT_DATACENTER=cloud
     NEXT_SERVER_ADDRESS="${google_compute_address.test_server_address.address}:40000"
-    NEXT_SERVER_BACKEND_HOSTNAME="server-dev.${var.cloudflare_domain}
+    NEXT_SERVER_BACKEND_HOSTNAME="server-dev.${var.cloudflare_domain}"
     NEXT_BUYER_PUBLIC_KEY=${var.test_buyer_public_key}
     NEXT_BUYER_PRIVATE_KEY=${var.test_buyer_private_key}
     NEXT_RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
