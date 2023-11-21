@@ -1109,8 +1109,8 @@ resource "google_compute_instance" "test_server" {
   }
 
   network_interface {
-    network    = var.default_network
-    subnetwork = var.default_subnetwork
+    default_network    = google_compute_network.development.id
+    default_subnetwork = google_compute_subnetwork.development.id
     access_config {
       nat_ip = google_compute_address.test_server_address.address
     }
