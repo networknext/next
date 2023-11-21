@@ -44,7 +44,7 @@ void client_packet_received( next_client_t * client, void * context, const next_
 
 void generate_packet( uint8_t * packet_data, int & packet_bytes )
 {
-    packet_bytes = 1 + ( rand() % NEXT_MTU );
+    packet_bytes = 256;
     const int start = packet_bytes % 256;
     for ( int i = 0; i < packet_bytes; ++i )
         packet_data[i] = (uint8_t) ( start + i ) % 256;

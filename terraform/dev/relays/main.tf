@@ -354,12 +354,12 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
-  acceptable_latency = 0
-  latency_reduction_threshold = 1
-  acceptable_packet_loss_instant = 0.1
-  acceptable_packet_loss_sustained = 0.01
-  bandwidth_envelope_up_kbps = 1024
-  bandwidth_envelope_down_kbps = 1024
+  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  acceptable_packet_loss_instant = 100
+  acceptable_packet_loss_sustained = 100
+  bandwidth_envelope_up_kbps = 256
+  bandwidth_envelope_down_kbps = 256
 }
 
 resource "networknext_buyer" test {
