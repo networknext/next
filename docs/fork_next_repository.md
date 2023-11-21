@@ -28,4 +28,4 @@ It's OK to fork only the "main" branch. You'll create your own branches in your 
 
 It will create a subdirectory called "next". You can change to this directory at the console with `cd ~/next` at any time.
 
-_You are now ready to [run a local instance with docker compose](run_local_instance_with_docker_compose.md)._
+Next step: [run a local instance with docker compose](run_local_instance_with_docker_compose.md).
