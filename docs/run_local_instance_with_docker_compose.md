@@ -34,4 +34,4 @@ Congratulations! Network Next up is up and running in docker!
 
    `docker compose down`
 
-_You are now ready to [setup your local machine for development](setup_your_local_machine_for_development.md)._
+Next step: [setup your local machine for development](setup_your_local_machine_for_development.md).
