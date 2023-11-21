@@ -1149,7 +1149,7 @@ resource "google_compute_instance" "test_server" {
 
 output "test_server_address" {
   description = "The IP address of the test server"
-  value = google_compute_instance.service.network_interface.0.network_ip
+  value = "${google_compute_address.test_server_address.address}:40000"
 }
 
 # ----------------------------------------------------------------------------------------
