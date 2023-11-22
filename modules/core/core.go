@@ -1258,6 +1258,9 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 
 	currentRouteCost := GetCurrentRouteCost(routeMatrix, currentRouteNumRelays, currentRouteRelays, sourceRelays, sourceRelayCost, destRelays, debug)
 
+	// todo: simulate route switch for every slice to make sure it works
+	currentRouteCost = -1
+
 	if currentRouteCost < 0 {
 		if debug != nil {
 			*debug += "current route no longer exists. picking a new random route\n"
