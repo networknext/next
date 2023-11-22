@@ -139,7 +139,7 @@ module "google_relays" {
   credentials         = local.google_credentials
   source              = "../../sellers/google"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -164,7 +164,7 @@ module "amazon_relays" {
   profile             = local.amazon_profile
   source              = "./amazon"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -203,7 +203,7 @@ module "akamai_relays" {
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------

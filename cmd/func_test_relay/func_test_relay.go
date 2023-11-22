@@ -180,9 +180,6 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("BACKEND_MODE=%s", mode))
 	}
 
-	// todo
-	cmd.Env = append(cmd.Env, "DEBUG_LOGS=1")
-
 	var output bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &output
