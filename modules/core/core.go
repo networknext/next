@@ -1698,7 +1698,10 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 		}
 
-		maxCost = directLatency - rttVeto
+		maxCost = directLatency - routeShader.LatencyReductionThreshold
+		if routeState.ReducePacketLoss {
+			maxCost += routeShader.MaxLatencyTradeOff
+		}
 	}
 
 	// update the current best route
