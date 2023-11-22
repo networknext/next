@@ -1500,7 +1500,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		reduceLatency = true
 	} else {
 		if debug != nil {
-			*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %d, latency threshold = %d\n", directLatency, routeShader.LatencyReductionThreshold)
+			*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %d, acceptable latency = %d\n", directLatency, routeShader.AcceptableLatency)
 		}
 		maxCost = -1
 	}
@@ -1518,9 +1518,15 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	}
 
 	reducePacketLoss := false
-	if (directPacketLoss > routeShader.AcceptablePacketLossInstant) || routeState.PLSustainedCounter == 3 {
+	if (directPacketLoss > routeShader.AcceptablePacketLossInstant) {
 		if debug != nil {
-			*debug += "try to reduce packet loss\n"
+			*debug += fmt.Sprintf("packet loss is > %.1f%%. try to reduce it\n", routeShader.AcceptablePacketLossInstant)
+		}
+		maxCost = directLatency + routeShader.MaxLatencyTradeOff
+		reducePacketLoss = true
+	} else if routeState.PLSustainedCounter == 3 {
+		if debug != nil {
+			*debug += fmt.Sprintf("sustained packet loss > %.1f%%. try to reduce it\n", routeShader.AcceptablePacketLossSustained)
 		}
 		maxCost = directLatency + routeShader.MaxLatencyTradeOff
 		reducePacketLoss = true
