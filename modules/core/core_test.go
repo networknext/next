@@ -1,7 +1,5 @@
 package core_test
 
-// todo: disable core test temporarily
-/*
 import (
 	"crypto/ed25519"
 	"encoding/binary"
@@ -5385,6 +5383,3 @@ func TestPagination(t *testing.T) {
 	}
 
 }
-*/
-
-// todo: add test for switch route when reducing packet loss. make sure it is able to find another route to continue, with the "MaxLatencyTradeOff" being used
