@@ -6,7 +6,9 @@
 
 ## 1. Generate SSH key
 
-Generate an SSH key by following these instructions: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+Generate an SSH key by following these instructions: 
+
+https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 
 Save the keypair to `~/secrets/next_rsa`
 
