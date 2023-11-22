@@ -2932,7 +2932,7 @@ int relay_base64_decode_data( const char * input, uint8_t * output, size_t outpu
         int n = base64_table_decode[int( input[L] )] << 18 | base64_table_decode[int( input[L + 1] )] << 12;
         output[output_length - 1] = uint8_t( n >> 16 );
 
-        if (input_length > L + 2 && input[L + 2] != '=')
+        if ( input_length > L + 2 && input[L + 2] != '=' )
         {
             n |= base64_table_decode[int( input[L + 2] )] << 6;
             output_length += 1;
