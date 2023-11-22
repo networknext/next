@@ -1259,6 +1259,15 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
 	}
 
+	// configure vultr
+
+	fmt.Printf("--------------------------------------------\n                   vultr\n--------------------------------------------\n")
+
+	if !bash("run config-vultr") {
+		fmt.Printf("\nerror: failed to configure vultr :(\n\n")
+		os.Exit(1)
+	}
+
 	// generate staging.sql
 
 	fmt.Printf("--------------------------------------------\n")
