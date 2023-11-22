@@ -12,6 +12,8 @@ https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generati
 
 Save the keypair to `~/secrets/next_rsa`
 
+This key will be used to SSH into relays.
+
 ## 2. Generate keypairs
 
 Change to the "~/next" directory and run:
