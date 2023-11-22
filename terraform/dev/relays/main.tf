@@ -356,8 +356,8 @@ resource "networknext_route_shader" test {
   name = "test"
   acceptable_latency = 50
   latency_reduction_threshold = 10
-  acceptable_packet_loss_instant = 100
-  acceptable_packet_loss_sustained = 100
+  acceptable_packet_loss_instant = 1
+  acceptable_packet_loss_sustained = 0.1
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
 }

@@ -1457,91 +1457,96 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	maxCost := directLatency
 
-	// apply safety to source relay cost
-
-	for i := range sourceRelayCost {
-		if sourceRelayCost[i] <= 0 {
-			sourceRelayCost[i] = 255
-		}
-	}
-
-	// print out number of source relays that are routable + dest relays
-
-	if debug != nil {
-		numSourceRelays := len(sourceRelays)
-		numRoutableSourceRelays := 0
-		for i := range sourceRelays {
-			if sourceRelayCost[i] != 255 {
-				numRoutableSourceRelays++
-			}
-		}
-		if sliceNumber != 0 {
-			*debug += fmt.Sprintf("take network next: %d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
-		} else {
-			*debug += "first slice: sending down near relays to ping\n"
-			return false
-		}
-		numDestRelays := len(destRelays)
-		if numDestRelays == 1 {
-			*debug += fmt.Sprintf("1 dest relay\n")
-		} else {
-			*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
-		}
-	}
-
-	// should we try to reduce latency?
-
 	reduceLatency := false
-	if directLatency > routeShader.AcceptableLatency {
-		if debug != nil {
-			*debug += "try to reduce latency\n"
-		}
-		maxCost = directLatency - routeShader.LatencyReductionThreshold
-		reduceLatency = true
-	} else {
-		if debug != nil {
-			*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %d, acceptable latency = %d\n", directLatency, routeShader.AcceptableLatency)
-		}
-		maxCost = -1
-	}
-
-	// should we try to reduce packet loss?
-
-	if directPacketLoss >= routeShader.AcceptablePacketLossSustained {
-		if routeState.PLSustainedCounter < 3 {
-			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
-		}
-	}
-
-	if directPacketLoss < routeShader.AcceptablePacketLossSustained {
-		routeState.PLSustainedCounter = 0
-	}
-
 	reducePacketLoss := false
-	if (directPacketLoss > routeShader.AcceptablePacketLossInstant) {
-		if debug != nil {
-			*debug += fmt.Sprintf("packet loss is > %.1f%%. try to reduce it\n", routeShader.AcceptablePacketLossInstant)
-		}
-		maxCost = directLatency + routeShader.MaxLatencyTradeOff
-		reducePacketLoss = true
-	} else if routeState.PLSustainedCounter == 3 {
-		if debug != nil {
-			*debug += fmt.Sprintf("sustained packet loss > %.1f%%. try to reduce it\n", routeShader.AcceptablePacketLossSustained)
-		}
-		maxCost = directLatency + routeShader.MaxLatencyTradeOff
-		reducePacketLoss = true
-	}
-
-	// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
 
 	if routeShader.ForceNext {
+
+		// if we are forcing a network next route, set the max cost to max 32 bit integer to accept all routes
+
 		if debug != nil {
 			*debug += "forcing network next\n"
 		}
-		maxCost = math.MaxInt32
+	
 		routeState.ForcedNext = true
-		reduceLatency = false
-		reducePacketLoss = false
+		maxCost = math.MaxInt32
+
+	} else {
+
+		// otherwise, let's see if we should take network next, according to the route shader settings...
+
+		// apply safety to source relay cost
+
+		for i := range sourceRelayCost {
+			if sourceRelayCost[i] <= 0 {
+				sourceRelayCost[i] = 255
+			}
+		}
+
+		// print out number of source relays that are routable + dest relays
+
+		if debug != nil {
+			numSourceRelays := len(sourceRelays)
+			numRoutableSourceRelays := 0
+			for i := range sourceRelays {
+				if sourceRelayCost[i] != 255 {
+					numRoutableSourceRelays++
+				}
+			}
+			if sliceNumber != 0 {
+				*debug += fmt.Sprintf("take network next: %d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
+			} else {
+				*debug += "first slice: sending down near relays to ping\n"
+				return false
+			}
+			numDestRelays := len(destRelays)
+			if numDestRelays == 1 {
+				*debug += fmt.Sprintf("1 dest relay\n")
+			} else {
+				*debug += fmt.Sprintf("%d dest relays\n", numDestRelays)
+			}
+		}
+
+		// should we try to reduce latency?
+
+		if directLatency > routeShader.AcceptableLatency {
+			if debug != nil {
+				*debug += fmt.Sprintf("latency is above acceptable latency %dms. try to reduce it\n", routeShader.AcceptableLatency)
+			}
+			maxCost = directLatency - routeShader.LatencyReductionThreshold
+			reduceLatency = true
+		} else {
+			if debug != nil {
+				*debug += fmt.Sprintf("direct latency is already acceptable. direct latency = %dms, acceptable latency = %dms\n", directLatency, routeShader.AcceptableLatency)
+			}
+			maxCost = -1
+		}
+
+		// should we try to reduce packet loss?
+
+		if directPacketLoss >= routeShader.AcceptablePacketLossSustained {
+			if routeState.PLSustainedCounter < 3 {
+				routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
+			}
+		}
+
+		if directPacketLoss < routeShader.AcceptablePacketLossSustained {
+			routeState.PLSustainedCounter = 0
+		}
+
+		if (directPacketLoss > routeShader.AcceptablePacketLossInstant) {
+			if debug != nil {
+				*debug += fmt.Sprintf("packet loss is > %.2f%%. try to reduce it\n", routeShader.AcceptablePacketLossInstant)
+			}
+			maxCost = directLatency + routeShader.MaxLatencyTradeOff
+			reducePacketLoss = true
+		} else if routeState.PLSustainedCounter == 3 {
+			if debug != nil {
+				*debug += fmt.Sprintf("sustained packet loss > %.2f%%. try to reduce it\n", routeShader.AcceptablePacketLossSustained)
+			}
+			maxCost = directLatency + routeShader.MaxLatencyTradeOff
+			reducePacketLoss = true
+		}
 	}
 
 	// get the initial best route
@@ -1560,7 +1565,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
 
 	if debug != nil && hasRoute {
-		*debug += fmt.Sprintf("route diversity %d\n", routeDiversity)
+		*debug += fmt.Sprintf("route diversity is %d\n", routeDiversity)
 	}
 
 	// if we don't have enough route diversity, we can't take network next
@@ -1577,7 +1582,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	if !hasRoute {
 		if debug != nil {
-			*debug += "not taking network next. no next route available within parameters\n"
+			*debug += "not taking network next. no network next route is available\n"
 		}
 		return false
 	}
@@ -1586,7 +1591,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	if routeShader.MaxNextRTT > 0 && bestRouteCost > routeShader.MaxNextRTT {
 		if debug != nil {
-			*debug += fmt.Sprintf("not taking network next. best route is higher than max next rtt %d\n", routeShader.MaxNextRTT)
+			*debug += fmt.Sprintf("not taking network next. best route is higher than max allowable next rtt %d\n", routeShader.MaxNextRTT)
 		}
 		return false
 	}
@@ -1974,6 +1979,8 @@ func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr
 	}
 }
 
+// ------------------------------------------------------
+
 func GetSessionScore(next bool, directRTT int32, nextRTT int32) uint32 {
 	var score uint32
 	if next {
@@ -2057,3 +2064,5 @@ func DoPagination_Simple(page int, length int) (begin, end, outputPage, numPages
 	outputPage = page
 	return
 }
+
+// ------------------------------------------------------

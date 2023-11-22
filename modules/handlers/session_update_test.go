@@ -101,7 +101,6 @@ func WriteSessionData(sessionData packets.SDK_SessionData) []byte {
 	return buffer[:sessionDataBytes]
 }
 
-/*
 func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
 
 	t.Parallel()
@@ -490,7 +489,6 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 	assert.True(t, (state.Error&constants.SessionError_BadSessionId) != 0)
 	assert.False(t, (state.Error&constants.SessionError_BadSliceNumber) != 0)
 }
-*/
 
 func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 

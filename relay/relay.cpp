@@ -3291,17 +3291,17 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
         {
             if ( entry->time_pong_received > entry->time_ping_sent )
             {
-                mean_rtt += 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                mean_rtt += ( entry->time_pong_received - entry->time_ping_sent );
                 num_pongs++;
             }
         }
     }
 
-    mean_rtt = ( num_pongs > 0 ) ? ( mean_rtt / num_pongs ) : 10000.0;
+    mean_rtt = ( num_pongs > 0 ) ? ( mean_rtt / num_pongs ) : 10.0;
 
     assert( mean_rtt >= 0.0 );
 
-    stats->rtt = float( mean_rtt );
+    stats->rtt = 1000.0f * float( mean_rtt );
 
     // calculate jitter
 
@@ -3318,7 +3318,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
             if ( entry->time_pong_received > entry->time_ping_sent )
             {
                 // pong received
-                double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                double rtt = ( entry->time_pong_received - entry->time_ping_sent );
                 if ( rtt >= mean_rtt )
                 {
                     double error = rtt - mean_rtt;
@@ -3331,7 +3331,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
     if ( num_jitter_samples > 0 )
     {
-        stats->jitter = 3.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
+        stats->jitter = 1000.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
     }
 }
 
