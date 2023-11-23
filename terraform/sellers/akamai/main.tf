@@ -66,9 +66,6 @@ resource "linode_instance" "relay" {
   group           = "relays"
   authorized_keys = [replace(file(var.ssh_public_key_file), "\n", "")]
   stackscript_id  = linode_stackscript.setup_relay.id
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 # ----------------------------------------------------------------------------------------
