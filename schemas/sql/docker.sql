@@ -3,7 +3,7 @@ SET local.buyer_public_key_base64 = 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1
 SET local.relay_public_key_base64 = 'ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=';
 SET local.relay_private_key_base64 = 'I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk=';
 
-INSERT INTO route_shaders(route_shader_name, route_select_threshold, route_switch_threshold) VALUES('local', 300, 300);
+INSERT INTO route_shaders(route_shader_name, route_select_threshold, route_switch_threshold) VALUES('docker', 300, 300);
 
 INSERT INTO buyers
 (
@@ -17,15 +17,15 @@ INSERT INTO buyers
 VALUES(
 	true,
 	false,
-	'Local',
-	'local',
+	'Docker',
+	'docker',
 	current_setting('local.buyer_public_key_base64'),
-	(select route_shader_id from route_shaders where route_shader_name = 'local')
+	(select route_shader_id from route_shaders where route_shader_name = 'docker')
 );
 
-INSERT INTO sellers(seller_name, seller_code) VALUES('Local', 'local');
+INSERT INTO sellers(seller_name, seller_code) VALUES('Docker', 'docker');
 
--- local datacenters
+-- docker datacenters
 
 INSERT INTO datacenters(
 	datacenter_name, 
@@ -33,13 +33,13 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'local',
+	'docker',
 	40.7128,
 	-74.0060,
-	(select seller_id from sellers where seller_code = 'local')
+	(select seller_id from sellers where seller_code = 'docker')
 );
 
--- local relays
+-- docker relays
 
 INSERT INTO relays(
 	relay_name,
@@ -49,12 +49,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.0',
+	'docker.0',
 	'10.20.1.0',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -65,12 +65,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.1',
+	'docker.1',
 	'10.20.1.1',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -81,12 +81,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.2',
+	'docker.2',
 	'10.20.1.2',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -97,12 +97,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.3',
+	'docker.3',
 	'10.20.1.3',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -113,12 +113,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.4',
+	'docker.4',
 	'10.20.1.4',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -129,12 +129,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.5',
+	'docker.5',
 	'10.20.1.5',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -145,12 +145,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.6',
+	'docker.6',
 	'10.20.1.6',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -161,12 +161,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.7',
+	'docker.7',
 	'10.20.1.7',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -177,12 +177,12 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.8',
+	'docker.8',
 	'10.20.1.8',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 INSERT INTO relays(
@@ -193,18 +193,18 @@ INSERT INTO relays(
 	private_key_base64,
 	datacenter_id)
 VALUES(
-	'local.9',
+	'docker.9',
 	'10.20.1.9',
 	40000,
 	current_setting('local.relay_public_key_base64'),
 	current_setting('local.relay_private_key_base64'),
-	(select datacenter_id from datacenters where datacenter_name = 'local')
+	(select datacenter_id from datacenters where datacenter_name = 'docker')
 );
 
 -- enable datacenters for buyers
 
 INSERT INTO buyer_datacenter_settings VALUES(
-	(select buyer_id from buyers where buyer_code = 'local'),
-	(select datacenter_id from datacenters where datacenter_name = 'local'),
+	(select buyer_id from buyers where buyer_code = 'docker'),
+	(select datacenter_id from datacenters where datacenter_name = 'docker'),
 	true
 );

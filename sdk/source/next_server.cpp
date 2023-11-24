@@ -520,7 +520,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
                                      datacenter[2] == 'o' &&
                                      datacenter[3] == 'u' &&
                                      datacenter[4] == 'd' &&
-                                     datacenter[5] == '\n';
+                                     datacenter[5] == '\0';
 
     if ( !datacenter_is_empty_string && !datacenter_is_cloud )
     {
@@ -628,7 +628,46 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    if ( !next_global_config.disable_network_next && server->valid_buyer_private_key )
+    const bool datacenter_is_local = datacenter[0] == 'l' &&
+                                     datacenter[1] == 'o' &&
+                                     datacenter[2] == 'c' &&
+                                     datacenter[3] == 'a' &&
+                                     datacenter[4] == 'l' &&
+                                     datacenter[5] == '\0';
+
+    const char * hostname = next_global_config.server_backend_hostname;
+
+    const bool backend_is_local = hostname[0] == '1' && 
+                                  hostname[1] == '2' &&
+                                  hostname[2] == '7' &&
+                                  hostname[3] == '.' &&
+                                  hostname[4] == '0' &&
+                                  hostname[5] == '.' &&
+                                  hostname[6] == '0' &&
+                                  hostname[7] == '.' &&
+                                  hostname[8] == '1' &&
+                                  hostname[9] == ':';
+
+    if ( next_global_config.disable_network_next )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "network next is disabled" );
+    }
+
+    if ( !server->valid_buyer_private_key )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "we don't have a valid buyer private key :(" );
+    }
+
+    if ( datacenter_is_local && backend_is_local )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "special local backend codepath" );
+    }
+
+    const bool should_initialize = !next_global_config.disable_network_next     && 
+                                        server->valid_buyer_private_key         && 
+                                   ( (datacenter_is_local && backend_is_local) || !datacenter_is_local );
+
+    if ( should_initialize )
     {
         next_server_internal_initialize( server );
     }

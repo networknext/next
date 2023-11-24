@@ -1400,6 +1400,11 @@ func GetJSON(apiKey string, url string, object interface{}) {
 		os.Exit(1)
 	}
 
+	if response.StatusCode == 401 {
+		fmt.Printf("error: not authorized\n\n")
+		os.Exit(1)
+	}
+
 	body, error := io.ReadAll(response.Body)
 	if error != nil {
 		panic(fmt.Sprintf("could not read response body for %s: %v", url, err))
@@ -1434,6 +1439,11 @@ func GetText(apiKey string, url string) string {
 
 	if response == nil {
 		core.Error("no response from %s", url)
+		os.Exit(1)
+	}
+
+	if response.StatusCode == 401 {
+		fmt.Printf("error: not authorized\n\n")
 		os.Exit(1)
 	}
 
@@ -1472,6 +1482,11 @@ func GetBinary(apiKey string, url string) []byte {
 
 	if response == nil {
 		core.Error("no response from %s", url)
+		os.Exit(1)
+	}
+
+	if response.StatusCode == 401 {
+		fmt.Printf("error: not authorized\n\n")
 		os.Exit(1)
 	}
 
@@ -1517,6 +1532,11 @@ func PutJSON(apiKey string, url string, requestData interface{}, responseData in
 
 	if response == nil {
 		return fmt.Errorf("no response from %s", url)
+	}
+
+	if response.StatusCode == 401 {
+		fmt.Printf("error: not authorized\n\n")
+		os.Exit(1)
 	}
 
 	body, error := io.ReadAll(response.Body)
@@ -1608,7 +1628,7 @@ type AdminCommitResponse struct {
 
 func commitDatabase() {
 
-	bash("rm database.bin")
+	bash("rm -f database.bin")
 
 	getDatabase()
 
