@@ -540,7 +540,7 @@ async function getData(page, session_id) {
         i++
       }
 
-      data.packet_loss_data = [graph_timestamps, packet_loss_direct, packet_loss_next, packet_loss_real]
+      data.packet_loss_data = [graph_timestamps, packet_loss_real]
 
       // out of order graph data
   
