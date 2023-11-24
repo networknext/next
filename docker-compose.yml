@@ -174,7 +174,7 @@ services:
       context: .
       dockerfile: docker/relay.Dockerfile
     environment:
-      - RELAY_NAME=local.0
+      - RELAY_NAME=docker.0
       - RELAY_PUBLIC_ADDRESS=10.20.1.0:40000
       - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_PUBLIC_KEY=ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=
@@ -193,7 +193,7 @@ services:
       context: .
       dockerfile: docker/relay.Dockerfile
     environment:
-      - RELAY_NAME=local.1
+      - RELAY_NAME=docker.1
       - RELAY_PUBLIC_ADDRESS=10.20.1.1:40000
       - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_PUBLIC_KEY=ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=
@@ -212,7 +212,7 @@ services:
       context: .
       dockerfile: docker/relay.Dockerfile
     environment:
-      - RELAY_NAME=local.2
+      - RELAY_NAME=docker.2
       - RELAY_PUBLIC_ADDRESS=10.20.1.2:40000
       - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_PUBLIC_KEY=ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=
@@ -256,7 +256,7 @@ services:
       context: .
       dockerfile: docker/raspberry_server.Dockerfile
     environment:
-      - NEXT_DATACENTER=local
+      - NEXT_DATACENTER=docker
       - NEXT_SERVER_ADDRESS=10.20.2.0
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
@@ -278,7 +278,7 @@ services:
       context: .
       dockerfile: docker/raspberry_server.Dockerfile
     environment:
-      - NEXT_DATACENTER=local
+      - NEXT_DATACENTER=docker
       - NEXT_SERVER_ADDRESS=10.20.2.1
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
@@ -300,7 +300,7 @@ services:
       context: .
       dockerfile: docker/raspberry_server.Dockerfile
     environment:
-      - NEXT_DATACENTER=local
+      - NEXT_DATACENTER=docker
       - NEXT_SERVER_ADDRESS=10.20.2.2
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
@@ -322,7 +322,7 @@ services:
       context: .
       dockerfile: docker/raspberry_server.Dockerfile
     environment:
-      - NEXT_DATACENTER=local
+      - NEXT_DATACENTER=docker
       - NEXT_SERVER_ADDRESS=10.20.2.3
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
@@ -344,7 +344,7 @@ services:
       context: .
       dockerfile: docker/raspberry_server.Dockerfile
     environment:
-      - NEXT_DATACENTER=local
+      - NEXT_DATACENTER=docker
       - NEXT_SERVER_ADDRESS=10.20.2.4
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend

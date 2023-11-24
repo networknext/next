@@ -324,14 +324,7 @@ func happy_path_no_wait() {
 }
 
 func server() {
-	var env Environment
-	env.Read()
-	if env.Name == "local" {
-		bash("cd dist && ./server")
-	} else {
-		fmt.Printf("\nerror: running a local server is not supported in %s\n\n", env.Name)
-		os.Exit(1)
-	}
+	bash("cd dist && ./server")
 }
 
 func RunCommand(command string, args []string) (bool, string) {
