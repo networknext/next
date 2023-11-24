@@ -33,7 +33,7 @@ terraform {
 
 provider "networknext" {
   hostname = "https://api-dev.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDUwMTg0M30.Gcu5VfVL4RmYQNGlTm8D6PjvzhjEEQt0HkM6eBBfqzQ"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDc2NzcwMH0.T7tU_gFjMnHd4bMlbvdZQ82e-YvXUweFE-C5-cQeCoY"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -370,6 +370,7 @@ locals {
 
   vultr_relays = {
 
+/*
     "vultr.chicago" = {
       datacenter_name = "vultr.chicago"
       plan            = "vc2-2c-2gb"
@@ -393,6 +394,7 @@ locals {
       plan            = "vc2-2c-2gb"
       os              = "Ubuntu 22.04 LTS x64"
     },
+*/
 
 // todo
 /*
@@ -558,7 +560,7 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
-  force_network_next = true
+  force_next = true
   acceptable_latency = 50
   latency_reduction_threshold = 10
   acceptable_packet_loss_instant = 0.25

@@ -572,7 +572,9 @@ func generateNextSSHKey() {
 		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
 		os.Exit(1)
 	}
-	bash(fmt.Sprintf("ssh-keygen -t ed25519 -N \"\" -C \"network next ssh key for relays\" -f %s/secrets/next_ssh", homeDir))
+	if !bash(fmt.Sprintf("ssh-keygen -t ed25519 -N \"\" -C \"network next ssh key for relays\" -f %s/secrets/next_ssh", homeDir)) {
+		fmt.Printf("\nerror: could not generate next ssh keypair. is ssh-keygen installed?\n\n")
+	}
 }
 
 func keygen(env Environment, regexes []string) {

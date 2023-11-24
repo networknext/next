@@ -372,15 +372,15 @@ func main() {
 		}
 
 		header := `
-	terraform {
-	  required_providers {
-	    aws = {
-	      source  = "hashicorp/aws"
-	      version = "~> 4.0"
-	    }
-	  }
-	}
-	`
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+`
 		fmt.Fprintf(file, header)
 
 		format_string := "\nprovider \"aws\" { \n" +

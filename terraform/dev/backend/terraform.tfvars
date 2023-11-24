@@ -15,16 +15,16 @@ cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-test_buyer_public_key       = "Lw4WO3aMP6VKgpMFYilu2KRcVwqyoMHodt3QFK+FXpR+c0+DGvITog=="
-test_buyer_private_key      = "Lw4WO3aMP6WkuuvjIi+pcY6D/qC8rwCU3AjSxHYRgbWGyneNvRlA/EqCkwViKW7YpFxXCrKgweh23dAUr4VelH5zT4Ma8hOi"
+test_buyer_public_key       = "pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ=="
+test_buyer_private_key      = "pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l"
 
-raspberry_buyer_public_key  = "yAh9zcMJ+lXnHtZpRwq1DdkTK4Oh9yoPWqxy4JIQLU6FTEKxB5YBLQ=="
-raspberry_buyer_private_key = "yAh9zcMJ+lV8X3od7nkrgIIXvj4uK4AGnXn05Ha1CU1pD64u+Lo4Hece1mlHCrUN2RMrg6H3Kg9arHLgkhAtToVMQrEHlgEt"
+raspberry_buyer_public_key  = "RnNjUqoCkBjnssc4M49RBfA6Fs2FjbsEm6iOUNoma/0FX6Scl8Xumw=="
+raspberry_buyer_private_key = "RnNjUqoCkBh+y+mbM6GbyvGvI2nrwCsDQilTfgpII/E/9Q7ypf5Qyueyxzgzj1EF8DoWzYWNuwSbqI5Q2iZr/QVfpJyXxe6b"
 
 ip2location_bucket_name     = "dogfood_network_next_dev"
 
-relay_backend_public_key    = "bRopR3WVFR8KXJVAfM4kUah3zmY0gMH/5AcnJVsN2kg="
+relay_backend_public_key    = "MExWIRGzL7YTfhmEM5xaGX/acijNs/WJoaFKpk9utUs="
 
-server_backend_public_key   = "9Bj2JpUkTUhhjvTS0ymUu3DgoLJJU8O0UwyDrYvvxBw="
+server_backend_public_key   = "TZFLBJxO0OB+IhM1Tumdb7ClYpnOrdRdEmFJ5mGolAM="
 
 test_server_tag             = "001" # increment this when you need to redeploy the test server
