@@ -26,12 +26,12 @@
 #include "next.h"
 
 #define NEXT_PROD_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
-#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "dmTKooG/YjkN4llA7Yow3eZ83SIay3vjsmPtG6vN8cc="
-#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "k4AuJrGEbDFpI3quMgL0jOLEUmeeDmEZUTEQz7lI/G4="
+#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "//VvaQBqYPq1Qto6nct6PZe2BINccgeHDbohlyN5vYk="
+#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "jRUKe8S7x5s6Se537gkjpIHq4JWKyEd3MoQ7iQOqoTQ="
 
 #define NEXT_DEV_SERVER_BACKEND_HOSTNAME "server-dev.virtualgo.net"
-#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "9Bj2JpUkTUhhjvTS0ymUu3DgoLJJU8O0UwyDrYvvxBw="
-#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "bRopR3WVFR8KXJVAfM4kUah3zmY0gMH/5AcnJVsN2kg="
+#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "hc3/baZ4FYYaknk1heRK345FK3ZOSpfK1PiMmuIGb1w="
+#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "8jOvRZXo57q2kivlnm4nW9Ff6oi9fgHBnWoUJhz4PQQ="
 
 #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME   NEXT_PROD_SERVER_BACKEND_HOSTNAME
@@ -43,7 +43,7 @@
 #define NEXT_RELAY_BACKEND_PUBLIC_KEY  NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY
 #endif // #if !NEXT_DEVELOPMENT
 
-#define NEXT_CONFIG_BUCKET_NAME "dogfood_network_next_sdk_config"
+#define NEXT_CONFIG_BUCKET_NAME "wilton_network_next_sdk_config"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
@@ -66,11 +66,11 @@
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
-#define NEXT_PINGS_PER_SECOND                                          10
-#define NEXT_DIRECT_PINGS_PER_SECOND                                   10
+#define NEXT_PINGS_PER_SECOND                                           5
+#define NEXT_DIRECT_PINGS_PER_SECOND                                    5
 #define NEXT_COMMAND_QUEUE_LENGTH                                    1024
 #define NEXT_NOTIFY_QUEUE_LENGTH                                     1024
-#define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                           10
+#define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                            5
 #define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                          10.0
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
@@ -179,7 +179,7 @@
 
 #define NEXT_MAX_SESSION_DEBUG                                       1024
 
-#define NEXT_PING_RATE                                                 10
+#define NEXT_NEAR_RELAY_PINGS_PER_SECOND                                2
 
 #define NEXT_IPV4_HEADER_BYTES                                         20
 #define NEXT_UDP_HEADER_BYTES                                           8

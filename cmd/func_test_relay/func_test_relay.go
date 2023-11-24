@@ -40,10 +40,10 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "/uUJOkyWefo3mjqseLDlexsPH9S9pD13OXrD8u6nIVw="
-const TestRelayPrivateKey = "nqRXN42HoyZaPTrcCz69bu2BmjBheCpEDm21RPsW7CE="
-const TestRelayBackendPublicKey = "/wgsh7bGHaIfmYvtBujyz97AOEQqYHMX4PEEEBqlayI="
-const TestRelayBackendPrivateKey = "uGx6w8GEcQW2YpPm61xxLISOMVUkUkZPBQBr1ddFUDY="
+const TestRelayPublicKey = "ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA="
+const TestRelayPrivateKey = "I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk="
+const TestRelayBackendPublicKey = "1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE="
+const TestRelayBackendPrivateKey = "2W4kim0GHAt+1kxw/UIrpEFI24nO0Lv9Nge6GjYiaYA="
 
 const (
 	relayBin   = "./relay-debug"
@@ -179,9 +179,6 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 	if mode != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("BACKEND_MODE=%s", mode))
 	}
-
-	// todo
-	cmd.Env = append(cmd.Env, "DEBUG_LOGS=1")
 
 	var output bytes.Buffer
 	cmd.Stdout = &output

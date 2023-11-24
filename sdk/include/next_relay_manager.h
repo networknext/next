@@ -227,7 +227,7 @@ inline void next_relay_manager_update( next_relay_manager_t * manager, int num_r
 
     double current_time = next_platform_time();
 
-    const double ping_time = 1.0 / NEXT_PING_RATE;
+    const double ping_time = 1.0 / NEXT_NEAR_RELAY_PINGS_PER_SECOND;
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -249,7 +249,7 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        const double ping_time = 1.0 / NEXT_PING_RATE;
+        const double ping_time = 1.0 / NEXT_NEAR_RELAY_PINGS_PER_SECOND;
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {

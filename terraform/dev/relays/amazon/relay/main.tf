@@ -38,7 +38,7 @@ resource "aws_instance" "relay" {
   availability_zone      = var.zone
   instance_type          = var.type
   ami                    = data.aws_ami.ubuntu.id
-  key_name               = "region-ssh-key"
+  key_name               = "dev-region-ssh-key"
   vpc_security_group_ids = [var.security_group_id]
   tags = {
     Name = "dev-${var.name}"

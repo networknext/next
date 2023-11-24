@@ -30,6 +30,8 @@ variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
+variable "test_server_tag" { type = string }
+
 locals {
   google_project_id          = file("../../projects/prod-project-id.txt")
   google_project_number      = file("../../projects/prod-project-number.txt")
@@ -59,7 +61,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "dogfood_network_next_terraform"
+    bucket  = "wilton_network_next_terraform"
     prefix  = "production"
   }
 }
@@ -1095,6 +1097,69 @@ module "raspberry_client" {
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
   target_size        = 40
+}
+
+# ----------------------------------------------------------------------------------------
+
+resource "google_compute_address" "test_server_address" {
+  name = "test-server-address"
+}
+
+resource "google_compute_instance" "test_server" {
+
+  name         = "test-server-${var.tag}"
+  machine_type = "n1-standard-2"
+  zone         = var.google_zone
+  tags         = ["allow-ssh", "allow-udp-all"]
+
+  allow_stopping_for_update = true
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    }
+  }
+
+  network_interface {
+    network    = google_compute_network.production.id
+    subnetwork = google_compute_subnetwork.production.id
+    access_config {
+      nat_ip = google_compute_address.test_server_address.address
+    }
+  }
+
+  metadata = {
+    startup-script = <<-EOF2
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    NEXT_LOG_LEVEL=4
+    NEXT_DATACENTER="cloud"
+    NEXT_SERVER_ADDRESS="${google_compute_address.test_server_address.address}:30000"
+    NEXT_SERVER_BACKEND_HOSTNAME="server.${var.cloudflare_domain}"
+    NEXT_BUYER_PUBLIC_KEY="${var.test_buyer_public_key}"
+    NEXT_BUYER_PRIVATE_KEY="${var.test_buyer_private_key}"
+    NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
+    NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
+    EOF
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
+    ldconfig
+    systemctl start app.service
+    EOF2
+  }
+
+  service_account {
+    email  = local.google_service_account
+    scopes = ["cloud-platform"]
+  }
+}
+
+output "test_server_address" {
+  description = "The IP address of the test server"
+  value = "${google_compute_address.test_server_address.address}:30000"
 }
 
 # ----------------------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 {
-  "company_name": "dogfood",
+  "company_name": "wilton",
   "vpn_address": "45.79.157.168",
   "cloudflare_zone_id": "eba5d882ea2aa23f92dfb50fbf7e3cf4",
   "cloudflare_domain": "virtualgo.net",
   "google_billing_account": "012279-A33489-722F96",
   "google_org_id": "434699063105",
-  "ssh_key": "id_rsa"
+  "ssh_key": "~/secrets/next_ssh"
 }

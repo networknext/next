@@ -25,12 +25,12 @@ variable "vpn_address" { type = string }
 # --------------------------------------------------------------------------
 
 resource "vultr_ssh_key" "relay" {
-  name    = "${env}-relay"
+  name    = "${var.env}-relay"
   ssh_key = replace(file(var.ssh_public_key_file), "\n", "")
 }
 
 resource "vultr_startup_script" "setup_relay" {
-  name   = "${env}-setup-relay"
+  name   = "${var.env}-setup-relay"
   script = base64encode(replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address))
 }
 

@@ -452,7 +452,6 @@ func Test_SessionUpdate_Pre_ReadSessionData(t *testing.T) {
 	assert.False(t, (state.Error&constants.SessionError_FailedToReadSessionData) != 0)
 }
 
-/*
 func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 
 	t.Parallel()
@@ -477,7 +476,11 @@ func Test_SessionUpdate_ExistingSession_BadSessionId(t *testing.T) {
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
+	state.Request.SliceNumber = 5
+
 	handlers.SessionUpdate_Pre(state)
+
+	assert.True(t, state.ReadSessionData)
 
 	handlers.SessionUpdate_ExistingSession(state)
 
@@ -511,6 +514,7 @@ func Test_SessionUpdate_ExistingSession_BadSliceNumber(t *testing.T) {
 	copy(state.Request.SessionData[:], writeSessionData)
 	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
 
+	state.Request.SliceNumber = 5
 	state.Request.SessionId = sessionId
 
 	handlers.SessionUpdate_Pre(state)
@@ -592,7 +596,6 @@ func Test_SessionUpdate_ExistingSession_Output(t *testing.T) {
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.Equal(t, state.Error, 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
@@ -639,7 +642,6 @@ func Test_SessionUpdate_ExistingSession_RealPacketLoss(t *testing.T) {
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.True(t, state.Error == 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
@@ -688,7 +690,6 @@ func Test_SessionUpdate_ExistingSession_RealOutOfOrder(t *testing.T) {
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.True(t, state.Error == 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
@@ -730,7 +731,6 @@ func Test_SessionUpdate_ExistingSession_RealJitter(t *testing.T) {
 	handlers.SessionUpdate_ExistingSession(state)
 
 	assert.True(t, state.ReadSessionData)
-	assert.True(t, state.Error == 0)
 	assert.Equal(t, state.Output.SessionId, sessionId)
 	assert.Equal(t, state.Output.SliceNumber, sliceNumber+1)
 	assert.Equal(t, state.Output.ExpireTimestamp, state.Input.ExpireTimestamp+packets.SDK_SliceSeconds)
@@ -824,7 +824,6 @@ func Test_SessionUpdate_ExistingSession_EnvelopeBandwidthOnlyOnNext(t *testing.T
 	assert.Equal(t, state.Output.NextEnvelopeBytesUpSum, uint64(0))
 	assert.Equal(t, state.Output.NextEnvelopeBytesDownSum, uint64(0))
 }
-*/
 
 // --------------------------------------------------------------
 

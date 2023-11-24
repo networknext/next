@@ -183,7 +183,7 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
 
             if ( entry->time_pong_received >= entry->time_ping_sent )
             {
-                double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
+                double rtt = ( entry->time_pong_received - entry->time_ping_sent );
 
                 if ( rtt < min_rtt )
                 {
@@ -199,37 +199,35 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
     {
         next_assert( min_rtt >= 0.0 );
 
-        stats->rtt = float( min_rtt );
+        stats->rtt = float( min_rtt ) * 1000.0f;
 
         stats->packet_loss = (float) ( 100.0 * ( 1.0 - ( double( num_pongs_received ) / double( num_pings_sent ) ) ) );
-    }
 
-    // calculate jitter relative to min rtt
+        int num_jitter_samples = 0;
 
-    int num_jitter_samples = 0;
+        double stddev_rtt = 0.0;
 
-    double stddev_rtt = 0.0;
-
-    for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
-    {
-        const next_ping_history_entry_t * entry = &history->entries[i];
-
-        if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end )
+        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
         {
-            if ( entry->time_pong_received > entry->time_ping_sent )
+            const next_ping_history_entry_t * entry = &history->entries[i];
+
+            if ( entry->time_ping_sent >= start && entry->time_ping_sent <= end )
             {
-                // pong received
-                double rtt = 1000.0 * ( entry->time_pong_received - entry->time_ping_sent );
-                double error = rtt - min_rtt;
-                stddev_rtt += error * error;
-                num_jitter_samples++;
+                if ( entry->time_pong_received > entry->time_ping_sent )
+                {
+                    // pong received
+                    double rtt = ( entry->time_pong_received - entry->time_ping_sent );
+                    double error = rtt - min_rtt;
+                    stddev_rtt += error * error;
+                    num_jitter_samples++;
+                }
             }
         }
-    }
 
-    if ( num_jitter_samples > 0 )
-    {
-        stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples );
+        if ( num_jitter_samples > 0 )
+        {
+            stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples ) * 1000.0;
+        }
     }
 
     next_ping_history_verify_sentinels( history );

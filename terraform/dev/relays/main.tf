@@ -26,14 +26,14 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "dogfood_network_next_terraform"
+    bucket  = "wilton_network_next_terraform"
     prefix  = "dev_relays"
   }
 }
 
 provider "networknext" {
   hostname = "https://api-dev.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDUwMTg0M30.Gcu5VfVL4RmYQNGlTm8D6PjvzhjEEQt0HkM6eBBfqzQ"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDgzMzkyMH0.tCmAws2RLO5jQrv9fTWK_i0WztQkj4p0ITew9ArP-sM"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -48,6 +48,139 @@ locals {
   google_project     = file("../../projects/dev-relays-project-id.txt")
   google_relays = {
 
+    "google.iowa.1" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.2" = {
+      datacenter_name = "google.iowa.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.3" = {
+      datacenter_name = "google.iowa.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.6" = {
+      datacenter_name = "google.iowa.6"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.ohio.1" = {
+      datacenter_name = "google.ohio.1"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.ohio.2" = {
+      datacenter_name = "google.ohio.2"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.ohio.3" = {
+      datacenter_name = "google.ohio.3"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.1" = {
+      datacenter_name = "google.virginia.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.2" = {
+      datacenter_name = "google.virginia.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.3" = {
+      datacenter_name = "google.virginia.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.1" = {
+      datacenter_name = "google.frankfurt.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.2" = {
+      datacenter_name = "google.frankfurt.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.3" = {
+      datacenter_name = "google.frankfurt.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.finland.1" = {
+      datacenter_name = "google.finland.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.finland.2" = {
+      datacenter_name = "google.finland.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.finland.3" = {
+      datacenter_name = "google.finland.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.1" = {
+      datacenter_name = "google.netherlands.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.2" = {
+      datacenter_name = "google.netherlands.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.3" = {
+      datacenter_name = "google.netherlands.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.1" = {
+      datacenter_name = "google.london.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.2" = {
+      datacenter_name = "google.london.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.3" = {
+      datacenter_name = "google.london.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+/*
     # IOWA
 
     "google.iowa.1" = {
@@ -129,6 +262,7 @@ locals {
       type            = "n2-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+*/
 
   }
 }
@@ -139,7 +273,7 @@ module "google_relays" {
   credentials         = local.google_credentials
   source              = "../../sellers/google"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -164,7 +298,7 @@ module "amazon_relays" {
   profile             = local.amazon_profile
   source              = "./amazon"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -183,6 +317,19 @@ locals {
       image           = "linode/ubuntu22.04"
     },
 
+    "akamai.frankfurt" = {
+      datacenter_name = "akamai.frankfurt"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    }
+    
+    "akamai.london" = {
+      datacenter_name = "akamai.london"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    }
+
+    /*
     "akamai.atlanta" = {
       datacenter_name = "akamai.atlanta"
       type            = "g6-dedicated-2"
@@ -200,6 +347,7 @@ locals {
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
     }
+    */
 
   }
 }
@@ -209,7 +357,62 @@ module "akamai_relays" {
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/.ssh/id_rsa.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ============
+# VULTR RELAYS
+# ============
+
+locals {
+
+  vultr_relays = {
+
+/*
+    "vultr.chicago" = {
+      datacenter_name = "vultr.chicago"
+      plan            = "vc2-2c-2gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.newyork" = {
+      datacenter_name = "vultr.newyork"
+      plan            = "vc2-2c-2gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.frankfurt" = {
+      datacenter_name = "vultr.frankfurt"
+      plan            = "vc2-2c-2gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+
+    "vultr.amsterdam" = {
+      datacenter_name = "vultr.amsterdam"
+      plan            = "vc2-2c-2gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+*/
+
+// todo
+/*
+    "vultr.stockholm" = {
+      datacenter_name = "vultr.stockholm"
+      plan            = "vc2-2c-2gb"
+      os              = "Ubuntu 22.04 LTS x64"
+    },
+*/
+  }
+}
+
+module "vultr_relays" {
+  env                 = "dev"
+  relays              = local.vultr_relays
+  source              = "../../sellers/vultr"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -227,6 +430,7 @@ locals {
       keys(module.google_relays.relays),
       keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
+      keys(module.vultr_relays.relays),
     )
   )
 
@@ -234,12 +438,14 @@ locals {
     module.google_relays.relays,
     module.amazon_relays.relays,
     module.akamai_relays.relays,
+    module.vultr_relays.relays,
   )
 
   datacenters = merge(
     module.google_relays.datacenters,
     module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
+    module.vultr_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
@@ -354,12 +560,13 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
-  acceptable_latency = 0
-  latency_reduction_threshold = 1
-  acceptable_packet_loss_instant = 0.1
-  acceptable_packet_loss_sustained = 0.01
-  bandwidth_envelope_up_kbps = 1024
-  bandwidth_envelope_down_kbps = 1024
+  force_next = true
+  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  acceptable_packet_loss_instant = 0.25
+  acceptable_packet_loss_sustained = 0.1
+  bandwidth_envelope_up_kbps = 256
+  bandwidth_envelope_down_kbps = 256
 }
 
 resource "networknext_buyer" test {

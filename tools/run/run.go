@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"path"
 	"syscall"
+	"sync"
+	"bufio"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -282,14 +285,6 @@ func api() {
 	bash(fmt.Sprintf("HTTP_PORT=%s API_PRIVATE_KEY=%s ./dist/api", httpPort, apiPrivateKey))
 }
 
-func sync() {
-	bash("HTTP_PORT=40010 ./dist/sync")
-}
-
-func pingdom() {
-	bash("HTTP_PORT=40020 ./dist/pingdom")
-}
-
 func relay() {
 	relayPort := os.Getenv("RELAY_PORT")
 	if relayPort == "" {
@@ -329,11 +324,89 @@ func happy_path_no_wait() {
 }
 
 func server() {
-	bash("cd dist && ./server")
+	var env Environment
+	env.Read()
+	if env.Name == "local" {
+		bash("cd dist && ./server")
+	} else {
+		fmt.Printf("\nerror: running a local server is not supported in %s\n\n", env.Name)
+		os.Exit(1)
+	}
+}
+
+func RunCommand(command string, args []string) (bool, string) {
+
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func bash_output(command string) (bool, string) {
+	return RunCommand("bash", []string{"-c", command})
 }
 
 func client() {
-	bash("cd dist && ./client")
+	var env Environment
+	env.Read()
+	if env.Name == "local" {
+		bash("cd dist && ./client")
+	} else {
+		filename := fmt.Sprintf("terraform/projects/%s-project-id.txt", env.Name)
+		projectId, _ := os.ReadFile(filename)
+		_, output := bash_output(fmt.Sprintf("gcloud compute addresses list --project %s", projectId))
+		lines := strings.Split(output, "\n")
+		found := false
+		for i := range lines {
+			if strings.Contains(lines[i], "test-server-address") {
+				values := strings.Fields(lines[i])
+				if len(values) >= 2 {
+					connectAddress := values[1]
+					bash(fmt.Sprintf("cd dist && NEXT_CONNECT_ADDRESS=%s:30000 ./client", connectAddress))
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			fmt.Printf("\nerror: could not find test server address for %s\n\n", env.Name)
+			os.Exit(1)
+		}
+	}
 }
 
 func pubsub_emulator() {

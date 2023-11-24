@@ -21,8 +21,11 @@ var devRelayMap = map[string][]string{
 	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.oregon.1":   {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.stockholm.1":  {"amazon.stockholm.1", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.stockholm.2":  {"amazon.stockholm.2", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.stockholm.3":  {"amazon.stockholm.3", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.oregon.1":   {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================
@@ -369,15 +372,15 @@ func main() {
 		}
 
 		header := `
-	terraform {
-	  required_providers {
-	    aws = {
-	      source  = "hashicorp/aws"
-	      version = "~> 4.0"
-	    }
-	  }
-	}
-	`
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+`
 		fmt.Fprintf(file, header)
 
 		format_string := "\nprovider \"aws\" { \n" +

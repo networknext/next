@@ -33,6 +33,8 @@ variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
+variable "test_server_tag" { type = string }
+
 locals {
   google_project_id          = file("../../projects/dev-project-id.txt")
   google_project_number      = file("../../projects/dev-project-number.txt")
@@ -58,7 +60,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "dogfood_network_next_terraform"
+    bucket  = "wilton_network_next_terraform"
     prefix  = "dev"
   }
 }
@@ -157,18 +159,18 @@ resource "cloudflare_record" "relay_backend_domain" {
   proxied = false
 }
 
-resource "cloudflare_record" "raspberry_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "raspberry-dev"
-  value   = module.raspberry_backend.address
-  type    = "A"
-  proxied = false
-}
-
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-dev"
   value   = module.portal.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "raspberry_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "raspberry-dev"
+  value   = module.raspberry_backend.address
   type    = "A"
   proxied = false
 }
@@ -812,6 +814,7 @@ module "server_backend" {
     ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=dev
+    DEBUG_LOGS=1
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     UDP_NUM_THREADS=2
@@ -905,7 +908,7 @@ module "raspberry_backend" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
-  target_size              = 1
+  target_size              = 0 // 1
 
   depends_on = [
     module.server_backend
@@ -953,7 +956,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 8
+  target_size        = 0 // 8
 
   depends_on = [
     module.server_backend,
@@ -997,7 +1000,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 4
+  target_size        = 0 // 4
 
   depends_on = [
     module.server_backend,
@@ -1095,7 +1098,7 @@ resource "google_compute_address" "test_server_address" {
 
 resource "google_compute_instance" "test_server" {
 
-  name         = "test-server"
+  name         = "test-server-${var.test_server_tag}"
   machine_type = "n1-standard-2"
   zone         = var.google_zone
   tags         = ["allow-ssh", "allow-udp-all"]
@@ -1137,10 +1140,6 @@ resource "google_compute_instance" "test_server" {
     ldconfig
     systemctl start app.service
     EOF2
-  }
-
-  lifecycle {
-    create_before_destroy = true
   }
 
   service_account {

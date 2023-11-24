@@ -110,7 +110,6 @@ usw2-az3,amazon.oregon.3
 usw2-az4,amazon.oregon.4
 usw2-den1-az1,amazon.denver.1
 usw2-las1-az1,amazon.lasvegas.1
-usw2-las1-az2,amazon.lasvegas.2
 usw2-lax1-az1,amazon.losangeles.1
 usw2-lax1-az2,amazon.losangeles.2
 usw2-pdx1-az1,amazon.portland.1
