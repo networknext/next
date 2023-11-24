@@ -4,17 +4,7 @@
 
 # Configure Network Next
 
-## 1. Generate SSH key
-
-Generate an SSH key by following these instructions: 
-
-https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
-
-Save the keypair to `~/secrets/next_rsa`
-
-This key will be used to SSH into relays.
-
-## 2. Generate keypairs
+## 1. Generate keypairs
 
 Change to the "~/next" directory and run:
 
@@ -35,7 +25,7 @@ Once you are satisfied with the changes, commit them to the repository:
 
 Back up the secrets directory somewhere. If you lose it, you will not be able to administer your network next instance.
 
-## 3. Edit config.json
+## 2. Edit config.json
 
 Edit the config.json file at the root fo the next repository.
 
@@ -65,7 +55,7 @@ By default it should contain something like this:
 
 8. Set *google_org_id* to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
 
-## 4. Run the configure script
+## 3. Run the configure script
 
 Change to "~/next" and run:
 
