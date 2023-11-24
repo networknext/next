@@ -45,6 +45,7 @@ resource "aws_instance" "relay" {
   }
   lifecycle {
     create_before_destroy = true
+    ignore_changes = [ami]
   }
   user_data = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
 }

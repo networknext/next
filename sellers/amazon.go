@@ -463,8 +463,8 @@ terraform {
 	    aws = aws.%s
 	  }
 	}
-
 	`
+
 		for k, v := range devRelayMap {
 			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
 		}
@@ -610,8 +610,8 @@ terraform {
 	    aws = aws.%s
 	  }
 	}
-
 	`
+
 		for k, v := range prodRelayMap {
 			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
 		}
