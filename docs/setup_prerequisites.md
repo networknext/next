@@ -12,6 +12,7 @@ Before you can setup network next, you need the following things:
 * A google cloud account
 * An AWS account
 * A linode account
+* A vultr account
 * A semaphoreci account
 * A maxmind account
 * Terraform installed on your development machine
@@ -228,7 +229,19 @@ Download this API token and save it under your home directory as: ~/secrets/terr
 
 This API token will be used when terraform creates relays under linode.
 
-## 9. Setup cloudflare API token
+## 9. Export vultr API token
+
+Sign up for an account at https://vultr.com
+
+Once signed in, click on your user account and select "API":
+
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/dcfe0d2f-1a87-4e67-8cba-0adfe58100cd">
+
+Save this API key to ~/secrets/terraform-vultr.txt
+
+This API token will be used when terraform creates relays under vultr.
+
+## 10. Setup cloudflare API token
 
 Log in to your cloudflare account and click on the user icon in the top right, and select "My Profile".
 
@@ -254,7 +267,7 @@ Create the token then copy the text and save the text to ~/secrets/terraform-clo
 
 This API token will be used when your domain name is pointed to backend services running in google cloud.
 
-## 10. Setup semaphore ci
+## 11. Setup semaphore ci
 
 Navigate to https://semaphoreci.com and sign up for a new account.
 
@@ -274,7 +287,7 @@ Create a new semaphore project pointing at your forked "next" repository.
 
 Use the existing semaphoreci configuration in the repository.
 
-## 11. Setup maxmind.com subscriptions
+## 12. Setup maxmind.com subscriptions
 
 Create an account on maxmind.com and purchase a monthly subscription to:
 
@@ -289,13 +302,13 @@ While you wait, create a license key for maxmind.com and save it to ~/secrets/ma
 
 <img width="1439" alt="image" src="https://github.com/networknext/next/assets/696656/ce46bed5-4e41-4b5e-9972-ef5e1e0e0123">
 
-## 12. Install terraform
+## 13. Install terraform
 
 Follow the instructions here to install terraform:
 
 https://developer.hashicorp.com/terraform/install
 
-## 13. Final checks
+## 14. Final checks
 
 1. You have OpenVPN setup and you have recorded the VPN IP address somewhere
 2. You have created a new domain and it is imported and managed by cloudflare
@@ -303,12 +316,13 @@ https://developer.hashicorp.com/terraform/install
 4. You have requested increased quotas in google cloud and these quotas have been approved
 5. You have a working AWS account and 'aws' is working locally
 6. You have exported a linode API token to ~/secrets/terraform-akamai.txt
-7. You have exported a cloudflare API token to ~/secrets/terraform-cloudflare.txt
-8. You have backed up your secrets somewhere
-9. You have setup a semaphoreci.com account
-10. You have a maxmind license key saved to ~/secrets/maxmind.txt
-11. You have a monthly subscription to the GeoIP2-City database from maxmind
-12. You have a monthly subscription to the GeoIP2-ISP database from maxmind
-13. You have installed terraform on your dev machine
+7. You have exported a vultr API token to ~/secrets/terraform-vultr.txt
+8. You have exported a cloudflare API token to ~/secrets/terraform-cloudflare.txt
+9. You have backed up your secrets somewhere
+10. You have setup a semaphoreci.com account
+11. You have a maxmind license key saved to ~/secrets/maxmind.txt
+12. You have a monthly subscription to the GeoIP2-City database from maxmind
+13. You have a monthly subscription to the GeoIP2-ISP database from maxmind
+14. You have installed terraform on your dev machine
 
 Once all these prerequisites are met, you can proceed to the next section: [Configure Network Next](configure_network_next.md).
