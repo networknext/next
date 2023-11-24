@@ -327,21 +327,9 @@ let jitter_opts = custom_graph({
 })
 
 let packet_loss_opts = custom_graph({
-  title: "Packet Loss",
+  title: "  ",
   percent: true,
   series: [
-    { 
-      name: 'Direct',
-      stroke: 'rgb(49, 130, 189)',
-      fill: 'rgba(49, 130, 189, 0.1)',
-      units: '%',
-    },
-    {
-      name: 'Next',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
-      units: '%',
-    },
     {
       name: 'Real',
       stroke: "rgb(200,10,10)",
@@ -545,13 +533,9 @@ async function getData(page, session_id) {
 
       // packet loss graph data
   
-      let packet_loss_direct = []
-      let packet_loss_next = []
       let packet_loss_real = []
       i = 0
       while (i < res.data.slice_data.length) {
-        packet_loss_direct.push(res.data.slice_data[i].direct_packet_loss)
-        packet_loss_next.push(res.data.slice_data[i].next_packet_loss)
         packet_loss_real.push(res.data.slice_data[i].real_packet_loss)
         i++
       }

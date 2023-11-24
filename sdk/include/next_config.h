@@ -66,11 +66,11 @@
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
-#define NEXT_PINGS_PER_SECOND                                          10
-#define NEXT_DIRECT_PINGS_PER_SECOND                                   10
+#define NEXT_PINGS_PER_SECOND                                           5
+#define NEXT_DIRECT_PINGS_PER_SECOND                                    5
 #define NEXT_COMMAND_QUEUE_LENGTH                                    1024
 #define NEXT_NOTIFY_QUEUE_LENGTH                                     1024
-#define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                           10
+#define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                            5
 #define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                          10.0
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
@@ -179,7 +179,7 @@
 
 #define NEXT_MAX_SESSION_DEBUG                                       1024
 
-#define NEXT_PING_RATE                                                 10
+#define NEXT_NEAR_RELAY_PINGS_PER_SECOND                                2
 
 #define NEXT_IPV4_HEADER_BYTES                                         20
 #define NEXT_UDP_HEADER_BYTES                                           8
