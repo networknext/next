@@ -203,9 +203,9 @@ int main()
     next_config_t config;
     next_default_config(&config);
 #ifdef _WIN32
-    strncpy_s(config.buyer_public_key, "RnNjUqoCkBjnssc4M49RBfA6Fs2FjbsEm6iOUNoma/0FX6Scl8Xumw==", 256);
+    strncpy_s(config.buyer_public_key, "ZkQ8nC3BTkFjR7ws8GhRz/zVUueQXcde1T0EL+j0/XPVh39S6IoVaw==", 256);
 #else
-    strncpy(config.buyer_public_key, "RnNjUqoCkBjnssc4M49RBfA6Fs2FjbsEm6iOUNoma/0FX6Scl8Xumw==", 256);
+    strncpy(config.buyer_public_key, "ZkQ8nC3BTkFjR7ws8GhRz/zVUueQXcde1T0EL+j0/XPVh39S6IoVaw==", 256);
 #endif
     config.buyer_public_key[255] = 0;
 

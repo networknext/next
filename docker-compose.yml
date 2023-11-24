@@ -61,9 +61,9 @@ services:
       - REDIS_HOSTNAME=redis:6379
       - MAGIC_URL=http://magic_backend/magic
       - MAGIC_INTERVAL=10s
-      - RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
-      - RELAY_BACKEND_PRIVATE_KEY=tVG6z2dVuH66iVErHRYGd7pEkWQarLTWKUbjA9WoanM=
-      - PING_KEY=TPiLl9Jd3XMJpJQPI+WJyQypHeVx6y05Q0NB3+F+k1s=
+      - RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
+      - RELAY_BACKEND_PRIVATE_KEY=2W4kim0GHAt+1kxw/UIrpEFI24nO0Lv9Nge6GjYiaYA=
+      - PING_KEY=UGUwDLPhVk4tjPA6XJXrZ6yJRD4Z+PcbylEwBF2YYUY=
       - RELAY_BACKEND_ADDRESS=10.20.0.200
     networks:
       - default
@@ -131,10 +131,10 @@ services:
       - MAGIC_INTERVAL=10s
       - ROUTE_MATRIX_INTERVAL=10s
       - ROUTE_MATRIX_URL=http://relay_backend/route_matrix
-      - SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - SERVER_BACKEND_PRIVATE_KEY=uyu+rDkvs4eQoeCWGxlyPXw4uHiJeeJAMPynlumcLqS6AE58CYwNr35gWymoP5c0aJO/MTke6ex5F0gBL7Orfg==
-      - RELAY_BACKEND_PRIVATE_KEY=tVG6z2dVuH66iVErHRYGd7pEkWQarLTWKUbjA9WoanM=
-      - PING_KEY=TPiLl9Jd3XMJpJQPI+WJyQypHeVx6y05Q0NB3+F+k1s=
+      - SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - SERVER_BACKEND_PRIVATE_KEY=U4IJAmMyxjPCAp6E5b0YDnc+x+RoNQQn35tsjUcvBZGBwADTtnNn8RHE6rGau+49A7au3G0CJ1LZm2YrY2MDLg==
+      - RELAY_BACKEND_PRIVATE_KEY=2W4kim0GHAt+1kxw/UIrpEFI24nO0Lv9Nge6GjYiaYA=
+      - PING_KEY=UGUwDLPhVk4tjPA6XJXrZ6yJRD4Z+PcbylEwBF2YYUY=
       - SERVER_BACKEND_ADDRESS=10.20.0.100:40000
       - SESSION_CRUNCHER_URL=http://session_cruncher
       - SERVER_CRUNCHER_URL=http://server_cruncher
@@ -166,7 +166,7 @@ services:
       - PGSQL_CONFIG=host=postgres port=5432 user=Postgres password=Postgres dbname=postgres sslmode=disable
       - SESSION_CRUNCHER_URL=http://session_cruncher
       - SERVER_CRUNCHER_URL=http://server_cruncher
-      - API_PRIVATE_KEY=FMlgMmNymOCjrYZYTjaMRdTBXvHSdyYnncRFkxthJzcwTKkCFBIdgaUjQaxussOe
+      - API_PRIVATE_KEY=mzVMrSQOnNEBzkrPbfViPEBGObYxxXczlQjGuaPlvfBKYoQEurUntMUkzouzySDW
     restart: always
 
   relay_0:
@@ -177,9 +177,9 @@ services:
       - RELAY_NAME=local.0
       - RELAY_PUBLIC_ADDRESS=10.20.1.0:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_PUBLIC_KEY=VS5NZAEnCG9l9XjCk042/gStOnsmdsxHPKx3u6UeUiI=
-      - RELAY_PRIVATE_KEY=u6apUtFATnUTVcU4cO6M0g/kbNFk7qj2rCSfXMcpR0Q=
-      - RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - RELAY_PUBLIC_KEY=ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=
+      - RELAY_PRIVATE_KEY=I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk=
+      - RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.1.0
@@ -196,9 +196,9 @@ services:
       - RELAY_NAME=local.1
       - RELAY_PUBLIC_ADDRESS=10.20.1.1:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_PUBLIC_KEY=VS5NZAEnCG9l9XjCk042/gStOnsmdsxHPKx3u6UeUiI=
-      - RELAY_PRIVATE_KEY=u6apUtFATnUTVcU4cO6M0g/kbNFk7qj2rCSfXMcpR0Q=
-      - RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - RELAY_PUBLIC_KEY=ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=
+      - RELAY_PRIVATE_KEY=I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk=
+      - RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.1.1
@@ -215,9 +215,9 @@ services:
       - RELAY_NAME=local.2
       - RELAY_PUBLIC_ADDRESS=10.20.1.2:40000
       - RELAY_BACKEND_URL=http://relay_gateway
-      - RELAY_PUBLIC_KEY=VS5NZAEnCG9l9XjCk042/gStOnsmdsxHPKx3u6UeUiI=
-      - RELAY_PRIVATE_KEY=u6apUtFATnUTVcU4cO6M0g/kbNFk7qj2rCSfXMcpR0Q=
-      - RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - RELAY_PUBLIC_KEY=ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA=
+      - RELAY_PRIVATE_KEY=I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk=
+      - RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.1.2
@@ -260,10 +260,10 @@ services:
       - NEXT_SERVER_ADDRESS=10.20.2.0
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
     networks:
       relays:
@@ -282,10 +282,10 @@ services:
       - NEXT_SERVER_ADDRESS=10.20.2.1
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
     networks:
       relays:
@@ -304,10 +304,10 @@ services:
       - NEXT_SERVER_ADDRESS=10.20.2.2
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
     networks:
       relays:
@@ -326,10 +326,10 @@ services:
       - NEXT_SERVER_ADDRESS=10.20.2.3
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
     networks:
       relays:
@@ -348,10 +348,10 @@ services:
       - NEXT_SERVER_ADDRESS=10.20.2.4
       - NEXT_BIND_ADDRESS=0.0.0.0:40000
       - NEXT_SERVER_BACKEND_HOSTNAME=server_backend
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
     networks:
       relays:
@@ -368,10 +368,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.0
@@ -387,10 +387,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.1
@@ -406,10 +406,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.2
@@ -425,10 +425,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.3
@@ -444,10 +444,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.4
@@ -463,10 +463,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.5
@@ -482,10 +482,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
        NEXT_BUYER_PRIVATE_KEY=AN+VWuqgAQdhmzB4XOT89baswrIaX6WS7dTIW8U6deMZdoemQh9qoN3l35B5Ppqk1/4Ztv2uoUEy2Tkz4agy/BLUSrPvrhf8
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.6
@@ -501,10 +501,10 @@ services:
     environment:
       - RASPBERRY_BACKEND_URL=http://raspberry_backend
       - RASPBERRY_NUM_CLIENTS=128
-      - NEXT_BUYER_PUBLIC_KEY=pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ==
-      - NEXT_BUYER_PRIVATE_KEY=pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l
-      - NEXT_SERVER_BACKEND_PUBLIC_KEY=ugBOfAmMDa9+YFspqD+XNGiTvzE5HunseRdIAS+zq34=
-      - NEXT_RELAY_BACKEND_PUBLIC_KEY=ePK5XQwbjXhaTsBcB+IUYgKyI04rRvgG11wp/UpwWRY=
+      - NEXT_BUYER_PUBLIC_KEY=fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==
+      - NEXT_BUYER_PRIVATE_KEY=fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk
+      - NEXT_SERVER_BACKEND_PUBLIC_KEY=gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4=
+      - NEXT_RELAY_BACKEND_PUBLIC_KEY=1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE=
     networks:
       relays:
         ipv4_address: 10.20.3.7

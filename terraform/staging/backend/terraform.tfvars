@@ -8,21 +8,21 @@ google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"] 	# IMPORTANT: c3 family is only available in these zones, not us-central1-f
-google_artifacts_bucket     = "gs://dogfood_network_next_backend_artifacts"
-google_database_bucket      = "gs://dogfood_network_next_database_files"
+google_artifacts_bucket     = "gs://wilton_network_next_backend_artifacts"
+google_database_bucket      = "gs://wilton_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-relay_backend_public_key    = "yjPZFTl4/sUDMTFfDRAw3HXdQTGA0ECt30kPWZ/8XQo="
+relay_backend_public_key    = "qauO0L0Z8ACLvROGdgTTThYgLnGzYuYdPU3dYUsCHng="
 
-server_backend_public_key   = "WpNR7iCRHat8z9/V1nSSN5Ycmm83wHlkrg5MtF3714I="
+server_backend_public_key   = "OK1lLHe129zXAPQdEyl6kyguFncVlwiJByFun09qYxI="
 
-load_test_buyer_public_key  = "pcPuGqxFraa3IHicy0U91xwo3+pQbpdrJfQr9OBeVrrNcQvvNn3dJQ=="
-load_test_buyer_private_key = "pcPuGqxFraZh5lLf6S07LjSImiNsbHOdkMXN5hRfnS+Z7fFJECVZH7cgeJzLRT3XHCjf6lBul2sl9Cv04F5Wus1xC+82fd0l"
+load_test_buyer_public_key  = "fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=="
+load_test_buyer_private_key = "fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk"
 
-ip2location_bucket_name     = "dogfood_network_next_staging"
+ip2location_bucket_name     = "wilton_network_next_staging"
 
-relay_public_key  = "VS5NZAEnCG9l9XjCk042/gStOnsmdsxHPKx3u6UeUiI="
-relay_private_key = "u6apUtFATnUTVcU4cO6M0g/kbNFk7qj2rCSfXMcpR0Q="
+relay_public_key  = "ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA="
+relay_private_key = "I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk="
