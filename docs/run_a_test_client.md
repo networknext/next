@@ -164,7 +164,7 @@ I can click on the session id, and see my session updating in real-time, once ev
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/61cacf15-4f8a-46a2-aa23-f07c95810c9d">
 
-## 3. Edit the route shader
+## 3. Edit the test route shader
 
 The test client has a "route shader" which specifies the criteria for when we should take Network Next.
 
