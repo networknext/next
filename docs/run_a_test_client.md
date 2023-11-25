@@ -73,7 +73,7 @@ It will take a few minutes, but when the change is deployed the portal will be e
 
 ## 2. Run a test client
 
-There is already a test server in google cloud, under a separate buyer account called "Test".
+There is already a test server running in google cloud, under a buyer account called "Test".
 
 You can run a local client, and it will connect to this server automatically:
 
