@@ -65,7 +65,7 @@ git tag dev-003
 git push origin dev-003
 ```
 
-This change modifies the managed instance groups that run the raspberry clients down to zero VM instances, effectively disabling them. You can easily turn them back on later if you change their `target_size` back to the original value and redeploy.
+This change modifies the managed instance groups that run the raspberry clients down to zero VM instances, effectively disabling them. 
 
 It will take a few minutes, but when the change is deployed the portal will be empty:
 
