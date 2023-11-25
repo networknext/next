@@ -156,7 +156,7 @@ Wait a minute for the portal to display the data (it updates once per-minute).
 
 You will see your test clients in the portal, now with real ping data and your ISP name:
 
-![Uploading image.png…]()
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/2d4b263b-15f2-4e23-8f65-ea08aecb847b">
 
 Here I am in Helsinki, Finland in the Kamppi shopping center, beating google to their own datacenter with Network Next. This is in dev, which is not a particularly optimized environment, and I'm in an extremely well connected city. Much larger improvements are seen across a typical player base worldwide.
 
@@ -280,6 +280,10 @@ next client
 
 Now you should after a minute or so see your client session in the portal, but this time it is (almost certainly) not accelerated:
 
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/633a85f4-b7c7-49e5-b32a-791b432d8040">
 
+Click the session id to drill into the session and you'll see only the blue line for the direct latency (unaccelerated route), and not the green line for accelerated latency:
 
-This is what we want. Network Next is designed to only accelerate players when a very significant improvement can be found. For most game developers, we have good internet connections and we live in major cities, and most of the time they are good enough. But across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/d99dd28d-3a50-4172-97bc-d35bb391374a">
+
+This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. For most game developers, we have good internet connections and we live in major cities, and most of the time they are good enough. But across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
