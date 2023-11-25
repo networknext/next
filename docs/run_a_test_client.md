@@ -4,7 +4,7 @@
 
 # Run a test client
 
-## 1. Shut down raspberry clients
+## 1. Disable raspberry clients
 
 By default, Network Next fills the portal with simulated data from 1024 clients. These are the "raspberry" clients. They're named this because we use to run test clients on Raspberry Pi's around the vorld. 
 
