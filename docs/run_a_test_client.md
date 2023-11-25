@@ -179,10 +179,12 @@ next client
 
 Now you should after a minute or so see your client session in the portal, but this time it is (almost certainly) not accelerated:
 
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/633a85f4-b7c7-49e5-b32a-791b432d8040">
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/a226a658-2239-4088-ab8a-277fdc1ad49d">
 
 Click the session id to drill into the session and you'll see only the blue line for the direct latency (unaccelerated route), and not the green line for accelerated latency:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/d99dd28d-3a50-4172-97bc-d35bb391374a">
 
-This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. For most game developers, we have good internet connections and we live in major cities, and most of the time they are good enough. But across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
+This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. Across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
+
+Next step: [Add your own buyer](add_your_own_buyer.md)
