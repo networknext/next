@@ -27,9 +27,12 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 --------------------------------------------------------------
 
-... _WIP BELOW HERE_ ...
-
 # Integrating Network Next with your game
+
+* [Run a test client](docs/run_a_test_client.md)
+
+
+... _WIP BELOW HERE_ ...
 
 * [Native C++ SDK](docs/native_cpp_sdk.md)
 * [Unreal Engine 5 plugin](docs/native_ue5_plugin.md)
