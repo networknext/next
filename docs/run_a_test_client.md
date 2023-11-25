@@ -117,40 +117,9 @@ resource "networknext_route_shader" test {
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
 }
-
-resource "networknext_buyer" test {
-  name = "Test"
-  code = "test"
-  debug = true
-  live = true
-  route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" test {
-  count = length(var.test_datacenters)
-  buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
-  enable_acceleration = true
-}
 ```
 
-This configuration sets up a test buyer, gives it a route shader, and enables acceleration to datacenters included in the "test_datacenters". Yes, Network Next will only accelerate to specific datacenters that you enable, per-buyer. This way the optimization algorithm is much more efficient.
-
-Right now it is configured as:
-
-```
-test_datacenters = [
-	"google.iowa.1",
-	"google.iowa.2",
-	"google.iowa.3",
-	"google.iowa.6"
-]
-```
-
-In `terraform/dev/relays/terraform.tfvars`. This means that for the test customer we can run test servers in any of the google.iowa.* datacenters and they will potentially be accelerated.
-
-Now let's edit the route shader. Comment out the line `force_next`. This line forces all players to get accelerated across Network Next, even if there is no improvement.
+Comment out the line `force_next`. This line forced all players to get accelerated across Network Next, even if there was no improvement.
 
 Now the route shader looks like this:
 
