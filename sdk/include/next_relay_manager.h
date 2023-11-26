@@ -253,10 +253,6 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {
-            // todo
-            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            printf( "send near relay ping to %s\n", next_address_to_string( &manager->relay_addresses[i], address_string ) );
-
             uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_platform_time() );
 
             const uint8_t * ping_token = manager->relay_ping_tokens + i * NEXT_PING_TOKEN_BYTES;
@@ -305,10 +301,6 @@ inline void next_relay_manager_process_pong( next_relay_manager_t * manager, con
     {
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
-            // todo
-            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            printf( "process near relay pong from %s\n", next_address_to_string( from, address_string ) );
-
             next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_platform_time() );
             return;
         }
