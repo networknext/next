@@ -644,6 +644,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
 	routePublicAddresses[0] = state.Request.ClientAddress
+	routePublicAddresses[0].Port = 0 // IMPORTANT: Set client port to zero, it will be replaced with whatever port is in from addr
 
 	// relay nodes
 

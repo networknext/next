@@ -5099,6 +5099,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 session->kbps_down = token.kbps_down;
                 session->next_address = token.next_address;
                 session->prev_address = token.prev_address;
+                // IMPORTANT: If the previous address port is zero, replace with the from address port
+                if ( token.prev_address.port == 0 ) {
+                    // todo
+                    printf( "replacing prev address port with %d\n", from.port );
+                    session->prev_address.port = from.port;
+                }
                 session->prev_internal = token.prev_internal;
                 session->next_internal = token.next_internal;
                 memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
