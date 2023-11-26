@@ -1137,7 +1137,62 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, out_sourceRelayLatency []int32) {
+func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, firstTime bool, out_sourceRelayLatency []int32) {
+
+	if firstTime {
+
+		// if direct has high jitter, and *most* source relays have high jitter
+		// it's a temporary jitter spike on the edge, and we should ignore it.
+
+		directHasHighJitter := directJitter >= 10.0
+
+		numRelaysWithHighJitter := 0
+		for i := range sourceRelayJitter {
+			if sourceRelayJitter[i] >= 10.0 {
+				numRelaysWithHighJitter++
+			}
+		}
+
+		if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId) * 2.0 / 3.0 {
+			for i := range sourceRelayJitter {
+				sourceRelayJitter[i] = 0.0
+			}
+		}
+
+		// if direct has high packet loss, and *most* source relays have high packet loss
+		// it's a temporary packet loss spike on the edge, and we should ignore it.
+
+		directHasHighPacketLoss := directPacketLoss >= 1.0
+
+		numRelaysWithHighPacketLoss := 0
+		for i := range sourceRelayPacketLoss {
+			if sourceRelayPacketLoss[i] >= 1.0 {
+				numRelaysWithHighPacketLoss++
+			}
+		}
+
+		if directHasHighPacketLoss && numRelaysWithHighPacketLoss > len(sourceRelayId) * 2.0 / 3.0 {
+			for i := range sourceRelayPacketLoss {
+				sourceRelayPacketLoss[i] = 0.0
+			}
+		}
+
+		// exclude relays with significantly higher jitter than direct
+
+		for i := range sourceRelayJitter {
+			if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
+				sourceRelayLatency[i] = 255
+			}
+		}
+
+		// exclude relays with higher packet loss than direct
+
+		for i := range sourceRelayPacketLoss {
+			if sourceRelayPacketLoss[i] > directPacketLoss {
+				sourceRelayLatency[i] = 255
+			}
+		}
+	}
 
 	// exclude unsuitable source relays
 

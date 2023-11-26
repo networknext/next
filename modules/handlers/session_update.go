@@ -610,6 +610,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		sourceRelayLatency,
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
+		state.Request.SliceNumber == 1,
 		filteredSourceRelayLatency[:])
 
 	outputSourceRelays := make([]int32, len(sourceRelayIds))

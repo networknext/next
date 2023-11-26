@@ -4843,6 +4843,7 @@ func TestFilterSourceRelays_NoFilter(t *testing.T) {
 		sourceRelayLatency,
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
+		false,
 		outputSourceRelayLatency[:])
 
 	for i := range sourceRelayIds {
@@ -4885,6 +4886,7 @@ func TestFilterSourceRelays_ZeroLatency(t *testing.T) {
 		sourceRelayLatency,
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
+		false,
 		outputSourceRelayLatency[:])
 
 	for i := range sourceRelayIds {
@@ -4931,6 +4933,7 @@ func TestFilterSourceRelays_ClampLatencyAbove255(t *testing.T) {
 		sourceRelayLatency,
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
+		false,
 		outputSourceRelayLatency[:])
 
 	for i := range sourceRelayIds {
@@ -4979,6 +4982,7 @@ func TestFilterSourceRelays_RelayDoesNotExist(t *testing.T) {
 		sourceRelayLatency,
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
+		false,
 		outputSourceRelayLatency[:])
 
 	for i := range sourceRelayIds {
