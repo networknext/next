@@ -29,7 +29,7 @@
 
 #include <stdlib.h>
 
-int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequence, uint64_t send_sequence, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequence, uint64_t send_sequence, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_data );
     next_assert( game_packet_data );
@@ -43,12 +43,12 @@ int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequen
     next_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_route_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_route_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_ROUTE_REQUEST_PACKET );
@@ -56,12 +56,12 @@ int next_write_route_request_packet( uint8_t * packet_data, const uint8_t * toke
     next_write_bytes( &p, token_data, token_bytes );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_continue_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_continue_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_CONTINUE_REQUEST_PACKET );
@@ -69,12 +69,12 @@ int next_write_continue_request_packet( uint8_t * packet_data, const uint8_t * t
     next_write_bytes( &p, token_data, token_bytes );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_ROUTE_RESPONSE_PACKET );
@@ -84,12 +84,12 @@ int next_write_route_response_packet( uint8_t * packet_data, uint64_t send_seque
         return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_data );
     next_assert( private_key );
@@ -105,12 +105,12 @@ int next_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_seq
     next_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_data );
     next_assert( private_key );
@@ -126,12 +126,12 @@ int next_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_seq
     next_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_data );
     next_assert( private_key );
@@ -144,12 +144,12 @@ int next_write_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint6
     next_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_data );
     next_assert( private_key );
@@ -162,12 +162,12 @@ int next_write_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint6
     next_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_CONTINUE_RESPONSE_PACKET );
@@ -177,12 +177,12 @@ int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_se
         return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, uint64_t expire_timestamp, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, uint64_t expire_timestamp, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_RELAY_PING_PACKET );
@@ -193,12 +193,12 @@ int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_to
     next_write_bytes( &p, ping_token, NEXT_PING_TOKEN_BYTES );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_RELAY_PONG_PACKET );
@@ -207,12 +207,12 @@ int next_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence,
     next_write_uint64( &p, session_id );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_private_key, const uint8_t * encrypt_private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_private_key, const uint8_t * encrypt_private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_object );
     next_assert( packet_data );
@@ -373,8 +373,8 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
 
     int packet_length = *packet_bytes;
 
-    next_generate_chonkle( packet_data + 1, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( packet_data + packet_length - 2, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( packet_data + 1, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( packet_data + packet_length - 2, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
 
     return NEXT_OK;
 }
@@ -547,7 +547,7 @@ void next_post_validate_packet( uint8_t packet_id, const int * encrypted_packet,
     }
 }
 
-int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const uint8_t * sign_private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const uint8_t * sign_private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     next_assert( packet_object );
     next_assert( packet_data );
@@ -639,8 +639,8 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
     *packet_bytes += 2;
 
-    next_generate_chonkle( packet_data + 1, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, *packet_bytes );
-    next_generate_pittle( packet_data + *packet_bytes - 2, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, *packet_bytes );
+    next_generate_chonkle( packet_data + 1, magic, from_address, from_address_bytes, to_address, to_address_bytes, *packet_bytes );
+    next_generate_pittle( packet_data + *packet_bytes - 2, from_address, from_address_bytes, to_address, to_address_bytes, *packet_bytes );
 
     return NEXT_OK;
 }

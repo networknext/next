@@ -3133,7 +3133,7 @@ bool relay_basic_packet_filter( const uint8_t * data, int packet_length )
     return true;
 }
 
-void relay_address_data( const relay_address_t * address, uint8_t * address_data, int * address_bytes, uint16_t * address_port )
+void relay_address_data( const relay_address_t * address, uint8_t * address_data, int * address_bytes )
 {
     assert( address );
     if ( address->type == RELAY_ADDRESS_IPV4 )
@@ -3157,7 +3157,6 @@ void relay_address_data( const relay_address_t * address, uint8_t * address_data
     {
         *address_bytes = 0;
     }
-    *address_port = address->port;
 }
 
 bool relay_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
@@ -4804,16 +4803,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 uint8_t to_address_data[32];
                 uint8_t relay_public_address_data[32];
                 uint8_t relay_internal_address_data[32];
-                uint16_t to_address_port;
-                uint16_t relay_public_address_port;
-                uint16_t relay_internal_address_port;
                 int to_address_bytes;
                 int relay_public_address_bytes;
                 int relay_internal_address_bytes;
 
-                relay_address_data( &to_address, to_address_data, &to_address_bytes, &to_address_port );
-                relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes, &relay_public_address_port );
-                relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes, &relay_internal_address_port );
+                relay_address_data( &to_address, to_address_data, &to_address_bytes );
+                relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes );
+                relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes );
 
                 uint64_t expire_timestamp = relay_timestamp( relay ) + 5;
 
@@ -4902,16 +4898,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         uint8_t from_address_data[32];
         uint8_t relay_public_address_data[32];
         uint8_t relay_internal_address_data[32];
-        uint16_t from_address_port;
-        uint16_t relay_public_address_port;
-        uint16_t relay_internal_address_port;
         int from_address_bytes;
         int relay_public_address_bytes;
         int relay_internal_address_bytes;
 
-        relay_address_data( &from, from_address_data, &from_address_bytes, &from_address_port );
-        relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes, &relay_public_address_port );
-        relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes, &relay_internal_address_port );
+        relay_address_data( &from, from_address_data, &from_address_bytes );
+        relay_address_data( &relay->relay_public_address, relay_public_address_data, &relay_public_address_bytes );
+        relay_address_data( &relay->relay_internal_address, relay_internal_address_data, &relay_internal_address_bytes );
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
@@ -5121,10 +5114,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             int token_bytes = packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
 
             uint8_t next_address_data[32];
-            uint16_t next_address_port;
             int next_address_bytes;
 
-            relay_address_data( &token.next_address, next_address_data, &next_address_bytes, &next_address_port );
+            relay_address_data( &token.next_address, next_address_data, &next_address_bytes );
 
             if ( !token.next_internal )
             {
@@ -5232,10 +5224,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             session->server_to_client_sequence = sequence;
 
             uint8_t prev_address_data[32];
-            uint16_t prev_address_port;
             int prev_address_bytes;
 
-            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes );
 
             if ( !session->prev_internal )
             {
@@ -5333,10 +5324,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             int token_bytes = packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
 
             uint8_t next_address_data[32];
-            uint16_t next_address_port;
             int next_address_bytes;
 
-            relay_address_data( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
+            relay_address_data( &session->next_address, next_address_data, &next_address_bytes );
 
             if ( !session->next_internal )
             {
@@ -5441,10 +5431,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             session->server_to_client_sequence = sequence;
 
             uint8_t prev_address_data[32];
-            uint16_t prev_address_port;
             int prev_address_bytes;
 
-            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes );
 
             if ( !session->prev_internal )
             {
@@ -5560,10 +5549,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t next_address_data[32];
-            uint16_t next_address_port;
             int next_address_bytes;
 
-            relay_address_data( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
+            relay_address_data( &session->next_address, next_address_data, &next_address_bytes );
 
             if ( !session->next_internal )
             {
@@ -5679,10 +5667,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t prev_address_data[32];
-            uint16_t prev_address_port;
             int prev_address_bytes;
 
-            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes );
 
             if ( !session->prev_internal )
             {
@@ -5791,10 +5778,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t ping_sequence = relay_read_uint64( &const_p );
 
             uint8_t next_address_data[32];
-            uint16_t next_address_port;
             int next_address_bytes;
 
-            relay_address_data( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
+            relay_address_data( &session->next_address, next_address_data, &next_address_bytes );
 
             if ( !session->next_internal )
             {
@@ -5903,10 +5889,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint64_t ping_sequence = relay_read_uint64( &const_p );
 
             uint8_t prev_address_data[32];
-            uint16_t prev_address_port;
             int prev_address_bytes;
 
-            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+            relay_address_data( &session->prev_address, prev_address_data, &prev_address_bytes );
 
             if ( !session->prev_internal )
             {

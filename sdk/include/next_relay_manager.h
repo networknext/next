@@ -272,20 +272,19 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
-            uint16_t from_address_port;
-            uint16_t to_address_port;
             int from_address_bytes;
             int to_address_bytes;
 
-            next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
-            next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes, &to_address_port );
+            next_address_data( client_external_address, from_address_data, &from_address_bytes );
+            next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes );
 
-            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, manager->relay_ping_expire_timestamp, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, manager->relay_ping_expire_timestamp, magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes );
 
             next_assert( packet_bytes > 0 );
 
             next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
+
 
 #if NEXT_SPIKE_TRACKING
             double start_time = next_platform_time();

@@ -542,22 +542,20 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     uint8_t from_address_data[32];
     uint8_t to_address_data[32];
-    uint16_t from_address_port;
-    uint16_t to_address_port;
     int from_address_bytes;
     int to_address_bytes;
 
-    next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
-    next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
+    next_address_data( &client->client_external_address, from_address_data, &from_address_bytes );
+    next_address_data( &client->server_address, to_address_data, &to_address_bytes );
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
 
     next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
-    next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
 
 #if NEXT_SPIKE_TRACKING
     double start_time = next_platform_time();
@@ -604,21 +602,19 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
-        uint16_t from_address_port = 0;
-        uint16_t to_address_port = 0;
         int from_address_bytes = 0;
         int to_address_bytes = 0;
 
-        next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
-        next_address_data( &client->client_external_address, to_address_data, &to_address_bytes, &to_address_port );
+        next_address_data( from, from_address_data, &from_address_bytes );
+        next_address_data( &client->client_external_address, to_address_data, &to_address_bytes );
 
         if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
-            if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) )
             {
-                if ( !next_advanced_packet_filter( packet_data, client->upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                if ( !next_advanced_packet_filter( packet_data, client->upcoming_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) )
                 {
-                    if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                    if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) )
                     {
                         next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (%d)", packet_id );
                     }
@@ -631,8 +627,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );
             to_address_bytes = 0;
-            to_address_port = 0;
-            if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (upgrade request)" );
                 return;
@@ -742,16 +737,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
-        uint16_t from_address_port = 0;
-        uint16_t to_address_port = 0;
         int from_address_bytes = 0;
         int to_address_bytes = 0;
 
-        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
-        next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
+        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes );
+        next_address_data( &client->server_address, to_address_data, &to_address_bytes );
 
         client->upgrade_response_packet_bytes = 0;
-        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes );
 
         if ( result != NEXT_OK )
         {
@@ -768,7 +761,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_assert( packet_bytes > 0 );
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
 
 #endif // #if NEXT_DEBUG
 
@@ -2036,22 +2029,20 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
-        uint16_t from_address_port;
-        uint16_t to_address_port;
         int from_address_bytes;
         int to_address_bytes;
 
-        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
-        next_address_data( &to, to_address_data, &to_address_bytes, &to_address_port );
+        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes );
+        next_address_data( &to, to_address_data, &to_address_bytes );
 
         const uint64_t ping_sequence = next_ping_history_ping_sent( &client->next_ping_history, current_time );
 
-        int packet_bytes = next_write_ping_packet( packet_data, sequence, session_id, session_version, private_key, ping_sequence, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        int packet_bytes = next_write_ping_packet( packet_data, sequence, session_id, session_version, private_key, ping_sequence, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes );
 
         next_assert( packet_bytes > 0 );
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
 
 #if NEXT_SPIKE_TRACKING
         double start_time = next_platform_time();
@@ -2826,22 +2817,20 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
-            uint16_t from_address_port;
-            uint16_t to_address_port;
             int from_address_bytes;
             int to_address_bytes;
 
-            next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
-            next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
+            next_address_data( &client->client_external_address, from_address_data, &from_address_bytes );
+            next_address_data( &client->server_address, to_address_data, &to_address_bytes );
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes );
 
             next_assert( direct_packet_bytes >= 0 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, direct_packet_bytes ) );
 
             (void) direct_packet_data;
             (void) direct_packet_bytes;

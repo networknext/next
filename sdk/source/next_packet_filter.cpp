@@ -26,7 +26,7 @@
 
 #include <memory.h>
 
-void next_generate_pittle( uint8_t * output, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+void next_generate_pittle( uint8_t * output, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
 {
     next_assert( output );
     next_assert( from_address );
@@ -35,19 +35,11 @@ void next_generate_pittle( uint8_t * output, const uint8_t * from_address, int f
     next_assert( to_address_bytes >= 0 );
     next_assert( packet_length > 0 );
 #if NEXT_BIG_ENDIAN
-    next_bswap( from_port );
-    next_bswap( to_port );
     next_bswap( packet_length );
 #endif // #if NEXT_BIG_ENDIAN
     uint16_t sum = 0;
     for ( int i = 0; i < from_address_bytes; ++i ) { sum += uint8_t(from_address[i]); }
-    const char * from_port_data = (const char*) &from_port;
-    sum += uint8_t(from_port_data[0]);
-    sum += uint8_t(from_port_data[1]);
     for ( int i = 0; i < to_address_bytes; ++i ) { sum += uint8_t(to_address[i]); }
-    const char * to_port_data = (const char*) &to_port;
-    sum += uint8_t(to_port_data[0]);
-    sum += uint8_t(to_port_data[1]);
     const char * packet_length_data = (const char*) &packet_length;
     sum += uint8_t(packet_length_data[0]);
     sum += uint8_t(packet_length_data[1]);
@@ -61,7 +53,7 @@ void next_generate_pittle( uint8_t * output, const uint8_t * from_address, int f
     output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
 }
 
-void next_generate_chonkle( uint8_t * output, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+void next_generate_chonkle( uint8_t * output, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
 {
     next_assert( output );
     next_assert( magic );
@@ -71,17 +63,13 @@ void next_generate_chonkle( uint8_t * output, const uint8_t * magic, const uint8
     next_assert( to_address_bytes >= 0 );
     next_assert( packet_length > 0 );
 #if NEXT_BIG_ENDIAN
-    next_bswap( from_port );
-    next_bswap( to_port );
     next_bswap( packet_length );
 #endif // #if NEXT_BIG_ENDIAN
     next_fnv_t fnv;
     next_fnv_init( &fnv );
     next_fnv_write( &fnv, magic, 8 );
     next_fnv_write( &fnv, from_address, from_address_bytes );
-    next_fnv_write( &fnv, (const uint8_t*) &from_port, 2 );
     next_fnv_write( &fnv, to_address, to_address_bytes );
-    next_fnv_write( &fnv, (const uint8_t*) &to_port, 2 );
     next_fnv_write( &fnv, (const uint8_t*) &packet_length, 4 );
     uint64_t hash = next_fnv_finalize( &fnv );
 #if NEXT_BIG_ENDIAN
@@ -165,7 +153,7 @@ bool next_basic_packet_filter( const uint8_t * data, int packet_length )
     return true;
 }
 
-void next_address_data( const next_address_t * address, uint8_t * address_data, int * address_bytes, uint16_t * address_port )
+void next_address_data( const next_address_t * address, uint8_t * address_data, int * address_bytes )
 {
     next_assert( address );
     if ( address->type == NEXT_ADDRESS_IPV4 )
@@ -189,10 +177,9 @@ void next_address_data( const next_address_t * address, uint8_t * address_data, 
     {
         *address_bytes = 0;
     }
-    *address_port = address->port;
 }
 
-bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
 {
     if ( data[0] == 0 )
         return true;
@@ -203,8 +190,8 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
     uint8_t a[15];
     uint8_t b[2];
 
-    next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    next_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    next_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    next_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     if ( memcmp( a, data + 1, 15 ) != 0 )
         return false;
     if ( memcmp( b, data + packet_length - 2, 2 ) != 0 )

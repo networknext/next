@@ -1491,10 +1491,8 @@ void test_pittle()
         uint8_t to_address[4];
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
         int packet_length = 1 + ( i % 1500 );
-        next_generate_pittle( output, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+        next_generate_pittle( output, from_address, 4, to_address, 4, packet_length );
         next_check( output[0] != 0 );
         next_check( output[1] != 0 );
     }
@@ -1513,10 +1511,8 @@ void test_chonkle()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
         int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
-        next_generate_chonkle( output + 1, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+        next_generate_chonkle( output + 1, magic, from_address, 4, to_address, 4, packet_length );
         next_check( next_basic_packet_filter( output, sizeof(output) ) );
     }
 }
@@ -1548,17 +1544,14 @@ void test_abi()
     to_address[2] = 2;
     to_address[3] = 1;
 
-    uint16_t from_port = 1000;
-    uint16_t to_port = 5000;
-
     int packet_length = 1000;
 
-    next_generate_pittle( output, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+    next_generate_pittle( output, from_address, 4, to_address, 4, packet_length );
 
     next_check( output[0] == 71 );
     next_check( output[1] == 201 );
 
-    next_generate_chonkle( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+    next_generate_chonkle( output, magic, from_address, 4, to_address, 4, packet_length );
 
     next_check( output[0] == 45 );
     next_check( output[1] == 203 );
@@ -1583,13 +1576,11 @@ void test_pittle_and_chonkle()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
         int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
-        next_generate_chonkle( output + 1, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-        next_generate_pittle( output + packet_length - 2, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+        next_generate_chonkle( output + 1, magic, from_address, 4, to_address, 4, packet_length );
+        next_generate_pittle( output + packet_length - 2, from_address, 4, to_address, 4, packet_length );
         next_check( next_basic_packet_filter( output, sizeof(output) ) );
-        next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
+        next_check( next_advanced_packet_filter( output, magic, from_address, 4, to_address, 4, packet_length ) );
     }
 }
 
@@ -1629,14 +1620,12 @@ void test_advanced_packet_filter()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
         int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
         for ( int j = 0; j < int(sizeof(output)); ++j )
         {
             output[j] = uint8_t( rand() % 256 );
         }
-        if ( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) )
+        if ( next_advanced_packet_filter( output, magic, from_address, 4, to_address, 4, packet_length ) )
         {
             pass++;
         }
@@ -1654,11 +1643,9 @@ void test_passthrough()
     next_crypto_random_bytes( magic, 8 );
     next_crypto_random_bytes( from_address, 4 );
     next_crypto_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
     int packet_length = sizeof(output);
     next_check( next_basic_packet_filter( output, packet_length ) );
-    next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
+    next_check( next_advanced_packet_filter( output, magic, from_address, 4, to_address, 4, packet_length ) );
 }
 
 void test_address_data_none()
@@ -1668,10 +1655,8 @@ void test_address_data_none()
     next_check( address.type == NEXT_ADDRESS_NONE );
     uint8_t address_data[32];
     int address_bytes = 0;
-    uint16_t address_port = 0;
-    next_address_data( &address, address_data, &address_bytes, &address_port );
+    next_address_data( &address, address_data, &address_bytes );
     next_check( address_bytes == 0 );
-    next_check( address_port == 0 );
 }
 
 void test_address_data_ipv4()
@@ -1681,14 +1666,12 @@ void test_address_data_ipv4()
     next_check( address.type == NEXT_ADDRESS_IPV4 );
     uint8_t address_data[32];
     int address_bytes = 0;
-    uint16_t address_port = 0;
-    next_address_data( &address, address_data, &address_bytes, &address_port );
+    next_address_data( &address, address_data, &address_bytes );
     next_check( address_data[0] == 127 );
     next_check( address_data[1] == 0 );
     next_check( address_data[2] == 0 );
     next_check( address_data[3] == 1 );
     next_check( address_bytes == 4 );
-    next_check( address_port == 50000 );
 }
 
 void test_anonymize_address_ipv4()
@@ -1722,8 +1705,7 @@ void test_address_data_ipv6()
     next_check( address.type == NEXT_ADDRESS_IPV6 );
     uint8_t address_data[32];
     int address_bytes = 0;
-    uint16_t address_port = 0;
-    next_address_data( &address, address_data, &address_bytes, &address_port );
+    next_address_data( &address, address_data, &address_bytes );
     next_check( address_data[0] == 32 );
     next_check( address_data[1] == 1 );
     next_check( address_data[2] == 13 );
@@ -1741,7 +1723,6 @@ void test_address_data_ipv6()
     next_check( address_data[14] == 136 );
     next_check( address_data[15] == 136 );
     next_check( address_bytes == 16 );
-    next_check( address_port == 50000 );
 }
 
 #endif // #if NEXT_PLATFORM_HAS_IPV6
@@ -2491,8 +2472,6 @@ void test_direct_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint8_t open_session_sequence = uint8_t( i + 10 );
         uint64_t send_sequence = i;
@@ -2501,13 +2480,13 @@ void test_direct_packet()
         int game_packet_bytes = rand() % NEXT_MTU;
         for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
 
-        int packet_bytes = next_write_direct_packet( packet_data, open_session_sequence, send_sequence, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_direct_packet( packet_data, open_session_sequence, send_sequence, game_packet_data, game_packet_bytes, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes >= 0 );
         next_check( packet_bytes <= NEXT_MTU + 27 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_DIRECT_PACKET );
         next_check( memcmp( packet_data + 25, game_packet_data, game_packet_bytes ) == 0 );
@@ -2536,8 +2515,6 @@ void test_direct_ping_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
         next_crypto_random_bytes( private_key, sizeof(private_key) );
@@ -2550,13 +2527,13 @@ void test_direct_ping_packet()
         NextDirectPingPacket in;
         in.ping_sequence = i + 1000;
         int packet_bytes = 0;
-        int result = next_write_packet( NEXT_DIRECT_PING_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int result = next_write_packet( NEXT_DIRECT_PING_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 );
 
         next_check( result == NEXT_OK );
         next_check( packet_bytes == 1 + 15 + 8 + 8 + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES + 2 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         NextDirectPingPacket out;
         uint64_t out_sequence = 0;
@@ -2584,8 +2561,6 @@ void test_direct_pong_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
         next_crypto_random_bytes( private_key, sizeof(private_key) );
@@ -2598,13 +2573,13 @@ void test_direct_pong_packet()
         NextDirectPongPacket in;
         in.ping_sequence = i + 1000;
         int packet_bytes = 0;
-        int result = next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int result = next_write_packet( NEXT_DIRECT_PONG_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 );
 
         next_check( result == NEXT_OK );
         next_check( packet_bytes == 1 + 15 + 8 + 8 + NEXT_CRYPTO_AEAD_CHACHA20POLY1305_ABYTES + 2 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         NextDirectPongPacket out;
         uint64_t out_sequence = 0;
@@ -2634,8 +2609,6 @@ void test_upgrade_request_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -2653,12 +2626,12 @@ void test_upgrade_request_packet()
         next_crypto_random_bytes( in.previous_magic, 8 );
 
         int packet_bytes = 0;
-        int result = next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int result = next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, to_address, 4 );
 
         next_check( result == NEXT_OK );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -2691,8 +2664,6 @@ void test_upgrade_response_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextUpgradeResponsePacket in, out;
         next_crypto_random_bytes( in.client_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
@@ -2702,12 +2673,12 @@ void test_upgrade_response_packet()
         in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
 
         int packet_bytes = 0;
-        int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address, 4, to_address, 4 );
 
         next_check( result == NEXT_OK );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -2736,8 +2707,6 @@ void test_upgrade_confirm_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -2751,12 +2720,12 @@ void test_upgrade_confirm_packet()
         next_crypto_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
 
         int packet_bytes = 0;
-        int result = next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int result = next_write_packet( NEXT_UPGRADE_CONFIRM_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, to_address, 4 );
 
         next_check( result == NEXT_OK );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -2785,18 +2754,16 @@ void test_route_request_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint8_t token_data[1024];
         int token_bytes = rand() % sizeof(token_data);
         for ( int j = 0; j < token_bytes; j++ ) { token_data[j] = uint8_t( rand() % 256 ); }
 
-        int packet_bytes = next_write_route_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_route_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes > 0 );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_ROUTE_REQUEST_PACKET );
         next_check( memcmp( packet_data + 16, token_data, token_bytes ) == 0 );
@@ -2815,8 +2782,6 @@ void test_route_response_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12314141LL;
@@ -2824,12 +2789,12 @@ void test_route_response_packet()
         uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
         next_crypto_random_bytes( private_key, sizeof(private_key) );
 
-        int packet_bytes = next_write_route_response_packet( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_route_response_packet( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes > 0 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_ROUTE_RESPONSE_PACKET );
 
@@ -2860,8 +2825,6 @@ void test_client_to_server_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12314141LL;
@@ -2873,10 +2836,10 @@ void test_client_to_server_packet()
         int game_packet_bytes = rand() % NEXT_MTU;
         for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
 
-        int packet_bytes = next_write_client_to_server_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_client_to_server_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, to_address, 4 );
         next_check( packet_bytes > 0 );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_CLIENT_TO_SERVER_PACKET );
 
@@ -2909,8 +2872,6 @@ void test_server_to_client_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12314141LL;
@@ -2922,12 +2883,12 @@ void test_server_to_client_packet()
         int game_packet_bytes = rand() % NEXT_MTU;
         for ( int j = 0; j < game_packet_bytes; j++ ) { game_packet_data[j] = uint8_t( rand() % 256 ); }
 
-        int packet_bytes = next_write_server_to_client_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_server_to_client_packet( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes > 0 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_SERVER_TO_CLIENT_PACKET );
 
@@ -2960,8 +2921,6 @@ void test_ping_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12314141LL;
@@ -2970,12 +2929,12 @@ void test_ping_packet()
         next_crypto_random_bytes( private_key, sizeof(private_key) );
 
         uint64_t ping_sequence = i;
-        int packet_bytes = next_write_ping_packet( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_ping_packet( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes > 0 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_PING_PACKET );
 
@@ -3006,8 +2965,6 @@ void test_pong_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12314141LL;
@@ -3017,12 +2974,12 @@ void test_pong_packet()
         next_crypto_random_bytes( private_key, sizeof(private_key) );
 
         uint64_t ping_sequence = i;
-        int packet_bytes = next_write_pong_packet( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_pong_packet( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes > 0 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_PONG_PACKET );
 
@@ -3053,15 +3010,13 @@ void test_continue_request_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
         uint8_t token_data[256];
         int token_bytes = rand() % sizeof(token_data);
         for ( int j = 0; j < token_bytes; j++ ) { token_data[j] = uint8_t( rand() % 256 ); }
-        int packet_bytes = next_write_continue_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_continue_request_packet( packet_data, token_data, token_bytes, magic, from_address, 4, to_address, 4 );
         next_check( packet_bytes >= 0 );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
         next_check( packet_data[0] == NEXT_CONTINUE_REQUEST_PACKET );
         next_check( memcmp( packet_data + 16, token_data, token_bytes ) == 0 );
     }
@@ -3079,8 +3034,6 @@ void test_continue_response_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12314141LL;
@@ -3088,12 +3041,12 @@ void test_continue_response_packet()
         uint8_t private_key[NEXT_CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES];
         next_crypto_random_bytes( private_key, sizeof(private_key) );
 
-        int packet_bytes = next_write_continue_response_packet( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_continue_response_packet( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes > 0 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_CONTINUE_RESPONSE_PACKET );
 
@@ -3127,8 +3080,6 @@ void test_client_stats_packet_with_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextClientStatsPacket in, out;
         in.reported = true;
@@ -3158,11 +3109,11 @@ void test_client_stats_packet_with_near_relays()
         uint64_t in_sequence = 1000;
 
         int packet_bytes = 0;
-        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         next_check( packet_data[0] == NEXT_CLIENT_STATS_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 16;
@@ -3210,8 +3161,6 @@ void test_client_stats_packet_without_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextClientStatsPacket in, out;
         in.reported = true;
@@ -3234,11 +3183,11 @@ void test_client_stats_packet_without_near_relays()
         uint64_t in_sequence = 1000;
 
         int packet_bytes = 0;
-        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         next_check( packet_data[0] == NEXT_CLIENT_STATS_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 16;
@@ -3279,8 +3228,6 @@ void test_route_update_packet_direct()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextRouteUpdatePacket in, out;
 
@@ -3314,11 +3261,11 @@ void test_route_update_packet_direct()
         uint64_t in_sequence = 1000;
 
         int packet_bytes = 0;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 16;
@@ -3364,8 +3311,6 @@ void test_route_update_packet_new_route()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
@@ -3399,11 +3344,11 @@ void test_route_update_packet_new_route()
 
         int packet_bytes = 0;
         uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 16;
@@ -3450,9 +3395,7 @@ void test_route_update_packet_continue_route()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-
+        
         static NextRouteUpdatePacket in, out;
         in.sequence = 100000;
         in.has_near_relays = true;
@@ -3479,11 +3422,11 @@ void test_route_update_packet_continue_route()
 
         int packet_bytes = 0;
         uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 16;
@@ -3527,8 +3470,6 @@ void test_route_update_ack_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextRouteUpdateAckPacket in, out;
         in.sequence = 100000;
@@ -3538,11 +3479,11 @@ void test_route_update_ack_packet()
 
         int packet_bytes = 0;
         uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         next_check( packet_data[0] == NEXT_ROUTE_UPDATE_ACK_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 16;
@@ -3566,8 +3507,6 @@ void test_relay_ping_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint8_t ping_token[NEXT_PING_TOKEN_BYTES];
         next_crypto_random_bytes( ping_token, NEXT_PING_TOKEN_BYTES );
@@ -3576,13 +3515,13 @@ void test_relay_ping_packet()
         uint64_t ping_session_id = 0x12345;
         uint64_t ping_expire_timestamp = 0x123415817414;
 
-        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, ping_expire_timestamp, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, ping_expire_timestamp, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes >= 0 );
         next_check( packet_bytes <= NEXT_MTU + 27 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_RELAY_PING_PACKET );
 
@@ -3611,19 +3550,17 @@ void test_relay_pong_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         uint64_t pong_sequence = i;
         uint64_t pong_session_id = 0x123456;
 
-        int packet_bytes = next_write_relay_pong_packet( packet_data, pong_sequence, pong_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_relay_pong_packet( packet_data, pong_sequence, pong_session_id, magic, from_address, 4, to_address, 4 );
 
         next_check( packet_bytes >= 0 );
         next_check( packet_bytes <= NEXT_MTU + 27 );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_RELAY_PONG_PACKET );
 
@@ -3652,8 +3589,6 @@ void test_server_init_request_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendServerInitRequestPacket in, out;
         in.request_id = next_random_uint64();
@@ -3662,13 +3597,13 @@ void test_server_init_request_packet()
         strcpy( in.datacenter_name, "local" );
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -3701,8 +3636,6 @@ void test_server_init_response_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendServerInitResponsePacket in, out;
         in.request_id = next_random_uint64();
@@ -3712,13 +3645,13 @@ void test_server_init_response_packet()
         next_crypto_random_bytes( in.previous_magic, 8 );
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -3749,8 +3682,6 @@ void test_server_update_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendServerUpdateRequestPacket in, out;
         in.request_id = next_random_uint64();
@@ -3761,13 +3692,13 @@ void test_server_update_packet()
         in.uptime = 0x12345;
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -3802,8 +3733,6 @@ void test_server_response_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendServerUpdateResponsePacket in, out;
         in.request_id = next_random_uint64();
@@ -3812,13 +3741,13 @@ void test_server_response_packet()
         next_crypto_random_bytes( in.previous_magic, 8 );
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -3848,8 +3777,6 @@ void test_session_update_packet()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateRequestPacket in, out;
         in.slice_number = 0;
@@ -3900,13 +3827,13 @@ void test_session_update_packet()
         }
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -3977,8 +3904,6 @@ void test_session_response_packet_direct_has_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
@@ -4010,13 +3935,13 @@ void test_session_response_packet_direct_has_near_relays()
         strcpy( in.debug, "hello session" );
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -4065,8 +3990,6 @@ void test_session_response_packet_route_has_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
@@ -4099,13 +4022,13 @@ void test_session_response_packet_route_has_near_relays()
         }
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -4155,8 +4078,6 @@ void test_session_response_packet_continue_has_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
@@ -4189,14 +4110,14 @@ void test_session_response_packet_continue_has_near_relays()
         }
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
 
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -4246,8 +4167,6 @@ void test_session_response_packet_direct_no_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
@@ -4258,13 +4177,13 @@ void test_session_response_packet_direct_no_near_relays()
         in.has_near_relays = false;
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -4295,8 +4214,6 @@ void test_session_response_packet_route_no_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
@@ -4313,13 +4230,13 @@ void test_session_response_packet_route_no_near_relays()
         }
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
@@ -4352,8 +4269,6 @@ void test_session_response_packet_continue_no_near_relays()
         next_crypto_random_bytes( magic, 8 );
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
 
         static NextBackendSessionUpdateResponsePacket in, out;
         in.slice_number = 10000;
@@ -4374,13 +4289,13 @@ void test_session_response_packet_continue_no_near_relays()
         }
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, to_address, 4 ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
         next_check( packet_id == NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, to_address, 4, packet_bytes ) );
 
         const int begin = 16;
         const int end = packet_bytes - 2;
