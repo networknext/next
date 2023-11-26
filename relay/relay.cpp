@@ -4906,6 +4906,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
+            // todo
+            printf( "basic packet filter dropped packet from %s\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] basic packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
@@ -4922,6 +4925,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
+            // todo
+            printf( "advanced packet filter dropped packet from %s\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
@@ -5933,6 +5939,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_NEAR_PING_PACKET )
         {
+            // todo
+            printf( "received near ping packet from %s\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] received near relay ping packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED]++;
@@ -5970,6 +5979,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from_without_port, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
+                // todo
+                printf( "near ping token from %s did not verify\n", from_string );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping token did not verify (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY]++;
