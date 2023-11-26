@@ -515,14 +515,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     const bool datacenter_is_empty_string = datacenter[0] == '\0';
 
-    const bool datacenter_is_cloud = datacenter[0] == 'c' &&
-                                     datacenter[1] == 'l' &&
-                                     datacenter[2] == 'o' &&
-                                     datacenter[3] == 'u' &&
-                                     datacenter[4] == 'd' &&
-                                     datacenter[5] == '\0';
-
-    if ( !datacenter_is_empty_string && !datacenter_is_cloud )
+    if ( !datacenter_is_empty_string )
     {
         server->datacenter_id = next_datacenter_id( datacenter );
         next_copy_string( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
