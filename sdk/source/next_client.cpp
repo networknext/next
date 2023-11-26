@@ -1869,8 +1869,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( !client->fallback_to_direct )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "%d near relays", client->near_relay_stats.num_relays );
-
             packet.num_near_relays = client->near_relay_stats.num_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {

@@ -410,6 +410,13 @@ relay_platform_mutex_t * relay_platform_mutex_create()
     return mutex;
 }
 
+bool relay_platform_thread_set_high_priority( relay_platform_thread_t * thread )
+{
+    struct sched_param param;
+    param.sched_priority = sched_get_priority_min( SCHED_RR );
+    return pthread_setschedparam( thread->handle, SCHED_RR, &param ) == 0;
+}
+
 void relay_platform_mutex_acquire( relay_platform_mutex_t * mutex )
 {
     assert( mutex );

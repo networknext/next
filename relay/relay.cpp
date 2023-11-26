@@ -206,7 +206,7 @@ extern void relay_platform_thread_join( relay_platform_thread_t * thread );
 
 extern void relay_platform_thread_destroy( relay_platform_thread_t * thread );
 
-extern void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread );
+extern void relay_platform_thread_set_high_priority( relay_platform_thread_t * thread );
 
 extern relay_platform_mutex_t * relay_platform_mutex_create();
 
@@ -4922,6 +4922,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
+            // todo
+            printf( "advanced packet filter dropped packet from %s", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
@@ -6592,6 +6595,8 @@ int main( int argc, const char ** argv )
         return 1;
     }
 
+    relay_platform_thread_set_high_priority( ping_thread );
+
     // =============================================================================================================================
 
     // create relay sockets
@@ -6651,6 +6656,8 @@ int main( int argc, const char ** argv )
             fflush( stdout );
             return 1;
         }
+
+        relay_platform_thread_set_high_priority( relay_thread[i] );
 
         relay_platform_sleep( 0.1 / num_threads );
     }

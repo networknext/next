@@ -327,7 +327,7 @@ let jitter_opts = custom_graph({
 })
 
 let packet_loss_opts = custom_graph({
-  title: "  ",
+  title: "Packet Loss",
   percent: true,
   series: [
     {

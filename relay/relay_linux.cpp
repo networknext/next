@@ -382,15 +382,11 @@ void relay_platform_thread_destroy( relay_platform_thread_t * thread )
     free( thread );
 }
 
-void relay_platform_thread_set_sched_max( relay_platform_thread_t * thread )
+void relay_platform_thread_set_high_priority( relay_platform_thread_t * thread )
 {
     struct sched_param param;
-    param.sched_priority = sched_get_priority_max( SCHED_FIFO );
-    int ret = pthread_setschedparam( thread->handle, SCHED_FIFO, &param );
-    if (ret) 
-    {
-        printf( "unable to increase server thread priority: %s\n", strerror(ret) );
-    }
+    param.sched_priority = sched_get_priority_min( SCHED_RR );
+    return pthread_setschedparam( thread->handle, SCHED_RR, &param ) == 0;
 }
 
 // ---------------------------------------------------
