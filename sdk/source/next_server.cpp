@@ -645,8 +645,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
                                   hostname[5] == '.' &&
                                   hostname[6] == '0' &&
                                   hostname[7] == '.' &&
-                                  hostname[8] == '1' &&
-                                  hostname[9] == ':';
+                                  hostname[8] == '1';
 
     if ( next_global_config.disable_network_next )
     {
