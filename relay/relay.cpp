@@ -4922,9 +4922,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
-            // todo
-            printf( "advanced packet filter dropped packet from %s", from_string );
-
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
@@ -5968,7 +5965,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const uint8_t * ping_token = const_p;
 
-            if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
+            relay_address_t from_without_port = from;
+            from_without_port.port = 0;
+
+            if ( !relay_ping_token_verify( &from_without_port, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] near ping token did not verify (thread %d)", from_string, relay->thread_index );
 
