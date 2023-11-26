@@ -726,11 +726,9 @@ func test_advanced_packet_filter() {
 			common.RandomBytes(magic[:])
 			common.RandomBytes(fromAddress[:])
 			common.RandomBytes(toAddress[:])
-			fromPort := uint16(j + 1000000)
-			toPort := uint16(j + 5000)
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -844,11 +842,11 @@ func test_unknown_packets() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -910,11 +908,11 @@ func test_near_ping_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -974,11 +972,11 @@ func test_near_ping_packet_expired() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1040,11 +1038,11 @@ func test_near_ping_packet_did_not_verify() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1136,11 +1134,11 @@ func test_near_ping_packet_responded_with_pong() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 			sequence++
 		}
@@ -1209,11 +1207,11 @@ func test_relay_pong_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1274,11 +1272,11 @@ func test_relay_ping_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1338,11 +1336,11 @@ func test_relay_ping_packet_expired() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1404,11 +1402,11 @@ func test_relay_ping_packet_did_not_verify() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1471,11 +1469,11 @@ func test_route_request_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1536,11 +1534,11 @@ func test_route_request_packet_could_not_read_token() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1608,11 +1606,11 @@ func test_route_request_packet_token_expired() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1697,11 +1695,11 @@ func test_route_request_packet_forward_to_next_hop_public_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1793,11 +1791,11 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1865,11 +1863,11 @@ func test_route_response_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -1929,11 +1927,11 @@ func test_route_response_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2001,11 +1999,11 @@ func test_route_response_packet_already_received() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// now send a bunch of route response packets with sequence number 0, they will trigger already received
@@ -2018,11 +2016,11 @@ func test_route_response_packet_already_received() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2093,11 +2091,11 @@ func test_route_response_packet_header_did_not_verify() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -2111,11 +2109,11 @@ func test_route_response_packet_header_did_not_verify() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -2192,11 +2190,11 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -2243,14 +2241,14 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 		packetLength := len(packet)
 
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 		conn.WriteToUDP(packet, &serverAddress)
 	}
@@ -2330,11 +2328,11 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -2381,14 +2379,14 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 		packetLength := len(packet)
 
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 		conn.WriteToUDP(packet, &serverAddress)
 	}
@@ -2455,11 +2453,11 @@ func test_continue_request_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2520,11 +2518,11 @@ func test_continue_request_packet_could_not_read_token() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2590,11 +2588,11 @@ func test_continue_request_packet_token_expired() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2661,11 +2659,11 @@ func test_continue_request_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2734,11 +2732,11 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -2771,11 +2769,11 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2852,11 +2850,11 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -2889,11 +2887,11 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -2962,11 +2960,11 @@ func test_continue_response_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3026,11 +3024,11 @@ func test_continue_response_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3098,11 +3096,11 @@ func test_continue_response_packet_already_received() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// now send a bunch of continue response packets with sequence number 0, they will trigger already received
@@ -3115,11 +3113,11 @@ func test_continue_response_packet_already_received() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3190,11 +3188,11 @@ func test_continue_response_packet_header_did_not_verify() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -3208,11 +3206,11 @@ func test_continue_response_packet_header_did_not_verify() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -3289,11 +3287,11 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -3340,14 +3338,14 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 		packetLength := len(packet)
 
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 		conn.WriteToUDP(packet, &serverAddress)
 	}
@@ -3427,11 +3425,11 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -3478,14 +3476,14 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 		packetLength := len(packet)
 
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 		conn.WriteToUDP(packet, &serverAddress)
 	}
@@ -3552,11 +3550,11 @@ func test_client_to_server_packet_too_small() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3617,11 +3615,11 @@ func test_client_to_server_packet_too_big() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3681,11 +3679,11 @@ func test_client_to_server_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3753,11 +3751,11 @@ func test_client_to_server_packet_already_received() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// now send a bunch of client to server packets with sequence number 0, they will trigger already received
@@ -3770,11 +3768,11 @@ func test_client_to_server_packet_already_received() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -3845,11 +3843,11 @@ func test_client_to_server_packet_header_did_not_verify() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -3863,11 +3861,11 @@ func test_client_to_server_packet_header_did_not_verify() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -3945,11 +3943,11 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -4013,13 +4011,13 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -4102,11 +4100,11 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -4170,13 +4168,13 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -4245,11 +4243,11 @@ func test_server_to_client_packet_too_small() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4310,11 +4308,11 @@ func test_server_to_client_packet_too_big() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4374,11 +4372,11 @@ func test_server_to_client_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4446,11 +4444,11 @@ func test_server_to_client_packet_already_received() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// now send a bunch of server to client packets with sequence number 0, they will trigger already received
@@ -4463,11 +4461,11 @@ func test_server_to_client_packet_already_received() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -4538,11 +4536,11 @@ func test_server_to_client_packet_header_did_not_verify() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -4556,11 +4554,11 @@ func test_server_to_client_packet_header_did_not_verify() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -4638,11 +4636,11 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -4706,13 +4704,13 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -4795,11 +4793,11 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -4863,13 +4861,13 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -4938,11 +4936,11 @@ func test_session_ping_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5002,11 +5000,11 @@ func test_session_ping_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5074,11 +5072,11 @@ func test_session_ping_packet_already_received() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// now send a bunch of session ping packets with sequence number 0, they will trigger already received
@@ -5091,11 +5089,11 @@ func test_session_ping_packet_already_received() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5166,11 +5164,11 @@ func test_session_ping_packet_header_did_not_verify() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -5184,11 +5182,11 @@ func test_session_ping_packet_header_did_not_verify() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -5266,11 +5264,11 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -5334,13 +5332,13 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -5423,11 +5421,11 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -5491,13 +5489,13 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -5566,11 +5564,11 @@ func test_session_pong_packet_wrong_size() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5630,11 +5628,11 @@ func test_session_pong_packet_could_not_find_session() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5702,11 +5700,11 @@ func test_session_pong_packet_already_received() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// now send a bunch of session ping packets with sequence number 0, they will trigger already received
@@ -5719,11 +5717,11 @@ func test_session_pong_packet_already_received() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn.WriteToUDP(packet, &serverAddress)
 		}
 		time.Sleep(time.Second)
@@ -5794,11 +5792,11 @@ func test_session_pong_packet_header_did_not_verify() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	time.Sleep(time.Second)
@@ -5812,11 +5810,11 @@ func test_session_pong_packet_header_did_not_verify() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -5894,11 +5892,11 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -5962,13 +5960,13 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -6051,11 +6049,11 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6119,13 +6117,13 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 		}
@@ -6208,11 +6206,11 @@ func test_session_destroy() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6287,11 +6285,11 @@ func test_session_expired_route_response_packet() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6344,14 +6342,14 @@ func test_session_expired_route_response_packet() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 
@@ -6430,11 +6428,11 @@ func test_session_expired_continue_response_packet() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6487,14 +6485,14 @@ func test_session_expired_continue_response_packet() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 
@@ -6573,11 +6571,11 @@ func test_session_expired_client_to_server_packet() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6630,14 +6628,14 @@ func test_session_expired_client_to_server_packet() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 
@@ -6716,11 +6714,11 @@ func test_session_expired_server_to_client_packet() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6773,14 +6771,14 @@ func test_session_expired_server_to_client_packet() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 
@@ -6859,11 +6857,11 @@ func test_session_expired_session_ping_packet() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -6916,14 +6914,14 @@ func test_session_expired_session_ping_packet() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 
@@ -7002,11 +7000,11 @@ func test_session_expired_session_pong_packet() {
 		var magic [constants.MagicBytes]byte
 		var fromAddressBuffer [32]byte
 		var toAddressBuffer [32]byte
-		fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 		packetLength := len(packet)
-		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+		core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 		conn.WriteToUDP(packet, &serverAddress)
 	}
 
@@ -7059,14 +7057,14 @@ func test_session_expired_session_pong_packet() {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 
 			packetLength := len(packet)
 
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 			conn.WriteToUDP(packet, &serverAddress)
 
@@ -7143,11 +7141,11 @@ func test_relay_backend_stats() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// wait and make sure we see stats in the backend
@@ -7226,11 +7224,11 @@ func test_relay_backend_counters() {
 	var magic [constants.MagicBytes]byte
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
-	fromAddress, fromPort := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress, toPort := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
+	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
 	packetLength := len(packet)
-	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+	core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 	conn.WriteToUDP(packet, &serverAddress)
 
 	// verify that we see the session created counter on the relay backned

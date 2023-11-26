@@ -201,13 +201,11 @@ func TestAdvancedPacketFilterFailed_SDK(t *testing.T) {
 	magic := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
 	fromAddress := [4]byte{1, 2, 3, 4}
 	toAddress := [4]byte{4, 3, 2, 1}
-	fromPort := uint16(1000)
-	toPort := uint16(5000)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
@@ -246,13 +244,11 @@ func TestNoRouteMatrix_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
@@ -291,13 +287,11 @@ func TestNoDatabase_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
 
@@ -338,13 +332,11 @@ func TestUnknownBuyer_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	harness.handler.RouteMatrix = &common.RouteMatrix{}
 	harness.handler.Database = database.CreateDatabase()
@@ -388,13 +380,11 @@ func TestSignatureCheckFailed_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -463,13 +453,11 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -546,13 +534,11 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -636,13 +622,11 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -829,10 +813,10 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 
-			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData, toAddressPort := core.GetAddressData(&clientAddress, toAddressBuffer[:])
+			fromAddressData := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
+			toAddressData := core.GetAddressData(&clientAddress, toAddressBuffer[:])
 
-			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 				core.Debug("advanced packet filter failed")
 				continue
 			}
@@ -947,13 +931,11 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -1030,13 +1012,11 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -1120,13 +1100,11 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 	magic := [8]byte{}
 	fromAddress := [4]byte{127, 0, 0, 1}
 	toAddress := [4]byte{127, 0, 0, 1}
-	fromPort := uint16(harness.from.Port)
-	toPort := uint16(harness.handler.ServerBackendAddress.Port)
 	packetLength := len(packetData)
 
-	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GenerateChonkle(packetData[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	core.GeneratePittle(packetData[len(packetData)-2:], fromAddress[:], toAddress[:], packetLength)
 
 	// setup a buyer in the database with keypair
 
@@ -1310,10 +1288,10 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
 
-			fromAddressData, fromAddressPort := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData, toAddressPort := core.GetAddressData(&clientAddress, toAddressBuffer[:])
+			fromAddressData := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
+			toAddressData := core.GetAddressData(&clientAddress, toAddressBuffer[:])
 
-			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 				core.Debug("advanced packet filter failed")
 				continue
 			}

@@ -1548,18 +1548,18 @@ void test_abi()
 
     next_generate_pittle( output, from_address, 4, to_address, 4, packet_length );
 
-    next_check( output[0] == 71 );
-    next_check( output[1] == 201 );
+    next_check( output[0] == 0x3f );
+    next_check( output[1] == 0xb1 );
 
     next_generate_chonkle( output, magic, from_address, 4, to_address, 4, packet_length );
 
-    next_check( output[0] == 45 );
-    next_check( output[1] == 203 );
-    next_check( output[2] == 67 );
-    next_check( output[3] == 96 );
-    next_check( output[4] == 78 );
-    next_check( output[5] == 180 );
-    next_check( output[6] == 127 );
+    next_check( output[0] == 0x2a );
+    next_check( output[1] == 0xdc );
+    next_check( output[2] == 0x8 );
+    next_check( output[3] == 0x2c );
+    next_check( output[4] == 0x51 );
+    next_check( output[5] == 0xa8 );
+    next_check( output[6] == 0x87 );
     next_check( output[7] == 7 );
 }
 

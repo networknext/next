@@ -112,10 +112,10 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
-	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
-	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+	fromAddressData := core.GetAddressData(from, fromAddressBuffer[:])
+	toAddressData := core.GetAddressData(to, toAddressBuffer[:])
 
-	if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+	if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 		core.Debug("advanced packet filter failed for %d byte packet from %s to %s", len(packetData), from.String(), to.String())
 		handler.Events[SDK_HandlerEvent_AdvancedPacketFilterFailed] = true
 		return

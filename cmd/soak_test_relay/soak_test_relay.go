@@ -185,11 +185,11 @@ func soak_test_relay(run_forever bool) {
 			var magic [constants.MagicBytes]byte
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
-			fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-			toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+			toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 			packetLength := len(packet)
-			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+			core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+			core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 			conn[i].WriteToUDP(packet, &relayAddress)
 		}
 
@@ -214,11 +214,11 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 				packetLength := len(packet)
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 				conn[i].WriteToUDP(packet, &relayAddress)
 			}
 		}
@@ -266,14 +266,14 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 
 				packetLength := len(packet)
 
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 				conn[i].WriteToUDP(packet, &relayAddress)
 
@@ -297,11 +297,11 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 				packetLength := len(packet)
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 				conn[i].WriteToUDP(packet, &relayAddress)
 			}
 		}
@@ -349,14 +349,14 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 
 				packetLength := len(packet)
 
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 				conn[i].WriteToUDP(packet, &relayAddress)
 
@@ -407,14 +407,14 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 
 				packetLength := len(packet)
 
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 				conn[i].WriteToUDP(packet, &relayAddress)
 
@@ -465,14 +465,14 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 
 				packetLength := len(packet)
 
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 				conn[i].WriteToUDP(packet, &relayAddress)
 
@@ -523,14 +523,14 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 
 				packetLength := len(packet)
 
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 				conn[i].WriteToUDP(packet, &relayAddress)
 
@@ -581,14 +581,14 @@ func soak_test_relay(run_forever bool) {
 				var magic [constants.MagicBytes]byte
 				var fromAddressBuffer [32]byte
 				var toAddressBuffer [32]byte
-				fromAddress, fromPort := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress, toPort := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
+				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
 
 				packetLength := len(packet)
 
-				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GenerateChonkle(packet[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
-				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+				core.GeneratePittle(packet[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
 
 				conn[i].WriteToUDP(packet, &relayAddress)
 

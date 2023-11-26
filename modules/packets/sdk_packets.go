@@ -84,12 +84,12 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
-	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
-	toAddressData, toAddressPort := core.GetAddressData(to, toAddressBuffer[:])
+	fromAddressData := core.GetAddressData(from, fromAddressBuffer[:])
+	toAddressData := core.GetAddressData(to, toAddressBuffer[:])
 
-	core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
+	core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, toAddressData, packetBytes)
 
-	core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetBytes)
+	core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, toAddressData, packetBytes)
 
 	return packetData, nil
 }

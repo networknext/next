@@ -551,10 +551,10 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
 
-	fromAddressData, fromAddressPort := core.GetAddressData(from, fromAddressBuffer[:])
-	toAddressData, toAddressPort := core.GetAddressData(&serverBackendAddress, toAddressBuffer[:])
+	fromAddressData := core.GetAddressData(from, fromAddressBuffer[:])
+	toAddressData := core.GetAddressData(&serverBackendAddress, toAddressBuffer[:])
 
-	if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+	if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 		fmt.Printf("advanced packet filter failed\n")
 		return
 	}

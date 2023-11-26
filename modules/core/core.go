@@ -1777,13 +1777,7 @@ func MakeRouteDecision_StayOnNetworkNext(userId uint64, routeMatrix []RouteEntry
 
 // ------------------------------------------------------
 
-func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
-
-	var fromPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
-
-	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(toPortData[:], toPort)
+func GeneratePittle(output []byte, fromAddress []byte, toAddress []byte, packetLength int) {
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
@@ -1794,15 +1788,9 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 		sum += uint16(fromAddress[i])
 	}
 
-	sum += uint16(fromPortData[0])
-	sum += uint16(fromPortData[1])
-
 	for i := 0; i < len(toAddress); i++ {
 		sum += uint16(toAddress[i])
 	}
-
-	sum += uint16(toPortData[0])
-	sum += uint16(toPortData[1])
 
 	sum += uint16(packetLengthData[0])
 	sum += uint16(packetLengthData[1])
@@ -1816,13 +1804,7 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 	output[1] = 1 | ((255 - output[0]) ^ 113)
 }
 
-func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
-
-	var fromPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
-
-	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(toPortData[:], toPort)
+func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, toAddressData []byte, packetLength int) {
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
@@ -1830,9 +1812,7 @@ func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPo
 	hash := fnv.New64a()
 	hash.Write(magic)
 	hash.Write(fromAddressData)
-	hash.Write(fromPortData[:])
 	hash.Write(toAddressData)
-	hash.Write(toPortData[:])
 	hash.Write(packetLengthData[:])
 	hashValue := hash.Sum64()
 
@@ -1942,14 +1922,14 @@ func BasicPacketFilter(data []byte, packetLength int) bool {
 	return true
 }
 
-func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) bool {
+func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, toAddress []byte, packetLength int) bool {
 	if packetLength < 18 {
 		return false
 	}
 	var a [15]byte
 	var b [2]byte
-	GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-	GeneratePittle(b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+	GenerateChonkle(a[:], magic, fromAddress, toAddress, packetLength)
+	GeneratePittle(b[:], fromAddress, toAddress, packetLength)
 	if bytes.Compare(a[0:15], data[1:16]) != 0 {
 		return false
 	}
@@ -1959,13 +1939,12 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
 	return true
 }
 
-func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
-	// this works only for IPv4
+func GetAddressData(address *net.UDPAddr, addressBuffer []byte) []byte {
+	// IMPORTANT: this works only for IPv4, for now
 	if address == nil {
 		panic("can't get address data for nil address!")
 	}
-	addressPort := uint16(address.Port)
-	return address.IP.To4(), addressPort
+	return address.IP.To4()
 }
 
 func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr, relayPublicAddresses []net.UDPAddr, key []byte, pingTokens []byte) {
