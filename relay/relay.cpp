@@ -3006,7 +3006,7 @@ uint64_t relay_hash_string( const char * string )
 
 // ---------------------------------------------------------------
 
-static void relay_generate_pittle( uint8_t * output, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+static void relay_generate_pittle( uint8_t * output, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
 {
     assert( output );
     assert( from_address );
@@ -3015,19 +3015,11 @@ static void relay_generate_pittle( uint8_t * output, const uint8_t * from_addres
     assert( to_address_bytes >= 0 );
     assert( packet_length > 0 );
 #if RELAY_BIG_ENDIAN
-    relay_bswap( from_port );
-    relay_bswap( to_port );
     relay_bswap( packet_length );
 #endif // #if RELAY_BIG_ENDIAN
     uint16_t sum = 0;
     for ( int i = 0; i < from_address_bytes; ++i ) { sum += uint8_t(from_address[i]); }
-    const char * from_port_data = (const char*) &from_port;
-    sum += uint8_t(from_port_data[0]);
-    sum += uint8_t(from_port_data[1]);
     for ( int i = 0; i < to_address_bytes; ++i ) { sum += uint8_t(to_address[i]); }
-    const char * to_port_data = (const char*) &to_port;
-    sum += uint8_t(to_port_data[0]);
-    sum += uint8_t(to_port_data[1]);
     const char * packet_length_data = (const char*) &packet_length;
     sum += uint8_t(packet_length_data[0]);
     sum += uint8_t(packet_length_data[1]);
@@ -3041,7 +3033,7 @@ static void relay_generate_pittle( uint8_t * output, const uint8_t * from_addres
     output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
 }
 
-static void relay_generate_chonkle( uint8_t * output, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+static void relay_generate_chonkle( uint8_t * output, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
 {
     assert( output );
     assert( magic );
@@ -3051,17 +3043,13 @@ static void relay_generate_chonkle( uint8_t * output, const uint8_t * magic, con
     assert( to_address_bytes >= 0 );
     assert( packet_length > 0 );
 #if RELAY_BIG_ENDIAN
-    relay_bswap( from_port );
-    relay_bswap( to_port );
     relay_bswap( packet_length );
 #endif // #if RELAY_BIG_ENDIAN
     relay_fnv_t fnv;
     relay_fnv_init( &fnv );
     relay_fnv_write( &fnv, magic, 8 );
     relay_fnv_write( &fnv, from_address, from_address_bytes );
-    relay_fnv_write( &fnv, (const uint8_t*) &from_port, 2 );
     relay_fnv_write( &fnv, to_address, to_address_bytes );
-    relay_fnv_write( &fnv, (const uint8_t*) &to_port, 2 );
     relay_fnv_write( &fnv, (const uint8_t*) &packet_length, 4 );
     uint64_t hash = relay_fnv_finalize( &fnv );
 #if RELAY_BIG_ENDIAN
@@ -3172,7 +3160,7 @@ void relay_address_data( const relay_address_t * address, uint8_t * address_data
     *address_port = address->port;
 }
 
-bool relay_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+bool relay_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes, int packet_length )
 {
     if ( data[0] == 0 )
         return true;
@@ -3180,8 +3168,8 @@ bool relay_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, 
         return false;
     uint8_t a[15];
     uint8_t b[2];
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     if ( memcmp( a, data + 1, 15 ) != 0 )
         return false;
     if ( memcmp( b, data + packet_length - 2, 2 ) != 0 )
@@ -3337,7 +3325,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
 // --------------------------------------------------------------------------
 
-int relay_write_route_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_route_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_ROUTE_REQUEST_PACKET );
@@ -3345,12 +3333,12 @@ int relay_write_route_request_packet( uint8_t * packet_data, const uint8_t * tok
     relay_write_bytes( &p, token_data, token_bytes );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_ROUTE_RESPONSE_PACKET );
@@ -3364,12 +3352,12 @@ int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequ
 #endif // #if RELAY_DEBUG
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_continue_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_continue_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_CONTINUE_REQUEST_PACKET );
@@ -3377,12 +3365,12 @@ int relay_write_continue_request_packet( uint8_t * packet_data, const uint8_t * 
     relay_write_bytes( &p, token_data, token_bytes );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_CONTINUE_RESPONSE_PACKET );
@@ -3396,12 +3384,12 @@ int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_s
 #endif // #if RELAY_DEBUG 
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     assert( packet_data );
     assert( private_key );
@@ -3421,12 +3409,12 @@ int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_se
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     assert( packet_data );
     assert( private_key );
@@ -3446,12 +3434,12 @@ int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_se
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     assert( packet_data );
     assert( private_key );
@@ -3469,12 +3457,12 @@ int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequen
     relay_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     assert( packet_data );
     assert( private_key );
@@ -3491,12 +3479,12 @@ int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequen
     relay_write_uint64( &p, ping_sequence );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( c, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_near_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_near_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_NEAR_PONG_PACKET );
@@ -3505,12 +3493,12 @@ int relay_write_near_pong_packet( uint8_t * packet_data, uint64_t ping_sequence,
     relay_write_uint64( &p, session_id );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t expire_timestamp, uint8_t internal, const uint8_t * ping_token, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t expire_timestamp, uint8_t internal, const uint8_t * ping_token, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_PING_PACKET );
@@ -3521,12 +3509,12 @@ int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence
     relay_write_bytes( &p, ping_token, RELAY_PING_TOKEN_BYTES );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
-int relay_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_PONG_PACKET );
@@ -3534,8 +3522,8 @@ int relay_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence
     relay_write_uint64( &p, ping_sequence );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_chonkle( a, magic, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
+    relay_generate_pittle( b, from_address, from_address_bytes, to_address, to_address_bytes, packet_length );
     return packet_length;
 }
 
@@ -4855,11 +4843,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 if ( !internal )
                 {
                     uint8_t ping_packet[RELAY_MAX_PACKET_BYTES];
-                    packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port );
+                    packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_public_address_data, relay_public_address_bytes, to_address_data, to_address_bytes );
                     if ( packet_bytes > 0 )
                     {
                         assert( relay_basic_packet_filter( ping_packet, packet_bytes ) );
-                        assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+                        assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_public_address_data, relay_public_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
 
                         relay_platform_socket_send_packet( relay->socket, &to_address, ping_packet, packet_bytes );
             
@@ -4871,11 +4859,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 else
                 {
                     uint8_t ping_packet[RELAY_MAX_PACKET_BYTES];
-                    packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, to_address_data, to_address_bytes, to_address_port );
+                    packet_bytes = relay_write_relay_ping_packet( ping_packet, ping_sequence, expire_timestamp, internal, ping_token, current_magic, relay_internal_address_data, relay_internal_address_bytes, to_address_data, to_address_bytes );
                     if ( packet_bytes > 0 )
                     {
                         assert( relay_basic_packet_filter( ping_packet, packet_bytes ) );
-                        assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+                        assert( relay_advanced_packet_filter( ping_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
 
                         relay_platform_socket_send_packet( relay->socket, &to_address, ping_packet, packet_bytes );
             
@@ -4934,12 +4922,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             continue;
         }
 
-        if ( ! ( relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
-                 relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
-                 relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, packet_bytes ) ||
-                 relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) ||
-                 relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) ||
-                 relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, packet_bytes ) 
+        if ( ! ( relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, relay_public_address_data, relay_public_address_bytes, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, relay_public_address_data, relay_public_address_bytes, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, relay_public_address_data, relay_public_address_bytes, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, relay_internal_address_data, relay_internal_address_bytes, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, relay_internal_address_data, relay_internal_address_bytes, packet_bytes ) ||
+                 relay_advanced_packet_filter( packet_data, upcoming_magic, from_address_data, from_address_bytes, relay_internal_address_data, relay_internal_address_bytes, packet_bytes ) 
                ) 
            )
         {
@@ -5007,11 +4995,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !internal )
             {
-                packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port );
+                packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, from_address_data, from_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, from_address_data, from_address_bytes, packet_bytes ) );
 
                     relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
 
@@ -5020,11 +5008,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             }
             else
             {
-                packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, from_address_data, from_address_bytes, from_address_port );
+                packet_bytes = relay_write_relay_pong_packet( pong_packet, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, from_address_data, from_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, from_address_data, from_address_bytes, packet_bytes ) );
 
                     relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
 
@@ -5141,11 +5129,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !token.next_internal )
             {
                 uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_request_packet( route_request_packet, token_data, token_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_route_request_packet( route_request_packet, token_data, token_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( route_request_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5164,11 +5152,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_request_packet( route_request_packet, token_data, token_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_route_request_packet( route_request_packet, token_data, token_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( route_request_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5252,11 +5240,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->prev_internal )
             {
                 uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_response_packet( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_route_response_packet( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( route_response_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( route_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( route_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5274,11 +5262,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_response_packet( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_route_response_packet( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( route_response_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( route_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( route_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5353,11 +5341,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->next_internal )
             {
                 uint8_t continue_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_continue_request_packet( continue_request_packet, token_data, token_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_continue_request_packet( continue_request_packet, token_data, token_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( continue_request_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( continue_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( continue_request_packet, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5374,11 +5362,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t continue_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_continue_request_packet( continue_request_packet, token_data, token_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_continue_request_packet( continue_request_packet, token_data, token_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( continue_request_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( continue_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( continue_request_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5461,11 +5449,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->prev_internal )
             {
                 uint8_t continue_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_continue_response_packet( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_continue_response_packet( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( continue_response_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( continue_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( continue_response_packet, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5482,11 +5470,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t continue_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_continue_response_packet( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_continue_response_packet( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( continue_response_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( continue_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( continue_response_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5580,11 +5568,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->next_internal )
             {
                 uint8_t client_to_server_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_client_to_server_packet( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_client_to_server_packet( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( client_to_server_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( client_to_server_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( client_to_server_packet, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5601,11 +5589,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t client_to_server_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_client_to_server_packet( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_client_to_server_packet( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( client_to_server_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( client_to_server_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( client_to_server_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5699,12 +5687,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->prev_internal )
             {
                 uint8_t server_to_client_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_server_to_client_packet( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_server_to_client_packet( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes );
 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( server_to_client_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( server_to_client_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( server_to_client_packet, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5721,12 +5709,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t server_to_client_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_server_to_client_packet( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_server_to_client_packet( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes );
 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( server_to_client_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( server_to_client_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( server_to_client_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5811,12 +5799,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->next_internal )
             {
                 uint8_t session_ping_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_ping_packet( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_session_ping_packet( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes );
 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( session_ping_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( session_ping_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( session_ping_packet, current_magic, relay_public_address_data, relay_public_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5833,12 +5821,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t session_ping_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_ping_packet( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_session_ping_packet( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes );
 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( session_ping_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( session_ping_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( session_ping_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, next_address_data, next_address_bytes, packet_bytes ) );
 
 #if RELAY_DEBUG
                     char next_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5923,11 +5911,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( !session->prev_internal )
             {
                 uint8_t session_pong_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_pong_packet( session_pong_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_session_pong_packet( session_pong_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( session_pong_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( session_pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( session_pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
  
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -5944,11 +5932,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             else
             {
                 uint8_t session_pong_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_pong_packet( session_pong_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_session_pong_packet( session_pong_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes );
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter( session_pong_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter( session_pong_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, relay_internal_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter( session_pong_packet, current_magic, relay_internal_address_data, relay_internal_address_bytes, prev_address_data, prev_address_bytes, packet_bytes ) );
  
 #if RELAY_DEBUG
                     char prev_hop_address[RELAY_MAX_ADDRESS_STRING_LENGTH];
@@ -6007,11 +5995,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             }
 
             uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
-            packet_bytes = relay_write_near_pong_packet( pong_packet, ping_sequence, session_id, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port );
+            packet_bytes = relay_write_near_pong_packet( pong_packet, ping_sequence, session_id, current_magic, relay_public_address_data, relay_public_address_bytes, from_address_data, from_address_bytes );
             if ( packet_bytes > 0 )
             {
                 assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
-                assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, relay_public_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, relay_public_address_bytes, from_address_data, from_address_bytes, packet_bytes ) );
 
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with near relay pong packet (thread %d)", from_string, relay->thread_index );
 
