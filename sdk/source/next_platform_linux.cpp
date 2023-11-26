@@ -513,14 +513,9 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    /*
     struct sched_param param;
     param.sched_priority = sched_get_priority_min( SCHED_RR );
     return pthread_setschedparam( thread->handle, SCHED_RR, &param ) == 0;
-    */
-    struct sched_param param;
-    param.sched_priority = sched_get_priority_max( SCHED_FIFO );
-    return pthread_setschedparam( thread->handle, SCHED_FIFO, &param ) == 0;
 }
 
 // ---------------------------------------------------
