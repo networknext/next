@@ -1317,15 +1317,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
                 next_printf( NEXT_LOG_LEVEL_INFO, "client pinging %d near relays", packet.num_near_relays );
 
-                // todo
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "-------------------------------------" );
-                for ( int i = 0; i < packet.num_near_relays; i++ )
-                {
-                    char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "%d: %" PRIx64 " -> %s", i, packet.near_relay_ids[i], next_address_to_string( &packet.near_relay_addresses[i], address_string ) );
-                }
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "-------------------------------------" );
-
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.near_relay_ping_tokens, packet.near_relay_expire_timestamp );
             }
             else
@@ -1819,9 +1810,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         client->client_stats.packets_sent_client_to_server = client->packets_sent;
 
-        // todo
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "get near relay stats" );
-
         next_relay_manager_get_stats( client->near_relay_manager, &client->near_relay_stats );
 
         next_client_notify_stats_updated_t * notify = (next_client_notify_stats_updated_t*) next_malloc( client->context, sizeof( next_client_notify_stats_updated_t ) );
@@ -1905,19 +1893,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
                 packet.near_relay_packet_loss[i] = packet_loss;
             }
         }
-        else
-        {
-            // todo
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client fell back to direct?" );
-        }
-
-        // todo
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "******************************************" );
-        for ( int i = 0; i < packet.num_near_relays; ++i )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "%d: %" PRIx64 " -> %d, %d, %.02f%%", i, packet.near_relay_ids[i], packet.near_relay_rtt[i], packet.near_relay_jitter[i], packet.near_relay_packet_loss[i] );
-        }
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "******************************************" );
 
         packet.packets_sent_client_to_server = client->packets_sent;
 

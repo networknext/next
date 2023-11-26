@@ -396,7 +396,6 @@ locals {
     },
 */
 
-// todo
 /*
     "vultr.stockholm" = {
       datacenter_name = "vultr.stockholm"
