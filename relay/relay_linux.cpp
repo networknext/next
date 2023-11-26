@@ -382,7 +382,7 @@ void relay_platform_thread_destroy( relay_platform_thread_t * thread )
     free( thread );
 }
 
-void relay_platform_thread_set_high_priority( relay_platform_thread_t * thread )
+bool relay_platform_thread_set_high_priority( relay_platform_thread_t * thread )
 {
     struct sched_param param;
     param.sched_priority = sched_get_priority_min( SCHED_RR );
