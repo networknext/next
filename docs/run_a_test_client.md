@@ -2,58 +2,189 @@
 
 <br>
 
-# Native C++ SDK
+# Run a test client
 
-## Introduction
+## 1. Disable raspberry clients
 
-The Network Next SDK integrates with your game's client and server and takes over sending and receiving UDP packets.
+By default, Network Next fills the portal with simulated data from 1024 clients. These are the "raspberry" clients. They're named this because we use to run test clients on Raspberry Pi's around the vorld. 
 
-It supports the following platforms:
+Nowadays, they're just clients running inside a google cloud datacenter, with simulated random locations and ping data.
 
-1. Windows
-2. Mac
-3. Linux
-4. iOS
-5. PS4
-6. PS5
-7. XBox One
-8. XBox Series X
-9. Nintendo Switch
+Let's turn these clients off so we can see some real data in the portal.
 
-The SDK lives under the "sdk" directory of the main repo, and as part of the `next keygen` and `next config` steps the source code has already been customized with your domain names and keypairs.
+Edit `terraform/dev/backend/main.tf`
 
-To get started, view the documentation for instructions on how to build the SDK, then study and run the example programs: [Network Next SDK Documentation](https://network-next-sdk.readthedocs-hosted.com/en/latest/index.html)
+Search for "raspberry_backend". In the raspberry backend module, change `target_size` to 0:
 
-## Running SDK Examples
+```
+module "raspberry_backend" {
 
-When you run the SDK examples, they will attempt to connect with your development backend instance. Please make sure you have the dev environment up when you run the SDK examples. 
+  source = "../../modules/external_http_service"
 
-To connect to your production backend, simply make sure that NEXT_DEVELOPMENT is not defined, and the code will automatically point at your production backend instance.
+  service_name = "raspberry-backend"
 
-For security reasons, the buyer public and private keypair generated and embedded in your source code is for _internal testing purposes only_ and should be replaced with your own generated buyer account. For instructions on how to do this, see [How to Add a New Game](how_to_add_a_new_game.md).
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    DEBUG_LOGS=1
+    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
+    EOF
+    systemctl start app.service
+  EOF1
 
-## Datacenters and Autodetection
+  tag                      = var.tag
+  extra                    = var.extra
+  machine_type             = "f1-micro"
+  project                  = local.google_project_id
+  region                   = var.google_region
+  zones                    = var.google_zones
+  default_network          = google_compute_network.development.id
+  default_subnetwork       = google_compute_subnetwork.development.id
+  service_account          = local.google_service_account
+  tags                     = ["allow-ssh", "allow-http", "allow-https"]
+  domain                   = "raspberry-dev.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
+  target_size              = 0 // 1
 
-In order to accelerate to the correct datacenter, Network Next needs to know the name of the datacenter the server is hosted in. It does this by looking up relays in the same datacenter that your game server is in, and making sure that these relays are the last hop for accelerated traffic on the way to your server. The idea being that latency, jitter and packet loss is effectively zero for traffic sent from this last relay to your server.
+  depends_on = [
+    module.server_backend
+  ]
+}
+```
 
-For example, "google.iowa.1" is a default datacenter setup in the dev environment, and the dev environment has a relay set in this datacenter already. If you host your test server in that datacenter, you could simply set NEXT_DATACENTER="google.iowa.1" in the environment and Network Next will be able to accelerate traffic.
+Search for "raspberry_client" and "raspberry_server" and make the same change.
 
-However, this can get cumbersome for multiple clouds, as well as being _literally impossible_ with a hosting provider like Multiplay who don't provide you with any way to know exactly which datacenter your server is being hosted in.
+Now deploy a new dev release with a tag:
 
-To get around this, we have implemented autodetection of your datacenter in popular clouds and for multiplay.
+```
+git tag dev-003
+git push origin dev-003
+```
 
-For Google Cloud and AWS, simply set your datacenter to "cloud" and the SDK will call internal REST APIs when the server starts up to determine which datacenter it is running in.
+This change modifies the managed instance groups that run the raspberry clients down to zero VM instances, effectively disabling them. 
 
-For Multiplay, you must ask them to pass in "cloud" when they are running your game server in Google Cloud or AWS, or to pass in the datacenter in the form "multiplay.[cityname]" and our code will use DNS running on your game server to work out which Multiplay provider is actually hosting your game server. This way we can ensure that traffic is accelerated to the correct bare metal provider.
+It will take a few minutes, but when the change is deployed the portal will be empty:
 
-## Configuration of the set of Google Cloud, AWS and Multiplay datacenters
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/ee6a485a-2444-48e7-a8fe-5758c5d2df27">
 
-Configuration that drives autodetect is defined in text files under "config".
+## 2. Run a test client
 
-When you run `next config` the code walks the set of AWS and Google Cloud datacenters available in your accounts, and updates the config/amazon.txt and config/google.txt respectively.
+There is already a test server running in google cloud, under a buyer account called "Test".
 
-For multiplay, you need to manually determine the set of providers that multiplay is using (a starter set is included in config/multiplay.txt), this file acts as a mapping from the DNS results to the provider name, eg. "multiplay.[cityname]" turns into "inap.[cityname]" when we see "internap", "inap" or "INAP" in the DNS query results.
+You can run a local client, and it will connect to this server automatically:
 
-These files can be updated at any time and uploaded to Google Cloud Storage via semaphore CI, using the "Upload Config" job.
+```
+next select dev
+run client
+```
 
-When the SDK runs, it downloads the config files on startup from Google Cloud Storage, so if you need to make changes to these files in production, they will become active to clients and servers running in production almost instantly. This way you you can adjust the set of datacenters available dynamically, without needing to deploy any code changes.
+Wait a minute for the portal to display the data (it updates once per-minute).
+
+You will see your test clients in the portal, now with real ping data and your ISP name:
+
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/2d4b263b-15f2-4e23-8f65-ea08aecb847b">
+
+Here I am in Helsinki, Finland in the Kamppi shopping center, beating google to their own datacenter with Network Next. This is in dev, which is not a particularly optimized environment, and I'm in an extremely well connected city. Much larger improvements are seen across a typical player base worldwide.
+
+I can click on the session id, and see my session updating in real-time, once every 10 seconds:
+
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/61cacf15-4f8a-46a2-aa23-f07c95810c9d">
+
+## 3. Edit the test route shader
+
+The test client has a "route shader" which specifies the criteria for when we should take Network Next.
+
+What we will do now is set a good default route shader, which will only take Network Next if a significant latency reduction is found, or if the user is experiencing significant packet loss.
+
+Edit the file `terraform/dev/relays/main.tf` and search for "TEST BUYER"
+
+You will find this:
+
+```
+resource "networknext_route_shader" test {
+  name = "test"
+  force_next = true
+  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  route_select_threshold = 0
+  route_switch_threshold = 5
+  acceptable_packet_loss_instant = 0.25
+  acceptable_packet_loss_sustained = 0.1
+  bandwidth_envelope_up_kbps = 256
+  bandwidth_envelope_down_kbps = 256
+}
+```
+
+Comment out the line `force_next`. This line forced all players to get accelerated across Network Next, even if there was no improvement.
+
+Now the route shader looks like this:
+
+```
+resource "networknext_route_shader" test {
+  name = "test"
+  // force_next = true
+  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  route_select_threshold = 0
+  route_switch_threshold = 5
+  acceptable_packet_loss_instant = 0.25
+  acceptable_packet_loss_sustained = 0.1
+  bandwidth_envelope_up_kbps = 256
+  bandwidth_envelope_down_kbps = 256
+}
+```
+
+This route shader is configured as follows:
+
+* `acceptable_latency = 50`. Do not accelerate any player when their latency is already below 50ms. This is good enough and not worth accelerating below. This is a recommended value to start with.
+  
+* `latency_reduction_threshold = 10`. Do not accelerate a player unless we can find a latency reduction of _at least_ 10 milliseconds.
+
+* `route_select_threshold = 0`. This finds the absolute lowest latency route, out of all routes available. In the future, it is best to relax this to 5ms, so we load balance across different routes, instead of forcing everybody down the same route.
+
+* `route_switch_threshold = 5`. Hold the current Network Next route, unless a better route is available with at least 5ms lower latency than the current route. Don't set this too low, or the route will flap around every 10 seconds. In the future, I recommend that you increase this to 10ms, but right now 5ms is fine.
+
+* `acceptable_packet_loss_instant = 0.25`. If packet loss > 0.25% occurs in any 10 second period, accelerate the player to reduce packet loss. This catches packet loss spikes.
+
+* `acceptable_packet_loss_sustained = 0.1`. If packet loss > 0.1% occurs for 30 seconds, accelerate the player to reduce packet loss. This captures packet loss that is lower in intensity, but is sustained over a longer period.
+
+* `bandwidth_envelope_up_kbps = 256`. This is the maximum bandwidth in kilobits per-second, kilobits, not kilobytes, sent from client to server. We don't need to change this, but later on when you setup your own buyer you should adjust it to the maximum bandwidth your client will send up to to the server. If the client sends more bandwidth than this, it will not be accelerated (eg. during a load screen, this is typically OK).
+
+* `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
+
+Now, deploy the terraform changes to the postgres database:
+
+```
+cd ~/next/terraform/dev/relays
+terraform apply
+```
+
+Now that we have changed the postgres database, we need to commit it to the backend for it to take effect:
+
+```
+cd ~/next
+next database
+next commit
+```
+
+Stop your client, then restart it:
+
+```
+next client
+```
+
+Now you should after a minute or so see your client session in the portal, but this time it is (almost certainly) not accelerated:
+
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/a226a658-2239-4088-ab8a-277fdc1ad49d">
+
+Click the session id to drill into the session and you'll see only the blue line for the direct latency (unaccelerated route), and not the green line for accelerated latency:
+
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/d99dd28d-3a50-4172-97bc-d35bb391374a">
+
+This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. Across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
+
+Next step: [Add your own buyer](add_your_own_buyer.md)
