@@ -1155,24 +1155,6 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			continue
 		}
 
-		// exclude relays with jitter significantly higher than direct
-		if sourceRelayJitter[i] > directJitter+constants.JitterThreshold {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
-		// exclude relays with packet loss higher than direct
-		if sourceRelayPacketLoss[i] > directPacketLoss {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
-		// exclude relays with PL >= 50%
-		if sourceRelayPacketLoss[i] >= 50 {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
 		// exclude relays that no longer exist
 		_, ok := relayIdToIndex[sourceRelayId[i]]
 		if !ok {
