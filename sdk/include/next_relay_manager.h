@@ -234,11 +234,24 @@ inline void next_relay_manager_update( next_relay_manager_t * manager, int num_r
         manager->relay_last_ping_time[i] = current_time - ping_time + i * ping_time / manager->num_relays;
     }
 
+    // todo
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "=========================================" );
+    for ( int i = 0; i < manager->num_relays; ++i )
+    {
+        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "%d: %" PRIx64 " -> %s", i, manager->relay_ids[i], next_address_to_string( &manager->relay_addresses[i], address_string ) );
+    }
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "=========================================" );
+
     next_relay_manager_verify_sentinels( manager );
 }
 
 inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id, const uint8_t * magic, const next_address_t * client_external_address )
 {
+    // todo
+    char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "client_external_address is %s", next_address_to_string( client_external_address, address_string ) );
+
     next_relay_manager_verify_sentinels( manager );
 
     next_assert( socket );
@@ -278,6 +291,10 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
             double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING
 
+            // todo
+            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "sent near relay ping to %s", next_address_to_string( &manager->relay_addresses[i], address_string ) );
+
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
 
 #if NEXT_SPIKE_TRACKING
@@ -298,6 +315,10 @@ inline void next_relay_manager_process_pong( next_relay_manager_t * manager, con
     next_relay_manager_verify_sentinels( manager );
 
     next_assert( from );
+
+    // todo
+    char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "processing near relay pong from %s", next_address_to_string( from, address_string ) );
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -321,6 +342,14 @@ inline void next_relay_manager_get_stats( next_relay_manager_t * manager, next_r
 
     stats->num_relays = manager->num_relays;
     stats->has_pings = stats->num_relays > 0;
+
+    // todo
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "=====================================" );
+    for ( int i = 0; i < stats->num_relays; ++i )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "%d: %" PRIx64, i, manager->relay_ids[i] );
+    }
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "=====================================" );
 
     for ( int i = 0; i < stats->num_relays; ++i )
     {

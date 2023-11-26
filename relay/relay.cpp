@@ -4892,6 +4892,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         {
             // regular packet
 
+            printf( "[%s] received packet type %d\n", from_string, packet_id );
+
             relay->counters[RELAY_COUNTER_PACKETS_RECEIVED]++;
             relay->counters[RELAY_COUNTER_BYTES_RECEIVED] += packet_bytes;
 
@@ -4941,6 +4943,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
+            // todo
+            printf( "[%s] advanced packet filter dropped packet\n", from_string );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
