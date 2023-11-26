@@ -585,8 +585,6 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	state.DestRelays = outputDestRelays[:outputNumDestRelays]
 
-	core.Debug("reframed dest relays %d -> %d", len(state.DestRelayIds), outputNumDestRelays)
-
 	/*
 		Filter source relays and get them in a form relative to the current route matrix
 	*/
@@ -600,7 +598,7 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
 	sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
 
-	filteredSourceRelayLatency := [constants.MaxNearRelays]int32{}
+	firstUpdate := state.Request.SliceNumber == 1
 
 	core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
 		directLatency,
@@ -610,20 +608,26 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		sourceRelayLatency,
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
-		state.Request.SliceNumber == 1,
-		filteredSourceRelayLatency[:])
+		firstUpdate,
+		state.Output.ExcludeNearRelay[:])
+
+	filteredSourceRelayLatency := [constants.MaxNearRelays]int32{}
+
+	for i := range sourceRelayLatency {
+		if state.Output.ExcludeNearRelay[i] {
+			filteredSourceRelayLatency[i] = 255
+		} else {
+			filteredSourceRelayLatency[i] = sourceRelayLatency[i]
+		}
+	}
 
 	outputSourceRelays := make([]int32, len(sourceRelayIds))
 	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
-
-	core.Debug("filtered near relays %d -> %d", state.Request.NumNearRelays, len(sourceRelayIds))
 
 	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
-
-	core.Debug("reframed near relays %d -> %d", len(sourceRelayIds), len(state.SourceRelays))
 
 	return true
 }

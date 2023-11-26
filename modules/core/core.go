@@ -1137,7 +1137,7 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, firstTime bool, out_sourceRelayLatency []int32) {
+func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, firstTime bool, filterSourceRelay []bool) {
 
 	if firstTime {
 
@@ -1181,7 +1181,7 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 
 		for i := range sourceRelayJitter {
 			if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
-				sourceRelayLatency[i] = 255
+				filterSourceRelay[i] = true
 			}
 		}
 
@@ -1189,7 +1189,7 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 
 		for i := range sourceRelayPacketLoss {
 			if sourceRelayPacketLoss[i] > directPacketLoss {
-				sourceRelayLatency[i] = 255
+				filterSourceRelay[i] = true
 			}
 		}
 	}
@@ -1200,24 +1200,9 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {
-			out_sourceRelayLatency[i] = 255
+			filterSourceRelay[i] = true
 			continue
 		}
-
-		// exclude relays with latency above 255ms
-		if sourceRelayLatency[i] > 255 {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
-		// exclude relays that no longer exist
-		_, ok := relayIdToIndex[sourceRelayId[i]]
-		if !ok {
-			out_sourceRelayLatency[i] = 255
-			continue
-		}
-
-		out_sourceRelayLatency[i] = sourceRelayLatency[i]
 	}
 }
 

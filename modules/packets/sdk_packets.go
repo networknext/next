@@ -390,6 +390,10 @@ func GenerateRandomSessionData() SDK_SessionData {
 	sessionData.RouteState.LatencyWorseCounter = uint32(common.RandomInt(0, 3))
 	sessionData.RouteState.LocationVeto = common.RandomBool()
 
+	for i := range sessionData.ExcludeNearRelay {
+		sessionData.ExcludeNearRelay[i] = common.RandomBool()
+	}
+
 	return sessionData
 }
 
@@ -499,6 +503,7 @@ type SDK_SessionData struct {
 	BestScore                           uint32
 	BestDirectRTT                       uint32
 	BestNextRTT                         uint32
+	ExcludeNearRelay                    [SDK_MaxNearRelays]bool
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -580,6 +585,10 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&sessionData.BestScore, 10)
 	stream.SerializeBits(&sessionData.BestDirectRTT, 10)
 	stream.SerializeBits(&sessionData.BestNextRTT, 10)
+
+	for i := 0; i < SDK_MaxNearRelays; i++ {
+		stream.SerializeBool(&sessionData.ExcludeNearRelay[i])
+	}
 
 	return stream.Error()
 }
