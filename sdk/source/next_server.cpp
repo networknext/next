@@ -449,8 +449,6 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_assert( bind_address_string );
     next_assert( datacenter_string );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_buyer_id );
-
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
     {
@@ -645,7 +643,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         next_printf( NEXT_LOG_LEVEL_DEBUG, "network next is disabled" );
     }
 
-    if ( !server->valid_buyer_private_key )
+    if ( !server->valid_buyer_private_key && !datacenter_is_local )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "we don't have a valid buyer private key :(" );
     }

@@ -204,7 +204,7 @@ make -j
 ./bin/client
 ```
 
-Your client should connect to the server and will now 'upgrade the connection. This starts the process of tracking your session in the portal, and deciding if it the session needs to be accelerated or not.
+Your client should connect to the server and will now 'upgrade' the connection. This starts the process of tracking your session in the portal, and deciding if it needs to be accelerated or not.
 
 ```
 gaffer@macbook next % run client
@@ -213,7 +213,6 @@ gaffer@macbook next % run client
 0.004042: info: found valid buyer public key: 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=='
 0.004053: info: valid server backend public key
 0.004056: info: valid relay backend public key
-0.004060: info: client buyer id is eb29953ad4519f7c
 0.004117: info: client bound to 0.0.0.0:58230
 0.105377: info: client opened session to 34.67.212.136:50000
 0.603100: info: client upgraded to session ceddd63ffeb21499
@@ -226,4 +225,3 @@ Now that your client has connected to the server and completed the upgrade proce
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/767cd975-9dea-439d-abe4-7182c9fe1b2d">
 
 Next step: [Integrate with your game](integrate_with_your_game.md)
-
