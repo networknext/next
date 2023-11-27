@@ -49,8 +49,8 @@ _Work in progress below here..._
 
 # User Guides
 
-* [Users guide to the portal](docs/users_guide_to_the_portal.md)
-* [Users guide to the next tool](docs/users_guide_to_the_next_tool.md)
+* [User guide to the portal](docs/user_guide_to_the_portal.md)
+* [User guide to the next tool](docs/user_guide_to_the_next_tool.md)
 
 # Analytics
 
