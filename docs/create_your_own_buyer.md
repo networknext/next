@@ -38,15 +38,15 @@ Save your keys in your secrets directory as `buyer_public_key.txt` and `buyer_pr
 
 Edit the file `~/next/terraform/dev/relays/main.tf`
 
-Pick a name for your game. You need a short code for your game, with only a-z characters, and a longer name that is more descriptive.
+A buyer represents your game. If you have multiple games, you will create multiple bueyers.
 
-I'm going to call my game "helsinki", "Helsinki, Finland"
+Let's start with just one. Pick a name for your game. You need a short code for your game, with only a-z characters, and a longer name that is more descriptive.
+
+I'm going to call my game "helsinki", "Helsinki, Finland".
 
 At the bottom, add the following text, replacing "helsinki" and "Helsinki, Finland" with your own buyer code and name:
 
 ```
-# ----------------------------------------------------------------------------------------
-
 # ==============
 # HELSINKI BUYER
 # ==============
@@ -88,8 +88,6 @@ resource "networknext_buyer_datacenter_settings" helsinki {
   datacenter_id = networknext_datacenter.datacenters[local.buyer_datacenters].id
   enable_acceleration = true
 }
-
-# ----------------------------------------------------------------------------------------
 ```
 
 ## 3. Customize your route shader
@@ -100,7 +98,7 @@ The route shader is configured as follows:
   
 * `latency_reduction_threshold = 10`. Do not accelerate a player unless we can find a latency reduction of _at least_ 10 milliseconds.
 
-* `route_select_threshold = 2`. This finds the absolute lowest latency route within 2ms of the best route available. This helps load balance across multiple routes that are close enough together due to fluctuation, instead of everybody going down a route that is temporarily 1 millisecond faster than another.
+* `route_select_threshold = 2`. This finds the absolute lowest latency route within 2ms of the best route available. This helps load balance across multiple routes that are effectively close enough together, instead of everybody going down a route that is temporarily 1 millisecond faster.
 
 * `route_switch_threshold = 5`. Hold the current Network Next route, unless a better route is available with at least 5ms lower latency than the current route. Don't set this too low, or the route will flap around every 10 seconds. In the future, I recommend that you increase this to 10ms, but right now 5ms is fine.
 
@@ -125,16 +123,14 @@ terraform apply
 
 ## 5. Commit the database to the backend
 
-The terraform script makes changes to the the postgres database, but the backend runtime is driven by a database.bin file so it has no link to postgres at runtime.
-
-You can generate this database.bin and commit it to the backend as follows:
+Commit the updated database changes to the backend so they take effect:
 
 ```console
 next database
 next commit
 ```
 
-Now your changes will be active with the runtime within 60 seconds.
+Your changes will be active with the runtime within 60 seconds.
 
 ## 6. Verify your buyer exists in the portal
 
