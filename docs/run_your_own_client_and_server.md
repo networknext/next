@@ -166,26 +166,19 @@ gaffer@macbook next % run client
 0.003968: info: platform is mac (wi-fi)
 0.004034: info: log level overridden to 4
 0.004042: info: found valid buyer public key: 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=='
-0.004044: info: buyer private key override
-0.004046: info: found valid buyer private key
-0.004049: info: override server backend hostname: 'server-dev.virtualgo.net'
-0.004051: info: server backend public key override: hc3/baZ4FYYaknk1heRK345FK3ZOSpfK1PiMmuIGb1w=
 0.004053: info: valid server backend public key
-0.004054: info: relay backend public key override: 8jOvRZXo57q2kivlnm4nW9Ff6oi9fgHBnWoUJhz4PQQ=
 0.004056: info: valid relay backend public key
 0.004060: info: client buyer id is eb29953ad4519f7c
 0.004117: info: client bound to 0.0.0.0:58230
-0.105377: info: client opened session to 34.67.212.136:30000
+0.105377: info: client opened session to 34.67.212.136:50000
 0.603100: info: client upgraded to session ceddd63ffeb21499
 etc...
 ```
 
 ## 6. See your client session in the portal
 
-Now that your client has connected to the server and completed the upgrade process, you can see it in the portal:
+Now that your client has connected to the server and completed the upgrade process, you can see your session in the portal:
 
 (portal screenshot with session)
 
 Next step: [Integrate with your game](integrate_with_your_game.md)
-
-
