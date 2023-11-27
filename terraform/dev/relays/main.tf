@@ -362,60 +362,6 @@ module "akamai_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ============
-# VULTR RELAYS
-# ============
-
-locals {
-
-  vultr_relays = {
-
-/*
-    "vultr.chicago" = {
-      datacenter_name = "vultr.chicago"
-      plan            = "vc2-2c-2gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.newyork" = {
-      datacenter_name = "vultr.newyork"
-      plan            = "vc2-2c-2gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.frankfurt" = {
-      datacenter_name = "vultr.frankfurt"
-      plan            = "vc2-2c-2gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-
-    "vultr.amsterdam" = {
-      datacenter_name = "vultr.amsterdam"
-      plan            = "vc2-2c-2gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-*/
-
-/*
-    "vultr.stockholm" = {
-      datacenter_name = "vultr.stockholm"
-      plan            = "vc2-2c-2gb"
-      os              = "Ubuntu 22.04 LTS x64"
-    },
-*/
-  }
-}
-
-module "vultr_relays" {
-  env                 = "dev"
-  relays              = local.vultr_relays
-  source              = "../../sellers/vultr"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -429,7 +375,6 @@ locals {
       keys(module.google_relays.relays),
       keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
-      keys(module.vultr_relays.relays),
     )
   )
 
@@ -437,14 +382,12 @@ locals {
     module.google_relays.relays,
     module.amazon_relays.relays,
     module.akamai_relays.relays,
-    module.vultr_relays.relays,
   )
 
   datacenters = merge(
     module.google_relays.datacenters,
     module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
-    module.vultr_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
@@ -559,7 +502,7 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
-  // force_next = true
+  force_next = true
   acceptable_latency = 50
   latency_reduction_threshold = 10
   route_select_threshold = 0
@@ -583,50 +526,6 @@ resource "networknext_buyer_datacenter_settings" test {
   count = length(var.test_datacenters)
   buyer_id = networknext_buyer.test.id
   datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
-  enable_acceleration = true
-}
-
-# ----------------------------------------------------------------------------------------
-
-# ==============
-# HELSINKI BUYER
-# ==============
-
-locals {
-  helsinki_public_key = file("~/secrets/buyer_public_key.txt")
-  helsinki_datacenters = [
-    "google.iowa.1",
-    "google.iowa.2",
-    "google.iowa.3",
-    "google.iowa.6"
-  ]
-}
-
-resource "networknext_route_shader" helsinki {
-  name = "helsinki"
-  acceptable_latency = 50
-  latency_reduction_threshold = 10
-  route_select_threshold = 2
-  route_switch_threshold = 5
-  acceptable_packet_loss_instant = 0.25
-  acceptable_packet_loss_sustained = 0.1
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
-}
-
-resource "networknext_buyer" helsinki {
-  name = "Helsinki, Finland"
-  code = "helsinki"
-  debug = true
-  live = true
-  route_shader_id = networknext_route_shader.helsinki.id
-  public_key_base64 = local.helsinki_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" helsinki {
-  count = length(local.helsinki_datacenters)
-  buyer_id = networknext_buyer.helsinki.id
-  datacenter_id = networknext_datacenter.datacenters[local.helsinki_datacenters[count.index]].id
   enable_acceleration = true
 }
 

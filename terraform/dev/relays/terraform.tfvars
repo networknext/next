@@ -32,5 +32,4 @@ sellers = {
 	"Akamai" = "akamai"
 	"Amazon" = "amazon"
 	"Google" = "google"
-	"VULTR"  = "vultr"
 }

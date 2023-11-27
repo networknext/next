@@ -201,8 +201,6 @@ func main() {
 		config_google()
 	} else if command == "config-akamai" {
 		config_akamai()
-	} else if command == "config-vultr" {
-		config_vultr()
 	} else if command == "portal" {
 		portal()
 	} else if command == "ip2location" {
@@ -599,10 +597,6 @@ func config_google() {
 
 func config_akamai() {
 	bash("go run sellers/akamai.go")
-}
-
-func config_vultr() {
-	bash("go run sellers/vultr.go")
 }
 
 func soak_test_relay() {
