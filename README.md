@@ -29,6 +29,7 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 1. [Run a test client](docs/run_a_test_client.md)
 2. [Create your own buyer](docs/create_your_own_buyer.md)
+3. [Run your own client and server](docs/run_your_own_client_and_server.md)
 
 ... _WIP BELOW HERE_ ...
 
