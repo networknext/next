@@ -8,13 +8,13 @@
 
 Go to the console and type:
 
-```
+```console
 cd ~/next && go run sdk/keygen/keygen.go
 ```
 
 You will see output like this:
 
-```
+```console
 gaffer@macbook next % go run sdk/keygen/keygen.go
 
 Welcome to Network Next!
@@ -112,12 +112,34 @@ The route shader is configured as follows:
 
 * `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
 
+Make any changes you want to make to the route shader. For example, you could change acceptable latency to 100ms if your game is not that latency sensitive and players will only be accelerated if their latency is above 100ms.
+
+## 4. Update the postgres database with terraform
+
+Run terraform to make your changes:
+
+```
+cd ~/next/terraform/dev/relays
+terraform apply
+```
+
 ## 4. Commit the database to the backend
 
-...
+The terraform script makes changes to the the postgres database, but the backend runtime is driven by a database.bin file so it has no link to postgres at runtime.
+
+You can generate this database.bin and commit it to the backend as follows:
+
+```console
+next database
+next commit
+```
+
+Now your changes will be active with the runtime within 60 seconds.
 
 ## 5. Verify your buyer exists in the portal
 
-...
+Go to the portal and you should now be able to go to the "Buyers" page and see your new buyer:
+
+
 
 Up next: [Run your own client and server](run_your_own_client_and_server.cpp).
