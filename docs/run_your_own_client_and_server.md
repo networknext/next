@@ -2,144 +2,228 @@
 
 <br>
 
-# Create your own buyer
+# Run your own client and server
 
-## 1. Generate new buyer keypair
+## 1. Read SDK documentation
 
-Go to the console and type:
+The Network Next SDK documentation lives here: [Network Next SDK Docs](https://network-next-sdk.readthedocs-hosted.com/en/latest/)
+
+Take some time to read through the documentation for the example programs, and choose one of the "Upgraded" or "Complex" example programs as your starting point for your own client and server.
+
+The upgraded example is the minimal example of a client and server with acceleration.
+
+The complex example shows off additional features like custom allocators, custom assert functions and custom logging that are helpful when you are developing a console games.
+
+## 2. Build your own client and server
+
+There is an example project built for you already under `example`. 
+
+This project is a copy of the SDK project with client.cpp and server.cpp files based on upgraded_server.cpp/upgraded_client.cpp. If you want to start with the complex example, copy those files over and rename as client.cpp and server.cpp instead.
+
+Customize your client.cpp to replace the buyer public key with your public key:
+
+```
+const char * buyer_public_key = "<your new buyer public key here>";
+```
+
+This public key is how the client handshakes with your server and establishes a secure connection. It is safe for this public key to be embedded in your client executable and known by your players.
+
+Now for the server.cpp, we will _not_ set the buyer private key in the source code, because it is bad security to commit secrets to your repository. Instead, we will pass in the private key using environment variables later on.
+
+For Linux and MacOS:
 
 ```console
-cd ~/next && go run sdk/keygen/keygen.go
+cd ~/next/example
+premake5 gmake
+make -j
 ```
 
-You will see output like this:
+For Windows, something like:
 
 ```console
-gaffer@macbook next % go run sdk/keygen/keygen.go
-
-Welcome to Network Next!
-
-This is your public key:
-
-    SPeLMXdfJRtK3E2rEX7L9JIFxpn+cykxtuWAUCZVLbAEcwFrc0oVoQ==
-
-This is your private key:
-
-    SPeLMXdfJRt83tjKOYXbR0JyLdbuaGH7GpK21oTalLITqCOdBVzZ40rcTasRfsv0kgXGmf5zKTG25YBQJlUtsARzAWtzShWh
-
-IMPORTANT: Save your private key in a secure place and don't share it with anybody!
+premake5 vs2019
 ```
 
-This is your new buyer keypair. The public key can be safely shared with anybody and embedded in your client. The private key should be known only by the server, and not your players.
+And then open the generated solution file.
 
-Save your keys in your secrets directory as `buyer_public_key.txt` and `buyer_private_key.txt` and then back up your secrets directory somewhere.
+Build your client and server. They will be placed under `example/bin`
 
-## 2. Create a new buyer in the database
+## 3. Run the client and server locally
 
-Edit the file `~/next/terraform/dev/relays/main.tf`
-
-Pick a name for your game. You need a short code for your game, with only a-z characters, and a longer name that is more descriptive.
-
-I'm going to call my game "helsinki", "Helsinki, Finland"
-
-At the bottom, add the following text, replacing "helsinki" and "Helsinki, Finland" with your own buyer code and name:
-
-```
-# ----------------------------------------------------------------------------------------
-
-# ==============
-# HELSINKI BUYER
-# ==============
-
-locals {
-  helsinki_public_key = file("~/secrets/buyer_public_key.txt")
-  helsinki_datacenters = [
-    "google.iowa.1",
-    "google.iowa.2",
-    "google.iowa.3",
-    "google.iowa.6"
-  ]
-}
-
-resource "networknext_route_shader" helsinki {
-  name = "helsinki"
-  acceptable_latency = 50
-  latency_reduction_threshold = 10
-  route_select_threshold = 2
-  route_switch_threshold = 5
-  acceptable_packet_loss_instant = 0.25
-  acceptable_packet_loss_sustained = 0.1
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
-}
-
-resource "networknext_buyer" helsinki {
-  name = "Helsinki, Finland"
-  code = "helsinki"
-  debug = true
-  live = true
-  route_shader_id = networknext_route_shader.helsinki.id
-  public_key_base64 = local.buyer_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" helsinki {
-  count = length(local.buyer_datacenters)
-  buyer_id = networknext_buyer.helsinki.id
-  datacenter_id = networknext_datacenter.datacenters[local.buyer_datacenters].id
-  enable_acceleration = true
-}
-
-# ----------------------------------------------------------------------------------------
-```
-
-## 3. Customize your route shader
-
-The route shader is configured as follows:
-
-* `acceptable_latency = 50`. Do not accelerate any player when their latency is already below 50ms. This is good enough and not worth accelerating below. This is a recommended value to start with.
-  
-* `latency_reduction_threshold = 10`. Do not accelerate a player unless we can find a latency reduction of _at least_ 10 milliseconds.
-
-* `route_select_threshold = 2`. This finds the absolute lowest latency route within 2ms of the best route available. This helps load balance across multiple routes that are close enough together due to fluctuation, instead of everybody going down a route that is temporarily 1 millisecond faster than another.
-
-* `route_switch_threshold = 5`. Hold the current Network Next route, unless a better route is available with at least 5ms lower latency than the current route. Don't set this too low, or the route will flap around every 10 seconds. In the future, I recommend that you increase this to 10ms, but right now 5ms is fine.
-
-* `acceptable_packet_loss_instant = 0.25`. If packet loss > 0.25% occurs in any 10 second period, accelerate the player to reduce packet loss. This catches packet loss spikes.
-
-* `acceptable_packet_loss_sustained = 0.1`. If packet loss > 0.1% occurs for 30 seconds, accelerate the player to reduce packet loss. This captures packet loss that is lower in intensity, but is sustained over a longer period.
-
-* `bandwidth_envelope_up_kbps = 256`. This is the maximum bandwidth in kilobits per-second, kilobits, not kilobytes, sent from client to server. We don't need to change this, but later on when you setup your own buyer you should adjust it to the maximum bandwidth your client will send up to to the server. If the client sends more bandwidth than this, it will not be accelerated (eg. during a load screen, this is typically OK).
-
-* `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
-
-Make any changes you want to make to the route shader. For example, you could change acceptable latency to 100ms if your game is not that latency sensitive, or change it to 0ms if your game is very latency sensitive.
-
-## 4. Update the postgres database with terraform
-
-Run terraform to make your changes:
-
-```
-cd ~/next/terraform/dev/relays
-terraform apply
-```
-
-## 5. Commit the database to the backend
-
-The terraform script makes changes to the the postgres database, but the backend runtime is driven by a database.bin file so it has no link to postgres at runtime.
-
-You can generate this database.bin and commit it to the backend as follows:
+Run `./example/bin/server`. You will see something like:
 
 ```console
-next database
-next commit
+gaffer@macbook example % ./bin/server
+0.010114: info: platform is mac (wi-fi)
+0.010352: info: server input datacenter is 'local' [249f1fb6f3a680e8]
+0.010457: info: server bound to 0.0.0.0:50000
+0.011503: info: server started on 127.0.0.1:50000
+0.012162: info: server thread set to high priority
 ```
 
-Now your changes will be active with the runtime within 60 seconds.
+Now run the client, it will automatically connect to the server:
 
-## 6. Verify your buyer exists in the portal
+```console
+gaffer@macbook example % ./bin/client
+0.009847: info: platform is mac (wi-fi)
+0.010066: info: found valid buyer public key: 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=='
+0.010293: info: client bound to 0.0.0.0:52247
+0.010675: info: client thread set to high priority
+0.113645: info: client opened session to 127.0.0.1:50000
+0.521031: info: client received packet from server (32 bytes)
+0.773261: info: client received packet from server (32 bytes)
+1.028359: info: client received packet from server (32 bytes)
+1.283558: info: client received packet from server (32 bytes)
+1.538784: info: client received packet from server (32 bytes)
+etc...
+```
 
-Go to the portal and you should now be able to go to the "Buyers" page and see your new buyer:
+You will see that the client and server connect, but no acceleration is performed and your session will not show up in the portal. This is because the server.cpp has the datacenter is set to 'local' by default. 
 
-<img width="1462" alt="image" src="https://github.com/networknext/next/assets/696656/ef5ecb09-2948-403c-9e78-c0957135ba66">
+When you integrate Network Next with your game in the next step, by default set the "local" datacenter there too, and when you run local playtests in your LAN at your office, or run a local server for testing, Network Next will not get in your way.
 
-Up next: [Run your own client and server](run_your_own_client_and_server.cpp).
+## 4. Run the server in google cloud
+
+Manually create a VM in google cloud. n1-standard-2 type with Ubuntu 22.04 LTS is fine. 
+
+Create the VM in the datacenter in region "us-central1 (Iowa)" and zone "us-central1-a"
+
+Zip up the `~/next/example` directory on your local machine and copy it to google cloud storage:
+
+```
+gsutil cp example.zip gs://[company_name]_network_next_dev
+```
+
+Then on your VM, copy the example zip file down and unzip it:
+
+```
+sudo apt update && sudo apt install -y build-essential unzip
+gsutil cp gs://[company_name]_network_next_dev/example.zip .
+unzip example.zip
+```
+
+Install premake5 on the VM:
+
+```
+wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz
+tar -zxf *.tar.gz
+```
+
+Then build the example code:
+
+```console
+premake5 gmake
+make -j
+```
+
+Set the datacenter with environment variables. This is how the Network Next backend knows how to accelerate traffic to the location where your server is physically:
+
+```console
+export NEXT_DATACENTER=google.iowa.1
+```
+
+You can also set the datacenter to "cloud" and Network Next will automatically detect which Google or AWS datacenter your server is running in:
+
+```console
+export NEXT_DATACENTER=cloud
+```
+
+Set your buyer private key via environment variable:
+
+```console
+export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
+```
+
+The Network Next SDK will pick up your buyer private key from this environment var and link your server to the buyer you created in the previous step.
+
+Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. If you are not familiar with how to do this in Google Cloud, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
+
+Now set the server IP address in an environment var so Network Next knows which IP address your server is listening on:
+
+```
+export NEXT_SERVER_ADDRESS=<your server external ip address>
+```
+
+Run your server in the VM:
+
+```console
+./bin/server
+```
+
+You should see something like this:
+
+```
+glenn@test-server-006:~/example$ ./bin/server
+0.000204: info: platform is linux (wired)
+0.000272: info: log level overridden to 4
+0.000311: info: buyer private key override
+0.000315: info: found valid buyer private key
+0.000333: info: server address override: '34.67.212.136'
+0.000376: info: server datacenter override 'cloud'
+0.000387: info: server input datacenter is 'cloud' [9ebb5c9513bac4fe]
+0.000428: info: server bound to 0.0.0.0:50000
+0.003485: info: server initializing with backend
+0.003641: info: server started on 34.67.212.136:50000
+0.003792: info: server resolving backend hostname 'server-dev.virtualgo.net'
+0.004722: info: server attempting to autodetect datacenter
+0.004813: info: server autodetect datacenter: looking for curl
+0.014795: info: server autodetect datacenter: curl exists
+0.019241: info: server autodetect datacenter: running in google cloud
+0.031601: info: server autodetect datacenter: google zone is "us-central1-a"
+0.107748: info: server resolved backend hostname to 35.208.158.14:40000
+0.172456: info: server autodetect datacenter: "us-central1-a" -> "google.iowa.1"
+0.211762: info: server autodetected datacenter 'google.iowa.1' [aedb4f6e4bb13649]
+0.214655: info: server received init response from backend
+0.214675: info: welcome to network next :)
+0.323384: info: server datacenter is 'google.iowa.1'
+0.323412: info: server is ready to receive client connections
+```
+
+The essential part above that you must see is `welcome to network next :)`. 
+
+This indicates that your server has successfully connected and authenticated with the Network Next backend.
+
+Go to the portal and click on "Servers" in the top menu. 
+
+Wait a minute for the servers to update, then verify that you see a server running under your new buyer account.
+
+(screenshot)
+
+## 5. Connect your client to your server in google cloud
+
+Modify client.cpp so that it connects to the external IP address of your Google Cloud VM on port 50000:
+
+```
+const char * server_address = "34.67.212.136:50000";
+```
+
+Build and run your client:
+
+```
+make -j
+./bin/client
+```
+
+Your client should connect to the server and will now 'upgrade the connection. This starts the process of tracking your session in the portal, and deciding if it the session needs to be accelerated or not.
+
+```
+gaffer@macbook next % run client
+0.003968: info: platform is mac (wi-fi)
+0.004034: info: log level overridden to 4
+0.004042: info: found valid buyer public key: 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=='
+0.004053: info: valid server backend public key
+0.004056: info: valid relay backend public key
+0.004060: info: client buyer id is eb29953ad4519f7c
+0.004117: info: client bound to 0.0.0.0:58230
+0.105377: info: client opened session to 34.67.212.136:50000
+0.603100: info: client upgraded to session ceddd63ffeb21499
+```
+
+## 6. See your client session in the portal
+
+Now that your client has connected to the server and completed the upgrade process, you can see your session in the portal under your new buyer:
+
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/767cd975-9dea-439d-abe4-7182c9fe1b2d">
+
+Next step: [Integrate with your game](integrate_with_your_game.md)
+
