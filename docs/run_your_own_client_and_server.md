@@ -50,11 +50,46 @@ Build your client and server. They will be placed under `example/bin`
 
 ## 3. Run the client and server locally
 
-Run `./example/bin/client` and `./example/bin/server`.
+Run `./example/bin/server`. You will see something like:
 
-You will see that the client and server connect, but no acceleration is performed. The session will also not show up in your portal.
+```console
+gaffer@macbook example % ./bin/server
+0.010114: info: platform is mac (wi-fi)
+0.010352: info: server input datacenter is 'local' [249f1fb6f3a680e8]
+0.010457: info: server bound to 0.0.0.0:50000
+0.011503: info: server started on 127.0.0.1:50000
+0.012162: info: server thread set to high priority
+```
 
-This is because the server.cpp has the datacenter is set to 'local'. When you integrate Network Next with your game, by default set the "local" datacenter too, and when you run local playtests in your LAN at your office, or run a local client and server testing, Network Next will not get in your way.
+Now run the client, it will automatically connect to the server:
+
+```console
+gaffer@macbook example % ./bin/client
+0.009847: info: platform is mac (wi-fi)
+0.010066: info: found valid buyer public key: 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=='
+0.010293: info: client bound to 0.0.0.0:52247
+0.010675: info: client thread set to high priority
+0.113645: info: client opened session to 127.0.0.1:50000
+0.521031: info: client received packet from server (32 bytes)
+0.773261: info: client received packet from server (32 bytes)
+1.028359: info: client received packet from server (32 bytes)
+1.283558: info: client received packet from server (32 bytes)
+1.538784: info: client received packet from server (32 bytes)
+1.793994: info: client received packet from server (32 bytes)
+2.046368: info: client received packet from server (32 bytes)
+2.301589: info: client received packet from server (32 bytes)
+2.556818: info: client received packet from server (32 bytes)
+2.812014: info: client received packet from server (32 bytes)
+3.067211: info: client received packet from server (32 bytes)
+3.321788: info: client received packet from server (32 bytes)
+etc...
+```
+
+You will see that the client and server connect, but no acceleration is performed. This session will also not show up in your portal.
+
+This is because the server.cpp has the datacenter is set to 'local' by default. 
+
+When you integrate Network Next with your game in the next step, by default set the "local" datacenter there too, and when you run local playtests in your LAN at your office, or run a local server for testing, Network Next will not get in your way.
 
 ## 4. Run the server in google cloud
 
@@ -89,6 +124,8 @@ export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
 
 The Network Next SDK will now pick up your buyer private key from this environment var, so you don't need to check it in your codebase. The private key links your server to the buyer you created in the previous step.
 
+Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. For instructions how to do this, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
+
 Run your server in the VM:
 
 ```console
@@ -101,7 +138,54 @@ You should see something like this:
 ...
 ```
 
-Go to the portal, and you should see a server running under your new buyer account, alongside the test server:
+Go to the portal and click on "Servers" in the top menu. 
 
-...
+You should see a server running under your new buyer account, alongside the test server:
+
+(screenshot)
+
+## 5. Connect your client to your server in google cloud
+
+Modify client.cpp so that it connects to the IP address of your Google Cloud VM, with port 50000:
+
+```
+const char * server_address = "34.67.212.136:50000";
+```
+
+Build and run your client:
+
+```
+make -j
+./bin/client
+```
+
+Your client should connect to the server and now we will see the 'upgrading', eg. process of evaluating your connection and deciding if you need to be accelerated according to the route shader or not will kick in:
+
+```
+gaffer@macbook next % run client
+0.003968: info: platform is mac (wi-fi)
+0.004034: info: log level overridden to 4
+0.004042: info: found valid buyer public key: 'fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=='
+0.004044: info: buyer private key override
+0.004046: info: found valid buyer private key
+0.004049: info: override server backend hostname: 'server-dev.virtualgo.net'
+0.004051: info: server backend public key override: hc3/baZ4FYYaknk1heRK345FK3ZOSpfK1PiMmuIGb1w=
+0.004053: info: valid server backend public key
+0.004054: info: relay backend public key override: 8jOvRZXo57q2kivlnm4nW9Ff6oi9fgHBnWoUJhz4PQQ=
+0.004056: info: valid relay backend public key
+0.004060: info: client buyer id is eb29953ad4519f7c
+0.004117: info: client bound to 0.0.0.0:58230
+0.105377: info: client opened session to 34.67.212.136:30000
+0.603100: info: client upgraded to session ceddd63ffeb21499
+etc...
+```
+
+## 6. See your client session in the portal
+
+Now that your client has connected to the server and completed the upgrade process, you can see it in the portal:
+
+(portal screenshot with session)
+
+Next step: [Integrate with your game](integrate_with_your_game.md)
+
 
