@@ -27,7 +27,7 @@ This is your private key:
 
     SPeLMXdfJRt83tjKOYXbR0JyLdbuaGH7GpK21oTalLITqCOdBVzZ40rcTasRfsv0kgXGmf5zKTG25YBQJlUtsARzAWtzShWh
 
-IMPORTANT: Save your private key in a secure place and don't share it with anybody, not even us!
+IMPORTANT: Save your private key in a secure place and don't share it with anybody!
 ```
 
 This is your new buyer keypair. The public key can be safely shared with anybody and embedded in your client. The private key should be known only by the server, and not your players.
