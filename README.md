@@ -41,10 +41,10 @@ _Work in progress below here..._
 
 * [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
 * [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
-* [Operators guide to Google Cloud relays](docs/users_guide_to_google_cloud_relays.md)
-* [Operators guide to AWS relays](docs/users_guide_to_aws_relays.md)
-* [Operators guide to Akamai relays](docs/users_guide_to_akamai_relays.md)
-* [Operators guide to bare metal relays](docs/users_guide_to_bare_metal_relays.md)
+* [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
+* [Operator guide to AWS relays](docs/operator_guide_to_aws_relays.md)
+* [Operator guide to Akamai relays](docs/operator_guide_to_akamai_relays.md)
+* [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
 * [How to add support for more sellers](docs/how_to_add_support_for_more_sellers.md)
 
 # User Guides
