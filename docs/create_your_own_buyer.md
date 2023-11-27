@@ -2,149 +2,105 @@
 
 <br>
 
-# Run a test client
+# Create your own buyer
 
-## 1. Disable raspberry clients
+## 1. Generate new buyer keypair
 
-By default, Network Next fills the portal with simulated data from 1024 clients. These are the "raspberry" clients. They're named this because we use to run test clients on Raspberry Pi's around the vorld. 
+Go to the console and type:
 
-Nowadays, they're just clients running inside a google cloud datacenter, with simulated random locations and ping data.
+```console
+cd ~/next && go run sdk/keygen/keygen.go
+```
 
-Let's turn these clients off so we can see some real data in the portal.
+You will see output like this:
 
-Edit `terraform/dev/backend/main.tf`
+```console
+gaffer@macbook next % go run sdk/keygen/keygen.go
 
-Search for "raspberry_backend". In the raspberry backend module, change `target_size` to 0:
+Welcome to Network Next!
+
+This is your public key:
+
+    SPeLMXdfJRtK3E2rEX7L9JIFxpn+cykxtuWAUCZVLbAEcwFrc0oVoQ==
+
+This is your private key:
+
+    SPeLMXdfJRt83tjKOYXbR0JyLdbuaGH7GpK21oTalLITqCOdBVzZ40rcTasRfsv0kgXGmf5zKTG25YBQJlUtsARzAWtzShWh
+
+IMPORTANT: Save your private key in a secure place and don't share it with anybody!
+```
+
+This is your new buyer keypair. The public key can be safely shared with anybody and embedded in your client. The private key should be known only by the server, and not your players.
+
+Save your keys in your secrets directory as `buyer_public_key.txt` and `buyer_private_key.txt` and then back up your secrets directory somewhere.
+
+## 2. Create a new buyer in the database
+
+Edit the file `~/next/terraform/dev/relays/main.tf`
+
+Pick a name for your game. You need a short code for your game, with only a-z characters, and a longer name that is more descriptive.
+
+I'm going to call my game "helsinki", "Helsinki, Finland"
+
+At the bottom, add the following text, replacing "helsinki" and "Helsinki, Finland" with your own buyer code and name:
 
 ```
-module "raspberry_backend" {
+# ----------------------------------------------------------------------------------------
 
-  source = "../../modules/external_http_service"
+# ==============
+# HELSINKI BUYER
+# ==============
 
-  service_name = "raspberry-backend"
-
-  startup_script = <<-EOF1
-    #!/bin/bash
-    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
-    chmod +x bootstrap.sh
-    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
-    cat <<EOF > /app/app.env
-    ENV=dev
-    DEBUG_LOGS=1
-    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
-    EOF
-    systemctl start app.service
-  EOF1
-
-  tag                      = var.tag
-  extra                    = var.extra
-  machine_type             = "f1-micro"
-  project                  = local.google_project_id
-  region                   = var.google_region
-  zones                    = var.google_zones
-  default_network          = google_compute_network.development.id
-  default_subnetwork       = google_compute_subnetwork.development.id
-  service_account          = local.google_service_account
-  tags                     = ["allow-ssh", "allow-http", "allow-https"]
-  domain                   = "raspberry-dev.${var.cloudflare_domain}"
-  certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
-  target_size              = 0 // 1
-
-  depends_on = [
-    module.server_backend
+locals {
+  helsinki_public_key = file("~/secrets/buyer_public_key.txt")
+  helsinki_datacenters = [
+    "google.iowa.1",
+    "google.iowa.2",
+    "google.iowa.3",
+    "google.iowa.6"
   ]
 }
-```
 
-Search for "raspberry_client" and "raspberry_server" and make the same change.
-
-Now deploy a new dev release with a tag:
-
-```
-git tag dev-003
-git push origin dev-003
-```
-
-This change modifies the managed instance groups that run the raspberry clients down to zero VM instances, effectively disabling them. 
-
-It will take a few minutes, but when the change is deployed the portal will be empty:
-
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/ee6a485a-2444-48e7-a8fe-5758c5d2df27">
-
-## 2. Run a test client
-
-There is already a test server running in google cloud, under a buyer account called "Test".
-
-You can run a local client, and it will connect to this server automatically:
-
-```
-next select dev
-run client
-```
-
-Wait a minute for the portal to display the data (it updates once per-minute).
-
-You will see your test clients in the portal, now with real ping data and your ISP name:
-
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/2d4b263b-15f2-4e23-8f65-ea08aecb847b">
-
-Here I am in Helsinki, Finland in the Kamppi shopping center, beating google to their own datacenter with Network Next. This is in dev, which is not a particularly optimized environment, and I'm in an extremely well connected city. Much larger improvements are seen across a typical player base worldwide.
-
-I can click on the session id, and see my session updating in real-time, once every 10 seconds:
-
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/61cacf15-4f8a-46a2-aa23-f07c95810c9d">
-
-## 3. Edit the test route shader
-
-The test client has a "route shader" which specifies the criteria for when we should take Network Next.
-
-What we will do now is set a good default route shader, which will only take Network Next if a significant latency reduction is found, or if the user is experiencing significant packet loss.
-
-Edit the file `terraform/dev/relays/main.tf` and search for "TEST BUYER"
-
-You will find this:
-
-```
-resource "networknext_route_shader" test {
-  name = "test"
-  force_next = true
+resource "networknext_route_shader" helsinki {
+  name = "helsinki"
   acceptable_latency = 50
   latency_reduction_threshold = 10
-  route_select_threshold = 0
+  route_select_threshold = 2
   route_switch_threshold = 5
   acceptable_packet_loss_instant = 0.25
   acceptable_packet_loss_sustained = 0.1
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
 }
-```
 
-Comment out the line `force_next`. This line forced all players to get accelerated across Network Next, even if there was no improvement.
-
-Now the route shader looks like this:
-
-```
-resource "networknext_route_shader" test {
-  name = "test"
-  // force_next = true
-  acceptable_latency = 50
-  latency_reduction_threshold = 10
-  route_select_threshold = 0
-  route_switch_threshold = 5
-  acceptable_packet_loss_instant = 0.25
-  acceptable_packet_loss_sustained = 0.1
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
+resource "networknext_buyer" helsinki {
+  name = "Helsinki, Finland"
+  code = "helsinki"
+  debug = true
+  live = true
+  route_shader_id = networknext_route_shader.helsinki.id
+  public_key_base64 = local.buyer_public_key
 }
+
+resource "networknext_buyer_datacenter_settings" helsinki {
+  count = length(local.buyer_datacenters)
+  buyer_id = networknext_buyer.helsinki.id
+  datacenter_id = networknext_datacenter.datacenters[local.buyer_datacenters].id
+  enable_acceleration = true
+}
+
+# ----------------------------------------------------------------------------------------
 ```
 
-This route shader is configured as follows:
+## 3. Customize your route shader
+
+The route shader is configured as follows:
 
 * `acceptable_latency = 50`. Do not accelerate any player when their latency is already below 50ms. This is good enough and not worth accelerating below. This is a recommended value to start with.
   
 * `latency_reduction_threshold = 10`. Do not accelerate a player unless we can find a latency reduction of _at least_ 10 milliseconds.
 
-* `route_select_threshold = 0`. This finds the absolute lowest latency route, out of all routes available. In the future, it is best to relax this to 5ms, so we load balance across different routes, instead of forcing everybody down the same route.
+* `route_select_threshold = 2`. This finds the absolute lowest latency route within 2ms of the best route available. This helps load balance across multiple routes that are close enough together due to fluctuation, instead of everybody going down a route that is temporarily 1 millisecond faster than another.
 
 * `route_switch_threshold = 5`. Hold the current Network Next route, unless a better route is available with at least 5ms lower latency than the current route. Don't set this too low, or the route will flap around every 10 seconds. In the future, I recommend that you increase this to 10ms, but right now 5ms is fine.
 
@@ -156,35 +112,34 @@ This route shader is configured as follows:
 
 * `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
 
-Now, deploy the terraform changes to the postgres database:
+Make any changes you want to make to the route shader. For example, you could change acceptable latency to 100ms if your game is not that latency sensitive, or change it to 0ms if your game is very latency sensitive.
+
+## 4. Update the postgres database with terraform
+
+Run terraform to make your changes:
 
 ```
 cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-Now that we have changed the postgres database, we need to commit it to the backend for it to take effect:
+## 5. Commit the database to the backend
 
-```
-cd ~/next
+The terraform script makes changes to the the postgres database, but the backend runtime is driven by a database.bin file so it has no link to postgres at runtime.
+
+You can generate this database.bin and commit it to the backend as follows:
+
+```console
 next database
 next commit
 ```
 
-Stop your client, then restart it:
+Now your changes will be active with the runtime within 60 seconds.
 
-```
-next client
-```
+## 6. Verify your buyer exists in the portal
 
-Now you should after a minute or so see your client session in the portal, but this time it is (almost certainly) not accelerated:
+Go to the portal and you should now be able to go to the "Buyers" page and see your new buyer:
 
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/a226a658-2239-4088-ab8a-277fdc1ad49d">
+<img width="1462" alt="image" src="https://github.com/networknext/next/assets/696656/ef5ecb09-2948-403c-9e78-c0957135ba66">
 
-Click the session id to drill into the session and you'll see only the blue line for the direct latency (unaccelerated route), and not the green line for accelerated latency:
-
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/d99dd28d-3a50-4172-97bc-d35bb391374a">
-
-This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. Across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
-
-Next step: [Add your own buyer](add_your_own_buyer.md)
+Up next: [Run your own client and server](run_your_own_client_and_server.cpp).
