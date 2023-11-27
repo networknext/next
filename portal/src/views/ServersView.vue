@@ -88,7 +88,7 @@ async function getData(page) {
       let row = {
         "Server Address":v.server_address,
         "Server Link":"server/" + v.server_address,
-        "Buyer":"Raspberry",
+        "Buyer":v.buyer_name,
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link":datacenterLink,
