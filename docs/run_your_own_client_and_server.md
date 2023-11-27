@@ -223,7 +223,7 @@ gaffer@macbook next % run client
 
 Now that your client has connected to the server and completed the upgrade process, you can see your session in the portal under your new buyer:
 
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/767cd975-9dea-439d-abe4-7182c9fe1b2d">
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/ed330614-e22d-4c7e-ba72-95cbfaa21bc9">
 
 Next step: [Integrate with your game](integrate_with_your_game.md)
 
