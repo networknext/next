@@ -32,7 +32,7 @@ IMPORTANT: Save your private key in a secure place and don't share it with anybo
 
 This is your new buyer keypair. The public key can be safely shared with anybody and embedded in your client. The private key should be known only by the server, and not your players.
 
-Save your keys in your secrets directory as `buyer_public_key.txt` and `buyer_private_key.txt` and then back up your secrets directory somewhere.
+Save your keys in your secrets directory as `buyer_public_key.txt` and `buyer_private_key.txt` and then back up your secrets directory.
 
 ## 2. Create a new buyer in the database
 
