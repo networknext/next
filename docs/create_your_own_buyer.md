@@ -142,4 +142,4 @@ Go to the portal and you should now be able to go to the "Buyers" page and see y
 
 <img width="1462" alt="image" src="https://github.com/networknext/next/assets/696656/ef5ecb09-2948-403c-9e78-c0957135ba66">
 
-Up next: [Run your own client and server](run_your_own_client_and_server.cpp).
+Up next: [Run your own client and server](run_your_own_client_and_server.md).
