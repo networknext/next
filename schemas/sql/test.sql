@@ -35,7 +35,6 @@ INSERT INTO sellers(seller_name, seller_code) VALUES('Oracle', 'oracle');
 INSERT INTO sellers(seller_name, seller_code) VALUES('OVH', 'ovh');
 INSERT INTO sellers(seller_name, seller_code) VALUES('phoenixNAP', 'phoenixnap');
 INSERT INTO sellers(seller_name, seller_code) VALUES('Tencent', 'tencent');
-INSERT INTO sellers(seller_name, seller_code) VALUES('VULTR', 'vultr');
 INSERT INTO sellers(seller_name, seller_code) VALUES('Yandex', 'yandex');
 
 -- enable datacenters for buyers

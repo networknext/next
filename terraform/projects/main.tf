@@ -230,12 +230,6 @@ resource "google_storage_bucket_object" "akamai_txt" {
   bucket = google_storage_bucket.sdk_config.name
 }
 
-resource "google_storage_bucket_object" "vultr_txt" {
-  name   = "vultr.txt"
-  source = "../../config/vultr.txt"
-  bucket = google_storage_bucket.sdk_config.name
-}
-
 # upload database files necessary to bootstrap the envs
 
 resource "google_storage_bucket_object" "dev_bin" {
