@@ -587,3 +587,47 @@ resource "networknext_buyer_datacenter_settings" test {
 }
 
 # ----------------------------------------------------------------------------------------
+
+# ==============
+# HELSINKI BUYER
+# ==============
+
+locals {
+  helsinki_public_key = file("~/secrets/buyer_public_key.txt")
+  helsinki_datacenters = [
+    "google.iowa.1",
+    "google.iowa.2",
+    "google.iowa.3",
+    "google.iowa.6"
+  ]
+}
+
+resource "networknext_route_shader" helsinki {
+  name = "helsinki"
+  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  route_select_threshold = 2
+  route_switch_threshold = 5
+  acceptable_packet_loss_instant = 0.25
+  acceptable_packet_loss_sustained = 0.1
+  bandwidth_envelope_up_kbps = 256
+  bandwidth_envelope_down_kbps = 256
+}
+
+resource "networknext_buyer" helsinki {
+  name = "Helsinki, Finland"
+  code = "helsinki"
+  debug = true
+  live = true
+  route_shader_id = networknext_route_shader.helsinki.id
+  public_key_base64 = local.helsinki_public_key
+}
+
+resource "networknext_buyer_datacenter_settings" helsinki {
+  count = length(local.helsinki_datacenters)
+  buyer_id = networknext_buyer.helsinki.id
+  datacenter_id = networknext_datacenter.datacenters[local.helsinki_datacenters[count.index]].id
+  enable_acceleration = true
+}
+
+# ----------------------------------------------------------------------------------------

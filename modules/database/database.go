@@ -657,7 +657,7 @@ func (database *Database) String() string {
 				entry.Datacenter = database.DatacenterMap[datacenterId].Name
 				destinationDatacenterMap[datacenterId] = entry
 			}
-			entry.Buyers = append(entry.Buyers, database.BuyerMap[buyerId].Name)
+			entry.Buyers = append(entry.Buyers, database.BuyerMap[buyerId].Code)
 		}
 	}
 
