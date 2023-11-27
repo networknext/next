@@ -12,7 +12,7 @@ Take some time to read through the documentation for the example programs, and c
 
 The upgraded example is the minimal example of a client and server with acceleration.
 
-The complex example shows off additional features like custom allocators, custom assert functions and custom logging that are helpful when you are developing a console games.
+The complex example shows off additional features like custom allocators, custom assert functions and custom logging that are helpful when developing a console games.
 
 ## 2. Build your own client and server
 
@@ -80,9 +80,9 @@ gaffer@macbook example % ./bin/client
 etc...
 ```
 
-You will see that the client and server connect, but no acceleration is performed and your client session will _not_ show up in the portal. This is because the server.cpp has the datacenter is set to 'local' by default. 
+You will see that the client and server connect, but no acceleration is performed and your client session will _not_ show up in the portal. This is because the server.cpp has the datacenter set to 'local' by default. 
 
-When you integrate Network Next with your game in the next step, by default set the "local" datacenter there too, and when you run local playtests in your LAN at your office, or run a local server for testing, Network Next will not get in your way.
+When you integrate Network Next with your game by default set the "local" datacenter there too, and when you run local playtests in your LAN at your office, or run a local server for testing, Network Next will not get in your way.
 
 ## 4. Run the server in google cloud
 
@@ -98,7 +98,7 @@ gsutil cp example.zip gs://[company_name]_network_next_dev
 
 Then SSH into your VM, install some needed things, and copy the example zip file down and unzip it:
 
-```
+```console
 sudo apt update && sudo apt install -y build-essential unzip
 gsutil cp gs://[company_name]_network_next_dev/example.zip .
 unzip example.zip
@@ -106,7 +106,7 @@ unzip example.zip
 
 Install premake5 on the VM:
 
-```
+```console
 wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz
 tar -zxf *.tar.gz
 ```
@@ -142,7 +142,7 @@ Make sure that UDP port 50000 is open in the firewall to receive packets. If you
 
 Set the server IP address in an environment var so Network Next knows which IP address your server is listening on:
 
-```
+```console
 export NEXT_SERVER_ADDRESS=<your server external ip address>
 ```
 
@@ -154,7 +154,7 @@ Now run your server in the VM:
 
 You should see something like this:
 
-```
+```console
 glenn@test-server-006:~/example$ ./bin/server
 0.000204: info: platform is linux (wired)
 0.000272: info: log level overridden to 4
@@ -189,7 +189,7 @@ Wait a minute for the portal to update, then verify that you see a server runnin
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/526357e9-0842-428a-909d-966bd688a9e7">
 
-## 5. Connect your client to your server in google cloud
+## 5. Connect a client to your server in google cloud
 
 Modify client.cpp so that it connects to the external IP address of your Google Cloud VM on port 50000:
 
@@ -204,7 +204,7 @@ make -j
 ./bin/client
 ```
 
-Your client should connect to the server and will now 'upgrade' the connection. This starts the process of tracking your session in the portal, and deciding if it needs to be accelerated or not.
+Your client should connect to the server and have its connectioned 'upgraded' by the server. This starts the process of tracking your session in the portal, and deciding if it needs to be accelerated or not.
 
 ```
 gaffer@macbook next % run client
