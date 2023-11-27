@@ -16,19 +16,23 @@ The complex example shows off additional features like custom allocators, custom
 
 ## 2. Build your own client and server
 
-There is an example project built for you already under `example`. 
+There is a premake example project created for you already under `example`. 
 
-This project is a copy of the SDK project with client.cpp and server.cpp files based on upgraded_server.cpp/upgraded_client.cpp. If you want to start with the complex example, copy those files over and rename as client.cpp and server.cpp instead.
+This project is a copy of the SDK with client.cpp and server.cpp files based on upgraded_server.cpp/upgraded_client.cpp. 
 
-Customize your client.cpp to replace the buyer public key with your public key:
+If you want to start with the complex example, copy those files over and rename as client.cpp and server.cpp instead.
+
+Customize client.cpp by replacing the buyer public key with your own:
 
 ```
 const char * buyer_public_key = "<your new buyer public key here>";
 ```
 
-This public key is how the client handshakes with your server and establishes a secure connection. It is safe for this public key to be embedded in your client executable and known by your players.
+This public key is how your client handshakes with your server and establishes a secure connection. It's safe to embed it in your client executable.
 
-Now for the server.cpp, we will _not_ set the buyer private key in the source code, because it is bad security to commit secrets to your repository. Instead, we will pass in the private key using environment variables later on.
+Now for the server.cpp, we will _not_ set the buyer private key in the source code, because it's bad security to commit secrets to your repository. Instead, we will pass in the private key using environment variables later on.
+
+Build your client and server. They will be placed under `example/bin`
 
 For Linux and MacOS:
 
@@ -44,13 +48,11 @@ For Windows, something like:
 premake5 vs2019
 ```
 
-And then open the generated solution file.
-
-Build your client and server. They will be placed under `example/bin`
+And then open the generated solution file and build all.
 
 ## 3. Run the client and server locally
 
-Run `./example/bin/server`. You will see something like:
+Run `./bin/server`. You will see something like:
 
 ```console
 gaffer@macbook example % ./bin/server
@@ -78,7 +80,7 @@ gaffer@macbook example % ./bin/client
 etc...
 ```
 
-You will see that the client and server connect, but no acceleration is performed and your session will not show up in the portal. This is because the server.cpp has the datacenter is set to 'local' by default. 
+You will see that the client and server connect, but no acceleration is performed and your client session will _not_ show up in the portal. This is because the server.cpp has the datacenter is set to 'local' by default. 
 
 When you integrate Network Next with your game in the next step, by default set the "local" datacenter there too, and when you run local playtests in your LAN at your office, or run a local server for testing, Network Next will not get in your way.
 
@@ -90,11 +92,11 @@ Create the VM in the datacenter in region "us-central1 (Iowa)" and zone "us-cent
 
 Zip up the `~/next/example` directory on your local machine and copy it to google cloud storage:
 
-```
+```console
 gsutil cp example.zip gs://[company_name]_network_next_dev
 ```
 
-Then on your VM, copy the example zip file down and unzip it:
+Then SSH into your VM, install some needed things, and copy the example zip file down and unzip it:
 
 ```
 sudo apt update && sudo apt install -y build-essential unzip
@@ -109,14 +111,14 @@ wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/prem
 tar -zxf *.tar.gz
 ```
 
-Then build the example code:
+Build the example code no the VM:
 
 ```console
 premake5 gmake
 make -j
 ```
 
-Set the datacenter with environment variables. This is how the Network Next backend knows how to accelerate traffic to the location where your server is physically:
+Set the datacenter with environment variables on the VM. This is how the Network Next backend knows how to accelerate traffic to the datacenter where your server is located physically:
 
 ```console
 export NEXT_DATACENTER=google.iowa.1
@@ -134,17 +136,17 @@ Set your buyer private key via environment variable:
 export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
 ```
 
-The Network Next SDK will pick up your buyer private key from this environment var and link your server to the buyer you created in the previous step.
+The Network Next SDK will pick up your buyer private key from this environment var and links your server to your buyer.
 
-Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. If you are not familiar with how to do this in Google Cloud, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
+Make sure that UDP port 50000 is open in the firewall to receive packets. If you are not familiar with how to do this in Google Cloud, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
 
-Now set the server IP address in an environment var so Network Next knows which IP address your server is listening on:
+Set the server IP address in an environment var so Network Next knows which IP address your server is listening on:
 
 ```
 export NEXT_SERVER_ADDRESS=<your server external ip address>
 ```
 
-Run your server in the VM:
+Now run your server in the VM:
 
 ```console
 ./bin/server
@@ -179,15 +181,13 @@ glenn@test-server-006:~/example$ ./bin/server
 0.323412: info: server is ready to receive client connections
 ```
 
-The essential part above that you must see is `welcome to network next :)`. 
+The critical thing that you must see is `welcome to network next :)`. 
 
 This indicates that your server has successfully connected and authenticated with the Network Next backend.
 
-Go to the portal and click on "Servers" in the top menu. 
+Wait a minute for the portal to update, then verify that you see a server running under your new buyer account in the portal:
 
-Wait a minute for the servers to update, then verify that you see a server running under your new buyer account.
-
-(screenshot)
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/526357e9-0842-428a-909d-966bd688a9e7">
 
 ## 5. Connect your client to your server in google cloud
 
@@ -222,6 +222,6 @@ gaffer@macbook next % run client
 
 Now that your client has connected to the server and completed the upgrade process, you can see your session in the portal under your new buyer:
 
-<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/767cd975-9dea-439d-abe4-7182c9fe1b2d">
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/ed330614-e22d-4c7e-ba72-95cbfaa21bc9">
 
 Next step: [Integrate with your game](integrate_with_your_game.md)
