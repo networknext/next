@@ -194,7 +194,6 @@ gaffer@macbook next % run client
 0.004117: info: client bound to 0.0.0.0:58230
 0.105377: info: client opened session to 34.67.212.136:50000
 0.603100: info: client upgraded to session ceddd63ffeb21499
-etc...
 ```
 
 ## 6. See your client session in the portal
