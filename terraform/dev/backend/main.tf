@@ -908,7 +908,7 @@ module "raspberry_backend" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry-dev.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry-dev.id
-  target_size              = 0 // 1
+  target_size              = 1
 
   depends_on = [
     module.server_backend
@@ -956,7 +956,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 0 // 8
+  target_size        = 8
 
   depends_on = [
     module.server_backend,
@@ -1000,7 +1000,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 0 // 4
+  target_size        = 4
 
   depends_on = [
     module.server_backend,
