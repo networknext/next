@@ -123,7 +123,7 @@ cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-## 4. Commit the database to the backend
+## 5. Commit the database to the backend
 
 The terraform script makes changes to the the postgres database, but the backend runtime is driven by a database.bin file so it has no link to postgres at runtime.
 
@@ -136,7 +136,7 @@ next commit
 
 Now your changes will be active with the runtime within 60 seconds.
 
-## 5. Verify your buyer exists in the portal
+## 6. Verify your buyer exists in the portal
 
 Go to the portal and you should now be able to go to the "Buyers" page and see your new buyer:
 
