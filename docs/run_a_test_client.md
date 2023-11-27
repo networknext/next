@@ -84,25 +84,25 @@ run client
 
 Wait a minute for the portal to display the data (it updates once per-minute).
 
-You will see your test clients in the portal, now with real ping data and your ISP name:
+You will see your test client session in the portal, now with real ping data and your ISP name:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/2d4b263b-15f2-4e23-8f65-ea08aecb847b">
-
-Here I am in Helsinki, Finland in the Kamppi shopping center, beating google to their own datacenter with Network Next. This is in dev, which is not a particularly optimized environment, and I'm in an extremely well connected city. Much larger improvements are seen across a typical player base worldwide.
 
 I can click on the session id, and see my session updating in real-time, once every 10 seconds:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/61cacf15-4f8a-46a2-aa23-f07c95810c9d">
 
+Here I am in Helsinki, Finland in the Kamppi shopping center, beating google very slightly to their own datacenter with Network Next. This is in dev, which is not a particularly optimized environment, and I'm in an extremely well connected city. Much larger improvements are seen across a typical player base worldwide.
+
 ## 3. Edit the test route shader
 
-The test client has a "route shader" which specifies the criteria for when we should take Network Next.
+The test buyer has a "route shader" which specifies the criteria for when players should take Network Next.
 
 What we will do now is set a good default route shader, which will only take Network Next if a significant latency reduction is found, or if the user is experiencing significant packet loss.
 
 Edit the file `terraform/dev/relays/main.tf` and search for "TEST BUYER"
 
-You will find this:
+You will find the route shader nearby:
 
 ```
 resource "networknext_route_shader" test {
@@ -138,24 +138,6 @@ resource "networknext_route_shader" test {
 }
 ```
 
-This route shader is configured as follows:
-
-* `acceptable_latency = 50`. Do not accelerate any player when their latency is already below 50ms. This is good enough and not worth accelerating below. This is a recommended value to start with.
-  
-* `latency_reduction_threshold = 10`. Do not accelerate a player unless we can find a latency reduction of _at least_ 10 milliseconds.
-
-* `route_select_threshold = 0`. This finds the absolute lowest latency route, out of all routes available. In the future, it is best to relax this to 5ms, so we load balance across different routes, instead of forcing everybody down the same route.
-
-* `route_switch_threshold = 5`. Hold the current Network Next route, unless a better route is available with at least 5ms lower latency than the current route. Don't set this too low, or the route will flap around every 10 seconds. In the future, I recommend that you increase this to 10ms, but right now 5ms is fine.
-
-* `acceptable_packet_loss_instant = 0.25`. If packet loss > 0.25% occurs in any 10 second period, accelerate the player to reduce packet loss. This catches packet loss spikes.
-
-* `acceptable_packet_loss_sustained = 0.1`. If packet loss > 0.1% occurs for 30 seconds, accelerate the player to reduce packet loss. This captures packet loss that is lower in intensity, but is sustained over a longer period.
-
-* `bandwidth_envelope_up_kbps = 256`. This is the maximum bandwidth in kilobits per-second, kilobits, not kilobytes, sent from client to server. We don't need to change this, but later on when you setup your own buyer you should adjust it to the maximum bandwidth your client will send up to to the server. If the client sends more bandwidth than this, it will not be accelerated (eg. during a load screen, this is typically OK).
-
-* `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
-
 Now, deploy the terraform changes to the postgres database:
 
 ```
@@ -177,7 +159,7 @@ Stop your client, then restart it:
 next client
 ```
 
-Now you should after a minute or so see your client session in the portal, but this time it is (almost certainly) not accelerated:
+Now you should after a minute or so see your client session in the portal, but this time it is probably not accelerated:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/a226a658-2239-4088-ab8a-277fdc1ad49d">
 
