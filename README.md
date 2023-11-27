@@ -31,27 +31,16 @@ To use Network Next, your game must have a client/server architecture and use UD
 2. [Create your own buyer](docs/create_your_own_buyer.md)
 3. [Run your own client and server](docs/run_your_own_client_and_server.md)
 
-... _WIP BELOW HERE_ ...
-
-* [Native C++ SDK](docs/native_cpp_sdk.md)
-* [Unreal Engine 5 plugin](docs/native_ue5_plugin.md)
-
 # Operating Network Next
 
 * [Users guide to the portal](docs/users_guide_to_the_portal.md)
-* [Customizing your development backend with terraform](docs/customizing_your_development_backend_with_terraform.md)
-* [Performing a load test](docs/performing_a_load_test.md)
-* [Customizing your production backend with terraform](docs/customizing_your_production_backend_with_terraform.md)
-* [Adding a new game](docs/adding_a_new_game.md)
-* [Tuning the route shader for your game](docs/tuning_the_route_shader_for_your_game.md)
-* [Planning relay locations around the world for your game](docs/planning_relay_locations_around_the_world_for_your_game.md)
+* [Users guide to the next tool](docs/users_guide_to_the_next_tool.md)
+* [Planning your relay fleet](docs/planning_your_relay_fleet.md)
 * [Upgrading your production environment to Redis Enterpise](docs/upgrading_your_production_environment_to_redis_enterprise.md)
-* [Operators guide to the next tool](docs/users_guide_to_the_next_tool.md)
 * [Operators guide to Google Cloud relays](docs/users_guide_to_google_cloud_relays.md)
 * [Operators guide to AWS relays](docs/users_guide_to_aws_relays.md)
 * [Operators guide to Akamai relays](docs/users_guide_to_akamai_relays.md)
 * [Operators guide to bare metal relays](docs/users_guide_to_bare_metal_relays.md)
-* _etc..._
 
 # Analytics
 
