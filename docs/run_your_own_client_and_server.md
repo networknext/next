@@ -12,11 +12,11 @@ Take some time to read through the documentation for the example programs, and c
 
 The upgraded example is the minimal example of a client and server with acceleration.
 
-The complex example shows off additional features like custom allocators, custom assert functions and custom logging that are usually expected and required when you are developing console games.
+The complex example shows off additional features like custom allocators, custom assert functions and custom logging that are helpful when you are developing a console games.
 
 ## 2. Build your own client and server
 
-I have created a test project for you under `example`. 
+There is an example project already  for you under `example`. 
 
 This project is a copy of the SDK project with client.cpp and server.cpp files based on upgraded_server.cpp/upgraded_client.cpp. If you want to start with the complex example, copy those files over and rename as client.cpp and server.cpp instead.
 
@@ -28,7 +28,7 @@ const char * buyer_public_key = "fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo
 
 This public key is how the client handshakes with your server and establishes a secure connection. It is safe for this public key to be embedded in your client executable and known by your players.
 
-Now for the server.cpp, we will _not_ set the buyer private key in the source code, as this is bad practice to commit secrets to your code repository. Instead, we will pass in the datacenter and private key using environment variables later.
+Now for the server.cpp, we will _not_ set the buyer private key in the source code, because it is bad security to commit secrets to your repository. Instead, we will pass in the datacenter and private key using environment variables later on.
 
 For Linux and MacOS:
 
@@ -78,9 +78,7 @@ gaffer@macbook example % ./bin/client
 etc...
 ```
 
-You will see that the client and server connect, but no acceleration is performed. This session will also not show up in your portal.
-
-This is because the server.cpp has the datacenter is set to 'local' by default. 
+You will see that the client and server connect, but no acceleration is performed and your session will not show up in the portal. This is because the server.cpp has the datacenter is set to 'local' by default. 
 
 When you integrate Network Next with your game in the next step, by default set the "local" datacenter there too, and when you run local playtests in your LAN at your office, or run a local server for testing, Network Next will not get in your way.
 
@@ -88,16 +86,16 @@ When you integrate Network Next with your game in the next step, by default set 
 
 Manually create a VM in google cloud. n1-standard-2 type with Ubuntu 22.04 LTS is fine. 
 
-Create the VM in the datacenter "us-central-1", or in Network Next datacenter names: "google.iowa.1".
+Create the VM in the datacenter in region "us-central1 (Iowa)" and zone "us-central1-a"
 
-On this VM, install premake5, then copy across the example source code, and build it:
+On this VM, install premake5, then copy across the example directory, and build it:
 
 ```console
 premake5 gmake
 make -j
 ```
 
-Set the datacenter with environment variables. This is how Network Next knows how to accelerate traffic to the correct location where your server is:
+Set the datacenter with environment variables. This is how the Network Next backend knows how to accelerate traffic to your server:
 
 ```console
 export NEXT_DATACENTER=google.iowa.1
@@ -115,7 +113,7 @@ Set your buyer private key via environment variable:
 export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
 ```
 
-The Network Next SDK will now pick up your buyer private key from this environment var, so you don't need to check it in your codebase. The private key links your server to the buyer you created in the previous step.
+The Network Next SDK will now pick up your buyer private key from this environment var and link your server to the buyer you created in the previous step.
 
 Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. For instructions how to do this, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
 
