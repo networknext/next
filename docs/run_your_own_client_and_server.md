@@ -113,9 +113,15 @@ Set your buyer private key via environment variable:
 export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
 ```
 
-The Network Next SDK will now pick up your buyer private key from this environment var and link your server to the buyer you created in the previous step.
+The Network Next SDK will pick up your buyer private key from this environment var and link your server to the buyer you created in the previous step.
 
 Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. For instructions how to do this, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
+
+Now set the server IP address in an environment var to your VMs external IP address, so Network Next knows what IP address your server is listening on:
+
+```
+export NEXT_SERVER_ADDRESS=<your server external ip address>
+```
 
 Run your server in the VM:
 
@@ -126,12 +132,37 @@ Run your server in the VM:
 You should see something like this:
 
 ```
-...
+glenn@test-server-006:~/example$ ./bin/server
+0.000204: info: platform is linux (wired)
+0.000272: info: log level overridden to 4
+0.000311: info: buyer private key override
+0.000315: info: found valid buyer private key
+0.000333: info: server address override: '34.67.212.136'
+0.000376: info: server datacenter override 'cloud'
+0.000387: info: server input datacenter is 'cloud' [9ebb5c9513bac4fe]
+0.000428: info: server bound to 0.0.0.0:50000
+0.003485: info: server initializing with backend
+0.003641: info: server started on 34.67.212.136:50000
+0.003792: info: server resolving backend hostname 'server-dev.virtualgo.net'
+0.004722: info: server attempting to autodetect datacenter
+0.004813: info: server autodetect datacenter: looking for curl
+0.014795: info: server autodetect datacenter: curl exists
+0.019241: info: server autodetect datacenter: running in google cloud
+0.031601: info: server autodetect datacenter: google zone is "us-central1-a"
+0.107748: info: server resolved backend hostname to 35.208.158.14:40000
+0.172456: info: server autodetect datacenter: "us-central1-a" -> "google.iowa.1"
+0.211762: info: server autodetected datacenter 'google.iowa.1' [aedb4f6e4bb13649]
+0.214655: info: server received init response from backend
+0.214675: info: welcome to network next :)
+0.323384: info: server datacenter is 'google.iowa.1'
+0.323412: info: server is ready to receive client connections
 ```
+
+The essential part above to see is `welcome to network next :)`. This indicates that your server has successfully connected and authenticated with the Network Next backend.
 
 Go to the portal and click on "Servers" in the top menu. 
 
-You should see a server running under your new buyer account, alongside the test server:
+Wait a minute for the servers to update, then verify that you see a server running under your new buyer account.
 
 (screenshot)
 
@@ -168,8 +199,8 @@ etc...
 
 ## 6. See your client session in the portal
 
-Now that your client has connected to the server and completed the upgrade process, you can see your session in the portal:
+Now that your client has connected to the server and completed the upgrade process, you can see your session in the portal under your new buyer:
 
-(portal screenshot with session)
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/767cd975-9dea-439d-abe4-7182c9fe1b2d">
 
 Next step: [Integrate with your game](integrate_with_your_game.md)
