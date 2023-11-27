@@ -6,6 +6,13 @@
 
 ## 1. Disable raspberry clients
 
+Switch to dev branch:
+
+```
+cd ~/next
+git checkout dev
+```
+
 By default, Network Next fills the portal with simulated data from 1024 clients. These are the "raspberry" clients. They're named this because we use to run test clients on Raspberry Pi's around the vorld. 
 
 Nowadays, they're just clients running inside a google cloud datacenter, with simulated random locations and ping data.
@@ -58,14 +65,16 @@ module "raspberry_backend" {
 
 Search for "raspberry_client" and "raspberry_server" and make the same change.
 
-Now deploy a new dev release with a tag:
+This change modifies the managed instance groups that run the raspberry clients down to zero VM instances, effectively disabling them. 
+
+Commit your change and deploy a new dev release:
 
 ```
+git commit -am "disable raspberry clients"
+git push origin
 git tag dev-003
 git push origin dev-003
 ```
-
-This change modifies the managed instance groups that run the raspberry clients down to zero VM instances, effectively disabling them. 
 
 It will take a few minutes, but when the change is deployed the portal will be empty:
 
@@ -82,13 +91,11 @@ next select dev
 run client
 ```
 
-Wait a minute for the portal to display the data (it updates once per-minute).
-
-You will see your test client session in the portal, now with real ping data and your ISP name:
+Wait a minute for the portal to update and you will see your test client session in the portal,  now with real ping data and your ISP name:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/2d4b263b-15f2-4e23-8f65-ea08aecb847b">
 
-I can click on the session id, and see my session updating in real-time, once every 10 seconds:
+You can click on your session id, and see your session updating in real-time, once every 10 seconds:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/61cacf15-4f8a-46a2-aa23-f07c95810c9d">
 
@@ -119,7 +126,7 @@ resource "networknext_route_shader" test {
 }
 ```
 
-Comment out the line `force_next`. This line forced all players to get accelerated across Network Next, even if there was no improvement.
+Comment out the line `force_next`. This line was forcing all players to get accelerated across Network Next, even if there was no improvement.
 
 Now the route shader looks like this:
 
@@ -138,14 +145,14 @@ resource "networknext_route_shader" test {
 }
 ```
 
-Now, deploy the terraform changes to the postgres database:
+Now, apply the terraform changes to the postgres database:
 
 ```
 cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-Now that we have changed the postgres database, we need to commit it to the backend for it to take effect:
+Now that you have changed the postgres database, you need to commit it to the backend for it to take effect:
 
 ```
 cd ~/next
@@ -159,14 +166,14 @@ Stop your client, then restart it:
 next client
 ```
 
-Now you should after a minute or so see your client session in the portal, but this time it is probably not accelerated:
+Now you should after a minute or so see your client session in the portal, but this time it is (probably) not accelerated:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/a226a658-2239-4088-ab8a-277fdc1ad49d">
 
-Click the session id to drill into the session and you'll see only the blue line for the direct latency (unaccelerated route), and not the green line for accelerated latency:
+Click the session id to drill in and you'll see only the blue line for the direct latency (unaccelerated route), and not the green line for accelerated latency:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/d99dd28d-3a50-4172-97bc-d35bb391374a">
 
-This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. Across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
+This is what you want to see. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. Across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
 
 Next step: [Create your own buyer](create_your_own_buyer.md)
