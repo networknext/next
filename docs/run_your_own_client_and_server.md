@@ -75,13 +75,6 @@ gaffer@macbook example % ./bin/client
 1.028359: info: client received packet from server (32 bytes)
 1.283558: info: client received packet from server (32 bytes)
 1.538784: info: client received packet from server (32 bytes)
-1.793994: info: client received packet from server (32 bytes)
-2.046368: info: client received packet from server (32 bytes)
-2.301589: info: client received packet from server (32 bytes)
-2.556818: info: client received packet from server (32 bytes)
-2.812014: info: client received packet from server (32 bytes)
-3.067211: info: client received packet from server (32 bytes)
-3.321788: info: client received packet from server (32 bytes)
 etc...
 ```
 
