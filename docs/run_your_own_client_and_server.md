@@ -16,19 +16,19 @@ The complex example shows off additional features like custom allocators, custom
 
 ## 2. Build your own client and server
 
-There is an example project already  for you under `example`. 
+There is an example project built for you already under `example`. 
 
 This project is a copy of the SDK project with client.cpp and server.cpp files based on upgraded_server.cpp/upgraded_client.cpp. If you want to start with the complex example, copy those files over and rename as client.cpp and server.cpp instead.
 
 Customize your client.cpp to replace the buyer public key with your public key:
 
 ```
-const char * buyer_public_key = "fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==";
+const char * buyer_public_key = "<your new buyer public key here>";
 ```
 
 This public key is how the client handshakes with your server and establishes a secure connection. It is safe for this public key to be embedded in your client executable and known by your players.
 
-Now for the server.cpp, we will _not_ set the buyer private key in the source code, because it is bad security to commit secrets to your repository. Instead, we will pass in the datacenter and private key using environment variables later on.
+Now for the server.cpp, we will _not_ set the buyer private key in the source code, because it is bad security to commit secrets to your repository. Instead, we will pass in the private key using environment variables later on.
 
 For Linux and MacOS:
 
@@ -88,20 +88,41 @@ Manually create a VM in google cloud. n1-standard-2 type with Ubuntu 22.04 LTS i
 
 Create the VM in the datacenter in region "us-central1 (Iowa)" and zone "us-central1-a"
 
-On this VM, install premake5, then copy across the example directory, and build it:
+Zip up the `~/next/example` directory on your local machine and copy it to google cloud storage:
+
+```
+gsutil cp example.zip gs://[company_name]_network_next_dev
+```
+
+Then on your VM, copy the example zip file down and unzip it:
+
+```
+sudo apt update && sudo apt install -y build-essential unzip
+gsutil cp gs://[company_name]_network_next_dev/example.zip .
+unzip example.zip
+```
+
+Install premake5 on the VM:
+
+```
+wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-linux.tar.gz
+tar -zxf *.tar.gz
+```
+
+Then build the example code:
 
 ```console
 premake5 gmake
 make -j
 ```
 
-Set the datacenter with environment variables. This is how the Network Next backend knows how to accelerate traffic to your server:
+Set the datacenter with environment variables. This is how the Network Next backend knows how to accelerate traffic to the location where your server is physically:
 
 ```console
 export NEXT_DATACENTER=google.iowa.1
 ```
 
-You could also set the datacenter to "cloud" and Network Next will autodetect where in Google, or AWS your server is running for you:
+You can also set the datacenter to "cloud" and Network Next will automatically detect which Google or AWS datacenter your server is running in:
 
 ```console
 export NEXT_DATACENTER=cloud
@@ -115,9 +136,9 @@ export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
 
 The Network Next SDK will pick up your buyer private key from this environment var and link your server to the buyer you created in the previous step.
 
-Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. For instructions how to do this, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
+Make sure that UDP port 50000 is open to receive packets via firewall rule in google cloud for your VM. If you are not familiar with how to do this in Google Cloud, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
 
-Now set the server IP address in an environment var to your VMs external IP address, so Network Next knows what IP address your server is listening on:
+Now set the server IP address in an environment var so Network Next knows which IP address your server is listening on:
 
 ```
 export NEXT_SERVER_ADDRESS=<your server external ip address>
@@ -158,7 +179,9 @@ glenn@test-server-006:~/example$ ./bin/server
 0.323412: info: server is ready to receive client connections
 ```
 
-The essential part above to see is `welcome to network next :)`. This indicates that your server has successfully connected and authenticated with the Network Next backend.
+The essential part above that you must see is `welcome to network next :)`. 
+
+This indicates that your server has successfully connected and authenticated with the Network Next backend.
 
 Go to the portal and click on "Servers" in the top menu. 
 
@@ -168,7 +191,7 @@ Wait a minute for the servers to update, then verify that you see a server runni
 
 ## 5. Connect your client to your server in google cloud
 
-Modify client.cpp so that it connects to the IP address of your Google Cloud VM, with port 50000:
+Modify client.cpp so that it connects to the external IP address of your Google Cloud VM on port 50000:
 
 ```
 const char * server_address = "34.67.212.136:50000";
@@ -181,7 +204,7 @@ make -j
 ./bin/client
 ```
 
-Your client should connect to the server and now we will see the 'upgrading', eg. process of evaluating your connection and deciding if you need to be accelerated according to the route shader or not will kick in:
+Your client should connect to the server and will now 'upgrade the connection. This starts the process of tracking your session in the portal, and deciding if it the session needs to be accelerated or not.
 
 ```
 gaffer@macbook next % run client
@@ -203,3 +226,4 @@ Now that your client has connected to the server and completed the upgrade proce
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/767cd975-9dea-439d-abe4-7182c9fe1b2d">
 
 Next step: [Integrate with your game](integrate_with_your_game.md)
+
