@@ -8,26 +8,44 @@
 
 The Network Next SDK documentation lives here: [Network Next SDK Docs](https://network-next-sdk.readthedocs-hosted.com/en/latest/)
 
-Read through it, and choose one of the "Upgraded" or "Complex" example programs as your starting point for your own client and server, at your choice. 
+Read through it, and choose one of the "Upgraded" or "Complex" example programs as your starting point for your own client and server.
 
 The upgraded example is the minimal example of a client and server with acceleration.
 
 The complex example shows off additional features like custom allocators, custom assert functions and detailed connection statistics.
 
-## 2. Setup your own project to build your client and server
+## 2. Build your own client and server
 
-Depending on your platform you could setup a premake5 based build system based around the SDK (see ~/next/sdk/premake5.lua), create your own makefile, or a new Visual Studio project including the SDK source and include files directly. It is your choice how you want to build, but you will need the ability to build a client for your local platform, and to build a linux binary for your server.
+I have created a test project for you under "example". 
 
-You will want to make copies of complex_server.cpp/complex_client.cpp or upgraded_client.cpp/upgraded_server.cpp into your own project as client.cpp and server.cpp.
+This project is a copy of the SDK with client.cpp and server.cpp files based on upgraded_server.cpp/upgraded_client.cpp. If you want to start with the complex example, copy those files over and rename as client.cpp and server.cpp.
 
-When you build, make sure to directly include the SDK files under `sdk/include` and `sdk/source` in your build.
+Customize your client.cpp to replace the buyer public key with your public key:
 
-There is also a dependency on libsodium for encryption. You must link to this library on your system.
+```
+const char * buyer_public_key = "fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==";
+```
 
-## 3. Customize your client and server with your keypair
+This public key is how the client handshakes with your server and establishes a secure connection. It is safe for this public key to be embedded in your client executable and known by your players.
 
-Edit the client.cpp to use your
+Now for the server.cpp, we will _not_ set the buyer private key in the source code, as this is bad practice to commit secrets to your code repository. Instead, we will pass in the datacenter and private key using environment variables later.
 
-Lets move forward assuming you use the upgraded example.
+Build the example locally:
 
-## 3. 
+For a unix inspired system and MacOS:
+
+```
+premake5 gmake
+make
+```
+
+For Windows, something like:
+
+```
+premake5 vs2019
+```
+
+And then open the generated solution file.
+
+Build your client and server.
+
