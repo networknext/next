@@ -169,4 +169,4 @@ Click the session id to drill into the session and you'll see only the blue line
 
 This is what we want. Network Next is designed to _only_ accelerate players when a very significant improvement can be found. Across an entire game's player base, around 10% of players at any time will be accelerated with the settings above.
 
-Next step: [Add your own buyer](add_your_own_buyer.md)
+Next step: [Create your own buyer](create_your_own_buyer.md)
