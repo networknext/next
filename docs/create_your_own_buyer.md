@@ -112,7 +112,7 @@ The route shader is configured as follows:
 
 * `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
 
-Make any changes you want to make to the route shader. For example, you could change acceptable latency to 100ms if your game is not that latency sensitive and players will only be accelerated if their latency is above 100ms.
+Make any changes you want to make to the route shader. For example, you could change acceptable latency to 100ms if your game is not that latency sensitive, or change it to 0ms if your game is very latency sensitive.
 
 ## 4. Update the postgres database with terraform
 
