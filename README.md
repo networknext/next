@@ -34,8 +34,8 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 # Operating Network Next
 
-* [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
 * [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
+* [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
 * [Operators guide to Google Cloud relays](docs/users_guide_to_google_cloud_relays.md)
 * [Operators guide to AWS relays](docs/users_guide_to_aws_relays.md)
 * [Operators guide to Akamai relays](docs/users_guide_to_akamai_relays.md)
