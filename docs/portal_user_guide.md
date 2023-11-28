@@ -2,54 +2,67 @@
 
 <br>
 
-# Integrate with your game
+# Portal user guide
 
-This section applies to games that use UDP sockets directly in C or C++. 
+## 1. Session Counts
 
-If your game is using Unreal Engine, please skip ahead to [Unreal Engine Plugin](unreal_engine_plugin.md).
+At the top of each page, you can always see the current session counts for your system across all buyers:
 
-## 1. Replace UDP socket on client with next_client_t
+![image](https://github.com/networknext/next/assets/696656/7a83e801-454d-49f2-8b07-25366c33f92d)
 
-Create an instance of the next_client_t object on the client and connect to your server.
+These counts are updated once per-minute. The counts are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that this number is a bit larger.
 
-To upgrade and accelerate players, the client requires the following:
+## 2. Sessions Page
 
-* A valid buyer public key, which is safe to embed in your executable.
-* The server backend public key (safe to embed)
-* The relay backend public key (safe to embed)
-* The server backend hostname.
+The default page is the sessions page. Here we see the top player sessions, in order from largest acceleration improvement to least:
 
-By default, #if NEXT_DEVELOPMENT, your copy of the SDK has already been configured to point to your dev environment at "server-dev.[yourdomain.com]" for the server backend hostname and has the correct server and relay backend public keys embedded for your dev environment.
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/90b98369-7d2b-4473-9b17-4301a7a8501e">
 
-If NEXT_DEVELOPMENT is zero or undefined, then by default the SDK points to your production environment at "server.[yourdomain.com]" and has the correct server backend and relay backend public keys for your production environment.
+If acceleration is disabled, then you will see player sessions sorted in order of highest latency to lowest latency.
 
-Generally, on the client all that you must do is make sure that NEXT_DEVELOPMENT is defined appropriately when you build the SDK, and then embed your buyer public key. The SDK takes care of the rest!
+One hundred sessions are shown on each page. To navigate left and right across all sessions, use the 1 and 2 keys to navigate left and right. On mobile layouts, arrows icons are shown in the navbar to let you navigate without a keyboard.
 
-You can override these defaults using environment variables, or by passing them in via next_config_t to the next_init function on the client, before you create the next_client_t.
+## 3. Session detail page
 
-For more details, please see the SDK reference here: https://network-next-sdk.readthedocs-hosted.com/en/latest/reference.html
+If you click on the session id for a session:
 
-## 2. Replace UDP socket on server with next_server_t
+![image](https://github.com/networknext/next/assets/696656/0d3dc656-0eba-4ca9-ab66-e731b0cc6483)
 
-On the server side, your UDP socket is replaced with next_server_t.
+You go to the session detail page for that session:
 
-To upgrade and accelerate players, the server needs:
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/841b5bd0-21ad-4915-a050-7c01848ee9c4">
 
-* The datacenter the server is located in, passed in in code when the server is created, or via the environment variable (NEXT_DATACENTER). You can set this datacenter to "cloud" when running in Google Cloud or AWS and the SDK will autodetect the datacenter for you. When running in local playtests or by default during development, pass in "local" as the datacenter name.
-* The server IP address, passed in in code *or* overridden by environment variable (NEXT_SERVER_ADDRESS).
-* A valid buyer private key, which should be passed in via environment variable (NEXT_BUYER_PRIVATE_KEY), or passed in on the command line. It is best not to embed this in your source code. This private key must be kept top secret.
-* The server backend public key (safe to embed)
-* The relay backend public key (safe to embed)
-* The server backend hostname.
+Under the session detail page you can immediately see a graph of latency over time for that session:
 
-As with the client, the SDK is by default setup to point at your dev environment #if NEXT_DEVELOPMENT, else it will point at your production environment.
+<img width="1002" alt="image" src="https://github.com/networknext/next/assets/696656/7f99ffc5-cfd1-40b9-a882-28baf59a8b01">
 
-## 3. Verify that your client sessions show up in the portal
+The blue line is the non-accelerated direct route round trip time (RTT) from the client to the server and back in millisconds. The green line is the accelerated round trip time in milliseconds. The orange line is the conservative predicted accelerated round trip time calculated by the route optimization system.
 
-When you have completed integration, your clients should upgrade and show up in the portal under "Sessions" while they are connected to a server. Your servers should show up in the "Server" page while they are running.
+Below we can see jitter, also measured in milliseconds. Jitter measures time variance of packet delivery in milliseconds, in other words, packets that arrive later than they should:
 
-The SDK is designed to fall back to unaccelerated behavior when anything goes wrong or is misconfigured. By making sure that you see both your servers and sessions in the portal, even if they are not accelerated, then you know that your integration is working correctly.
+<img width="1002" alt="image" src="https://github.com/networknext/next/assets/696656/2d28e15a-dfa6-46a4-b2c1-6de887231424">
 
-Congratulations! You have completed integration with your game!
+The purple real jitter value is the most important to consider. It is the average difference in packet delivery time measured for a full round trip packet from the client to the server and back. It is affected by your server tick rate, so if you send packets from the client to server at some high rate like 60 packets per-second, but the server replies at only 10HZ tick intervals, you will see that reflected in the real jitter value.
+
+The blue and green jitter values represent estimates of jitter, excluding server tick rate effects with a more conservative metric. These values will be zero on perfect connections, and usually are less than 5-10 milliseconds on good wi-fi connections. If the player has a poor wi-fi connection you will often see these values spike to 50-100ms. These players should be advised to play over a wired connection for the best experience.
+
+Packet loss is the percentage of your game packets that are lost in the last 10 seconds. It is common for players with excellent connections to have very little, or no packet loss. Some packet loss tends to happen more frequently on bad wi-fi, and of course players in less populated areas tend to have higher packet loss. The average packet loss overall around the world is 0.15%.
+
+<img width="1026" alt="image" src="https://github.com/networknext/next/assets/696656/ebdf5c09-638d-4bc5-a0f1-671a2230d7be">
+
+Out of order packets is the percentage of packets that are received out of sequence order in the last 10 seconds. On most connections this will be 0%, but on poor wi-fi connections or bad internet connections out of order can be non-zero:
+
+<img width="1026" alt="image" src="https://github.com/networknext/next/assets/696656/caeedc68-5209-435f-9044-e8553231f7ed">
+
+Bandwidth is shown over time in the client to server, and server to client directions separately - because most games tend to have asymmetric bandwidth usage:
+
+<img width="1026" alt="image" src="https://github.com/networknext/next/assets/696656/42d6fe6b-5617-464f-bc4b-70b419435681">
+
+The blue line is the bandwidth sent along the unaccelerated codepath, and the green is the bandwidth sent along the accelerated codepath in kilobits per-second. Kilo-bits. Not bytes. Note that Network Next by default sends packets across both the unaccelerated and accelarated codepaths at the same time. This is called "multipath" and it helps to reduce packet loss significantly.
+
+
+
+
+
 
 [Go back to main documentation](README.md)
