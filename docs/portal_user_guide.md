@@ -82,7 +82,7 @@ You can even click on each relay in the route, and you will be taken to a detail
 
 Below you can see the list of "near relays" to the player. These are close by relays determined by ip2location for the player, and it is how that player first hops on to your network next relay fleet. Effectively, these near relay pings measure the _first hop cost_ onto your relay network for each session:
 
-![image](https://github.com/networknext/next/assets/696656/c3b68e2b-abcd-4942-b13e-4c808980a196)
+![image](https://github.com/networknext/next/assets/696656/6d57f991-487a-499e-8a4e-d91d90828fd9)
 
 These near relay ping results are used by the route planning process. They are calculated at the start of each session, for a period of 10 seconds, and held fixed throughout the rest of the session.
 
