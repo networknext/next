@@ -110,7 +110,7 @@ On the server page you can see the set of sessions connected to the server at th
 
 ## 5. Relays page
 
-Relays are software routers that traffic is passed through when Network Next performs acceleration. The system is only as good as your relay fleet. A typical production relay fleet will have at least 10 relays in each major city of different providers, to get a variety of different networks and ISP connections.
+Relays are software routers that traffic is passed through when Network Next performs acceleration. The system is only as good as your relay fleet. A typical production relay fleet will have at least 10 relays in each major city from different providers, to get a variety networks and ISP connections.
 
 The list of relays is shown under the "Relays" item in the top menu:
 
@@ -122,6 +122,45 @@ You can click on the relay name to drill in and see graphs over time for this re
 
 ## 6. Datacenters page
 
-...
+Datacenters are named physical locations that relays are attached to. Every relay has just one datacenter that it is in, but datacenters can have multiple relays in them. Datacenters have a seller, eg. "Google", and a physical location: latitude and longitude.
+
+You can see the list of all datacenters currently defined in your system by going to the datacenters page:
+
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/d5ef8b1c-a47f-42ec-a9b8-2853be7521b2">
+
+## 7. Buyers page
+
+Buyers correspond to games using your Network Next system. Games "buy" network transit from the network next system, and sellers (Google, AWS, Linode etc.) "sell" it to them.
+
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/87509343-34c0-4ac0-9b19-d5c43d6c2274">
+
+You can click on any buyer and see some graphs such as total sessions, accelerated sessions, accelerated % and server count over the last hour for that buyer.
+
+## 8. Sellers page
+
+Sellers are companies that supply relays. Each relay is in a datacenter, and each datacenter belongs to a seller.
+
+The sellers page shows you the set of sellers defined in your system:
+
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/bbd8f230-4a51-4f37-84d4-c479df7eaa01">
+
+If you click on a seller, it will give you a list of relays belonging to that seller.
+
+## 9. Admin page
+
+The admin page shows important graphs to check the health of the system.
+
+The essential graphs are shown across all buyers:
+
+1. Total sessions
+2. Accelerated sessions
+3. Accelerated %
+4. Server count
+5. Active relays
+6. Retries (number of server to backend requests that needed to be retried)
+7. Fallback to direct (these is bad. it means players are being disconnected from accelerate for some reason).8. 8. Total routes (the total number of routes in the route matrix used for route planning)
+9. Optimize time in seconds (if this frequently goes over 1 second, then you need to increase the number of cores on the relay).
+
+That's it! I hope you get good visibility on your player's network experience with the portal. Many customers have found it useful to look up players and confirm whether they are having bad network performance, and checking to see if they have bad wi-fi.
 
 [Go back to main documentation](README.md)
