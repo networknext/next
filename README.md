@@ -33,6 +33,10 @@ To use Network Next, your game must have a client/server architecture and use UD
 4. [Integrate with your game](docs/integrate_with_your_game.md)
 5. [Unreal engine plugin](docs/unreal_engine_plugin.md)
 
+# User Guides
+
+* [Portal user guide](docs/portal_user_guide.md)
+
 ---------------------------------------------------
 
 _Work in progress below here..._
@@ -46,11 +50,6 @@ _Work in progress below here..._
 * [Operator guide to Akamai relays](docs/operator_guide_to_akamai_relays.md)
 * [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
 * [How to add support for more sellers](docs/how_to_add_support_for_more_sellers.md)
-
-# User Guides
-
-* [User guide to the portal](docs/user_guide_to_the_portal.md)
-* [User guide to the next tool](docs/user_guide_to_the_next_tool.md)
 
 # Analytics
 
