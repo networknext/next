@@ -54,15 +54,28 @@ Out of order packets is the percentage of packets that are received out of seque
 
 <img width="1026" alt="image" src="https://github.com/networknext/next/assets/696656/caeedc68-5209-435f-9044-e8553231f7ed">
 
-Bandwidth is shown over time in the client to server, and server to client directions separately - because most games tend to have asymmetric bandwidth usage:
+Bandwidth is shown over time in the client to server (up), and server to client (down) directions separately - because most games tend to have asymmetric bandwidth usage:
 
 <img width="1026" alt="image" src="https://github.com/networknext/next/assets/696656/42d6fe6b-5617-464f-bc4b-70b419435681">
 
 The blue line is the bandwidth sent along the unaccelerated codepath, and the green is the bandwidth sent along the accelerated codepath in kilobits per-second. Kilo-bits. Not bytes. Note that Network Next by default sends packets across both the unaccelerated and accelarated codepaths at the same time. This is called "multipath" and it helps to reduce packet loss significantly.
 
+On the right side of the session detail page you will see some useful summary information about the session:
 
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/b463d1b3-918a-4018-973f-3f511289026b">
 
+Many of these values are clickable. For example, clicking on the user hash goes to a list of sessions this user has played recently, so you can see this users history of network performance. Clicking on the server will take you to the list of sessions connected to that server currently, so you can look at other players on the server.
 
+Below the summary data, you will see the current route from the client to the server. If the session is accelerated, the relays that traffic is being sent through will be shown here, so you know what route your packets are taking:
 
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/0e656ba5-95c0-42b9-b1fd-6ada402dc646">
+
+You can even click on each relay in the route, and you will be taken to a detail page for that relay.
+
+Below you can see the list of "near relays" to the player. These are close by relays determined by ip2location for the player, and it is how that player first hops on to your network next relay fleets. Effectively, these near relay pings measure the _first hop cost_ onto your relay network for each session:
+
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/1480688a-00bb-47cf-bb1d-062fd30a162f">
+
+These near relay ping results are used by the route planning process. They are calculated only once at the start of each session, for a period of 10 seconds.
 
 [Go back to main documentation](README.md)
