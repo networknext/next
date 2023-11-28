@@ -42,6 +42,8 @@ To upgrade and accelerate players, the server needs:
 * The relay backend public key (safe to embed)
 * The server backend hostname.
 
+When a client connects and authenticates with your server, however you do it, once a client is known to be valid you should call "next_server_upgrade_session" on that client IP address. This is the step that enables acceleration. Call this function only once for each client, and that client will show up in the portal and be evaluated for acceleration once every 10 seconds afterwards.
+
 As with the client, the SDK is by default setup to point at your dev environment #if NEXT_DEVELOPMENT, else it will point at your production environment.
 
 ## 3. Verify that your client sessions show up in the portal
