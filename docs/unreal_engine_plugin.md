@@ -8,7 +8,7 @@ Network Next comes with a drop-in Unreal Engine plugin that replaces the NetDriv
 
 ## 1. Copy the entire **NetworkNext** folder into your **Plugins** directory.
 
-_The Unreal Engine is still being updated, but will be placed under the `unreal` direction when it is ready (soon!)_
+_The Unreal Engine is still being updated, but will be placed under the `~/next/unreal` directory when it is ready (soon!)_
 
 ## 2. Add the following to the bottom of **DefaultEngine.ini**
 
