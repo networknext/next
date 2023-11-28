@@ -27,9 +27,7 @@ Generally, on the client all that you must do is make sure that NEXT_DEVELOPMENT
 
 You can override these defaults using environment variables, or by passing them in via next_config_t to the next_init function on the client, before you create the next_client_t.
 
-For more details, please see the SDK reference here:
-
-[https://network-next-sdk.readthedocs-hosted.com/en/latest/reference.html]
+For more details, please see the SDK reference here: https://network-next-sdk.readthedocs-hosted.com/en/latest/reference.html
 
 ## 2. Replace UDP socket on server with next_server_t
 
