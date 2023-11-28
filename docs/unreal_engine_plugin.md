@@ -43,7 +43,7 @@ export NEXT_BUYER_PRIVATE_KEY=<your buyer private key>
 
 When everything is working correctly, you will see your client sessions showing up in the portal under "Sessions", and your servers will show up under "Servers".
 
-Because the Network Next SDK takes great care to fall back to no acceleration, make sure to verify that you see your sessions and servers in the portal, post integration, so that you know Network Next has not fallen back to a non-accelerated state.
+The Network Next SDK takes great care to fall back to no acceleration if anything is misconfigured. So to make sure your integration is working properly, make sure to verify that you see your sessions and servers in the portal. If they do not show up, the configuration is not correct even though the client and server can still connect.
 
 Congratulations! You have successfully integrated Network Next with your Unreal Game!
 
