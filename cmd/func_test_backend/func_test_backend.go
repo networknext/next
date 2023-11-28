@@ -62,13 +62,13 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "ayyX2+oaE4FJjoEHGnAWTQ6EeO829If64UEcshgm6xA="
-const TestRelayPrivateKey = "I7cfCSX8Kq62YeFaSd4CTpNwCVr+VlQxcb9+wUukXpk="
-const TestRelayBackendPublicKey = "1RWAk7lpUkqIigkvN49vTpYpuzLKxze0lEYvxMsQayE="
-const TestRelayBackendPrivateKey = "2W4kim0GHAt+1kxw/UIrpEFI24nO0Lv9Nge6GjYiaYA="
-const TestServerBackendPublicKey = "gcAA07ZzZ/ERxOqxmrvuPQO2rtxtAidS2ZtmK2NjAy4="
-const TestServerBackendPrivateKey = "U4IJAmMyxjPCAp6E5b0YDnc+x+RoNQQn35tsjUcvBZGBwADTtnNn8RHE6rGau+49A7au3G0CJ1LZm2YrY2MDLg=="
-const TestPingKey = "UGUwDLPhVk4tjPA6XJXrZ6yJRD4Z+PcbylEwBF2YYUY="
+const TestRelayPublicKey = "02YtwLT5RTPlEjxEe0oo/0EP3OFLOJdWLA5jxz3J5VY="
+const TestRelayPrivateKey = "JB2hC7sEaj2ujpthoOWyEqKAqsBzQgrutUBopPShiuM="
+const TestRelayBackendPublicKey = "Xt3t8J3uOm2Vlt9zANOf6Zoca7JlM4hM0lj5w2nuzhM="
+const TestRelayBackendPrivateKey = "UgCKj5Jy3OL3yd52c3eEfhRByxhcOQg05/PSOe1kTYA="
+const TestServerBackendPublicKey = "SbgGBNSb0Vrsc8+s7ijR7YurTH5/YcDjpnyWkT2zwAY="
+const TestServerBackendPrivateKey = "tLh2brdu/KTzhQxGv/CX6fHpCrkDcs1biqnP3ZxrReVJuAYE1JvRWuxzz6zuKNHti6tMfn9hwOOmfJaRPbPABg=="
+const TestPingKey = "aLdWLLErtJOCfb/jrMs2vWBZ8xYqdwI8IhUOcu05jww="
 
 func check_output(substring string, cmd *exec.Cmd, stdout bytes.Buffer, stderr bytes.Buffer) {
 	if !strings.Contains(stdout.String(), substring) {

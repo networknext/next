@@ -30,8 +30,8 @@
 #include <inttypes.h>
 
 const char * bind_address = "0.0.0.0:0";
-const char * server_address = "34.67.212.136:50000";
-const char * buyer_public_key = "SPeLMXdfJRtK3E2rEX7L9JIFxpn+cykxtuWAUCZVLbAEcwFrc0oVoQ==";
+const char * server_address = "127.0.0.1:50000";
+const char * buyer_public_key = "9qzGNONKAHTBaPsm+b9pPUgEvekv3iKZBdXJt7eSBePFkeWtoxpGig==";
 
 static volatile int quit = 0;
 

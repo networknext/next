@@ -62,7 +62,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "wilton_network_next_terraform"
+    bucket  = "helsinki_network_next_terraform"
     prefix  = "staging"
   }
 }

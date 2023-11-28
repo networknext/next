@@ -33,7 +33,6 @@ const char * bind_address = "0.0.0.0:50000";
 const char * server_address = "127.0.0.1:50000";
 const char * server_datacenter = "local";
 const char * server_backend_hostname = "server-dev.virtualgo.net";
-const char * buyer_private_key = "fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk";
 
 static volatile int quit = 0;
 
@@ -48,7 +47,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
-    // next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server received packet from client (%d bytes)", packet_bytes );
 
     if ( next_server_ready( server ) && !next_server_session_upgraded( server, from ) )
     {
@@ -68,7 +67,6 @@ int main()
     next_config_t config;
     next_default_config( &config );
     strncpy_s( config.server_backend_hostname, server_backend_hostname, sizeof(config.server_backend_hostname) - 1 );
-    strncpy_s( config.buyer_private_key, buyer_private_key, sizeof(config.buyer_private_key) - 1 );
 
     if ( next_init( NULL, &config ) != NEXT_OK )
     {

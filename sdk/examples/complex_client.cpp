@@ -33,7 +33,7 @@
 
 const char * bind_address = "0.0.0.0:0";
 const char * server_address = "127.0.0.1:50000";
-const char * buyer_public_key = "fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA==";
+const char * buyer_public_key = "9qzGNONKAHTBaPsm+b9pPUgEvekv3iKZBdXJt7eSBePFkeWtoxpGig==";
 
 // -------------------------------------------------------------
 
@@ -218,6 +218,8 @@ void client_packet_received( next_client_t * client, void * _context, const next
     if ( verify_packet( packet_data, packet_bytes ) )
     {
         context->last_packet_receive_time = next_platform_time();
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
     }
 }
 

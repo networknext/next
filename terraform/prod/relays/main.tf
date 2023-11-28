@@ -26,14 +26,14 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "wilton_network_next_terraform"
+    bucket  = "helsinki_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
 
 provider "networknext" {
   hostname = "https://api.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMDgzMzkyMH0.VVg-zwYczyEvRET9xEqh4uDnHfS069sfAiMD02U1yeE"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMTE1Nzk2M30.PQtRkLrAtYYWzZY_k5TuyfjuA9nNcKspizU-Ac1-b8M"
 }
 
 # ----------------------------------------------------------------------------------------

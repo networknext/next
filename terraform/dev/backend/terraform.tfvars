@@ -8,23 +8,23 @@ google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]
-google_artifacts_bucket     = "gs://wilton_network_next_backend_artifacts"
-google_database_bucket      = "gs://wilton_network_next_database_files"
+google_artifacts_bucket     = "gs://helsinki_network_next_backend_artifacts"
+google_database_bucket      = "gs://helsinki_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-test_buyer_public_key  = "fJ9R1DqVKevreg+kvqEkFqbAAa54c6BXcgBn+R2GKM1GkFo8QtkUZA=="
-test_buyer_private_key = "fJ9R1DqVKetUVM2jP6hcMjDTkKlOwFbrtgeCUrpAh3epnaO07HBkm+t6D6S+oSQWpsABrnhzoFdyAGf5HYYozUaQWjxC2RRk"
+test_buyer_public_key  = "9qzGNONKAHTBaPsm+b9pPUgEvekv3iKZBdXJt7eSBePFkeWtoxpGig=="
+test_buyer_private_key = "9qzGNONKAHTmQiE2vRhmIL7cB+GB2v0HrRNozHefaNCTHNow8WNqj8Fo+yb5v2k9SAS96S/eIpkF1cm3t5IF48WR5a2jGkaK"
 
-raspberry_buyer_public_key  = "ZkQ8nC3BTkFjR7ws8GhRz/zVUueQXcde1T0EL+j0/XPVh39S6IoVaw=="
-raspberry_buyer_private_key = "ZkQ8nC3BTkGK7DxXGLIPwIx00Jm3ep25n1OmwTZWqYJrKfLj2XmXVmNHvCzwaFHP/NVS55Bdx17VPQQv6PT9c9WHf1LoihVr"
+raspberry_buyer_public_key  = "/AUcbl5fuLxmPYEjtjBbVFnPJDlUuWrcntrVL5na6NsYzP2lsoOR5A=="
+raspberry_buyer_private_key = "/AUcbl5fuLxR6BwDi1NUM41MAzeP8ZBYGNOY4FVBOqnA0nPn2Q77FGY9gSO2MFtUWc8kOVS5atye2tUvmdro2xjM/aWyg5Hk"
 
-ip2location_bucket_name     = "wilton_network_next_dev"
+ip2location_bucket_name     = "helsinki_network_next_dev"
 
-relay_backend_public_key    = "8jOvRZXo57q2kivlnm4nW9Ff6oi9fgHBnWoUJhz4PQQ="
+relay_backend_public_key    = "bKjCNngZ1H+XJppN6MymZ9UoTgewgOsLeAMAOiiWuws="
 
-server_backend_public_key   = "hc3/baZ4FYYaknk1heRK345FK3ZOSpfK1PiMmuIGb1w="
+server_backend_public_key   = "mUHMKszMnQxeN9oC/etGMSpUEcIg7hJCupWaxLLLl2Y="
 
 test_server_tag             = "006" # increment this each time you want to deploy the test server

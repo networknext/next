@@ -643,14 +643,14 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         next_printf( NEXT_LOG_LEVEL_DEBUG, "network next is disabled" );
     }
 
-    if ( datacenter_is_local && backend_is_local )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "special local backend codepath" );
-    }
-
     if ( !server->valid_buyer_private_key && !datacenter_is_local )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "we don't have a valid buyer private key :(" );
+    }
+
+    if ( datacenter_is_local && backend_is_local )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "special local backend codepath" );
     }
 
     const bool should_initialize = !next_global_config.disable_network_next     && 
