@@ -31,3 +31,21 @@ For more details, please see the SDK reference here: https://network-next-sdk.re
 
 ## 2. Replace UDP socket on server with next_server_t
 
+On the server side, your UDP socket is replaced with next_server_t.
+
+To upgrade and accelerate players, the server needs:
+
+* The datacenter the server is located in, passed in in code when the server is created, or via the environment variable (NEXT_DATACENTER). You can set this datacenter to "cloud" when running in Google Cloud or AWS and the SDK will autodetect the datacenter for you. When running in local playtests or by default during development, pass in "local" as the datacenter name.
+* The server IP address, passed in in code *or* overridden by environment variable (NEXT_SERVER_ADDRESS).
+* A valid buyer private key, which should be passed in via environment variable (NEXT_BUYER_PRIVATE_KEY), or passed in on the command line. It is best not to embed this in your source code. This private key must be kept top secret.
+* The server backend public key (safe to embed)
+* The relay backend public key (safe to embed)
+* The server backend hostname.
+
+As with the client, the SDK is by default setup to point at your dev environment #if NEXT_DEVELOPMENT, else it will point at your production environment.
+
+## 3. Verify that your client sessions show up in the portal
+
+When you have completed integration, your clients should upgrade and show up in the portal under "Sessions" while they are connected to a server. Your servers should show up in the "Server" page while they are running.
+
+The SDK is designed to fall back to unaccelerated behavior when anything goes wrong or is misconfigured. By making sure that you see both your servers and sessions in the portal, even if they are not accelerated, then you know that your integration is working correctly.
