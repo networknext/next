@@ -15,7 +15,7 @@ _The Unreal Engine is still being updated, but will be placed under the `~/next/
 ```
 [/Script/Engine.Engine]
 !NetDriverDefinitions=ClearArray
-+NetDriverDefinitions=  (DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
++NetDriverDefinitions=(DefName="GameNetDriver",DriverClassName="/Script/NetworkNext.NetworkNextNetDriver",DriverClassNameFallback="/Script/NetworkNext.NetworkNextNetDriver")
 
 [/Script/NetworkNext.NetworkNextNetDriver]
 ServerBackendHostname=server-dev.[yourdomain.com]
