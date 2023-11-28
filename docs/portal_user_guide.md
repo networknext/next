@@ -4,13 +4,19 @@
 
 # Portal user guide
 
+The portal lives at:
+
+* https://portal-dev.[yourdomain].com for your development environment
+* https://portal-staging.[yourdomain.com for your staging environment (load tests)
+* https://portal.[yourdomain.com] for your production environment
+
 ## 1. Session Counts
 
-At the top of each page, you can always see the current session counts for your system across all buyers:
+At the top of each page, you can always see the current session counts for your system:
 
 <img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/e37e9740-d810-416a-b6ec-3d9b796eb442">
 
-These counts are updated once per-minute. The counts are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that this number is a bit higher.
+These counts are updated once per-minute. The counts are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that these numbers are a bit higher.
 
 ## 2. Sessions Page
 
