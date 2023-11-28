@@ -136,7 +136,7 @@ Set your buyer private key via environment variable:
 export NEXT_BUYER_PRIVATE_KEY="<your buyer private key>"
 ```
 
-The Network Next SDK will pick up your buyer private key from this environment var and links your server to your buyer.
+The Network Next SDK picks up your buyer private key from this environment var and this links your server to your buyer.
 
 Make sure that UDP port 50000 is open in the firewall to receive packets. If you are not familiar with how to do this in Google Cloud, read this StackOverflow page: [https://stackoverflow.com/questions/21065922/how-to-open-a-specific-port-such-as-9090-in-google-compute-engine]
 
