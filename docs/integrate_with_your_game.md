@@ -49,3 +49,7 @@ As with the client, the SDK is by default setup to point at your dev environment
 When you have completed integration, your clients should upgrade and show up in the portal under "Sessions" while they are connected to a server. Your servers should show up in the "Server" page while they are running.
 
 The SDK is designed to fall back to unaccelerated behavior when anything goes wrong or is misconfigured. By making sure that you see both your servers and sessions in the portal, even if they are not accelerated, then you know that your integration is working correctly.
+
+Congratulations! You have completed integration with your game!
+
+[Go back to main documentation](README.md)
