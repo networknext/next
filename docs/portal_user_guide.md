@@ -6,8 +6,8 @@
 
 The portal lives at:
 
-* https://portal-dev.[yourdomain].com for your development environment
-* https://portal-staging.[yourdomain.com for your staging environment (load tests)
+* https://portal-dev.[yourdomain.com] for your development environment
+* https://portal-staging.[yourdomain.com] for your staging environment (load tests)
 * https://portal.[yourdomain.com] for your production environment
 
 ## 1. Session Counts
