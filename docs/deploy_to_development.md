@@ -64,13 +64,13 @@ pong [dev-633]
 
 If `next select dev` fails, wait for DNS propagation to complete and try again.
 
-## 5. Initialize the gcloud default service account
+## 6. Initialize the gcloud default service account
 
 Terraform is configured to store state in a google cloud bucket. To give it permission to do this, setup the application default login like so:
 
 `gcloud auth application-default login`
 
-## 6. Setup relays and database
+## 7. Setup relays and database
 
 Run the terraform script:
 
@@ -80,7 +80,7 @@ terraform init
 terraform apply
 ```
 
-## 7. Commit the database changes to the backend
+## 8. Commit the database changes to the backend
 
 ```console
 cd ~/next
@@ -88,7 +88,7 @@ next database
 next commit
 ```
 
-## 8. Setup the relays
+## 9. Setup the relays
 
 Connect to the OpenVPN instance you setup. This is necessary for the setup script to be able to SSH into the relays.
 
@@ -124,7 +124,7 @@ gaffer@batman next % next relays
 └────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
 ```
 
-## 9. View the portal
+## 10. View the portal
 
 Go to https://portal-dev.[yourdomain.com]
 
