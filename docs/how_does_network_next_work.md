@@ -12,7 +12,7 @@ Network Next comes in three parts:
 
 ## 1. Network Next SDK
 
-The SDK operates by taking over UDP packet send and receive for your game client and server. This way when we detect that a player has high latency or packet loss, we can fix it by steering UDP packets through the relay fleet instead sending them directly from the client to the server IP address and vice versa. This is how Network Next is able to _undo_ bad Internet routing decisions and *force* your player's traffic to go through the lowest latency and lowest packet loss route.
+The SDK operates by taking over UDP packet send and receive for your game client and server. This way when we detect that a player has high latency or packet loss, we can fix it by steering UDP packets through the relay fleet instead sending them directly from the client to the server IP address and vice versa. This is how Network Next is able to _undo_ bad Internet routing decisions and *force* your player's packets to take the best route.
 
 In addition to steering player traffic, the SDK pings nearby relays at the start of each match (according to ip2location for each player), to find the lowest latency, jitter and packet loss _initial hop cost_ on to the Network Next relay fleet for each player. Thus, we are able to plan traffic routing from the client in any ISP around the world, to servers running in datacenters anywhere in the world, while knowing the quality of service (QoS) ahead of time for all possible routes end-to-end between the client and server. We can even adjust the player route dynamically as network conditions change.
 
