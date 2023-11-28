@@ -1,1 +1,1 @@
-#define RELAY_VERSION "1.0.7"
+#define RELAY_VERSION "1.0.0"
