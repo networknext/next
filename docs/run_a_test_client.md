@@ -145,7 +145,7 @@ resource "networknext_route_shader" test {
 }
 ```
 
-Now, apply the terraform changes to the postgres database:
+Apply the terraform changes to the postgres database:
 
 ```
 cd ~/next/terraform/dev/relays
