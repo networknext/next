@@ -44,7 +44,7 @@ Under the session detail page you can immediately see a graph of latency over ti
 
 <img width="1002" alt="image" src="https://github.com/networknext/next/assets/696656/7f99ffc5-cfd1-40b9-a882-28baf59a8b01">
 
-The blue line is the non-accelerated direct route round trip time (RTT) from the client to the server and back in millisconds. The green line is the accelerated round trip time in milliseconds. The orange line is the conservative predicted accelerated round trip time calculated by the route optimization system.
+The blue line is the non-accelerated direct route round trip time (RTT) from the client to the server and back in milliseconds. The green line is the accelerated round trip time in milliseconds. The orange line is the conservative predicted accelerated round trip time calculated by the route optimization system.
 
 Below we can see jitter, also measured in milliseconds. Jitter measures time variance of packet delivery in milliseconds, in other words, packets that arrive later than they should:
 
@@ -72,7 +72,7 @@ On the right side of the session detail page you will see some useful summary in
 
 <img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/b463d1b3-918a-4018-973f-3f511289026b">
 
-Many of these values are clickable. For example, clicking on the user hash goes to a list of sessions this user has played recently, so you can see this users history of network performance. Clicking on the server will take you to the list of sessions connected to that server currently, so you can look at other players on the server.
+Many of these values are clickable. For example, clicking on the user hash goes to a list of sessions this user has played recently, so you can see this user's history of network performance. Clicking on the server will take you to the list of sessions connected to that server currently, so you can look at other players on the server.
 
 Below the summary data, you will see the current route from the client to the server. If the session is accelerated, the relays that traffic is being sent through will be shown here, so you know what route your packets are taking:
 
@@ -80,10 +80,10 @@ Below the summary data, you will see the current route from the client to the se
 
 You can even click on each relay in the route, and you will be taken to a detail page for that relay.
 
-Below you can see the list of "near relays" to the player. These are close by relays determined by ip2location for the player, and it is how that player first hops on to your network next relay fleets. Effectively, these near relay pings measure the _first hop cost_ onto your relay network for each session:
+Below you can see the list of "near relays" to the player. These are close by relays determined by ip2location for the player, and it is how that player first hops on to your network next relay fleet. Effectively, these near relay pings measure the _first hop cost_ onto your relay network for each session:
 
 <img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/1480688a-00bb-47cf-bb1d-062fd30a162f">
 
-These near relay ping results are used by the route planning process. They are calculated only once at the start of each session, for a period of 10 seconds.
+These near relay ping results are used by the route planning process. They are calculated at the start of each session, for a period of 10 seconds, and held fixed throughout the rest of the session.
 
 [Go back to main documentation](README.md)
