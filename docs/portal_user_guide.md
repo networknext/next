@@ -66,7 +66,7 @@ Bandwidth is shown over time in the client to server (up), and server to client 
 
 <img width="1026" alt="image" src="https://github.com/networknext/next/assets/696656/42d6fe6b-5617-464f-bc4b-70b419435681">
 
-The blue line is the bandwidth sent along the unaccelerated codepath, and the green is the bandwidth sent along the accelerated codepath in kilobits per-second. Kilo-bits. Not bytes. Note that Network Next by default sends packets across both the unaccelerated and accelarated codepaths at the same time. This is called "multipath" and it helps to reduce packet loss significantly.
+The blue line is the bandwidth sent along the unaccelerated codepath, and the green is the bandwidth sent along the accelerated codepath in kilobits per-second. Kilo-bits. Not bytes. Note that Network Next by default sends packets across both the unaccelerated and accelerated codepaths at the same time. This is called "multipath" and it helps to reduce packet loss significantly.
 
 On the right side of the session detail page you will see some useful summary information about the session:
 
