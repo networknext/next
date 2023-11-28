@@ -4,7 +4,9 @@
 
 # Portal user guide
 
-The portal lives at:
+The portal is how you can see what is going on with your player base in real-time.
+
+It lives at:
 
 * https://portal-dev.[yourdomain.com] for your development environment
 * https://portal-staging.[yourdomain.com] for your staging environment (load tests)
