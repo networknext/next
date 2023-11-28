@@ -8,9 +8,9 @@
 
 At the top of each page, you can always see the current session counts for your system across all buyers:
 
-![image](https://github.com/networknext/next/assets/696656/7a83e801-454d-49f2-8b07-25366c33f92d)
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/e37e9740-d810-416a-b6ec-3d9b796eb442">
 
-These counts are updated once per-minute. The counts are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that this number is a bit larger.
+These counts are updated once per-minute. The counts are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that this number is a bit higher.
 
 ## 2. Sessions Page
 
