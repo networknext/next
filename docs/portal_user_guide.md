@@ -130,7 +130,7 @@ You can see the list of all datacenters currently defined in your system by goin
 
 ## 7. Buyers page
 
-Buyers correspond to games using your Network Next system. Games "buy" network transit from the network next system, and sellers (Google, AWS, Linode etc.) "sell" it to them.
+Buyers correspond to games using your Network Next system. Games "buy" network transit from sellers (Google, AWS, Linode etc.)
 
 <img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/87509343-34c0-4ac0-9b19-d5c43d6c2274">
 
