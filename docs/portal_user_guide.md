@@ -50,7 +50,7 @@ Below we can see jitter, also measured in milliseconds. Jitter measures time var
 
 <img width="1002" alt="image" src="https://github.com/networknext/next/assets/696656/2d28e15a-dfa6-46a4-b2c1-6de887231424">
 
-The purple real jitter value is the most important to consider. It is the average difference in packet delivery time measured for a full round trip packet from the client to the server and back. It is affected by your server tick rate, so if you send packets from the client to server at some high rate like 60 packets per-second, but the server replies at only 10HZ tick intervals, you will see that reflected in the real jitter value.
+The purple real jitter value is the most important to consider. It is the average difference in packet delivery time measured for a full round trip from the client to the server and back. It is affected by your server tick rate, so if you send packets from the client to server at some high rate like 60 packets per-second, but the server replies at only 10HZ tick intervals, you will see that reflected in the real jitter value.
 
 The blue and green jitter values represent estimates of jitter, excluding server tick rate effects with a more conservative metric. These values will be zero on perfect connections, and usually are less than 5-10 milliseconds on good wi-fi connections. If the player has a poor wi-fi connection you will often see these values spike to 50-100ms. These players should be advised to play over a wired connection for the best experience.
 
