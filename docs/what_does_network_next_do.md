@@ -30,4 +30,6 @@ The good news is that all these problems are solvable.
 
 Network Next monitors your players, and when they would otherwise experience high latency or packet loss, _we fix it_ by steering their traffic through multiple distinct routes with significantly lower latency, jitter and packet loss. Player frustration is reduced. Player engagment, retention and monetization go up.
 
+Working with one customer in 2022 we found that retention and engagement increased by 25% as soon as we turned on. This is of course game specific, but the data is clear. Network Next improves engagement, retention and monetization for your game!
+
 Next: [How does Network Next work?](how_does_network_next_work.md)
