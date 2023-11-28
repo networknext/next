@@ -128,6 +128,8 @@ gaffer@batman next % next relays
 
 Go to https://portal-dev.[yourdomain.com]
 
+In around 5 minutes, the system will be fully scaled up and should look like this:
+
 <img width="1600" alt="image" src="https://github.com/networknext/next/assets/696656/b96ad772-fc49-4416-98b4-065ddd28c622">
 
 Congratulations! Your development environment is now online!
