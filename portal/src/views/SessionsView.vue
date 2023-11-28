@@ -57,8 +57,6 @@
             <th>Session ID</th>
             <th>User Hash</th>
             <th>ISP</th>
-            <th>Connection</th>
-            <th>Platform</th>
             <th>Buyer</th>
             <th>Datacenter</th>
             <th>Server Address</th>
@@ -72,8 +70,6 @@
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
-            <td> {{ item["Connection"] }} </td>
-            <td> {{ item["Platform"] }} </td>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td> <router-link :to='"server/" + item["Server Address"]'> {{ item["Server Address"] }} </router-link> </td>
