@@ -8,7 +8,7 @@ Network Next comes in three parts:
 
 1. An SDK (or UE5 plugin) that integrates with your game client and server
 2. A backend that runs in Google Cloud that performs route optimization
-3. A fleet of relays (software routers) that game traffic is sent across when we accelerate a player
+3. A fleet of relays (software routers) that game traffic is sent through when we accelerate a player
 
 ## 1. Network Next SDK
 
