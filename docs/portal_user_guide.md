@@ -40,6 +40,10 @@ You go to the session detail page for that session:
 
 <img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/841b5bd0-21ad-4915-a050-7c01848ee9c4">
 
+You can also get to here by crafting a URL with the session id in hex:
+
+`https://portal-dev.virtualgo.net/session/53144bb8430e3ac2`
+
 Under the session detail page you can immediately see a graph of latency over time for that session:
 
 <img width="1002" alt="image" src="https://github.com/networknext/next/assets/696656/7f99ffc5-cfd1-40b9-a882-28baf59a8b01">
@@ -85,5 +89,39 @@ Below you can see the list of "near relays" to the player. These are close by re
 ![image](https://github.com/networknext/next/assets/696656/6d57f991-487a-499e-8a4e-d91d90828fd9)
 
 These near relay ping results are used by the route planning process. They are calculated at the start of each session, for a period of 10 seconds, and held fixed throughout the rest of the session.
+
+## 4. Servers page
+
+Servers are your game servers that are currently running with the Network Next SDK.
+
+You can view the list of servers by clicking on "Servers" in the top menu. If you need to go left/right in the list, you use the keys 1/2 to scroll.
+
+![image](https://github.com/networknext/next/assets/696656/6fc898b9-c611-4e27-b2be-85eeca7f375f)
+
+You can click on the server IP address and port to view details for that server:
+
+<img width="1467" alt="image" src="https://github.com/networknext/next/assets/696656/545be585-9010-47bb-afe7-0bc3e329ed6e">
+
+You can also get server details directly by crafting a URL with the server IP address and port, like this:
+
+`https://portal-dev.virtualgo.net/server/35.239.236.74:32834`
+
+On the server page you can see the set of sessions connected to the server at the current time. You can click through on any of these sessions to drill into each session in detail, or click on the user hash to see what sessions.
+
+## 5. Relays page
+
+Relays are software routers that traffic is passed through when Network Next performs acceleration. The system is only as good as your relay fleet. A typical production relay fleet will have at least 10 relays in each major city of different providers, to get a variety of different networks and ISP connections.
+
+The list of relays is shown under the "Relays" item in the top menu:
+
+![image](https://github.com/networknext/next/assets/696656/3602af83-6e5f-48ff-a4ed-d3540ac39980)
+
+You can click on the relay name to drill in and see graphs over time for this relay:
+
+<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/67db43f5-28ae-4d96-89e6-72e85398ce4c">
+
+## 6. Datacenters page
+
+...
 
 [Go back to main documentation](README.md)
