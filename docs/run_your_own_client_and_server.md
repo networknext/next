@@ -111,7 +111,7 @@ wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/prem
 tar -zxf *.tar.gz
 ```
 
-Build the example code no the VM:
+Build the example code on the VM:
 
 ```console
 premake5 gmake
