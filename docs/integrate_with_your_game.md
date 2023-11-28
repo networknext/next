@@ -2,9 +2,33 @@
 
 <br>
 
-# Run a test client
+# Integrate with your game
 
-## 1. Disable raspberry clients
+## 1. Replace UDP socket on client with next_client_t
+
+Create an instance of the next_client_t object on the client and connect to your server.
+
+To upgrade and accelerate players, the client requires the following:
+
+* The IP address and port of the server to connect to which is passed in to the connect function.
+* A valid buyer public key, which is safe to embed in your executable.
+* A valid server backend public key (safe to embed)
+* A valid relay backend public key (safe to embed)
+* A valid server backend hostname.
+
+By default, #if NEXT_DEVELOPMENT, your copy of the SDK has been configured to point to "server-dev.[yourdomain.com]" for the server backend hostanme and has the correct server and relay backend public keys for your dev environment.
+
+If NEXT_DEVELOPMENT is zero or undefined, then by default the SDK points to your production environment at "server.[yourdomain.com]" and has the correct server backend and relay backend public keys for your production environment by default.
+
+You can override these defaults using environment variables, or by passing them in via next_config_t to the next_init function on the client, before you create the next_client_t.
+
+For more details, please see the SDK reference documentation here:
+
+[https://network-next-sdk.readthedocs-hosted.com/en/latest/reference.html]
+
+## 2. Replace UDP socket on server with next_server_t
+
+
 
 Switch to dev branch:
 
