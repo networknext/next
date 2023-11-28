@@ -18,7 +18,7 @@ At the top of each page, you can always see the current session counts for your 
 
 <img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/e37e9740-d810-416a-b6ec-3d9b796eb442">
 
-These counts are updated once per-minute. The counts are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that these numbers are a bit higher.
+These counts are updated once per-minute. They are equivalent to the number of unique session ids seen across one minute, so if you have an instantaneous player count calculated somewhere else, you will notice that these numbers are a bit higher than that.
 
 ## 2. Sessions Page
 
