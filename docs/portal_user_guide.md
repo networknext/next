@@ -4,7 +4,7 @@
 
 # Portal user guide
 
-The portal is how you can see what is going on with your players in real-time.
+The portal is how you can see what's going on with your players in real-time.
 
 It lives at:
 
