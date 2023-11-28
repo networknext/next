@@ -148,18 +148,17 @@ If you click on a seller, it will give you a list of relays belonging to that se
 
 ## 9. Admin page
 
-The admin page shows important graphs to check the health of the system.
+The admin page shows important graphs to check the health of the system as a whole:
 
-The essential graphs are shown across all buyers:
-
-1. Total sessions
-2. Accelerated sessions
-3. Accelerated %
-4. Server count
-5. Active relays
-6. Retries (number of server to backend requests that needed to be retried)
-7. Fallback to direct (these is bad. it means players are being disconnected from accelerate for some reason).8. 8. Total routes (the total number of routes in the route matrix used for route planning)
-9. Optimize time in seconds (if this frequently goes over 1 second, then you need to increase the number of cores on the relay).
+1. Total sessions (if this suddenly drops to zero, something is wrong)
+2. Accelerated sessions (same here, unless you intentionally disabled acceleration)
+3. Accelerated % (percentage of acceleration over time. naturally fluctuates somewhat)
+4. Server count (tracks the number of servers in your relay fleet)
+5. Active relays (the number of relays in your relay fleet)
+6. Retries (number of server to backend requests that needed to be retried. early indicator of server backend overload)
+7. Fallback to direct (ultimate consequence of overload. sessions lose acceleration and won't come back to talk to the server backend again until the player starts the next play session).
+8. Total routes (the total number of routes in the route matrix used for route planning. fluctuates)
+9. Optimize time in seconds (if this frequently goes over 1 second, then you need to increase the number of cores on the relay!)
 
 That's it! I hope you get good visibility on your player's network experience with the portal. Many customers have found it useful to look up players and confirm whether they are having bad network performance, and checking to see if they have bad wi-fi.
 
