@@ -182,7 +182,7 @@ These entries are written to bigquery at the start of each session when near rel
 | near_relay_id | INT64 | Relay id being pinged by the client |
 | near_relay_rtt | INT64 | Round trip time ping between the client and the relay (milliseconds) |
 | near_relay_jitter | INT64 | Jitter between the client and the relay (milliseconds) |
-| near_relay_packet_loss | INT64 | FLOAT64 | Packet loss between the client and the relay (%). Generally inaccurate and higher than true value because near relay pings are sent infrequently. |
+| near_relay_packet_loss | FLOAT64 | Packet loss between the client and the relay (%). Generally inaccurate and higher than true value because near relay pings are sent infrequently. |
 
 ## Route Matrix update
 
