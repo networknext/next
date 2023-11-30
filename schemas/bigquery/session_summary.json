@@ -3,7 +3,7 @@
     "name": "timestamp",
     "type": "TIMESTAMP",
     "mode": "REQUIRED",
-    "description": "The timestamp when the server update occurred"
+    "description": "The timestamp when the session summary was generated (at the end of the session)."
   },
   {
     "name": "session_id",
@@ -219,13 +219,13 @@
     "name": "a",
     "type": "BOOL",
     "mode": "REQUIRED",
-    "description": "This session was part of an AB test, and is in the A group."
+    "description": "This session was part of an AB test, and is in the A group (potentially accelerated)."
   },
   {
     "name": "b",
     "type": "BOOL",
     "mode": "REQUIRED",
-    "description": "This session was part of an AB test, and is in the B group."
+    "description": "This session was part of an AB test, and is in the B group (never accelerated)."
   },
   {
     "name": "latency_worse",

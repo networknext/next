@@ -75,7 +75,7 @@
     "name": "direct_kbps_down",
     "type": "INT64",
     "mode": "REQUIRED",
-    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
+    "description": "Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second"
   },
   {
     "name": "next",
@@ -195,13 +195,13 @@
     "name": "a",
     "type": "BOOL",
     "mode": "REQUIRED",
-    "description": "This session was part of an AB test, and is in the A group."
+    "description": "This session was part of an AB test, and is in the A group (potentially accelerated)."
   },
   {
     "name": "b",
     "type": "BOOL",
     "mode": "REQUIRED",
-    "description": "This session was part of an AB test, and is in the B group."
+    "description": "This session was part of an AB test, and is in the B group (never accelerated)."
   },
   {
     "name": "latency_worse",

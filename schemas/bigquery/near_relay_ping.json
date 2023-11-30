@@ -3,7 +3,7 @@
     "name": "timestamp",
     "type": "TIMESTAMP",
     "mode": "REQUIRED",
-    "description": "The timestamp when the relay update occurred"
+    "description": "The timestamp when the near relays pings occurred"
   },
   {
     "name": "buyer_id",

@@ -18,7 +18,7 @@ Next, define a function to be called when packets are received:
 
 .. code-block:: c++
 
-	void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+	void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 	{
 	    next_printf( NEXT_LOG_LEVEL_INFO, "client received packet (%d bytes)", packet_bytes );
 	}
@@ -27,7 +27,7 @@ Create the client.
 
 .. code-block:: c++
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );

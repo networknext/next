@@ -36,15 +36,15 @@
     "description": "The datacenter this server is in"
   },
   {
-    "name": "num_sessions",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The number of client sessions currently connected to the server"
-  },
-  {
     "name": "server_address",
     "type": "STRING",
     "mode": "REQUIRED",
     "description": "The address and port of the server, for example: '123.254.10.5:40000'"
+  },
+  {
+    "name": "num_sessions",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The number of client sessions currently connected to the server"
   }
 ]

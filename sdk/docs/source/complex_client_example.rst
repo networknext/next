@@ -116,9 +116,10 @@ Here we just put a dummy uint32_t in the client context and check its value to v
 
 .. code-block:: c++
 
-	void client_packet_received( next_client_t * client, void * _context, const uint8_t * packet_data, int packet_bytes )
+	void client_packet_received( next_client_t * client, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 	{
 	    (void) client;
+	    (void) from;
 
 	    ClientContext * context = (ClientContext*) _context;
 
@@ -292,7 +293,7 @@ Next, create a per-client context and pass it in as the context when creating th
     client_context.allocator = &client_allocator;
     client_context.client_data = 0x12345;
 
-    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received, NULL );
+    next_client_t * client = next_client_create( &client_context, bind_address, client_packet_received );
     if ( client == NULL )
     {
         printf( "error: failed to create client\n" );
