@@ -132,9 +132,9 @@ You can see the list of all datacenters currently defined in your system by goin
 
 Buyers correspond to games using your Network Next system. Games "buy" network transit from sellers (Google, AWS, Linode etc.)
 
-<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/87509343-34c0-4ac0-9b19-d5c43d6c2274">
+<img width="1469" alt="image" src="https://github.com/networknext/next/assets/696656/40985282-44e2-4b09-ad5a-9628150b3378">
 
-You can click on any buyer and see some graphs such as total sessions, accelerated sessions, accelerated % and server count over the last hour for that buyer.
+You can click on any buyer and see some graphs such as the buyer's total sessions, accelerated sessions, accelerated % and server count over the last hour.
 
 ## 8. Sellers page
 
@@ -142,7 +142,7 @@ Sellers are companies that supply relays. Each relay is in a datacenter, and eac
 
 The sellers page shows you the set of sellers defined in your system:
 
-<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/bbd8f230-4a51-4f37-84d4-c479df7eaa01">
+<img width="1467" alt="image" src="https://github.com/networknext/next/assets/696656/5177a491-75b1-4de4-9814-d2456e8f04d5">
 
 If you click on a seller, it will give you a list of relays belonging to that seller.
 
@@ -152,14 +152,14 @@ The admin page shows important graphs to check the health of the system as a who
 
 1. Total sessions (total sessions across all buyers)
 2. Accelerated sessions (accelerated sessions across all buyers)
-3. Accelerated % (percentage of acceleration over time. naturally fluctuates somewhat)
-4. Server count (tracks the number of servers in your relay fleet)
+3. Accelerated % (percentage of acceleration over time across all buyers. naturally fluctuates somewhat)
+4. Server count (tracks the number of servers across all buyers)
 5. Active relays (the number of relays in your relay fleet)
-6. Retries (number of server to backend requests that needed to be retried. early indicator of server backend overload)
+6. Retries (number of server to backend requests from the SDK that needed to be retried. early indicator of server backend overload)
 7. Fallback to direct (fallback to direct is generally bad. sessions lose acceleration and won't come back to talk to the server backend again until that player starts the next play session. usually a consequence of server backend overload).
 8. Total routes (the total number of routes in the route matrix used for route planning. fluctuates)
 9. Optimize time in seconds (if this frequently goes over 1 second, then you need to increase the number of cores on the relay backend!)
 
-That's it! I hope you get good visibility on your player's network experience with the portal. Many customers have found it useful to look up players and confirm whether they are having bad network performance, and checking to see if they have bad wi-fi.
+That's it! I hope you get good visibility on your player's network experience with the portal. Many customers have found it useful to look up players and confirm whether they are having bad network performance using the portal, and also remember that all the data in the portal and more is written to Bigquery where you can do offline data science and analysis.
 
 [Go back to main documentation](README.md)
