@@ -14,7 +14,7 @@ There is also data written each time a client pings near relays at the start of 
 
 Schemas for all this data are described below.
 
-## 1. Session Update
+## Session Update
 
 Session update entries contain performance data once every 10 seconds for a session. This is the primary network performance data, including everything shown in the portal for a session and much more.
 
