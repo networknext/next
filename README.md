@@ -36,6 +36,7 @@ To use Network Next, your game must have a client/server architecture and use UD
 # User Guides
 
 * [Portal user guide](docs/portal_user_guide.md)
+* [Next tool user guide](docs/next_tool_user_guide.md)
 
 # Analytics
 
