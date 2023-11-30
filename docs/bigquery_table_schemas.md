@@ -2,51 +2,22 @@
 
 <br>
 
-# Datacenter and relay naming conventions
+# Bigquery table schemas
 
-A full production system has thousands of datacenters and hundreds of relays.
+Network Next writes data to bigquery by default so you can run data science and analytics queries.
+ 
+For example, once every 10 seconds network performance data such as accelerated and non-accelerated latency (RTT), jitter, packet loss, bandwidth usage and out order packets for sessions are written to bigquery. 
 
-Let's keep them all organized with a clear naming convention for datacenters and relays :)
+At the end of each session a summary data entry is written, which makes it faster generally to query data on a per-session bases, than on a per-"slice" basis (a 10 second period of time within a session).
 
-## 1. Datacenter naming convention
+There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each relay in your fleet is sent so you can track its performance and uptime.
 
-Each datacenter must be named:
+Schemas for all of this data are described below.
 
-* `[seller].[cityname].[number]`
+## 1. Session Update
 
-For example:
+...
 
-* google.losangeles.1
-* google.losangeles.2
-* amazon.virginia.5
-
-In cases where there is only one datacenter in a city for that seller, the number may be omitted.
-
-* i3d.istanbul
-* stackpath.newyork
-
-When chosing a city name, prefer a cityname as already used for existing relays. This makes it easier to find other relays in the same city, which is a common operation when you are building your relay fleet.
-
-# Relay naming convention
-
-Relays must include the datacenter name, followed by a,b,c etc. for each relay in that datacenter.
-
-* `[datacenter].[a|b|c...]`
-
-For example:
-
-* google.losangeles.2.a
-* google.losangeles.2.b
-* google.losangeles.2.c
-* amazon.virginia.1.a
-* amazon.virginia.1.b
-* i3d.istanbul.a
-* i3d.istanbul.b
-
-In cases where there is only one relay in a datacenter, it is OK to omit the a,b,c if you wish, and then the relay is named the same as the datacenter:
-
-* google.losangeles.1
-* i3d.istanbul
-* stackpath.newyork
+## 2. Session Summary
 
 [Back to main documentation](../README.md)
