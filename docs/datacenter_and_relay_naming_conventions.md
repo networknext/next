@@ -20,7 +20,7 @@ For example:
 * google.losangeles.2
 * amazon.virginia.5
 
-In cases where there is only one datacenter in a city, the number may be omitted.
+In cases where there is only one datacenter in a city for that seller, the number may be omitted.
 
 * i3d.istanbul
 * stackpath.newyork
