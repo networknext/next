@@ -19,7 +19,7 @@ To upgrade and accelerate players, the client requires the following:
 * The relay backend public key (safe to embed)
 * The server backend hostname.
 
-By default, #if NEXT_DEVELOPMENT, your copy of the SDK has already been configured to point to your dev environment at "server-dev.[yourdomain.com]" for the server backend hostname and has the correct server and relay backend public keys embedded for your dev environment.
+By default, #if NEXT_DEVELOPMENT, your copy of the SDK has already been configured to point to your dev environment at "server-dev.[yourdomain.com]" with the correct server and relay backend public keys.
 
 If NEXT_DEVELOPMENT is zero or undefined, then by default the SDK points to your production environment at "server.[yourdomain.com]" and has the correct server backend and relay backend public keys for your production environment.
 
@@ -35,14 +35,14 @@ On the server side, your UDP socket is replaced with next_server_t.
 
 To upgrade and accelerate players, the server needs:
 
-* The datacenter the server is located in, passed in in code when the server is created, or via the environment variable (NEXT_DATACENTER). You can set this datacenter to "cloud" when running in Google Cloud or AWS and the SDK will autodetect the datacenter for you. When running in local playtests or by default during development, pass in "local" as the datacenter name.
-* The server IP address, passed in in code *or* overridden by environment variable (NEXT_SERVER_ADDRESS).
-* A valid buyer private key, which should be passed in via environment variable (NEXT_BUYER_PRIVATE_KEY), or passed in on the command line. It is best not to embed this in your source code. This private key must be kept top secret.
+* The datacenter the server is located in, passed in with code when the server is created, or via the environment variable (NEXT_DATACENTER). You can set this datacenter to "cloud" when running in Google Cloud or AWS and the SDK will autodetect the datacenter for you. When running in local playtests or by default during development running on your local machine, pass in "local" as the datacenter name.
+* The server IP address, passed in via code *or* overridden by environment variable (NEXT_SERVER_ADDRESS).
+* A valid buyer private key, which should be passed in via environment variable (NEXT_BUYER_PRIVATE_KEY), or passed in on the command line. It is best not to embed this in your source code. This private key must be kept secret.
 * The server backend public key (safe to embed)
 * The relay backend public key (safe to embed)
 * The server backend hostname.
 
-When a client connects and authenticates with your server, however you do it, once a client is known to be valid you should call "next_server_upgrade_session" on that client IP address. This is the step that enables acceleration. Call this function only once for each client, and that client will show up in the portal and be evaluated for acceleration once every 10 seconds afterwards.
+When a client connects and authenticates with your server, however you do it, once a client is known to be valid you should call "next_server_upgrade_session" on that client IP address. This is the step that enables acceleration. Call this function only once for each client, and that client will show up in the portal and be evaluated for acceleration afterwards.
 
 As with the client, the SDK is by default setup to point at your dev environment #if NEXT_DEVELOPMENT, else it will point at your production environment.
 
@@ -50,7 +50,7 @@ As with the client, the SDK is by default setup to point at your dev environment
 
 When you have completed integration, your clients should upgrade and show up in the portal under "Sessions" while they are connected to a server. Your servers should show up in the "Server" page while they are running.
 
-The SDK is designed to fall back to unaccelerated behavior when anything goes wrong or is misconfigured. By making sure that you see both your servers and sessions in the portal, even if they are not accelerated, then you know that your integration is working correctly.
+The SDK is designed to fall back to unaccelerated behavior when anything goes wrong or is misconfigured. By making sure that you see both your servers and sessions in the portal, you know that your integration is working correctly.
 
 Congratulations! You have completed integration with your game!
 
