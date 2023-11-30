@@ -19,7 +19,7 @@ Schemas for all this data are described below.
 Session update entries contain performance data once every 10 seconds for a session. This is the primary network performance data, including everything shown in the portal for a session and much more.
 
 | Field Name | Type | Description |
-| ------------- | ------------- |
+| ------------- | ------------- | ------------- |
 | timestamp | TIMESTAMP | The timestamp when the session update occurred |
 | session_id | INT64 | Unique identifier for this session |
 | slice_number | INT64 | Slices are 10 second periods starting from slice number 0 at the start of the session |
