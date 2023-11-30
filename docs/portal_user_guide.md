@@ -164,4 +164,4 @@ The admin page shows important graphs to check the health of the system as a who
 
 That's it! I hope you get good visibility on your player's network experience with the portal.
 
-[Go back to main documentation](README.md)
+[Go back to main documentation](../README.md)
