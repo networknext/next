@@ -109,6 +109,42 @@ pong [dev-674]
 
 Downloads the contents of the postgres database for the currently selected environment and saves it to database.bin
 
+It also prints out the complete contents of the database. So if you want to inspect what is in the postgres database, run this command:
+
+```console
+gaffer@macbook next % next database
+
+downloading database.bin from Postgres SQL instance
+
+Headers:
+
+┌──────────────────┬────────────────────────────────────────┐
+│ Creator          │ CreationTime                           │
+├──────────────────┼────────────────────────────────────────┤
+│ extract_database │ Thursday 30 November 2023 13:46:45 UTC │
+└──────────────────┴────────────────────────────────────────┘
+
+Buyers:
+
+┌───────────┬──────────────────┬──────┬───────┬──────────────────────────────────────────────────────────┐
+│ Name      │ Id               │ Live │ Debug │ PublicKeyBase64                                          │
+├───────────┼──────────────────┼──────┼───────┼──────────────────────────────────────────────────────────┤
+│ Raspberry │ bcb85f5e6e1c05fc │ true │ true  │ /AUcbl5fuLxmPYEjtjBbVFnPJDlUuWrcntrVL5na6NsYzP2lsoOR5A== │
+│ Test      │ 74004ae334c6acf6 │ true │ true  │ 9qzGNONKAHTBaPsm+b9pPUgEvekv3iKZBdXJt7eSBePFkeWtoxpGig== │
+└───────────┴──────────────────┴──────┴───────┴──────────────────────────────────────────────────────────┘
+
+Sellers:
+
+┌────────┬────┐
+│ Name   │ Id │
+├────────┼────┤
+│ Google │ 1  │
+│ Akamai │ 2  │
+│ Amazon │ 3  │
+└────────┴────┘
+etc...
+```
+
 ## next commit
 
 Commits the local database.bin to the currently selected environment runtime.
