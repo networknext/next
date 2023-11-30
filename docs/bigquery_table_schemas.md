@@ -141,6 +141,29 @@ This entry is updated once every 10 seconds while a server is running. The only 
 
 ## Relay Update
 
+This data is updated once every 10 seconds per-relay. It is useful for tracking the activity of your relay fleet, and identifying high and low performing relays.
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the relay update occurred |
+| relay_id | INT64 | Unique relay id. The fnv1a hash of the relay address + port as a string |
+| session_count | INT64 | The number of sessions currently going through this relay |
+| max_sessions | INT64 | The maximum number of sessions allowed through this relay (optional: NULL if not specified) |
+| envelope_bandwidth_up_kbps | INT64 | The current amount of envelope bandwidth in the client to server direction through this relay |
+| envelope_bandwidth_down_kbps | INT64 | The current amount of envelope bandwidth in the server to client direction through this relay |
+| packets_sent_per_second | FLOAT64 | The number of packets sent per-second by this relay |
+| packets_received_per_second | FLOAT64 | The number of packets received per-second by this relay |
+| bandwidth_sent_kbps | FLOAT64 | The amount of bandwidth sent by this relay in kilobits per-second |
+| bandwidth_received_kbps | FLOAT64 | The amount of bandwidth received by this relay in kilobits per-second |
+| near_pings_per_second | FLOAT64 | The number of near relay pings received by this relay per-second |
+| relay_pings_per_second | FLOAT64 | The number of relay pings sent from other relays received by this relay per-second |
+| relay_flags | INT64 | The current value of the relay flags. See RelayFlags_* in the source code |
+| num_routable | INT64 | The number of other relays this relay can route to |
+| num_unroutable | INT64 | The number of other relays this relay cannot route to |
+| start_time | INT64 | The start time of the relay as a unix timestamp according to the clock on the relay |
+| current_time | INT64 | The start time of the relay as a unix timestamp according to the clock on the relay. Together with start_time and timestamp this can be used to determine relay uptime, and clock desynchronization between the relay and the backend. |
+| relay_counters | []INT64 | Array of counters used to diagnose what is going on with a relay. Search for RELAY_COUNTER_ in the codebase for counter names |
+
 ## Near Relay Ping
 
 ## Relay to Relay Ping
