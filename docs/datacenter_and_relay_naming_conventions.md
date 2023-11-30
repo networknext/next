@@ -25,5 +25,28 @@ In cases where there is only one datacenter in a city, the number may be omitted
 * i3d.istanbul
 * stackpath.newyork
 
+When chosing a city name, prefer a cityname as already used for existing relays. This makes it easier to find other relays in the same city, which is a common operation when you are building your relay fleet.
+
+# Relay naming convention
+
+Relays must include the datacenter name, followed by a,b,c etc. for each relay in that datacenter.
+
+* [datacenter].[a|b|c...]
+
+For example:
+
+* google.losangeles.2.a
+* google.losangeles.2.b
+* google.losangeles.2.c
+* amazon.virginia.1.a
+* amazon.virginia.1.b
+* i3d.istanbul.a
+* i3d.istanbul.b
+
+In cases where there is only one relay in a datacenter, it is OK to omit the a,b,c if you wish, and then the relay is named the same as the datacenter:
+
+* google.losangeles.1
+* i3d.istanbul
+* stackpath.newyork
 
 [Back to main documentation](../README.md)
