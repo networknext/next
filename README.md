@@ -37,13 +37,14 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 * [Portal user guide](docs/portal_user_guide.md)
 
+# Operating Network Next
+
+* [Relay and datacenter naming conventions](docs/relay_and_datacenter_naming_conventions.md)
+
 ---------------------------------------------------
 
 _Work in progress below here..._
 
-# Operating Network Next
-
-* [Relay and datacenter naming conventions](docs/relay_and_datacenter_naming_conventions.md)
 * [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
 * [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
 * [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
