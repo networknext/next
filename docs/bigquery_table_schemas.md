@@ -12,13 +12,15 @@ At the end of each session a summary data entry is written, which makes it much 
 
 There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
 
+Data in bigquery is retained for 90 days by default to comply with GDPR.
+
 Schemas for all this data are described below.
 
 ## Session Update
 
 Session updates contain network performance data once every 10 seconds for a session. This is the primary network performance data, including everything shown in the portal for a session and much more.
 
-| Field Name | Type | Description |
+| Field | Type | Description |
 | ------------- | ------------- | ------------- |
 | timestamp | TIMESTAMP | The timestamp when the session update occurred |
 | session_id | INT64 | Unique identifier for this session |
@@ -60,5 +62,229 @@ Session updates contain network performance data once every 10 seconds for a ses
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
 ## 2. Session Summary
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the session summary was generated (at the end of the session). |
+| session_id | INT64 | Unique identifier for this session |
+| datacenter_id | INT64 | The datacenter the server is in |
+| buyer_id | INT64 | The buyer this session belongs to |
+| user_hash | INT64 | Pseudonymized hash of a unique user id passed up from the SDK |
+| latitude | FLOAT64 | Approximate latitude of the player from ip2location |
+| longitude | FLOAT64 | Approximate longitude of the player from ip2location |
+| client_address | FLOAT64 | Approximate longitude of the player from ip2location |
+
+  {
+    "name": "client_address",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Client address and port number"
+  },
+  {
+    "name": "server_address",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Server address and port"
+  },
+  {
+    "name": "connection_type",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular"
+  },
+  {
+    "name": "platform_type",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5"
+  },
+  {
+    "name": "sdk_version_major",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The major SDK version on the server"
+  },
+  {
+    "name": "sdk_version_minor",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The minor SDK version on the server"
+  },
+  {
+    "name": "sdk_version_patch",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The patch SDK version on the server"
+  },
+  {
+    "name": "client_to_server_packets_sent",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of game packets sent from client to server in this session"
+  },
+  {
+    "name": "server_to_client_packets_sent",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of game packets sent from server to client in this session"
+  },
+  {
+    "name": "client_to_server_packets_lost",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of game packets lost from client to server in this session"
+  },
+  {
+    "name": "server_to_client_packets_lost",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of game packets lost from server to client in this session"
+  },
+  {
+    "name": "client_to_server_packets_out_of_order",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of game packets received out of order from client to server in this session"
+  },
+  {
+    "name": "server_to_client_packets_out_of_order",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of game packets received out of order from server to client in this session"
+  },
+  {
+    "name": "total_next_envelope_bytes_up",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of envelope bytes sent across network next in the client to server direction for this session"
+  },
+  {
+    "name": "total_next_envelope_bytes_down",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The total number of envelope bytes sent across netwnork next in the server to client direction for this session"
+  },
+  {
+    "name": "duration_on_next",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Total time spent on network next in this session (time accelerated). Seconds"
+  },
+  {
+    "name": "session_duration",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Length of this session in seconds"
+  },
+  {
+    "name": "start_timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "The time when this session started"
+  },
+  {
+    "name": "error",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Error flags to diagnose what's happening with a session. Look up SessionError_* in the codebase for a list of errors. 0 if no error has occurred."
+  },
+  {
+    "name": "reported",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session was reported by the player"
+  },
+  {
+    "name": "latency_reduction",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next to reduce latency"
+  },
+  {
+    "name": "packet_loss_reduction",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next to reduce packet loss"
+  },
+  {
+    "name": "force_next",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next because it was forced to"
+  },
+  {
+    "name": "long_session_update",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded."
+  },
+  {
+    "name": "client_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct."
+  },
+  {
+    "name": "server_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct."
+  },
+  {
+    "name": "veto",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the routing logic decided that this session should no longer be accelerated for some reason."
+  },
+  {
+    "name": "disabled",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next."
+  },
+  {
+    "name": "not_selected",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration."
+  },
+  {
+    "name": "a",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "This session was part of an AB test, and is in the A group."
+  },
+  {
+    "name": "b",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "This session was part of an AB test, and is in the B group."
+  },
+  {
+    "name": "latency_worse",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we made latency worse."
+  },
+  {
+    "name": "location_veto",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we could not locate the player, eg. lat long is at null island (0,0)."
+  },
+  {
+    "name": "mispredict",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
+  },
+  {
+    "name": "lack_of_diversity",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
+  }
+
+
 
 [Back to main documentation](../README.md)
