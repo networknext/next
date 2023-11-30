@@ -12,7 +12,7 @@ Let's keep them all organized with a clear naming convention for datacenters and
 
 Each datacenter must be named:
 
-* [seller].[cityname].[number]
+* `[seller].[cityname].[number]`
 
 For example:
 
