@@ -86,116 +86,26 @@ A session summary is written at the end of each session, with the intent that if
 | client_to_server_packets_lost | INT64 | The total number of game packets lost from client to server in this session |
 | server_to_client_packets_lost | INT64 | The total number of game packets lost from server to client in this session |
 | client_to_server_packets_out_of_order | INT64 | The total number of game packets received out of order from client to server in this session |
-| server_to_client_packets_out_of_order | INT64 | The total number of game packets received out of order from server to client in this session |
+| server_to_client_packets_out_of_order | INT64 | The total number of game packets received out of order from server to client in this session | INT64 | The total number of envelope bytes sent across network next in the client to server direction for this session |
+| total_next_envelope_bytes_down | INT64 | The total number of envelope bytes sent across netwnork next in the server to client direction for this session |
+| duration_on_next | INT64 | Total time spent on network next in this session (time accelerated). Seconds |
+| session_duration | INT64 | Length of this session in seconds |
+| start_timestamp | TIMESTAMP | The time when this session started |
+| error | INT64 | Error flags to diagnose what's happening with a session. Look up SessionError_* in the codebase for a list of errors. 0 if no error has occurred. |
+| reported | BOOL | True if this session was reported by the player |
+| latency_reduction | BOOL | True if this session took network next to reduce latency |
+| packet_loss_reduction | BOOL | True if this session took network next to reduce packet loss |
+| force_next | BOOL | True if this session took network next because it was forced to |
+| long_session_update | BOOL | True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded. |
+| client_next_bandwidth_over_limit | BOOL | True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct. |
+| server_next_bandwidth_over_limit | BOOL | True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct. |
+| veto | BOOL | True if the routing logic decided that this session should no longer be accelerated for some reason. |
+| disabled | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
+| not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
+| a | BOOL | This session was part of an AB test, and is in the A group (potentially accelerated) |
+| b | BOOL | This session was part of an AB test, and is in the B group (never accelerated) |
 
-  {
-    "name": "total_next_envelope_bytes_up",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of envelope bytes sent across network next in the client to server direction for this session"
-  },
-  {
-    "name": "total_next_envelope_bytes_down",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of envelope bytes sent across netwnork next in the server to client direction for this session"
-  },
-  {
-    "name": "duration_on_next",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Total time spent on network next in this session (time accelerated). Seconds"
-  },
-  {
-    "name": "session_duration",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Length of this session in seconds"
-  },
-  {
-    "name": "start_timestamp",
-    "type": "TIMESTAMP",
-    "mode": "REQUIRED",
-    "description": "The time when this session started"
-  },
-  {
-    "name": "error",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Error flags to diagnose what's happening with a session. Look up SessionError_* in the codebase for a list of errors. 0 if no error has occurred."
-  },
-  {
-    "name": "reported",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session was reported by the player"
-  },
-  {
-    "name": "latency_reduction",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session took network next to reduce latency"
-  },
-  {
-    "name": "packet_loss_reduction",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session took network next to reduce packet loss"
-  },
-  {
-    "name": "force_next",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session took network next because it was forced to"
-  },
-  {
-    "name": "long_session_update",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded."
-  },
-  {
-    "name": "client_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct."
-  },
-  {
-    "name": "server_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct."
-  },
-  {
-    "name": "veto",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the routing logic decided that this session should no longer be accelerated for some reason."
-  },
-  {
-    "name": "disabled",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next."
-  },
-  {
-    "name": "not_selected",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration."
-  },
-  {
-    "name": "a",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "This session was part of an AB test, and is in the A group."
-  },
-  {
-    "name": "b",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "This session was part of an AB test, and is in the B group."
-  },
+  
   {
     "name": "latency_worse",
     "type": "BOOL",
