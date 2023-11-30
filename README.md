@@ -45,6 +45,7 @@ To use Network Next, your game must have a client/server architecture and use UD
 # Operating Network Next
 
 * [Datacenter and relay naming conventions](docs/datacenter_and_relay_naming_conventions.md)
+* [Network Next Terraform provider](docs/network_next_terraform_provider.md)
 
 ---------------------------------------------------
 
