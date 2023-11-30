@@ -37,6 +37,10 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 * [Portal user guide](docs/portal_user_guide.md)
 
+# Analytics
+
+* [BigQuery table schemas](docs/bigquery_table_schemas.md)
+  
 # Operating Network Next
 
 * [Datacenter and relay naming conventions](docs/datacenter_and_relay_naming_conventions.md)
@@ -52,8 +56,3 @@ _Work in progress below here..._
 * [Operator guide to Akamai relays](docs/operator_guide_to_akamai_relays.md)
 * [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
 * [How to add support for more sellers](docs/how_to_add_support_for_more_sellers.md)
-
-# Analytics
-
-* [BigQuery table schemas](docs/bigquery_table_schemas.md)
-  
