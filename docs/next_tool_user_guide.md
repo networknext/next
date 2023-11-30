@@ -142,7 +142,9 @@ Sellers:
 │ Akamai │ 2  │
 │ Amazon │ 3  │
 └────────┴────┘
+
 etc...
+
 ```
 
 ## next commit
