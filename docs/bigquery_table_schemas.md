@@ -219,8 +219,15 @@ Updated once per-second with each route matrix updated. The route matrix is the 
 
 ## Relay to Relay Ping
 
-This data is not uploaded by default because at 1000 relays the amount of entries uploaded is ~1 million per-second. However, in smaller builds or dev the system can be modified to upload this data, which provides good visibility into intra-relay performance that you analyze via bigquery data.
+This data is not uploaded by default because at 1000 relays the number of rows inserted is ~1 million per-second. However, in smaller relay fleets or dev the system can be modified to upload this data, which provides good visibility into intra-relay performance that you can analyze via bigquery data.
 
-...
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the relay ping occurred |
+| source_relay_id | INT64 | The id of the source relay |
+| destination_relay_id | INT64 | The id of the destination relay |
+| rtt | INT64 | Round trip latency between the two relays (milliseconds) |
+| jitter | INT64 | Time variance in latency between the two relays (milliseconds) |
+| packet_loss | FLOAT64 | The packet loss between the two relays (%) |
 
 [Back to main documentation](../README.md)
