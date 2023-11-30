@@ -167,3 +167,195 @@ gaffer@macbook next % next relays
 └──────────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────┘
 
 ```
+
+## next ssh [relay_name]
+
+SSH into a relay by name. For example:
+
+`next relay google.london.1`
+
+## next logs [relay_name]
+
+View the logs for a relay. Equivalent to SSH'ing into the relay and running `sudo journalctl -fu relay`
+
+Example:
+
+`next logs google.london.1`
+
+## next setup <relay_pattern>
+
+Loads the relay software onto a relay after it has been setup by terraform.
+
+This will run only once. If you try to setup a relay a second time, it will just ignore you.
+
+You can pass in a pattern, so:
+
+`next setup google`
+
+will call setup on all relays with a name containing the string 'google'.
+
+You can also setup only a single relay:
+
+`next setup google.london.1`
+
+Or be lazy and call setup across all relays, it will SSH in and then skip any relays that have already been setup:
+
+`next setup`
+
+## next start <relay_pattern>
+
+Starts the service on a relay. This is equivalent to SSH'ing in and calling `sudo systemctl start relay`
+
+Examples:
+
+`next start google`
+
+Start all google relays. If they are already started, do nothing.
+
+`next start google.london.1`
+
+Start a specific relay only.
+
+`next start`
+
+Start all relays.
+
+## next stop <relay_pattern>
+
+Stops the relay service. Equivalent to SSH'ing into the relay and calling `sudo systemctl stop relay`
+
+Accepts a pattern, which will be matched against the relay name. Omitting the pattern will stop all relays.
+
+`next stop google`
+
+Stops all google relays.
+
+`next stop google.london.1`
+
+Stops only the google.london.1 relay (or any relays matching that string... eg. a/b/c...)
+
+`next stop`
+
+Stops all relays.
+
+## next load [version] <pattern>
+
+Load a specific relay version onto a relay.
+
+The name is equivalent to the name of the relay binary in google cloud storage.
+
+For example:
+
+`next load relay-debug-1.0.0 google.london.1`
+
+Would load the debug relay version 1.0.0 onto the relay 'london.google.1'
+
+`next load relay-release-1.0.0`
+
+Would load the release relay version 1.0.0 onto _all_ relays.
+
+If the version is different from the current relay version on a relay, that relay is cleanly stopped (giving time for sessions to move to another relay), before the new relay binary is loaded and restarted.
+
+If the version is the same as the current relay version installed on the machine, no action is taken.
+
+## next upgrade <relay_pattern>
+
+Upgrades system software on the relay including security patches. Equivalent to SSH'ing into the relay and running `sudo apt update && sudo apt upgrade -y`
+
+Example:
+
+`next upgrade`
+
+Upgrades all relays. You might need to reboot some relays afterwards for parts of the upgrade to take effect.
+
+## next reboot <relay_pattern>
+
+Reboots the relay! Equivalent to SSH'ing into the relay, stopping the relay service and then calling `sudo reboot`.
+
+`sudo reboot google`
+
+Reboots all google relays.
+
+`sudo reboot`
+
+Reboots _all_ relays.
+
+## next cost
+
+Downloads the cost matrix from the currently selected environment and saves it to cost.bin. 
+
+Also writes out cost.html (which you can open, to visualize the current cost matrix).
+
+The cost matrix is the scalar cost (in milliseconds ping RTT time) between each relay in your relay fleet.
+
+## next optimize
+
+Runs the route optimization algorithm over the cost matrix in cost.bin and generates optimize.bin
+
+## next analyze
+
+Analyzes the contents of the local optimize.bin and prints out information about the route matrix
+
+```console
+gaffer@macbook next % next analyze
+
+RTT Improvement
+
+    None: 0.0%
+    0-5ms: 100.0%
+    5-10ms: 0.0%
+    10-15ms: 0.0%
+    15-20ms: 0.0%
+    20-25ms: 0.0%
+    25-30ms: 0.0%
+    30-35ms: 0.0%
+    35-40ms: 0.0%
+    40-45ms: 0.0%
+    45-50ms: 0.0%
+    50ms+: 0.0%
+
+Route Summary:
+
+    32 relays
+    362 total routes
+    3.1 routes per-relay pair on average
+    2.9 relays per-route on average
+    0.0% of relay pairs have only one route
+    0.0% of relay pairs have no direct route
+    0.0% of relay pairs have no route
+```
+
+## next routes [src] [dest]
+
+Prints out the set of routes between two relays in the route matrix in optimize.bin, make sure you have called `next cost && next optimize` prior.
+
+Example:
+
+```console
+gaffer@macbook next % next routes google.iowa.1 amazon.virginia.1
+
+routes from google.iowa.1 -> amazon.virginia.1:
+
+ + 27: google.iowa.1 - google.virginia.3 - amazon.virginia.1
+ + 27: google.iowa.1 - google.virginia.2 - amazon.virginia.1
+ + 27: google.iowa.1 - google.virginia.1 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.6 - google.virginia.3 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.6 - google.virginia.2 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.6 - google.virginia.1 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.6 - google.iowa.3 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.3 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.2 - google.virginia.3 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.2 - google.virginia.2 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.2 - google.virginia.1 - amazon.virginia.1
+ + 27: google.iowa.1 - google.iowa.2 - google.iowa.3 - amazon.virginia.1
+ + 28: google.iowa.1 - google.ohio.1 - amazon.virginia.1
+ + 28: google.iowa.1 - google.iowa.6 - google.ohio.1 - amazon.virginia.1
+ + 28: google.iowa.1 - google.iowa.2 - google.ohio.1 - amazon.virginia.1
+ + 29: google.iowa.1 - google.ohio.2 - amazon.virginia.1
+```
+
+Each of the routes listed above have lower latency than directly sending packets between google.iowa.1 and amazon.virginia.1 IP addresses. Crazy huh?!
+
+
+
+
