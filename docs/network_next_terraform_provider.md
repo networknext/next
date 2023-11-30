@@ -4,7 +4,7 @@
 
 # Network Next Terraform provider
 
-Network Next is configured via a Terraform provider. This provider talks with your REST API running in your environment and mutates and queries the contents of your Postgres SQL database for that environment.
+Network Next is configured via a Terraform provider. This provider talks with your REST API running in your environment to query and mutate the contents of the Postgres SQL database that configures Network Next.
 
 After you make changes with terraform, always remember to _commit_ your changes to the backend runtime:
 
@@ -14,6 +14,8 @@ cd ~/next
 next database
 next commit
 ```
+
+This extracts the configuration data defined in Postgres and _commits_ it to the backend runtime. This way the backend operates entirely independently from Postgres.
 
 You can see examples of the Network Next Terraform provider in action in the following files:
 
