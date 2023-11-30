@@ -111,7 +111,33 @@ A session summary is written at the end of each session, with the intent that if
 
 ## Server Init
 
+Server init entries are added once when the server first connects with the Network Next backend. They are intended to let you quickly look up the datacenter name for servers, which is not included in the regular update.
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the server init occurred |
+| sdk_version_major | INT64 | The major SDK version number on the server |
+| sdk_version_minor | INT64 | The minor SDK version number on the server |
+| sdk_version_patch | INT64 | The patch SDK version number on the server |
+| buyer_id | INT64 | The buyer this server belongs to |
+| datacenter_id | INT64 | The datacenter this server is in |
+| datacenter_name | STRING | The name of the datacenter, for example: 'google.iowa.1' |
+| server_address | STRING | The address and port of the server, for example: '123.254.10.5:40000' |
+
 ## Server Update
+
+This entry is updated once every 10 seconds while a server is running. The only value that changes is the number of sessions connected to the server, which you can use to track server utilization.
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the server init occurred |
+| sdk_version_major | INT64 | The major SDK version number on the server |
+| sdk_version_minor | INT64 | The minor SDK version number on the server |
+| sdk_version_patch | INT64 | The patch SDK version number on the server |
+| buyer_id | INT64 | The buyer this server belongs to |
+| datacenter_id | INT64 | The datacenter this server is in |
+| server_address | STRING | The address and port of the server, for example: '123.254.10.5:40000' |
+| num_sessions | INT64 | The number of client sessions currently connected to the server |
 
 ## Relay Update
 
