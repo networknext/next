@@ -31,7 +31,7 @@ When chosing a city name, prefer a cityname as already used for existing relays.
 
 Relays must include the datacenter name, followed by a,b,c etc. for each relay in that datacenter.
 
-* [datacenter].[a|b|c...]
+* `[datacenter].[a|b|c...]`
 
 For example:
 
