@@ -61,7 +61,7 @@ Session updates contain network performance data once every 10 seconds for a ses
 | mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
-## 2. Session Summary
+## Session Summary
 
 A session summary is written at the end of each session, with the intent that if you want per-session data you can query it here, instead of needing to process all the 10 second slices belonging to that session to get the data you want.
 
@@ -109,16 +109,16 @@ A session summary is written at the end of each session, with the intent that if
 | mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
-## Server init
+## Server Init
 
-## Server update
+## Server Update
 
-## Relay update
+## Relay Update
 
-## Near relay ping
+## Near Relay Ping
 
-## Relay to relay ping
+## Relay to Relay Ping
 
-## Route matrix update
+## Route Matrix update
 
 [Back to main documentation](../README.md)
