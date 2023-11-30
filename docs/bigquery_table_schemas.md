@@ -12,11 +12,227 @@ At the end of each session a summary data entry is written, which makes it faste
 
 There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
 
-Schemas for all of this data are described below.
+Schemas for all this data are described below.
 
 ## 1. Session Update
 
-...
+Session update entries contain performance data once every 10 seconds for a session. This is the primary network performance data, including everything shown in the portal for a session and much more.
+
+| Field Name | Type | Description |
+| ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the session update occurred |
+| session_id | INT64 | Unique identifier for this session |
+| slice_number | INT64 | Slices are 10 second periods starting from slice number 0 at the start of the session |
+| real_packet_loss | FLOAT64 | Packet loss between the client and the server measured from game packets (%) |
+| real_jitter | FLOAT64 | Jitter between the client and the server measured from game packets (milliseconds) |
+  
+  
+  
+  
+  {
+    "name": "real_jitter",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": ""
+  },
+  {
+    "name": "real_out_of_order",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Percentage of packets that arrive out of order between the client and the server (%)"
+  },
+  {
+    "name": "session_events",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Custom set of 64bit event flags. Optional. NULL if no flags are set"
+  },
+  {
+    "name": "internal_events",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Internal SDK event flags. Optional. NULL if no flags are set"
+  },
+  {
+    "name": "direct_rtt",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always. Ignore. Not known yet"
+  },
+  {
+    "name": "direct_jitter",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Jitter between client and server as measured by direct pings (unaccelerated path). Milliseconds"
+  },
+  {
+    "name": "direct_packet_loss",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Packet loss between client and server as measured by direct pings (unaccelerated path). Percent"
+  },
+  {
+    "name": "direct_kbps_up",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
+  },
+  {
+    "name": "direct_kbps_down",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
+  },
+  {
+    "name": "next",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this slice is being accelerated over network next"
+  },
+  {
+    "name": "next_rtt",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Latency between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next"
+  },
+  {
+    "name": "next_jitter",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Jitter between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next"
+  },
+  {
+    "name": "next_packet_loss",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Packet loss between client and server as measured by next pings (accelerated path). Percent. NULL if not on network next"
+  },
+  {
+    "name": "next_kbps_up",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth in the client to server direction along the next path (accelerated). Kilobits per-second"
+  },
+  {
+    "name": "next_kbps_down",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth in the server to client direction along the next path (accelerated). Kilobits per-second"
+  },
+  {
+    "name": "next_predicted_rtt",
+    "type": "FLOAT64",
+    "mode": "NULLABLE",
+    "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next"
+  },
+  {
+    "name": "next_route_relays",
+    "type": "INT64",
+    "mode": "REPEATED",
+    "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
+  },
+  {
+    "name": "fallback_to_direct",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the SDK has encountered a fatal error and cannot continue acceleration. Typically this only happens when the system is misconfigured or extremely overloaded."
+  },
+  {
+    "name": "reported",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session was reported by the player"
+  },
+  {
+    "name": "latency_reduction",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next this slice to reduce latency"
+  },
+  {
+    "name": "packet_loss_reduction",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next this slice to reduce packet loss"
+  },
+  {
+    "name": "force_next",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if this session took network next this slice because it was forced to"
+  },
+  {
+    "name": "long_session_update",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded."
+  },
+  {
+    "name": "client_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct."
+  },
+  {
+    "name": "server_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the server to client next bandwidth went over the envelope limit this slice and was sent over direct."
+  },
+  {
+    "name": "veto",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the routing logic decided that this session should no longer be accelerated for some reason."
+  },
+  {
+    "name": "disabled",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next."
+  },
+  {
+    "name": "not_selected",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration."
+  },
+  {
+    "name": "a",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "This session was part of an AB test, and is in the A group."
+  },
+  {
+    "name": "b",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "This session was part of an AB test, and is in the B group."
+  },
+  {
+    "name": "latency_worse",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we made latency worse."
+  },
+  {
+    "name": "location_veto",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we could not locate the player, eg. lat long is at null island (0,0)."
+  },
+  {
+    "name": "mispredict",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
+  },
+  {
+    "name": "lack_of_diversity",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
+  }
 
 ## 2. Session Summary
 
