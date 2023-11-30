@@ -100,7 +100,7 @@ A session summary is written at the end of each session, with the intent that if
 | client_next_bandwidth_over_limit | BOOL | True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct. |
 | server_next_bandwidth_over_limit | BOOL | True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct. |
 | veto | BOOL | True if the routing logic decided that this session should no longer be accelerated for some reason. |
-| disabled | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
+| disabled | BOOL | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
 | not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
 | a | BOOL | This session was part of an AB test, and is in the A group (potentially accelerated) |
 | b | BOOL | This session was part of an AB test, and is in the B group (never accelerated) |
