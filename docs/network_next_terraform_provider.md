@@ -6,7 +6,7 @@
 
 Network Next is configured via a Terraform provider. This provider talks with your REST API running in your environment and mutates and queries the contents of your Postgres SQL database for that environment.
 
-After you make changes with terraforrm, always remember to commit your changes to the backend runtime:
+After you make changes with terraform, always remember to _commit_ your changes to the backend runtime:
 
 ```console
 (terraform changes)
