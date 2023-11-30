@@ -15,7 +15,7 @@ next database
 next commit
 ```
 
-This extracts the configuration data defined in Postgres and _commits_ it to the backend runtime. This way the backend operates entirely independently from Postgres.
+This extracts the configuration data defined in Postgres and _commits_ it to the backend runtime. This way the essential runtime backend that plans and executes player routes operates entirely independently from Postgres, and continues to function even if Postgres is down.
 
 You can see examples of the Network Next Terraform provider in action in the following files:
 
