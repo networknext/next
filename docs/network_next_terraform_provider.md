@@ -17,6 +17,11 @@ next commit
 
 This downloads the Postgres database contents into database.bin and then commits that database binary to your Network Next runtime. This way the backend runtime has no dependency on Postgres directly and can continue to work even if Postgres is down.
 
-You can read the Network Next Terrafrom docs here: https://registry.terraform.io/providers/networknext/networknext/latest/docs
+You can see examples of the Network Next Terraform provider in use in the following files:
+
+* `~/next/terraform/dev/relays/main.tf`
+* `~/next/terraform/prod/relays/main.tf`
+
+And you can read the Network Next Terrafrom provider docs here: https://registry.terraform.io/providers/networknext/networknext/latest/docs
 
 [Back to main documentation](../README.md)
