@@ -166,6 +166,24 @@ This data is updated once every 10 seconds per-relay. It is useful for tracking 
 
 ## Near Relay Ping
 
+These entries are written to bigquery at the start of each session when near relays are pinged by the client.
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the near relay ping occurred |
+| buyer_id | INT64 | The buyer this player belongs to |
+| session_id | INT64 | Unique id for the session |
+| user_hash | INT64 | Pseudonymized hash of a user id passed up from the SDK |
+| latitude | FLOAT64 | Approximate latitude of the player from ip2location |
+| longitude | FLOAT64 | Approximate longitude of the player from ip2location |
+| client_address | STRING | Client address and port number |
+| connection_type | INT64 | Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular |
+| platform_type | INT64 | Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5 |
+| near_relay_id | INT64 | Relay id being pinged by the client |
+| near_relay_rtt | INT64 | Round trip time ping between the client and the relay (milliseconds) |
+| near_relay_jitter | INT64 | Jitter between the client and the relay (milliseconds) |
+| near_relay_packet_loss | INT64 | FLOAT64 | Packet loss between the client and the relay (%). Generally inaccurate and higher than true value because near relay pings are sent infrequently. |
+
 ## Relay to Relay Ping
 
 ## Route Matrix update
