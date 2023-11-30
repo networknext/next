@@ -354,7 +354,7 @@ routes from google.iowa.1 -> amazon.virginia.1:
  + 29: google.iowa.1 - google.ohio.2 - amazon.virginia.1
 ```
 
-Each of the routes listed above have lower latency than directly sending packets between google.iowa.1 and amazon.virginia.1 IP addresses. Crazy huh?!
+Each of the routes listed above have lower latency than directly sending packets directly between google.iowa.1 and amazon.virginia.1 IP addresses. Crazy huh?!
 
 
 
