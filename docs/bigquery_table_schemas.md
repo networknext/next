@@ -33,43 +33,13 @@ Session update entries contain performance data once every 10 seconds for a sess
 | direct_packet_loss | FLOAT64 | Packet loss between client and server as measured by direct pings (unaccelerated path). Percent. Generally this is inaccurate and higher that real value, because direct pings are sent infrequently, any packet loss results in an outsized % of packet loss in a 10 second period. |
 | direct_kbps_up | INT64 | Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second |
 | direct_kbps_up | INT64 | Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second |
-  
-  {
-    "name": "next",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this slice is being accelerated over network next"
-  },
-  {
-    "name": "next_rtt",
-    "type": "FLOAT64",
-    "mode": "NULLABLE",
-    "description": "Latency between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next"
-  },
-  {
-    "name": "next_jitter",
-    "type": "FLOAT64",
-    "mode": "NULLABLE",
-    "description": "Jitter between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next"
-  },
-  {
-    "name": "next_packet_loss",
-    "type": "FLOAT64",
-    "mode": "NULLABLE",
-    "description": "Packet loss between client and server as measured by next pings (accelerated path). Percent. NULL if not on network next"
-  },
-  {
-    "name": "next_kbps_up",
-    "type": "INT64",
-    "mode": "NULLABLE",
-    "description": "Bandwidth in the client to server direction along the next path (accelerated). Kilobits per-second"
-  },
-  {
-    "name": "next_kbps_down",
-    "type": "INT64",
-    "mode": "NULLABLE",
-    "description": "Bandwidth in the server to client direction along the next path (accelerated). Kilobits per-second"
-  },
+| next | BOOL | True if this slice is being accelerated over network next |
+| next_rtt | FLOAT64 | Latency between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next |
+| next_jitter | FLOAT64 | Jitter between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next |
+| next_packet_loss | FLOAT64 | Packet loss between client and server as measured by next pings (accelerated path). Percent. NULL if not on network next. Generally inaccurate and higher than real packet loss due to infrequent sending of ping packets |
+| next_kbps_up | FLOAT64 | Bandwidth in the client to server direction along the next path (accelerated). Kilobits per-second |
+| next_kbps_down | FLOAT64 | Bandwidth in the server to client direction along the next path (accelerated). Kilobits per-second |
+
   {
     "name": "next_predicted_rtt",
     "type": "FLOAT64",
