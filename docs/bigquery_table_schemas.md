@@ -6,7 +6,7 @@
 
 Network Next writes data to bigquery so you can run data science and analytics queries.
  
-For example, once every 10 seconds network performance data such as accelerated and non-accelerated latency (RTT), jitter, packet loss, bandwidth usage and out order packets for sessions are written to bigquery. 
+For example, once every 10 seconds network performance data such as accelerated and non-accelerated latency (RTT), jitter, packet loss, bandwidth usage and out order packets for every session is written to bigquery. 
 
 At the end of each session a summary data entry is written, which makes it much faster and cheaper to query data on a per-session basis.
 
