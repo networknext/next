@@ -92,3 +92,78 @@ gaffer@macbook next % next env
  + Raspberry Backend URL = https://raspberry-dev.virtualgo.net
 ```
 
+## next ping
+
+Pings the currently selected environment and prints a pong response. Use this to verify that the REST API is up and running for the current environment, and at which tag.
+
+Example:
+
+```console
+gaffer@macbook next % next ping
+
+pong [dev-674]
+
+```
+
+## next database
+
+Downloads the contents of the postgres database for the currently selected environment and saves it to database.bin
+
+## next commit
+
+Commits the local database.bin to the currently selected environment runtime.
+
+Typical usage is:
+
+```console
+next database
+next commit
+```
+
+... after any changes have been made to the postgres database via terraform.
+
+## next relays
+
+Displays the set of active relays in the current environment:
+
+```console
+gaffer@macbook next % next relays
+
+┌──────────────────────┬───────────────────────┬──────────────────┬────────┬────────┬──────────┬─────────┐
+│ Name                 │ PublicAddress         │ Id               │ Status │ Uptime │ Sessions │ Version │
+├──────────────────────┼───────────────────────┼──────────────────┼────────┼────────┼──────────┼─────────┤
+│ google.iowa.2        │ 34.27.134.240:40000   │ 4d1e4c14ead5399f │ online │ 2d     │ 87       │ 1.0.0   │
+│ google.iowa.3        │ 34.67.226.145:40000   │ eeb892f0e5987cab │ online │ 2d     │ 77       │ 1.0.0   │
+│ google.iowa.1        │ 34.70.248.202:40000   │ 415a4b04c11869d3 │ online │ 2d     │ 73       │ 1.0.0   │
+│ amazon.virginia.2    │ 52.91.235.169:40000   │ 58fc285691a56bdc │ online │ 2d     │ 59       │ 1.0.0   │
+│ amazon.virginia.1    │ 3.219.234.25:40000    │ cb63819eeb3c55b4 │ online │ 2d     │ 55       │ 1.0.0   │
+│ google.virginia.1    │ 34.48.60.13:40000     │ 190eb911aab75ecc │ online │ 2d     │ 39       │ 1.0.0   │
+│ google.virginia.2    │ 34.86.70.97:40000     │ 829e7cc3362f7fed │ online │ 2d     │ 38       │ 1.0.0   │
+│ google.virginia.3    │ 34.86.226.87:40000    │ e6fdc3f2691ae06b │ online │ 2d     │ 26       │ 1.0.0   │
+│ google.ohio.1        │ 34.162.208.240:40000  │ d4704315a3524a49 │ online │ 2d     │ 22       │ 1.0.0   │
+│ google.iowa.6        │ 104.197.125.59:40000  │ 16dc95a70f52f5d  │ online │ 2d     │ 13       │ 1.0.0   │
+│ amazon.ohio.1        │ 18.227.209.61:40000   │ 80edbdd686d730e9 │ online │ 2d     │ 11       │ 1.0.0   │
+│ amazon.ohio.2        │ 3.12.111.230:40000    │ f5114d3661b34651 │ online │ 2d     │ 7        │ 1.0.0   │
+│ akamai.newyork       │ 45.79.181.218:40000   │ be6dbe8727a1edf9 │ online │ 2d     │ 6        │ 1.0.0   │
+│ google.ohio.2        │ 34.162.226.25:40000   │ 419a50f5f7e1c9a0 │ online │ 2d     │ 5        │ 1.0.0   │
+│ google.ohio.3        │ 34.162.227.168:40000  │ 257d19a147ec3d1  │ online │ 2d     │ 4        │ 1.0.0   │
+│ akamai.frankfurt     │ 172.105.66.56:40000   │ 1d9ec868ccbfa402 │ online │ 2d     │ 0        │ 1.0.0   │
+│ akamai.london        │ 213.168.248.111:40000 │ 27e4be28dc29e16f │ online │ 2d     │ 0        │ 1.0.0   │
+│ amazon.stockholm.1   │ 16.171.55.52:40000    │ 3c8715c652e415a4 │ online │ 2d     │ 0        │ 1.0.0   │
+│ amazon.stockholm.2   │ 16.171.230.198:40000  │ 53f5cf9f09b92256 │ online │ 2d     │ 0        │ 1.0.0   │
+│ amazon.stockholm.3   │ 16.16.107.28:40000    │ 928894bc0d909d9f │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.finland.1     │ 34.88.17.12:40000     │ 9c646938f1aab47d │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.finland.2     │ 35.228.232.136:40000  │ 44ca7d086dd5e8a8 │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.finland.3     │ 34.88.20.86:40000     │ f3447a6ba05317ba │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.frankfurt.1   │ 34.159.182.25:40000   │ da0d00aca0b7bc17 │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.frankfurt.2   │ 35.246.166.104:40000  │ 4da037d5c86df659 │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.frankfurt.3   │ 35.198.159.40:40000   │ f9965823aa737ac2 │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.london.1      │ 34.105.217.183:40000  │ 8bcbf1a45c56752  │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.london.2      │ 34.39.5.91:40000      │ bf2db1aeab1c21e9 │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.london.3      │ 35.246.125.202:40000  │ 5b686bad4600e94f │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.netherlands.1 │ 34.141.152.221:40000  │ 9a59e55a442d55   │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.netherlands.2 │ 35.234.166.43:40000   │ 5d35faefa1beffb0 │ online │ 2d     │ 0        │ 1.0.0   │
+│ google.netherlands.3 │ 35.204.240.65:40000   │ a88bfe2e3ccae516 │ online │ 2d     │ 0        │ 1.0.0   │
+└──────────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────┘
+
+```
