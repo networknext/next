@@ -184,8 +184,43 @@ These entries are written to bigquery at the start of each session when near rel
 | near_relay_jitter | INT64 | Jitter between the client and the relay (milliseconds) |
 | near_relay_packet_loss | INT64 | FLOAT64 | Packet loss between the client and the relay (%). Generally inaccurate and higher than true value because near relay pings are sent infrequently. |
 
+## Route Matrix update
+
+Updated once per-second with each route matrix updated. The route matrix is the core data structure used for route planning across relays. You can use this data to track the results of route optimization over time.
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the route matrix update occurred |
+| cost_matrix_size | INT64 | The size of the cost matrix in bytes |
+| route_matrix_size | INT64 | The size of the route matrix in bytes |
+| optimize_time | INT64 | Time it took produce this route matrix from the cost matrix (milliseconds) |
+| num_relays | INT64 | The number of relays in the route matrix |
+| num_active_relays | INT64 | The number of active relays in the relay manager |
+| num_dest_relays | INT64 | The number of destination relays in the route matrix |
+| num_datacenters | INT64 | The number of datacenters in the route matrix |
+| total_routes | INT64 | The total number of routes in the route matrix |
+| average_num_routes | FLOAT64 | The average number of routes between any two relays |
+| average_route_length | FLOAT64 | The average number of relays per-route |
+| no_route_percent | FLOAT64 | The percent of relay pairs that have no route between them |
+| one_route_percent | FLOAT64 | The percent of relay pairs with only one route between them |
+| no_direct_route_percent | FLOAT64 | The percent of relay pairs with no direct route between them |
+| rtt_bucket_no_improvement | FLOAT64 | The percent of relay pairs with no improvement |
+| rtt_bucket_0_5ms | FLOAT64 | The percent of relay pairs with 0-5ms reduction in latency |
+| rtt_bucket_5_10ms | FLOAT64 | The percent of relay pairs with 5-10ms reduction in latency |
+| rtt_bucket_10_15ms | FLOAT64 | The percent of relay pairs with 10-15ms reduction in latency |
+| rtt_bucket_15_20ms | FLOAT64 | The percent of relay pairs with 15-20ms reduction in latency |
+| rtt_bucket_20_25ms | FLOAT64 | The percent of relay pairs with 20-25ms reduction in latency |
+| rtt_bucket_25_30ms | FLOAT64 | The percent of relay pairs with 25-30ms reduction in latency |
+| rtt_bucket_30_35ms | FLOAT64 | The percent of relay pairs with 30-35ms reduction in latency |
+| rtt_bucket_35_40ms | FLOAT64 | The percent of relay pairs with 35-40ms reduction in latency |
+| rtt_bucket_40_45ms | FLOAT64 | The percent of relay pairs with 40-45ms reduction in latency |
+| rtt_bucket_45_50ms | FLOAT64 | The percent of relay pairs with 45-50ms reduction in latency |
+| rtt_bucket_50ms_plus | FLOAT64 | The percent of relay pairs with 50ms+ reduction in latency |
+
 ## Relay to Relay Ping
 
-## Route Matrix update
+This data is not uploaded by default because at 1000 relays the amount of entries uploaded is ~1 million per-second. However, in smaller builds or dev the system can be modified to upload this data, which provides good visibility into intra-relay performance that you analyze via bigquery data.
+
+...
 
 [Back to main documentation](../README.md)
