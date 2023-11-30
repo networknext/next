@@ -10,7 +10,7 @@ For example, once every 10 seconds network performance data such as accelerated 
 
 At the end of each session a summary data entry is written, which makes it faster generally to query data on a per-session bases, than on a per-"slice" basis (a 10 second period of time within a session).
 
-There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each relay in your fleet is sent so you can track its performance and uptime.
+There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
 
 Schemas for all of this data are described below.
 
