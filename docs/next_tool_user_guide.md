@@ -71,5 +71,24 @@ Example:
 
 `next select prod`
 
-## 
+## next env
+
+Prints out information about the currently selected environment.
+
+Example:
+
+```console
+gaffer@macbook next % next env
+
+[dev]
+
+ + API URL = https://api-dev.virtualgo.net
+ + Portal API Key = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6ZmFsc2UsInBvcnRhbCI6dHJ1ZSwiaXNzIjoibmV4dCBrZXlnZW4iLCJpYXQiOjE3MDExNTc5NjN9.hnXL5hXnytNUBvGI_xkxiuPYmAzwiPYR_usBQ-xrm90
+ + VPN Address = 45.79.157.168
+ + SSH Key File = ~/secrets/next_ssh
+ + Relay Backend URL = https://relay-dev.virtualgo.net
+ + Relay Backend Public Key = bKjCNngZ1H+XJppN6MymZ9UoTgewgOsLeAMAOiiWuws=
+ + Relay Artifacts Bucket Name = helsinki_network_next_relay_artifacts
+ + Raspberry Backend URL = https://raspberry-dev.virtualgo.net
+```
 
