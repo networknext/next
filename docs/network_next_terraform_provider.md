@@ -6,6 +6,13 @@
 
 Network Next is configured via a Terraform provider. This provider talks with your REST API running in your environment to query and mutate the contents of the Postgres SQL database that configures Network Next.
 
+You can see examples of the Network Next Terraform provider in action in the following files:
+
+* `~/next/terraform/dev/relays/main.tf`
+* `~/next/terraform/prod/relays/main.tf`
+
+And you can read the Network Next Terrafrom provider docs here: https://registry.terraform.io/providers/networknext/networknext/latest/docs
+
 After you make changes with terraform, always remember to _commit_ your changes to the backend runtime:
 
 ```console
@@ -16,12 +23,5 @@ next commit
 ```
 
 This extracts the configuration data defined in Postgres and _commits_ it to the backend runtime. This way the essential runtime backend that plans and executes player routes operates entirely independently from Postgres, and continues to function even if Postgres is down.
-
-You can see examples of the Network Next Terraform provider in action in the following files:
-
-* `~/next/terraform/dev/relays/main.tf`
-* `~/next/terraform/prod/relays/main.tf`
-
-And you can read the Network Next Terrafrom provider docs here: https://registry.terraform.io/providers/networknext/networknext/latest/docs
 
 [Back to main documentation](../README.md)
