@@ -21,4 +21,4 @@ You can read the Network Next Terrafrom docs here:
 
 https://registry.terraform.io/providers/networknext/networknext/latest/docs
 
-Return to [main documentation](../README.md)
+[Back to main documentation](../README.md)
