@@ -8,7 +8,7 @@ Network Next writes data to bigquery by default so you can run data science and 
  
 For example, once every 10 seconds network performance data such as accelerated and non-accelerated latency (RTT), jitter, packet loss, bandwidth usage and out order packets for sessions are written to bigquery. 
 
-At the end of each session a summary data entry is written, which makes it faster generally to query data on a per-session bases, than on a per-"slice" basis (a 10 second period of time within a session).
+At the end of each session a summary data entry is written, which makes it much faster and cheaper to query data on a per-session basis.
 
 There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
 
@@ -39,73 +39,20 @@ Session update entries contain performance data once every 10 seconds for a sess
 | next_packet_loss | FLOAT64 | Packet loss between client and server as measured by next pings (accelerated path). Percent. NULL if not on network next. Generally inaccurate and higher than real packet loss due to infrequent sending of ping packets |
 | next_kbps_up | FLOAT64 | Bandwidth in the client to server direction along the next path (accelerated). Kilobits per-second |
 | next_kbps_down | FLOAT64 | Bandwidth in the server to client direction along the next path (accelerated). Kilobits per-second |
+| next_predicted_rtt | FLOAT64 | Conservative predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next |
+| next_route_relays | []INT64 | Array of relay ids for the network next path (accelerated). NULL if not on network next |
+| fallback_to_direct | BOOL | True if the SDK has encountered a fatal error and cannot continue acceleration. Typically this only happens when the system is misconfigured or overloaded. |
+| reported | BOOL | True if this session was reported by the player |
+| latency_reduction | BOOL | True if this session took network next this slice to reduce latency |
+| packet_loss_reduction | BOOL | True if this session took network next this slice to reduce packet loss |
+| force_next | BOOL | True if this session took network next this slice because it was forced to |
+| long_session_update | BOOL | True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded. |
+| client_next_bandwidth_over_limit | BOOL | client_next_bandwidth_over_limitTrue if the client to server next bandwidth went over the envelope limit this slice and was sent over direct. |
+| server_next_bandwidth_over_limit | BOOL | True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct. |
+| veto | BOOL | True if the routing logic decided that this session should no longer be accelerated for some reason. |
 
-  {
-    "name": "next_predicted_rtt",
-    "type": "FLOAT64",
-    "mode": "NULLABLE",
-    "description": "Predicted latency between client and server from the control plane. Milliseconds. NULL if not on network next"
-  },
-  {
-    "name": "next_route_relays",
-    "type": "INT64",
-    "mode": "REPEATED",
-    "description": "Array of relay ids for the network next path (accelerated). NULL if not on network next"
-  },
-  {
-    "name": "fallback_to_direct",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the SDK has encountered a fatal error and cannot continue acceleration. Typically this only happens when the system is misconfigured or extremely overloaded."
-  },
-  {
-    "name": "reported",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session was reported by the player"
-  },
-  {
-    "name": "latency_reduction",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session took network next this slice to reduce latency"
-  },
-  {
-    "name": "packet_loss_reduction",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session took network next this slice to reduce packet loss"
-  },
-  {
-    "name": "force_next",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if this session took network next this slice because it was forced to"
-  },
-  {
-    "name": "long_session_update",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded."
-  },
-  {
-    "name": "client_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct."
-  },
-  {
-    "name": "server_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the server to client next bandwidth went over the envelope limit this slice and was sent over direct."
-  },
-  {
-    "name": "veto",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the routing logic decided that this session should no longer be accelerated for some reason."
-  },
+  
+  
   {
     "name": "disabled",
     "type": "BOOL",
