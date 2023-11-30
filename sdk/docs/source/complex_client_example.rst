@@ -420,8 +420,6 @@ Finally, the client has been extended to print out all the useful stats you can 
 
 	    printf( " + Connection = %s (%d)\n", connection, stats->connection_type );
 
-	    printf( " + Committed = %s\n", stats->committed ? "yes" : "no" );
-
 	    printf( " + Multipath = %s\n", stats->multipath ? "yes" : "no" );
 
 	    printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );

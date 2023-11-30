@@ -335,7 +335,6 @@ void print_client_stats( next_client_t * client )
     if ( !stats->fallback_to_direct )
     {
         printf( "upgraded = %s\n", stats->upgraded ? "true" : "false" );
-        printf( "committed = %s\n", stats->committed ? "true" : "false" );
         printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
         printf( "reported = %s\n", stats->reported ? "true" : "false" );
     }

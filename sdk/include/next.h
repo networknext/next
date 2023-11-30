@@ -332,7 +332,6 @@ struct next_client_stats_t
     int connection_type;
     bool next;
     bool upgraded;
-    bool committed;
     bool multipath;
     bool reported;
     bool fallback_to_direct;
@@ -409,7 +408,6 @@ struct next_server_stats_t
     int platform_id;
     int connection_type;
     bool next;
-    bool committed;
     bool multipath;
     bool reported;
     bool fallback_to_direct;

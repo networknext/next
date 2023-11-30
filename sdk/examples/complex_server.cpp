@@ -379,7 +379,6 @@ void print_server_stats( next_server_t * server, ServerContext * context )
 
         if ( !stats.fallback_to_direct )
         {
-            printf( "committed = %s\n", stats.committed ? "true" : "false" );
             printf( "multipath = %s\n", stats.multipath ? "true" : "false" );
             printf( "reported = %s\n", stats.reported ? "true" : "false" );
         }

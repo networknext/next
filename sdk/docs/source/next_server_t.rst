@@ -29,8 +29,7 @@ Creates an instance of a server, binding a socket to the specified address and p
 	                                    const char * server_address, 
 	                                    const char * bind_address, 
 	                                    const char * datacenter, 
-	                                    void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ),
-	                                    void (*wake_up_callback)( void * context ) );
+	                                    void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 **Parameters:**
 
@@ -43,8 +42,6 @@ Creates an instance of a server, binding a socket to the specified address and p
 	- **datacenter** -- The name of the datacenter that the game server is running in. Please pass in "local" until we work with you to determine the set of datacenters you host servers in.
 
 	- **packet_received_callback** -- Called from the same thread that calls *next_server_update*, whenever a packet is received from a client. Required.
-
-	- **wake_up_callback** -- Optional callback. Pass NULL if not used. Sets a callback function to be called from an internal network next thread when a packet is ready to be received for this server. Intended to let you set an event of your own creation when a packet is ready to receive, making it possible to use Network Next with applications built around traditional select or wait for multiple event style blocking socket loops. Call next_server_update to pump received packets to the packet_received_callback when you wake up on main thread from your event.
 
 **Return value:** 
 
@@ -411,7 +408,6 @@ The server stats struct is defined as follows:
 	    int platform_id;
 	    int connection_type;
 	    bool next;
-	    bool committed;
 	    bool multipath;
 	    bool reported;
 	    bool fallback_to_direct;
@@ -433,8 +429,6 @@ The server stats struct is defined as follows:
 	    uint64_t packets_out_of_order_server_to_client;
 	    float jitter_client_to_server;
 	    float jitter_server_to_client;
-	    int num_tags;
-	    uint64_t tags[NEXT_MAX_TAGS];
 	};
 
 Here is how to query it, and print out various interesting values:
@@ -523,7 +517,6 @@ Here is how to query it, and print out various interesting values:
 
 	if ( !stats.fallback_to_direct )
 	{
-	    printf( "committed = %s\n", stats.committed ? "true" : "false" );
 	    printf( "multipath = %s\n", stats.multipath ? "true" : "false" );
 	    printf( "reported = %s\n", stats.reported ? "true" : "false" );
 	}
@@ -555,27 +548,6 @@ Here is how to query it, and print out various interesting values:
 	    printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats.packets_out_of_order_server_to_client );
 	    printf( "jitter_client_to_server = %f\n", stats.jitter_client_to_server );
 	    printf( "jitter_server_to_client = %f\n", stats.jitter_server_to_client );
-	}
-
-	if ( stats.num_tags > 0 )
-	{
-	    printf( "tags = [" );
-	    for ( int i = 0; i < stats.num_tags; ++i )
-	    {
-	        if ( i != stats.num_tags - 1 )
-	        {
-	            printf( "%" PRIx64 ",", stats.tags[i] );
-	        }
-	        else
-	        {
-	            printf( "%" PRIx64, stats.tags[i] );
-	        }
-	    }
-	    printf( "]\n" );
-	}
-	else
-	{
-	    printf( "tags = [] (0/%d)\n", NEXT_MAX_TAGS );
 	}
 
 next_server_ready

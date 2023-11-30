@@ -25,8 +25,7 @@ Creates an instance of a client, binding a socket to the specified address and p
 
 	next_client_t * next_client_create( void * context, 
 	                                    const char * bind_address, 
-	                                    void (*packet_received_callback)( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ),
-	                                    void (*wake_up_callback)( void * context ) );
+	                                    void (*packet_received_callback)( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ) );
 
 **Parameters:**
 
@@ -35,8 +34,6 @@ Creates an instance of a client, binding a socket to the specified address and p
 	- **bind_address** -- An address string describing the bind address and port to bind to. Typically "0.0.0.0:0" is passed in, which binds to any IPv4 interface and lets the system pick a port. Alternatively, you can bind to a specific port, for example: "0.0.0.0:50000".
 
 	- **packet_received_callback** -- Called from the same thread that calls *next_client_update*, whenever a packet is received from the server. Required.
-
-	- **wake_up_callback** -- Optional callback. Pass NULL if not used. Sets a callback function to be called from an internal network next thread when a packet is ready to be received for this client. Intended to let you set an event of your own creation when a packet is ready to receive, making it possible to use Network Next with applications built around traditional select or wait for multiple event style blocking socket loops. Call next_client_update to pump received packets to the packet_received_callback when you wake up on your main thread from your event.
 
 **Return value:** 
 
@@ -411,7 +408,6 @@ The client stats struct is defined as follows:
 	    int connection_type;
 	    bool next;
 	    bool upgraded;
-	    bool committed;
 	    bool multipath;
 	    bool reported;
 	    bool fallback_to_direct;
@@ -541,7 +537,6 @@ Here is how to query it, and print out various interesting values:
 	if ( !stats->fallback_to_direct )
 	{
 	    printf( " + Upgraded = %s\n", stats->upgraded ? "true" : "false" );
-	    printf( " + Committed = %s\n", stats->committed ? "true" : "false" );
 	    printf( " + Multipath = %s\n", stats->multipath ? "true" : "false" );
 	    printf( " + Reported = %s\n", stats->reported ? "true" : "false" );
 	}
