@@ -4,9 +4,9 @@
 
 # Datacenter and relay naming conventions
 
-A full production system has thousands of datacenters and several hundred relays.
+A full production system has thousands of datacenters and hundreds of relays.
 
-Let's keep them all organized with a clear naming convention for datacenters and relays.
+Let's keep them all organized with a clear naming convention for datacenters and relays :)
 
 ## 1. Datacenter naming convention
 
