@@ -124,7 +124,7 @@ next commit
 
 ## next relays
 
-Displays the set of active relays in the current environment:
+Displays the set of relays in the current environment:
 
 ```console
 gaffer@macbook next % next relays
