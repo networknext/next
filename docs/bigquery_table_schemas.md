@@ -63,6 +63,8 @@ Session updates contain network performance data once every 10 seconds for a ses
 
 ## 2. Session Summary
 
+A session summary is written at the end of each session, with the intent that if you want per-session data you can query it here, instead of needing to process all the 10 second slices belonging to that session to get the data you want.
+
 | Field | Type | Description |
 | ------------- | ------------- | ------------- |
 | timestamp | TIMESTAMP | The timestamp when the session summary was generated (at the end of the session). |
@@ -72,86 +74,20 @@ Session updates contain network performance data once every 10 seconds for a ses
 | user_hash | INT64 | Pseudonymized hash of a unique user id passed up from the SDK |
 | latitude | FLOAT64 | Approximate latitude of the player from ip2location |
 | longitude | FLOAT64 | Approximate longitude of the player from ip2location |
-| client_address | FLOAT64 | Approximate longitude of the player from ip2location |
+| client_address | STRING | Client address and port number |
+| server_address | STRING | Server address and port number |
+| connection_type | INT64 | Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular |
+| platform_type | INT64 | Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5 |
+| sdk_version_major | INT64 | The major SDK version on the server |
+| sdk_version_minor | INT64 | The minor SDK version on the server |
+| sdk_version_patch | INT64 | The patch SDK version on the server |
+| client_to_server_packets_sent | INT64 | The total number of game packets sent from client to server in this session |
+| server_to_client_packets_sent | INT64 | The total number of game packets sent from server to client in this session |
+| client_to_server_packets_lost | INT64 | The total number of game packets lost from client to server in this session |
+| server_to_client_packets_lost | INT64 | The total number of game packets lost from server to client in this session |
+| client_to_server_packets_out_of_order | INT64 | The total number of game packets received out of order from client to server in this session |
+| server_to_client_packets_out_of_order | INT64 | The total number of game packets received out of order from server to client in this session |
 
-  {
-    "name": "client_address",
-    "type": "STRING",
-    "mode": "REQUIRED",
-    "description": "Client address and port number"
-  },
-  {
-    "name": "server_address",
-    "type": "STRING",
-    "mode": "REQUIRED",
-    "description": "Server address and port"
-  },
-  {
-    "name": "connection_type",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular"
-  },
-  {
-    "name": "platform_type",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5"
-  },
-  {
-    "name": "sdk_version_major",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The major SDK version on the server"
-  },
-  {
-    "name": "sdk_version_minor",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The minor SDK version on the server"
-  },
-  {
-    "name": "sdk_version_patch",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The patch SDK version on the server"
-  },
-  {
-    "name": "client_to_server_packets_sent",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of game packets sent from client to server in this session"
-  },
-  {
-    "name": "server_to_client_packets_sent",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of game packets sent from server to client in this session"
-  },
-  {
-    "name": "client_to_server_packets_lost",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of game packets lost from client to server in this session"
-  },
-  {
-    "name": "server_to_client_packets_lost",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of game packets lost from server to client in this session"
-  },
-  {
-    "name": "client_to_server_packets_out_of_order",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of game packets received out of order from client to server in this session"
-  },
-  {
-    "name": "server_to_client_packets_out_of_order",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "The total number of game packets received out of order from server to client in this session"
-  },
   {
     "name": "total_next_envelope_bytes_up",
     "type": "INT64",
