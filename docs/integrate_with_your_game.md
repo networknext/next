@@ -56,4 +56,4 @@ The SDK is designed to fall back to unaccelerated behavior when anything goes wr
 
 Congratulations! You have completed integration with your game!
 
-[Go back to main documentation](README.md)
+[Go back to main documentation](../README.md)
