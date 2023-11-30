@@ -126,7 +126,7 @@ Datacenters are named physical locations that relays are attached to. Every rela
 
 You can see the list of all datacenters currently defined in your system by going to the datacenters page:
 
-<img width="1468" alt="image" src="https://github.com/networknext/next/assets/696656/d5ef8b1c-a47f-42ec-a9b8-2853be7521b2">
+<img width="1467" alt="image" src="https://github.com/networknext/next/assets/696656/923d4db3-b204-48b0-82ff-37f9742c1cf4">
 
 ## 7. Buyers page
 
