@@ -25,64 +25,15 @@ Session update entries contain performance data once every 10 seconds for a sess
 | slice_number | INT64 | Slices are 10 second periods starting from slice number 0 at the start of the session |
 | real_packet_loss | FLOAT64 | Packet loss between the client and the server measured from game packets (%) |
 | real_jitter | FLOAT64 | Jitter between the client and the server measured from game packets (milliseconds) |
+| real_out_of_order | FLOAT64 | Percentage of packets that arrive out of order between the client and the server (%) |
+| session_events | INT64 | Custom set of 64bit event flags. Optional. NULL if no flags are set |
+| internal_events | INT64 | Internal SDK event flags. Optional. NULL if no flags are set |
+| direct_rtt | FLOAT64 | Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always because it is not known yet |
+| direct_jitter | FLOAT64 | Jitter between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always because it is not known yet |
+| direct_packet_loss | FLOAT64 | Packet loss between client and server as measured by direct pings (unaccelerated path). Percent. Generally this is inaccurate and higher that real value, because direct pings are sent infrequently, any packet loss results in an outsized % of packet loss in a 10 second period. |
+| direct_kbps_up | INT64 | Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second |
+| direct_kbps_up | INT64 | Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second |
   
-  
-  
-  
-  {
-    "name": "real_jitter",
-    "type": "FLOAT64",
-    "mode": "REQUIRED",
-    "description": ""
-  },
-  {
-    "name": "real_out_of_order",
-    "type": "FLOAT64",
-    "mode": "REQUIRED",
-    "description": "Percentage of packets that arrive out of order between the client and the server (%)"
-  },
-  {
-    "name": "session_events",
-    "type": "INT64",
-    "mode": "NULLABLE",
-    "description": "Custom set of 64bit event flags. Optional. NULL if no flags are set"
-  },
-  {
-    "name": "internal_events",
-    "type": "INT64",
-    "mode": "NULLABLE",
-    "description": "Internal SDK event flags. Optional. NULL if no flags are set"
-  },
-  {
-    "name": "direct_rtt",
-    "type": "FLOAT64",
-    "mode": "REQUIRED",
-    "description": "Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always. Ignore. Not known yet"
-  },
-  {
-    "name": "direct_jitter",
-    "type": "FLOAT64",
-    "mode": "REQUIRED",
-    "description": "Jitter between client and server as measured by direct pings (unaccelerated path). Milliseconds"
-  },
-  {
-    "name": "direct_packet_loss",
-    "type": "FLOAT64",
-    "mode": "REQUIRED",
-    "description": "Packet loss between client and server as measured by direct pings (unaccelerated path). Percent"
-  },
-  {
-    "name": "direct_kbps_up",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
-  },
-  {
-    "name": "direct_kbps_down",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
-  },
   {
     "name": "next",
     "type": "BOOL",
