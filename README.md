@@ -39,7 +39,7 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 # Operating Network Next
 
-* [Relay and datacenter naming conventions](docs/relay_and_datacenter_naming_conventions.md)
+* [Datacenter and relay naming conventions](docs/datacenter_and_relay_naming_conventions.md)
 
 ---------------------------------------------------
 
