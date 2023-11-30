@@ -160,6 +160,6 @@ The admin page shows important graphs to check the health of the system as a who
 8. Total routes (the total number of routes in the route matrix used for route planning. fluctuates)
 9. Optimize time in seconds (if this frequently goes over 1 second, then you need to increase the number of cores on the relay backend!)
 
-That's it! I hope you get good visibility on your player's network experience with the portal. Many customers have found it useful to look up players and confirm whether they are having bad network performance using the portal, and also remember that all the data in the portal and more is written to Bigquery where you can do offline data science and analysis.
+That's it! I hope you get good visibility on your player's network experience with the portal. Many customers have found it useful to look up players and confirm whether they are having bad network performance using the portal, and also remember that all the data shown the portal (and more) is also written to BigQuery where you can perform data science and analysis.
 
 [Go back to main documentation](README.md)
