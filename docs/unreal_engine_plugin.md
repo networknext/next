@@ -47,4 +47,4 @@ The Network Next SDK takes great care to fall back to no acceleration if anythin
 
 Congratulations! You have successfully integrated Network Next with your Unreal Game!
 
-[Back to main documentation](README.md)
+[Back to main documentation](../README.md)
