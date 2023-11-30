@@ -150,6 +150,8 @@ If you click on a seller, it will give you a list of relays belonging to that se
 
 The admin page shows important graphs to check the health of the system as a whole:
 
+<img width="1470" alt="image" src="https://github.com/networknext/next/assets/696656/177cfd36-abe2-442a-9e1d-084d472e7ff1">
+
 1. Total sessions (total sessions across all buyers)
 2. Accelerated sessions (accelerated sessions across all buyers)
 3. Accelerated % (percentage of acceleration over time across all buyers. naturally fluctuates somewhat)
@@ -163,6 +165,3 @@ The admin page shows important graphs to check the health of the system as a who
 That's it! I hope you get good visibility on your player's network experience with the portal.
 
 [Go back to main documentation](README.md)
-
-
-R
