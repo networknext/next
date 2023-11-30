@@ -16,7 +16,7 @@ Schemas for all this data are described below.
 
 ## Session Update
 
-Session update entries contain performance data once every 10 seconds for a session. This is the primary network performance data, including everything shown in the portal for a session and much more.
+Session updates contain network performance data once every 10 seconds for a session. This is the primary network performance data, including everything shown in the portal for a session and much more.
 
 | Field Name | Type | Description |
 | ------------- | ------------- | ------------- |
