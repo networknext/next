@@ -104,33 +104,21 @@ A session summary is written at the end of each session, with the intent that if
 | not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
 | a | BOOL | This session was part of an AB test, and is in the A group (potentially accelerated) |
 | b | BOOL | This session was part of an AB test, and is in the B group (never accelerated) |
+| latency_worse | BOOL | True if we made latency worse. |
+| location_veto | BOOL | True if we could not locate the player, eg. lat long is at null island (0,0). |
+| mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
+| lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
-  
-  {
-    "name": "latency_worse",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we made latency worse."
-  },
-  {
-    "name": "location_veto",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we could not locate the player, eg. lat long is at null island (0,0)."
-  },
-  {
-    "name": "mispredict",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
-  },
-  {
-    "name": "lack_of_diversity",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
-  }
+## Server init
 
+## Server update
 
+## Relay update
+
+## Near relay ping
+
+## Relay to relay ping
+
+## Route matrix update
 
 [Back to main documentation](../README.md)
