@@ -106,6 +106,7 @@ func main() {
 			env.RelayBackendURL = getKeyValue(envFilePath, "RELAY_BACKEND_URL")
 			env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
 			env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
+			env.RaspberryBackendURL = getKeyValue(envFilePath, "RASPBERRY_BACKEND_URL")
 
 			env.Write()
 
