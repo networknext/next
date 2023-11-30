@@ -22,6 +22,6 @@ next database
 next commit
 ```
 
-This extracts the configuration data defined in Postgres and _commits_ it to the backend runtime. This way the essential runtime backend that plans and executes player routes operates entirely independently from Postgres, and continues to function even if Postgres is down.
+This extracts the configuration data defined in Postgres and _commits_ it to the backend runtime. This way the essential runtime backend that plans and executes routing is able to operate independently from Postgres, and continues to function even if it is down.
 
 [Back to main documentation](../README.md)
