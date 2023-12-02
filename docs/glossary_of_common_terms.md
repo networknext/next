@@ -4,7 +4,7 @@
 
 # Glossary of Common Terms
 
-* **Accelerated** - _The act of sending traffic for a session across the relay fleet to reduce latency, jitter and packet loss for a session._
+* **Acceleration** - _Sending traffic for a session across the relay fleet to reduce latency, jitter and packet loss for a session._
 
 * **API** - _Application Programming Interface. In this context, the Network Next API is a service in the Network Next backend that lets you call CRUD (create-read-update-delete) operations on the Postgres SQL database, as well as supporting the portal with REST APIs that give it access to the data it needs to display. You can get an API token and call the Network Next API yourself from your own website to get data from your Network Next environment displayed in some other website._
 
@@ -86,14 +86,14 @@
 
 * **Terraform** - _Terraform is a really cool system for querying and mutating CRUD (create-read-update-delete) REST APIs. You can configure Network Next Postgres SQL database, and configure and spin up your relay fleet using Terraform. To learn more go to https://terraform.io_
 
-* **UDP** - _User datagram protocol. A low level way of sending data across the interet that is suitable for real-time applications like games._
+* **UDP** - _User datagram protocol. A low level way of sending data across the internet that is suitable for real-time applications like games._
 
-* **Upgraded** - _The act of the server approving a client connection to be monitored and potentially accelerated in the Network Next system. For example, the server upgraded the client after it connected and completed authentication_.
+* **Upgrade** - _A server upgrades a client connection, so that it will be monitored and potentially accelerated in the Network Next system. For example, the server upgraded the client after it connected and completed authentication_.
 
 * **User Hash** - _A 64 bit The user hash is the FNV1a 64bit hash of the user id string passed in to the SDK on the server when the client session is upgraded_.
 
 * **User Id** - _A string that uniquely identifies the user of a game. For example, a Playstation Id, Steam Id or your own unique identifier. User Ids are passed in when the server upgrades a session, but they are never sent up to the Network Next backend, due to GDPR risk, only the hash of the user id is ever sent and stored by your Network Next environment._
 
-* **Veto** - _Veto is the idea that if for any reason a Network Next session experiences some error and leaves Network Next, it won't try to return to acceleration until the player plays a new game, and starts a new session. We use veto to ensure that players never get caught in a loop of being accelerated, dropping off acceleration for some reason, and then going back on to acceleration over and over._
+* **Veto** - _Veto is the idea that if for any reason a Network Next session experiences some error and leaves Network Next, it won't try to return to acceleration until the player plays a new game, and starts a new session. We use veto to ensure that players never get caught in a loop of being accelerated, dropping off acceleration for some reason, and then going back on to acceleration, and dropping off again... over and over._
 
 [Back to main documentation](../README.md)
