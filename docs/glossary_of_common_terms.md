@@ -6,7 +6,7 @@
 
 * **Acceleration** - _Sending traffic for a session across the relay fleet to reduce latency, jitter and packet loss for a session._
 
-* **API** - _Application Programming Interface. In this context, the Network Next API is a service in the Network Next backend that lets you call CRUD (create-read-update-delete) operations on the Postgres SQL database, as well as supporting the portal with REST APIs that give it access to the data it needs to display. You can get an API token and call the Network Next API yourself from your own website to get data from your Network Next environment displayed in some other website._
+* **API** - _Application Programming Interface. In this context, the Network Next API is a service in the Network Next backend that lets you call CRUD (create-read-update-delete) operations on the Postgres SQL database, as well as supporting the portal with REST APIs that give it access to the data it needs to display. You can get an API token and call the Network Next API yourself from your own website to get data from your Network Next environment._
 
 * **BigQuery** - _BigQuery is a Google Cloud database technology that stores large volumes of row oriented data, and allows querying this data with an SQL-like language. It is used to store data about the operation of the Network Next system so you can perform data science and analytics queries on your players network performance, the performance of your relay fleet and any other part of your Network Next environment._
 
