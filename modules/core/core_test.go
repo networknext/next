@@ -296,7 +296,7 @@ func Analyze(numRelays int, routes []core.RouteEntry) []int {
 		for j := 0; j < numRelays; j++ {
 			if j < i {
 				abFlatIndex := core.TriMatrixIndex(i, j)
-				if routes[abFlatIndex].DirectCost > 0 {
+				if routes[abFlatIndex].DirectCost != 255 {
 					improvement := routes[abFlatIndex].DirectCost - routes[abFlatIndex].RouteCost[0]
 					if improvement == 0 {
 						buckets[1]++

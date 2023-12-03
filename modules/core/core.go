@@ -596,6 +596,9 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []u
 	entryCount := TriMatrixLength(numRelays)
 
 	routes := make([]RouteEntry, entryCount)
+	for i := range routes {
+		routes[i].DirectCost = 255
+	}
 
 	wg.Add(numSegments)
 

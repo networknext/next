@@ -2518,8 +2518,6 @@ func routes(src string, dest string) {
 
 	fmt.Printf("routes from %s -> %s:\n\n", src, dest)
 
-	hasRoutes := false
-
 	for i := 0; i < int(entry.NumRoutes); i++ {
 		routeRelays := ""
 		numRouteRelays := int(entry.RouteNumRelays[i])
@@ -2543,10 +2541,11 @@ func routes(src string, dest string) {
 			}
 		}
 		fmt.Printf(" + %d: %s\n", entry.RouteCost[i], routeRelays)
-		hasRoutes = true
 	}
 
-	if !hasRoutes {
+	if entry.DirectCost != 255 {
+		fmt.Printf(" + %d: direct\n", entry.DirectCost)
+	} else {
 		fmt.Printf("(no routes exist)\n")
 	}
 
