@@ -623,7 +623,7 @@ module "relay_backend" {
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=180s
     ENABLE_GOOGLE_PUBSUB=true
-    MAX_JITTER=10
+    MAX_JITTER=1
     MAX_PACKET_LOSS=0.1
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     EOF
