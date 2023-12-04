@@ -205,7 +205,7 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
 
         int num_jitter_samples = 0;
 
-        double jitter_sum = 0.0;
+        double stddev_rtt = 0.0;
 
         for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; i++ )
         {
@@ -217,8 +217,8 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
                 {
                     // pong received
                     double rtt = ( entry->time_pong_received - entry->time_ping_sent );
-                    double jitter = rtt - min_rtt;
-                    jitter_sum += jitter;
+                    double error = rtt - min_rtt;
+                    stddev_rtt += error * error;
                     num_jitter_samples++;
                 }
             }
@@ -226,7 +226,7 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
 
         if ( num_jitter_samples > 0 )
         {
-            stats->jitter = (float) ( jitter_sum / num_jitter_samples ) * 1000.0;
+            stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples ) * 1000.0;
         }
     }
 

@@ -61,7 +61,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "helsinki_network_next_terraform"
+    bucket  = "newyork_network_next_terraform"
     prefix  = "production"
   }
 }

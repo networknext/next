@@ -6,7 +6,7 @@ vpn_address                 = "45.79.157.168"
 ssh_public_key_file         = "~/secrets/next_ssh.pub"
 ssh_private_key_file        = "~/secrets/next_ssh"
 relay_version               = "relay-release-1.0.0"
-relay_artifacts_bucket      = "helsinki_network_next_relay_artifacts"
+relay_artifacts_bucket      = "newyork_network_next_relay_artifacts"
 relay_backend_public_key    = "NQiV7UaFevD4yA7xq6Qiy0nTQJ2WPr9g6AERXCYlln4="
 relay_backend_url           = "relay.virtualgo.net"
 
