@@ -172,6 +172,8 @@
 
 // -------------------------------------------------------------------------------------
 
+static char relay_version[RELAY_VERSION_LENGTH];
+
 extern int relay_platform_init();
 
 extern void relay_platform_term();
@@ -4301,7 +4303,7 @@ int main_update( main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string(&p, RELAY_VERSION, RELAY_VERSION_LENGTH );
+    relay_write_string(&p, relay_version, RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, NUM_RELAY_COUNTERS );
     for ( int i = 0; i < NUM_RELAY_COUNTERS; ++i )
@@ -4551,7 +4553,7 @@ int main_update( main_t * main )
 
     // automatic version updates
 
-    if ( main->upgrade.relay_upgrade_url && target_version[0] != '\0' && strcmp( RELAY_VERSION, target_version ) != 0 ) 
+    if ( main->upgrade.relay_upgrade_url && target_version[0] != '\0' && strcmp( relay_version, target_version ) != 0 ) 
     {
         relay_platform_mutex_acquire( main->upgrade.mutex );
         const bool upgrading = main->upgrade.upgrading;
@@ -4561,7 +4563,7 @@ int main_update( main_t * main )
         {
             main->upgrade.last_check_time = current_time;
             
-            strncpy( main->upgrade.current_version, RELAY_VERSION, sizeof(main->upgrade.current_version) - 1 );
+            strncpy( main->upgrade.current_version, relay_version, sizeof(main->upgrade.current_version) - 1 );
             strncpy( main->upgrade.target_version, target_version, sizeof(main->upgrade.target_version) - 1 );
 
             main->upgrade.thread = relay_platform_thread_create( upgrade_thread_function, &main->upgrade );
@@ -6223,19 +6225,21 @@ int main( int argc, const char ** argv )
 {
     uint64_t start_time = time( NULL );
 
-    if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
-        printf( "%s\n", RELAY_VERSION );
-        fflush( stdout );
-        exit(0);
-    }
-
 #if RELAY_DEBUG
     const char * relay_type = "debug";
 #else // #if RELAY_DEBUG
     const char * relay_type = "release";
 #endif // #if RELAY_DEBUG
 
-    printf( "Network Next Relay (relay-%s-%s)\n", relay_type, RELAY_VERSION );
+    snprintf( relay_version, RELAY_VERSION_LENGTH, "relay-%s-%s", relay_type, RELAY_VERSION );
+
+    if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
+        printf( "%s\n", relay_version );
+        fflush( stdout );
+        exit(0);
+    }
+
+    printf( "Network Next Relay (%s)\n", relay_version );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
