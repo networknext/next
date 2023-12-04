@@ -3296,7 +3296,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
     int num_jitter_samples = 0;
 
-    double stddev_rtt = 0.0;
+    double jitter_sum = 0.0;
 
     for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
     {
@@ -3310,8 +3310,8 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
                 double rtt = ( entry->time_pong_received - entry->time_ping_sent );
                 if ( rtt >= mean_rtt )
                 {
-                    double error = rtt - mean_rtt;
-                    stddev_rtt += error * error;
+                    double jitter = rtt - mean_rtt;
+                    jitter_sum += jitter;
                     num_jitter_samples++;
                 }
             }
@@ -3320,7 +3320,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
     if ( num_jitter_samples > 0 )
     {
-        stats->jitter = 1000.0f * (float) sqrt( stddev_rtt / num_jitter_samples );
+        stats->jitter = 1000.0f * (float) ( jitter_sum / num_jitter_samples );
     }
 }
 
