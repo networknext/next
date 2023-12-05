@@ -624,7 +624,7 @@ module "relay_backend" {
     INITIAL_DELAY=180s
     ENABLE_GOOGLE_PUBSUB=true
     MAX_JITTER=1
-    MAX_PACKET_LOSS=0
+    MAX_PACKET_LOSS=0.1
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
     EOF
     gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
