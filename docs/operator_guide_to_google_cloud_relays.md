@@ -4,7 +4,7 @@
 
 # Operator guide to Google Cloud relays
 
-This section describes how to use the Network Next terraform provider together with the Google Cloud terraform provider to spin up Google Cloud relays with terraform.
+This section describes how to use the Network Next terraform provider together with the Google Cloud terraform provider to spin up Google Cloud relays programmatically.
 
 ## The google config tool
 
