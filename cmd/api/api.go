@@ -1050,6 +1050,7 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	publicKey := make([]byte, 8)
 	binary.LittleEndian.PutUint64(publicKey, input.Id)
 	publicKey = append(publicKey, input.PublicKey...)
+	output.PublicKey = publicKey
 	
 	if enableRedisTimeSeries {
 		buyerCountersWatcher.Lock()
