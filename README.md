@@ -46,6 +46,7 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 * [Datacenter and relay naming conventions](docs/datacenter_and_relay_naming_conventions.md)
 * [Network Next Terraform provider](docs/network_next_terraform_provider.md)
+* [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
 
 # Miscellaneous
 
@@ -55,7 +56,6 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 _Work in progress below here..._
 
-* [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
 * [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
 * [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
 * [Operator guide to AWS relays](docs/operator_guide_to_aws_relays.md)
