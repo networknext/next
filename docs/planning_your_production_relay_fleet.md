@@ -4,7 +4,7 @@
 
 # Planning your production relay fleet
 
-Hello operator, this section is your guide to planning the relay fleet for your game. This is the most fun part of Network Next. I hope you enjoy :)
+Hello operator, this section is your guide to planning the relay fleet for your game. This is the most fun part of Network Next :)
 
 ## 1. Put a relay in each datacenter where you host servers
 
