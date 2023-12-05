@@ -252,7 +252,7 @@ When making any changes to the server backend it is _vital_ to load test your ch
 
 Finally, make sure to conservatively set `min_size` such that you know you can sustain your base load. Even with correct tuning for the server backend service, if a stampede of players comes at your backend, they will overload the backend before it has time to scale up (you'll see retries and fallbacks to direct under "Admin" in the portal), unless you pre-scale with `min_size`. It generally takes 1-2 minutes for each server backend instance to start and come online, and this is just too slow for a rapid scale up of 100k+ players or 1M+ players. The system will recover, and the fallback to direct is only temporary during scale up, but I always like to see it running clean without retries and fallback to direct where possible for the best player experience.
 
-## 4. If in doubt, get a support contract
+## 5. If in doubt, get a support contract
 
 I'm always happy to help. With a support contract I can help you right size your production backend and save money. Just email me at glenn@networknext.com. I'm the inventor and author of Network Next.
 
