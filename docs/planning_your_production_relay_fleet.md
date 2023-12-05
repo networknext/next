@@ -90,6 +90,7 @@ Secondary locations in USA that should be evaluated on a case by case basis depe
 * Ohio
 * St Louis
 * Oregon
+* (And many more, it depends on your player base...)
 
 Primary locations in Europe:
 
