@@ -14,7 +14,7 @@
 
 * **CCU** - _Concurrent Users. Or alternatively, the total number of sessions running at any time._
 
-* **Continue Token** - _When the Network Next route does not change from one slice to another, we send a continue token, which simply extends the route across relays for 10 more seconds, without the bandwidth expense of fully redescribing the route in terms of the linked list of IP addesses between the client and server across relays._
+* **Continue Token** - _When the Network Next route does not change from one slice to another, we send a continue token, which simply extends the route across relays for 10 more seconds, without the bandwidth expense of fully redescribing the route in terms of the linked list of IP addresses and ports between the client and server._
 
 * **Cost Matrix** - _The first step of route optimization in Network Next is for all relay pings to be turned into a triangular cost matrix, which provides a constant time lookup of the cost (in terms of latency, or round trip time (rtt) - in milliseconds), between any two relays._
 
