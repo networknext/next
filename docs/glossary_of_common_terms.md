@@ -32,7 +32,7 @@
 
 * **Fallback to Direct** - _When the SDK is unable to continue the Network Next route for any reason, for example if a relay suddenly crasher, or the server backend suddenly went away, or the relay backend was unable to provide a route matrix. The SDK "falls back to direct" automatically, so that the session continues in a non-accelerated mode. This way even if the Network Next backend is completely down, sessions can still play and connect from client to server._
 
-* **Google Cloud Storage** - _It's a standard feature of Google Cloud. You can upload files to google cloud storage buckets, and they will be stored there, and made available to the deployment process in Google Cloud, or made publicly available for downloaded as necessary._
+* **Google Cloud Storage** - _It's a standard feature of Google Cloud. You can upload files to google cloud storage buckets, and they will be stored there, and made available to the deployment process in Google Cloud, or made publicly available for download as necessary._
 
 * **Google PubSub** - _Google PubSub is a persistent message system. Parts of the Network Next backend publish Google PubSub messages to Google Cloud, which processes these messages and inserts the data contained in those messages into BigQuery. This is a standard feature of Google Cloud, and is the best and cheapest way to insert data into BigQuery in close to real-time._
 
