@@ -57,7 +57,6 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 _Work in progress below here..._
 
-* [Running a load test](docs/running_a_load_test.md)
 * [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
 * [Operator guide to AWS relays](docs/operator_guide_to_aws_relays.md)
 * [Operator guide to Akamai relays](docs/operator_guide_to_akamai_relays.md)
