@@ -293,7 +293,6 @@ locals {
 
   etc...
 ```
-```
 
 Addding a new relay is as simple as copying and pasting an entry for a new relay and updating its relay name and datacenter name, andthen running `terraform apply`.
 
