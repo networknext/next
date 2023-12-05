@@ -100,6 +100,7 @@ Secondary locations in Europe:
 * Moscow
 * Helsinki
 * Stockholm
+* (And many more, it really depends on your player base...)
   
 South America essential locations:
 
