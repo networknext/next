@@ -207,28 +207,28 @@ var datacenterMap = map[string]*Datacenter{
 }
 ```
 
-For example, you would map "europe-west10" to google.berlin and give it the correct latitude and longitude of (52.5200, 13.4050). 
+For example, you would map "europe-west10" to "berlin" and give it the correct latitude and longitude of (52.5200, 13.4050). 
 
-Same for "europe-west12" and "me-central1" and "me-central2", just look up what cities they are in, and set their lat long to an approx location for each city.
+Same for "europe-west12" and "me-central1" and "me-central2", just look up what cities they are in, and set their lat long to an approx location for each city. It doesn't need to be precise.
 
 Please make sure to follow [naming conventions](relay_and_datacenter_naming_conventions.md) when you add new google datacenters.
 
 ## Update datacenter autodetect system post-new datacenters in google cloud
 
-After you add new google datacenters, run the google config again and check the changes made with diff.
+After you add new google datacenters, run the google config tool again and check the changes made with diff.
 
 ```
 next config-google
 git diff
 ```
 
-You should see the new datacenters added to the generated.tf file and the config/google.txt
+You should see the new datacenters added to `sellers/google/generated.tf` file and `config/google.txt`
 
 Check these changes in, then inside semaphore CI, trigger "Upload Config" job on your most recent commit.
 
-This uploads the config/google.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available datacenter autodetection.
+This uploads the config/google.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available for datacenter autodetection.
 
-Datacenter autodetect lets you simply pass in "cloud" when your server runs in AWS or Google Cloud, and the SDK will work out which datacenter it is located in automatically. Saves a lot of time.
+_(Datacenter autodetect lets you simply pass in "cloud" when your server runs in AWS or Google Cloud, and the SDK will work out which datacenter it is located in automatically. Saves a lot of time.)_
 
 ## Update database with your new datacenters
 
@@ -241,13 +241,13 @@ cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-Once this terraform job completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new google cloud datacenters.
+Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new google cloud datacenters.
 
 ## Commit updated database.bin to the backend runtime
 
 The backend runtime does not directly talk with Postgres SQL. Instead they get their configuration from a database.bin file, which is an extracted version of the configuration data stored in Postgres.
 
-To make your Postgres SQL changes active in the backend, you must commit your database.bin file to the backend, like this, after you make changes to Postgres.
+To make your Postgres SQL changes active in the backend, you must extract this database.bin and commit it to the backend, after you make changes to Postgres.
 
 For example, for dev:
 
@@ -264,7 +264,7 @@ After this point, you should be able to load up the portal and see the new datac
 
 ## Spinning up relays in Google Cloud
 
-It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays.tf` or `~/terraform/backend/prod/relays`, depending on which environment you want to change.
+It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays/main.tf` or `~/terraform/backend/prod/relays/main.tf`, depending on which environment you want to change.
 
 For example in dev, you can see:
 
@@ -291,10 +291,11 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-  etc...
+    etc...
+  }
 ```
 
-Addding a new relay is as simple as copying and pasting an entry for a new relay and updating its relay name and datacenter name, andthen running `terraform apply`.
+Addding a new relay is as simple as copying and pasting an entry for a new relay and updating its relay name and datacenter name, and then running `terraform apply`.
 
 Once terraform has completed, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect:
 
@@ -353,4 +354,3 @@ gaffer@batman next % next relays google
 You can also go to the portal and you should see your new relays there as well.
 
 [Back to main documentation](../README.md)
-
