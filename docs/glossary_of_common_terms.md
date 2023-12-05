@@ -62,7 +62,7 @@
 
 * **Relay Fleet** - _The set of all relays in your Network Next environment_.
 
-* **Relay pings** - _All relays are continuously pinging every other relay in your system 10 times per-second. This is how we know the cost in milliseconds to travel from one relay to another. These relay pings are the very first input into the route optimization process._
+* **Relay Pings** - _All relays are continuously pinging every other relay in your system 10 times per-second. This is how we know the cost in milliseconds to travel from one relay to another. These relay pings are the very first input into the route optimization process._
 
 * **Route Diversity** - _The idea that you can get a better connection if you have many different options, or routes to get from the client to server to choose from._
 
