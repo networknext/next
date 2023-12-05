@@ -131,6 +131,6 @@ Secondary locations in APAC:
 
 The general process is to deploy 30 relays in each location near players, let it run for a month, look at per-relay accelerated traffic in a given location (use Bigquery) and rank relays from most to least traffic carried.
 
-If you wish to optimize cost, reduce relays down to the n relays per-location with the most traffic carried across the last month with real player traffic.
+If you wish to optimize cost, reduce relays down to the n relays per-location with the most traffic carried across the last month with real player traffic. Generally speaking I recommend no fewer than 10 distinct sellers per-location, to achieve diversity in routing.
 
 [Back to main documentation](../README.md)
