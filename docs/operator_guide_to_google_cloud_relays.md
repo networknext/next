@@ -262,7 +262,7 @@ It takes up to 60 seconds for the runtime backend to pick up your committed data
 
 After this point, you should be able to load up the portal and see the new datacenters you added for Google Cloud.
 
-## 5. Spinning up relays in Google Cloud
+## 5. Spin up relays in Google Cloud
 
 It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays/main.tf` or `~/terraform/backend/prod/relays/main.tf`, depending on which environment you want to change.
 
