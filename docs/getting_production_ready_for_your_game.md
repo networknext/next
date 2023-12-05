@@ -11,7 +11,7 @@ The default redis cluster implementation in Google cloud is in beta release, and
 The specific options that are needed on the cluster are:
 
 ```
-allkeys-lru
+maxmemory-policy allkeys-lru
 ```
 
 As well as setting `maxmemory` set so that keys are evicted at some point before actual memory is exhausted (give it some headroom at your discretion).
@@ -66,7 +66,9 @@ locals {
 
 Then go to the marketplace in Google Cloud and sign up for "Redis Enterprise" (search for it).
 
-Follow the instructions to setup an instance and a service link from the redis cluster to your production network.
+Follow the instructions to setup an instance, making sure you set appropriate options for `maxmemory` and `maxmemory-policy volatile-lru`.
+
+Follow instructions to setup a service networking link from the redis cluster to your production network.
 
 Once you have the instance setup, modify `redis_portal_address` and set it to the IP address and port of the discovery endpoint for your redis cluster.
 
@@ -160,7 +162,7 @@ The key things you can change here are:
 * **tier_1** - tier 1 bandwidth helps improve IO performance in google cloud, but if you use a machine lighter than the c3-highcpu-44 you'll need to turn it off, because tier_1 bandwidth is only available on heavyweight, high CPU instance types.
 * **target_size** - this is the number of VMs in the instance group. It's currently set to 3 for maximum availability (there are three availability zones in Google's us-central-1 region that suuport c3 instance types). You could reduce this to 1 and save on hosting costs significantly, at the cost of reduced availability.
 
-I strongly recommend load testing any changes in the staging environment before pushing to production. Critically, you must make sure that the relay backend has enough CPU to perform the route optimization (see the "Optimize" graph under "Admin", this should stay under 1 second), while ensuring that your relay backend does not get IO bound processing the updates from each relay.
+I strongly recommend load testing any changes in the staging environment before pushing to production. Critically, you must make sure that the relay backend has enough CPU to perform the route optimization (see the "Optimize" graph under "Admin", this should stay solidly under 1 second), while ensuring that your relay backend does not get IO bound processing the updates from each relay. If the relay backend gets IO bound, you'll notice randomly that certain relays as you add them get excluded from routing for no reason except that your relay backend is overloaded.
 
 ## 4. Right size your server backend
 
