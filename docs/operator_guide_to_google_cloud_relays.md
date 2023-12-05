@@ -6,7 +6,7 @@
 
 This section describes how to use the Network Next terraform provider together with the Google Cloud terraform provider to spin up Google Cloud relays. It sure beats doing it manually!
 
-## The google config tool
+## 1. The google config tool
 
 The purpose of the google config tool is to extract configuration data from your Google Cloud account and get it into a form where it can be used in terraform to create relays.
 
@@ -213,7 +213,7 @@ Same for "europe-west12" and "me-central1" and "me-central2", just look up what 
 
 Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add new google datacenters.
 
-## Update datacenter autodetect system post-new datacenters in google cloud
+## 3. Update datacenter autodetect system
 
 After you add new google datacenters, run the google config tool again and check the changes made with diff.
 
@@ -230,7 +230,7 @@ This uploads the config/google.txt file to Google Cloud storage, where the SDK w
 
 _(Datacenter autodetect lets you simply pass in "cloud" when your server runs in AWS or Google Cloud, and the SDK will work out which datacenter it is located in automatically. Saves a lot of time.)_
 
-## Update database with your new datacenters
+## 4. Update database with your new datacenters
 
 Depending on your environment you are changing, change into either `~/next/terraform/dev/relays` or `~/next/terraform/prod/relays`.
 
@@ -262,7 +262,7 @@ It takes up to 60 seconds for the runtime backend to pick up your committed data
 
 After this point, you should be able to load up the portal and see the new datacenters you added for Google Cloud.
 
-## Spinning up relays in Google Cloud
+## 5. Spinning up relays in Google Cloud
 
 It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays/main.tf` or `~/terraform/backend/prod/relays/main.tf`, depending on which environment you want to change.
 
