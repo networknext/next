@@ -236,7 +236,7 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 				_, destActive := activeRelayMap[destRelayId]
 				if destActive {
 					rtt, jitter, packetLoss := relayManager.getSample(sourceRelayId, destRelayId)
-					if rtt < 255 && jitter < maxJitter && packetLoss < maxPacketLoss {
+					if rtt < 255 && jitter <= maxJitter && packetLoss <= maxPacketLoss {
 						index := TriMatrixIndex(i, j)
 						costs[index] = uint8(math.Ceil(float64(rtt)))
 					}

@@ -10,7 +10,7 @@ const (
 	MaxRelays        = 1000
 	NumRelayCounters = 128
 	RelayTimeout     = 10
-	RelayHistorySize = 60
+	RelayHistorySize = 300
 
 	MaxNearRelays  = 16
 	MaxRouteRelays = 5
