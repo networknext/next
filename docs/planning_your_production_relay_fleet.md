@@ -61,6 +61,7 @@ Some high quality providers we have used in the past:
 * https://www.latitude.sh - some good locations especially in South America
 * https://deploy.equinix.com - used to be know as packet.com, now acquired by equinix, expensive but good locations
 * https://zenlayer.com - especially good in APAC
+* https://www.servers.com - standard bare metal
 
 Do your own research and of course there are more to try. I recommend you work on a per-city basis and spin up as many different providers in the location, and then over time as you see certain providers performing better than others (carrying more accelerate traffic), then you can whittle down and select the n best providers per-location that you desire. I recommend a minimum of 10 per-location of best providers.
 
