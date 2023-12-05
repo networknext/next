@@ -22,9 +22,9 @@ When it runs, it will cache some data under `~/next/cache` to speed up its opera
 
 The `google/generated.tf` file is how we inject the set of google cloud datacenters into terraform. 
 
-The google tool interact with your Google Cloud account via REST API and queries data such as the set of regions, and the zones within each region, and maps them to network next datacenter names like "google.iowa.1".
+The google config tool interacts with your Google Cloud account via REST API and queries data such as the set of regions, and the zones within each region, and maps them to network next datacenter names like "google.iowa.1".
 
-The `config/google.txt` file is uploaded to google cloud storage via semaphore "Upload Configuration" job, and is read by the SDK to perform autodetection of the Google Cloud datacenter your server is running in. In short, this text file is just a mapping from Google Cloud native zone name to the network next datacenter name.
+The `config/google.txt` file is uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the Google Cloud datacenter your server is running in. In short, this text file is just a mapping from Google Cloud native zone name to the network next datacenter name.
 
 ## 2. Adding new datacenters to google cloud
 
@@ -226,7 +226,7 @@ You should see the new datacenters added to the generated.tf file and the config
 
 Check these changes in, then inside semaphore CI, trigger "Upload Config" job on your most recent commit.
 
-This uploads the config/google.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available for Google Cloud datacenter autodetection.
+This uploads the config/google.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available datacenter autodetection.
 
 Datacenter autodetect lets you simply pass in "cloud" when your server runs in AWS or Google Cloud, and the SDK will work out which datacenter it is located in automatically. Saves a lot of time.
 
@@ -238,7 +238,6 @@ For example, for dev:
 
 ```console
 cd ~/next/terraform/dev/relays
-terraform init
 terraform apply
 ```
 
@@ -261,11 +260,11 @@ next commit
 
 It takes up to 60 seconds for the runtime backend to pick up your committed database.bin.
 
-After this point, you should be able to load up the portal and see the set of datacenters includes the new datacenters you added for Google Cloud.
+After this point, you should be able to load up the portal and see the new datacenters you added for Google Cloud.
 
 ## Spinning up relays in Google Cloud
 
-It's easy! Take a look at `~/terraform/backend/dev/relays.tf` or `~/terraform/backend/prod/relays`, depending on which environment you want to change.
+It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays.tf` or `~/terraform/backend/prod/relays`, depending on which environment you want to change.
 
 For example in dev, you can see:
 
@@ -296,7 +295,7 @@ locals {
 ```
 ```
 
-Addding a new relay is as simple as editing this file to add a new entry for each relay you want, and then running `terraform apply`.
+Addding a new relay is as simple as copying and pasting an entry for a new relay and updating its relay name and datacenter name, andthen running `terraform apply`.
 
 Once terraform has completed, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect:
 
@@ -317,7 +316,7 @@ Once the database is committed, you then need to connect to your VPN (cannot SSH
 next setup google
 ```
 
-This calls setup on all google relays in your system, skipping over any that are already setup.
+This loads the relay service on all google relays in your system, skipping over any that are already setup.
 
 Once the setup is complete, you can check your google relays are online with:
 
@@ -355,3 +354,4 @@ gaffer@batman next % next relays google
 You can also go to the portal and you should see your new relays there as well.
 
 [Back to main documentation](../README.md)
+
