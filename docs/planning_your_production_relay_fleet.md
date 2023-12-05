@@ -12,6 +12,8 @@ To accelerate traffic, Network Next needs a "destination relay" as the last hop 
 
 So, the very first step when planning your relay fleet is to make sure there is at least one relay in every datacenter where host game servers and you want traffic to be accelerated.
 
+IMPORTANT: When you host in cloud, each availability zone is locally considered its own datacenter in Network Next.
+
 Make sure that you add all datacenters where you plan to accelerate traffic into the list of datacenter in terraform for your buyer:
 
 ```
