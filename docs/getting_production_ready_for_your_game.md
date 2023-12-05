@@ -2,138 +2,256 @@
 
 <br>
 
-# Planning your production relay fleet
+# Getting production ready for your game
 
-Hello operator, this section is your guide to planning the relay fleet for your game. This is the most fun part of Network Next :)
+## 1. Replace google redis cluster with redis enterprise
 
-## 1. Put a relay in each datacenter where you host servers
+The default redis cluster implementation in Google cloud is in beta release, and unfortunately does not currently allow you to set required redis options on the cluster that are needed in production.
 
-To accelerate traffic, Network Next needs a "destination relay" as the last hop when delivering traffic to a server in a datacenter.
-
-So, the very first step when planning your relay fleet is to make sure there is at least one relay in every datacenter where host game servers and you want traffic to be accelerated.
-
-IMPORTANT: When you host in cloud, each availability zone is locally considered its own datacenter in Network Next.
-
-Make sure that you add all datacenters where you plan to accelerate traffic into the list of enabled datacenters in terraform for your buyer:
+The specific options that are needed on the cluster are:
 
 ```
-locals {
-  your_buyer_datacenters = [
-    "google.iowa.1",
-    "google.iowa.2",
-    "google.iowa.3",
-    "google.iowa.6"
+allkeys-lru
+```
+
+As well as setting `maxmemory` set so that keys are evicted at some point before actual memory is exhausted (give it some headroom at your discretion).
+
+The good news is that this setting _is_ available on Redis Enterprise, which is available in Google Cloud marketplace. However, this is not easily setup via terraform, hence this manual step.
+
+First, delete the portal redis cluster in `~/next/terraform/prod/backend/main.tf`:
+
+Turn this:
+
+```
+resource "google_redis_cluster" "portal" {
+  provider       = google-beta
+  name           = "portal"
+  shard_count    = 10
+  psc_configs {
+    network = google_compute_network.production.id
+  }
+  region = "us-central1"
+  replica_count = 1
+  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
+  authorization_mode = "AUTH_MODE_DISABLED"
+  depends_on = [
+    google_network_connectivity_service_connection_policy.default
   ]
 }
 
-resource "networknext_buyer_datacenter_settings" your_buyer {
-  count = length(local.your_buyer_datacenters)
-  buyer_id = networknext_buyer.your_buyer.id
-  datacenter_id = networknext_datacenter.datacenters[local.your_buyer_datacenters].id
-  enable_acceleration = true
+resource "google_network_connectivity_service_connection_policy" "default" {
+  provider = google-beta
+  name = "redis"
+  location = "us-central1"
+  service_class = "gcp-memorystore-redis"
+  description   = "redis cluster service connection policy"
+  network = google_compute_network.production.id
+  psc_config {
+    subnetworks = [google_compute_subnetwork.production.id]
+  }
+}
+
+locals {
+  redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
 }
 ```
 
-Network Next uses this list of enabled datacenters per-buyer to only optimize traffic to the datacenters where game servers reside. This is a significant reduction in the amount of work the optimizer needs to do, because route optimization process is otherwise O(n^3) where n is the number of relays in your relay fleet, and now it is ~O(n^2*m) where m is the number of destination relays.
+Into this:
 
-## 2. In each location where you host servers add 20-30 additional relays from other suppliers
+```
+locals {
+  redis_portal_address = "127.0.0.1:6379"
+}
+```
 
-What you are doing now is effectively setting up alternative routes from clients to your servers across different networks.
+Then go to the marketplace in Google Cloud and sign up for "Redis Enterprise" (search for it).
 
-For example, if you host in AWS, spinning up google cloud relays in the same location means that if the google cloud network is better performing, lower latency, or just less congested at any point in time to the AWS network for a client, then the traffic will be steered through google's network on the way to your game server in AWS.
+Follow the instructions to setup an instance and a service link from the redis cluster to your production network.
 
-Start with cloud relays first as they are easy to spin up and down with little effort. Once you have exhausted cloud options, start looking into bare metal relays in the same city. It is recommended that you setup bare metal relays with a 10G NIC, and a plan that provides sufficient sustained traffic. It is little value adding a relay if it can only carry < 1gbps of traffic.
+Once you have the instance setup, modify `redis_portal_address` and set it to the IP address and port of the discovery endpoint for your redis cluster.
 
-Some high quality providers we have used in the past:
+```
+locals {
+  redis_portal_address = "<redis_cluster_discovery_address>:6379"
+}
+```
 
-* https://i3d.net - excellent bare metal backed by their own private backbone
-* https://stackpath.com - stackpath is a CDN that now has their own edge compute where you can run relays
-* https://hivelocity.net - they have good connectivity and locations around the world
-* https://www.hetzner.com - particularly good in EU
-* https://performive.com - previously known as "total server solutions"
-* https://oneqode.com - excellent in Asia-Pacific and Australia
-* https://www.serversaustralia.com.au - excellent in Australia
-* https://www.tencentcloud.com - worth looking into around the world and especially for Asia
-* https://vultr.com - they have a low quality terraform provider and cloud, but their bare metal can be useful in certain locations.
-* https://www.colocrossing.com - excellent performance around the world and a very good price. Historically they have hosted ESL game servers.
-* https://azure.com - not currently supported by our terraform provider, but it can easily be added so let us know if there is interest.
-* https://velia.net - some good locations and worth adding
-* https://www.latitude.sh - some good locations especially in South America
-* https://deploy.equinix.com - used to be know as packet.com, now acquired by equinix, expensive but good locations
-* https://zenlayer.com - especially good in APAC
-* https://www.servers.com - standard bare metal
+Trigger a deploy from prod branch with a tag. Once the deploy completes, the production environment should be switched over to your new redis enterprise cluster, and the google cloud redis cluster is shut down.
 
-Do your own research and of course there are more to try. I recommend you work on a per-city basis and spin up as many different providers in the location, and then over time as you see certain providers performing better than others (carrying more accelerate traffic), then you can whittle down and select the n best providers per-location that you desire. I recommend a minimum of 10 per-location of best providers.
+## 2. Right size your redis cluster
 
-## 3. Deploy 20-30 relays in major cities around the world in regions where you have players
+There are several factors you must consider:
 
-Here you are trying to catch players going on to your relay fleet close to where they are, even if they are playing on servers that are not immediately close to them, in the same country or the same state. You are also assisting cross location and cross region play to select the best backbone to transit from the player's location to the server location. The more relays you have, the more transit options from the player to the server that you unlock.
+1. The amount of throughput and CPU on the cluster
+2. The amount of history you desire for the portal
+3. How much availability and redundancy you want on the cluster
 
-Some of these locations will already be covered by places where you are hosting servers. In that case, ignore the these locations, you've already set them up in step 1.
+The backend will fill your redis cluster and only expire the oldest entries it needs to keep under max memory by design. So in short, you need to decide how much history you want to have in the portal, work out roughly how much session data you can store (how many hours) at expected load for an amount of memory, and plan around that. Next, once you have the amount of memory you want, make sure that you are not using too much CPU or IO on your cluster at the amount of memory you choose. Finally, depending on how much redundancy you want, you can try running multiple replicas in different zones and so on, in case one shard goes down there is an active mirrored fallback.
 
-Essential locations in North America:
+I recommend for a production environment starting with at least 100GB for the portal if you are around 1M sessions. You could probably get away with less for a game around 100K CCU, and this is best discovered through synthetic load testing in the staging environment.
 
-* Los Angeles
-* Dallas
-* Miami
-* Virginia / Washington DC
-* San Jose / Silicon Valley / SF
-* New York / Newark NJ
-* Chicago / Iowa
-* Seattle
+## 3. Right size your relay backend
 
-Secondary locations in USA that should be evaluated on a case by case basis depending on your player distribution:
+Depending on the number of relays you have, you can adjust the scale of the relay backend. By default it is set to `c3-highcpu-44` instance type, which is powerful enough to perform route optimization easily with 1000 relays. Typical relay fleets usually only have a few hundred relays, so you may be able to reduce the power of the relay backend to save money.
 
-* Atlanta
-* South Carolina
-* Denver
-* Ohio
-* St Louis
-* Oregon
-* (And many more, it depends on your player base...)
+Search for "relay_backend" in `~/next/terraform/prod/backend/main.tf`:
 
-Primary locations in Europe:
+You will find the definition for the relay backend service:
 
-* Frankfurt
-* Amsterdam
-* London
+```
+module "relay_backend" {
 
-Secondary locations in Europe:
+  source = "../../modules/internal_http_service"
 
-* Moscow
-* Helsinki
-* Stockholm
-* (And many more, it really depends on your player base...)
-  
-South America essential locations:
+  service_name = "relay-backend"
 
-* Sao Paulo
-* Santiago Chile
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a relay_backend.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    ENABLE_RELAY_HISTORY=true
+    GOOGLE_PROJECT_ID=${local.google_project_id}
+    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    MAGIC_URL="http://${module.magic_backend.address}/magic"
+    DATABASE_URL="${var.google_database_bucket}/prod.bin"
+    DATABASE_PATH="/app/database.bin"
+    INITIAL_DELAY=420s
+    MAX_JITTER=2
+    MAX_PACKET_LOSS=0.1
+    ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    EOF
+    sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
+    sudo systemctl start app.service
+  EOF1
 
-Secondary locations in South America:
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "c3-highcpu-44"
+  project                    = local.google_project_id
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.production.id
+  default_subnetwork         = google_compute_subnetwork.production.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = local.google_service_account
+  tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  target_size                = 3
+  tier_1                     = true
 
-* Lima, Peru
-* Buenos Aires
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    google_redis_instance.redis_relay_backend,
+    module.redis_time_series
+  ]
+}
+```
 
-Primary locations in APAC:
+The key things you can change here are:
 
-* Singapore
-* Hong Kong
-* Taiwan
-* Tokyo
-* Seoul
+* **machine_type** - set a less powerful machine type, if you have fewer than 1000 relays.
+* **tier_1** - tier 1 bandwidth helps improve IO performance in google cloud, but if you use a machine lighter than the c3-highcpu-44 you'll need to turn it off, because tier_1 bandwidth is only available on heavyweight, high CPU instance types.
+* **target_size** - this is the number of VMs in the instance group. It's currently set to 3 for maximum availability (there are three availability zones in Google's us-central-1 region that suuport c3 instance types). You could reduce this to 1 and save on hosting costs significantly, at the cost of reduced availability.
 
-Secondary locations in APAC:
+I strongly recommend load testing any changes in the staging environment before pushing to production. Critically, you must make sure that the relay backend has enough CPU to perform the route optimization (see the "Optimize" graph under "Admin", this should stay under 1 second), while ensuring that your relay backend does not get IO bound processing the updates from each relay.
 
-* Sydney
-* Perth
-* Melbourne
-* Brisbane
+## 4. Right size your server backend
 
-## 4. Iterate
+The server backend is the component that monitors session network performance, decides if players should be accelerated or not, and selects the best route.
 
-The general process is to deploy 30 relays in each location near players, let it run for a month, look at per-relay accelerated traffic in a given location (use Bigquery) and rank relays from most to least traffic carried.
+The current service backend as configured is sufficient to scale to 1M peak CCU without any changes.
 
-If you wish to optimize cost, reduce relays down to the n relays per-location with the most traffic carried across the last month with real player traffic. Generally speaking I recommend no fewer than 10 distinct sellers per-location, to achieve diversity in routing.
+If you have fewer than 1M CCU for your game, you can save money by right sizing the server backend.
+
+Search for "server backend" in `~/next/terraform/prod/backend/main.tf`:
+
+You will find the definition for the server backend instance group:
+
+```
+module "server_backend" {
+
+  source = "../../modules/external_udp_service_autoscale"
+
+  service_name = "server-backend"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    UDP_PORT=40000
+    UDP_BIND_ADDRESS="##########:40000"
+    UDP_NUM_THREADS=8
+    UDP_SOCKET_READ_BUFFER=104857600
+    UDP_SOCKET_WRITE_BUFFER=104857600
+    GOOGLE_PROJECT_ID=${local.google_project_id}
+    MAGIC_URL="http://${module.magic_backend.address}/magic"
+    REDIS_CLUSTER="${local.redis_portal_address}"
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
+    SERVER_BACKEND_ADDRESS="##########:40000"
+    SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
+    SERVER_BACKEND_PRIVATE_KEY=${local.server_backend_private_key}
+    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
+    PING_KEY=${local.ping_key}
+    IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
+    ENABLE_GOOGLE_PUBSUB=true
+    ENABLE_REDIS_TIME_SERIES=true
+    REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
+    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
+    SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
+    PORTAL_NEXT_SESSIONS_ONLY=false
+    ENABLE_IP2LOCATION=true
+    EOF
+    sudo systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "c3-highcpu-44"
+  project                    = local.google_project_id
+  region                     = var.google_region
+  zones                      = var.google_zones
+  port                       = 40000
+  default_network            = google_compute_network.production.id
+  default_subnetwork         = google_compute_subnetwork.production.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
+  service_account            = local.google_service_account
+  tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
+  min_size                   = 3
+  max_size                   = 64
+  target_cpu                 = 30
+
+  depends_on = [
+    google_pubsub_topic.pubsub_topic, 
+    google_pubsub_subscription.pubsub_subscription,
+    google_redis_cluster.portal
+  ]
+}
+```
+
+The safest option is to just leave this alone, or to simply reduce `min_size` from 3 to 1 instances at the cost of reduced availability.
+
+If you are more on the 100k CCU range than million+, then you could try adjustments to bring the instance type down to `n1-standard-8` for reduced cost per-instance, but at the same time you must also reduce the number of UDP threads per-instance with the environment var `UDP_NUM_THREADS=8` from 8 to 2, otherwise the instance type won't have enough CPU power to process all the packets it receives. I strongly recommend for 1M+ CCU or close to it, that you stay with the tried and tested c3-highcpu-44 configuration. In load testing I've found this to be superior to n1-standard-8 based instances around and above 1M CCU.
+
+When making any changes to the server backend it is _vital_ to load test your changes in the staging environment prior to deploying to production. It is very easy to get the server backend into a state where it is IO bound, or CPU bound and cannot process requests from the SDK quickly enough, leading to "Retries" and "Fallback to Direct" in the "Admin" page, indicating that player sessions have given up trying to get acceleration because they did not get a response from the server backend quickly enough.
+
+Finally, make sure to conservatively set `min_size` such that you know you can sustain your base load. Even with correct tuning for the server backend service, if a stampede of players comes at your backend, they will overload the backend before it has time to scale up (you'll see retries and fallbacks to direct under "Admin" in the portal), unless you pre-scale with `min_size`. It generally takes 1-2 minutes for each server backend instance to start and come online, and this is just too slow for a rapid scale up of 100k+ players or 1M+ players. The system will recover, and the fallback to direct is only temporary during scale up, but I always like to see it running clean without retries and fallback to direct where possible for the best player experience.
+
+## 5. If in doubt, get a support contract
+
+I'm always happy to help. With a support contract I can help you right size your production backend and save money. Just email me at glenn@networknext.com. I'm the inventor and author of Network Next.
 
 [Back to main documentation](../README.md)
