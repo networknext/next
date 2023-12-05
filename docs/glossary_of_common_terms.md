@@ -54,7 +54,7 @@
 
 * **Redis** - _Redis is an open source in-memory database that is used internally by the Network Next backend for inter-service communication, and especially by the portal to store and query data about sessions, servers, and so on._
 
-* **Redis Cluster** - _When a single Redis database instance is not sufficient in terms of memory, throughput on CPU, you can split up your data across a Redis Cluster and scale horizontally. Staging and Production environments in Network Next use Redis cluster so they are able to scale to 10 million CCU._
+* **Redis Cluster** - _When a single Redis database instance is not sufficient in terms of memory, throughput or CPU, you can split up your data across a Redis Cluster and scale horizontally. Staging and Production environments in Network Next use Redis cluster so they are able to scale to 10 million CCU._
 
 * **Relay** - _A linux machine running the Network Next relay software. It acts as a software router for packets sent between the client and server, when a session is accelerated by Network Next._
 
