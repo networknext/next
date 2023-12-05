@@ -211,7 +211,7 @@ For example, you would map "europe-west10" to "berlin" and give it the correct l
 
 Same for "europe-west12" and "me-central1" and "me-central2", just look up what cities they are in, and set their lat long to an approx location for each city. It doesn't need to be precise.
 
-Please make sure to follow [naming conventions](relay_and_datacenter_naming_conventions.md) when you add new google datacenters.
+Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add new google datacenters.
 
 ## Update datacenter autodetect system post-new datacenters in google cloud
 
