@@ -13,10 +13,13 @@ The default redis cluster implementation in Google cloud is in beta release, and
 The specific options that are needed on the cluster are:
 
 ```
+maxmemory <x>gb
 maxmemory-policy allkeys-lru
 ```
 
-As well as setting `maxmemory` set so that keys are evicted at some point before actual memory is exhausted (give it some headroom at your discretion).
+Where x is some amount of memory that gives you some headroom vs. the actual amount of working memory in your cluster. 
+
+This combination of settings are required to make sure that the portal expires keys. Without these settings, the redis cluster will fill and stop working in production pretty quickly at load. The goal here is to make sure that we store the maximum amount of portal history in your redis cluster, according to the amount of memory it has.
 
 The good news is that this setting _is_ available on Redis Enterprise, which is available in Google Cloud marketplace. However, this is not easily setup via terraform, hence this manual step.
 
@@ -68,9 +71,9 @@ locals {
 
 Then go to the marketplace in Google Cloud and sign up for "Redis Enterprise" (search for it).
 
-Follow the instructions to setup an instance, making sure you set appropriate options for `maxmemory` and `maxmemory-policy volatile-lru`.
+Follow the instructions to setup an instance, making sure you set appropriate options for `maxmemory <x>gb` and `maxmemory-policy volatile-lru`.
 
-Follow instructions to setup a service networking link from the redis cluster to your production network.
+Follow instructions to link the redis cluster to your production network.
 
 Once you have the instance setup, modify `redis_portal_address` and set it to the IP address and port of the discovery endpoint for your redis cluster.
 
@@ -82,21 +85,25 @@ locals {
 
 Trigger a deploy from prod branch with a tag. Once the deploy completes, the production environment should be switched over to your new redis enterprise cluster, and the google cloud redis cluster is shut down.
 
+You can verify everything is working correctly just by looking at the portal. If the portal is working, then everything is fine. The portal cannot work without redis.
+
 ## 2. Right size your redis cluster
 
 There are several factors you must consider:
 
 1. The amount of throughput and CPU on the cluster
 2. The amount of history you desire for the portal
-3. How much availability and redundancy you want on the cluster
+3. How much availability you want on the cluster
 
-The backend will fill your redis cluster and only expire the oldest entries it needs to keep under max memory by design. So in short, you need to decide how much history you want to have in the portal, work out roughly how much session data you can store (how many hours) at expected load for an amount of memory, and plan around that. Next, once you have the amount of memory you want, make sure that you are not using too much CPU or IO on your cluster at the amount of memory you choose. Finally, depending on how much redundancy you want, you can try running multiple replicas in different zones and so on, in case one shard goes down there is an active mirrored fallback.
+The backend will fill your redis cluster and only expire the oldest entries it needs to keep under max memory by design. So in short, you need to decide how much history you want to have in the portal, work out roughly how much session data you can store (how many hours or days) at expected load for an amount of memory, and plan around that. Next, once you have the amount of memory you want, make sure that you are not using too much CPU or IO on your cluster at the amount of memory you choose. Finally, depending on how much redundancy you want, you can try running multiple replicas in different zones and so on, in case one shard goes down there is an active mirrored fallback.
 
-I recommend for a production environment starting with at least 100GB for the portal if you are around 1M sessions. You could probably get away with less for a game around 100K CCU, and this is best discovered through synthetic load testing in the staging environment.
+I recommend for a production environment starting with at least 100GB for the portal if you are around 1M sessions. You can get away with less for a game around 100K CCU, and this is best discovered through synthetic load testing in the staging environment.
 
 ## 3. Right size your relay backend
 
 Depending on the number of relays you have, you can adjust the scale of the relay backend. By default it is set to `c3-highcpu-44` instance type, which is powerful enough to perform route optimization easily with 1000 relays. Typical relay fleets usually only have a few hundred relays, so you may be able to reduce the power of the relay backend to save money.
+
+IMPORTANT: The relay backend does all its work in one VM instance. Additional VMs in the instance group just add availability. So the instance type of the VM in this group is how you scale it up and down.
 
 Search for "relay_backend" in `~/next/terraform/prod/backend/main.tf`:
 
@@ -170,7 +177,7 @@ I strongly recommend load testing any changes in the staging environment before 
 
 The server backend is the component that monitors session network performance, decides if players should be accelerated or not, and selects the best route.
 
-The current service backend as configured is sufficient to scale to 1M peak CCU without any changes.
+The current service backend as configured is sufficient to scale to 1M peak CCU without any changes. It's a stateless managed instance group and it is able to scale horizontally by adding more VM instances to the group.
 
 If you have fewer than 1M CCU for your game, you can save money by right sizing the server backend.
 
@@ -246,13 +253,13 @@ module "server_backend" {
 }
 ```
 
-The safest option is to just leave this alone, or to simply reduce `min_size` from 3 to 1 instances at the cost of reduced availability.
+The safest option is to just leave this alone, or to simply reduce `min_size` from 3 to 1 instances at the cost of reduced availability. This will change the server backend so it runs in only one availability zone in google cloud, insteaod of three, and divide the cost it takes to run the server backend by 3.
 
-If you are more on the 100k CCU range than million+, then you could try adjustments to bring the instance type down to `n1-standard-8` for reduced cost per-instance, but at the same time you must also reduce the number of UDP threads per-instance with the environment var `UDP_NUM_THREADS=8` from 8 to 2, otherwise the instance type won't have enough CPU power to process all the packets it receives. I strongly recommend for 1M+ CCU or close to it, that you stay with the tried and tested c3-highcpu-44 configuration. In load testing I've found this to be superior to n1-standard-8 based instances around and above 1M CCU.
+If you are more on the 100k CCU range than million+, then you could try adjustments to bring the instance type down to `n1-standard-8` for reduced cost per-instance, but at the same time you must also reduce the number of UDP threads per-instance with the environment var `UDP_NUM_THREADS=8` from 8 to 2, otherwise the instance type won't have enough CPU power to process all the packets it receives. I strongly recommend for 1M+ CCU or close to it, that you stay with the tried and tested c3-highcpu-44 configuration. In load testing I've found it to be superior to n1-standard-8 based instances at high player counts.
 
 When making any changes to the server backend it is _vital_ to load test your changes in the staging environment prior to deploying to production. It is very easy to get the server backend into a state where it is IO bound, or CPU bound and cannot process requests from the SDK quickly enough, leading to "Retries" and "Fallback to Direct" in the "Admin" page, indicating that player sessions have given up trying to get acceleration because they did not get a response from the server backend quickly enough.
 
-Finally, make sure to conservatively set `min_size` such that you know you can sustain your base load. Even with correct tuning for the server backend service, if a stampede of players comes at your backend, they will overload the backend before it has time to scale up (you'll see retries and fallbacks to direct under "Admin" in the portal), unless you pre-scale with `min_size`. It generally takes 1-2 minutes for each server backend instance to start and come online, and this is just too slow for a rapid scale up of 100k+ players or 1M+ players. The system will recover, and the fallback to direct is only temporary during scale up, but I always like to see it running clean without retries and fallback to direct where possible for the best player experience.
+Finally, make sure to conservatively set `min_size` such that you know you can sustain your base load level. Even with correct tuning for the server backend service, if a stampede of players comes at your backend, they will overload the backend before it has time to scale up (you'll see retries and fallbacks to direct under "Admin" in the portal), unless you pre-scale with `min_size`. It generally takes 1-2 minutes for each server backend instance to start and come online, and this is just too slow for a rapid scale up of 100k+ players or 1M+ players. The system will recover, and the fallback to direct is only temporary during scale up, but I always like to see it running clean without retries and fallback to direct where possible for the best player experience.
 
 ## 5. If in doubt get help!
 
