@@ -26,161 +26,80 @@ When the akamai config tool runs, it caches data under `~/next/cache` to speed u
 
 The `akamai.txt` file is currently unused, but in future it could be used by the SDK to perform datacenter autodetection in Akamai datacenters. It's mostly emitted for completeness.
 
-----------------
+## 2. Adding new datacenters in Akamai
 
-## 2. Adding new datacenters in AWS
-
-When you run the amazon config tool via `run config-amazon`, you will see an output describing the set of datacenters in AWS:
+When you run the akamai config tool via `run config-akamai`, you will see an output describing the set of datacenters in Akamai:
 
 ```console
-gaffer@batman next % run config-amazon
+gaffer@batman next % run config-akamai
 
 Known datacenters:
 
-  amazon.ohio.2
-  amazon.ohio.3
-  amazon.sanjose.1
-  amazon.sanjose.3
-  amazon.oregon.1
-  amazon.oregon.2
-  amazon.oregon.3
-  amazon.oregon.4
-  amazon.denver.1
-  amazon.lasvegas.1
-  amazon.lasvegas.2
-  amazon.losangeles.1
-  amazon.losangeles.2
-  amazon.portland.1
-  amazon.phoenix.1
-  amazon.seattle.1
-  etc...
+  akamai.mumbai
+  akamai.toronto
+  akamai.sydney
+  akamai.dallas
+  akamai.fremont
+  akamai.atlanta
+  akamai.newyork
+  akamai.london
+  akamai.singapore
+  akamai.frankfurt
 
 Unknown datacenters:
 
-  ap-southeast-1-mnl-1a -> apse1-mnl1-az1
-  ap-southeast-2-akl-1a -> apse2-akl1-az1
-  us-west-2-phx-2a -> usw2-phx2-az1
-
-Excluded regions:
-
-  il-central-1
-
-Generating amazon.txt
-
-Generating dev amazon/generated.tf
-
-Generating prod amazon/generated.tf
+  us-iad
+  us-ord
+  fr-par
+  us-sea
+  br-gru
+  nl-ams
+  se-sto
+  in-maa
+  jp-osa
+  it-mil
+  us-mia
+  id-cgk
+  us-lax
 ```
 
-Here we can see that there are some unknown datacenters, and one excluded region.
+Here we can see that Akamai has been busy. There are a bunch of unknown datacenters. These are new datacenters available in Akamai that have not been mapped to Network Next datacenters yet.
 
-An excluded region means that in your AWS account that region is not activated yet. It may not be generally available, or you have to do some steps in the AWS console to request that region be enabled. In this case I would need to enable `il-central-1' which is the Tel Aviv region in AWS. If you need to use this region, enable it in your AWS account and it should no longer be excluded the next time you run the amazon config tool.
-
-The unknown datacenters part means there are some datacenters available in AWS that are not mapped to Network Next datacenters yet.
-
-To fix this, you would just go into sellers/amazon.go and modify the datacenter map to add these new regions:
+To fix this, you would just go into sellers/akamai.go and modify the datacenter map to add these new datacenters:
 
 ```
-// Amazon datacenters, eg. "amazon.[country/city].[number]"
+// This definition drives the set of akamai datacenters, eg. "akamai.[country/city]"
 
 var datacenterMap = map[string]*Datacenter{
 
-	// regions (AZID)
-
-	"afs1":  {"johannesburg", -33.9249, 18.4241},
-	"ape1":  {"hongkong", 22.3193, 114.1694},
-	"apne1": {"tokyo", 35.6762, 139.6503},
-	"apne2": {"seoul", 37.5665, 126.9780},
-	"apne3": {"osaka", 34.6937, 135.5023},
-	"aps1":  {"mumbai", 19.0760, 72.8777},
-	"aps2":  {"hyderabad", 17.3850, 78.4867},
-	"apse1": {"singapore", 1.3521, 103.8198},
-	"apse2": {"sydney", -33.8688, 151.2093},
-	"apse3": {"jakarta", -6.2088, 106.8456},
-	"apse4": {"melbourne", -37.8136, 144.9631},
-	"cac1":  {"montreal", 45.5019, -73.5674},
-	"euc1":  {"frankfurt", 50.1109, 8.6821},
-	"euc2":  {"zurich", 47.3769, 8.5417},
-	"eun1":  {"stockholm", 59.3293, 18.0686},
-	"eus1":  {"milan", 45.4642, 9.1900},
-	"eus2":  {"spain", 41.5976, -0.9057},
-	"euw1":  {"ireland", 53.7798, -7.3055},
-	"euw2":  {"london", 51.5072, -0.1276},
-	"euw3":  {"paris", 48.8566, 2.3522},
-	"mec1":  {"uae", 23.4241, 53.8478},
-	"mes1":  {"bahrain", 26.0667, 50.5577},
-	"sae1":  {"saopaulo", -23.5558, -46.6396},
-	"use1":  {"virginia", 39.0438, -77.4874},
-	"use2":  {"ohio", 40.4173, -82.9071},
-	"usw1":  {"sanjose", 37.3387, -121.8853},
-	"usw2":  {"oregon", 45.8399, -119.7006},
-
-	// local zones (AZID)
-
-	"los1": {"nigeria", 6.5244, 3.3792},
-	"tpe1": {"taipei", 25.0330, 121.5654},
-	"ccu1": {"kolkata", 22.5726, 88.3639},
-	"del1": {"delhi", 28.7041, 77.1025},
-	"bkk1": {"bangkok", 13.7563, 100.5018},
-	"per1": {"perth", -31.9523, 115.8613},
-	"ham1": {"hamburg", 53.5488, 9.9872},
-	"waw1": {"warsaw", 52.2297, 21.0122},
-	"cph1": {"copenhagen", 55.6761, 12.5683},
-	"hel1": {"finland", 60.1699, 24.9384},
-	"mct1": {"oman", 23.5880, 58.3829},
-	"atl1": {"atlanta", 33.7488, -84.3877},
-	"bos1": {"boston", 42.3601, -71.0589},
-	"bue1": {"buenosaires", -34.6037, -58.3816},
-	"chi1": {"chicago", 41.8781, -87.6298},
-	"dfw1": {"dallas", 32.7767, -96.7970},
-	"iah1": {"houston", 29.7604, -95.3698},
-	"lim1": {"lima", -12.0464, -77.0428},
-	"mci1": {"kansas", 39.0997, -94.5786},
-	"mia1": {"miami", 25.7617, -80.1918},
-	"msp1": {"minneapolis", 44.9778, -93.2650},
-	"nyc1": {"newyork", 40.7128, -74.0060},
-	"phl1": {"philadelphia", 39.9526, -75.1652},
-	"qro1": {"mexico", 23.6345, -102.5528},
-	"scl1": {"santiago", -33.4489, -70.6693},
-	"den1": {"denver", 39.7392, -104.9903},
-	"las1": {"lasvegas", 36.1716, -115.1391},
-	"lax1": {"losangeles", 34.0522, -118.2437},
-	"pdx1": {"portland", 45.5152, -122.6784},
-	"phx1": {"phoenix", 33.4484, -112.0740},
-	"sea1": {"seattle", 47.6062, -122.3321},
+	"ap-west":      {"mumbai", 19.0760, 72.8777},
+	"ca-central":   {"toronto", 43.6532, -79.3832},
+	"ap-southeast": {"sydney", -33.8688, 151.2093},
+	"us-central":   {"dallas", 32.7767, -96.7970},
+	"us-west":      {"fremont", 37.5485, -121.9886},
+	"us-southeast": {"atlanta", 33.7488, -84.3877},
+	"us-east":      {"newyork", 40.7128, -74.0060},
+	"eu-west":      {"london", 51.5072, -0.1276},
+	"ap-south":     {"singapore", 1.3521, 103.8198},
+	"eu-central":   {"frankfurt", 50.1109, 8.6821},
+	"ap-northeast": {"tokyo", 35.6762, 139.6503},
 }
 ```
 
-For example "ap-southeast-1-mnl-1a" is the "manilla" local zone, and the account independent AZID for this is "apse1-mnl1-az1"
-
-To add datacenter mapping for it you would add an entry like this:
+For example "us-lax" is Los Angeles. To add a mapping for it you would add an entry like this:
 
 ```
-	"mnl1": {"manilla", 14.5995, 120.9842},
+	"us-lax":       {"losangeles", 34.0522, -118.2437},
 ```
 
 The numbers after the city name are latitude and longitude. The location doesn't need to be exact for where the servers are located. Center of the city is fine.
 
-Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add new amazon datacenters.
+Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add a new datacenter.
 
-## 3. Update datacenter autodetect system
 
-After you add new amazon datacenters, run the amazon config tool again and check the changes made with diff.
+-------------------
 
-```
-next config-amazon
-git diff
-```
-
-You should see the new datacenters added to `sellers/amazon/generated.tf` file and `config/amazon.txt`
-
-Check these changes in, then inside semaphore CI, trigger "Upload Config" job on your most recent commit.
-
-This uploads the config/amazon.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available for datacenter autodetection.
-
-_(Datacenter autodetect lets you simply pass in "cloud" when your server runs in AWS or Google Cloud, and the SDK will work out which datacenter it is located in automatically. Saves a lot of time.)_
-
-## 4. Update database with your new datacenters
+## 3. Update database with your new datacenters
 
 Depending on your environment you are changing, change into either `~/next/terraform/dev/relays` or `~/next/terraform/prod/relays`.
 
@@ -193,7 +112,7 @@ terraform apply
 
 Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new amazon datacenters.
 
-## 5. Commit updated database.bin to the backend runtime
+## 4. Commit updated database.bin to the backend runtime
 
 The backend runtime does not directly talk with Postgres SQL. Instead they get their configuration from a database.bin file, which is an extracted version of the configuration data stored in Postgres.
 
@@ -212,7 +131,7 @@ It takes up to 60 seconds for the runtime backend to pick up your committed data
 
 After this point, you should be able to load up the portal and see the new datacenters you added for AWS.
 
-## 6. Spin up relays in AWS.
+## 5. Spin up relays in AWS.
 
 It's ridiculously easy! Take a look at `~/next/sellers/amazon.go`.
 
