@@ -96,9 +96,6 @@ The numbers after the city name are latitude and longitude. The location doesn't
 
 Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add a new datacenter.
 
-
--------------------
-
 ## 3. Update database with your new datacenters
 
 Depending on your environment you are changing, change into either `~/next/terraform/dev/relays` or `~/next/terraform/prod/relays`.
@@ -110,7 +107,7 @@ cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new amazon datacenters.
+Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new akamai datacenters.
 
 ## 4. Commit updated database.bin to the backend runtime
 
@@ -129,63 +126,56 @@ next commit
 
 It takes up to 60 seconds for the runtime backend to pick up your committed database.bin.
 
-After this point, you should be able to load up the portal and see the new datacenters you added for AWS.
+After this point, you should be able to load up the portal and see the new datacenters you added for Akamai.
 
-## 5. Spin up relays in AWS.
+## 5. Spin up relays in Akamai.
 
-It's ridiculously easy! Take a look at `~/next/sellers/amazon.go`.
+It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays/main.tf` or `~/terraform/backend/prod/relays/main.tf`, depending on which environment you want to change.
 
-There are two data structures in here. One for dev relays, and one for prod relays:
+For example in dev, you can see:
 
 ```
-// DEV RELAYS
+# =============
+# AKAMAI RELAYS
+# =============
 
-var devRelayMap = map[string][]string{
-	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.stockholm.1":  {"amazon.stockholm.1", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.stockholm.2":  {"amazon.stockholm.2", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.stockholm.3":  {"amazon.stockholm.3", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+locals {
+
+  akamai_relays = {
+
+    "akamai.newyork" = {
+      datacenter_name = "akamai.newyork"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    },
+
+    "akamai.frankfurt" = {
+      datacenter_name = "akamai.frankfurt"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    }
+    
+    "akamai.london" = {
+      datacenter_name = "akamai.london"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    }
+
+    etc...
+  }
 }
-
-// PROD RELAYS
-
-var prodRelayMap = map[string][]string{
-	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.oregon.1":   {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-}
 ```
 
-To add a new relay just create a new entry in the map for your relay. You'll need to select the correct instance type you want, which can vary depending on the datacenter you are picking.
-
-You can see a list of instance types here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#AvailableInstanceTypes
-
-But you'll really want to use the AWS console to check the instance types available in the region and zone you want to run a relay in.
-
-After adding a new relay, run the amazon config tool again:
-
-```console
-run amazon-config
-```
-
-And it will generate the terraform script to create the relays.
-
-Then change into the terraform directory depending on env, for example in dev go:
+Addding a new relay is as simple as copying and pasting an entry for a new relay and updating its relay name and datacenter name, and then running `terraform apply`.
 
 ```console
 cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-It's common to have to iterate back and forth a bit, for example if the instance type is not available in the datacenter then AWS will error out here until you pick an instance type that is available.
+Once terraform has completed, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect:
 
-Once the terraform apply has completed successfully, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect. For example:
+For example:
 
 ```console
 cd ~/next
@@ -194,30 +184,26 @@ next database
 next commit
 ```
 
-Next you then need to connect to your VPN (cannot SSH into relays except from your VPN address), then setup the new relays:
+Once the database is committed, you then need to connect to your VPN (cannot SSH into relays except from your VPN address), then setup the new relays:
 
 ```console
-next setup amazon
+next setup akamai
 ```
 
-This loads the relay service on all amazon relays in your system, skipping over any that are already setup.
+This loads the relay service on all akamai relays in your system, skipping over any that are already setup.
 
-Once the setup is complete, you can check your amazon relays are online with:
+Once the setup is complete, you can check your akamai relays are online with:
 
 ```console
-gaffer@batman next % next relays amazon
+gaffer@batman next % next relays akamai
 
-┌────────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬───────────────────┐
-│ Name               │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version           │
-├────────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼───────────────────┤
-│ amazon.virginia.1  │ 44.197.190.75:40000  │ 5f379f503bb1c95c │ online │ 1d     │ 17       │ relay-debug-1.0.0 │
-│ amazon.ohio.2      │ 3.22.194.113:40000   │ ad1a43212a466bbb │ online │ 1d     │ 14       │ relay-debug-1.0.0 │
-│ amazon.virginia.2  │ 44.204.77.144:40000  │ 2475ffad44ea2328 │ online │ 1d     │ 14       │ relay-debug-1.0.0 │
-│ amazon.ohio.1      │ 18.220.135.169:40000 │ ace3bb374b852115 │ online │ 1d     │ 2        │ relay-debug-1.0.0 │
-│ amazon.stockholm.1 │ 51.20.120.26:40000   │ 5d1df8b2f33beb0a │ online │ 1d     │ 0        │ relay-debug-1.0.0 │
-│ amazon.stockholm.2 │ 16.171.149.90:40000  │ e76e968a7a1b3266 │ online │ 1d     │ 0        │ relay-debug-1.0.0 │
-│ amazon.stockholm.3 │ 16.171.53.242:40000  │ 147b9a6c163a298f │ online │ 1d     │ 0        │ relay-debug-1.0.0 │
-└────────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘```
+┌──────────────────┬───────────────────────┬──────────────────┬────────┬────────┬──────────┬───────────────────┐
+│ Name             │ PublicAddress         │ Id               │ Status │ Uptime │ Sessions │ Version           │
+├──────────────────┼───────────────────────┼──────────────────┼────────┼────────┼──────────┼───────────────────┤
+│ akamai.newyork   │ 50.116.55.244:40000   │ 95d452eef2604bc4 │ online │ 2d     │ 9        │ relay-debug-1.0.0 │
+│ akamai.frankfurt │ 170.187.190.118:40000 │ c223d2eb62b013f5 │ online │ 2d     │ 0        │ relay-debug-1.0.0 │
+│ akamai.london    │ 212.71.249.92:40000   │ 33cf1e5d5af28532 │ online │ 2d     │ 0        │ relay-debug-1.0.0 │
+└──────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘
 ```
 
 You can also go to the portal and you should see your new relays there as well.
