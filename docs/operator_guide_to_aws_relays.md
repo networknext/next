@@ -26,7 +26,7 @@ It complicated yet again by the fact that AWS has this weird (but cool) local zo
 
 When the amazon config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs. It generates `~/next/dev/relays/amazon/generated.tf`, `~/next/prod/relays/amazon/generated.tf` and `~/next/config/amazon.txt`.
 
-The `terraform/[env]/relays/amazon/generated.tf` file contains not just the definition of all amazon datacenters in Network Next, but also a huge wad of generated code to do the multi-region dance in AWS for relays, plus code to actually create the relays in the env. Separate files are generated for dev and prod envs.
+The `terraform/[dev|prod]/relays/amazon/generated.tf` files contains not just the definition of all amazon datacenters in Network Next, but also a huge wad of generated code to do the multi-region dance in AWS for relays, plus code to actually create the relays in the env. Separate files are generated for dev and prod envs.
 
 The `config/amazon.txt` file is used for datacenter autodetection in AWS. It's uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. This text file is basically just a mapping from the AWS AZID to the network next datacenter name.
 
