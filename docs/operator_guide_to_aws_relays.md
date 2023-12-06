@@ -74,9 +74,9 @@ Generating dev amazon/generated.tf
 Generating prod amazon/generated.tf
 ```
 
-Here we can see that there are some unknown datacenters, and some excluded regions.
+Here we can see that there are some unknown datacenters, and one excluded region.
 
-An excluded region means that in your AWS account, that region is not activated yet. It may not be generally available, or you have to do some steps in the AWS console to request that region be enabled. If you need to use this region, enable it in your AWS account and it should no longer be excluded the next time you run the amazon config tool.
+An excluded region means that in your AWS account that region is not activated yet. It may not be generally available, or you have to do some steps in the AWS console to request that region be enabled. If you need to use this region, enable it in your AWS account and it should no longer be excluded the next time you run the amazon config tool.
 
 The unknown datacenters part means that there are some datacenters available in AWS that are not mapped to Network Next datacenters yet.
 
@@ -153,6 +153,16 @@ var datacenterMap = map[string]*Datacenter{
 }
 ```
 
+For example "ap-southeast-1-mnl-1a" is the "manilla" local zone. 
+
+To add datacenter mapping for it you would add an entry like this:
+
+```
+	"mnl1": {"manilla", 14.5995, 120.9842},
+```
+
+The numbers after the city name are latitude and longitude. The location doesn't need to be exact for where the servers are located. Center of the city is fine.
+
 Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add new amazon datacenters.
 
 ## 3. Update datacenter autodetect system
@@ -183,7 +193,7 @@ cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new google cloud datacenters.
+Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new amazon datacenters.
 
 ## Commit updated database.bin to the backend runtime
 
