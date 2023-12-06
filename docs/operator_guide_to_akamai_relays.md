@@ -8,7 +8,7 @@ This section describes how to use the Network Next terraform provider together w
 
 Akamai recently acquired Linode. Prior to the aquisition I did not find the Linode network to be incredibly performant. Presumably, Akamai will use this acquisition to deploy more compute in their datacenters over time so this platform should hopefully mature into a good source of relays. There is a general trend where network providers and CDNs are starting to offer edge compute offerings in their datacenters. Hopefully that is the plan here for Akamai.
 
-Right now I'm mostly including it mostly because Linode had a terraform provider and it was easy to implement as a test case. The existence of this terraform provider is not an endorsement of the quality of Akamai/Linode relays.
+Right now I'm mostly including it mostly because Linode had a terraform provider and it was easy to implement as a test case. The existence of this tool is not an endorsement of the quality of Akamai/Linode relays.
 
 ## 1. The akamai config tool
 
