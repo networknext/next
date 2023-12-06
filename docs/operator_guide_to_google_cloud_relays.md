@@ -20,7 +20,7 @@ You can see the source code for the google cloud config tool in `~/next/sellers/
 
 When it runs, it will cache some data under `~/next/cache` to speed up its operation, and it will generate `~/next/sellers/google/generated.tf` and `~/next/config/google.txt`.
 
-The `google/generated.tf` file is how we inject the set of google cloud datacenters into terraform. 
+The `sellers/google/generated.tf` file is how we inject the set of google cloud datacenters into terraform. 
 
 The google config tool interacts with your Google Cloud account via REST API and queries data such as the set of regions, and the zones within each region, and maps them to network next datacenter names like "google.iowa.1".
 
