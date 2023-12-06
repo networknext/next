@@ -51,14 +51,8 @@ To use Network Next, your game must have a client/server architecture and use UD
 * [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
 * [Operator guide to AWS relays](docs/operator_guide_to_aws_relays.md)
 * [Operator guide to Akamai relays](docs/operator_guide_to_akamai_relays.md)
+* [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
 
 # Miscellaneous
 
 * [Glossary of Common Terms](docs/glossary_of_common_terms.md)
-
----------------------------------------------------
-
-_Work in progress below here..._
-
-* [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
-* [Adding support for more sellers](docs/adding_support_for_more_sellers.md)
