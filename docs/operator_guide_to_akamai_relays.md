@@ -2,33 +2,31 @@
 
 <br>
 
-# Operator guide to AWS relays
+# Operator guide to Akamai relays
 
-This section describes how to use the Network Next terraform provider together with the Amazon terraform provider to spin up AWS relays.
+This section describes how to use the Network Next terraform provider together with the Akamai terraform provider to spin up Akamai relays (previously Linode.com).
 
-## 1. The amazon config tool
+Akamai recently acquired Linode. Prior to the aquisition I did not find the Linode network to be incredibly performant. Presumably, Akamai will use this acquisition to deploy more compute in their datacenters over time so this platform should hopefully mature into a good source of relays. There is a general trend where network providers and CDNs are starting to offer edge compute offerings in their datacenters. Hopefully that is the plan here for Akamai.
 
-The purpose of the amazon config tool is to extract configuration data from your AWS account and get it into a form where it can be used to create relays.
+Right now I'm mostly including it mostly because Linode had a terraform provider and it was easy to implement as a test case. The existence of this terraform provider is not an endorsement of the quality of Akamai/Linode relays.
 
-The amazon config tool is run automatically when you run `next config` along with config for other sellers, but if you want to run the amazon config by itself, just go:
+## 1. The akamai config tool
+
+The akamai config tool is to extracts configuration data from your Akamai account and gets it into a form where it can be used to create relays. 
+
+The akamai config tool is run automatically when you run `next config` along with config for other sellers, but if you want to run the akamai config by itself, just go:
 
 ```
-run config-amazon
+run config-akamai
 ```
 
-The amazon config tool lives in `~/next/sellers/amazon.go`. 
+The akamai config tool lives in `~/next/sellers/akamai.go`. 
 
-Because the architecture of AWS is _heavily_ region-based, combined with some limitations in the terraform config language, it's just not possible to programmatically build up all the multi-region resources required to make relays work in terraform script alone. The end result is that you need to describe the set of dev and prod AWS relays inside a data structure inside the amazon config tool itself, and it generates the terraform script required to create them.
+When the akamai config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs. It generates `~/next/terraform/sellers/akamai/generated.tf` and `~/next/config/akamai.txt`.
 
-The amazon provider is also complicated by the fact that AWS zone ids are _account specific_. This means that us-east-1a in my account may not be the same availability zone as us-east-1a in your account. You can read more about this here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
+The `akamai.txt` file is currently unused, but in future it could be used by the SDK to perform datacenter autodetection in Akamai datacenters. It's mostly emitted for completeness.
 
-It complicated yet again by the fact that AWS has this weird (but cool) local zone thing, where many datacenters you want really want access to have to be manually enabled in your account, and are sort of piggy backed off some parent geographically unrelated parent region like us-east-1 (virginia). You can read more about this here: https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
-
-When the amazon config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs. It generates `~/next/terraform/dev/relays/amazon/generated.tf`, `~/next/terraform/prod/relays/amazon/generated.tf` and `~/next/config/amazon.txt`.
-
-The `terraform/[dev|prod]/relays/amazon/generated.tf` files contains not just the definition of all amazon datacenters in Network Next, but also a huuuuge wad of generated code to do the multi-region dance in AWS for relays, plus code to actually create the relays in the env. Separate files are generated for dev and prod envs.
-
-The `config/amazon.txt` file is used for datacenter autodetection in AWS. It's uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. This text file is basically just a mapping from the AWS AZID to the network next datacenter name.
+----------------
 
 ## 2. Adding new datacenters in AWS
 
