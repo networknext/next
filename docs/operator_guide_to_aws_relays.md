@@ -268,9 +268,7 @@ terraform apply
 
 It's common to have to iterate back and forth a bit, for example if the instance type is not available in the datacenter then AWS will error out here until you pick an instance type that is available.
 
-Once terraform apply has completed successfully, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect:
-
-For example:
+Once terraform apply has completed successfully, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect. For example:
 
 ```console
 cd ~/next
