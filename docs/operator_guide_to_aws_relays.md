@@ -18,17 +18,17 @@ run config-amazon
 
 The amazon config tool lives in `~/next/sellers/amazon.go`. 
 
-Because the architecture of AWS is heavily region-based, combined with some limitations in the terraform config language, it's just not possibly to programmatically build up all the multi-region resources required to make relays work in terraform script alone. The end result is that you need to describe the set of AWS relays inside the amazon config tool itself, and then it generates the terraform script required to create them.
+Because the architecture of AWS is _heavily_ region-based, combined with some limitations in the terraform config language, it's just not possible to programmatically build up all the multi-region resources required to make relays work in terraform script alone. The end result is that you need to describe the set of dev and prod AWS relays inside a data structure inside the amazon config tool itself, and it generates the terraform script required to create them.
 
 The amazon provider is also complicated by the fact that AWS zone ids are _account specific_. This means that us-east-1a in my account is probably not the same availability zone as us-east-1a in your account. You can read more about this here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
 
-It complicated yet again by the fact that AWS has this weird (but cool) local zone thing, where many datacenters you want really want access to have to be manually enabled in your account, and are sort of piggy backed off some parent region like us-east-1 (virginia), unrelated geographically to where the local zone actually is. You can read more about this here: https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
+It complicated yet again by the fact that AWS has this weird (but cool) local zone thing, where many datacenters you want really want access to have to be manually enabled in your account, and are sort of piggy backed off some parent geographically unrelated parent region like us-east-1 (virginia). You can read more about this here: https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
 
-When the amazon config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
+When the amazon config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs. It generates `~/next/dev/relays/amazon/generated.tf`, `~/next/prod/relays/amazon/generated.tf` and `~/next/config/amazon.txt`.
 
-The `amazon/generated.tf` contains not just the definition of all amazon datacenters in Network Next, but also a huge wad of generated code to do the multi-region dance in AWS for relays, and the generated code to actually create the AWS relays.
+The `terraform/[env]/relays/amazon/generated.tf` file contains not just the definition of all amazon datacenters in Network Next, but also a huge wad of generated code to do the multi-region dance in AWS for relays, plus code to actually create the relays in the env. Separate files are generated for dev and prod envs.
 
-The `config/amazon.txt` file is uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. In short, this text file is just a mapping from the AWS AZID to the network next datacenter name.
+The `config/amazon.txt` file is used for datacenter autodetection in AWS. It's uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. This text file is basically just a mapping from the AWS AZID to the network next datacenter name.
 
 ## 2. Adding new datacenters in AWS
 
@@ -74,11 +74,13 @@ Generating dev amazon/generated.tf
 Generating prod amazon/generated.tf
 ```
 
-Here we can see that most google datacenters are already mapped, but there are some new, unknown google datacenters.
+Here we can see that there are some unknown datacenters, and some excluded regions.
 
-These are new regions enabled in google cloud, that are not yet mapped to Network Next datacenter names.
+An excluded region means that in your AWS account, that region is not activated yet. It may not be generally available, or you have to do some steps in the AWS console to request that region be enabled.
 
-To fix this, you would just go into sellers/google.go and modify the datacenter map to add these new regions:
+The unknown datacenters mean that there are some datacenters available in AWS that are not mapped to Network Next datacenters yet.
+
+To fix this, you would just go into sellers/amazon.go and modify the datacenter map to add these new regions:
 
 ```
 // This definition drives the set of google datacenters, eg. "google.[country/city].[number]"
@@ -128,6 +130,25 @@ For example, you would map "europe-west10" to "berlin" and give it the correct l
 Same for "europe-west12" and "me-central1" and "me-central2", just look up what cities they are in, and set their lat long to an approx location for each city. It doesn't need to be precise.
 
 Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add new google datacenters.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------
 
 ## 3. Update datacenter autodetect system
 
