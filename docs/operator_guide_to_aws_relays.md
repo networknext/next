@@ -26,164 +26,52 @@ It complicated yet again by the fact that AWS has this weird (but cool) local zo
 
 When the amazon config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
 
-The `amazon/generated.tf` therefore contains not just, but also a huge wad of generated code to do the multi-region dance in AWS for relays, and the generated code to create the AWS relays.
+The `amazon/generated.tf` contains not just the definition of all amazon datacenters in Network Next, but also a huge wad of generated code to do the multi-region dance in AWS for relays, and the generated code to actually create the AWS relays.
 
 The `config/amazon.txt` file is uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. In short, this text file is just a mapping from the AWS AZID to the network next datacenter name.
 
+## 2. Adding new datacenters in AWS
 
-
-
-
-
-
-
----------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 2. Adding new datacenters to google cloud
-
-When you run the google config tool via `run config-google`, you will see an output describing the set of datacenters in google cloud:
+When you run the amazon config tool via `run config-amazon`, you will see an output describing the set of datacenters in AWS:
 
 ```console
-gaffer@batman next % run config-google
+gaffer@batman next % run config-amazon
 
 Known datacenters:
 
-  google.taiwan.1
-  google.taiwan.2
-  google.taiwan.3
-  google.hongkong.1
-  google.hongkong.2
-  google.hongkong.3
-  google.tokyo.1
-  google.tokyo.2
-  google.tokyo.3
-  google.osaka.1
-  google.osaka.2
-  google.osaka.3
-  google.seoul.1
-  google.seoul.2
-  google.seoul.3
-  google.mumbai.1
-  google.mumbai.2
-  google.mumbai.3
-  google.delhi.1
-  google.delhi.2
-  google.delhi.3
-  google.singapore.1
-  google.singapore.2
-  google.singapore.3
-  google.jakarta.1
-  google.jakarta.2
-  google.jakarta.3
-  google.sydney.1
-  google.sydney.2
-  google.sydney.3
-  google.melbourne.1
-  google.melbourne.2
-  google.melbourne.3
-  google.warsaw.1
-  google.warsaw.2
-  google.warsaw.3
-  google.finland.1
-  google.finland.2
-  google.finland.3
-  google.madrid.1
-  google.madrid.2
-  google.madrid.3
-  google.belgium.2
-  google.belgium.3
-  google.belgium.4
-  google.london.1
-  google.london.2
-  google.london.3
-  google.frankfurt.1
-  google.frankfurt.2
-  google.frankfurt.3
-  google.netherlands.1
-  google.netherlands.2
-  google.netherlands.3
-  google.zurich.1
-  google.zurich.2
-  google.zurich.3
-  google.milan.1
-  google.milan.2
-  google.milan.3
-  google.paris.1
-  google.paris.2
-  google.paris.3
-  google.telaviv.1
-  google.telaviv.2
-  google.telaviv.3
-  google.montreal.1
-  google.montreal.2
-  google.montreal.3
-  google.toronto.1
-  google.toronto.2
-  google.toronto.3
-  google.saopaulo.1
-  google.saopaulo.2
-  google.saopaulo.3
-  google.santiago.1
-  google.santiago.2
-  google.santiago.3
-  google.iowa.1
-  google.iowa.2
-  google.iowa.3
-  google.iowa.6
-  google.southcarolina.2
-  google.southcarolina.3
-  google.southcarolina.4
-  google.virginia.1
-  google.virginia.2
-  google.virginia.3
-  google.ohio.1
-  google.ohio.2
-  google.ohio.3
-  google.dallas.1
-  google.dallas.2
-  google.dallas.3
-  google.oregon.1
-  google.oregon.2
-  google.oregon.3
-  google.losangeles.1
-  google.losangeles.2
-  google.losangeles.3
-  google.saltlakecity.1
-  google.saltlakecity.2
-  google.saltlakecity.3
-  google.lasvegas.1
-  google.lasvegas.2
-  google.lasvegas.3
+  amazon.ohio.2
+  amazon.ohio.3
+  amazon.sanjose.1
+  amazon.sanjose.3
+  amazon.oregon.1
+  amazon.oregon.2
+  amazon.oregon.3
+  amazon.oregon.4
+  amazon.denver.1
+  amazon.lasvegas.1
+  amazon.lasvegas.2
+  amazon.losangeles.1
+  amazon.losangeles.2
+  amazon.portland.1
+  amazon.phoenix.1
+  amazon.seattle.1
+  etc...
 
 Unknown datacenters:
 
-  europe-west10-a
-  europe-west10-b
-  europe-west10-c
-  europe-west12-a
-  europe-west12-b
-  europe-west12-c
-  me-central1-a
-  me-central1-b
-  me-central1-c
-  me-central2-a
-  me-central2-b
-  me-central2-c
+  ap-southeast-1-mnl-1a -> apse1-mnl1-az1
+  ap-southeast-2-akl-1a -> apse2-akl1-az1
+  us-west-2-phx-2a -> usw2-phx2-az1
+
+Excluded regions:
+
+  il-central-1
+
+Generating amazon.txt
+
+Generating dev amazon/generated.tf
+
+Generating prod amazon/generated.tf
 ```
 
 Here we can see that most google datacenters are already mapped, but there are some new, unknown google datacenters.
