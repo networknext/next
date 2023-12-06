@@ -195,7 +195,7 @@ terraform apply
 
 Once this completes, it will have mutated your Postgres SQL instance in your Network Next env to add the new amazon datacenters.
 
-## Commit updated database.bin to the backend runtime
+## 5. Commit updated database.bin to the backend runtime
 
 The backend runtime does not directly talk with Postgres SQL. Instead they get their configuration from a database.bin file, which is an extracted version of the configuration data stored in Postgres.
 
@@ -214,7 +214,7 @@ It takes up to 60 seconds for the runtime backend to pick up your committed data
 
 After this point, you should be able to load up the portal and see the new datacenters you added for AWS.
 
-## 5. Spin up relays in AWS.
+## 6. Spin up relays in AWS.
 
 It's ridiculously easy! Take a look at `~/next/sellers/amazon.go`.
 
@@ -249,15 +249,15 @@ To add a new relay just create a new entry in the map for your relay. You'll nee
 
 You can see a list of instance types here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#AvailableInstanceTypes
 
-But you'll really want to use the AWS console or "aws" command to list the instance types available in the region you want to run a relay in.
+But you'll really want to use the AWS console to check the instance types available in the region and zone you want to run a relay in.
 
-Run the amazon config tool:
+After adding a new relay, run the amazon config tool again:
 
 ```console
 run amazon-config
 ```
 
-And it will generate the code to create the relays.
+And it will generate the terraform script to create the relays.
 
 Then change into the terraform directory depending on env, for example in dev go:
 
@@ -268,7 +268,7 @@ terraform apply
 
 It's common to have to iterate back and forth a bit, for example if the instance type is not available in the datacenter then AWS will error out here until you pick an instance type that is available.
 
-Once terraform apply has completed successfully, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect. For example:
+Once the terraform apply has completed successfully, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect. For example:
 
 ```console
 cd ~/next
@@ -277,7 +277,7 @@ next database
 next commit
 ```
 
-Once the database is committed, you then need to connect to your VPN (cannot SSH into relays except from your VPN address), then setup the new relays:
+Next you then need to connect to your VPN (cannot SSH into relays except from your VPN address), then setup the new relays:
 
 ```console
 next setup amazon
