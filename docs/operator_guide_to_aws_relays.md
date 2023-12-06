@@ -76,9 +76,9 @@ Generating prod amazon/generated.tf
 
 Here we can see that there are some unknown datacenters, and one excluded region.
 
-An excluded region means that in your AWS account that region is not activated yet. It may not be generally available, or you have to do some steps in the AWS console to request that region be enabled. If you need to use this region, enable it in your AWS account and it should no longer be excluded the next time you run the amazon config tool.
+An excluded region means that in your AWS account that region is not activated yet. It may not be generally available, or you have to do some steps in the AWS console to request that region be enabled. In this case I would need to enable `il-central-1' which is the Tel Aviv region in AWS. If you need to use this region, enable it in your AWS account and it should no longer be excluded the next time you run the amazon config tool.
 
-The unknown datacenters part means that there are some datacenters available in AWS that are not mapped to Network Next datacenters yet.
+The unknown datacenters part means there are some datacenters available in AWS that are not mapped to Network Next datacenters yet.
 
 To fix this, you would just go into sellers/amazon.go and modify the datacenter map to add these new regions:
 
@@ -153,7 +153,7 @@ var datacenterMap = map[string]*Datacenter{
 }
 ```
 
-For example "ap-southeast-1-mnl-1a" is the "manilla" local zone. 
+For example "ap-southeast-1-mnl-1a" is the "manilla" local zone, and the account independent AZID for this is "apse1-mnl1-az1"
 
 To add datacenter mapping for it you would add an entry like this:
 
