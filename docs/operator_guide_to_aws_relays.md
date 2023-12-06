@@ -2,29 +2,59 @@
 
 <br>
 
-# Operator guide to Google Cloud relays
+# Operator guide to AWS relays
 
-This section describes how to use the Network Next terraform provider together with the Google Cloud terraform provider to spin up Google Cloud relays. It sure beats doing it manually!
+This section describes how to use the Network Next terraform provider together with the Amazon terraform provider to spin up AWS relays.
 
-## 1. The google config tool
+## 1. The amazon config tool
 
-The purpose of the google config tool is to extract configuration data from your Google Cloud account and get it into a form where it can be used in terraform to create relays.
+The purpose of the amazon config tool is to extract configuration data from your AWS account and get it into a form where it can be used in terraform to create relays.
 
-The google config tool is run automatically when you run `next config` along with config for other sellers, but if you want to run the google config by itself, just go:
+The amazon config tool is run automatically when you run `next config` along with config for other sellers, but if you want to run the amazon config by itself, just go:
 
 ```
-run config-google
+run config-amazon
 ```
 
-You can see the source code for the google cloud config tool in `~/next/sellers/google.go`. 
+The amazon config tool lives in `~/next/sellers/amazon.go`. 
 
-When it runs, it will cache some data under `~/next/cache` to speed up its operation, and it will generate `~/next/sellers/google/generated.tf` and `~/next/config/google.txt`.
+When it runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
 
-The `google/generated.tf` file is how we inject the set of google cloud datacenters into terraform. 
+Because the architecture of AWS is heavily region-based, combined with some limitations in the terraform config language, it's just not possibly to programmatically build up all the multi-region resources required to make relays work programmatically entirely in terraform script. I tried.
 
-The google config tool interacts with your Google Cloud account via REST API and queries data such as the set of regions, and the zones within each region, and maps them to network next datacenter names like "google.iowa.1".
+The end result is unlike other sellers where the set of relays are able to be programmatically described in terraform, you have to define the set of AWS relays inside the amazon.go tool itself.
 
-The `config/google.txt` file is uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the Google Cloud datacenter your server is running in. In short, this text file is just a mapping from Google Cloud native zone name to the network next datacenter name.
+The amazon provider is also complicated somewhat by the fact that AWS zone ids are _account specific_. You can read more about this fun here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
+
+In short, we map the AZID, which is account independent, instead of the zone dependent zone id, to the Network Next datacenter name. This way amazon.virginia.1 is actually amazon.virginia.1 no matter how the zone id is swizzled for your account. This is important for example if you have your game servers and your relays in different AWS accounts, and to make sure that the datacenter autodetection works in AWS in an account independent manner.
+
+The `amazon/generated.tf` therefore contains not just the set of datacenters in AWS, but also a complicated mapping of relays to regions and a specific per-relay module that points to the correct AWS region needed for the relays in each env.
+
+The `config/amazon.txt` file is uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. In short, this text file is just a mapping from the AWS AZID to the network next datacenter name.
+
+
+
+
+
+
+
+
+---------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 2. Adding new datacenters to google cloud
 
