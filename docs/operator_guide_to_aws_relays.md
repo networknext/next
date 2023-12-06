@@ -155,39 +155,20 @@ var datacenterMap = map[string]*Datacenter{
 
 Please make sure to follow [naming conventions](datacenter_and_relay_naming_conventions.md) when you add new amazon datacenters.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-------------------------------
-
 ## 3. Update datacenter autodetect system
 
-After you add new google datacenters, run the google config tool again and check the changes made with diff.
+After you add new amazon datacenters, run the amazon config tool again and check the changes made with diff.
 
 ```
-next config-google
+next config-amazon
 git diff
 ```
 
-You should see the new datacenters added to `sellers/google/generated.tf` file and `config/google.txt`
+You should see the new datacenters added to `sellers/amazon/generated.tf` file and `config/amazon.txt`
 
 Check these changes in, then inside semaphore CI, trigger "Upload Config" job on your most recent commit.
 
-This uploads the config/google.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available for datacenter autodetection.
+This uploads the config/amazon.txt file to Google Cloud storage, where the SDK will pick it up, and the new datacenters will be available for datacenter autodetection.
 
 _(Datacenter autodetect lets you simply pass in "cloud" when your server runs in AWS or Google Cloud, and the SDK will work out which datacenter it is located in automatically. Saves a lot of time.)_
 
@@ -221,50 +202,67 @@ next commit
 
 It takes up to 60 seconds for the runtime backend to pick up your committed database.bin.
 
-After this point, you should be able to load up the portal and see the new datacenters you added for Google Cloud.
+After this point, you should be able to load up the portal and see the new datacenters you added for AWS.
 
-## 5. Spin up relays in Google Cloud
+## 5. Spin up relays in AWS.
 
-It's ridiculously easy! Take a look at `~/terraform/backend/dev/relays/main.tf` or `~/terraform/backend/prod/relays/main.tf`, depending on which environment you want to change.
+It's ridiculously easy! Take a look at `~/next/sellers/amazon.go`.
 
-For example in dev, you can see:
+There are two data structures in here. One for dev relays, and one for prod relays:
 
 ```
-# =============
-# GOOGLE RELAYS
-# =============
+// DEV RELAYS
 
-locals {
+var devRelayMap = map[string][]string{
+	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.stockholm.1":  {"amazon.stockholm.1", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.stockholm.2":  {"amazon.stockholm.2", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.stockholm.3":  {"amazon.stockholm.3", "m5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+}
 
-  google_credentials = "~/secrets/terraform-dev-relays.json"
-  google_project     = file("../../projects/dev-relays-project-id.txt")
-  google_relays = {
+// PROD RELAYS
 
-    "google.iowa.1" = {
-      datacenter_name = "google.iowa.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.2" = {
-      datacenter_name = "google.iowa.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    etc...
-  }
+var prodRelayMap = map[string][]string{
+	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.oregon.1":   {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+}
 ```
 
-Addding a new relay is as simple as copying and pasting an entry for a new relay and updating its relay name and datacenter name, and then running `terraform apply`.
+To add a new relay just create a new entry in the map for your relay. You'll need to select the correct instance type you want, which can vary depending on the datacenter you are picking.
 
-Once terraform has completed, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect:
+You can see a list of instance types here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#AvailableInstanceTypes
 
-For example:
+But you'll really want to use the AWS console or "aws" command to list the instance types available in the region you want to run a relay in.
+
+Run the amazon config tool:
+
+```console
+run amazon-config
+```
+
+And it will generate the code to create the relays.
+
+Then change into the terraform directory depending on env, for example in dev go:
 
 ```console
 cd ~/next/terraform/dev/relays
 terraform apply
+```
+
+It's common to have to iterate back and forth a bit, for example if the instance type is not available in the datacenter then AWS will error out here until you pick an instance type that is available.
+
+Once terraform apply has completed successfully, remember that you must once again commit the database.bin to the backend runtime for your changes to take effect:
+
+For example:
+
+```console
 cd ~/next
 next select dev
 next database
@@ -274,42 +272,27 @@ next commit
 Once the database is committed, you then need to connect to your VPN (cannot SSH into relays except from your VPN address), then setup the new relays:
 
 ```console
-next setup google
+next setup amazon
 ```
 
-This loads the relay service on all google relays in your system, skipping over any that are already setup.
+This loads the relay service on all amazon relays in your system, skipping over any that are already setup.
 
-Once the setup is complete, you can check your google relays are online with:
+Once the setup is complete, you can check your amazon relays are online with:
 
 ```console
-gaffer@batman next % next relays google
+gaffer@batman next % next relays amazon
 
-┌──────────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬───────────────────┐
-│ Name                 │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version           │
-├──────────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼───────────────────┤
-│ google.iowa.3        │ 34.42.110.106:40000  │ 380e3da4fc2ddd77 │ online │ 20h    │ 87       │ relay-debug-1.0.0 │
-│ google.iowa.2        │ 34.29.81.36:40000    │ a7f626db601b36ff │ online │ 19h    │ 81       │ relay-debug-1.0.0 │
-│ google.iowa.1        │ 34.173.141.155:40000 │ a970f7ebafaa5d0e │ online │ 20h    │ 61       │ relay-debug-1.0.0 │
-│ google.iowa.6        │ 34.16.106.87:40000   │ adbc009b12fe54d5 │ online │ 20h    │ 29       │ relay-debug-1.0.0 │
-│ google.virginia.3    │ 34.150.187.253:40000 │ e9ace494be91ced8 │ online │ 20h    │ 17       │ relay-debug-1.0.0 │
-│ google.ohio.1        │ 34.162.195.174:40000 │ b0cbb9243436b5d8 │ online │ 20h    │ 13       │ relay-debug-1.0.0 │
-│ google.virginia.2    │ 34.48.63.170:40000   │ 3b3438bd62d46659 │ online │ 20h    │ 11       │ relay-debug-1.0.0 │
-│ google.ohio.2        │ 34.162.91.234:40000  │ d343e8a0f6ab8214 │ online │ 20h    │ 9        │ relay-debug-1.0.0 │
-│ google.ohio.3        │ 34.162.149.251:40000 │ fcb14430d000581d │ online │ 20h    │ 8        │ relay-debug-1.0.0 │
-│ google.virginia.1    │ 34.48.61.240:40000   │ 7a9169eb2b715499 │ online │ 20h    │ 8        │ relay-debug-1.0.0 │
-│ google.finland.1     │ 34.88.111.165:40000  │ b6335a734e81dcc1 │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.finland.2     │ 34.88.178.155:40000  │ c32846ba731949cf │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.finland.3     │ 34.88.153.153:40000  │ 54f6418d0d6d54ce │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.frankfurt.1   │ 34.159.195.194:40000 │ ef43099960e2ee1c │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.frankfurt.2   │ 34.159.181.85:40000  │ 7757125bfbdc13e  │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.frankfurt.3   │ 34.159.230.86:40000  │ 9ad5f7ebf2e1f178 │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.london.1      │ 35.242.181.221:40000 │ 940d78fdf3b5393a │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.london.2      │ 34.89.51.164:40000   │ 2205b2e7cbf53ce0 │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.london.3      │ 34.147.219.214:40000 │ c6fb8a1814e33b23 │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.netherlands.1 │ 34.90.255.68:40000   │ a81985a3307974df │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.netherlands.2 │ 34.90.39.151:40000   │ 220db5ee6a669ef4 │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-│ google.netherlands.3 │ 34.141.240.124:40000 │ 8f7b7e5c773e47fd │ online │ 20h    │ 0        │ relay-debug-1.0.0 │
-└──────────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘
+┌────────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬───────────────────┐
+│ Name               │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version           │
+├────────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼───────────────────┤
+│ amazon.virginia.1  │ 44.197.190.75:40000  │ 5f379f503bb1c95c │ online │ 1d     │ 17       │ relay-debug-1.0.0 │
+│ amazon.ohio.2      │ 3.22.194.113:40000   │ ad1a43212a466bbb │ online │ 1d     │ 14       │ relay-debug-1.0.0 │
+│ amazon.virginia.2  │ 44.204.77.144:40000  │ 2475ffad44ea2328 │ online │ 1d     │ 14       │ relay-debug-1.0.0 │
+│ amazon.ohio.1      │ 18.220.135.169:40000 │ ace3bb374b852115 │ online │ 1d     │ 2        │ relay-debug-1.0.0 │
+│ amazon.stockholm.1 │ 51.20.120.26:40000   │ 5d1df8b2f33beb0a │ online │ 1d     │ 0        │ relay-debug-1.0.0 │
+│ amazon.stockholm.2 │ 16.171.149.90:40000  │ e76e968a7a1b3266 │ online │ 1d     │ 0        │ relay-debug-1.0.0 │
+│ amazon.stockholm.3 │ 16.171.53.242:40000  │ 147b9a6c163a298f │ online │ 1d     │ 0        │ relay-debug-1.0.0 │
+└────────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘```
 ```
 
 You can also go to the portal and you should see your new relays there as well.
