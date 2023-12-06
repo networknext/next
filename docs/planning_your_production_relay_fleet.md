@@ -82,7 +82,7 @@ Essential locations in North America:
 * Dallas
 * Miami
 * Virginia / Washington DC
-* San Jose / Silicon Valley / SF
+* San Jose / Silicon Valley
 * New York / Newark NJ
 * Chicago / Iowa
 * Seattle
