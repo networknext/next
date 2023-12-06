@@ -8,6 +8,20 @@ This section describes how to use the Network Next terraform provider to configu
 
 Typically, bare metal means anything that's not cloud. But in this context, bare metal means any relays that you have manually provisioned, and after you have provisioned them with Linux and you can SSH in, you want to turn them into relays in your relay fleet.
 
-## 1. Provision the relay with 
+## 1. Configure the seller in terraform
+
+Datapacket.com (https://datapacket.com) is an excellent bare metal provider for relays. But they don't have a terraform provider so you have to configure them manually.
+
+Let's start by configuring a seller in terraform called "datapacket".
+
+1. Create a new folder under `~/next/sellers` called "datapacket".
+2. Copy `main.tf` from `~/next/sellers/bare_metal/main.tf` into your `sellers/datapacket` directory.
+
+Open the copy of `main.tf` for editing.
+
+You'll see:
+
+```
+```
 
 [Back to main documentation](../README.md)
