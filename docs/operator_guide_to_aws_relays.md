@@ -8,7 +8,7 @@ This section describes how to use the Network Next terraform provider together w
 
 ## 1. The amazon config tool
 
-The purpose of the amazon config tool is to extract configuration data from your AWS account and get it into a form where it can be used in terraform to create relays.
+The purpose of the amazon config tool is to extract configuration data from your AWS account and get it into a form where it can be used in terraform to create relays in AWS.
 
 The amazon config tool is run automatically when you run `next config` along with config for other sellers, but if you want to run the amazon config by itself, just go:
 
@@ -18,15 +18,15 @@ run config-amazon
 
 The amazon config tool lives in `~/next/sellers/amazon.go`. 
 
-When it runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
+Because the architecture of AWS is heavily region-based, combined with some limitations in the terraform config language, it's just not possibly to programmatically build up all the multi-region resources required to make relays work programmatically entirely in terraform script. The end result is that you need to describe the set of AWS relays inside the amazon config tool itself, and then it generates the terraform script required to create them.
 
-Because the architecture of AWS is heavily region-based, combined with some limitations in the terraform config language, it's just not possibly to programmatically build up all the multi-region resources required to make relays work programmatically entirely in terraform script. I tried.
+The amazon provider is also complicated by the fact that AWS zone ids are _account specific_. This means that my You can read more about this here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
 
-The end result is unlike other sellers where the set of relays are able to be programmatically described in terraform, you have to define the set of AWS relays inside the amazon.go tool itself.
-
-The amazon provider is also complicated somewhat by the fact that AWS zone ids are _account specific_. You can read more about this fun here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
+It is yet again complicated by the fact that AWS has this weird local zone thing, where many datacenters you want access to are sort of piggy backed off some master, and often unrelated geographically, AWS region, like us-east-1 (virginia). You can read more about this here: https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
 
 In short, we map the AZID, which is account independent, instead of the zone dependent zone id, to the Network Next datacenter name. This way amazon.virginia.1 is actually amazon.virginia.1 no matter how the zone id is swizzled for your account. This is important for example if you have your game servers and your relays in different AWS accounts, and to make sure that the datacenter autodetection works in AWS in an account independent manner.
+
+When it runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
 
 The `amazon/generated.tf` therefore contains not just the set of datacenters in AWS, but also a complicated mapping of relays to regions and a specific per-relay module that points to the correct AWS region needed for the relays in each env.
 
