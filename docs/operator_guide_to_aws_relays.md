@@ -18,17 +18,15 @@ run config-amazon
 
 The amazon config tool lives in `~/next/sellers/amazon.go`. 
 
-Because the architecture of AWS is heavily region-based, combined with some limitations in the terraform config language, it's just not possibly to programmatically build up all the multi-region resources required to make relays work programmatically entirely in terraform script. The end result is that you need to describe the set of AWS relays inside the amazon config tool itself, and then it generates the terraform script required to create them.
+Because the architecture of AWS is heavily region-based, combined with some limitations in the terraform config language, it's just not possibly to programmatically build up all the multi-region resources required to make relays work in terraform script alone. The end result is that you need to describe the set of AWS relays inside the amazon config tool itself, and then it generates the terraform script required to create them.
 
-The amazon provider is also complicated by the fact that AWS zone ids are _account specific_. This means that my You can read more about this here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
+The amazon provider is also complicated by the fact that AWS zone ids are _account specific_. This means that us-east-1a in my account is probably not the same availability zone as us-east-1a in your account. You can read more about this here: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
 
-It is yet again complicated by the fact that AWS has this weird local zone thing, where many datacenters you want access to are sort of piggy backed off some master, and often unrelated geographically, AWS region, like us-east-1 (virginia). You can read more about this here: https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
+It complicated yet again by the fact that AWS has this weird (but cool) local zone thing, where many datacenters you want really want access to have to be manually enabled in your account, and are sort of piggy backed off some parent region like us-east-1 (virginia), unrelated geographically to where the local zone actually is. You can read more about this here: https://aws.amazon.com/about-aws/global-infrastructure/localzones/locations/
 
-In short, we map the AZID, which is account independent, instead of the zone dependent zone id, to the Network Next datacenter name. This way amazon.virginia.1 is actually amazon.virginia.1 no matter how the zone id is swizzled for your account. This is important for example if you have your game servers and your relays in different AWS accounts, and to make sure that the datacenter autodetection works in AWS in an account independent manner.
+When the amazon config tool runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
 
-When it runs, it caches data under `~/next/cache` to speed up its operation next time it runs, and it generates `~/next/sellers/amazon/generated.tf` and `~/next/config/amazon.txt`.
-
-The `amazon/generated.tf` therefore contains not just the set of datacenters in AWS, but also a complicated mapping of relays to regions and a specific per-relay module that points to the correct AWS region needed for the relays in each env.
+The `amazon/generated.tf` therefore contains not just, but also a huge wad of generated code to do the multi-region dance in AWS for relays, and the generated code to create the AWS relays.
 
 The `config/amazon.txt` file is uploaded to google cloud storage via semaphore "Upload Config" job, and is read by the SDK to perform autodetection of the AWS datacenter your server is running in. In short, this text file is just a mapping from the AWS AZID to the network next datacenter name.
 
