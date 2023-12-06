@@ -4,6 +4,8 @@
 
 # Getting production ready for your game
 
+Here are some things you must do before you go into production with your Network Next system.
+
 ## 1. Replace google redis cluster with redis enterprise
 
 The default redis cluster implementation in Google cloud is in beta release, and unfortunately does not currently allow you to set required redis options on the cluster that are needed in production.
