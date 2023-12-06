@@ -4,7 +4,7 @@
 
 # Planning your production relay fleet
 
-Hello operator, this section is your guide to planning the relay fleet for your game. This is the most fun part of Network Next :)
+Your version of Network Next is only as powerful as the relays in your fleet. The goal is to create a diverse set of relays to access many different transit options between the client and server. 
 
 ## 1. Put a relay in each datacenter where you host servers
 
@@ -15,6 +15,8 @@ So, the very first step when planning your relay fleet is to make sure there is 
 IMPORTANT: When you host in cloud, each availability zone is locally considered its own datacenter in Network Next.
 
 Make sure that you add all datacenters where you plan to accelerate traffic into the list of enabled datacenters in terraform for your buyer:
+
+For example, for dev environment in `~/next/terraform/dev/relays/main.tf` you should have a buyer datacenter settings resource driven by a list of datacenter names:
 
 ```
 locals {
@@ -34,13 +36,15 @@ resource "networknext_buyer_datacenter_settings" your_buyer {
 }
 ```
 
-Network Next uses this list of enabled datacenters per-buyer to only optimize traffic to the datacenters where game servers reside. This is a significant reduction in the amount of work the optimizer needs to do, because route optimization process is otherwise O(n^3) where n is the number of relays in your relay fleet, and now it is ~O(n^2*m) where m is the number of destination relays.
+Make sure that all datacenters where you host servers for your buyer are in this list.
+
+Network Next uses this list of to optimize traffic _only_ to the datacenters where game servers reside. This is a significant reduction in the amount of work the optimizer needs to do, because route optimization process is otherwise O(n^3) where n is the number of relays in your relay fleet, and now it is ~O(n^2*m) where m is the number of destination relays.
 
 ## 2. In each location where you host servers add 20-30 additional relays from other suppliers
 
 What you are doing now is effectively setting up alternative routes from clients to your servers across different networks.
 
-For example, if you host in AWS, spinning up google cloud relays in the same location means that if the google cloud network is better performing, lower latency, or just less congested at any point in time to the AWS network for a client, then the traffic will be steered through google's network on the way to your game server in AWS.
+For example, if you host in AWS, spinning up Google Cloud relays in the same location means that if the google cloud network is better performing, lower latency, or just less congested at any point in time to the AWS network for a client, then the traffic will be steered through google's network on the way to your game server in AWS. Spinning up additional relays in the same location, especially bare metal often exposes fast links between different clouds, as the clouds don't really optimize transit between them.
 
 Start with cloud relays first as they are easy to spin up and down with little effort. Once you have exhausted cloud options, start looking into bare metal relays in the same city. It is recommended that you setup bare metal relays with a 10G NIC, and a plan that provides sufficient sustained traffic. It is little value adding a relay if it can only carry < 1gbps of traffic.
 
@@ -62,8 +66,9 @@ Some high quality providers we have used in the past:
 * https://deploy.equinix.com - used to be know as packet.com, now acquired by equinix, expensive but good locations
 * https://zenlayer.com - especially good in APAC
 * https://www.servers.com - standard bare metal
-
-Do your own research and of course there are more to try. I recommend you work on a per-city basis and spin up as many different providers in the location, and then over time as you see certain providers performing better than others (carrying more accelerate traffic), then you can whittle down and select the n best providers per-location that you desire. I recommend a minimum of 10 per-location of best providers.
+* https://www.inap.com - standard bare metal
+  
+Do your own research and of course there are more to try. I recommend you work on a per-city basis and spin up as many different providers in the location, and then over time as you see certain providers performing better than others (carrying more accelerated traffic), then you can whittle down and select the n best providers per-location that you desire. I recommend a minimum of 10 per-location of best providers.
 
 ## 3. Deploy 20-30 relays in major cities around the world in regions where you have players
 
@@ -90,7 +95,7 @@ Secondary locations in USA that should be evaluated on a case by case basis depe
 * Ohio
 * St Louis
 * Oregon
-* (And many more, it depends on your player base...)
+* (And many more, it really depends on your player base...)
 
 Primary locations in Europe:
 
