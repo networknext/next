@@ -40,6 +40,8 @@ locals {
       latitude    = 10.00
       longitude   = 20.00
       native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
     }
 
   }
@@ -138,8 +140,6 @@ Go to https://datapacket.com and see what datacenters they have. At the time of 
 * houston
 * mcallen
 * miami
-* boston
-* newyork
 * ashburn
 * atlanta
 
@@ -154,12 +154,16 @@ You can also use the "native_name" field to map the Network Next name to any sup
       latitude    = 34.0522
       longitude   = -118.2437
       native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
     },
 
     "datapacket.chicago" = {
       latitude    = 41.8781
       longitude   = -87.6298
       native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
     },
 
     etc...
@@ -170,7 +174,7 @@ Once all the datacenters are added to `datapacket/main.tf` save the file, add it
 
 ps. If there was a REST API for datapacket, then you could create your own datapacket config tool in sellers/datapacket.go and set it up to automatically generate the datacenter map for you in `terraform/sellers/datapacket/generated.tf` instead of doing this step manually.
 
-## 3. Link seller to dev/prod relays terraform script
+## 3. Link the seller to dev/prod relays terraform script
 
 Now we need to link up the datapacket module so it's used by dev and prod relay terraform scripts.
 
@@ -207,9 +211,9 @@ module "datapacket_relays" {
 }
 ```
 
-This creates a place for you to define datapacket relays when you create them later on, and pulls in the datacenter definitions you added in the previous step.
+Next, link up the datapacket relays and datacenters to the Network Next terraform provider by adding entries for datapacket in the local vars. 
 
-Next, link up the datapacket relays and datacenters to the Network Next terraform provider by adding entries for datapacket in the local vars. These variables are used to create the sets of all relays and all datacenters in the Network Next database, and it's how the Postgres SQL database is defined via terraform.
+These variables are used to create the sets of all relays and all datacenters in the Network Next Postgres database.
 
 ```
 # =======================
@@ -247,7 +251,7 @@ locals {
 }
 ```
 
-Run `terraform init` (required beacuse we have a new module), then `terraform apply` to make the changes to Postgres SQL for your new datapacket seller and datacenters, then commit the database.bin to your environment.
+Run `terraform init` (required because we have a new module), then `terraform apply` to make the changes to Postgres SQL for your new datapacket seller and datacenters, then commit the database.bin to your environment.
 
 For example, in dev:
 
