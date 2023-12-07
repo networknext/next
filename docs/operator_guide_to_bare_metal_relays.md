@@ -6,7 +6,7 @@
 
 This section describes how to use the Network Next terraform provider to configure bare metal relays.
 
-Typically, bare metal means anything that's not cloud. But in this context, bare metal means any relays that you have manually provisioned without using terraform, and you can now SSH in and you want to turn them into relays in your relay fleet.
+Typically, bare metal means anything that's not cloud. But in this context, bare metal means any relays that you have manually provisioned without using terraform, and you can now SSH in and you want to turn that linux machine into a relay.
 
 ## 1. Create a new seller module in terraform
 
