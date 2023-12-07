@@ -271,18 +271,105 @@ Now you should be able to go to the dev portal and see the "Datapacket" seller i
 
 ## 4. Provision relay
 
-...
+Order a bare metal server from datapacket.com at the datacenter you want. It should be running Ubuntu 22.04 LTS 64bit
 
-## 6. Link relay to terraform
+Here is the script you need to run on the relay:
 
-...
+```
+#!/bin/sh
+if [[ -f /etc/setup_relay_completed ]]; then exit 0; fi
+echo sshd: ALL > hosts.deny
+echo sshd: $VPN_ADDRESS > hosts.allow
+sudo mv hosts.deny /etc/hosts.deny
+sudo mv hosts.allow /etc/hosts.allow
+sudo touch /etc/setup_relay_has_run
+sudo journalctl --vacuum-size 10M
+sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
+sudo NEEDRESTART_SUSPEND=1 apt update -y
+sudo NEEDRESTART_SUSPEND=1 apt upgrade -y
+sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
+sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential vim -y
+sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
+wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
+tar -zxf libsodium-1.0.18.tar.gz
+cd libsodium-1.0.18
+./configure
+make -j
+sudo make install
+sudo ldconfig
+sudo touch /etc/setup_relay_completed
+```
 
-## 7. Setup relay
+This script does a few things:
 
-...
+1. Installs curl, vim, and build essential tools
+2. Installs libsodium (crypto library used by the relay)
+3. Sets up the relay so you can only SSH in from the VPN address. You'll need to manually edit the script and set the VPN address yourself
 
-## 8. Commit database and verify relay is online
+It does not actually install the relay software. That's done in the setup step later on. 
 
-...
+If the provider does not provide a way to setup the machine for you with a public SSH key, you'll need to manually set the Linux machine so you can log in with your SSH key. The key used for SSHing into relays is ~/secrets/next_ssh.pub by default. 
+
+Instructions for setting this up are here: https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server
+
+You should also configure the relay to disallow password based authentication, and only accept SSH based login.
+
+Finally, if necessary depending on the provider, make sure that UDP port 40000 is open in the firewall.
+
+## 7. Add relay to terraform
+
+Go back to your `relays/main.tf` file for your environment.
+
+Now we want to add an entry for the "datapacket.losangeles" relay so it's linked to the Network Next database. For example:
+
+```
+# =================
+# DATAPACKET RELAYS
+# =================
+
+locals {
+
+  datapacket_relays = {
+
+    "datapacket.losangeles" = {
+      datacenter_name = "datapacket.losangeles"
+      public_address  = "185.152.67.2"
+    },
+
+  }
+}
+
+module "datapacket_relays" {
+  relays = local.datapacket_relays
+  source = "../../sellers/datapacket"
+}
+```
+
+Then run `terraform apply` to add the relay to the Postgres database.
+
+Once terraform apply completes, commit the database.
+
+```console
+cd ~/next
+next select dev
+next database
+next commit
+```
+
+Now the relay is logically created, but not setup yet with the relay software.
+
+Connect to your VPN then run:
+
+```
+next setup datapacket.losangeles
+```
+
+Once the setup completes, the relay should be visible and come online:
+
+```
+next relays datapacket
+```
+
+You should also be able to see the relay in the portal.
 
 [Back to main documentation](../README.md)
