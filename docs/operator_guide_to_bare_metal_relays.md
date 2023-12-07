@@ -96,13 +96,11 @@ Go to https://datapacket.com and see what datacenters they have. At the time of 
 * amsterdam
 * warsaw
 * kyiv
-* london
 * frankfurt
 * brussels
 * zurich
 * prague
 * bratislava
-* zurich
 * paris
 * vienna
 * bucharest
