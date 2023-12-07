@@ -4,25 +4,65 @@ variable "relays" { type = map(map(string)) }
 
 locals {
 
-  seller_name = "<Your seller>"
+  seller_name = "Datapacket"
 
-  seller_code = "<seller>"
+  seller_code = "datapacket"
 
   ssh_user = "root"
 
+
+  stockholm
+  copenhagen
+  dublin
+  london
+  amsterdam
+  warsaw
+  kyiv
+  london
+  frankfurt
+  brussels
+  zurich
+  prague
+  bratislava
+  zurich
+  paris
+  vienna
+  bucharest
+  milan
+  zagreb
+  sofia
+  lisbon
+  madrid
+  marseille
+  palermo
+  athens
+  istanbul
+  telaviv
+  johanesburg
+  sydney
+  singapore
+  hongkong
+  tokyo
+
+
   datacenter_map = {
 
-    "seller.cityname" = {
-      latitude    = 10.00
-      longitude   = 20.00
-    }
+    "datapacket.losangeles" = {
+      latitude    = 34.0522
+      longitude   = -118.2437
+    },
+
+    "datapacket.chicago" = {
+      latitude    = 41.8781
+      longitude   = -87.6298
+    },
 
   }
 
 }
 
 output "relays" {
-  description = "All relays for <seller>"
+  description = "All relays for datapacket"
   value = {
     for k, v in var.relays : k => zipmap( 
       [
@@ -52,7 +92,7 @@ output "relays" {
 }
 
 output "datacenters" {
-  description = "All datacenters for <seller>"
+  description = "All datacenters for datapacket"
   value = locals.datacenter_map
 }
 
