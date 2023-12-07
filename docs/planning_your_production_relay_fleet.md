@@ -50,9 +50,11 @@ Start with cloud relays first as they are easy to spin up and down with little e
 
 Some high quality providers we have used in the past:
 
+* https://datapacket.com - excellent bare metal with 10G nics by default
 * https://i3d.net - excellent bare metal backed by their own private backbone
 * https://stackpath.com - stackpath is a CDN that now has their own edge compute where you can run relays
 * https://hivelocity.net - they have good connectivity and locations around the world
+* https://gcore.com - good bare metal with a focus on eastern europe and russia
 * https://www.hetzner.com - particularly good in EU
 * https://performive.com - previously known as "total server solutions"
 * https://oneqode.com - excellent in Asia-Pacific and Australia
