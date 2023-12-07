@@ -147,6 +147,8 @@ Go through each datacenter and add an entry in the datacenter map. You'll need t
 
 You can also use the "native_name" field to map the Network Next name to any supplier specific codename they have for each location. In this case, there is no such code name per-location for datapacket.com, so it's left blank.
 
+The "seller_name" and "seller_code" fields link your datacenter to the datapacket seller.
+
 ```
   datacenter_map = {
 
