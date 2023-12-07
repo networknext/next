@@ -12,7 +12,7 @@ Typically, bare metal means anything that's not cloud. But in this context, bare
 
 First we need to set up a module for the new seller in terraform.
 
-Datapacket.com (https://datapacket.com) is an excellent bare metal provider for relays. But they don't have a terraform provider so you have to configure them manually.
+Datapacket.com (https://datapacket.com) is an _excellent_ bare metal provider for relays. But they don't have a terraform provider so you have to configure them manually.
 
 Let's start by configuring a seller in terraform called "datapacket".
 
