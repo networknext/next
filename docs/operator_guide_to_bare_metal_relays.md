@@ -87,8 +87,6 @@ Replace "[seller]" with "datapacket", and "[Your seller]" with "Datapacket" and 
 
 ## 2. Define seller datacenters in terraform
 
-Modify the datacenter map in `~/next/terraform/sellers/datapacket/main.tf` to add datacenters you want to use.
-
 Go to https://datapacket.com and see what datacenters they have. At the time of writing, they have the following datacenters:
 
 * stockholm
