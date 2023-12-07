@@ -32,4 +32,5 @@ sellers = {
 	"Akamai" = "akamai"
 	"Amazon" = "amazon"
 	"Google" = "google"
+	"Datapacket" = "datapacket"
 }

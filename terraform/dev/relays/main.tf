@@ -362,6 +362,31 @@ module "akamai_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# =================
+# DATAPACKET RELAYS
+# =================
+
+locals {
+
+  datapacket_relays = {
+
+    /*
+    "datapacket.losangeles" = {
+      datacenter_name = "datapacket.losangeles"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "datapacket_relays" {
+  relays = local.datapacket_relays
+  source = "../../sellers/datapacket"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -375,6 +400,7 @@ locals {
       keys(module.google_relays.relays),
       keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
+      keys(module.datapacket_relays.relays),
     )
   )
 
@@ -382,12 +408,14 @@ locals {
     module.google_relays.relays,
     module.amazon_relays.relays,
     module.akamai_relays.relays,
+    module.datapacket_relays.relays,
   )
 
   datacenters = merge(
     module.google_relays.datacenters,
     module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
+    module.datapacket_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
