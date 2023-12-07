@@ -267,7 +267,7 @@ next database
 next commit
 ```
 
-Now you should be able to go to the dev portal and see the "Datapacket" seller in there, with all the datapacket datacenters added.
+Now you should be able to go to the dev portal and see the "Datapacket" seller in there, with all the datapacket datacenters added. You may need to use the 1/2 keys to scroll left/right in the datacenter list to see them.
 
 ## 4. Provision relay
 
