@@ -39,6 +39,7 @@ locals {
     "[seller].cityname" = {
       latitude    = 10.00
       longitude   = 20.00
+      native_name = ""
     }
 
   }
@@ -144,26 +145,30 @@ Go to https://datapacket.com and see what datacenters they have. At the time of 
 
 Go through each datacenter and add an entry in the datacenter map. You'll need to look up the approximate lat/long of each city. Take special care with signs on the lat/long values.
 
+You can also use the "native_name" field to map the Network Next name to any supplier specific codename they have for each location. In this case, there is no such code name per-location for datapacket.com, so it's left blank.
+
 ```
   datacenter_map = {
 
     "datapacket.losangeles" = {
       latitude    = 34.0522
       longitude   = -118.2437
+      native_name = ""
     },
 
     "datapacket.chicago" = {
       latitude    = 41.8781
       longitude   = -87.6298
+      native_name = ""
     },
 
     etc...
   }
 ```
 
-Once all the datacenters are added to `datapacket/main.tf` save the file.
+Once all the datacenters are added to `datapacket/main.tf` save the file, add it to git and check in.
 
-If there was a REST API for datapacket, then you could create your own datapacket config tool in sellers/datapacket.go and set it up to automatically generate the datacenter map for you in `terraform/sellers/datapacket/generated.tf` instead of doing this step manually.
+ps. If there was a REST API for datapacket, then you could create your own datapacket config tool in sellers/datapacket.go and set it up to automatically generate the datacenter map for you in `terraform/sellers/datapacket/generated.tf` instead of doing this step manually.
 
 ## 3. Link seller to dev/prod relays terraform script
 
@@ -202,9 +207,9 @@ module "datapacket_relays" {
 }
 ```
 
-This will pull in the datacenter definitions into each environments terraform relay script.
+This creates a place for you to define datapacket relays when you create them later on, and pulls in the datacenter definitions you added in the previous step.
 
-Next, link up the datapacket relays and datacenters to the Network Next terraform provider by adding lines for datacenter in the local vars below:
+Next, link up the datapacket relays and datacenters to the Network Next terraform provider by adding entries for datapacket in the local vars. These variables are used to create the sets of all relays and all datacenters in the Network Next database, and it's how the Postgres SQL database is defined via terraform.
 
 ```
 # =======================
