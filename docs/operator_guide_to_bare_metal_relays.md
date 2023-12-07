@@ -6,20 +6,20 @@
 
 This section describes how to use the Network Next terraform provider to configure bare metal relays.
 
-Typically, bare metal means anything that's not cloud. But in this context, bare metal means any relays that you have manually provisioned, and after you have provisioned them with Linux and you can SSH in, you want to turn them into relays in your relay fleet.
+Typically, bare metal means anything that's not cloud. But in this context, bare metal means any relays that you have manually provisioned without using terraform, and you can now SSH in and you want to turn that linux machine into a relay.
 
 ## 1. Create a new seller module in terraform
 
-Datapacket.com (https://datapacket.com) is an excellent bare metal provider for relays. But they don't have a terraform provider so you have to configure them manually.
+First we need to set up a module for the new seller in terraform.
+
+Datapacket.com (https://datapacket.com) is an _excellent_ bare metal provider for relays. But they don't have a terraform provider so you have to configure them manually.
 
 Let's start by configuring a seller in terraform called "datapacket".
 
 1. Create a new folder under `~/next/sellers` called "datapacket".
-2. Copy `main.tf` from `~/next/sellers/bare_metal/main.tf` into your `sellers/datapacket` directory.
+2. Copy the template `main.tf` from `~/next/sellers/bare_metal/main.tf` into your `sellers/datapacket` directory.
 
-Open the copy of `main.tf` for editing.
-
-You'll see:
+Open your copy of `main.tf` in a text editor. You'll see:
 
 ```
 # ----------------------------------------------------------------------------------------
@@ -28,15 +28,15 @@ variable "relays" { type = map(map(string)) }
 
 locals {
 
-  seller_name = "<Your seller>"
+  seller_name = "[Your seller]"
 
-  seller_code = "<seller>"
+  seller_code = "[seller]"
 
   ssh_user = "root"
 
   datacenter_map = {
 
-    "<seller>.cityname" = {
+    "[seller].cityname" = {
       latitude    = 10.00
       longitude   = 20.00
     }
@@ -46,7 +46,7 @@ locals {
 }
 
 output "relays" {
-  description = "All relays for <seller>"
+  description = "All relays for [seller]"
   value = {
     for k, v in var.relays : k => zipmap( 
       [
@@ -76,22 +76,73 @@ output "relays" {
 }
 
 output "datacenters" {
-  description = "All datacenters for <seller>"
+  description = "All datacenters for [seller]"
   value = locals.datacenter_map
 }
 
 # --------------------------------------------------------------------------
 ```
 
-This file is a template that you'll use to define a "datapacket" terraform module that will define all datacenters provided by datapacket, and allow you to link Network Next relays logically to bare metal you spin up in datapacket.
-
-Replace "<seller>" with "datapacket", and "<Your seller>" with "Datapacket".
+Replace "[seller]" with "datapacket", and "[Your seller]" with "Datapacket" and save the file.
 
 ## 2. Define seller datacenters in terraform
 
-Modify the datacenter map in `sellers/datapacket/main.tf` to add datacenters you want to use.
+Go to https://datapacket.com and see what datacenters they have. At the time of writing, they have the following datacenters:
 
-In this example, I'll just add "datacenter.losangeles" as an example:
+* stockholm
+* copenhagen
+* dublin
+* london
+* amsterdam
+* warsaw
+* kyiv
+* frankfurt
+* brussels
+* zurich
+* prague
+* bratislava
+* paris
+* vienna
+* bucharest
+* milan
+* zagreb
+* sofia
+* lisbon
+* madrid
+* marseille
+* palermo
+* athens
+* istanbul
+* telaviv
+* johanesburg
+* sydney
+* singapore
+* hongkong
+* tokyo
+* queretaro
+* bogota
+* saopaulo
+* santiago
+* vancouver
+* seattle
+* denver
+* sanjose
+* losangeles
+* chicago
+* toronto
+* boston
+* newyork
+* losangeles
+* dallas
+* houston
+* mcallen
+* miami
+* boston
+* newyork
+* ashburn
+* atlanta
+
+Go through each datacenter and add an entry in the datacenter map. You'll need to look up the approximate lat/long of each city. Take special care with signs on the lat/long values.
 
 ```
   datacenter_map = {
@@ -106,8 +157,13 @@ In this example, I'll just add "datacenter.losangeles" as an example:
       longitude   = -87.6298
     },
 
+    etc...
   }
 ```
+
+Once all the datacenters are added to `datapacket/main.tf` save the file.
+
+If there was a REST API for datapacket, then you could create your own datapacket config tool in sellers/datapacket.go and set it up to automatically generate the datacenter map for you in `terraform/sellers/datapacket/generated.tf` instead of doing this step manually.
 
 ## 3. Link seller to dev/prod relays terraform script
 
