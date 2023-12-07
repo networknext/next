@@ -142,8 +142,6 @@ Go to https://datapacket.com and see what datacenters they have. At the time of 
 * ashburn
 * atlanta
 
-The first thing we need to do is add all these datacenters to a datacenter map, along with their latitude and logitude, so they become available to create relays in.
-
 Go through each datacenter and add an entry in the datacenter map. You'll need to look up the approximate lat/long of each city. Take special care with signs on the lat/long values.
 
 ```
@@ -159,6 +157,7 @@ Go through each datacenter and add an entry in the datacenter map. You'll need t
       longitude   = -87.6298
     },
 
+    etc...
   }
 ```
 
