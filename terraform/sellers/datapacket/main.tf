@@ -10,11 +10,39 @@ locals {
 
   ssh_user = "root"
 
+  datacenter_map = {
 
-  stockholm
-  copenhagen
-  dublin
-  london
+    "datapacket.losangeles" = {
+      latitude    = 34.0522
+      longitude   = -118.2437
+    },
+
+    "datapacket.chicago" = {
+      latitude    = 41.8781
+      longitude   = -87.6298
+    },
+
+    "datapacket.stockholm" = {
+      latitude    = 59.3293
+      longitude   = 18.0686
+    },
+
+    "datapacket.copenhagen" = {
+      latitude    = 55.6761
+      longitude   = 12.5683
+    },
+
+    "datapacket.dublin" = {
+      latitude    = 53.3498
+      longitude   = -6.2603
+    },
+
+    "datapacket.london" = {
+      latitude    = 51.5072
+      longitude   = -0.1276
+    },
+
+/*
   amsterdam
   warsaw
   kyiv
@@ -43,19 +71,27 @@ locals {
   singapore
   hongkong
   tokyo
-
-
-  datacenter_map = {
-
-    "datapacket.losangeles" = {
-      latitude    = 34.0522
-      longitude   = -118.2437
-    },
-
-    "datapacket.chicago" = {
-      latitude    = 41.8781
-      longitude   = -87.6298
-    },
+  queretaro
+  bogota
+  saopaulo
+  santiago
+  vancouver
+  seattle
+  denver
+  sanjose
+  toronto
+  boston
+  newyork
+  losangeles
+  dallas
+  houston
+  mcallen
+  miami
+  boston
+  newyork
+  ashburn
+  atlanta
+*/  
 
   }
 
