@@ -19,9 +19,7 @@ Let's start by configuring a seller in terraform called "datapacket".
 1. Create a new folder under `~/next/sellers` called "datapacket".
 2. Copy the template `main.tf` from `~/next/sellers/bare_metal/main.tf` into your `sellers/datapacket` directory.
 
-Open the copy of `main.tf` for editing.
-
-You'll see:
+Open your copy of `main.tf` in a text editor. You'll see:
 
 ```
 # ----------------------------------------------------------------------------------------
