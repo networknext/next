@@ -316,7 +316,7 @@ You should also configure the relay to disallow password based authentication, a
 
 Finally, if necessary depending on the provider, make sure that UDP port 40000 is open in the firewall.
 
-## 7. Add relay to terraform
+## 5. Add relay to terraform
 
 Go back to your `relays/main.tf` file for your environment.
 
@@ -356,6 +356,8 @@ next database
 next commit
 ```
 
+## 6. Setup the relay
+
 Now the relay is logically created, but not setup yet with the relay software.
 
 Connect to your VPN then run:
@@ -370,6 +372,6 @@ Once the setup completes, the relay should be visible and come online:
 next relays datapacket
 ```
 
-You should also be able to see the relay in the portal.
+You should also be able to see the relay in the portal and it should start carrying traffic after 5 minutes.
 
 [Back to main documentation](../README.md)
