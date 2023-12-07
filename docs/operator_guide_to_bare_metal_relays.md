@@ -170,7 +170,7 @@ Go through each datacenter and add an entry in the datacenter map. You'll need t
 
 Once all the datacenters are added to `datapacket/main.tf` save the file.
 
-_I'm sure you can see, if there is was a REST API for datapacket, then you could create your own datapacket config tool in sellers/datapacket.go and set it up to automatically generate the datacenter map each time it runs._
+If there was a REST API for datapacket, then you could create your own datapacket config tool in sellers/datapacket.go and set it up to automatically generate the datacenter map for you in `terraform/sellers/datapacket/generated.tf` instead of doing this step manually.
 
 ## 3. Link seller to dev/prod relays terraform script
 
