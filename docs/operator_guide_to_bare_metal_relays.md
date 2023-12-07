@@ -167,7 +167,96 @@ If there was a REST API for datapacket, then you could create your own datapacke
 
 ## 3. Link seller to dev/prod relays terraform script
 
-...
+Now we need to link up the datapacket module so it's used by dev and prod relay terraform scripts.
+
+In `~/terraform/dev/relays/terraform.tfvars` and `~/terraform/prod/relays/terraform.tfvars` add datapacket to the list of sellers:
+
+```
+sellers = {
+	"Akamai" = "akamai"
+	"Amazon" = "amazon"
+	"Google" = "google"
+	"Datapacket" = "datapacket"
+}
+```
+
+Then in `~/terraform/dev/relays/main.tf` and `~/terraform/prod/relays/main.tf` add a section for datapacket relays and create an instance of the datapacket module:
+
+```
+# =================
+# DATAPACKET RELAYS
+# =================
+
+locals {
+
+  datapacket_relays = {
+
+    // ...
+
+  }
+}
+
+module "datapacket_relays" {
+  relays = local.datapacket_relays
+  source = "../../sellers/datapacket"
+}
+```
+
+This will pull in the datacenter definitions into each environments terraform relay script.
+
+Next, link up the datapacket relays and datacenters to the Network Next terraform provider by adding lines for datacenter in the local vars below:
+
+```
+# =======================
+# INITIALIZE DEV DATABASE
+# =======================
+
+# Setup sellers, datacenters and relays in dev
+
+locals {
+  
+  relay_names = sort(
+    concat(
+      keys(module.google_relays.relays),
+      keys(module.amazon_relays.relays),
+      keys(module.akamai_relays.relays),
+      keys(module.datapacket_relays.relays),
+    )
+  )
+
+  relays = merge(
+    module.google_relays.relays,
+    module.amazon_relays.relays,
+    module.akamai_relays.relays,
+    module.datapacket_relays.relays,
+  )
+
+  datacenters = merge(
+    module.google_relays.datacenters,
+    module.amazon_relays.datacenters,
+    module.akamai_relays.datacenters,
+    module.datapacket_relays.datacenters,
+  )
+
+  datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
+}
+```
+
+Run `terraform init` (required beacuse we have a new module), then `terraform apply` to make the changes to Postgres SQL for your new datapacket seller and datacenters, then commit the database.bin to your environment.
+
+For example, in dev:
+
+```console
+cd ~/next/terraform/dev/relays
+terraform init
+terraform apply
+cd ~/next
+next select dev
+next database
+next commit
+```
+
+Now you should be able to go to the dev portal and see the "Datapacket" seller in there, with all the datapacket datacenters added.
 
 ## 4. Provision relay
 
