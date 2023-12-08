@@ -462,6 +462,31 @@ module "gcore_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# =================
+# HIVELOCITY RELAYS
+# =================
+
+locals {
+
+  hivelocity_relays = {
+
+    /*
+    "hivelocity.chicago" = {
+      datacenter_name = "hivelocity.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "hivelocity_relays" {
+  relays = local.hivelocity_relays
+  source = "../../sellers/hivelocity"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -479,6 +504,7 @@ locals {
       keys(module.i3d_relays.relays),
       keys(module.oneqode_relays.relays),
       keys(module.gcore_relays.relays),
+      keys(module.hivelocity_relays.relays),
     )
   )
 
@@ -490,6 +516,7 @@ locals {
     module.i3d_relays.relays,
     module.oneqode_relays.relays,
     module.gcore_relays.relays,
+    module.hivelocity_relays.relays,
   )
 
   datacenters = merge(
@@ -500,6 +527,7 @@ locals {
     module.i3d_relays.datacenters,
     module.oneqode_relays.datacenters,
     module.gcore_relays.datacenters,
+    module.hivelocity_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
