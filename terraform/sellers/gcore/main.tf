@@ -284,27 +284,125 @@ locals {
       seller_code = local.seller_code
     },
 
+    "gcore.dubai" = {
+      latitude    = 25.2048
+      longitude   = 55.2708
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-/*
+    "gcore.istanbul" = {
+      latitude    = 41.0082
+      longitude   = 28.9784
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-Dubai
-Istanbul
-Tel Aviv
-Yerevan
+    "gcore.telaviv" = {
+      latitude    = 32.0853
+      longitude   = 34.7818
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-Johannesburg
+    "gcore.yerevan" = {
+      latitude    = 40.1872
+      longitude   = 44.5152
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-Almaty
-Hong Kong
-Mumbai
-Seoul
-Singapore
-Tokyo
-Bangkok
-Tashkent
-Melbourne
-Sydney
-*/
+    "gcore.johannesburg" = {
+      latitude    = -26.2041
+      longitude   = 28.0473
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.almaty" = {
+      latitude    = 43.2380
+      longitude   = 76.8829
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.hongkong" = {
+      latitude    = 22.3193
+      longitude   = 114.1694
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.mumbai" = {
+      latitude    = 19.0760
+      longitude   = 72.8777
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.seoul" = {
+      latitude    = 37.5519
+      longitude   = 126.9918
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.singapore" = {
+      latitude    = 1.3521
+      longitude   = 103.8198
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.tokyo" = {
+      latitude    = 35.6764
+      longitude   = 139.6500
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.bangkok" = {
+      latitude    = 13.7563
+      longitude   = 100.5018
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.tashkent" = {
+      latitude    = 41.2995
+      longitude   = 69.2401
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.melbourne" = {
+      latitude    = -37.8136
+      longitude   = 144.9631
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "gcore.sydney" = {
+      latitude    = -33.8688
+      longitude   = 151.2093
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
   }
 }

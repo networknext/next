@@ -422,7 +422,7 @@ locals {
 
     /*
     "oneqode.singapore" = {
-      datacenter_name = "oneqode.losangeles"
+      datacenter_name = "oneqode.singapore"
       public_address  = "185.152.67.2"
     },
     */
@@ -433,6 +433,31 @@ locals {
 module "oneqode_relays" {
   relays = local.oneqode_relays
   source = "../../sellers/oneqode"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ============
+# GCORE RELAYS
+# ============
+
+locals {
+
+  gcore_relays = {
+
+    /*
+    "gcore.frankfurt" = {
+      datacenter_name = "gcore.frankfurt"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "gcore_relays" {
+  relays = local.gcore_relays
+  source = "../../sellers/gcore"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -453,6 +478,7 @@ locals {
       keys(module.datapacket_relays.relays),
       keys(module.i3d_relays.relays),
       keys(module.oneqode_relays.relays),
+      keys(module.gcore_relays.relays),
     )
   )
 
@@ -463,6 +489,7 @@ locals {
     module.datapacket_relays.relays,
     module.i3d_relays.relays,
     module.oneqode_relays.relays,
+    module.gcore_relays.relays,
   )
 
   datacenters = merge(
@@ -472,6 +499,7 @@ locals {
     module.datapacket_relays.datacenters,
     module.i3d_relays.datacenters,
     module.oneqode_relays.datacenters,
+    module.gcore_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])

@@ -35,4 +35,5 @@ sellers = {
 	"Datapacket" = "datapacket"
 	"i3D" = "i3d"
 	"Oneqode" = "oneqode"
+	"GCore" = "gcore"
 }
