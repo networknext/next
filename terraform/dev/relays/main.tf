@@ -387,6 +387,31 @@ module "datapacket_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ==========
+# i3D RELAYS
+# ==========
+
+locals {
+
+  i3d_relays = {
+
+    /*
+    "i3d.losangeles" = {
+      datacenter_name = "i3d.losangeles"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "i3d_relays" {
+  relays = local.i3d_relays
+  source = "../../sellers/i3d"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -401,6 +426,7 @@ locals {
       keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
       keys(module.datapacket_relays.relays),
+      keys(module.i3d_relays.relays),
     )
   )
 
@@ -409,6 +435,7 @@ locals {
     module.amazon_relays.relays,
     module.akamai_relays.relays,
     module.datapacket_relays.relays,
+    module.i3d_relays.relays,
   )
 
   datacenters = merge(
@@ -416,6 +443,7 @@ locals {
     module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
     module.datapacket_relays.datacenters,
+    module.i3d_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
