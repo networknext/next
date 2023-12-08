@@ -512,6 +512,31 @@ module "colocrossing_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# =================
+# PHOENIXNAP RELAYS
+# =================
+
+locals {
+
+  phoenixnap_relays = {
+
+    /*
+    "phoenixnap.phoenix" = {
+      datacenter_name = "phoenixnap.phoenix"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "phoenixnap_relays" {
+  relays = local.phoenixnap_relays
+  source = "../../sellers/phoenixnap"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -531,6 +556,7 @@ locals {
       keys(module.gcore_relays.relays),
       keys(module.hivelocity_relays.relays),
       keys(module.colocrossing_relays.relays),
+      keys(module.phoenixnap_relays.relays),
     )
   )
 
@@ -544,6 +570,7 @@ locals {
     module.gcore_relays.relays,
     module.hivelocity_relays.relays,
     module.colocrossing_relays.relays,
+    module.phoenixnap_relays.relays,
   )
 
   datacenters = merge(
@@ -556,6 +583,7 @@ locals {
     module.gcore_relays.datacenters,
     module.hivelocity_relays.datacenters,
     module.colocrossing_relays.datacenters,
+    module.phoenixnap_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])

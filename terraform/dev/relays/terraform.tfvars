@@ -38,4 +38,5 @@ sellers = {
 	"GCore" = "gcore"
 	"Hivelocity" = "hivelocity"
 	"ColoCrossing" = "colocrossing"
+	"phoenixNAP" = "phoenixnap"
 }
