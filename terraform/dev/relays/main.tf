@@ -487,6 +487,31 @@ module "hivelocity_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===================
+# COLOCROSSING RELAYS
+# ===================
+
+locals {
+
+  colocrossing_relays = {
+
+    /*
+    "colocrossing.chicago" = {
+      datacenter_name = "colocrossing.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "colocrossing_relays" {
+  relays = local.colocrossing_relays
+  source = "../../sellers/colocrossing"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -505,6 +530,7 @@ locals {
       keys(module.oneqode_relays.relays),
       keys(module.gcore_relays.relays),
       keys(module.hivelocity_relays.relays),
+      keys(module.colocrossing_relays.relays),
     )
   )
 
@@ -517,6 +543,7 @@ locals {
     module.oneqode_relays.relays,
     module.gcore_relays.relays,
     module.hivelocity_relays.relays,
+    module.colocrossing_relays.relays,
   )
 
   datacenters = merge(
@@ -528,6 +555,7 @@ locals {
     module.oneqode_relays.datacenters,
     module.gcore_relays.datacenters,
     module.hivelocity_relays.datacenters,
+    module.colocrossing_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])

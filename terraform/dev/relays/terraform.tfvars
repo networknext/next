@@ -37,4 +37,5 @@ sellers = {
 	"Oneqode" = "oneqode"
 	"GCore" = "gcore"
 	"Hivelocity" = "hivelocity"
+	"ColoCrossing" = "colocrossing"
 }
