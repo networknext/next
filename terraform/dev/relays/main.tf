@@ -412,6 +412,31 @@ module "i3d_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ==============
+# ONEQODE RELAYS
+# ==============
+
+locals {
+
+  oneqode_relays = {
+
+    /*
+    "oneqode.singapore" = {
+      datacenter_name = "oneqode.losangeles"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "oneqode_relays" {
+  relays = local.oneqode_relays
+  source = "../../sellers/oneqode"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -427,6 +452,7 @@ locals {
       keys(module.akamai_relays.relays),
       keys(module.datapacket_relays.relays),
       keys(module.i3d_relays.relays),
+      keys(module.oneqode_relays.relays),
     )
   )
 
@@ -436,6 +462,7 @@ locals {
     module.akamai_relays.relays,
     module.datapacket_relays.relays,
     module.i3d_relays.relays,
+    module.oneqode_relays.relays,
   )
 
   datacenters = merge(
@@ -444,6 +471,7 @@ locals {
     module.akamai_relays.datacenters,
     module.datapacket_relays.datacenters,
     module.i3d_relays.datacenters,
+    module.oneqode_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
