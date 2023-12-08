@@ -39,4 +39,5 @@ sellers = {
 	"Hivelocity" = "hivelocity"
 	"ColoCrossing" = "colocrossing"
 	"phoenixNAP" = "phoenixnap"
+	"INAP" = "inap"
 }

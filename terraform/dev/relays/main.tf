@@ -537,6 +537,31 @@ module "phoenixnap_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===========
+# INAP RELAYS
+# ===========
+
+locals {
+
+  inap_relays = {
+
+    /*
+    "inap.chicago" = {
+      datacenter_name = "inap.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "inap_relays" {
+  relays = local.inap_relays
+  source = "../../sellers/inap"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -557,6 +582,7 @@ locals {
       keys(module.hivelocity_relays.relays),
       keys(module.colocrossing_relays.relays),
       keys(module.phoenixnap_relays.relays),
+      keys(module.inap_relays.relays),
     )
   )
 
@@ -571,6 +597,7 @@ locals {
     module.hivelocity_relays.relays,
     module.colocrossing_relays.relays,
     module.phoenixnap_relays.relays,
+    module.inap_relays.relays,
   )
 
   datacenters = merge(
@@ -584,6 +611,7 @@ locals {
     module.hivelocity_relays.datacenters,
     module.colocrossing_relays.datacenters,
     module.phoenixnap_relays.datacenters,
+    module.inap_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
