@@ -44,4 +44,5 @@ sellers = {
 	"Velia" = "velia"
 	"Zenlayer" = "zenlayer"
 	"Stackpath" = "stackpath"
+	"Latitude" = "latitude"
 }

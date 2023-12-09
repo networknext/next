@@ -662,6 +662,31 @@ module "stackpath_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===============
+# LATITUDE RELAYS
+# ===============
+
+locals {
+
+  latitude_relays = {
+
+    /*
+    "latitude.buenosaires" = {
+      datacenter_name = "latitude.buenosaires"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "latitude_relays" {
+  relays = local.latitude_relays
+  source = "../../sellers/latitude"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -687,6 +712,7 @@ locals {
       keys(module.velia_relays.relays),
       keys(module.zenlayer_relays.relays),
       keys(module.stackpath_relays.relays),
+      keys(module.latitude_relays.relays),
     )
   )
 
@@ -706,6 +732,7 @@ locals {
     module.velia_relays.relays,
     module.zenlayer_relays.relays,
     module.stackpath_relays.relays,
+    module.latitude_relays.relays,
   )
 
   datacenters = merge(
@@ -724,6 +751,7 @@ locals {
     module.velia_relays.datacenters,
     module.zenlayer_relays.datacenters,
     module.stackpath_relays.datacenters,
+    module.latitude_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
