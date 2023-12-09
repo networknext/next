@@ -687,6 +687,31 @@ module "latitude_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ==============
+# EQUINIX RELAYS
+# ==============
+
+locals {
+
+  equinix_relays = {
+
+    /*
+    "equinix.miami" = {
+      datacenter_name = "equinix.miami"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "equinix_relays" {
+  relays = local.equinix_relays
+  source = "../../sellers/equinix"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -713,6 +738,7 @@ locals {
       keys(module.zenlayer_relays.relays),
       keys(module.stackpath_relays.relays),
       keys(module.latitude_relays.relays),
+      keys(module.equinix_relays.relays),
     )
   )
 
@@ -733,6 +759,7 @@ locals {
     module.zenlayer_relays.relays,
     module.stackpath_relays.relays,
     module.latitude_relays.relays,
+    module.equinix_relays.relays,
   )
 
   datacenters = merge(
@@ -752,6 +779,7 @@ locals {
     module.zenlayer_relays.datacenters,
     module.stackpath_relays.datacenters,
     module.latitude_relays.datacenters,
+    module.equinix_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
