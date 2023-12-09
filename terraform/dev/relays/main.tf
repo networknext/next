@@ -612,6 +612,31 @@ module "velia_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===============
+# ZENLAYER RELAYS
+# ===============
+
+locals {
+
+  zenlayer_relays = {
+
+    /*
+    "zenlayer.singapore" = {
+      datacenter_name = "zenlayer.singapore"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "zenlayer_relays" {
+  relays = local.zenlayer_relays
+  source = "../../sellers/zenlayer"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -635,6 +660,7 @@ locals {
       keys(module.inap_relays.relays),
       keys(module.serversdotcom_relays.relays),
       keys(module.velia_relays.relays),
+      keys(module.zenlayer_relays.relays),
     )
   )
 
@@ -652,6 +678,7 @@ locals {
     module.inap_relays.relays,
     module.serversdotcom_relays.relays,
     module.velia_relays.relays,
+    module.zenlayer_relays.relays,
   )
 
   datacenters = merge(
@@ -668,6 +695,7 @@ locals {
     module.inap_relays.datacenters,
     module.serversdotcom_relays.datacenters,
     module.velia_relays.datacenters,
+    module.zenlayer_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
