@@ -587,6 +587,31 @@ module "serversdotcom_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ============
+# VELIA RELAYS
+# ============
+
+locals {
+
+  velia_relays = {
+
+    /*
+    "velia.stlouis" = {
+      datacenter_name = "velia.stlouis"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "velia_relays" {
+  relays = local.velia_relays
+  source = "../../sellers/velia"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -609,6 +634,7 @@ locals {
       keys(module.phoenixnap_relays.relays),
       keys(module.inap_relays.relays),
       keys(module.serversdotcom_relays.relays),
+      keys(module.velia_relays.relays),
     )
   )
 
@@ -625,6 +651,7 @@ locals {
     module.phoenixnap_relays.relays,
     module.inap_relays.relays,
     module.serversdotcom_relays.relays,
+    module.velia_relays.relays,
   )
 
   datacenters = merge(
@@ -640,6 +667,7 @@ locals {
     module.phoenixnap_relays.datacenters,
     module.inap_relays.datacenters,
     module.serversdotcom_relays.datacenters,
+    module.velia_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])

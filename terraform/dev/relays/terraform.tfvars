@@ -41,4 +41,5 @@ sellers = {
 	"phoenixNAP" = "phoenixnap"
 	"INAP" = "inap"
 	"servers.com" = "serversdotcom"
+	"Velia" = "velia"
 }
