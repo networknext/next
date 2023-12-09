@@ -637,6 +637,31 @@ module "zenlayer_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ================
+# STACKPATH RELAYS
+# ================
+
+locals {
+
+  stackpath_relays = {
+
+    /*
+    "stackpath.singapore" = {
+      datacenter_name = "stackpath.singapore"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "stackpath_relays" {
+  relays = local.stackpath_relays
+  source = "../../sellers/stackpath"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -661,6 +686,7 @@ locals {
       keys(module.serversdotcom_relays.relays),
       keys(module.velia_relays.relays),
       keys(module.zenlayer_relays.relays),
+      keys(module.stackpath_relays.relays),
     )
   )
 
@@ -679,6 +705,7 @@ locals {
     module.serversdotcom_relays.relays,
     module.velia_relays.relays,
     module.zenlayer_relays.relays,
+    module.stackpath_relays.relays,
   )
 
   datacenters = merge(
@@ -696,6 +723,7 @@ locals {
     module.serversdotcom_relays.datacenters,
     module.velia_relays.datacenters,
     module.zenlayer_relays.datacenters,
+    module.stackpath_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
