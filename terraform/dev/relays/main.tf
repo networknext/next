@@ -562,6 +562,31 @@ module "inap_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ==================
+# SERVERS.COM RELAYS
+# ==================
+
+locals {
+
+  serversdotcom_relays = {
+
+    /*
+    "serversdotcom.dallas" = {
+      datacenter_name = "serversdotcom.dallas"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "serversdotcom_relays" {
+  relays = local.serversdotcom_relays
+  source = "../../sellers/serversdotcom"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -583,6 +608,7 @@ locals {
       keys(module.colocrossing_relays.relays),
       keys(module.phoenixnap_relays.relays),
       keys(module.inap_relays.relays),
+      keys(module.serversdotcom_relays.relays),
     )
   )
 
@@ -598,6 +624,7 @@ locals {
     module.colocrossing_relays.relays,
     module.phoenixnap_relays.relays,
     module.inap_relays.relays,
+    module.serversdotcom_relays.relays,
   )
 
   datacenters = merge(
@@ -612,6 +639,7 @@ locals {
     module.colocrossing_relays.datacenters,
     module.phoenixnap_relays.datacenters,
     module.inap_relays.datacenters,
+    module.serversdotcom_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])

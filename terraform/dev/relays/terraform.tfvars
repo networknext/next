@@ -40,4 +40,5 @@ sellers = {
 	"ColoCrossing" = "colocrossing"
 	"phoenixNAP" = "phoenixnap"
 	"INAP" = "inap"
+	"servers.com" = "serversdotcom"
 }
