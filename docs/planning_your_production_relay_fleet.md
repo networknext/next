@@ -57,9 +57,7 @@ Some high quality providers we have used in the past:
 * https://gcore.com - good bare metal with a focus on eastern europe and russia
 * https://oneqode.com - excellent in Asia-Pacific and Australia
 * https://www.serversaustralia.com.au - excellent in Australia
-* https://www.tencentcloud.com - worth looking into around the world and especially for Asia
 * https://www.colocrossing.com - excellent performance around the world and a very good price. Historically they have hosted ESL game servers.
-* https://azure.com - not currently supported by our terraform provider, but it can easily be added so let us know if there is interest.
 * https://velia.net - some good locations and worth adding
 * https://www.latitude.sh - some good locations especially in South America
 * https://deploy.equinix.com - used to be know as packet.com, now acquired by equinix, expensive but good locations
