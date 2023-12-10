@@ -9,7 +9,7 @@ The next tool is primarily used to manage your relay fleet, but it is also used 
 You can get a quick overview of commands available to you by just typing `next` at the root directory of the code repository:
 
 ```console
-gaffer@macbook next % next
+gaffer@batman next % next
 
 Network Next Operator Tool
 
@@ -17,27 +17,28 @@ USAGE
   next <subcommand>
 
 SUBCOMMANDS
-  keygen    Generate new keypairs for network next
-  config    Configure network next
-  secrets   Zip up secrets directory
-  select    Select environment to use (local|dev|staging|prod)
-  env       Display environment
-  ping      Ping the REST API in the current environment
-  database  Update local database.bin from the current environment Postgres DB and print it
-  commit    Commit the local database.bin to the current environment runtime (server and relay backends)
-  relays    List relays in the current environment
-  ssh       SSH into the specified relay(s)
-  logs      View the journalctl log for a relay
-  setup     Setup the specified relay(s)
-  start     Start the specified relay(s)
-  stop      Stop the specified relay(s)
-  load      Load the specific relay binary version onto one or more relays
-  upgrade   Upgrade the specified relay(s)
-  reboot    Reboot the specified relay(s)
-  cost      Get cost matrix from current environment
-  optimize  Optimize cost matrix into a route matrix
-  analyze   Analyze route matrix from optimize
-  routes    Print list of routes from one relay to another
+  keygen       Generate new keypairs for network next
+  config       Configure network next
+  secrets      Zip up secrets directory
+  select       Select environment to use (local|dev|staging|prod)
+  env          Display environment
+  ping         Ping the REST API in the current environment
+  database     Update local database.bin from the current environment Postgres DB and print it
+  commit       Commit the local database.bin to the current environment runtime (server and relay backends)
+  relays       List relays in the current environment
+  datacenters  List datacenters in the current environment
+  ssh          SSH into the specified relay(s)
+  logs         View the journalctl log for a relay
+  setup        Setup the specified relay(s)
+  start        Start the specified relay(s)
+  stop         Stop the specified relay(s)
+  load         Load the specific relay binary version onto one or more relays
+  upgrade      Upgrade the specified relay(s)
+  reboot       Reboot the specified relay(s)
+  cost         Get cost matrix from current environment
+  optimize     Optimize cost matrix into a route matrix
+  analyze      Analyze route matrix from optimize
+  routes       Print list of routes from one relay to another
 ```
 
 ## next keygen
@@ -160,7 +161,7 @@ next commit
 
 ... after any changes have been made to the postgres database via terraform.
 
-## next relays
+## next relays <regex>
 
 Displays the set of relays in the current environment:
 
@@ -204,6 +205,20 @@ gaffer@macbook next % next relays
 │ google.netherlands.3 │ 35.204.240.65:40000   │ a88bfe2e3ccae516 │ online │ 2d     │ 0        │ 1.0.0   │
 └──────────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────┘
 
+```
+
+You can also pass in a pattern, and it will print only relays matching that regex:
+
+```console
+gaffer@batman next % next relays akamai
+
+┌──────────────────┬───────────────────────┬──────────────────┬────────┬────────┬──────────┬───────────────────┐
+│ Name             │ PublicAddress         │ Id               │ Status │ Uptime │ Sessions │ Version           │
+├──────────────────┼───────────────────────┼──────────────────┼────────┼────────┼──────────┼───────────────────┤
+│ akamai.newyork   │ 50.116.55.244:40000   │ 95d452eef2604bc4 │ online │ 1d     │ 9        │ relay-debug-1.0.0 │
+│ akamai.frankfurt │ 170.187.190.118:40000 │ c223d2eb62b013f5 │ online │ 22h    │ 0        │ relay-debug-1.0.0 │
+│ akamai.london    │ 212.71.249.92:40000   │ 33cf1e5d5af28532 │ online │ 22h    │ 0        │ relay-debug-1.0.0 │
+└──────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘
 ```
 
 ## next ssh [relay_name]
