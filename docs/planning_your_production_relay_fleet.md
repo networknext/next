@@ -66,6 +66,30 @@ Some high quality providers we have used in the past:
 * https://zenlayer.com - especially good in APAC
 * https://www.servers.com - standard bare metal
 * https://www.inap.com - standard bare metal
+
+Datacenters for these providers have already been added to the system. To see datacenters available for you to run relays, use the next tool like this:
+
+```console
+gaffer@batman next % next datacenters siliconvalley
+
+┌───────────────────────┬───────────────────────┬──────────┬───────────┐
+│ Name                  │ Native                │ Latitude │ Longitude │
+├───────────────────────┼───────────────────────┼──────────┼───────────┤
+│ akamai.fremont        │ us-west               │ 37.55    │ -121.99   │
+│ amazon.sanjose.1      │ usw1-az1 (us-west-1b) │ 37.34    │ -121.89   │
+│ amazon.sanjose.3      │ usw1-az3 (us-west-1a) │ 37.34    │ -121.89   │
+│ colocrossing.sanjose  │                       │ 37.3387  │ -121.8853 │
+│ datapacket.sanjose    │                       │ 37.3387  │ -121.8853 │
+│ equinix.siliconvalley │ SV                    │ 37.3387  │ -121.8853 │
+│ gcore.santaclara      │                       │ 37.3541  │ -121.9552 │
+│ i3d.santaclara        │                       │ 37.3541  │ -121.9552 │
+│ inap.santaclara       │                       │ 37.3541  │ -121.9552 │
+│ serversdotcom.sanfran │                       │ 37.7749  │ -122.4194 │
+│ stackpath.sanjose     │                       │ 37.3387  │ -121.8853 │
+└───────────────────────┴───────────────────────┴──────────┴───────────┘
+```
+
+The tool is smart enough to catch nearby datacenters with different city names. This really helps with ashburn vs. virginia, newyork vs. newark and silicon valley / sanjose / sanfran / santaclara and so on.
   
 Do your own research and of course there are more to try. I recommend you work on a per-city basis and spin up as many different providers in the location, and then over time as you see certain providers performing better than others (carrying more accelerated traffic), then you can whittle down and select the n best providers per-location that you desire. I recommend a minimum of 10 per-location of best providers.
 
