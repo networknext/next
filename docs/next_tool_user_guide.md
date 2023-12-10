@@ -161,7 +161,7 @@ next commit
 
 ... after any changes have been made to the postgres database via terraform.
 
-## next relays [regex]
+## next relays <regex>
 
 Displays the set of relays in the current environment:
 
@@ -221,7 +221,7 @@ gaffer@batman next % next relays akamai
 └──────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘
 ```
 
-## next datacenters [regex]
+## next datacenters <regex>
 
 Displays the set of datacenters in the current environment:
 
