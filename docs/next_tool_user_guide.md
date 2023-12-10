@@ -161,7 +161,7 @@ next commit
 
 ... after any changes have been made to the postgres database via terraform.
 
-## next relays <regex>
+## next relays [regex]
 
 Displays the set of relays in the current environment:
 
@@ -219,6 +219,79 @@ gaffer@batman next % next relays akamai
 │ akamai.frankfurt │ 170.187.190.118:40000 │ c223d2eb62b013f5 │ online │ 22h    │ 0        │ relay-debug-1.0.0 │
 │ akamai.london    │ 212.71.249.92:40000   │ 33cf1e5d5af28532 │ online │ 22h    │ 0        │ relay-debug-1.0.0 │
 └──────────────────┴───────────────────────┴──────────────────┴────────┴────────┴──────────┴───────────────────┘
+```
+
+## next datacenters [regex]
+
+Displays the set of datacenters in the current environment:
+
+```console
+gaffer@batman next % next datacenters
+
+┌────────────────────────────┬────────────────────────────────────────┬──────────┬───────────┐
+│ Name                       │ Native                                 │ Latitude │ Longitude │
+├────────────────────────────┼────────────────────────────────────────┼──────────┼───────────┤
+│ akamai.atlanta             │ us-southeast                           │ 33.75    │ -84.39    │
+│ akamai.dallas              │ us-central                             │ 32.78    │ -96.8     │
+│ akamai.frankfurt           │ eu-central                             │ 50.11    │ 8.68      │
+│ akamai.fremont             │ us-west                                │ 37.55    │ -121.99   │
+│ akamai.london              │ eu-west                                │ 51.51    │ -0.13     │
+│ akamai.mumbai              │ ap-west                                │ 19.08    │ 72.88     │
+│ akamai.newyork             │ us-east                                │ 40.71    │ -74.01    │
+│ akamai.singapore           │ ap-south                               │ 1.35     │ 103.82    │
+│ akamai.sydney              │ ap-southeast                           │ -33.87   │ 151.21    │
+│ akamai.toronto             │ ca-central                             │ 43.65    │ -79.38    │
+│ amazon.atlanta.1           │ use1-atl1-az1 (us-east-1-atl-1a)       │ 33.75    │ -84.39    │
+│ amazon.bahrain.1           │ mes1-az1 (me-south-1a)                 │ 26.07    │ 50.56     │
+│ amazon.bahrain.2           │ mes1-az2 (me-south-1b)                 │ 26.07    │ 50.56     │
+│ amazon.bahrain.3           │ mes1-az3 (me-south-1c)                 │ 26.07    │ 50.56     │
+│ amazon.bangkok.1           │ apse1-bkk1-az1 (ap-southeast-1-bkk-1a) │ 13.76    │ 100.5     │
+│ amazon.boston.1            │ use1-bos1-az1 (us-east-1-bos-1a)       │ 42.36    │ -71.06    │
+│ amazon.buenosaires.1       │ use1-bue1-az1 (us-east-1-bue-1a)       │ -34.6    │ -58.38    │
+etc...
+```
+
+You can also pass in a pattern, and it will print only relays matching that regex:
+
+```console
+gaffer@batman next % next datacenters akamai
+
+┌──────────────────┬──────────────┬──────────┬───────────┐
+│ Name             │ Native       │ Latitude │ Longitude │
+├──────────────────┼──────────────┼──────────┼───────────┤
+│ akamai.atlanta   │ us-southeast │ 33.75    │ -84.39    │
+│ akamai.dallas    │ us-central   │ 32.78    │ -96.8     │
+│ akamai.frankfurt │ eu-central   │ 50.11    │ 8.68      │
+│ akamai.fremont   │ us-west      │ 37.55    │ -121.99   │
+│ akamai.london    │ eu-west      │ 51.51    │ -0.13     │
+│ akamai.mumbai    │ ap-west      │ 19.08    │ 72.88     │
+│ akamai.newyork   │ us-east      │ 40.71    │ -74.01    │
+│ akamai.singapore │ ap-south     │ 1.35     │ 103.82    │
+│ akamai.sydney    │ ap-southeast │ -33.87   │ 151.21    │
+│ akamai.toronto   │ ca-central   │ 43.65    │ -79.38    │
+└──────────────────┴──────────────┴──────────┴───────────┘
+```
+
+If your pattern is a location, the tool will print out datacenters that are nearby for planning purposes. This helps catch cases like ashburn/virginia and siliconvalley/sf/sanjose/santaclara:
+
+```console
+gaffer@batman next % next datacenters siliconvalley
+
+┌───────────────────────┬───────────────────────┬──────────┬───────────┐
+│ Name                  │ Native                │ Latitude │ Longitude │
+├───────────────────────┼───────────────────────┼──────────┼───────────┤
+│ akamai.fremont        │ us-west               │ 37.55    │ -121.99   │
+│ amazon.sanjose.1      │ usw1-az1 (us-west-1b) │ 37.34    │ -121.89   │
+│ amazon.sanjose.3      │ usw1-az3 (us-west-1a) │ 37.34    │ -121.89   │
+│ colocrossing.sanjose  │                       │ 37.3387  │ -121.8853 │
+│ datapacket.sanjose    │                       │ 37.3387  │ -121.8853 │
+│ equinix.siliconvalley │ SV                    │ 37.3387  │ -121.8853 │
+│ gcore.santaclara      │                       │ 37.3541  │ -121.9552 │
+│ i3d.santaclara        │                       │ 37.3541  │ -121.9552 │
+│ inap.santaclara       │                       │ 37.3541  │ -121.9552 │
+│ serversdotcom.sanfran │                       │ 37.7749  │ -122.4194 │
+│ stackpath.sanjose     │                       │ 37.3387  │ -121.8853 │
+└───────────────────────┴───────────────────────┴──────────┴───────────┘
 ```
 
 ## next ssh [relay_name]
