@@ -216,6 +216,24 @@ func main() {
 		},
 	}
 
+	var datacentersCommand = &ffcli.Command{
+		Name:       "datacenters",
+		ShortUsage: "next datacenters <regex>",
+		ShortHelp:  "List datacenters in the current environment",
+		FlagSet:    relaysfs,
+		Exec: func(_ context.Context, args []string) error {
+
+			var regexName string
+			if len(args) > 0 {
+				regexName = args[0]
+			}
+
+			printDatacenters(env, relaysCount, regexName)
+
+			return nil
+		},
+	}
+
 	var sshCommand = &ffcli.Command{
 		Name:       "ssh",
 		ShortUsage: "next ssh [regex...]",
@@ -435,6 +453,7 @@ func main() {
 		databaseCommand,
 		commitCommand,
 		relaysCommand,
+		datacentersCommand,
 		sshCommand,
 		logCommand,
 		setupCommand,
@@ -1800,6 +1819,100 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	} else {
 		fmt.Printf("no relays found\n\n")
 	}
+}
+
+// ----------------------------------------------------------------
+
+type AdminDatacentersResponse struct {
+	Datacenters []admin.DatacenterData `json:"datacenters"`
+	Error       string                 `json:"error"`
+}
+
+func printDatacenters(env Environment, datacenterCount int64, regexName string) {
+
+	// find datacenters that match the regex
+
+	adminDatacentersResponse := AdminDatacentersResponse{}
+
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/datacenters", env.API_URL), &adminDatacentersResponse)
+
+	type DatacenterRow struct {
+		Name            string
+		Native			 string
+		Latitude        float64
+		Longitude       float64
+	}
+
+	datacenterRows := make([]DatacenterRow, 0)
+
+	for i := range adminDatacentersResponse.Datacenters {
+		row := DatacenterRow{}
+		row.Name = adminDatacentersResponse.Datacenters[i].DatacenterName
+		row.Native = adminDatacentersResponse.Datacenters[i].NativeName
+		row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
+		row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+		matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
+		if regexName == "" || ( matched && err == nil ) {
+			datacenterRows = append(datacenterRows, row)
+		}
+	}
+
+	if len(datacenterRows) == 0 {
+		fmt.Printf("no datacenter found\n\n")
+		return
+	}
+
+	// find nearby datacenters within 100km, so we can pick up ashburn <-> virginia, sanjose <-> sf <-> siliconvalley
+
+	if regexName != "" {
+
+		averageLatitude := 0.0
+		averageLongitude := 0.0
+
+		for i := range datacenterRows {
+			averageLatitude += datacenterRows[i].Latitude
+			averageLongitude += datacenterRows[i].Longitude
+		}
+
+		averageLatitude /= float64(len(datacenterRows))
+		averageLongitude /= float64(len(datacenterRows))
+
+		threshold := 150.0
+		allWithinThreshold := true
+		for i := range datacenterRows {
+			distance := core.HaversineDistance(datacenterRows[i].Latitude, datacenterRows[i].Longitude, averageLatitude, averageLongitude)
+			if distance > threshold {
+				allWithinThreshold = false
+				break
+			}
+		}
+
+		if allWithinThreshold {
+
+			for i := range adminDatacentersResponse.Datacenters {
+				row := DatacenterRow{}
+				row.Name = adminDatacentersResponse.Datacenters[i].DatacenterName
+				row.Native = adminDatacentersResponse.Datacenters[i].NativeName
+				row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
+				row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+				matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
+				distance := core.HaversineDistance(row.Latitude, row.Longitude, averageLatitude, averageLongitude)
+				if distance <= threshold && ( !matched || err != nil ) {
+					datacenterRows = append(datacenterRows, row)
+				}
+			}
+
+		}
+	}
+
+	// sort alphabetically then print results
+
+	sort.SliceStable(datacenterRows, func(i, j int) bool {
+		return datacenterRows[i].Name < datacenterRows[j].Name
+	})
+
+	table.Output(datacenterRows)
+	fmt.Printf("\n")
 }
 
 // ----------------------------------------------------------------
