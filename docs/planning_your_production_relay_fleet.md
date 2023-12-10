@@ -55,12 +55,9 @@ Some high quality providers we have used in the past:
 * https://stackpath.com - stackpath is a CDN that now has their own edge compute where you can run relays
 * https://hivelocity.net - they have good connectivity and locations around the world
 * https://gcore.com - good bare metal with a focus on eastern europe and russia
-* https://www.hetzner.com - particularly good in EU
-* https://performive.com - previously known as "total server solutions"
 * https://oneqode.com - excellent in Asia-Pacific and Australia
 * https://www.serversaustralia.com.au - excellent in Australia
 * https://www.tencentcloud.com - worth looking into around the world and especially for Asia
-* https://vultr.com - they have a low quality terraform provider and cloud, but their bare metal can be useful in certain locations.
 * https://www.colocrossing.com - excellent performance around the world and a very good price. Historically they have hosted ESL game servers.
 * https://azure.com - not currently supported by our terraform provider, but it can easily be added so let us know if there is interest.
 * https://velia.net - some good locations and worth adding
