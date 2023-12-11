@@ -37,10 +37,6 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 * [Portal user guide](docs/portal_user_guide.md)
 * [Next tool user guide](docs/next_tool_user_guide.md)
-
-# Analytics
-
-* [BigQuery table schemas](docs/bigquery_table_schemas.md)
   
 # Operating Network Next
 
@@ -55,4 +51,5 @@ To use Network Next, your game must have a client/server architecture and use UD
 
 # Miscellaneous
 
+* [BigQuery table schemas](docs/bigquery_table_schemas.md)
 * [Glossary of Common Terms](docs/glossary_of_common_terms.md)
