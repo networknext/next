@@ -18,7 +18,7 @@ In addition to steering player traffic, the SDK pings nearby relays at the start
 
 The Network Next SDK is written in C-like C++ and supports all common platforms: Windows, Mac, Linux, iOS, PS4, PS5, XBox One, XBox Series X and Nintendo Switch. It works with all hosting providers with special datacenter autodetect support for Google Cloud, AWS and Multiplay. The only requirement is that you send and receive UDP packets to implement your game protocol and that you have a client/server architecture - peer-to-peer is not supported.
 
-For games that are using UE5 we have plugin that provides a drop-in NetDriver replacement.
+For games that are using UE5 we have a plugin that provides a drop-in NetDriver replacement.
 
 ## 2. Network Next Backend
 
