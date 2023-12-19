@@ -1229,13 +1229,13 @@ func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash
 	sessionMap := make(map[uint64]uint64)
 
 	for i := range redis_user_sessions_a {
-		sessionId, _ := strconv.ParseUint(redis_user_sessions_a[i].Member.(string), 16, 64)
+		sessionId, _ := strconv.ParseUint(redis_user_sessions_a[i].Member, 16, 64)
 		score := uint64(redis_user_sessions_a[i].Score)
 		sessionMap[sessionId] = score
 	}
 
 	for i := range redis_user_sessions_b {
-		sessionId, _ := strconv.ParseUint(redis_user_sessions_b[i].Member.(string), 16, 64)
+		sessionId, _ := strconv.ParseUint(redis_user_sessions_b[i].Member, 16, 64)
 		score := uint64(redis_user_sessions_b[i].Score)
 		sessionMap[sessionId] = score
 	}
@@ -1826,13 +1826,13 @@ func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes i
 	relayMap := make(map[string]int32)
 
 	for i := range redis_relay_addresses_a {
-		address := redis_relay_addresses_a[i].Member.(string)
+		address := redis_relay_addresses_a[i].Member
 		score := int32(redis_relay_addresses_a[i].Score)
 		relayMap[address] = score
 	}
 
 	for i := range redis_relay_addresses_b {
-		address := redis_relay_addresses_b[i].Member.(string)
+		address := redis_relay_addresses_b[i].Member
 		score := int32(redis_relay_addresses_b[i].Score)
 		relayMap[address] = score
 	}
