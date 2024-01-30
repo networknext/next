@@ -26,6 +26,8 @@
 
 size_t sceLibcHeapSize = 100*1024*1024; // give 100MB heap to libc
 
+extern void next_run_tests();
+
 int main()
 {
     next_quiet( true );
@@ -37,7 +39,7 @@ int main()
 
     printf( "\nRunning SDK tests:\n\n" );
 
-    next_test();
+    next_run_tests();
 
     next_term();
 

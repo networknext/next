@@ -110,6 +110,12 @@ void next_platform_term()
     sceNetPoolDestroy( handle_net );
 }
 
+int next_platform_connection_type()
+{
+    // todo: bring back platform connection type detection on ps4
+    return NEXT_CONNECTION_TYPE_WIRED;
+}
+
 const char * next_platform_getenv( const char * )
 {
     return NULL; // not supported
@@ -299,7 +305,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * socket );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
     next_assert( s );
@@ -398,6 +404,8 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     {
         // timeout <= 0, socket is blocking with no timeout
     }
+
+    // todo: packet tagging on ps4
 
     return s;
 }
