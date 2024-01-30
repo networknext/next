@@ -40,3 +40,8 @@ yarn.lock
 appendonlydir
 nodes.conf
 *.rdb
+
+# fun times
+.a
+sdk/build/ps4/client
+sdk/build/ps4/test
