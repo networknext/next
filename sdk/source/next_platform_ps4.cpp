@@ -38,6 +38,8 @@
 
 static int handle_net;
 
+static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
 static const char * next_randombytes_implementation_name()
 {
     return "ps4";
@@ -97,10 +99,43 @@ static randombytes_implementation next_random_implementation =
 int next_platform_init()
 {
     if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set random bytes implementation" );
         return NEXT_ERROR;
+    }
 
     if ( ( handle_net = sceNetPoolCreate("net", HEAP_SIZE_NET, 0 ) ) < 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to init network pool" );
         return NEXT_ERROR;
+    }
+
+    connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
+    if ( sceNetCtlInit() != SCE_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init netctl library" );
+        return NEXT_OK;
+    }
+
+    SceNetCtlInfo info;
+    if ( sceNetCtlGetInfo( SCE_NET_CTL_INFO_DEVICE, &info ) == SCE_OK )
+    {
+        switch ( info.device )
+        {
+            case SCE_NET_CTL_DEVICE_WIRED:
+                connection_type = NEXT_CONNECTION_TYPE_WIRED;
+                break;
+            case SCE_NET_CTL_DEVICE_WIRELESS:
+                connection_type = NEXT_CONNECTION_TYPE_WIFI;
+                break;
+        }
+    }
+    else
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to determine network connection type" );
+        return NEXT_OK;
+    }
 
     return NEXT_OK;
 }
@@ -112,8 +147,7 @@ void next_platform_term()
 
 int next_platform_connection_type()
 {
-    // todo: bring back platform connection type detection on ps4
-    return NEXT_CONNECTION_TYPE_WIRED;
+    return connection_type;
 }
 
 const char * next_platform_getenv( const char * )
