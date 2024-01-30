@@ -62,7 +62,9 @@ int main()
     fflush( stdout );
 
     printf( "\nAll tests completed successfully!\n\n" );
+}
 
+/*
     printf( "Starting client...\n\n" );
 
     next_log_level( NEXT_LOG_LEVEL_INFO );
@@ -101,4 +103,4 @@ int main()
     next_term();
     
     return 0;
-}
+*/
