@@ -605,6 +605,8 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     return result;
 }
 
+extern void * next_global_context;
+
 static int get_connection_type()
 {
     IP_ADAPTER_ADDRESSES * addresses;
