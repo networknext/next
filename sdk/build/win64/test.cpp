@@ -29,24 +29,24 @@
 
 int main()
 {
-    printf( "\nRunning tests...\n\n" );
+    printf("\nRunning tests...\n\n");
 
-    next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level(NEXT_LOG_LEVEL_NONE);
 
-    if ( next_init(NULL, NULL) != NEXT_OK )
+    if (next_init(NULL, NULL) != NEXT_OK)
     {
-        printf( "error: failed to initialize network next\n" );
+        printf("error: failed to initialize network next\n");
     }
 
-    next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level(NEXT_LOG_LEVEL_NONE);
 
     next_run_tests();
 
     next_term();
 
-    fflush( stdout );
+    fflush(stdout);
 
-    printf( "\nAll tests completed successfully!\n\n" );
+    printf("\nAll tests completed successfully!\n\n");
 
     return 0;
 }

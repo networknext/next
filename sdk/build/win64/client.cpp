@@ -29,12 +29,12 @@
 
 static volatile int quit = 0;
 
-void interrupt_handler( int signal )
+void interrupt_handler(int signal)
 {
     (void) signal; quit = 1;
 }
 
-void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+void client_packet_received(next_client_t* client, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes)
 {
     (void)client; (void)context; (void)from; (void)packet_data; (void)packet_bytes;
 }
@@ -55,7 +55,7 @@ int main()
 
     next_init(NULL, &config);
 
-    next_client_t* client = next_client_create(NULL, "0.0.0.0:0", client_packet_received );
+    next_client_t* client = next_client_create(NULL, "0.0.0.0:0", client_packet_received);
     if (client == NULL)
     {
         printf("error: failed to create client\n");
