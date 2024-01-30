@@ -303,7 +303,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ORBIS'">
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\include;..\..\sodium;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXT_DEVELOPMENT=1;NDEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>
@@ -320,7 +320,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\include;..\..\sodium;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NEXT_SHARED;NEXT_EXPORT;SODIUM_STATIC;_DEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXT_DEVELOPMENT=1;SODIUM_STATIC;_DEBUG;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>
