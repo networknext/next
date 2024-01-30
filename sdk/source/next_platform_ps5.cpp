@@ -43,6 +43,8 @@ extern void next_free( void * context, void * p );
 
 static int handle_net;
 
+static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
 static const char * next_randombytes_implementation_name()
 {
     return "ps5";
@@ -110,20 +112,46 @@ int next_platform_init()
 {
     if ( sceSysmoduleLoadModule( SCE_SYSMODULE_RANDOM ) != SCE_OK ) 
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to load random sysmodule" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to load random sysmodule" );
         return NEXT_ERROR;
     }
 
     if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to setup random bytes implementation" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to setup random bytes implementation" );
         return NEXT_ERROR;
     }
 
     if ( ( handle_net = sceNetPoolCreate( "net", HEAP_SIZE_NET, 0 ) ) < 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init network pool" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to init network pool" );
         return NEXT_ERROR;
+    }
+
+    connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
+    if ( sceNetCtlInit() != SCE_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init netctl library" );
+        return NEXT_OK;
+    }
+
+    SceNetCtlInfo info;
+    if ( sceNetCtlGetInfo( SCE_NET_CTL_INFO_DEVICE, &info ) == SCE_OK )
+    {
+        switch ( info.device )
+        {
+            case SCE_NET_CTL_DEVICE_WIRED:
+                connection_type = NEXT_CONNECTION_TYPE_WIRED;
+                break;
+            case SCE_NET_CTL_DEVICE_WIRELESS:
+                connection_type = NEXT_CONNECTION_TYPE_WIFI;
+                break;
+        }
+    }
+    else
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to determine network connection type" );
     }
 
     return NEXT_OK;
@@ -136,8 +164,7 @@ void next_platform_term()
 
 int next_platform_connection_type()
 {
-    // todo: bring back ps5 connection type detection
-    return NEXT_CONNECTION_TYPE_WIRED;
+    return connection_type;
 }
 
 const char * next_platform_getenv( const char * )
