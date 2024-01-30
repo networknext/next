@@ -11,12 +11,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="test.cpp" />
+    <ClCompile Include="client.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{02A0BE82-AAD0-4ADE-983F-E301E8F25C71}</ProjectGuid>
-    <OutDir>test/</OutDir>
-    <IntDir>test/</IntDir>
+    <ProjectGuid>{02A0BE82-AAD0-4ADE-983F-E301E8F25C55}</ProjectGuid>
+    <OutDir>client/</OutDir>
+    <IntDir>client/</IntDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'" Label="Configuration">
