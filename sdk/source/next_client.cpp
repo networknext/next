@@ -1451,6 +1451,7 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes;
+        notify->already_received = false;
         next_assert( notify->payload_bytes >= 0 );
         next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );
