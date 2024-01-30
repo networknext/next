@@ -27,20 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static volatile int quit = 0;
-
-void interrupt_handler( int signal )
-{
-    (void) signal; quit = 1;
-}
-
-void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) client; (void) context; (void) packet_data; (void) packet_bytes;
-}
-
-const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
-
 int main()
 {
     printf( "\nRunning tests...\n\n" );
@@ -64,42 +50,3 @@ int main()
 
     return 0;
 }
-
-/*
-    printf( "Starting client...\n\n" );
-
-    next_log_level( NEXT_LOG_LEVEL_INFO );
-
-    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
-
-    next_config_t config;
-    next_default_config( &config );
-    strncpy_s( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
-
-    next_init( NULL, &config );
-
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received, NULL );
-    if ( client == NULL )
-    {
-        printf( "error: failed to create client\n" );
-        return 1;
-    }
-
-    next_client_open_session( client, "173.255.241.176:50000" );
-
-    uint8_t packet_data[32];
-    memset( packet_data, 0, sizeof( packet_data ) );
-
-    while ( !quit )
-    {
-        next_client_update( client );
-
-        next_client_send_packet( client, packet_data, sizeof( packet_data ) );
-
-        next_platform_sleep( 1.0 / 60.0 );
-    }
-
-    next_client_destroy( client );
-
-    next_term();
-*/
