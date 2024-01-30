@@ -21,7 +21,6 @@
 */
 
 #include "next.h"
-#include "next_tests.h"
 #include "next_platform.h"
 #include <stdio.h>
 #include <signal.h>
@@ -44,63 +43,42 @@ const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQ
 
 int main()
 {
-    printf( "\nRunning tests...\n\n" );
+    printf("Starting client...\n\n");
 
-    next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level(NEXT_LOG_LEVEL_INFO);
 
-    if ( next_init(NULL, NULL) != NEXT_OK )
-    {
-        printf( "error: failed to initialize network next\n" );
-    }
+    signal(SIGINT, interrupt_handler); signal(SIGTERM, interrupt_handler);
 
-    next_log_level( NEXT_LOG_LEVEL_NONE );
-
-    next_run_tests();
-
-    next_term();
-
-    fflush( stdout );
-
-    printf( "\nAll tests completed successfully!\n\n" );
-}
-
-/*
-    printf( "Starting client...\n\n" );
-
-    next_log_level( NEXT_LOG_LEVEL_INFO );
-    
-    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
-    
     next_config_t config;
-    next_default_config( &config );
-    strncpy_s( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
+    next_default_config(&config);
+    strncpy_s(config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1);
 
-    next_init( NULL, &config ); 
+    next_init(NULL, &config);
 
-    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
-    if ( client == NULL )
+    next_client_t* client = next_client_create(NULL, "0.0.0.0:0", client_packet_received);
+    if (client == NULL)
     {
-        printf( "error: failed to create client\n" );
+        printf("error: failed to create client\n");
         return 1;
     }
 
-    next_client_open_session( client, "173.255.241.176:50000" );
+    next_client_open_session(client, "173.255.241.176:50000");
 
     uint8_t packet_data[32];
-    memset( packet_data, 0, sizeof( packet_data ) );
+    memset(packet_data, 0, sizeof(packet_data));
 
-    while ( !quit )
+    while (!quit)
     {
-        next_client_update( client );
+        next_client_update(client);
 
-        next_client_send_packet( client, packet_data, sizeof( packet_data ) );
-        
-        next_platform_sleep( 1.0 / 60.0 );
+        next_client_send_packet(client, packet_data, sizeof(packet_data));
+
+        next_platform_sleep(1.0 / 60.0);
     }
 
-    next_client_destroy( client );
-    
+    next_client_destroy(client);
+
     next_term();
-    
+
     return 0;
-*/
+}
