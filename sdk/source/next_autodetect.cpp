@@ -712,7 +712,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     // google cloud
 
-    bool google_result = next_autodetect_google( output );
+    bool google_result = next_autodetect_google( output, output_size );
     if ( google_result )
     {
         return true;
@@ -720,7 +720,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     // amazon
 
-    bool amazon_result = next_autodetect_amazon( output );
+    bool amazon_result = next_autodetect_amazon( output, output_size );
     if ( amazon_result )
     {
         return true;
