@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.2092
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33829.357
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next", "next.vcxproj", "{07557A06-FB1F-400F-879E-FBA6BA863732}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{E0041F5E-3BA5-479A-8923-1675DC5009BE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{E0041F5E-3BA5-479A-8923-1675DC5009BE}"
 	ProjectSection(ProjectDependencies) = postProject
 		{07557A06-FB1F-400F-879E-FBA6BA863732} = {07557A06-FB1F-400F-879E-FBA6BA863732}
 	EndProjectSection

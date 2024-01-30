@@ -302,16 +302,18 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'">
     <IncludePath>$(SCE_PROSPERO_SDK_DIR)\host_tools\lib\clang\include;$(SCE_PROSPERO_SDK_DIR)\target\include;$(SCE_PROSPERO_SDK_DIR)\target\include_common;..\..\..\include;..\..\..\sodium</IncludePath>
-    <OutDir>$(Platform)_$(Configuration)\</OutDir>
+    <OutDir>debug/</OutDir>
     <PrxStubOutputDir>
     </PrxStubOutputDir>
     <IgnoreImportLibrary>
     </IgnoreImportLibrary>
+    <IntDir>debug/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'">
-    <OutDir>$(Platform)_$(Configuration)\</OutDir>
+    <OutDir>release/</OutDir>
     <PrxStubOutputDir>..\..\lib\Playstation5\Release</PrxStubOutputDir>
     <IgnoreImportLibrary>false</IgnoreImportLibrary>
+    <IntDir>release/</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'">
     <ClCompile>

@@ -47,17 +47,24 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'">
+    <OutDir>test/debug/</OutDir>
+    <IntDir>test/debug/</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'">
+    <OutDir>test/release/</OutDir>
+    <IntDir>test/release/</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Prospero'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>../../../include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <Addressing>NonAslr</Addressing>
-      <AdditionalDependencies>../Prospero_Debug/next.a;libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a</AdditionalDependencies>
+      <AdditionalDependencies>debug/next.a;libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /Y /I "$(SCE_PROSPERO_SDK_DIR)\target\sce_module\libc.prx" "$(LocalDebuggerWorkingDirectory)sce_module\"</Command>
@@ -68,13 +75,13 @@
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <OptimizationLevel>Level2</OptimizationLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>../../../include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>xcopy /Y /I "$(SCE_PROSPERO_SDK_DIR)\target\sce_module\libc.prx" "$(LocalDebuggerWorkingDirectory)sce_module\"</Command>
     </PostBuildEvent>
     <Link>
-      <AdditionalDependencies>../Prospero_Release/next.a;libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a</AdditionalDependencies>
+      <AdditionalDependencies>release/next.a;libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Condition="'$(ConfigurationType)' == 'Makefile' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets')" Project="$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets" />
