@@ -226,7 +226,7 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
 
         if ( num_jitter_samples > 0 )
         {
-            stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples ) * 1000.0;
+            stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples ) * 1000.0f;
         }
     }
 

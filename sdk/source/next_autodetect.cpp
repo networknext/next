@@ -33,7 +33,11 @@
 #include <string.h>
 #include <time.h>
 
-bool next_autodetect_google( char * output )
+#if defined(_WIN32) || defined(_WIN64)
+#define strtok_r strtok_s
+#endif
+
+bool next_autodetect_google( char * output, size_t output_size )
 {
     FILE * file;
     char buffer[1024*10];
@@ -212,14 +216,14 @@ bool next_autodetect_google( char * output )
     while ( fgets( buffer, sizeof(buffer), file ) != NULL )
     {
         const char * separators = ",\n\r";
-
-        char * google_zone = strtok( buffer, separators );
+        char * rest = buffer;
+        char * google_zone = strtok_r( buffer, separators, &rest );
         if ( google_zone == NULL )
         {
             continue;
         }
 
-        char * google_datacenter = strtok( NULL, separators );
+        char * google_datacenter = strtok_r( NULL, separators, &rest );
         if ( google_datacenter == NULL )
         {
             continue;
@@ -228,7 +232,7 @@ bool next_autodetect_google( char * output )
         if ( strcmp( zone, google_zone ) == 0 )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: \"%s\" -> \"%s\"", zone, google_datacenter );
-            strcpy( output, google_datacenter );
+            next_copy_string( output, google_datacenter, output_size );
             found = true;
             break;
         }
@@ -247,7 +251,7 @@ bool next_autodetect_google( char * output )
     return found;
 }
 
-bool next_autodetect_amazon( char * output )
+bool next_autodetect_amazon( char * output, size_t output_size )
 {
     FILE * file;
     char buffer[1024*10];
@@ -286,9 +290,9 @@ bool next_autodetect_amazon( char * output )
             continue;
         }
 
-        strcpy( azid, buffer );
+        next_copy_string( azid, buffer, sizeof(azid) );
 
-        size_t azid_length = strlen(azid);
+        size_t azid_length = strlen( azid );
         size_t index = azid_length - 1;
         while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
         {
@@ -350,14 +354,14 @@ bool next_autodetect_amazon( char * output )
     while ( fgets( buffer, sizeof(buffer), file ) != NULL )
     {
         const char * separators = ",\n\r";
-
-        char * amazon_zone = strtok( buffer, separators );
+        char* rest = buffer;
+        char * amazon_zone = strtok_r( buffer, separators, &rest );
         if ( amazon_zone == NULL )
         {
             continue;
         }
 
-        char * amazon_datacenter = strtok( NULL, separators );
+        char * amazon_datacenter = strtok_r( NULL, separators, &rest );
         if ( amazon_datacenter == NULL )
         {
             continue;
@@ -366,7 +370,7 @@ bool next_autodetect_amazon( char * output )
         if ( strcmp( azid, amazon_zone ) == 0 )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: \"%s\" -> \"%s\"", azid, amazon_datacenter );
-            strcpy( output, amazon_datacenter );
+            next_copy_string( output, amazon_datacenter, output_size );
             found = true;
             break;
         }

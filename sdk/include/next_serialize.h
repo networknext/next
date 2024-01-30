@@ -25,6 +25,7 @@
 
 #include "next.h"
 #include "next_stream.h"
+#include <string.h>
 
 #if defined( _MSC_VER )
 #pragma warning(disable:4127)
