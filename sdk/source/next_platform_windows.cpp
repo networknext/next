@@ -50,6 +50,7 @@
 
 #pragma comment( lib, "WS2_32.lib" )
 #pragma comment( lib, "IPHLPAPI.lib" )
+#pragma comment( lib, "Qwave.lib" )
 
 #ifdef SetPort
 #undef SetPort
@@ -59,9 +60,12 @@ extern void * next_malloc( void * context, size_t bytes );
 
 extern void next_free( void * context, void * p );
 
+static int get_connection_type();
+
 static int timer_initialized = 0;
 static LARGE_INTEGER timer_frequency;
 static LARGE_INTEGER timer_start;
+static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
 
 // init
 
@@ -75,6 +79,8 @@ int next_platform_init()
     {
         return NEXT_ERROR;
     }
+
+    connection_type = get_connection_type();
 
     return NEXT_OK;
 }
@@ -302,6 +308,21 @@ int next_platform_id()
 
 void next_platform_socket_destroy( next_platform_socket_t * );
 
+int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_FLOWID flowId, PSOCKADDR addr ) 
+{
+    QOS_VERSION QosVersion = { 1 , 0 };
+    HANDLE qosHandle;
+    if ( QOSCreateHandle( &QosVersion, &qosHandle ) == FALSE )
+    {
+        return GetLastError();
+    }
+    if ( QOSAddSocketToFlow( qosHandle, socket, addr, trafficType, QOS_NON_ADAPTIVE_FLOW, &flowId ) == FALSE )
+    {
+        return GetLastError();
+    }
+    return 0;
+}
+
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
@@ -450,7 +471,12 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout < 0, socket is blocking with no timeout
     }
 
-    // todo: bring back packet tagging on windows
+    // tag as latency sensitive
+
+    if ( enable_packet_tagging )
+    {
+        next_set_socket_codepoint( s->handle, QOSTrafficTypeAudioVideo, 0, addr );
+    }
 
     return s;
 }
@@ -575,6 +601,64 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     }
   
     next_assert( result >= 0 );
+
+    return result;
+}
+
+static int get_connection_type()
+{
+    IP_ADAPTER_ADDRESSES * addresses;
+    ULONG buffer_size = 15000;
+
+    do
+    {
+        addresses = (IP_ADAPTER_ADDRESSES *)( next_malloc( next_global_context, buffer_size ) );
+
+        ULONG return_code = GetAdaptersAddresses( AF_INET, 0, NULL, addresses, &buffer_size );
+
+        if ( return_code == NO_ERROR )
+        {
+            // success!
+            break;
+        }
+        else if ( return_code == ERROR_BUFFER_OVERFLOW )
+        {
+            next_free( next_global_context, addresses );
+            continue;
+        }
+        else
+        {
+            // error
+            next_free( next_global_context, addresses );
+            return NEXT_CONNECTION_TYPE_UNKNOWN;
+        }
+    }
+    while ( true );
+
+    int result = NEXT_CONNECTION_TYPE_UNKNOWN;
+    
+    // if there are any adapters at all, default to wired
+    if ( addresses )
+    {
+        result = NEXT_CONNECTION_TYPE_WIRED;
+    }
+
+    // if any wifi adapter exists and is connected to a network, assume we're on wifi.
+    IP_ADAPTER_ADDRESSES * address = addresses;
+    while ( address )
+    {
+        if ( address->IfType == IF_TYPE_IEEE80211 && address->OperStatus == NET_IF_OPER_STATUS_UP )
+        {
+            result = NEXT_CONNECTION_TYPE_WIFI;
+            break;
+        }
+        address = address->Next;
+    }
+
+    if ( addresses )
+    {
+        next_free( next_global_context, addresses );
+    }
 
     return result;
 }
