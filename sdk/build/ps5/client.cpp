@@ -21,31 +21,58 @@
 */
 
 #include "next.h"
+#include "next_platform.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-size_t sceLibcHeapSize = 100*1024*1024; // give 100MB heap to libc
+unsigned int sceLibcHeapExtendedAlloc = 1;
 
-extern void next_run_tests();
+size_t sceLibcHeapSize = SCE_LIBC_HEAP_SIZE_EXTENDED_ALLOC_NO_LIMIT;
+
+const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+
+void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) client; (void) context; (void) from; (void) packet_data; (void) packet_bytes;
+}
 
 int main()
 {
-    next_quiet( true );
+    printf( "Starting client...\n\n" );
 
-    if ( next_init( NULL, NULL ) != NEXT_OK )
+    next_log_level( NEXT_LOG_LEVEL_INFO );
+
+    next_config_t config;
+    next_default_config( &config );
+    strncpy_s( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
+
+    next_init( NULL, &config );
+
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
+    if ( client == NULL )
     {
-        printf( "error: failed to initialize network next\n" );
+        printf( "error: failed to create client\n" );
+        return 1;
     }
 
-    printf( "\nRunning SDK tests:\n\n" );
+    next_client_open_session( client, "173.255.241.176:50000" );
 
-    next_run_tests();
+    uint8_t packet_data[32];
+    memset( packet_data, 0, sizeof(packet_data) );
+
+    while ( true )
+    {
+        next_client_update( client );
+
+        next_client_send_packet( client, packet_data, sizeof(packet_data) );
+
+        next_platform_sleep( 1.0 / 60.0 );
+    }
+
+    next_client_destroy( client );
 
     next_term();
-
-    printf( "\n" );
-
-    fflush( stdout );
 
     return 0;
 }

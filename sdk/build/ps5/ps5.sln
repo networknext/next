@@ -10,6 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{E0
 		{07557A06-FB1F-400F-879E-FBA6BA863732} = {07557A06-FB1F-400F-879E-FBA6BA863732}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client.vcxproj", "{E0041F5E-3BA5-479A-8923-1675DC5009AB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{07557A06-FB1F-400F-879E-FBA6BA863732} = {07557A06-FB1F-400F-879E-FBA6BA863732}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Prospero = Debug|Prospero
@@ -24,6 +29,10 @@ Global
 		{E0041F5E-3BA5-479A-8923-1675DC5009BE}.Debug|Prospero.Build.0 = Debug|Prospero
 		{E0041F5E-3BA5-479A-8923-1675DC5009BE}.Release|Prospero.ActiveCfg = Release|Prospero
 		{E0041F5E-3BA5-479A-8923-1675DC5009BE}.Release|Prospero.Build.0 = Release|Prospero
+		{E0041F5E-3BA5-479A-8923-1675DC5009AB}.Debug|Prospero.ActiveCfg = Debug|Prospero
+		{E0041F5E-3BA5-479A-8923-1675DC5009AB}.Debug|Prospero.Build.0 = Debug|Prospero
+		{E0041F5E-3BA5-479A-8923-1675DC5009AB}.Release|Prospero.ActiveCfg = Release|Prospero
+		{E0041F5E-3BA5-479A-8923-1675DC5009AB}.Release|Prospero.Build.0 = Release|Prospero
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
