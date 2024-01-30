@@ -10,6 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{02
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4} = {B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client.vcxproj", "{02A0BE82-AAD0-4ADE-983F-E301E8F25C55}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4} = {B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ORBIS = Debug|ORBIS
@@ -24,6 +29,10 @@ Global
 		{02A0BE82-AAD0-4ADE-983F-E301E8F25C71}.Debug|ORBIS.Build.0 = Debug|ORBIS
 		{02A0BE82-AAD0-4ADE-983F-E301E8F25C71}.Release|ORBIS.ActiveCfg = Release|ORBIS
 		{02A0BE82-AAD0-4ADE-983F-E301E8F25C71}.Release|ORBIS.Build.0 = Release|ORBIS
+		{02A0BE82-AAD0-4ADE-983F-E301E8F25C55}.Debug|ORBIS.ActiveCfg = Debug|ORBIS
+		{02A0BE82-AAD0-4ADE-983F-E301E8F25C55}.Debug|ORBIS.Build.0 = Debug|ORBIS
+		{02A0BE82-AAD0-4ADE-983F-E301E8F25C55}.Release|ORBIS.ActiveCfg = Release|ORBIS
+		{02A0BE82-AAD0-4ADE-983F-E301E8F25C55}.Release|ORBIS.Build.0 = Release|ORBIS
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
