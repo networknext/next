@@ -84,8 +84,8 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(_NintendoSdkSdkLibraryName).nss;libnn_init_memory$(NintendoSdkLibSuffix);libnn_gfx$(NintendoSdkLibSuffix);libnn_mii_draw$(NintendoSdkLibSuffix);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>release/next.a;$(_NintendoSdkSdkLibraryName).nss;libnn_init_memory$(NintendoSdkLibSuffix);libnn_gfx$(NintendoSdkLibSuffix);libnn_mii_draw$(NintendoSdkLibSuffix);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
@@ -106,11 +106,11 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(_NintendoSdkSdkLibraryName).nss;libnn_gll.a;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)../lib/$(Platform)/Static-Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>debug/next.a;$(_NintendoSdkSdkLibraryName).nss;libnn_gll.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <AdditionalNSODependencies>opengl.nso;%(AdditionalNSODependencies)</AdditionalNSODependencies>
-      <AdditionalNRODependencies>next.nro;%(AdditionalNRODependencies)</AdditionalNRODependencies>
+      <AdditionalNRODependencies>%(AdditionalNRODependencies)</AdditionalNRODependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

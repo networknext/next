@@ -213,6 +213,12 @@ void next_platform_term()
     nn::socket::Finalize();
 }
 
+int next_platform_connection_type()
+{
+    // todo: implement connection type detection for switch
+    return NEXT_CONNECTION_TYPE_WIFI;
+}
+
 const char * next_platform_getenv( const char * var )
 {
     return getenv( var );
@@ -379,7 +385,7 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
     return NEXT_OK;
 }
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_assert( address );
 

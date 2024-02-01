@@ -11,7 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\next.h" />
     <ClInclude Include="..\..\sodium\sodium.h" />
     <ClInclude Include="..\..\sodium\sodium_blake2.h" />
     <ClInclude Include="..\..\sodium\sodium_blake2b-compress-avx2.h" />
@@ -122,8 +121,6 @@
     <ClInclude Include="..\..\sodium\sodium_xmm6int_u1.h" />
     <ClInclude Include="..\..\sodium\sodium_xmm6int_u4.h" />
     <ClInclude Include="..\..\sodium\sodium_xmm6int_u8.h" />
-    <ClInclude Include="..\..\source\next_crypto.h" />
-    <ClInclude Include="..\..\source\next_switch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\sodium\sodium_aead_chacha20poly1305.c" />
@@ -190,8 +187,27 @@
     <ClCompile Include="..\..\sodium\sodium_xmm6int_salsa20-avx2.c" />
     <ClCompile Include="..\..\sodium\sodium_xmm6int_salsa20-sse2.c" />
     <ClCompile Include="..\..\source\next.cpp" />
+    <ClCompile Include="..\..\source\next_address.cpp" />
+    <ClCompile Include="..\..\source\next_autodetect.cpp" />
+    <ClCompile Include="..\..\source\next_base64.cpp" />
+    <ClCompile Include="..\..\source\next_client.cpp" />
+    <ClCompile Include="..\..\source\next_config.cpp" />
     <ClCompile Include="..\..\source\next_crypto.cpp" />
-    <ClCompile Include="..\..\source\next_switch.cpp" />
+    <ClCompile Include="..\..\source\next_hash.cpp" />
+    <ClCompile Include="..\..\source\next_packets.cpp" />
+    <ClCompile Include="..\..\source\next_packet_filter.cpp" />
+    <ClCompile Include="..\..\source\next_platform_gdk.cpp" />
+    <ClCompile Include="..\..\source\next_platform_ios.cpp" />
+    <ClCompile Include="..\..\source\next_platform_linux.cpp" />
+    <ClCompile Include="..\..\source\next_platform_mac.cpp" />
+    <ClCompile Include="..\..\source\next_platform_ps4.cpp" />
+    <ClCompile Include="..\..\source\next_platform_ps5.cpp" />
+    <ClCompile Include="..\..\source\next_platform_switch.cpp" />
+    <ClCompile Include="..\..\source\next_platform_windows.cpp" />
+    <ClCompile Include="..\..\source\next_platform_xboxone.cpp" />
+    <ClCompile Include="..\..\source\next_route_manager.cpp" />
+    <ClCompile Include="..\..\source\next_server.cpp" />
+    <ClCompile Include="..\..\source\next_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\sodium\sodium_salsa20-xmm6_asm.S" />
@@ -207,14 +223,14 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}</ProjectGuid>
     <RootNamespace>next</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
-    <ProjectName>next-nx64-4.0.16</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>next</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <NintendoSdkRoot>C:\Nintendo\18.1.1\NintendoSDK</NintendoSdkRoot>
@@ -222,9 +238,9 @@
     <NintendoSdkBuildType>Debug</NintendoSdkBuildType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <NintendoSdkRoot>C:\Nintendo\18.1.1\NintendoSDK</NintendoSdkRoot>
@@ -246,16 +262,16 @@
     <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../../include;../../../sodium</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-    <OutDir>$(SolutionDir)../../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
+    <OutDir>release/</OutDir>
+    <IntDir>release/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|NX64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(NintendoSdkIncludePath);$(NXToolchainDir)\nx\armv7l\lib\clang\$(NXToolchainVersion)\include;$(IncludePath);../../../include;../../../sodium</IncludePath>
     <LibraryPath>$(NintendoSdkLibraryPath);$(LibraryPath)</LibraryPath>
     <ExecutablePath>$(NintendoSdkRoot)\Tools\CommandLineTools\MakeInitialProgram;$(ExecutablePath)</ExecutablePath>
-    <OutDir>$(SolutionDir)../../lib/NintendoSwitch-$(Platform)/$(Configuration)/</OutDir>
-    <IntDir>$(ProjectDir)/int/NintendoSwitch-$(Platform)/$(Configuration)/</IntDir>
+    <OutDir>debug/</OutDir>
+    <IntDir>debug/</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|NX64'">
     <ClCompile>
