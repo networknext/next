@@ -352,7 +352,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     BOOL bNewBehavior = FALSE;
     DWORD dwBytesReturned = 0;
     WSAIoctl( s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL );
-s
+
     // force IPv6 only if necessary
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
