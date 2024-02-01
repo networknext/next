@@ -10,17 +10,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include "next.h"
-
-const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
-
-void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
-{
-    (void) client;
-    (void) context;
-    (void) packet_data;
-    (void) packet_bytes;
-    // ...
-}
+#include "next_tests.h"
+#include "next_platform.h"
 
 static const char * log_level_str( int level )
 {
@@ -56,8 +47,6 @@ static void print_function( int level, const char * format, ...)
 
 static nn::socket::ConfigDefaultWithMemory socket_config_with_memory;
 
-static volatile int quit = 0;
-
 extern "C" void nnMain()
 {
     nn::Result result = nn::socket::Initialize( socket_config_with_memory );
@@ -71,7 +60,6 @@ extern "C" void nnMain()
 
     next_config_t config;
     next_default_config( &config );
-    strncpy( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
 
     next_init( NULL, &config );
 
@@ -79,9 +67,30 @@ extern "C" void nnMain()
 
     next_log_level( NEXT_LOG_LEVEL_NONE );
 
-    next_test();
+    next_run_tests();
     
     printf( "\nAll tests passed successfully!\n\n" );
+
+    next_term();
+
+    nn::socket::Finalize();
+
+    NN_LOG( "\n" );
+}
+
+/*
+    strncpy( config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1 );
+
+const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+
+void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) client;
+    (void) context;
+    (void) packet_data;
+    (void) packet_bytes;
+    // ...
+}
 
     next_log_level( NEXT_LOG_LEVEL_INFO );
 
@@ -110,10 +119,4 @@ extern "C" void nnMain()
     printf( "Shutting down...\n\n" );
 
     next_client_destroy( client );
-
-    next_term();
-
-    nn::socket::Finalize();
-
-    NN_LOG( "\n" );
-}
+*/
