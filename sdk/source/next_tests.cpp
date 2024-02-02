@@ -810,7 +810,7 @@ void test_ping_stats()
 
 void test_random_bytes()
 {
-    const int BufferSize = 64;
+    const int BufferSize = 999;
     uint8_t buffer[BufferSize];
     next_crypto_random_bytes( buffer, BufferSize );
     for ( int i = 0; i < 100; ++i )

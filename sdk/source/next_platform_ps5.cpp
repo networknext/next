@@ -64,7 +64,7 @@ static void next_randombytes_buf( void * const buf, const size_t size_const )
     {
         size_t remaining = size_t( finish - p );
         size_t size = ( remaining >= SCE_RANDOM_MAX_SIZE ) ? SCE_RANDOM_MAX_SIZE : remaining;
-        sceRandomGetRandomNumber( buf, size );
+        sceRandomGetRandomNumber( p, size );
         p += size;
     }
 }

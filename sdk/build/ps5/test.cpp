@@ -43,7 +43,7 @@ int main()
 
     next_term();
 
-    printf( "\n" );
+    printf( "\nAll tests completed successfully!\n\n" );
 
     fflush( stdout );
 
