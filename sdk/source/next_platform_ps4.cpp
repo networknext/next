@@ -232,7 +232,7 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_HIGHEST );
+    scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_LOWEST );
     return true;
 }
 
