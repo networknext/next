@@ -121,7 +121,6 @@
     <ClInclude Include="..\..\include\next_ping_history.h" />
     <ClInclude Include="..\..\include\next_platform.h" />
     <ClInclude Include="..\..\include\next_platform_gdk.h" />
-    <ClInclude Include="..\..\include\next_platform_ios.h" />
     <ClInclude Include="..\..\include\next_platform_linux.h" />
     <ClInclude Include="..\..\include\next_platform_mac.h" />
     <ClInclude Include="..\..\include\next_platform_ps4.h" />
