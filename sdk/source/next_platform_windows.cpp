@@ -25,7 +25,7 @@
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 #include "next_platform.h"
-#include "next_address.h" k
+#include "next_address.h"
 
 #if NEXT_UNREAL_ENGINE
 #include "Windows/AllowWindowsPlatformTypes.h"

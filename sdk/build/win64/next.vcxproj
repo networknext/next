@@ -127,7 +127,6 @@
     <ClInclude Include="..\..\include\next_platform_ps5.h" />
     <ClInclude Include="..\..\include\next_platform_switch.h" />
     <ClInclude Include="..\..\include\next_platform_windows.h" />
-    <ClInclude Include="..\..\include\next_platform_xboxone.h" />
     <ClInclude Include="..\..\include\next_proxy_session_manager.h" />
     <ClInclude Include="..\..\include\next_queue.h" />
     <ClInclude Include="..\..\include\next_read_write.h" />
@@ -328,14 +327,12 @@
     <ClCompile Include="..\..\source\next_packets.cpp" />
     <ClCompile Include="..\..\source\next_packet_filter.cpp" />
     <ClCompile Include="..\..\source\next_platform_gdk.cpp" />
-    <ClCompile Include="..\..\source\next_platform_ios.cpp" />
     <ClCompile Include="..\..\source\next_platform_linux.cpp" />
     <ClCompile Include="..\..\source\next_platform_mac.cpp" />
     <ClCompile Include="..\..\source\next_platform_ps4.cpp" />
     <ClCompile Include="..\..\source\next_platform_ps5.cpp" />
     <ClCompile Include="..\..\source\next_platform_switch.cpp" />
     <ClCompile Include="..\..\source\next_platform_windows.cpp" />
-    <ClCompile Include="..\..\source\next_platform_xboxone.cpp" />
     <ClCompile Include="..\..\source\next_route_manager.cpp" />
     <ClCompile Include="..\..\source\next_server.cpp" />
     <ClCompile Include="..\..\source\next_tests.cpp" />
