@@ -38,6 +38,7 @@
 
 #include <atomic>
 #include <stdio.h>
+#include <stdlib.h>
 
 // ---------------------------------------------------------------
 

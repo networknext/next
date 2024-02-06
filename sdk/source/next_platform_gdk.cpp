@@ -412,6 +412,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         return NULL;
     }
 
+    // IMPORTANT: tell windows we don't want to receive any connection reset messages
+    // for this socket, otherwise recvfrom errors out when client sockets disconnect hard
+    // in response to ICMP messages.
+#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+    BOOL bNewBehavior = FALSE;
+    DWORD dwBytesReturned = 0;
+    WSAIoctl(s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL);
+
     // force IPv6 only if necessary
 
     if ( address->type == NEXT_ADDRESS_IPV6 )

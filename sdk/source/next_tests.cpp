@@ -1240,16 +1240,16 @@ void test_client_ipv4()
     next_client_destroy( client );
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 static int num_server_packets_received = 0;
 
-static void test_server_packet_received_callback( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+static void test_server_packet_received_callback(next_server_t* server, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes)
 {
-    (void) server; (void) context;
-    next_server_send_packet( server, from, packet_data, packet_bytes );
+    (void)server; (void)context;
+    next_server_send_packet(server, from, packet_data, packet_bytes);
     num_server_packets_received++;
 }
-
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 void test_server_ipv4()
 {

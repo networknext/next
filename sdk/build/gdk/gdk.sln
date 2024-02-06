@@ -35,9 +35,9 @@ Global
 		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.Scarlett.x64.ActiveCfg = Release|Gaming.Xbox.Scarlett.x64
 		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.Scarlett.x64.Build.0 = Release|Gaming.Xbox.Scarlett.x64
 		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.Scarlett.x64.Deploy.0 = Release|Gaming.Xbox.Scarlett.x64
-		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.XboxOne.x64.ActiveCfg = Release|Gaming.Xbox.Scarlett.x64
-		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.XboxOne.x64.Build.0 = Release|Gaming.Xbox.Scarlett.x64
-		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.XboxOne.x64.Deploy.0 = Release|Gaming.Xbox.Scarlett.x64
+		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.XboxOne.x64.ActiveCfg = Release|Gaming.Xbox.XboxOne.x64
+		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.XboxOne.x64.Build.0 = Release|Gaming.Xbox.XboxOne.x64
+		{DDEA9746-62A5-44F2-84ED-BE9AD7481243}.Release|Gaming.Xbox.XboxOne.x64.Deploy.0 = Release|Gaming.Xbox.XboxOne.x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
