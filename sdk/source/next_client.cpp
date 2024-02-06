@@ -752,14 +752,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
 #if NEXT_DEBUG
 
-        const uint8_t * packet_data = client->upgrade_response_packet_data;
-        const int packet_bytes = client->upgrade_response_packet_bytes;
+        const uint8_t * debug_packet_data = client->upgrade_response_packet_data;
+        const int debug_packet_bytes = client->upgrade_response_packet_bytes;
 
-        next_assert( packet_data );
-        next_assert( packet_bytes > 0 );
+        next_assert( debug_packet_data );
+        next_assert( debug_packet_bytes > 0 );
 
-        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
+        next_assert( next_basic_packet_filter( debug_packet_data, debug_packet_bytes ) );
+        next_assert( next_advanced_packet_filter( debug_packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, debug_packet_bytes ) );
 
 #endif // #if NEXT_DEBUG
 
