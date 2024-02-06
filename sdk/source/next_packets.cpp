@@ -28,9 +28,9 @@
 #include "next_replay_protection.h"
 
 #include <stdlib.h>
-#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_GDK
 #include <malloc.h>
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_GDK
 
 int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequence, uint64_t send_sequence, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, const uint8_t * to_address, int to_address_bytes )
 {

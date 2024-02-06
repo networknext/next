@@ -22,8 +22,8 @@
 
 #include "next.h"
 
-#ifndef NEXT_WINDOWS_H
-#define NEXT_WINDOWS_H
+#ifndef NEXT_PLATFORM_WINDOWS_H
+#define NEXT_PLATFORM_WINDOWS_H
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
@@ -81,4 +81,4 @@ struct next_platform_mutex_t
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-#endif // #ifndef NEXT_WINDOWS_H
+#endif // #ifndef NEXT_PLATFORM_WINDOWS_H

@@ -23,6 +23,8 @@
 // IMPORTANT: you must compile this file with /ZW to get windows runtime components
 
 #include "next_platform_gdk.h"
+#include "next_platform.h"
+#include "next_address.h"
 
 #ifdef _GAMING_XBOX
 
@@ -388,7 +390,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
@@ -531,6 +533,9 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
+    // todo: enable packet tagging for gdk
+    (void)enable_packet_tagging;
+
     return s;
 }
 
@@ -564,7 +569,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         socket_address.sin6_family = AF_INET6;
         for ( int i = 0; i < 8; ++i )
         {
-            ( (uint16_t*) &socket_address.sin6_addr ) [i] = snaphot_platform_htons( to->data.ipv6[i] );
+            ( (uint16_t*) &socket_address.sin6_addr ) [i] = next_platform_htons( to->data.ipv6[i] );
         }
         socket_address.sin6_port = next_platform_htons( to->port );
         sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in6 ) );
