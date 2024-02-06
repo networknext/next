@@ -43,6 +43,11 @@ crypto_generichash_blake2b_salt_personal(
                                  personal);
 }
 
+#if defined( _MSC_VER )
+#pragma warning(push)
+#pragma warning(disable:4702)
+#endif
+
 int
 crypto_generichash_blake2b_init(crypto_generichash_blake2b_state *state,
                                 const unsigned char *key, const size_t keylen,
@@ -65,6 +70,10 @@ crypto_generichash_blake2b_init(crypto_generichash_blake2b_state *state,
     }
     return 0;
 }
+
+#if defined( _MSC_VER )
+#pragma warning(pop)
+#endif
 
 int
 crypto_generichash_blake2b_init_salt_personal(
