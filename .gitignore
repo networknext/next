@@ -45,3 +45,4 @@ nodes.conf
 .a
 sdk/build/ps4/client
 sdk/build/ps4/test
+Gaming.Xbox.*
