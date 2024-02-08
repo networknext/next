@@ -45,17 +45,8 @@ static void print_function( int level, const char * format, ...)
     }
 }
 
-static nn::socket::ConfigDefaultWithMemory socket_config_with_memory;
-
 extern "C" void nnMain()
 {
-    nn::Result result = nn::socket::Initialize( socket_config_with_memory );
-    if ( result.IsFailure() )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize nintendo sockets" );
-        exit( 1 );
-    }
-
     next_log_function( print_function );
 
     next_config_t config;
@@ -72,8 +63,6 @@ extern "C" void nnMain()
     printf( "\nAll tests passed successfully!\n\n" );
 
     next_term();
-
-    nn::socket::Finalize();
 
     NN_LOG( "\n" );
 }
