@@ -215,7 +215,7 @@ void next_platform_term()
 
 int next_platform_connection_type()
 {
-    // todo: implement connection type detection for switch
+    // unfortunately, there is no API to determine wifi vs. wired on Nintendo Switch
     return NEXT_CONNECTION_TYPE_WIFI;
 }
 
