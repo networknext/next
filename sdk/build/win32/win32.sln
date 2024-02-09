@@ -3,11 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33829.357
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{71DAABCE-CD14-4A7B-9DD0-9D764A9380C5}"
-	ProjectSection(ProjectDependencies) = postProject
-		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4} = {B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next", "next.vcxproj", "{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client.vcxproj", "{71DAABCE-CD14-4A7B-9DD0-9D764A938012}"
@@ -21,10 +16,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{71DAABCE-CD14-4A7B-9DD0-9D764A9380C5}.Debug|x86.ActiveCfg = Debug|Win32
-		{71DAABCE-CD14-4A7B-9DD0-9D764A9380C5}.Debug|x86.Build.0 = Debug|Win32
-		{71DAABCE-CD14-4A7B-9DD0-9D764A9380C5}.Release|x86.ActiveCfg = Release|Win32
-		{71DAABCE-CD14-4A7B-9DD0-9D764A9380C5}.Release|x86.Build.0 = Release|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|x86.ActiveCfg = Debug|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Debug|x86.Build.0 = Debug|Win32
 		{B967AF8F-9BA7-4EF8-8ADC-BA0FFBDA5EC4}.Release|x86.ActiveCfg = Release|Win32

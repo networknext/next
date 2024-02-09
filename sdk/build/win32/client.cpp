@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2024 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -21,6 +21,7 @@
 */
 
 #include "next.h"
+#include "next_tests.h"
 #include "next_platform.h"
 #include <stdio.h>
 #include <signal.h>
@@ -41,8 +42,29 @@ void client_packet_received( next_client_t * client, void * context, const next_
 
 const char * buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
+const char * server_address = "127.0.0.1:40000";
+
 int main()
 {
+    printf("\nRunning tests...\n\n");
+
+    next_log_level(NEXT_LOG_LEVEL_NONE);
+
+    if (next_init(NULL, NULL) != NEXT_OK)
+    {
+        printf("error: failed to initialize network next\n");
+    }
+
+    next_log_level(NEXT_LOG_LEVEL_NONE);
+
+    next_run_tests();
+
+    fflush(stdout);
+
+    printf("\nAll tests completed successfully!\n\n");
+
+    next_term();
+
     printf("Starting client...\n\n");
 
     next_log_level(NEXT_LOG_LEVEL_INFO);
@@ -62,7 +84,7 @@ int main()
         return 1;
     }
 
-    next_client_open_session(client, "173.255.241.176:50000");
+    next_client_open_session(client, server_address);
 
     uint8_t packet_data[32];
     memset(packet_data, 0, sizeof(packet_data));
