@@ -12,7 +12,7 @@
 
 using namespace DirectX;
 
-const char* buyer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char * buyer_public_key = "9fuymsQpqwyyimT9iSSXJi4Dnf3XHM6XlYq0kIPOawhLHjN7TwDXAQ=="
 
 extern const char* next_log_level_str(int level)
 {

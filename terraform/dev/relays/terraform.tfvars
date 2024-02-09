@@ -7,10 +7,10 @@ ssh_public_key_file         = "~/secrets/next_ssh.pub"
 ssh_private_key_file        = "~/secrets/next_ssh"
 relay_version               = "relay-debug-1.0.0"
 relay_artifacts_bucket      = "newyork_network_next_relay_artifacts"
-relay_backend_public_key    = "osFv1SPtMkhezNPuLbNbjp/F8ks5I1Y1QVqD0yLd+0o="
+relay_backend_public_key    = "kW884wxI4z2919AwG5Fa/4VtzCKDwx1omD/JxdhnfRM="
 relay_backend_url           = "relay-dev.virtualgo.net"
 
-raspberry_buyer_public_key  = "Oe96rqXLyoxaBc3ce8jo6UeoSNlWpq11Druv8kEO9bP0C2rQW5phkg=="
+raspberry_buyer_public_key  = "+fQWj43aTZfihh967fcy9hmsBHgC50QEmJ2i3gJUyxInsyy86llnLQ=="
 
 raspberry_datacenters = [
 	"google.iowa.1",
@@ -19,7 +19,7 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-test_buyer_public_key  = "kLWeaPkL+EYZJDBguhajXE1V5yj5q2WY3I0ITQNN6TELp2J39hOQrA=="
+test_buyer_public_key  = "9fuymsQpqwyyimT9iSSXJi4Dnf3XHM6XlYq0kIPOawhLHjN7TwDXAQ=="
 
 test_datacenters = [
 	"google.iowa.1",

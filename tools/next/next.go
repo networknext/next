@@ -866,6 +866,23 @@ func keygen(env Environment, regexes []string) {
 		replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 	}
 
+	platforms := []string{
+		"win32",
+		"win64",
+		"switch",
+		"ps4",
+		"ps5",
+		"gdk",
+	}
+
+	for i := range platforms {
+		filename := fmt.Sprintf("sdk/build/%s/client.cpp", platforms[i])
+		if fileExists(filename) {
+			fmt.Printf("%s\n", filename)
+			replace(filename, "^.*buyer_public_key\\s*=.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+		}
+	}
+
 	fmt.Printf("docker-compose.yml\n")
 	{
 		replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))

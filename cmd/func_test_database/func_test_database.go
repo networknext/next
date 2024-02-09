@@ -21,8 +21,8 @@ import (
 	db "github.com/networknext/next/modules/database"
 )
 
-const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMTcxMzk2N30.1M_lzVGot0xp5X7l9pRyFwFUsZkdXCfLi52SwCY-Z2E"
-const TestAPIPrivateKey = "lpdxNOEGnQkbDxgpanTWDNApyDBVrnycwrttDACxuHrexAKxmOJpLWwuybYMoCJt"
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwNzQ5MDg4N30.4iXKbBfBV-3E_72HKJAXYuTFzfBw6twuG2jtnm6Fj28"
+const TestAPIPrivateKey = "jdOaQGiPOrNMYlsJQbYMVghDCuRWNVKGYnSEATDQXmiHMYizjlrFCHjaXKWUJIah"
 
 // ----------------------------------------------------------------------------------------
 
