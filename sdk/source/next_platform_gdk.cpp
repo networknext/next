@@ -237,7 +237,10 @@ static randombytes_implementation next_random_implementation =
 int next_platform_init()
 {
     if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not set random implementation" );
         return NEXT_ERROR;
+    }
 
     QueryPerformanceFrequency( &timer_frequency );
     QueryPerformanceCounter( &timer_start );
@@ -245,11 +248,13 @@ int next_platform_init()
     WSADATA WsaData;
     if ( WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR )
     {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "WSAStartup failed" );
         return NEXT_ERROR;
     }
 
     if ( !BCRYPT_SUCCESS( BCryptOpenAlgorithmProvider( &bcrypt_algorithm_provider, BCRYPT_RNG_ALGORITHM, NULL, 0 ) ) )
     {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize bcrypt" );
         return NEXT_ERROR;
     }
 
@@ -419,7 +424,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     // IMPORTANT: tell windows we don't want to receive any connection reset messages
     // for this socket, otherwise recvfrom errors out when client sockets disconnect hard
     // in response to ICMP messages.
-#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+    #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
     BOOL bNewBehavior = FALSE;
     DWORD dwBytesReturned = 0;
     WSAIoctl(s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL);
