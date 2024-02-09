@@ -5,7 +5,7 @@ VisualStudioVersion = 17.8.34525.116
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next", "next.vcxproj", "{237DDA8C-95E6-414D-921C-746C042EFEB5}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test.vcxproj", "{DDEA9746-62A5-44F2-84ED-BE9AD7481243}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client.vcxproj", "{DDEA9746-62A5-44F2-84ED-BE9AD7481243}"
 	ProjectSection(ProjectDependencies) = postProject
 		{237DDA8C-95E6-414D-921C-746C042EFEB5} = {237DDA8C-95E6-414D-921C-746C042EFEB5}
 	EndProjectSection

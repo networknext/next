@@ -97,8 +97,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
 
     OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
-// todo
-    /*
     g_game = std::make_unique<Game>();
 
     // Register class and create window
@@ -181,10 +179,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
     next_term();
 
     return static_cast<int>(msg.wParam);
-*/
-    next_term();
-
-    return 0;
 }
 
 // Windows procedure
