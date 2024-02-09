@@ -460,7 +460,8 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
-    // todo: get packet tagging working on ps5
+    // IMPORTANT: packet tagging is not currently supported on ps5
+    (void) enable_packet_tagging;
 
     return s;
 }
