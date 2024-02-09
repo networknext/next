@@ -541,7 +541,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
-    // todo: enable packet tagging for gdk
     (void)enable_packet_tagging;
 
     return s;
