@@ -58,7 +58,7 @@ extern "C" void nnMain()
 
     next_term();
 
-    printf("Starting client...\n\n");
+    printf( "Starting client...\n\n" );
 
     next_log_level( NEXT_LOG_LEVEL_INFO );
 

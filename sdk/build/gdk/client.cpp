@@ -1,20 +1,37 @@
-//
-// Main.cpp
-//
+/*
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
+
+    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
+    conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+       and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote
+       products derived from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+    INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+    IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 #include "pch.h"
-#include "Game.h"
 #include "next.h"
 #include "next_tests.h"
 #include "next_platform.h"
 
-#include <appnotify.h>
-
 using namespace DirectX;
 
-const char * buyer_public_key = "9fuymsQpqwyyimT9iSSXJi4Dnf3XHM6XlYq0kIPOawhLHjN7TwDXAQ=="
+const char* buyer_public_key = "9fuymsQpqwyyimT9iSSXJi4Dnf3XHM6XlYq0kIPOawhLHjN7TwDXAQ==";
 
-extern const char* next_log_level_str(int level)
+const char* server_address = "127.0.0.1:40000";
+
+const char* next_log_level_str(int level)
 {
     if (level == NEXT_LOG_LEVEL_DEBUG)
         return "debug";
@@ -28,7 +45,7 @@ extern const char* next_log_level_str(int level)
         return "???";
 }
 
-void xbox_printf(int level, const char* format, ...)
+void gdk_printf(int level, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -48,16 +65,11 @@ void xbox_printf(int level, const char* format, ...)
     va_end(args);
 }
 
-namespace
+void client_packet_received(next_client_t* client, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes)
 {
-    std::unique_ptr<Game> g_game;
-    HANDLE g_plmSuspendComplete = nullptr;
-    HANDLE g_plmSignalResume = nullptr;
-};
+    (void)client; (void)context; (void)from; (void)packet_data; (void)packet_bytes;
+}
 
-LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-
-// Entry point
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -78,9 +90,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
     if (FAILED(XGameRuntimeInitialize()))
         return 1;
 
-    // Microsoft Game Core on Xbox supports UTF-8 everywhere
-    assert(GetACP() == CP_UTF8);
-
     OutputDebugStringA("\nRunning tests...\n\n");
 
     next_log_level(NEXT_LOG_LEVEL_NONE);
@@ -89,7 +98,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
     next_default_config(&config);
     strncpy_s(config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1);
 
-    next_log_function(xbox_printf);
+    next_log_function(gdk_printf);
 
     next_init(NULL, &config);
 
@@ -97,123 +106,41 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR lp
 
     OutputDebugStringA("\nAll tests passed successfully!\n\n");
 
-    g_game = std::make_unique<Game>();
+    next_term();
 
-    // Register class and create window
-    PAPPSTATE_REGISTRATION hPLM = {};
+    printf("Starting client...\n\n");
+
+    next_log_level(NEXT_LOG_LEVEL_INFO);
+
+    strncpy(config.buyer_public_key, buyer_public_key, sizeof(config.buyer_public_key) - 1);
+
+    next_init(NULL, &config);
+
+    next_client_t* client = next_client_create(NULL, "0.0.0.0:0", client_packet_received);
+    if (!client)
     {
-        // Register class
-        WNDCLASSEXA wcex = {};
-        wcex.cbSize = sizeof(WNDCLASSEXA);
-        wcex.style = CS_HREDRAW | CS_VREDRAW;
-        wcex.lpfnWndProc = WndProc;
-        wcex.hInstance = hInstance;
-        wcex.lpszClassName = u8"gdkWindowClass";
-        wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-        if (!RegisterClassExA(&wcex))
-            return 1;
-
-        // Create window
-        HWND hwnd = CreateWindowExA(0, u8"gdkWindowClass", u8"gdk", WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, CW_USEDEFAULT, 1920, 1080, nullptr, nullptr, hInstance,
-            nullptr);
-        if (!hwnd)
-            return 1;
-
-        ShowWindow(hwnd, nCmdShow);
-
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(g_game.get()));
-
-        g_game->Initialize(hwnd);
-
-        g_plmSuspendComplete = CreateEventEx(nullptr, nullptr, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-        g_plmSignalResume = CreateEventEx(nullptr, nullptr, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-        if (!g_plmSuspendComplete || !g_plmSignalResume)
-            return 1;
-
-        if (RegisterAppStateChangeNotification([](BOOLEAN quiesced, PVOID context)
-        {
-            if (quiesced)
-            {
-                ResetEvent(g_plmSuspendComplete);
-                ResetEvent(g_plmSignalResume);
-
-                // To ensure we use the main UI thread to process the notification, we self-post a message
-                PostMessage(reinterpret_cast<HWND>(context), WM_USER, 0, 0);
-
-                // To defer suspend, you must wait to exit this callback
-                (void)WaitForSingleObject(g_plmSuspendComplete, INFINITE);
-            }
-            else
-            {
-                SetEvent(g_plmSignalResume);
-            }
-        }, hwnd, &hPLM))
-            return 1;
+        next_printf(NEXT_LOG_LEVEL_ERROR, "failed to create network next client");
+        exit(1);
     }
 
-    // Main message loop
-    MSG msg = {};
-    while (WM_QUIT != msg.message)
+    next_client_open_session(client, server_address);
+
+    while (true)
     {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        else
-        {
-            g_game->Tick();
-        }
+        next_client_update(client);
+
+        uint8_t packet_data[32];
+        memset(packet_data, 0, sizeof(packet_data));
+        next_client_send_packet(client, packet_data, sizeof(packet_data));
+
+        next_platform_sleep(1.0f / 60.0f);
     }
 
-    g_game.reset();
+    printf("Shutting down...\n\n");
 
-    UnregisterAppStateChangeNotification(hPLM);
-
-    CloseHandle(g_plmSuspendComplete);
-    CloseHandle(g_plmSignalResume);
-
-    XGameRuntimeUninitialize();
+    next_client_destroy(client);
 
     next_term();
 
-    return static_cast<int>(msg.wParam);
-}
-
-// Windows procedure
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    auto game = reinterpret_cast<Game*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-
-    switch (message)
-    {
-    case WM_CREATE:
-        break;
-
-    case WM_ACTIVATEAPP:
-        break;
-
-    case WM_USER:
-        if (game)
-        {
-            game->OnSuspending();
-
-            // Complete deferral
-            SetEvent(g_plmSuspendComplete);
-
-            (void)WaitForSingleObject(g_plmSignalResume, INFINITE);
-
-            game->OnResuming();
-        }
-        break;
-    }
-
-    return DefWindowProc(hWnd, message, wParam, lParam);
-}
-
-// Exit helper
-void ExitGame() noexcept
-{
-    PostQuitMessage(0);
+    return 0;
 }
