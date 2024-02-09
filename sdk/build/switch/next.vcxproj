@@ -197,14 +197,12 @@
     <ClCompile Include="..\..\source\next_packets.cpp" />
     <ClCompile Include="..\..\source\next_packet_filter.cpp" />
     <ClCompile Include="..\..\source\next_platform_gdk.cpp" />
-    <ClCompile Include="..\..\source\next_platform_ios.cpp" />
     <ClCompile Include="..\..\source\next_platform_linux.cpp" />
     <ClCompile Include="..\..\source\next_platform_mac.cpp" />
     <ClCompile Include="..\..\source\next_platform_ps4.cpp" />
     <ClCompile Include="..\..\source\next_platform_ps5.cpp" />
     <ClCompile Include="..\..\source\next_platform_switch.cpp" />
     <ClCompile Include="..\..\source\next_platform_windows.cpp" />
-    <ClCompile Include="..\..\source\next_platform_xboxone.cpp" />
     <ClCompile Include="..\..\source\next_route_manager.cpp" />
     <ClCompile Include="..\..\source\next_server.cpp" />
     <ClCompile Include="..\..\source\next_tests.cpp" />
@@ -282,7 +280,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\include;..\..\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXT_DEVELOPMENT=1;NDEBUG;_LIB;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
@@ -304,7 +302,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\include;..\..\sodium</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;_LIB;NEXT_EXPORT;NEXT_SHARED;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXT_DEBUG=1;NEXT_DEVELOPMENT=1;_DEBUG;_LIB;SODIUM_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ProgramDataBaseFileName>$(OutDir)\$(TargetName).pdb</ProgramDataBaseFileName>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>

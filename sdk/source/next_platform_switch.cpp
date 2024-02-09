@@ -84,6 +84,10 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
+    // IMPORTANT: If you are developing on Nintendo Switch, please set thread priority and cpu core mask for the network next socket threads here.
+    // These threads need to wake up and process sockets as they arrive, so the measurements of round trip time are not quantized to your
+    // game's framerate. Due to the way thread scheduling works on the switch, we need to leave it up to you to decide how you want
+    // to prioritize these threads, and which core(s) you want them to run on.
     (void)thread;
     return false;
 }
@@ -215,7 +219,7 @@ void next_platform_term()
 
 int next_platform_connection_type()
 {
-    // todo: implement connection type detection for switch
+    // unfortunately, there is no API to determine wifi vs. wired on Nintendo Switch
     return NEXT_CONNECTION_TYPE_WIFI;
 }
 

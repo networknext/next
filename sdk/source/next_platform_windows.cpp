@@ -25,7 +25,7 @@
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 #include "next_platform.h"
-#include "next_address.h" k
+#include "next_address.h"
 
 #if NEXT_UNREAL_ENGINE
 #include "Windows/AllowWindowsPlatformTypes.h"
@@ -167,6 +167,10 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
+    // IMPORTANT: If you are developing for windows you can set the thread priority and affinity here.
+    // Packet receives are performed on dedicated threads to ensure that the measured RTT values
+    // are not quantized to your game frame rate. These threads need to be relatively high priority
+    // to ensure that packets are processed quickly after being received by the network stack.
     next_assert( thread );
     return SetThreadPriority( thread->handle, THREAD_PRIORITY_TIME_CRITICAL );
 }

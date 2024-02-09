@@ -232,7 +232,11 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
-    scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_LOWEST );
+    // IMPORTANT: If you are developing for PS5 and you wish to control client network thread priority
+    // or affinity, then you can add code here to adjust the affinity and priority for the client thread. 
+    // Receiving packets on thread is necessary to ensure that measurements of RTT that Network Next 
+    // uses for route planning are not quantized to your game's framerate.
+    scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_HIGHEST );
     return true;
 }
 
