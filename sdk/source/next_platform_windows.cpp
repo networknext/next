@@ -92,8 +92,7 @@ void next_platform_term()
 
 int next_platform_connection_type()
 {
-    // todo: bring back connection type detection
-    return NEXT_CONNECTION_TYPE_WIRED;
+    return connection_type;
 }
 
 const char * next_platform_getenv( const char * var )
