@@ -27,11 +27,7 @@
 
 using namespace DirectX;
 
-<<<<<<< HEAD
 const char * buyer_public_key = "n7u8H8u17JkwfCTkyJ9W1nHzkxjYotCoErwIdpfyAU9uqMgV4SJEjQ==";
-=======
-const char* buyer_public_key = "9fuymsQpqwyyimT9iSSXJi4Dnf3XHM6XlYq0kIPOawhLHjN7TwDXAQ==";
->>>>>>> e2ee1cd2d14a355350f40d835d3701ef1c28e27b
 
 const char* server_address = "127.0.0.1:40000";
 
