@@ -77,6 +77,7 @@ int next_platform_init()
     WSADATA WsaData;
     if ( WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR )
     {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "WSAStartup failed" );
         return NEXT_ERROR;
     }
 
