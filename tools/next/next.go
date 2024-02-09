@@ -879,7 +879,7 @@ func keygen(env Environment, regexes []string) {
 		filename := fmt.Sprintf("sdk/build/%s/client.cpp", platforms[i])
 		if fileExists(filename) {
 			fmt.Printf("%s\n", filename)
-			replace(filename, "^.*buyer_public_key\\s*=.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+			replace(filename, "^.*buyer_public_key\\s*=.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
 		}
 	}
 
