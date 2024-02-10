@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <NintendoSdkMeta>
   <Core>
-    <Name>Application</Name>
+    <Name>Network Next</Name>
     <Is64BitInstruction>True</Is64BitInstruction>
     <ApplicationId>0x01004b9000490000</ApplicationId>
     <MainThreadStackSize>0x00100000</MainThreadStackSize>
@@ -10,8 +10,8 @@
   <Application>
     <Title>
       <Language>AmericanEnglish</Language>
-      <Name>Name</Name>
-      <Publisher>Publisher</Publisher>
+      <Name>Network Next</Name>
+      <Publisher>Network Next, Inc.</Publisher>
     </Title>
     <Icon>
       <Language>AmericanEnglish</Language>
