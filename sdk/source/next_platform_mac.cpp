@@ -192,6 +192,11 @@ uint16_t next_platform_preferred_client_port()
     return 0;
 }
 
+bool next_platform_client_dual_stack()
+{
+    return true;
+}
+
 // ---------------------------------------------------
 
 int next_platform_id()
@@ -243,14 +248,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         return NULL;
     }
 
-    // force IPv6 only if necessary
+    // set dual stack for ipv6 sockets
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 1;
+        int yes = 0;
         if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
             next_platform_socket_destroy( socket );
             return NULL;
         }

@@ -370,6 +370,11 @@ uint16_t next_platform_preferred_client_port()
     }
 }
 
+bool next_platform_client_dual_stack()
+{
+    return true;
+}
+
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
     #if WINVER <= 0x0502

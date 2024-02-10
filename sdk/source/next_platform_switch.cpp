@@ -278,6 +278,11 @@ uint16_t next_platform_preferred_client_port()
     return 0;
 }
 
+bool next_platform_client_dual_stack()
+{
+    return false;
+}
+
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
     return nn::socket::InetPton( nn::socket::Family::Af_Inet, address_string, address_out ) == 1 ? NEXT_OK : NEXT_ERROR;

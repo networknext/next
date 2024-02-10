@@ -310,6 +310,11 @@ uint16_t next_platform_preferred_client_port()
     return 0;
 }
 
+bool next_platform_client_dual_stack()
+{
+    return true;
+}
+
 int next_platform_id()
 {
     return NEXT_PLATFORM_WINDOWS;

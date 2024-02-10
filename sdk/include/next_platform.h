@@ -72,6 +72,8 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
 
 uint16_t next_platform_preferred_client_port();
 
+bool next_platform_client_dual_stack();
+
 // ----------------------------------------------------------------
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging );
