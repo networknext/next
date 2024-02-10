@@ -206,22 +206,12 @@
     <MGCCompile Include="MicrosoftGame.Config" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="GraphicsLogo.png">
-      <DeploymentContent>true</DeploymentContent>
-      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="SmallLogo.png">
-      <DeploymentContent>true</DeploymentContent>
-      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="SplashScreen.png">
-      <DeploymentContent>true</DeploymentContent>
-      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="StoreLogo.png">
-      <DeploymentContent>true</DeploymentContent>
-      <DestinationFileName>%(Filename)%(Extension)</DestinationFileName>
-    </CopyFileToFolders>
+    <Image Include="Icon-150.png" />
+    <Image Include="Icon-44.png" />
+    <Image Include="Icon-480.png" />
+    <Image Include="SplashScreen.png" />
+    <Image Include="StoreLogo.png" />
+    <Image Include="WideLogo.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
