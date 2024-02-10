@@ -305,6 +305,11 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_ERROR;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    return 0;
+}
+
 int next_platform_id()
 {
     return NEXT_PLATFORM_WINDOWS;
@@ -357,14 +362,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     DWORD dwBytesReturned = 0;
     WSAIoctl( s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL );
 
-    // force IPv6 only if necessary
+    // if binding to ipv6, set dual stack sockets ipv4 and ipv6
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 1;
+        int yes = 0;
         if ( setsockopt( s->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
             next_platform_socket_destroy( s );
             return NULL;
         }

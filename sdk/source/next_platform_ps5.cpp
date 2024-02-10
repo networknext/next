@@ -340,6 +340,11 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_OK;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    return 0;
+}
+
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
     SceNetInAddr sockaddr4;
@@ -368,6 +373,8 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     next_assert( address );
     next_assert( address->type == NEXT_ADDRESS_IPV4 );
+
+    // todo: ps5 actually supports ipv6
 
     // create socket
                                                          

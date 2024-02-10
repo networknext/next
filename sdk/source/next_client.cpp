@@ -401,6 +401,18 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_client_internal_verify_sentinels( client );
 
+    // IMPORTANT: some platforms (GDK) have a preferred port that we must use to access packet tagging
+    // If the bind address has set port of 0, substitute the preferred client port here
+    if ( bind_address.port == 0 )
+    {
+        int preferred_client_port = next_platform_preferred_client_port();
+        if ( preferred_client_port != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "binding client socket to preferred client port %d", preferred_client_port );
+            bind_address.port = preferred_client_port;
+        }
+    }
+
     client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( client->socket == NULL )
     {

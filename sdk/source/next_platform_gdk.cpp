@@ -356,6 +356,20 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_ERROR;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    uint16_t port;
+    HRESULT result = XNetworkingQueryPreferredLocalUdpMultiplayerPort( &port );
+    if ( FAILED(result) )
+    {
+        return 0;
+    }
+    else
+    {
+        return port;
+    }
+}
+
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
     #if WINVER <= 0x0502
@@ -429,14 +443,15 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     DWORD dwBytesReturned = 0;
     WSAIoctl(s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL);
 
-    // force IPv6 only if necessary
+    // if bound to ipv6 address, set dual stack: ipv4 and ipv6 as recommended
+    // 
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 1;
+        int yes = 0;
         if ( setsockopt( s->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
             next_platform_socket_destroy( s );
             return NULL;
         }
@@ -550,6 +565,8 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
+    // IMPORTANT: Packet tagging is enabled by the user on this platform
+    // See https://learn.microsoft.com/en-us/gaming/gdk/_content/gc/networking/overviews/game-mesh/preferred-local-udp-multiplayer-port-networking
     (void)enable_packet_tagging;
 
     return s;

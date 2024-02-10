@@ -159,6 +159,11 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_ERROR;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    return 0;
+}
+
 // ---------------------------------------------------
 
 double next_platform_time()
