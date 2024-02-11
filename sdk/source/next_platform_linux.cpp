@@ -166,7 +166,7 @@ uint16_t next_platform_preferred_client_port()
 
 bool next_platform_client_dual_stack()
 {
-    return true;
+    return false;
 }
 
 // ---------------------------------------------------
