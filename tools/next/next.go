@@ -1211,6 +1211,14 @@ func config(env Environment, regexes []string) {
 		replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
 	}
 
+	// copy to example
+
+	bash("cp -f sdk/source/* example/source")
+	bash("cp -f sdk/include/* example/include")
+	bash("cp -f sdk/sodium/* example/sodium")
+	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
+	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
+
 	// update source files
 
 	fmt.Printf("\n------------------------------------------\n         updating source files\n------------------------------------------\n\n")
@@ -1231,14 +1239,6 @@ func config(env Environment, regexes []string) {
 	{
 		replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\";", config.CloudflareDomain))
 	}
-
-	// copy to example
-
-	bash("cp -f sdk/source/* example/source")
-	bash("cp -f sdk/include/* example/include")
-	bash("cp -f sdk/sodium/* example/sodium")
-	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
-	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
 
 	// update semaphore ci files
 
