@@ -40,7 +40,7 @@ void client_packet_received( next_client_t * client, void * context, const next_
     (void)client; (void)context; (void)from; (void)packet_data; (void)packet_bytes;
 }
 
-const char * buyer_public_key = "n7u8H8u17JkwfCTkyJ9W1nHzkxjYotCoErwIdpfyAU9uqMgV4SJEjQ==";
+const char * buyer_public_key = "zkaPRGcAuThG6poXMJ8di/yKzgZEbqyQ6Ky951reRq4sgCm83lV24g==";
 
 const char * server_address = "127.0.0.1:40000";
 
