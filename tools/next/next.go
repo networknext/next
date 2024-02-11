@@ -1213,6 +1213,8 @@ func config(env Environment, regexes []string) {
 
 	// copy to example
 
+	// todo: probably need to generate the premake5.lua file here. I want the example directory to be able to be deleted at will
+
 	bash("cp -f sdk/source/* example/source")
 	bash("cp -f sdk/include/* example/include")
 	bash("cp -f sdk/sodium/* example/sodium")
