@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -25,6 +25,7 @@
 
 #include "next.h"
 #include "next_stream.h"
+#include <string.h>
 
 #if defined( _MSC_VER )
 #pragma warning(disable:4127)

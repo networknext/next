@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -43,6 +43,8 @@ extern void next_free( void * context, void * p );
 
 static int handle_net;
 
+static int connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
 static const char * next_randombytes_implementation_name()
 {
     return "ps5";
@@ -62,7 +64,7 @@ static void next_randombytes_buf( void * const buf, const size_t size_const )
     {
         size_t remaining = size_t( finish - p );
         size_t size = ( remaining >= SCE_RANDOM_MAX_SIZE ) ? SCE_RANDOM_MAX_SIZE : remaining;
-        sceRandomGetRandomNumber( buf, size );
+        sceRandomGetRandomNumber( p, size );
         p += size;
     }
 }
@@ -110,20 +112,46 @@ int next_platform_init()
 {
     if ( sceSysmoduleLoadModule( SCE_SYSMODULE_RANDOM ) != SCE_OK ) 
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to load random sysmodule" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to load random sysmodule" );
         return NEXT_ERROR;
     }
 
     if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to setup random bytes implementation" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to setup random bytes implementation" );
         return NEXT_ERROR;
     }
 
     if ( ( handle_net = sceNetPoolCreate( "net", HEAP_SIZE_NET, 0 ) ) < 0 )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init network pool" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to init network pool" );
         return NEXT_ERROR;
+    }
+
+    connection_type = NEXT_CONNECTION_TYPE_UNKNOWN;
+
+    if ( sceNetCtlInit() != SCE_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to init netctl library" );
+        return NEXT_OK;
+    }
+
+    SceNetCtlInfo info;
+    if ( sceNetCtlGetInfo( SCE_NET_CTL_INFO_DEVICE, &info ) == SCE_OK )
+    {
+        switch ( info.device )
+        {
+            case SCE_NET_CTL_DEVICE_WIRED:
+                connection_type = NEXT_CONNECTION_TYPE_WIRED;
+                break;
+            case SCE_NET_CTL_DEVICE_WIRELESS:
+                connection_type = NEXT_CONNECTION_TYPE_WIFI;
+                break;
+        }
+    }
+    else
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "failed to determine network connection type" );
     }
 
     return NEXT_OK;
@@ -132,6 +160,11 @@ int next_platform_init()
 void next_platform_term()
 {
     sceNetPoolDestroy( handle_net );
+}
+
+int next_platform_connection_type()
+{
+    return connection_type;
 }
 
 const char * next_platform_getenv( const char * )
@@ -201,6 +234,10 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
+    // IMPORTANT: If you are developing for PS5 and you wish to control client network thread priority
+    // or affinity, then you can add code here to adjust the affinity and priority for the client thread. 
+    // Receiving packets on thread is necessary to ensure that measurements of RTT that Network Next 
+    // uses for route planning are not quantized to your game's framerate.
     scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_HIGHEST );
     return true;
 }
@@ -303,6 +340,16 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_OK;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    return 0;
+}
+
+bool next_platform_client_dual_stack()
+{
+    return false;
+}
+
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
     SceNetInAddr sockaddr4;
@@ -323,7 +370,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * socket );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_platform_socket_t * s = (next_platform_socket_t *) next_malloc( context, sizeof( next_platform_socket_t ) );
     next_assert( s );
@@ -333,7 +380,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     next_assert( address->type == NEXT_ADDRESS_IPV4 );
 
     // create socket
-
+                                                         
     s->handle = sceNetSocket( "next", SCE_NET_AF_INET, SCE_NET_SOCK_DGRAM, SCE_NET_IPPROTO_UDP );
 
     if ( s->handle < 0 )
@@ -422,6 +469,9 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     {
         // timeout <= 0, socket is blocking with no timeout
     }
+
+    // IMPORTANT: packet tagging is not currently supported on ps5
+    (void) enable_packet_tagging;
 
     return s;
 }

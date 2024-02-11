@@ -1,5 +1,5 @@
 /*
-   Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc. All rights reserved.
+   Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -211,6 +211,24 @@ func main() {
 			}
 
 			printRelays(env, relaysCount, relaysAlphaSort, regexName)
+
+			return nil
+		},
+	}
+
+	var datacentersCommand = &ffcli.Command{
+		Name:       "datacenters",
+		ShortUsage: "next datacenters <regex>",
+		ShortHelp:  "List datacenters in the current environment",
+		FlagSet:    relaysfs,
+		Exec: func(_ context.Context, args []string) error {
+
+			var regexName string
+			if len(args) > 0 {
+				regexName = args[0]
+			}
+
+			printDatacenters(env, relaysCount, regexName)
 
 			return nil
 		},
@@ -435,6 +453,7 @@ func main() {
 		databaseCommand,
 		commitCommand,
 		relaysCommand,
+		datacentersCommand,
 		sshCommand,
 		logCommand,
 		setupCommand,
@@ -847,6 +866,23 @@ func keygen(env Environment, regexes []string) {
 		replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
 	}
 
+	platforms := []string{
+		"win32",
+		"win64",
+		"switch",
+		"ps4",
+		"ps5",
+		"gdk",
+	}
+
+	for i := range platforms {
+		filename := fmt.Sprintf("sdk/build/%s/client.cpp", platforms[i])
+		if fileExists(filename) {
+			fmt.Printf("%s\n", filename)
+			replace(filename, "^.*buyer_public_key\\s*=.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
+		}
+	}
+
 	fmt.Printf("docker-compose.yml\n")
 	{
 		replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
@@ -1175,6 +1211,16 @@ func config(env Environment, regexes []string) {
 		replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
 	}
 
+	// copy to example
+
+	// todo: probably need to generate the premake5.lua file here. I want the example directory to be able to be deleted at will
+
+	bash("cp -f sdk/source/* example/source")
+	bash("cp -f sdk/include/* example/include")
+	bash("cp -f sdk/sodium/* example/sodium")
+	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
+	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
+
 	// update source files
 
 	fmt.Printf("\n------------------------------------------\n         updating source files\n------------------------------------------\n\n")
@@ -1195,14 +1241,6 @@ func config(env Environment, regexes []string) {
 	{
 		replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* server_backend_hostname = \"server-dev\\..+\";\\s*$", fmt.Sprintf("const char * server_backend_hostname = \"server-dev.%s\";", config.CloudflareDomain))
 	}
-
-	// copy to example
-
-	bash("cp -f sdk/source/* example/source")
-	bash("cp -f sdk/include/* example/include")
-	bash("cp -f sdk/sodium/* example/sodium")
-	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
-	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
 
 	// update semaphore ci files
 
@@ -1800,6 +1838,100 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	} else {
 		fmt.Printf("no relays found\n\n")
 	}
+}
+
+// ----------------------------------------------------------------
+
+type AdminDatacentersResponse struct {
+	Datacenters []admin.DatacenterData `json:"datacenters"`
+	Error       string                 `json:"error"`
+}
+
+func printDatacenters(env Environment, datacenterCount int64, regexName string) {
+
+	// find datacenters that match the regex
+
+	adminDatacentersResponse := AdminDatacentersResponse{}
+
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/datacenters", env.API_URL), &adminDatacentersResponse)
+
+	type DatacenterRow struct {
+		Name            string
+		Native			 string
+		Latitude        float64
+		Longitude       float64
+	}
+
+	datacenterRows := make([]DatacenterRow, 0)
+
+	for i := range adminDatacentersResponse.Datacenters {
+		row := DatacenterRow{}
+		row.Name = adminDatacentersResponse.Datacenters[i].DatacenterName
+		row.Native = adminDatacentersResponse.Datacenters[i].NativeName
+		row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
+		row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+		matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
+		if regexName == "" || ( matched && err == nil ) {
+			datacenterRows = append(datacenterRows, row)
+		}
+	}
+
+	if len(datacenterRows) == 0 {
+		fmt.Printf("no datacenter found\n\n")
+		return
+	}
+
+	// find nearby datacenters within 100km, so we can pick up ashburn <-> virginia, sanjose <-> sf <-> siliconvalley
+
+	if regexName != "" {
+
+		averageLatitude := 0.0
+		averageLongitude := 0.0
+
+		for i := range datacenterRows {
+			averageLatitude += datacenterRows[i].Latitude
+			averageLongitude += datacenterRows[i].Longitude
+		}
+
+		averageLatitude /= float64(len(datacenterRows))
+		averageLongitude /= float64(len(datacenterRows))
+
+		threshold := 150.0
+		allWithinThreshold := true
+		for i := range datacenterRows {
+			distance := core.HaversineDistance(datacenterRows[i].Latitude, datacenterRows[i].Longitude, averageLatitude, averageLongitude)
+			if distance > threshold {
+				allWithinThreshold = false
+				break
+			}
+		}
+
+		if allWithinThreshold {
+
+			for i := range adminDatacentersResponse.Datacenters {
+				row := DatacenterRow{}
+				row.Name = adminDatacentersResponse.Datacenters[i].DatacenterName
+				row.Native = adminDatacentersResponse.Datacenters[i].NativeName
+				row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
+				row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+				matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
+				distance := core.HaversineDistance(row.Latitude, row.Longitude, averageLatitude, averageLongitude)
+				if distance <= threshold && ( !matched || err != nil ) {
+					datacenterRows = append(datacenterRows, row)
+				}
+			}
+
+		}
+	}
+
+	// sort alphabetically then print results
+
+	sort.SliceStable(datacenterRows, func(i, j int) bool {
+		return datacenterRows[i].Name < datacenterRows[j].Name
+	})
+
+	table.Output(datacenterRows)
+	fmt.Printf("\n")
 }
 
 // ----------------------------------------------------------------

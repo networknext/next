@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -810,7 +810,7 @@ void test_ping_stats()
 
 void test_random_bytes()
 {
-    const int BufferSize = 64;
+    const int BufferSize = 999;
     uint8_t buffer[BufferSize];
     next_crypto_random_bytes( buffer, BufferSize );
     for ( int i = 0; i < 100; ++i )
@@ -1240,16 +1240,16 @@ void test_client_ipv4()
     next_client_destroy( client );
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 static int num_server_packets_received = 0;
 
-static void test_server_packet_received_callback( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+static void test_server_packet_received_callback(next_server_t* server, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes)
 {
-    (void) server; (void) context;
-    next_server_send_packet( server, from, packet_data, packet_bytes );
+    (void)server; (void)context;
+    next_server_send_packet(server, from, packet_data, packet_bytes);
     num_server_packets_received++;
 }
-
-#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 void test_server_ipv4()
 {

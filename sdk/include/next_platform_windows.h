@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -22,8 +22,8 @@
 
 #include "next.h"
 
-#ifndef NEXT_WINDOWS_H
-#define NEXT_WINDOWS_H
+#ifndef NEXT_PLATFORM_WINDOWS_H
+#define NEXT_PLATFORM_WINDOWS_H
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
@@ -81,4 +81,4 @@ struct next_platform_mutex_t
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-#endif // #ifndef NEXT_WINDOWS_H
+#endif // #ifndef NEXT_PLATFORM_WINDOWS_H

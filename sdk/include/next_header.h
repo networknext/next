@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -80,6 +80,8 @@ inline void next_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_
     *sequence = packet_sequence;
     *session_id = next_read_uint64( &buffer );
     *session_version = next_read_uint8( &buffer );
+
+    (void) buffer_length;
 }
 
 inline int next_read_header( int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )

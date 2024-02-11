@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -84,6 +84,10 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
+    // IMPORTANT: If you are developing on Nintendo Switch, please set thread priority and cpu core mask for the network next socket threads here.
+    // These threads need to wake up and process sockets as they arrive, so the measurements of round trip time are not quantized to your
+    // game's framerate. Due to the way thread scheduling works on the switch, we need to leave it up to you to decide how you want
+    // to prioritize these threads, and which core(s) you want them to run on.
     (void)thread;
     return false;
 }
@@ -213,6 +217,12 @@ void next_platform_term()
     nn::socket::Finalize();
 }
 
+int next_platform_connection_type()
+{
+    // unfortunately, there is no API to determine wifi vs. wired on Nintendo Switch
+    return NEXT_CONNECTION_TYPE_WIFI;
+}
+
 const char * next_platform_getenv( const char * var )
 {
     return getenv( var );
@@ -261,6 +271,16 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     }
 
     return NEXT_ERROR;
+}
+
+uint16_t next_platform_preferred_client_port()
+{
+    return 0;
+}
+
+bool next_platform_client_dual_stack()
+{
+    return false;
 }
 
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
@@ -379,7 +399,7 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
     return NEXT_OK;
 }
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_assert( address );
 

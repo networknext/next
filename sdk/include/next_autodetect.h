@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -27,9 +27,9 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-bool next_autodetect_google( char * output );
+bool next_autodetect_google( char * output, size_t output_size );
 
-bool next_autodetect_amazon( char * output );
+bool next_autodetect_amazon( char * output, size_t output_size );
 
 bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output, size_t output_size );
 

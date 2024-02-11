@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -51,17 +51,9 @@ struct next_platform_socket_t
 
 struct next_platform_thread_t
 {
-    void * context;
+    void* context;
     HANDLE handle;
 };
-
-typedef DWORD next_platform_thread_return_t;
-
-#define NEXT_PLATFORM_THREAD_RETURN() do { return 0; } while ( 0 )
-
-#define NEXT_PLATFORM_THREAD_FUNC WINAPI
-
-typedef next_platform_thread_return_t (NEXT_PLATFORM_THREAD_FUNC next_platform_thread_func_t)(void*);
 
 // -------------------------------------
 

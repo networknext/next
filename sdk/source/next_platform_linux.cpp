@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -159,6 +159,16 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_ERROR;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    return 0;
+}
+
+bool next_platform_client_dual_stack()
+{
+    return false;
+}
+
 // ---------------------------------------------------
 
 double next_platform_time()
@@ -204,14 +214,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         return NULL;
     }
 
-    // force IPv6 only if necessary
+    // enable dual stack for ipv6 sockets
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 1;
+        int yes = 0;
         if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
             next_platform_socket_destroy( socket );
             return NULL;
         }

@@ -14,7 +14,7 @@
 
 * **CCU** - _Concurrent Users. Or alternatively, the total number of sessions running at any time._
 
-* **Continue Token** - _When the Network Next route does not change from one slice to another, we send a continue token, which simply extends the route across relays for 10 more seconds, without the bandwidth expense of fully redescribing the route in terms of the linked list of IP addesses between the client and server across relays._
+* **Continue Token** - _When the Network Next route does not change from one slice to another, we send a continue token, which simply extends the route across relays for 10 more seconds, without the bandwidth expense of fully redescribing the route in terms of the linked list of IP addresses and ports between the client and server._
 
 * **Cost Matrix** - _The first step of route optimization in Network Next is for all relay pings to be turned into a triangular cost matrix, which provides a constant time lookup of the cost (in terms of latency, or round trip time (rtt) - in milliseconds), between any two relays._
 
@@ -32,7 +32,7 @@
 
 * **Fallback to Direct** - _When the SDK is unable to continue the Network Next route for any reason, for example if a relay suddenly crasher, or the server backend suddenly went away, or the relay backend was unable to provide a route matrix. The SDK "falls back to direct" automatically, so that the session continues in a non-accelerated mode. This way even if the Network Next backend is completely down, sessions can still play and connect from client to server._
 
-* **Google Cloud Storage** - _It's a standard feature of Google Cloud. You can upload files to google cloud storage buckets, and they will be stored there, and made available to the deployment process in Google Cloud, or made publicly available for downloaded as necessary._
+* **Google Cloud Storage** - _It's a standard feature of Google Cloud. You can upload files to google cloud storage buckets, and they will be stored there, and made available to the deployment process in Google Cloud, or made publicly available for download as necessary._
 
 * **Google PubSub** - _Google PubSub is a persistent message system. Parts of the Network Next backend publish Google PubSub messages to Google Cloud, which processes these messages and inserts the data contained in those messages into BigQuery. This is a standard feature of Google Cloud, and is the best and cheapest way to insert data into BigQuery in close to real-time._
 
@@ -54,7 +54,7 @@
 
 * **Redis** - _Redis is an open source in-memory database that is used internally by the Network Next backend for inter-service communication, and especially by the portal to store and query data about sessions, servers, and so on._
 
-* **Redis Cluster** - _When a single Redis database instance is not sufficient in terms of memory, throughput on CPU, you can split up your data across a Redis Cluster and scale horizontally. Staging and Production environments in Network Next use Redis cluster so they are able to scale to 10 million CCU._
+* **Redis Cluster** - _When a single Redis database instance is not sufficient in terms of memory, throughput or CPU, you can split up your data across a Redis Cluster and scale horizontally. Staging and Production environments in Network Next use Redis cluster so they are able to scale to 10 million CCU._
 
 * **Relay** - _A linux machine running the Network Next relay software. It acts as a software router for packets sent between the client and server, when a session is accelerated by Network Next._
 
@@ -62,7 +62,7 @@
 
 * **Relay Fleet** - _The set of all relays in your Network Next environment_.
 
-* **Relay pings** - _All relays are continuously pinging every other relay in your system 10 times per-second. This is how we know the cost in milliseconds to travel from one relay to another. These relay pings are the very first input into the route optimization process._
+* **Relay Pings** - _All relays are continuously pinging every other relay in your system 10 times per-second. This is how we know the cost in milliseconds to travel from one relay to another. These relay pings are the very first input into the route optimization process._
 
 * **Route Diversity** - _The idea that you can get a better connection if you have many different options, or routes to get from the client to server to choose from._
 

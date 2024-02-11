@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -203,9 +203,9 @@ int main()
     next_config_t config;
     next_default_config(&config);
 #ifdef _WIN32
-    strncpy_s(config.buyer_public_key, "Oe96rqXLyoxaBc3ce8jo6UeoSNlWpq11Druv8kEO9bP0C2rQW5phkg==", 256);
+    strncpy_s(config.buyer_public_key, "ZdjlnZkzaMiY0tloNOtfflxhAAfXpDzGHk9s3qtK991ue5mbOSzdWQ==", 256);
 #else
-    strncpy(config.buyer_public_key, "Oe96rqXLyoxaBc3ce8jo6UeoSNlWpq11Druv8kEO9bP0C2rQW5phkg==", 256);
+    strncpy(config.buyer_public_key, "ZdjlnZkzaMiY0tloNOtfflxhAAfXpDzGHk9s3qtK991ue5mbOSzdWQ==", 256);
 #endif
     config.buyer_public_key[255] = 0;
 

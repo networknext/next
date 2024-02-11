@@ -1,123 +1,214 @@
 # ----------------------------------------------------------------------------------------
 
-/*
-    Do not setup and try out this provider as part of a dev enviroment, or you purchase a monthly commit for a VM server each time you recreate the relays :)
+// Latitude now supports a terraform provider
+// https://registry.terraform.io/providers/latitudesh/latitudesh/latest/docs
 
-    Plans are bare metal and available on a monthly basis. This provider currently does not do VMs.
+variable "relays" { type = map(map(string)) }
 
-    Available sites as of March 13, 2023:
+locals {
 
-      BGT    -> latitude.bogota
-      ASH    -> latitude.virginia
-      CH1    -> latitude.chicago
-      BUE    -> latitude.buenosaires
-      LON    -> latitude.london
-      MEX    -> latitude.mexico.1
-      MEX2   -> latitude.mexico.2
-      TY6    -> latitude.tokyo.1
-      TY8    -> latitude.tokyo.2
-      SAN    -> latitude.santiago.1
-      SAN2   -> latitude.santiago.2
-      SYD    -> latitude.sydney
-      NY2    -> latitude.newyork
-      MI1    -> latitude.miami
-      LA2    -> latitude.losangeles
-      DAL2   -> latitude.dallas
-      MH1    -> latitude.saopaulo.1
-      SP2    -> latitude.saopaulo.2
+  seller_name = "Latitude"
 
-  To update this list, run:
+  seller_code = "latitude"
 
-    curl --request GET \
-     --url https://api.latitude.sh/regions \
-     --header 'accept: application/json' \
-     -H "Authorization: Bearer <API_KEY>"
+  ssh_user = "root"
 
-  Available plans as of March 13, 2023:
+  datacenter_map = {
 
-    c1-tiny-x86
-    c1-medium-x86
-    c1-large-x86
-    c2-small-x86
-    c2-medium-x86
-    c2-large-x86
-    c3-medium-x86
-    c3-large-x86
-    c3-small-x86
-    m3-large-x86
-    s3-large-x86
+    "latitude.chicago" = {
+      latitude    = 41.8781
+      longitude   = -87.6298
+      native_name = "CHI"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-    etc...
+    "latitude.newyork" = {
+      latitude    = 40.7128
+      longitude   = -74.0060
+      native_name = "NYC"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-  Not all plans are available in each location. Plans are really just an inventory of different types of bare metal servers available in each location.
+    "latitude.ashburn" = {
+      latitude    = 39.0438
+      longitude   = -77.4874
+      native_name = "ASH"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-  To update this list, run:
+    "latitude.dallas" = {
+      latitude    = 32.7767
+      longitude   = -96.7970
+      native_name = "DAL2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-    curl --request GET \
-     --url https://api.latitude.sh/plans \
-     --header 'accept: application/json' \
-     -H "Authorization: Bearer <API_KEY>"
+    "latitude.miami" = {
+      latitude    = 25.7617
+      longitude   = -80.1918
+      native_name = "MIA"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-*/
+    "latitude.losangeles" = {
+      latitude    = 34.0549
+      longitude   = -118.2426
+      native_name = "LAX"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-# --------------------------------------------------------------------------
+    "latitude.mexico.1" = {
+      latitude    = 23.6345
+      longitude   = -102.5528
+      native_name = "MEX"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
 
-terraform {
-  required_providers {
-    latitudesh = {
-      source  = "latitudesh/latitudesh"
-      version = "~> 0.2.1"
-    }
+    "latitude.mexico.2" = {
+      latitude    = 23.6345
+      longitude   = -102.5528
+      native_name = "MEX2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.bogota" = {
+      latitude    = 4.7110
+      longitude   = -74.0721
+      native_name = "BGT"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.saopaulo.1" = {
+      latitude    = -23.5558
+      longitude   = -46.6396
+      native_name = "SAO"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.saopaulo.2" = {
+      latitude    = -23.5558
+      longitude   = -46.6396
+      native_name = "SAO2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.buenosaires" = {
+      latitude    = -34.6037
+      longitude   = -58.3816
+      native_name = "BUE"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.santiago.1" = {
+      latitude    = -33.4489
+      longitude   = -70.6693
+      native_name = "SAN"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.santiago.2" = {
+      latitude    = -33.4489
+      longitude   = -70.6693
+      native_name = "SAN2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.london" = {
+      latitude    = 51.5072
+      longitude   = -0.1276
+      native_name = "LON"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.frankfurt" = {
+      latitude    = 50.1109
+      longitude   = 8.6821
+      native_name = "FRA"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.tokyo.1" = {
+      latitude    = 35.6764
+      longitude   = 139.6500
+      native_name = "TYO"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.tokyo.2" = {
+      latitude    = 35.6764
+      longitude   = 139.6500
+      native_name = "TYO2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "latitude.sydney" = {
+      latitude    = -33.8688
+      longitude   = 151.2093
+      native_name = "SYD"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
   }
 }
 
-provider "latitudesh" {
-  auth_token = file("~/secrets/terraform-latitude.txt")
-}
-
-# ----------------------------------------------------------------------------------------
-
-variable "project_name" { type = string }
-variable "project_description" { type = string }
-variable "project_environment" { type = string }
-variable "relays" { type = list(map(string)) }
-variable "ssh_public_key_file" { type = string }
-variable "vpn_address" { type = string }
-
-# ----------------------------------------------------------------------------------------
-
-resource "latitudesh_project" "relay" {
-  name        = var.project_name
-  description = var.project_description
-  environment = var.project_environment
-}
-
-resource "latitudesh_ssh_key" "relay" {
-  name       = "relay"
-  project    = latitudesh_project.relay.id
-  public_key = file(var.ssh_public_key_file)
-}
-
-resource "latitudesh_user_data" "relay" {
-  description = "Setup relay"
-  project = latitudesh_project.relay.id
-  content = base64encode(replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address))
-}
-
-resource "latitudesh_server" "relay" {
-  count            = length(var.relays)
-  hostname         = var.relays[count.index].name
-  site             = var.relays[count.index].site
-  operating_system = var.relays[count.index].os
-  plan             = var.relays[count.index].plan
-  project          = latitudesh_project.relay.id
-  ssh_keys         = [latitudesh_ssh_key.relay.id]
-  user_data        = latitudesh_user_data.relay.id
-}
-
 output "relays" {
-  description = "Data for each latitude relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "public_address", "internal_address"], [var.relays[i].name, latitudesh_server.relay[i].primary_ip_v4, "0.0.0.0"])]
+  description = "All relays for latitude"
+  value = {
+    for k, v in var.relays : k => zipmap( 
+      [
+        "relay_name", 
+        "datacenter_name",
+        "seller_name",
+        "seller_code",
+        "public_ip",
+        "public_port",
+        "internal_ip",
+        "internal_port",
+        "internal_group",
+        "ssh_ip",
+        "ssh_port",
+        "ssh_user",
+      ], 
+      [
+        k,
+        v.datacenter_name,
+        local.seller_name,
+        local.seller_code, 
+        v.public_address,
+        40000,
+        "0.0.0.0",
+        0,
+        "", 
+        v.public_address,
+        22,
+        local.ssh_user,
+      ]
+    )
+  }
 }
 
-# ----------------------------------------------------------------------------------------
+output "datacenters" {
+  description = "All datacenters for latitude"
+  value = local.datacenter_map
+}
+
+# --------------------------------------------------------------------------

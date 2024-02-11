@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following
     conditions are met:
@@ -38,6 +38,7 @@
 
 #include <atomic>
 #include <stdio.h>
+#include <stdlib.h>
 
 // ---------------------------------------------------------------
 
@@ -400,6 +401,26 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_client_internal_verify_sentinels( client );
 
+    // IMPORTANT: some platforms (GDK) require that we bind to ::0 and use dual stack sockets
+    if ( next_platform_client_dual_stack() )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "client socket is dual stack ipv4 and ipv6" );
+        bind_address.type = NEXT_ADDRESS_IPV6;
+        memset( bind_address.data.ipv6, 0, sizeof(bind_address.data.ipv6) );
+    }
+
+    // IMPORTANT: some platforms (GDK) have a preferred port that we must use to access packet tagging
+    // If the bind address has set port of 0, substitute the preferred client port here
+    if ( bind_address.port == 0 )
+    {
+        int preferred_client_port = next_platform_preferred_client_port();
+        if ( preferred_client_port != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "client socket using preferred port %d", preferred_client_port );
+            bind_address.port = preferred_client_port;
+        }
+    }
+
     client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( client->socket == NULL )
     {
@@ -752,14 +773,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
 #if NEXT_DEBUG
 
-        const uint8_t * packet_data = client->upgrade_response_packet_data;
-        const int packet_bytes = client->upgrade_response_packet_bytes;
+        const uint8_t * debug_packet_data = client->upgrade_response_packet_data;
+        const int debug_packet_bytes = client->upgrade_response_packet_bytes;
 
-        next_assert( packet_data );
-        next_assert( packet_bytes > 0 );
+        next_assert( debug_packet_data );
+        next_assert( debug_packet_bytes > 0 );
 
-        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, packet_bytes ) );
+        next_assert( next_basic_packet_filter( debug_packet_data, debug_packet_bytes ) );
+        next_assert( next_advanced_packet_filter( debug_packet_data, client->current_magic, from_address_data, from_address_bytes, to_address_data, to_address_bytes, debug_packet_bytes ) );
 
 #endif // #if NEXT_DEBUG
 
@@ -1451,6 +1472,7 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
         notify->payload_bytes = packet_bytes;
+        notify->already_received = false;
         next_assert( notify->payload_bytes >= 0 );
         next_assert( notify->payload_bytes <= NEXT_MAX_PACKET_BYTES - 1 );
         memcpy( notify->payload_data, packet_data, size_t(packet_bytes) );

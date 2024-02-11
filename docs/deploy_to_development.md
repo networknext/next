@@ -33,7 +33,7 @@ Go to [https://console.google.com](https://console.cloud.google.com/) and go to 
 
 Click on the "postgres" database then click on "Import".
 
-In the import dialog, enter the filename to import the file: "[company_name]_network_next_sql_files/create.sql" to the database "database".
+In the import dialog, import the file "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
 ## 4. Wait for SSL certificates to provision
 

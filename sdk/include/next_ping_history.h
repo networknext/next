@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -226,7 +226,7 @@ inline void next_route_stats_from_ping_history( const next_ping_history_t * hist
 
         if ( num_jitter_samples > 0 )
         {
-            stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples ) * 1000.0;
+            stats->jitter = (float) sqrt( stddev_rtt / num_jitter_samples ) * 1000.0f;
         }
     }
 

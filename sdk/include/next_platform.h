@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -36,7 +36,7 @@ struct next_address_t;
 #include "next_platform_ps4.h"
 #include "next_platform_ps5.h"
 #include "next_platform_switch.h"
-#include "next_platform_xboxone.h"
+#include "next_platform_gdk.h"
 
 typedef void (*next_platform_thread_func_t)(void*);
 
@@ -69,6 +69,10 @@ int next_platform_inet_pton6( const char * address_string, uint16_t * address_ou
 int next_platform_inet_ntop6( const uint16_t * address, char * address_string, size_t address_string_size );
 
 int next_platform_hostname_resolve( const char * hostname, const char * port, next_address_t * address );
+
+uint16_t next_platform_preferred_client_port();
+
+bool next_platform_client_dual_stack();
 
 // ----------------------------------------------------------------
 

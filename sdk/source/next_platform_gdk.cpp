@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -23,6 +23,8 @@
 // IMPORTANT: you must compile this file with /ZW to get windows runtime components
 
 #include "next_platform_gdk.h"
+#include "next_platform.h"
+#include "next_address.h"
 
 #ifdef _GAMING_XBOX
 
@@ -119,6 +121,10 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 
 bool next_platform_thread_high_priority( next_platform_thread_t * thread )
 {
+    // IMPORTANT: If you are developing for xbox you can set the thread priority and affinity here.
+    // Packet receives are performed on dedicated threads to ensure that the measured RTT values
+    // are not quantized to your game frame rate. These threads need to be relatively high priority
+    // to ensure that packets are processed quickly after being received by the network stack.
     next_assert( thread );
     return SetThreadPriority( thread->handle, THREAD_PRIORITY_TIME_CRITICAL );
 }
@@ -231,7 +237,10 @@ static randombytes_implementation next_random_implementation =
 int next_platform_init()
 {
     if ( randombytes_set_implementation( &next_random_implementation ) != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not set random implementation" );
         return NEXT_ERROR;
+    }
 
     QueryPerformanceFrequency( &timer_frequency );
     QueryPerformanceCounter( &timer_start );
@@ -239,11 +248,13 @@ int next_platform_init()
     WSADATA WsaData;
     if ( WSAStartup( MAKEWORD(2,2), &WsaData ) != NO_ERROR )
     {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "WSAStartup failed" );
         return NEXT_ERROR;
     }
 
     if ( !BCRYPT_SUCCESS( BCryptOpenAlgorithmProvider( &bcrypt_algorithm_provider, BCRYPT_RNG_ALGORITHM, NULL, 0 ) ) )
     {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize bcrypt" );
         return NEXT_ERROR;
     }
 
@@ -345,6 +356,25 @@ int next_platform_hostname_resolve( const char * hostname, const char * port, ne
     return NEXT_ERROR;
 }
 
+uint16_t next_platform_preferred_client_port()
+{
+    uint16_t port;
+    HRESULT result = XNetworkingQueryPreferredLocalUdpMultiplayerPort( &port );
+    if ( FAILED(result) )
+    {
+        return 0;
+    }
+    else
+    {
+        return port;
+    }
+}
+
+bool next_platform_client_dual_stack()
+{
+    return true;
+}
+
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
     #if WINVER <= 0x0502
@@ -388,7 +418,7 @@ int next_platform_inet_ntop6( const uint16_t * address, char * address_string, s
 
 void next_platform_socket_destroy( next_platform_socket_t * );
 
-next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size )
+next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
     next_assert( address );
     next_assert( address->type != NEXT_ADDRESS_NONE );
@@ -410,14 +440,23 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         return NULL;
     }
 
-    // force IPv6 only if necessary
+    // IMPORTANT: tell windows we don't want to receive any connection reset messages
+    // for this socket, otherwise recvfrom errors out when client sockets disconnect hard
+    // in response to ICMP messages.
+    #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
+    BOOL bNewBehavior = FALSE;
+    DWORD dwBytesReturned = 0;
+    WSAIoctl(s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL);
+
+    // if bound to ipv6 address, set dual stack: ipv4 and ipv6 as recommended
+    // 
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 1;
+        int yes = 0;
         if ( setsockopt( s->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
             next_platform_socket_destroy( s );
             return NULL;
         }
@@ -531,6 +570,10 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
+    // IMPORTANT: Packet tagging is enabled by the user on this platform
+    // See https://learn.microsoft.com/en-us/gaming/gdk/_content/gc/networking/overviews/game-mesh/preferred-local-udp-multiplayer-port-networking
+    (void)enable_packet_tagging;
+
     return s;
 }
 
@@ -564,7 +607,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         socket_address.sin6_family = AF_INET6;
         for ( int i = 0; i < 8; ++i )
         {
-            ( (uint16_t*) &socket_address.sin6_addr ) [i] = snaphot_platform_htons( to->data.ipv6[i] );
+            ( (uint16_t*) &socket_address.sin6_addr ) [i] = next_platform_htons( to->data.ipv6[i] );
         }
         socket_address.sin6_port = next_platform_htons( to->port );
         sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in6 ) );

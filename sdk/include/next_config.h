@@ -1,5 +1,5 @@
 /*
-    Network Next Accelerate. Copyright © 2017 - 2023 Network Next, Inc.
+    Network Next. Copyright © 2017 - 2024 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -26,12 +26,12 @@
 #include "next.h"
 
 #define NEXT_PROD_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
-#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "tWi9O0YZuXIfYwbxx78yPISVCx6utFpiHpeeHCVN9Xs="
-#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "z28h4XSf7MsUFVdMtLMITDxZX2Y6+1oyKZjoRkQsXjc="
+#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "Nb/JECiiftr9zuSlttiybGnjHzHlTBWE7JFwStPdIZ4="
+#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "n7yB7ag9URvrKAUFLJYxaKi/HWN+O16MEQoE/bbf9xM="
 
 #define NEXT_DEV_SERVER_BACKEND_HOSTNAME "server-dev.virtualgo.net"
-#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "MuPCD98jRSLzAU4VvgpSpsZmagg30P1M5oIUppGhAAA="
-#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "osFv1SPtMkhezNPuLbNbjp/F8ks5I1Y1QVqD0yLd+0o="
+#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "qtXDPQZ4St9XihqsNs6hP8QuSCHpr/63aKIOJehTNSg="
+#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "QvHkCNNjQos2A9s1ufDJilvanYgQXNtB5E/eb6M9PDc="
 
 #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME   NEXT_PROD_SERVER_BACKEND_HOSTNAME
@@ -43,7 +43,7 @@
 #define NEXT_RELAY_BACKEND_PUBLIC_KEY  NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY
 #endif // #if !NEXT_DEVELOPMENT
 
-#define NEXT_CONFIG_BUCKET_NAME "newyork_network_next_sdk_config"
+#define NEXT_CONFIG_BUCKET_NAME "consoles_network_next_sdk_config"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 #define NEXT_SERVER_INIT_TIMEOUT                                     10.0

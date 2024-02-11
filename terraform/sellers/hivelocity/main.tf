@@ -1,72 +1,155 @@
 # ----------------------------------------------------------------------------------------
 
-terraform {
-  required_providers {
-    hivelocity = {
-      version  = "0.5.0"
-      source   = "hivelocity/hivelocity"
-    }
+variable "relays" { type = map(map(string)) }
+
+locals {
+
+  seller_name = "Hivelocity"
+
+  seller_code = "hivelocity"
+
+  ssh_user = "root"
+
+  datacenter_map = {
+
+    "hivelocity.amsterdam" = {
+      latitude    = 52.3676
+      longitude   = 4.9041
+      native_name = "AMS1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.atlanta" = {
+      latitude    = 33.7488
+      longitude   = -84.3877
+      native_name = "ATL2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.chicago" = {
+      latitude    = 41.8781
+      longitude   = -87.6298
+      native_name = "ORD1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.dallas" = {
+      latitude    = 32.7767
+      longitude   = -96.7970
+      native_name = "DAL1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.frankfurt" = {
+      latitude    = 50.1109
+      longitude   = 8.6821
+      native_name = "FRA1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.losangeles.1" = {
+      latitude    = 34.0549
+      longitude   = -118.2426
+      native_name = "LA1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.losangeles.2" = {
+      latitude    = 34.0549
+      longitude   = -118.2426
+      native_name = "LA2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.miami" = {
+      latitude    = 25.7617
+      longitude   = -80.1918
+      native_name = "MIA1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.newyork" = {
+      latitude    = 40.7128
+      longitude   = -74.0060
+      native_name = "NYC1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.seattle" = {
+      latitude    = 47.6061
+      longitude   = -122.3328
+      native_name = "SEA1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.tampa.1" = {
+      latitude    = 27.9517
+      longitude   = -82.4588
+      native_name = "TPA1"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "hivelocity.tampa.2" = {
+      latitude    = 27.9517
+      longitude   = -82.4588
+      native_name = "TPA2"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
   }
 }
-
-provider hivelocity {
-  api_key  = file("~/secrets/terraform-hivelocity.txt")
-}
-
-# ----------------------------------------------------------------------------------------
-
-variable "relays" { type = list(map(string)) }
-variable "ssh_public_key_file" { type = string }
-variable "vpn_address" { type = string }
-
-# ----------------------------------------------------------------------------------------
-
-resource "hivelocity_ssh_key" "relay" {
-  name       = "ssh key for relays"
-  public_key = file(var.ssh_public_key_file)
-}
-
-data "hivelocity_product" "relay" {
-  count = length(var.relays)
-  first = true
-  filter {
-    name   = "product_memory"
-    values = ["16GB"]
-  }
-  filter {
-    name   = "data_center"
-    values = [var.relays[count.index].zone]
-  }
-  filter {
-    name   = "stock"
-    values = ["limited", "available"]
-  }
-}
-
-resource "hivelocity_bare_metal_device" "relay" {
-  count             = length(var.relays)
-  hostname          = "test.relay.hostname"
-  tags              = [var.relays[count.index].name]
-  os_name           = var.relays[count.index].os
-  period            = "Hourly"
-  product_id        = data.hivelocity_product.relay[count.index].product_id
-  location_name     = data.hivelocity_product.relay[count.index].data_center
-  public_ssh_key_id = hivelocity_ssh_key.relay.ssh_key_id
-  script            = replace(file("./setup_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
-}
-
-/*
-resource "hivelocity_vlan" "private_vlan" {
-  count         = length(var.relays)
-  device_ids    = [
-    hivelocity_bare_metal_device.relay[*].device_id
-  ]
-}
-*/
 
 output "relays" {
-  description = "Data for each hivelocity relay setup by Terraform"
-  value = [for i, v in var.relays : zipmap(["relay_name", "zone", "public_address", "internal_address", "os"], [var.relays[i].name, var.relays[i].zone, hivelocity_bare_metal_device.relay[i].primary_ip, "0.0.0.0", var.relays[i].os])]
+  description = "All relays for hivelocity"
+  value = {
+    for k, v in var.relays : k => zipmap( 
+      [
+        "relay_name", 
+        "datacenter_name",
+        "seller_name",
+        "seller_code",
+        "public_ip",
+        "public_port",
+        "internal_ip",
+        "internal_port",
+        "internal_group",
+        "ssh_ip",
+        "ssh_port",
+        "ssh_user",
+      ], 
+      [
+        k,
+        v.datacenter_name,
+        local.seller_name,
+        local.seller_code, 
+        v.public_address,
+        40000,
+        "0.0.0.0",
+        0,
+        "", 
+        v.public_address,
+        22,
+        local.ssh_user,
+      ]
+    )
+  }
 }
 
-# ----------------------------------------------------------------------------------------
+output "datacenters" {
+  description = "All datacenters for hivelocity"
+  value = local.datacenter_map
+}
+
+# --------------------------------------------------------------------------

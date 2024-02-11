@@ -26,14 +26,14 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "newyork_network_next_terraform"
+    bucket  = "consoles_network_next_terraform"
     prefix  = "dev_relays"
   }
 }
 
 provider "networknext" {
   hostname = "https://api-dev.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwMTcxMzk2N30.wExR2URUfD5fIArq-QntcmlC36K1M5iOaoTUEtrACJQ"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTcwNzY2MDcxNn0.ZLZYcQ_2aije3_Dn9ozZvyNn5vD6NQY0A9wvv0d8S1c"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -362,6 +362,356 @@ module "akamai_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# =================
+# DATAPACKET RELAYS
+# =================
+
+locals {
+
+  datapacket_relays = {
+
+    /*
+    "datapacket.losangeles" = {
+      datacenter_name = "datapacket.losangeles"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "datapacket_relays" {
+  relays = local.datapacket_relays
+  source = "../../sellers/datapacket"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ==========
+# i3D RELAYS
+# ==========
+
+locals {
+
+  i3d_relays = {
+
+    /*
+    "i3d.losangeles" = {
+      datacenter_name = "i3d.losangeles"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "i3d_relays" {
+  relays = local.i3d_relays
+  source = "../../sellers/i3d"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ==============
+# ONEQODE RELAYS
+# ==============
+
+locals {
+
+  oneqode_relays = {
+
+    /*
+    "oneqode.singapore" = {
+      datacenter_name = "oneqode.singapore"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "oneqode_relays" {
+  relays = local.oneqode_relays
+  source = "../../sellers/oneqode"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ============
+# GCORE RELAYS
+# ============
+
+locals {
+
+  gcore_relays = {
+
+    /*
+    "gcore.frankfurt" = {
+      datacenter_name = "gcore.frankfurt"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "gcore_relays" {
+  relays = local.gcore_relays
+  source = "../../sellers/gcore"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# =================
+# HIVELOCITY RELAYS
+# =================
+
+locals {
+
+  hivelocity_relays = {
+
+    /*
+    "hivelocity.chicago" = {
+      datacenter_name = "hivelocity.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "hivelocity_relays" {
+  relays = local.hivelocity_relays
+  source = "../../sellers/hivelocity"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ===================
+# COLOCROSSING RELAYS
+# ===================
+
+locals {
+
+  colocrossing_relays = {
+
+    /*
+    "colocrossing.chicago" = {
+      datacenter_name = "colocrossing.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "colocrossing_relays" {
+  relays = local.colocrossing_relays
+  source = "../../sellers/colocrossing"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# =================
+# PHOENIXNAP RELAYS
+# =================
+
+locals {
+
+  phoenixnap_relays = {
+
+    /*
+    "phoenixnap.phoenix" = {
+      datacenter_name = "phoenixnap.phoenix"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "phoenixnap_relays" {
+  relays = local.phoenixnap_relays
+  source = "../../sellers/phoenixnap"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ===========
+# INAP RELAYS
+# ===========
+
+locals {
+
+  inap_relays = {
+
+    /*
+    "inap.chicago" = {
+      datacenter_name = "inap.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "inap_relays" {
+  relays = local.inap_relays
+  source = "../../sellers/inap"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ==================
+# SERVERS.COM RELAYS
+# ==================
+
+locals {
+
+  serversdotcom_relays = {
+
+    /*
+    "serversdotcom.dallas" = {
+      datacenter_name = "serversdotcom.dallas"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "serversdotcom_relays" {
+  relays = local.serversdotcom_relays
+  source = "../../sellers/serversdotcom"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ============
+# VELIA RELAYS
+# ============
+
+locals {
+
+  velia_relays = {
+
+    /*
+    "velia.stlouis" = {
+      datacenter_name = "velia.stlouis"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "velia_relays" {
+  relays = local.velia_relays
+  source = "../../sellers/velia"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ===============
+# ZENLAYER RELAYS
+# ===============
+
+locals {
+
+  zenlayer_relays = {
+
+    /*
+    "zenlayer.singapore" = {
+      datacenter_name = "zenlayer.singapore"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "zenlayer_relays" {
+  relays = local.zenlayer_relays
+  source = "../../sellers/zenlayer"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ================
+# STACKPATH RELAYS
+# ================
+
+locals {
+
+  stackpath_relays = {
+
+    /*
+    "stackpath.singapore" = {
+      datacenter_name = "stackpath.singapore"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "stackpath_relays" {
+  relays = local.stackpath_relays
+  source = "../../sellers/stackpath"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ===============
+# LATITUDE RELAYS
+# ===============
+
+locals {
+
+  latitude_relays = {
+
+    /*
+    "latitude.buenosaires" = {
+      datacenter_name = "latitude.buenosaires"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "latitude_relays" {
+  relays = local.latitude_relays
+  source = "../../sellers/latitude"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ==============
+# EQUINIX RELAYS
+# ==============
+
+locals {
+
+  equinix_relays = {
+
+    /*
+    "equinix.miami" = {
+      datacenter_name = "equinix.miami"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "equinix_relays" {
+  relays = local.equinix_relays
+  source = "../../sellers/equinix"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =======================
 # INITIALIZE DEV DATABASE
 # =======================
@@ -375,6 +725,20 @@ locals {
       keys(module.google_relays.relays),
       keys(module.amazon_relays.relays),
       keys(module.akamai_relays.relays),
+      keys(module.datapacket_relays.relays),
+      keys(module.i3d_relays.relays),
+      keys(module.oneqode_relays.relays),
+      keys(module.gcore_relays.relays),
+      keys(module.hivelocity_relays.relays),
+      keys(module.colocrossing_relays.relays),
+      keys(module.phoenixnap_relays.relays),
+      keys(module.inap_relays.relays),
+      keys(module.serversdotcom_relays.relays),
+      keys(module.velia_relays.relays),
+      keys(module.zenlayer_relays.relays),
+      keys(module.stackpath_relays.relays),
+      keys(module.latitude_relays.relays),
+      keys(module.equinix_relays.relays),
     )
   )
 
@@ -382,12 +746,40 @@ locals {
     module.google_relays.relays,
     module.amazon_relays.relays,
     module.akamai_relays.relays,
+    module.datapacket_relays.relays,
+    module.i3d_relays.relays,
+    module.oneqode_relays.relays,
+    module.gcore_relays.relays,
+    module.hivelocity_relays.relays,
+    module.colocrossing_relays.relays,
+    module.phoenixnap_relays.relays,
+    module.inap_relays.relays,
+    module.serversdotcom_relays.relays,
+    module.velia_relays.relays,
+    module.zenlayer_relays.relays,
+    module.stackpath_relays.relays,
+    module.latitude_relays.relays,
+    module.equinix_relays.relays,
   )
 
   datacenters = merge(
     module.google_relays.datacenters,
     module.amazon_relays.datacenters,
     module.akamai_relays.datacenters,
+    module.datapacket_relays.datacenters,
+    module.i3d_relays.datacenters,
+    module.oneqode_relays.datacenters,
+    module.gcore_relays.datacenters,
+    module.hivelocity_relays.datacenters,
+    module.colocrossing_relays.datacenters,
+    module.phoenixnap_relays.datacenters,
+    module.inap_relays.datacenters,
+    module.serversdotcom_relays.datacenters,
+    module.velia_relays.datacenters,
+    module.zenlayer_relays.datacenters,
+    module.stackpath_relays.datacenters,
+    module.latitude_relays.datacenters,
+    module.equinix_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
