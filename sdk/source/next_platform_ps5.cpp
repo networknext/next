@@ -379,8 +379,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     next_assert( address );
     next_assert( address->type == NEXT_ADDRESS_IPV4 );
 
-    // todo: ps5 actually supports ipv6
-
     // create socket
                                                          
     s->handle = sceNetSocket( "next", SCE_NET_AF_INET, SCE_NET_SOCK_DGRAM, SCE_NET_IPPROTO_UDP );
