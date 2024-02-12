@@ -47,4 +47,8 @@ bool next_address_equal( const struct next_address_t * a, const struct next_addr
 
 void next_address_anonymize( struct next_address_t * address );
 
+bool next_address_is_ipv4_in_ipv6( struct next_address_t * address );
+
+void next_address_convert_ipv6_to_ipv4( struct next_address * address );
+
 #endif // #ifndef NEXT_ADDRESS_H
