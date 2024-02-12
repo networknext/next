@@ -387,7 +387,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
         if ( result < 0 )
         {
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_string );
+            next_address_to_string( &to, address_string );
             next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( errno ) );
         }
     }
@@ -407,7 +407,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
             if ( result < 0 )
             {
                 char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-                next_address_to_string( to, address_string );
+                next_address_to_string( &to, address_string );
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, strerror( errno ) );
             }
         }
