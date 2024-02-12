@@ -142,6 +142,16 @@ func main() {
 		},
 	}
 
+	var exampleCommand = &ffcli.Command{
+		Name:       "example",
+		ShortUsage: "next example",
+		ShortHelp:  "Generate example directory",
+		Exec: func(ctx context.Context, args []string) error {
+			generateExampleDir()
+			return nil
+		},
+	}
+
 	var secretsCommand = &ffcli.Command{
 		Name:       "secrets",
 		ShortUsage: "next secrets",
@@ -446,6 +456,7 @@ func main() {
 	var commands = []*ffcli.Command{
 		keygenCommand,
 		configCommand,
+		exampleCommand,
 		secretsCommand,
 		selectCommand,
 		envCommand,
@@ -993,6 +1004,21 @@ func keygen(env Environment, regexes []string) {
 
 // ------------------------------------------------------------------------------
 
+func generateExampleDir() {
+	bash("rm -rf example")
+	bash("mkdir -p example/source")
+	bash("mkdir -p example/include")
+	bash("mkdir -p example/sodium")
+	os.WriteFile("example/premake5.lua", []byte(ExamplePremakeFile), 0666)
+	bash("cp -f sdk/source/* example/source")
+	bash("cp -f sdk/include/* example/include")
+	bash("cp -f sdk/sodium/* example/sodium")
+	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
+	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
+}
+
+// ------------------------------------------------------------------------------
+
 type Config struct {
 	CompanyName          string `json:"company_name"`
 	VPNAddress           string `json:"vpn_address"`
@@ -1211,15 +1237,9 @@ func config(env Environment, regexes []string) {
 		replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
 	}
 
-	// copy to example
+	// generate example dir
 
-	// todo: probably need to generate the premake5.lua file here. I want the example directory to be able to be deleted at will
-
-	bash("cp -f sdk/source/* example/source")
-	bash("cp -f sdk/include/* example/include")
-	bash("cp -f sdk/sodium/* example/sodium")
-	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
-	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
+	generateExampleDir()
 
 	// update source files
 
@@ -1979,6 +1999,103 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
+
+	ExamplePremakeFile = `
+solution "next"
+	platforms { "portable", "x86", "x64", "avx", "avx2" }
+	configurations { "Debug", "Release", "MemoryCheck" }
+	targetdir "bin/"
+	rtti "Off"
+	warnings "Extra"
+	floatingpoint "Fast"
+	flags { "FatalWarnings" }
+	defines { "NEXT_DEVELOPMENT" }
+	filter "configurations:Debug"
+		symbols "On"
+		defines { "_DEBUG", "NEXT_ENABLE_MEMORY_CHECKS=1", "NEXT_ASSERTS=1" }
+	filter "configurations:Release"
+		optimize "Speed"
+		defines { "NDEBUG" }
+		editandcontinue "Off"
+	filter "system:windows"
+		location ("visualstudio")
+	filter "platforms:*x86"
+		architecture "x86"
+	filter "platforms:*x64 or *avx or *avx2"
+		architecture "x86_64"
+
+project "next"
+	kind "StaticLib"
+	links { "sodium" }
+	files {
+		"include/next.h",
+		"include/next_*.h",
+		"source/next.cpp",
+		"source/next_*.cpp",
+	}
+	includedirs { "include", "sodium" }
+	filter "system:windows"
+		linkoptions { "/ignore:4221" }
+		disablewarnings { "4324" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "sodium"
+	kind "StaticLib"
+	includedirs { "sodium" }
+	files {
+		"sodium/**.c",
+		"sodium/**.h",
+	}
+  	filter { "system:not windows", "platforms:*x64 or *avx or *avx2" }
+		files {
+			"sodium/**.S"
+		}
+	filter "platforms:*x86"
+		architecture "x86"
+		defines { "NEXT_X86=1", "NEXT_CRYPTO_LOGS=1" }
+	filter "platforms:*x64"
+		architecture "x86_64"
+		defines { "NEXT_X64=1", "NEXT_CRYPTO_LOGS=1" }
+	filter "platforms:*avx"
+		architecture "x86_64"
+		vectorextensions "AVX"
+		defines { "NEXT_X64=1", "NEXT_AVX=1", "NEXT_CRYPTO_LOGS=1" }
+	filter "platforms:*avx2"
+		architecture "x86_64"
+		vectorextensions "AVX2"
+		defines { "NEXT_X64=1", "NEXT_AVX=1", "NEXT_AVX2=1", "NEXT_CRYPTO_LOGS=1" }
+	filter "system:windows"
+		disablewarnings { "4221", "4244", "4715", "4197", "4146", "4324", "4456", "4100", "4459", "4245" }
+		linkoptions { "/ignore:4221" }
+	filter { "action:gmake" }
+  		buildoptions { "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unknown-pragmas", "-Wno-unused-variable", "-Wno-type-limits" }
+
+project "client"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "client.cpp" }
+	includedirs { "include" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "server"
+	kind "ConsoleApp"
+	links { "next", "sodium" }
+	files { "server.cpp" }
+	includedirs { "include" }
+	filter "system:windows"
+		disablewarnings { "4324" }
+	filter "system:not windows"
+		links { "pthread" }
+	filter "system:macosx"
+		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+`
+
 	SetupRelayScript = `
 
 # run once only
