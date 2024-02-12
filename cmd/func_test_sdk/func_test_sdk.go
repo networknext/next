@@ -27,14 +27,14 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "DpXODs3Asg2rPvHU6+7GHNzUBbD9wqwIcvp7tc3gRlU="
-const TestRelayPrivateKey = "FD7bDX16pyHmQPGNaQCsEz+mLo0Q1GLVqSLsE+DsmRM="
-const TestRelayBackendPublicKey = "gJV34XVMeAlmmhh+lNoMFPdp7HXXEFNtuyGpuZXj6FE="
-const TestRelayBackendPrivateKey = "ENOESVraFsw8SMmP8CI1DczSpBuJnXkPedpRciUXzy4="
-const TestServerBackendPublicKey = "dZY7g9J0ISgc3fh2Kahyw1A/rWB65oM5PRIMjhSeUHo="
-const TestServerBackendPrivateKey = "3CuZEcgEGyRzQaaka4DpS/cwxlvZgxU28IkYlkQCyOJ1ljuD0nQhKBzd+HYpqHLDUD+tYHrmgzk9EgyOFJ5Qeg=="
-const TestBuyerPublicKey = "n7u8H8u17JkwfCTkyJ9W1nHzkxjYotCoErwIdpfyAU9uqMgV4SJEjQ=="
-const TestBuyerPrivateKey = "n7u8H8u17JkUE5QCcC6Qmi1Wgs4ATkawgxwNX98q2YbzTNZojCJnXTB8JOTIn1bWcfOTGNii0KgSvAh2l/IBT26oyBXhIkSN"
+const TestRelayPublicKey = "9597P1ZapnmR5X9sTeOLRIE6ZCqGfOEiyJVq2Rb+bV0="
+const TestRelayPrivateKey = "ykNSEqmbzjyz678XfDUnnItB63S1FyBQ7CafO7W1Fgo="
+const TestRelayBackendPublicKey = "iY1zTFmQASm6ynSSQ1yKihuCrFSqmetrjxGx9Y1xYiA="
+const TestRelayBackendPrivateKey = "lcLUfxZEhVLWrFL5FDUhCpS4a8hYzXtI5MQBqMXda5k="
+const TestServerBackendPublicKey = "PHVHyBpounVY8+IJas6HWBTwDeDiZ8xfLFfLOkNUWK4="
+const TestServerBackendPrivateKey = "uDGCOoOb4vk9/9e+uMbfyz+VF2GOBC21Xli3L88GGW48dUfIGmi6dVjz4glqzodYFPAN4OJnzF8sV8s6Q1RYrg=="
+const TestBuyerPublicKey = "zkaPRGcAuThG6poXMJ8di/yKzgZEbqyQ6Ky951reRq4sgCm83lV24g=="
+const TestBuyerPrivateKey = "zkaPRGcAuTiYwqkwWEmWSrsxpcJzErC1mkBz3W0PlWdSynr/uuS4jUbqmhcwnx2L/IrOBkRurJDorL3nWt5GriyAKbzeVXbi"
 
 const (
 	relayBin   = "./relay-debug"

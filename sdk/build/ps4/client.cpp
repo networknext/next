@@ -30,7 +30,7 @@
 
 const char * server_address = "127.0.0.1:40000";
 
-const char * buyer_public_key = "n7u8H8u17JkwfCTkyJ9W1nHzkxjYotCoErwIdpfyAU9uqMgV4SJEjQ==";
+const char * buyer_public_key = "zkaPRGcAuThG6poXMJ8di/yKzgZEbqyQ6Ky951reRq4sgCm83lV24g==";
 
 unsigned int sceLibcHeapExtendedAlloc = 1;
 

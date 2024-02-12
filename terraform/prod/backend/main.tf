@@ -61,7 +61,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "newyork_network_next_terraform"
+    bucket  = "consoles_network_next_terraform"
     prefix  = "production"
   }
 }
@@ -658,7 +658,7 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
-    INITIAL_DELAY=420s
+    INITIAL_DELAY=360s
     MAX_JITTER=2
     MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
@@ -682,6 +682,7 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  initial_delay              = 420
   target_size                = 3
   tier_1                     = true
 

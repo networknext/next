@@ -1806,13 +1806,13 @@ locals {
 
   relays = {
 
-    "amazon.stockholm.1" = { datacenter_name = "amazon.stockholm.1" },
     "amazon.stockholm.2" = { datacenter_name = "amazon.stockholm.2" },
     "amazon.stockholm.3" = { datacenter_name = "amazon.stockholm.3" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
     "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
     "amazon.ohio.2" = { datacenter_name = "amazon.ohio.2" },
+    "amazon.stockholm.1" = { datacenter_name = "amazon.stockholm.1" },
   }
 
 }
