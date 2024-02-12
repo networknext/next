@@ -652,6 +652,34 @@ void test_address()
         next_check( address.data.ipv6[7] == 0x0304 );
         next_check( next_address_is_ipv4_in_ipv6( &address ) );
     }
+
+    {
+        struct next_address_t address;
+        next_check( next_address_parse( &address, "[::ffff:1.2.3.4]:40000" ) == NEXT_OK );
+        next_check( next_address_is_ipv4_in_ipv6( &address ) );
+
+        next_address_convert_ipv6_to_ipv4( &address );
+        next_check( address.type == NEXT_ADDRESS_IPV4 );
+        next_check( address.port == 40000 );
+        next_check( address.data.ipv4[0] == 1 );
+        next_check( address.data.ipv4[1] == 2 );
+        next_check( address.data.ipv4[2] == 3 );
+        next_check( address.data.ipv4[3] == 4 );
+
+        next_address_convert_ipv4_to_ipv6( &address );
+
+        next_check( address.type == NEXT_ADDRESS_IPV6 );
+        next_check( address.port == 40000 );
+        next_check( address.data.ipv6[0] == 0x0000 );
+        next_check( address.data.ipv6[1] == 0x0000 );
+        next_check( address.data.ipv6[2] == 0x0000 );
+        next_check( address.data.ipv6[3] == 0x0000 );
+        next_check( address.data.ipv6[4] == 0x0000 );
+        next_check( address.data.ipv6[5] == 0xFFFF );
+        next_check( address.data.ipv6[6] == 0x0102 );
+        next_check( address.data.ipv6[7] == 0x0304 );
+        next_check( next_address_is_ipv4_in_ipv6( &address ) );
+    }
 #endif // #if NEXT_PLATFORM_HAS_IPV6
 }
 

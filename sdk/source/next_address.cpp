@@ -304,6 +304,24 @@ bool next_address_is_ipv4_in_ipv6( struct next_address_t * address )
     return true;
 }
 
+void next_address_convert_ipv4_to_ipv6( struct next_address_t * address )
+{
+    next_assert( address );
+    const uint8_t a = uint8_t( address->data.ipv4[0] );
+    const uint8_t b = uint8_t( address->data.ipv4[1] );
+    const uint8_t c = uint8_t( address->data.ipv4[2] );
+    const uint8_t d = uint8_t( address->data.ipv4[3] );
+    address->type = NEXT_ADDRESS_IPV6;
+    address->data.ipv6[0] = 0x0000;
+    address->data.ipv6[1] = 0x0000;
+    address->data.ipv6[2] = 0x0000;
+    address->data.ipv6[3] = 0x0000;
+    address->data.ipv6[4] = 0x0000;
+    address->data.ipv6[5] = 0xFFFF;
+    address->data.ipv6[6] = ( uint16_t(a) << 8 ) | uint16_t(b);
+    address->data.ipv6[7] = ( uint16_t(c) << 8 ) | uint16_t(d);
+}
+
 void next_address_convert_ipv6_to_ipv4( struct next_address_t * address )
 {
     // IMPORTANT: this function is *only* for converting ipv4 mapped addresses in ipv6 back to native ipv4
@@ -316,6 +334,6 @@ void next_address_convert_ipv6_to_ipv4( struct next_address_t * address )
     address->type = NEXT_ADDRESS_IPV4;
     address->data.ipv4[0] = a;
     address->data.ipv4[1] = b;
-    address->data.ipv4[2] = c;    
-    address->data.ipv4[3] = d;    
+    address->data.ipv4[2] = c;
+    address->data.ipv4[3] = d;
 }
