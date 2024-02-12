@@ -451,6 +451,11 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
             from->data.ipv6[i] = next_platform_ntohs( ( (uint16_t*) &addr_ipv6->sin6_addr ) [i] );
         }
         from->port = next_platform_ntohs( addr_ipv6->sin6_port );
+
+        if ( socket->ipv6 && next_address_is_ipv4_in_ipv6( from ) )
+        {
+            next_address_convert_ipv6_to_ipv4( from );
+        }
     }
     else if ( sockaddr_from.ss_family == AF_INET )
     {
@@ -461,11 +466,6 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
         from->data.ipv4[2] = (uint8_t) ( ( addr_ipv4->sin_addr.s_addr & 0x00FF0000 ) >> 16 );
         from->data.ipv4[3] = (uint8_t) ( ( addr_ipv4->sin_addr.s_addr & 0xFF000000 ) >> 24 );
         from->port = next_platform_ntohs( addr_ipv4->sin_port );
-
-        if ( socket->ipv6 && next_address_is_ipv4_in_ipv6( from ) )
-        {
-            next_address_convert_ipv6_to_ipv4( from );
-        }
     }
     else
     {
