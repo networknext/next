@@ -1200,8 +1200,9 @@ void test_platform_socket()
         next_platform_socket_destroy( socket );
     }
 
-    // non-blocking socket (ipv6)
 #if NEXT_PLATFORM_HAS_IPV6
+
+    // non-blocking socket (ipv6)
     {
         next_address_t bind_address;
         next_address_t local_address;
@@ -1258,7 +1259,8 @@ void test_platform_socket()
         next_check( next_address_equal( &from, &local_address ) );
         next_platform_socket_destroy( socket );
     }
-#endif
+
+#endif // #if NEXT_PLATFORM_HAS_IPV6
 }
 
 static bool threads_work = false;
