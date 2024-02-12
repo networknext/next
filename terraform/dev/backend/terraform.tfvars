@@ -27,4 +27,4 @@ relay_backend_public_key    = "QvHkCNNjQos2A9s1ufDJilvanYgQXNtB5E/eb6M9PDc="
 
 server_backend_public_key   = "qtXDPQZ4St9XihqsNs6hP8QuSCHpr/63aKIOJehTNSg="
 
-test_server_tag             = "006" # increment this each time you want to deploy the test server
+test_server_tag             = "007" # increment this each time you want to deploy the test server
