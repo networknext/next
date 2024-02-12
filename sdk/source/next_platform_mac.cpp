@@ -194,7 +194,7 @@ uint16_t next_platform_preferred_client_port()
 
 bool next_platform_client_dual_stack()
 {
-    return true;
+    return false;
 }
 
 // ---------------------------------------------------
@@ -248,14 +248,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         return NULL;
     }
 
-    // set dual stack for ipv6 sockets
+    // mac does not provide dual stack ipv4/ipv6 that we can use. the are effectively ipv6 only. mark them as so.
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 0;
+        int yes = 1;
         if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
             next_platform_socket_destroy( socket );
             return NULL;
         }

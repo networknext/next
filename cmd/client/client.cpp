@@ -52,11 +52,6 @@ void generate_packet( uint8_t * packet_data, int & packet_bytes )
 
 int main()
 {
-    if ( getenv( "NEXT_DELAY" ) )
-    {
-        next_platform_sleep( 10.0 );
-    }
-
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_init( NULL, NULL );
