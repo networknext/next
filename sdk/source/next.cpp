@@ -299,8 +299,6 @@ void next_default_config( next_config_t * config )
     config->server_backend_hostname[sizeof(config->server_backend_hostname)-1] = '\0';
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
-    config->high_priority_client_thread = true;
-    config->high_priority_server_thread = true;
 }
 
 const char * next_platform_string( int platform_id )
@@ -551,12 +549,6 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    if ( config_in )
-    {
-        config.high_priority_client_thread = config_in->high_priority_client_thread;
-        config.high_priority_server_thread = config_in->high_priority_server_thread;
-    }
-    
     next_global_config = config;
 
     next_signed_packets[NEXT_UPGRADE_REQUEST_PACKET] = 1;

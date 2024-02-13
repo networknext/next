@@ -38,8 +38,6 @@ struct next_internal_config_t
     int socket_receive_buffer_size;
     bool disable_network_next;
     bool disable_autodetect;
-    bool high_priority_client_thread;
-    bool high_priority_server_thread;
 };
 
 #endif // #ifndef NEXT_H
