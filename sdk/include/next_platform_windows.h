@@ -53,6 +53,7 @@ typedef _W64 unsigned int next_platform_socket_handle_t;
 struct next_platform_socket_t
 {
     void * context;
+    bool ipv6;
     next_platform_socket_handle_t handle;
 };
 

@@ -350,6 +350,8 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     // create socket
 
+    s->ipv6 = address->type == NEXT_ADDRESS_IPV6;
+
     s->handle = socket( ( address->type == NEXT_ADDRESS_IPV6 ) ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 
     if ( s->handle == INVALID_SOCKET )
@@ -367,14 +369,14 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     DWORD dwBytesReturned = 0;
     WSAIoctl( s->handle, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), NULL, 0, &dwBytesReturned, NULL, NULL );
 
-    // on this platform ipv6 sockets are ipv6 only
+    // set ipv6 sockets as dual stack
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int yes = 1;
+        int yes = 0;
         if ( setsockopt( s->handle, IPPROTO_IPV6, IPV6_V6ONLY, (char*)( &yes ), sizeof( yes ) ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to set socket ipv6 only" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "failed to clear socket ipv6 only" );
             next_platform_socket_destroy( s );
             return NULL;
         }
@@ -516,57 +518,69 @@ void next_platform_socket_destroy( next_platform_socket_t * socket )
     next_free( socket->context, socket );
 }
 
-void next_platform_socket_send_packet( next_platform_socket_t * socket, const next_address_t * to, const void * packet_data, int packet_bytes )
+void next_platform_socket_send_packet( next_platform_socket_t * socket, const next_address_t * input_to, const void * packet_data, int packet_bytes )
 {
     next_assert( socket );
-    next_assert( to );
-    next_assert( to->type == NEXT_ADDRESS_IPV6 || to->type == NEXT_ADDRESS_IPV4 );
+    next_assert( input_to );
+    next_assert( input_to->type == NEXT_ADDRESS_IPV6 || input_to->type == NEXT_ADDRESS_IPV4 );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
 
-    if ( to->type == NEXT_ADDRESS_IPV6 )
+    next_address_t to = *input_to;
+
+    if ( socket->ipv6 )
     {
+        // socket is dual stack ipv4 and ipv6
+
+        if ( to.type == NEXT_ADDRESS_IPV4 )
+        {
+            next_address_convert_ipv4_to_ipv6( &to );
+        }
+
         sockaddr_in6 socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
+        memset( &socket_address, 0, sizeof(socket_address) );
         socket_address.sin6_family = AF_INET6;
-        for ( int i = 0; i < 8; ++i )
+        for ( int i = 0; i < 8; i++ )
         {
-            ( (uint16_t*) &socket_address.sin6_addr ) [i] = next_platform_htons( to->data.ipv6[i] );
+            ( (uint16_t*) &socket_address.sin6_addr)[i] = next_platform_htons( to.data.ipv6[i] );
         }
-        socket_address.sin6_port = next_platform_htons( to->port );
-        int result = sendto( socket->handle, (char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in6 ) );
+        socket_address.sin6_port = next_platform_htons( to.port );
+        int result = sendto( socket->handle, (char*)(packet_data), packet_bytes, 0, (sockaddr*)(&socket_address), sizeof(sockaddr_in6) );
         if ( result < 0 )
         {
             char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_string );
-            char error_string[256] = {0};
-            strerror_s( error_string, sizeof( error_string ), errno );
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, error_string );
-        }
-    }
-    else if ( to->type == NEXT_ADDRESS_IPV4 )
-    {
-        sockaddr_in socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
-        socket_address.sin_family = AF_INET;
-        socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        | 
-                                         ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   | 
-                                         ( ( (uint32_t) to->data.ipv4[2] ) << 16 )  | 
-                                         ( ( (uint32_t) to->data.ipv4[3] ) << 24 );
-        socket_address.sin_port = next_platform_htons( to->port );
-        int result = sendto( socket->handle, (const char*)( packet_data ), packet_bytes, 0, (sockaddr*)( &socket_address ), sizeof( sockaddr_in ) );
-        if ( result < 0 )
-        {
-            char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_address_to_string( to, address_string );
-            char error_string[256] = {0};
-            strerror_s( error_string, sizeof( error_string ), errno );
+            next_address_to_string( &to, address_string );
+            char error_string[256] = { 0 };
+            strerror_s( error_string, sizeof(error_string), errno );
             next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, error_string );
         }
     }
     else
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "invalid address type. could not send packet" );
+        if ( to.type == NEXT_ADDRESS_IPV4 )
+        {
+            sockaddr_in socket_address;
+            memset( &socket_address, 0, sizeof(socket_address) );
+            socket_address.sin_family = AF_INET;
+            socket_address.sin_addr.s_addr = (((uint32_t)to.data.ipv4[0])) |
+                (((uint32_t)to.data.ipv4[1]) << 8) |
+                (((uint32_t)to.data.ipv4[2]) << 16) |
+                (((uint32_t)to.data.ipv4[3]) << 24);
+            socket_address.sin_port = next_platform_htons( to.port );
+            int result = sendto( socket->handle, (const char*)(packet_data), packet_bytes, 0, (sockaddr*)(&socket_address), sizeof(sockaddr_in) );
+            if ( result < 0 )
+            {
+                char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_address_to_string( &to, address_string );
+                char error_string[256] = { 0 };
+                strerror_s( error_string, sizeof(error_string), errno );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "sendto (%s) failed: %s", address_string, error_string );
+            }
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "invalid address type. could not send packet" );
+        }
     }
 }
 
@@ -605,6 +619,11 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
             from->data.ipv6[i] = next_platform_ntohs( ( (uint16_t*) &addr_ipv6->sin6_addr ) [i] );
         }
         from->port = next_platform_ntohs( addr_ipv6->sin6_port );
+
+        if (socket->ipv6 && next_address_is_ipv4_in_ipv6( from ) )
+        {
+            next_address_convert_ipv6_to_ipv4( from );
+        }
     }
     else if ( sockaddr_from.ss_family == AF_INET )
     {
