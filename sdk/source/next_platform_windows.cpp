@@ -312,7 +312,7 @@ uint16_t next_platform_preferred_client_port()
 
 bool next_platform_client_dual_stack()
 {
-    return false;
+    return true;
 }
 
 int next_platform_id()

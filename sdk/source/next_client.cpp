@@ -401,7 +401,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     next_client_internal_verify_sentinels( client );
 
-    // IMPORTANT: some platforms (GDK) require that we bind to ::0 and use dual stack sockets
+    // IMPORTANT: for many platforms it's best practice to bind to ipv6 and go dual stack on the client
     if ( next_platform_client_dual_stack() )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "client socket is dual stack ipv4 and ipv6" );
