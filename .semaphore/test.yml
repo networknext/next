@@ -837,7 +837,7 @@ blocks:
       prologue:
         commands:
 
-            - sudo apt-get install -y libsodium-dev google-cloud-sdk-pubsub-emulator redis-server
+            - sudo apt-get install -y libsodium-dev redis-server
 
             - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64
             - sudo mv bigquery-emulator-linux-amd64 /usr/local/bin/bigquery-emulator
