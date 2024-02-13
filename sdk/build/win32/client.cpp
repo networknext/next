@@ -28,6 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char* server_address = "35.232.190.226:30000";
+
+const char* buyer_public_key = "zkaPRGcAuThG6poXMJ8di/yKzgZEbqyQ6Ky951reRq4sgCm83lV24g==";
+
 static volatile int quit = 0;
 
 void interrupt_handler( int signal )
@@ -39,10 +43,6 @@ void client_packet_received( next_client_t * client, void * context, const next_
 {
     (void)client; (void)context; (void)from; (void)packet_data; (void)packet_bytes;
 }
-
-const char * buyer_public_key = "zkaPRGcAuThG6poXMJ8di/yKzgZEbqyQ6Ky951reRq4sgCm83lV24g==";
-
-const char * server_address = "127.0.0.1:40000";
 
 int main()
 {
