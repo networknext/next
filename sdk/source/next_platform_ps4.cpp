@@ -230,14 +230,16 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-bool next_platform_thread_high_priority( next_platform_thread_t * thread )
+void next_platform_client_thread_priority( next_platform_thread_t * thread )
 {
-    // IMPORTANT: If you are developing for PS5 and you wish to control client network thread priority
-    // or affinity, then you can add code here to adjust the affinity and priority for the client thread. 
-    // Receiving packets on thread is necessary to ensure that measurements of RTT that Network Next 
-    // uses for route planning are not quantized to your game's framerate.
+    // IMPORTANT: If you are developing for PS4 you can adjust the affinity and priority for the client thread here.
+    next_assert( thread );
     scePthreadSetprio( thread->handle, SCE_KERNEL_PRIO_FIFO_HIGHEST );
-    return true;
+}
+
+void next_platform_server_thread_priority( next_platform_thread_t * thread )
+{
+    (void) thread;
 }
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )

@@ -540,11 +540,20 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-bool next_platform_thread_high_priority( next_platform_thread_t * thread )
+void next_platform_client_thread_high_priority( next_platform_thread_t * thread )
 {
+    // IMPORTANT: If you have linux clients, you can adjust the priority of the client thread here.
     struct sched_param param;
     param.sched_priority = sched_get_priority_min( SCHED_RR );
-    return pthread_setschedparam( thread->handle, SCHED_RR, &param ) == 0;
+    pthread_setschedparam( thread->handle, SCHED_RR, &param ) == 0;
+}
+
+void next_platform_server_thread_high_priority( next_platform_thread_t * thread )
+{
+    // IMPORTANT: If you have linux servers, you can adjust the priority of the server thread here.
+    struct sched_param param;
+    param.sched_priority = sched_get_priority_min( SCHED_RR );
+    pthread_setschedparam( thread->handle, SCHED_RR, &param ) == 0;
 }
 
 // ---------------------------------------------------

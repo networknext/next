@@ -82,14 +82,18 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-bool next_platform_thread_high_priority( next_platform_thread_t * thread )
+void next_platform_client_thread_priority( next_platform_thread_t * thread )
 {
-    // IMPORTANT: If you are developing on Nintendo Switch, please set thread priority and cpu core mask for the network next socket threads here.
-    // These threads need to wake up and process sockets as they arrive, so the measurements of round trip time are not quantized to your
-    // game's framerate. Due to the way thread scheduling works on the switch, we need to leave it up to you to decide how you want
-    // to prioritize these threads, and which core(s) you want them to run on.
-    (void)thread;
-    return false;
+    // IMPORTANT: If you are developing on Nintendo Switch, please set thread priority and cpu core mask for the network next client thread here.
+    // This thread need to wake up and process sockets as they arrive, so the measurements of round trip time are not quantized to your game's framerate. 
+    // Due to the way thread scheduling works on the switch, and how relative to other platforms it's somewhat underpowered, it's best that we leave it 
+    // up to you to decide how you want to prioritize these threads, and which core(s) you want them to run on.
+    (void) thread;
+}
+
+void next_platform_server_thread_priority( next_platform_thread_t * thread )
+{
+    (void) thread;
 }
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )

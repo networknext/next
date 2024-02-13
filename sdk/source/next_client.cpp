@@ -2385,13 +2385,7 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
         return NULL;
     }
 
-    if ( next_global_config.high_priority_client_thread )
-    {
-        if ( next_platform_thread_high_priority( client->thread ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "client thread set to high priority" );
-        }
-    }
+    next_platform_client_thread_priority( client->thread );
 
     next_bandwidth_limiter_reset( &client->direct_send_bandwidth );
     next_bandwidth_limiter_reset( &client->direct_receive_bandwidth );

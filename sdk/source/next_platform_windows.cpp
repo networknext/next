@@ -165,14 +165,18 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
     next_free( thread->context, thread );
 }
 
-bool next_platform_thread_high_priority( next_platform_thread_t * thread )
+void next_platform_client_thread_priority( next_platform_thread_t * thread )
 {
-    // IMPORTANT: If you are developing for windows you can set the thread priority and affinity here.
-    // Packet receives are performed on dedicated threads to ensure that the measured RTT values
-    // are not quantized to your game frame rate. These threads need to be relatively high priority
-    // to ensure that packets are processed quickly after being received by the network stack.
+    // IMPORTANT: If your client runs on windows, you can set the thread priority and affinity of the client thread here
     next_assert( thread );
-    return SetThreadPriority( thread->handle, THREAD_PRIORITY_TIME_CRITICAL );
+    SetThreadPriority( thread->handle, THREAD_PRIORITY_TIME_CRITICAL );
+}
+
+void next_platform_server_thread_priority( next_platform_thread_t * thread )
+{
+    // IMPORTANT: If you have a server that runs on windows, you can set the priority and affinity of the server thread here
+    next_assert( thread );
+    SetThreadPriority( thread->handle, THREAD_PRIORITY_TIME_CRITICAL );
 }
 
 int next_platform_mutex_create( next_platform_mutex_t * mutex )

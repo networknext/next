@@ -92,7 +92,9 @@ void next_platform_thread_join( next_platform_thread_t * thread );
 
 void next_platform_thread_destroy( next_platform_thread_t * thread );
 
-bool next_platform_thread_high_priority( next_platform_thread_t * thread );
+void next_platform_client_thread_priority( next_platform_thread_t * thread );
+
+void next_platform_server_thread_priority( next_platform_thread_t * thread );
 
 // ----------------------------------------------------------------
 
