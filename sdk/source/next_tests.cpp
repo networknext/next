@@ -4639,8 +4639,7 @@ void next_run_tests()
         RUN_TEST( test_session_response_packet_route_no_near_relays );
         RUN_TEST( test_session_response_packet_continue_no_near_relays );
 #if NEXT_PLATFORM_CAN_RUN_SERVER
-        // todo: get this back up again once it works with dual stack on macos
-        // RUN_TEST( test_passthrough_packets_ipv4 );
+        RUN_TEST( test_passthrough_packets_ipv4 );
 #if NEXT_PLATFORM_HAS_IPV6
         RUN_TEST( test_passthrough_packets_ipv6 );
 #endif // #if NEXT_PLATFORM_HAS_IPV6
