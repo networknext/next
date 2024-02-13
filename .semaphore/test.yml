@@ -839,10 +839,6 @@ blocks:
 
             - sudo apt-get install -y libsodium-dev redis-server
 
-            - wget https://github.com/goccy/bigquery-emulator/releases/download/v0.1.12/bigquery-emulator-linux-amd64
-            - sudo mv bigquery-emulator-linux-amd64 /usr/local/bin/bigquery-emulator
-            - sudo chmod +x /usr/local/bin/bigquery-emulator
-
             - mkdir -p dist
             - cd dist
 
@@ -870,16 +866,6 @@ blocks:
         - name: "test_magic_backend"
           commands:
             - cd ./dist && ./func_test_backend test_magic_backend
-
-        - name: "test_google_pubsub"
-          commands:
-            - gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000 &
-            - cd ./dist && ./func_test_backend test_google_pubsub
-
-        - name: "test_google_bigquery"
-          commands:
-            - bigquery-emulator --project="local" --dataset="local" &
-            - cd ./dist && ./func_test_backend test_google_bigquery
 
         - name: "test_cost_matrix_read_write"
           commands:

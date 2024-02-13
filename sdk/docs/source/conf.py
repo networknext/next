@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'Network Next SDK'
-copyright = '2017 - 2023, Network Next, Inc.'
+copyright = '2017 - 2024, Network Next, Inc.'
 author = 'Network Next Inc.'
 
 # The full version, including alpha/beta/rc tags
