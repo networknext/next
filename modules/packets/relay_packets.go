@@ -123,7 +123,7 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 	}
 
 	if packet.NumSamples < 0 || packet.NumSamples > constants.MaxRelays {
-		return errors.New("invalid num samples")
+		return errors.New(fmt.Sprintf("invalid num samples: %d", packet.NumSamples))
 	}
 
 	for i := 0; i < int(packet.NumSamples); i++ {
