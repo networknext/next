@@ -8,7 +8,7 @@ const (
 	MaxBuyers = 1024
 
 	MaxRelays        = 1000
-	NumRelayCounters = 128
+	NumRelayCounters = 150
 	RelayTimeout     = 10
 	RelayHistorySize = 300
 
