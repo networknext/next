@@ -42,11 +42,7 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
    If this step fails, you may need to work around the default postgres account requiring logging in as the user postgres.
 
-   See https://blog.jcharistech.com/2022/09/07/logging-into-postgresql-without-password-prompt/ for a workaround. Apply the "trust" setting to the 127.0.0.1 and ::1 lines in pg_hba.conf and restart postgresql, then you should be able to run the step above without being prompted for a password.
-
-   Once you have setup the developer user, restart postgres:
-
-   `sudo systemctl restart postgresql`
+   See https://blog.jcharistech.com/2022/09/07/logging-into-postgresql-without-password-prompt/ for a workaround. Apply the "trust" setting to the 127.0.0.1 and ::1 lines in pg_hba.conf then `sudo systemctl restart postgresql` and you should be able to run the step above without being prompted for a password.   
 
 7. Go to the next directory at the command line
 
