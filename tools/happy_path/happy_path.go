@@ -151,7 +151,7 @@ func happy_path(wait bool) int {
 
 	// initialize api
 
-	fmt.Printf("starting api:\n\n")
+	fmt.Printf("\nstarting api:\n\n")
 
 	api_stdout := run("api", "logs/api")
 
