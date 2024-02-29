@@ -168,7 +168,7 @@
 #define RELAY_COUNTER_UNKNOWN_PACKETS                                                          111
 #define RELAY_COUNTER_PONGS_PROCESSED                                                          112
 
-#define NUM_RELAY_COUNTERS                                                                     128
+#define NUM_RELAY_COUNTERS                                                                     150
 
 // -------------------------------------------------------------------------------------
 
