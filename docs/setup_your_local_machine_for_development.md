@@ -24,13 +24,13 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
 	Then do this, with the latest download URL for your platform:
 
-	`wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go*.tar.gz`
+	`wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz && sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go*.tar.gz`
 
 4. Add . and go to your path
 
 	Modify ~/.profile to include:
 
-	`export PATH=$PATH:/usr/local/go/bin:.`
+	`echo "export PATH=$PATH:/usr/local/go/bin:." >> ~/.profile`
 
 	Then source it:
 
@@ -40,7 +40,9 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
    `psql -U postgres -h localhost -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
-   then restart postgres:
+   If this fails, you may need to work around the default postgres account being locked on your linux. See https://serverfault.com/questions/110154/whats-the-default-superuser-username-password-for-postgres-after-a-new-install for some workarounds.
+
+   Once you have setup the developer user, restart postgres:
 
    `sudo systemctl restart postgresql`
 
