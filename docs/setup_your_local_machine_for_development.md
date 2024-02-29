@@ -40,7 +40,7 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
    `psql -U postgres -h localhost -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
-   If this fails, you may need to work around the default postgres account being locked on your linux. See https://serverfault.com/questions/110154/whats-the-default-superuser-username-password-for-postgres-after-a-new-install for some workarounds.
+   If this step fails, you may need to work around the default postgres account requiring logging in as the user postgres. See https://blog.jcharistech.com/2022/09/07/logging-into-postgresql-without-password-prompt/ for a workaround. Apply the "trust" setting to the 127.0.0.1 and ::1 lines in pg_hba.conf in addition to what is recommended and you should be able to make postgres changes without a password on your local machine. Obviously, this configuration is appropriate only for a development machine behind a firewall.
 
    Once you have setup the developer user, restart postgres:
 
