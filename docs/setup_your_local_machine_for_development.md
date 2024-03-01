@@ -30,7 +30,7 @@ Setup depends on whether you are developing on Linux or MacOS. Development on Wi
 
 	Modify ~/.profile to include:
 
-	`echo "export PATH=$PATH:/usr/local/go/bin:." >> ~/.profile`
+	`echo "export PATH=/usr/local/go/bin:$PATH:." >> ~/.profile`
 
 	Then source it:
 
