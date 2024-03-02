@@ -3044,8 +3044,6 @@ static void relay_generate_pittle( uint8_t * output, const uint8_t * from_addres
     const char * packet_length_data = (const char*) &packet_length;
     sum += uint8_t(packet_length_data[0]);
     sum += uint8_t(packet_length_data[1]);
-    sum += uint8_t(packet_length_data[2]);
-    sum += uint8_t(packet_length_data[3]);
 #if RELAY_BIG_ENDIAN
     relay_bswap( sum );
 #endif // #if RELAY_BIG_ENDIAN
