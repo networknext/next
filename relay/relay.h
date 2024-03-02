@@ -1,5 +1,5 @@
 /*
-    Network Next Relay.
+    Network Next Relay (reference)
     Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
@@ -88,7 +88,7 @@
 
 struct relay_address_t
 {
-    union { uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
+    union { uint32_t ip; uint8_t ipv4[4]; uint16_t ipv6[8]; } data;
     uint16_t port;
     uint8_t type;
 };
