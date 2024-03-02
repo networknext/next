@@ -3151,13 +3151,13 @@ bool relay_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, 
 {
     if ( packet_length < 18 )
         return false;
-    uint8_t a[15];
-    uint8_t b[2];
+    uint8_t a[2];
+    uint8_t b[15];
     relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
     relay_generate_pittle( b, from_address, to_address, packet_length );
     if ( memcmp( a, data + 1, 2 ) != 0 )
         return false;
-    if ( memcmp( a, data + 3, 15 ) != 0 )
+    if ( memcmp( b, data + 3, 15 ) != 0 )
         return false;
     return true;
 }
