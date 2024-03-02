@@ -3491,11 +3491,10 @@ int relay_write_client_pong_packet( uint8_t * packet_data, uint64_t ping_sequenc
 
 int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t expire_timestamp, uint8_t internal, const uint8_t * ping_token, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_PING_PACKET );
-    uint8_t * a = p;
-    uint8_t * b = p + 2;
-    p += 15;
+    packet_data[0] = RELAY_PING_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
     relay_write_uint8( &p, internal );
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, expire_timestamp );
@@ -3508,11 +3507,10 @@ int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence
 
 int relay_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_PONG_PACKET );
-    uint8_t * a = p;
-    uint8_t * b = p + 2;
-    p += 15;
+    packet_data[0] = RELAY_PONG_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
     relay_write_uint64( &p, ping_sequence );
     int packet_length = p - packet_data;
     relay_generate_pittle( a, from_address, to_address, packet_length );
