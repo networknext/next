@@ -18,9 +18,9 @@
 #include "curl/curl.h"
 #include <time.h>
 
-#define RELAY_VERSION_LENGTH                                      							    32
+#define RELAY_VERSION_LENGTH                                                                    32
 
-#define RELAY_MTU                                               							  1300
+#define RELAY_MTU                                                                             1300
 
 #define RELAY_HEADER_BYTES                                                                      25
 
@@ -39,8 +39,8 @@
 
 #define RESPONSE_MAX_BYTES 1024 * 1024
 
-#define RELAY_PING_HISTORY_ENTRY_COUNT                           								64
-#define RELAY_PING_TIME                                          							   0.1
+#define RELAY_PING_HISTORY_ENTRY_COUNT                                                          64
+#define RELAY_PING_TIME                                                                        0.1
 #define RELAY_PING_STATS_WINDOW                                                               10.0
 #define RELAY_PING_SAFETY                                                                      1.0
 
@@ -76,7 +76,7 @@
 #define RELAY_SERVER_PING_PACKET                                                                13
 #define RELAY_SERVER_PONG_PACKET                                                                14
 #define RELAY_LOCAL_PING_PACKET                                                                100
-#define RELAY_LOCAL_PONG_PACKET                                   							   101
+#define RELAY_LOCAL_PONG_PACKET                                                                101
 
 #define RELAY_COUNTER_PACKETS_SENT                                                               0
 #define RELAY_COUNTER_PACKETS_RECEIVED                                                           1
@@ -3099,8 +3099,8 @@ bool relay_basic_packet_filter( const uint8_t * data, uint16_t packet_length )
     if ( data[0] < 0x01 || data[0] > 0x0E )
         return false;
 
-	if ( data[2] != ( 1 | ( ( 255 - data[1] ) ^ 113 ) ) )
-		return false;
+    if ( data[2] != ( 1 | ( ( 255 - data[1] ) ^ 113 ) ) )
+        return false;
 
     if ( data[3] < 0x2A || data[3] > 0x2D )
         return false;
@@ -3309,7 +3309,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
 int relay_write_route_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_ROUTE_REQUEST_PACKET );
     uint8_t * a = p; p += 15;
@@ -3323,7 +3323,7 @@ int relay_write_route_request_packet( uint8_t * packet_data, const uint8_t * tok
 
 int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_ROUTE_RESPONSE_PACKET );
     uint8_t * a = p; p += 15;
@@ -3343,7 +3343,7 @@ int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequ
 
 int relay_write_continue_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_CONTINUE_REQUEST_PACKET );
     uint8_t * a = p; p += 15;
@@ -3357,7 +3357,7 @@ int relay_write_continue_request_packet( uint8_t * packet_data, const uint8_t * 
 
 int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_CONTINUE_RESPONSE_PACKET );
     uint8_t * a = p; p += 15;
@@ -3377,7 +3377,7 @@ int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_s
 
 int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     assert( packet_data );
     assert( private_key );
     assert( game_packet_data );
@@ -3403,7 +3403,7 @@ int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_se
 
 int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     assert( packet_data );
     assert( private_key );
     assert( game_packet_data );
@@ -3429,7 +3429,7 @@ int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_se
 
 int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     assert( packet_data );
     assert( private_key );
     uint8_t * p = packet_data;
@@ -3453,7 +3453,7 @@ int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequen
 
 int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     assert( packet_data );
     assert( private_key );
     uint8_t * p = packet_data;
@@ -3476,7 +3476,7 @@ int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequen
 
 int relay_write_client_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-	// todo: header
+    // todo: header
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_CLIENT_PONG_PACKET );
     uint8_t * a = p; p += 15;
@@ -4584,7 +4584,7 @@ struct ping_token_data
 {
     uint8_t ping_key[RELAY_PING_KEY_BYTES];
     uint64_t expire_timestamp;                         
-   	uint32_t source_address;                                                   // big endian
+    uint32_t source_address;                                                   // big endian
     uint32_t dest_address;                                                     // big endian
     uint16_t source_port;                                                      // big endian
     uint16_t dest_port;                                                        // big endian
@@ -5210,7 +5210,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             session->server_to_client_sequence = sequence;
 
             uint8_t prev_address_data[4];
-            memcpy( prev_address_data, &session->prev_address.data.ip, 4);
+            memcpy( prev_address_data, &session->prev_address.data.ip, 4 );
 
             if ( !session->prev_internal )
             {
