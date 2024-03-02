@@ -3099,46 +3099,49 @@ bool relay_basic_packet_filter( const uint8_t * data, uint16_t packet_length )
     if ( data[0] < 0x01 || data[0] > 0x0E )
         return false;
 
-    if ( data[1] < 0x2A || data[1] > 0x2D )
+	if ( data[2] != ( 1 | ( ( 255 - data[1] ) ^ 113 ) ) )
+		return false;
+
+    if ( data[3] < 0x2A || data[3] > 0x2D )
         return false;
 
-    if ( data[2] < 0xC8 || data[2] > 0xE7 )
+    if ( data[4] < 0xC8 || data[4] > 0xE7 )
         return false;
 
-    if ( data[3] < 0x05 || data[3] > 0x44 )
+    if ( data[5] < 0x05 || data[5] > 0x44 )
         return false;
 
-    if ( data[5] < 0x4E || data[5] > 0x51 )
+    if ( data[7] < 0x4E || data[7] > 0x51 )
         return false;
 
-    if ( data[6] < 0x60 || data[6] > 0xDF )
+    if ( data[8] < 0x60 || data[8] > 0xDF )
         return false;
 
-    if ( data[7] < 0x64 || data[7] > 0xE3 )
+    if ( data[9] < 0x64 || data[9] > 0xE3 )
         return false;
 
-    if ( data[8] != 0x07 && data[8] != 0x4F )
+    if ( data[10] != 0x07 && data[10] != 0x4F )
         return false;
 
-    if ( data[9] != 0x25 && data[9] != 0x53 )
+    if ( data[11] != 0x25 && data[11] != 0x53 )
         return false;
 
-    if ( data[10] < 0x7C || data[10] > 0x83 )
+    if ( data[12] < 0x7C || data[12] > 0x83 )
         return false;
 
-    if ( data[11] < 0xAF || data[11] > 0xB6 )
+    if ( data[13] < 0xAF || data[13] > 0xB6 )
         return false;
 
-    if ( data[12] < 0x21 || data[12] > 0x60 )
+    if ( data[14] < 0x21 || data[14] > 0x60 )
         return false;
 
-    if ( data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D )
+    if ( data[15] != 0x61 && data[15] != 0x05 && data[15] != 0x2B && data[15] != 0x0D )
         return false;
 
-    if ( data[14] < 0xD2 || data[14] > 0xF1 )
+    if ( data[16] < 0xD2 || data[16] > 0xF1 )
         return false;
 
-    if ( data[15] < 0x11 || data[15] > 0x90 )
+    if ( data[17] < 0x11 || data[17] > 0x90 )
         return false;
 
     return true;
@@ -5207,7 +5210,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             session->server_to_client_sequence = sequence;
 
             uint8_t prev_address_data[4];
-            mempcpy( prev_address_data, &session->prev_address.data.ip, 4);
+            memcpy( prev_address_data, &session->prev_address.data.ip, 4);
 
             if ( !session->prev_internal )
             {
