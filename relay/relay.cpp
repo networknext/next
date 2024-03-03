@@ -4622,19 +4622,28 @@ struct ping_token_data
 
 bool relay_ping_token_verify( relay_address_t * from, relay_address_t * to, uint64_t expire_timestamp, const uint8_t * ping_token, const uint8_t * ping_key )
 {
-    uint8_t data[256];
+    struct ping_token_data token_data;
 
-    uint8_t * p = data;
+    token_data.source_address = relay_htonl( from->data.ip );
+    token_data.source_port = relay_htons( from->port );
+    token_data.dest_address = relay_htonl( to->data.ip );
+    token_data.dest_port = relay_htons( to->port );
+    token_data.expire_timestamp = expire_timestamp;
 
-    // todo: this needs to be updated to new ping token
+    memcpy( token_data.ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
-    relay_write_uint64( &p, expire_timestamp );
-    relay_write_address( &p, from );
-    relay_write_address( &p, to );
+    printf( "----------------------\n" );
+    for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
+    {
+        printf( "%d: 0x%02x\n", i, ((uint8_t*)&token_data)[i] );
+    }
+    printf( "----------------------\n" );
 
-    const int length = p - data;
+    uint8_t expected[RELAY_PING_TOKEN_BYTES];
 
-    return crypto_auth_verify( ping_token, data, length, ping_key ) == 0;
+    crypto_hash_sha256( expected, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
+
+    return memcmp( ping_token, expected, RELAY_PING_TOKEN_BYTES ) == 0;
 }
 
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_function( void * context )
