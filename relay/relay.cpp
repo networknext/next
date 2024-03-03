@@ -328,12 +328,22 @@ void relay_random_bytes( uint8_t * buffer, int bytes )
 
 uint16_t relay_ntohs( uint16_t in )
 {
-    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
+    return relay::network_to_host( in );
 }
 
 uint16_t relay_htons( uint16_t in )
 {
-    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
+    return relay::host_to_network( in );
+}
+
+uint32_t relay_ntohl( uint32_t in )
+{
+    return relay::network_to_host( in );
+}
+
+uint32_t relay_htonl( uint32_t in )
+{
+    return relay::host_to_network( in );
 }
 
 // -----------------------------------------------------------------------------
