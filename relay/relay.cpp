@@ -328,22 +328,34 @@ void relay_random_bytes( uint8_t * buffer, int bytes )
 
 uint16_t relay_ntohs( uint16_t in )
 {
-    return relay::network_to_host( in );
+    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
 }
 
 uint16_t relay_htons( uint16_t in )
 {
-    return relay::host_to_network( in );
+    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
+}
+
+inline uint64_t bswap( uint64_t value )
+{
+#ifdef __GNUC__
+    return __builtin_bswap64( value );
+#else // #ifdef __GNUC__
+    value = ( value & 0x00000000FFFFFFFF ) << 32 | ( value & 0xFFFFFFFF00000000 ) >> 32;
+    value = ( value & 0x0000FFFF0000FFFF ) << 16 | ( value & 0xFFFF0000FFFF0000 ) >> 16;
+    value = ( value & 0x00FF00FF00FF00FF ) << 8  | ( value & 0xFF00FF00FF00FF00 ) >> 8;
+    return value;
+#endif // #ifdef __GNUC__
 }
 
 uint32_t relay_ntohl( uint32_t in )
 {
-    return relay::network_to_host( in );
+    return bswap( in );
 }
 
 uint32_t relay_htonl( uint32_t in )
 {
-    return relay::host_to_network( in );
+    return bswap( in );
 }
 
 // -----------------------------------------------------------------------------
