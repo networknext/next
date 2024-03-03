@@ -3527,9 +3527,9 @@ int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence
     uint8_t * a = packet_data + 1;
     uint8_t * b = packet_data + 3;
     uint8_t * p = packet_data + 18;
-    relay_write_uint8( &p, internal );
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, expire_timestamp );
+    relay_write_uint8( &p, internal );
     relay_write_bytes( &p, ping_token, RELAY_PING_TOKEN_BYTES );
     int packet_length = p - packet_data;
     relay_generate_pittle( a, from_address, to_address, packet_length );
@@ -4970,7 +4970,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
-            if ( packet_bytes != 1 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
+            if ( packet_bytes != 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES )
             {
 	        	// todo
 	        	printf( "ping packet is wrong size\n" );
@@ -4984,11 +4984,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const uint8_t * q = p;
 
-            uint8_t internal = relay_read_uint8( &q );
-
             uint64_t ping_sequence = relay_read_uint64( &q );
 
             uint64_t expire_timestamp = relay_read_uint64( &q );
+
+            uint8_t internal = relay_read_uint8( &q );
 
             uint64_t current_timestamp = relay_timestamp( relay );
             
