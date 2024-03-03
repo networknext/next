@@ -4815,9 +4815,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 struct ping_token_data token_data;
 
-                token_data.source_address = internal ? relay->relay_internal_address.data.ip : relay->relay_public_address.data.ip;
+                token_data.source_address = relay_htons( internal ? relay->relay_internal_address.data.ip : relay->relay_public_address.data.ip );
                 token_data.source_port = relay_htons( relay->relay_public_address.port );
-                token_data.dest_address = to_address.data.ip;
+                token_data.dest_address = relay_htons( to_address.data.ip );
                 token_data.dest_port = relay_htons( to_address.port );
                 token_data.expire_timestamp = expire_timestamp;
 
