@@ -271,7 +271,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 #if RELAY_DEBUG
 
-    static int relay_log_level = RELAY_LOG_LEVEL_NORMAL;
+    static int relay_log_level = RELAY_LOG_LEVEL_DEBUG;
 
     void relay_printf( int level, const char * format, ... )
     {
