@@ -271,7 +271,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 #if RELAY_DEBUG
 
-    static int relay_log_level = RELAY_LOG_LEVEL_DEBUG;
+    static int relay_log_level = 0;
 
     void relay_printf( int level, const char * format, ... )
     {
@@ -4902,6 +4902,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( !relay_basic_packet_filter( packet_data, packet_bytes ) )
         {
+        	// todo
+        	printf( "basic packet filter dropped packet\n" );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] basic packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET]++;
@@ -4918,6 +4921,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
+        	// todo
+        	printf( "advanced packet filter dropped packet\n" );
+
             relay_printf( RELAY_LOG_LEVEL_NORMAL, "[%s] advanced packet filter dropped packet %d (thread %d)", from_string, packet_id, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
@@ -4932,12 +4938,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( packet_id == RELAY_PING_PACKET )
         {
+        	// todo
+        	printf( "received ping packet\n" );
+
             relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] received relay ping packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 1 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
+	        	// todo
+	        	printf( "ping packet is wrong size\n" );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] relay ping packet has wrong size (%d bytes) (thread %d)", from_string, packet_bytes, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE]++;
@@ -4957,6 +4969,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
+	        	// todo
+	        	printf( "ping expired\n" );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] relay ping expired (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED]++;
@@ -4968,6 +4983,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from, internal ? &relay->relay_internal_address : &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
+	        	// todo
+	        	printf( "ping token did not verify\n" );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] relay ping token did not verify (thread %d)", from_string, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY]++;
@@ -4985,6 +5003,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_public_address_data, from_address_data, packet_bytes ) );
 
+		        	// todo
+		        	printf( "responded with pong (a)\n" );
+
                     relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
 
                     relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
@@ -4997,6 +5018,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 {
                     assert( relay_basic_packet_filter( pong_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( pong_packet, current_magic, relay_internal_address_data, from_address_data, packet_bytes ) );
+
+		        	// todo
+		        	printf( "responded with pong (b)\n" );
 
                     relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] responded with relay pong packet (thread %d)", from_string, relay->thread_index );
 
@@ -5011,12 +5035,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
+        	// todo
+        	printf( "received relay pong packet\n" );
+
             relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] received relay pong packet (thread %d)", from_string, relay->thread_index );
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 )
             {
+	        	// todo
+	        	printf( "wrong size\n" );
+
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] relay pong packet has wrong size (%d bytes) (thread %d)", from_string, packet_bytes, relay->thread_index );
 
                 relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE]++;
