@@ -3054,6 +3054,13 @@ static void relay_generate_pittle( uint8_t * output, const uint8_t * from_addres
 
 static void relay_generate_chonkle( uint8_t * output, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address, uint16_t packet_length )
 {
+    printf( "--------------------------------------------------------------------------------------\n" );
+    printf( "magic is [0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x]\n", magic[0], magic[1], magic[2], magic[3], magic[4], magic[5], magic[6], magic[7] );
+    printf( "from is [0x%02x, 0x%02x, 0x%02x, 0x%02x]\n", from_address[0], from_address[1], from_address[2], from_address[3] );
+    printf( "to is [0x%02x, 0x%02x, 0x%02x, 0x%02x]\n", to_address[0], to_address[1], to_address[2], to_address[3] );
+    printf( "packet length is [0x%02x, 0x%02x]\n", ((uint8_t*)&packet_length)[0], ((uint8_t*)&packet_length)[1] );
+    printf( "--------------------------------------------------------------------------------------\n" );
+
     assert( output );
     assert( magic );
     assert( from_address );
