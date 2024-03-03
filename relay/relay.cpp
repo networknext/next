@@ -4970,7 +4970,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( expire_timestamp < current_timestamp )
             {
 	        	// todo
-	        	printf( "ping expired\n" );
+	        	printf( "ping expired: %" PRId64 " < %" PRId64 "\n", expire_timestamp, current_timestamp );
 
                 relay_printf( RELAY_LOG_LEVEL_SPAM, "[%s] relay ping expired (thread %d)", from_string, relay->thread_index );
 
