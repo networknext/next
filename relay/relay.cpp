@@ -2782,6 +2782,8 @@ int relay_read_encrypted_continue_token( uint8_t ** buffer, relay_continue_token
 
 int relay_write_header( uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
 {
+	// todo: this needs to be updated to the simplified header
+
     assert( private_key );
     assert( buffer );
 
@@ -2837,6 +2839,8 @@ void relay_peek_header( uint64_t * sequence, uint64_t * session_id, uint8_t * se
 
 int relay_verify_header( int packet_type, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
+	// todo: this needs to be updated to new header crypto
+
     (void) buffer_length;
 
     assert( private_key );
@@ -3341,183 +3345,153 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
 int relay_write_route_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_ROUTE_REQUEST_PACKET );
-    uint8_t * a = p; p += 15;
+    packet_data[0] = RELAY_ROUTE_REQUEST_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     relay_write_bytes( &p, token_data, token_bytes );
-    uint8_t * b = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( b, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_ROUTE_RESPONSE_PACKET );
-    uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    packet_data[0] = RELAY_ROUTE_RESPONSE_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     if ( relay_write_header( RELAY_ROUTE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-#if RELAY_DEBUG
-    if ( relay_verify_header( RELAY_ROUTE_RESPONSE_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
-        return 0;
-#endif // #if RELAY_DEBUG
-    uint8_t * c = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( c, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_continue_request_packet( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CONTINUE_REQUEST_PACKET );
-    uint8_t * a = p; p += 15;
+    packet_data[0] = RELAY_CONTINUE_REQUEST_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     relay_write_bytes( &p, token_data, token_bytes );
-    uint8_t * b = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( b, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CONTINUE_RESPONSE_PACKET );
-    uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    packet_data[0] = RELAY_CONTINUE_RESPONSE_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     if ( relay_write_header( RELAY_CONTINUE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-#if RELAY_DEBUG
-    if ( relay_verify_header( RELAY_CONTINUE_RESPONSE_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
-        return 0;
-#endif // #if RELAY_DEBUG 
-    uint8_t * c = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( c, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    assert( packet_data );
-    assert( private_key );
-    assert( game_packet_data );
-    assert( game_packet_bytes >= 0 );
-    assert( game_packet_bytes <= RELAY_MTU );
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CLIENT_TO_SERVER_PACKET );
-    uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    packet_data[0] = RELAY_CLIENT_TO_SERVER_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     if ( relay_write_header( RELAY_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-#if RELAY_DEBUG
-    if ( relay_verify_header( RELAY_CLIENT_TO_SERVER_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
-        return 0;
-#endif // #if RELAY_DEBUG
+
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
-    uint8_t * c = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( c, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    assert( packet_data );
-    assert( private_key );
-    assert( game_packet_data );
-    assert( game_packet_bytes >= 0 );
-    assert( game_packet_bytes <= RELAY_MTU );
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_SERVER_TO_CLIENT_PACKET );
-    uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    packet_data[0] = RELAY_SERVER_TO_CLIENT_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     if ( relay_write_header( RELAY_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-#if RELAY_DEBUG
-    if ( relay_verify_header( RELAY_SERVER_TO_CLIENT_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
-        return 0;
-#endif // #if RELAY_DEBUG
+
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
-    uint8_t * c = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( c, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    assert( packet_data );
-    assert( private_key );
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_SESSION_PING_PACKET );
-    uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    packet_data[0] = RELAY_SESSION_PING_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
+    // todo: what is up with this
     send_sequence |= uint64_t(1) << 62;
     if ( relay_write_header( RELAY_SESSION_PING_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-#if RELAY_DEBUG
-    if ( relay_verify_header( RELAY_SESSION_PING_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
-        return 0;
-#endif // #if RELAY_DEBUG
+
     relay_write_uint64( &p, ping_sequence );
-    uint8_t * c = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( c, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    assert( packet_data );
-    assert( private_key );
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_SESSION_PONG_PACKET );
-    uint8_t * a = p; p += 15;
-    uint8_t * b = p; p += RELAY_HEADER_BYTES;
+    packet_data[0] = RELAY_SESSION_PONG_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     if ( relay_write_header( RELAY_SESSION_PONG_PACKET, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
-#if RELAY_DEBUG
-    if ( relay_verify_header( RELAY_SESSION_PONG_PACKET, private_key, b, RELAY_HEADER_BYTES ) != RELAY_OK )
-        return 0;
-#endif // #if RELAY_DEBUG
+
     relay_write_uint64( &p, ping_sequence );
-    uint8_t * c = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( c, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
 int relay_write_client_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
-    // todo: header
-    uint8_t * p = packet_data;
-    relay_write_uint8( &p, RELAY_CLIENT_PONG_PACKET );
-    uint8_t * a = p; p += 15;
+    packet_data[0] = RELAY_CLIENT_PONG_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, session_id );
-    uint8_t * b = p; p += 2;
+
     int packet_length = p - packet_data;
-    relay_generate_chonkle( a, magic, from_address, to_address, packet_length );
-    relay_generate_pittle( b, from_address, to_address, packet_length );
+    relay_generate_pittle( a, from_address, to_address, packet_length );
+    relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
     return packet_length;
 }
 
@@ -3527,10 +3501,12 @@ int relay_write_relay_ping_packet( uint8_t * packet_data, uint64_t ping_sequence
     uint8_t * a = packet_data + 1;
     uint8_t * b = packet_data + 3;
     uint8_t * p = packet_data + 18;
+
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, expire_timestamp );
     relay_write_uint8( &p, internal );
     relay_write_bytes( &p, ping_token, RELAY_PING_TOKEN_BYTES );
+
     int packet_length = p - packet_data;
     relay_generate_pittle( a, from_address, to_address, packet_length );
     relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
@@ -3543,7 +3519,9 @@ int relay_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence
     uint8_t * a = packet_data + 1;
     uint8_t * b = packet_data + 3;
     uint8_t * p = packet_data + 18;
+
     relay_write_uint64( &p, ping_sequence );
+
     int packet_length = p - packet_data;
     relay_generate_pittle( a, from_address, to_address, packet_length );
     relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
