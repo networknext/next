@@ -4633,7 +4633,7 @@ bool relay_ping_token_verify( relay_address_t * from, relay_address_t * to, uint
     memcpy( token_data.ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
     printf( "----------------------\n" );
-    for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
+    for ( int i = 0; i < (int) sizeof(struct ping_token_data); i++ )
     {
         printf( "%d: 0x%02x\n", i, ((uint8_t*)&token_data)[i] );
     }
