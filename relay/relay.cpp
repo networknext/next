@@ -4624,9 +4624,9 @@ bool relay_ping_token_verify( relay_address_t * from, relay_address_t * to, uint
 {
     struct ping_token_data token_data;
 
-    token_data.source_address = relay_htonl( from->data.ip );
+    token_data.source_address = from->data.ip; //relay_htonl( from->data.ip );
     token_data.source_port = relay_htons( from->port );
-    token_data.dest_address = relay_htonl( to->data.ip );
+    token_data.dest_address = to->data.ip; // relay_htonl( to->data.ip );
     token_data.dest_port = relay_htons( to->port );
     token_data.expire_timestamp = expire_timestamp;
 
