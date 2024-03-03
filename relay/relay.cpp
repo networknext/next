@@ -271,7 +271,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 #if RELAY_DEBUG
 
-    static int relay_log_level = RELAY_LOG_LEVEL_SPAM;
+    static int relay_log_level = RELAY_LOG_LEVEL_NORMAL;
 
     void relay_printf( int level, const char * format, ... )
     {
@@ -4926,7 +4926,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
 
         uint8_t * p = packet_data;
-        p += 16;
+        p += 18;
 
         packet_bytes -= 18;
 
