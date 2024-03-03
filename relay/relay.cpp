@@ -336,15 +336,16 @@ uint16_t relay_htons( uint16_t in )
     return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
 }
 
-inline uint64_t bswap( uint64_t value )
+inline uint64_t bswap( uint32_t value )
 {
 #ifdef __GNUC__
-    return __builtin_bswap64( value );
+    return __builtin_bswap32( value );
 #else // #ifdef __GNUC__
-    value = ( value & 0x00000000FFFFFFFF ) << 32 | ( value & 0xFFFFFFFF00000000 ) >> 32;
-    value = ( value & 0x0000FFFF0000FFFF ) << 16 | ( value & 0xFFFF0000FFFF0000 ) >> 16;
-    value = ( value & 0x00FF00FF00FF00FF ) << 8  | ( value & 0xFF00FF00FF00FF00 ) >> 8;
-    return value;
+    uint32_t output;
+    output  = ( value & 0xFF000000 ) >> 24;
+    output |= ( value & 0x00FF0000 ) >> 8;
+    output |= ( value & 0x0000FF00 ) << 8;
+    output |= ( value & 0x000000FF ) << 24;
 #endif // #ifdef __GNUC__
 }
 
@@ -4624,9 +4625,9 @@ bool relay_ping_token_verify( relay_address_t * from, relay_address_t * to, uint
 {
     struct ping_token_data token_data;
 
-    token_data.source_address = from->data.ip; //relay_htonl( from->data.ip );
+    token_data.source_address = relay_htonl( from->data.ip );
     token_data.source_port = relay_htons( from->port );
-    token_data.dest_address = to->data.ip; // relay_htonl( to->data.ip );
+    token_data.dest_address = relay_htonl( to->data.ip );
     token_data.dest_port = relay_htons( to->port );
     token_data.expire_timestamp = expire_timestamp;
 
