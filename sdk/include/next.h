@@ -51,12 +51,12 @@
 
 #endif // !NEXT_DEVELOPMENT
 
+#define NEXT_MTU                                               1200
+
+#define NEXT_MAX_PACKET_BYTES                                  1384
+
 #define NEXT_OK                                                   0
 #define NEXT_ERROR                                               -1
-
-#define NEXT_MTU                                               1300
-
-#define NEXT_MAX_PACKET_BYTES                                  4096
 
 #define NEXT_LOG_LEVEL_NONE                                       0
 #define NEXT_LOG_LEVEL_ERROR                                      1

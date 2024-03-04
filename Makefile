@@ -45,7 +45,7 @@ build: update-schemas
 	@make -s build-fast -j
 
 .PHONY: build-fast
-build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/relay-release dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
+build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
 
 .PHONY: rebuild
 rebuild: clean update-schemas ## rebuild everything
@@ -99,12 +99,8 @@ dist/test: dist/$(SDKNAME5).so sdk/test.cpp
 
 # Build relay
 
-dist/relay-debug: relay/*
-	@$(CXX) $(CXX_FLAGS) -DRELAY_DEBUG=1 -o dist/relay-debug relay/*.cpp $(LDFLAGS)
-	@echo $@
-
-dist/relay-release: relay/*
-	@$(CXX) $(CXX_FLAGS) -O3 -DNDEBUG -o dist/relay-release relay/*.cpp $(LDFLAGS)
+dist/relay: relay/reference/*
+	@$(CXX) $(CXX_FLAGS) -o dist/relay relay/reference/*.cpp $(LDFLAGS)
 	@echo $@
 
 # Functional tests (sdk)
