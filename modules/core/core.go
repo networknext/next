@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
@@ -11,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 	"sync"
-	"crypto/sha256"
 
 	crypto_rand "crypto/rand"
 	math_rand "math/rand"
@@ -707,16 +707,16 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []u
 // ---------------------------------------------------
 
 type RouteToken struct {
-	ExpireTimestamp uint64
-	SessionId       uint64
-	SessionVersion  uint8
-	KbpsUp          uint32
-	KbpsDown        uint32
-	NextAddress     net.UDPAddr
-	PrevAddress     net.UDPAddr
-	NextInternal    uint8
-	PrevInternal    uint8
-	PrivateKey      [crypto.Box_PrivateKeySize]byte
+	ExpireTimestamp   uint64
+	SessionId         uint64
+	SessionVersion    uint8
+	EnvelopeKbpsUp    uint32
+	EnvelopeKbpsDown  uint32
+	NextAddress       net.UDPAddr
+	PrevAddress       net.UDPAddr
+	NextInternal      uint8
+	PrevInternal      uint8
+	SessionPrivateKey [crypto.Box_PrivateKeySize]byte
 }
 
 type ContinueToken struct {
@@ -727,33 +727,93 @@ type ContinueToken struct {
 
 // -----------------------------------------------------------------------------
 
-func WriteRouteToken(token *RouteToken, buffer []byte) {
-	binary.LittleEndian.PutUint64(buffer[0:], token.ExpireTimestamp)
-	binary.LittleEndian.PutUint64(buffer[8:], token.SessionId)
-	buffer[8+8] = token.SessionVersion
-	binary.LittleEndian.PutUint32(buffer[8+8+1:], token.KbpsUp)
-	binary.LittleEndian.PutUint32(buffer[8+8+1+4:], token.KbpsDown)
-	WriteAddress_IPv4(buffer[8+8+1+4+4:], &token.NextAddress)
-	WriteAddress_IPv4(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES:], &token.PrevAddress)
-	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2] = token.NextInternal
-	buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+1] = token.PrevInternal
-	copy(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+2:], token.PrivateKey[:])
+func WriteRouteToken(data *RouteToken, buffer []byte) {
+
+	index := 0
+
+	copy(buffer[index:], data.SessionPrivateKey[:])
+	index += 32
+
+	binary.LittleEndian.PutUint64(buffer[index:], data.ExpireTimestamp)
+	index += 8
+
+	binary.LittleEndian.PutUint64(buffer[index:], data.SessionId)
+	index += 8
+
+	binary.LittleEndian.PutUint32(buffer[index:], data.EnvelopeKbpsUp)
+	index += 4
+
+	binary.LittleEndian.PutUint32(buffer[index:], data.EnvelopeKbpsDown)
+	index += 4
+
+	copy(buffer[index:], GetAddressData(&data.NextAddress))
+	index += 4
+
+	copy(buffer[index:], GetAddressData(&data.PrevAddress))
+	index += 4
+
+	binary.LittleEndian.PutUint16(buffer[index:], uint16(data.NextAddress.Port))
+	index += 2
+
+	binary.LittleEndian.PutUint16(buffer[index:], uint16(data.PrevAddress.Port))
+	index += 2
+
+	buffer[index] = data.SessionVersion
+	index += 1
+
+	buffer[index] = data.NextInternal
+	index += 1
+
+	buffer[index] = data.PrevInternal
+	index += 1
 }
 
 func ReadRouteToken(token *RouteToken, buffer []byte) error {
 	if len(buffer) < constants.NEXT_ROUTE_TOKEN_BYTES {
 		return fmt.Errorf("buffer too small to read route token")
 	}
-	token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
-	token.SessionId = binary.LittleEndian.Uint64(buffer[8:])
-	token.SessionVersion = buffer[8+8]
-	token.KbpsUp = binary.LittleEndian.Uint32(buffer[8+8+1:])
-	token.KbpsDown = binary.LittleEndian.Uint32(buffer[8+8+1+4:])
-	token.NextAddress = ReadAddress_IPv4(buffer[8+8+1+4+4:])
-	token.PrevAddress = ReadAddress_IPv4(buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES:])
-	token.NextInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2]
-	token.PrevInternal = buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+1]
-	copy(token.PrivateKey[:], buffer[8+8+1+4+4+constants.NEXT_ADDRESS_IPV4_BYTES*2+2:])
+
+	index := 0
+
+	copy(token.SessionPrivateKey[:], buffer[index:])
+	index += 32
+
+	token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[index:])
+	index += 8
+
+	token.SessionId = binary.LittleEndian.Uint64(buffer[index:])
+	index += 8
+
+	token.EnvelopeKbpsUp = binary.LittleEndian.Uint32(buffer[index:])
+	index += 4
+
+	token.EnvelopeKbpsDown = binary.LittleEndian.Uint32(buffer[index:])
+	index += 4
+
+	nextAddress := binary.LittleEndian.Uint32(buffer[index:])
+	index += 4
+
+	prevAddress := binary.LittleEndian.Uint32(buffer[index:])
+	index += 4
+
+	nextPort := binary.LittleEndian.Uint16(buffer[index:])
+	index += 2
+
+	prevPort := binary.LittleEndian.Uint16(buffer[index:])
+	index += 2
+
+	token.SessionVersion = buffer[index]
+	index += 1
+
+	token.NextInternal = buffer[index]
+	index += 1
+
+	token.PrevInternal = buffer[index]
+	index += 1
+
+	token.NextAddress = net.UDPAddr{IP: net.IPv4(uint8(nextAddress&0xFF), uint8((nextAddress>>8)&0xFF), uint8((nextAddress>>16)&0xFF), uint8((nextAddress>>24)&0xFF)), Port: int(nextPort)}
+	token.PrevAddress = net.UDPAddr{IP: net.IPv4(uint8(prevAddress&0xFF), uint8((prevAddress>>8)&0xFF), uint8((prevAddress>>16)&0xFF), uint8((prevAddress>>24)&0xFF)), Port: int(prevPort)}
+
 	return nil
 }
 
@@ -783,8 +843,8 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		token.ExpireTimestamp = expireTimestamp
 		token.SessionId = sessionId
 		token.SessionVersion = sessionVersion
-		token.KbpsUp = kbpsUp
-		token.KbpsDown = kbpsDown
+		token.EnvelopeKbpsUp = kbpsUp
+		token.EnvelopeKbpsDown = kbpsDown
 		if i != 0 {
 			if hasInternalAddress[i] && hasInternalAddress[i-1] && sellers[i] == sellers[i-1] && internalGroups[i] == internalGroups[i-1] {
 				token.PrevAddress = internalAddresses[i-1]
@@ -805,7 +865,7 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 		} else {
 			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
-		copy(token.PrivateKey[:], privateKey[:])
+		copy(token.SessionPrivateKey[:], privateKey[:])
 		WriteEncryptedRouteToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
 	}
 }
@@ -1157,7 +1217,7 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			}
 		}
 
-		if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId) * 2.0 / 3.0 {
+		if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId)*2.0/3.0 {
 			for i := range sourceRelayJitter {
 				sourceRelayJitter[i] = 0.0
 			}
@@ -1175,7 +1235,7 @@ func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, di
 			}
 		}
 
-		if directHasHighPacketLoss && numRelaysWithHighPacketLoss > len(sourceRelayId) * 2.0 / 3.0 {
+		if directHasHighPacketLoss && numRelaysWithHighPacketLoss > len(sourceRelayId)*2.0/3.0 {
 			for i := range sourceRelayPacketLoss {
 				sourceRelayPacketLoss[i] = 0.0
 			}
@@ -1493,7 +1553,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 		if debug != nil {
 			*debug += "forcing network next\n"
 		}
-	
+
 		routeState.ForcedNext = true
 		maxCost = math.MaxInt32
 
@@ -1560,7 +1620,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 			routeState.PLSustainedCounter = 0
 		}
 
-		if (directPacketLoss > routeShader.AcceptablePacketLossInstant) {
+		if directPacketLoss > routeShader.AcceptablePacketLossInstant {
 			if debug != nil {
 				*debug += fmt.Sprintf("packet loss is > %.2f%%. try to reduce it\n", routeShader.AcceptablePacketLossInstant)
 			}
@@ -1887,9 +1947,9 @@ func BasicPacketFilter(data []byte, packetLength int) bool {
 		return false
 	}
 
-    if data[2] != ( 1 | ( ( 255 - data[1] ) ^ 113 ) ) {
-    	return false
-    }
+	if data[2] != (1 | ((255 - data[1]) ^ 113)) {
+		return false
+	}
 
 	if data[3] < 0x2A || data[3] > 0x2D {
 		return false
@@ -1967,7 +2027,7 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, toAddre
 	return true
 }
 
-func GetAddressData(address *net.UDPAddr, addressBuffer []byte) []byte {
+func GetAddressData(address *net.UDPAddr) []byte {
 	return address.IP.To4()
 }
 
@@ -1976,15 +2036,21 @@ func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr
 	from.Port = 0
 	for i := range relayPublicAddresses {
 		to := relayPublicAddresses[i]
-		data := make([]byte, 32 + 20)
+		data := make([]byte, 32+20)
 		index := 0
-		copy(data[index:], key);                                           index += 32
-		binary.LittleEndian.PutUint64(data[index:], expireTimestamp);      index += 8
-		copy(data[index:], from.IP.To4());                                 index += 4
-		copy(data[index:], to.IP.To4());                                   index += 4
-		binary.BigEndian.PutUint16(data[index:], uint16(from.Port));       index += 2
-		binary.BigEndian.PutUint16(data[index:], uint16(to.Port));         index += 2
-		hash := sha256.Sum256(data[:index]);
+		copy(data[index:], key)
+		index += 32
+		binary.LittleEndian.PutUint64(data[index:], expireTimestamp)
+		index += 8
+		copy(data[index:], from.IP.To4())
+		index += 4
+		copy(data[index:], to.IP.To4())
+		index += 4
+		binary.BigEndian.PutUint16(data[index:], uint16(from.Port))
+		index += 2
+		binary.BigEndian.PutUint16(data[index:], uint16(to.Port))
+		index += 2
+		hash := sha256.Sum256(data[:index])
 		copy(pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes], hash[:])
 	}
 }

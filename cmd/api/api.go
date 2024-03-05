@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
@@ -1046,12 +1046,12 @@ func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bo
 	output.Debug = input.Debug
 
 	// IMPORTANT: bring back the public key so that it starts with the 8 byte buyer id
-	// this way the buyer public key matches exactly the original generated public key 
+	// this way the buyer public key matches exactly the original generated public key
 	publicKey := make([]byte, 8)
 	binary.LittleEndian.PutUint64(publicKey, input.Id)
 	publicKey = append(publicKey, input.PublicKey...)
 	output.PublicKey = publicKey
-	
+
 	if enableRedisTimeSeries {
 		buyerCountersWatcher.Lock()
 		sessionUpdates := buyerCountersWatcher.GetFloatValue(fmt.Sprintf("session_update_%016x", input.Id))

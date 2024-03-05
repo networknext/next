@@ -1,7 +1,9 @@
 package core_test
 
 import (
+	"bytes"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
@@ -11,8 +13,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-	"bytes"
-	"crypto/sha256"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1022,13 +1022,13 @@ func TestRouteToken(t *testing.T) {
 	routeToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
 	routeToken.SessionId = 0x123131231313131
 	routeToken.SessionVersion = 100
-	routeToken.KbpsUp = 256
-	routeToken.KbpsDown = 512
+	routeToken.EnvelopeKbpsUp = 256
+	routeToken.EnvelopeKbpsDown = 512
 	routeToken.NextAddress = core.ParseAddress("127.0.0.1:40000")
 	routeToken.PrevAddress = core.ParseAddress("127.0.0.1:50000")
 	routeToken.NextInternal = 1
 	routeToken.PrevInternal = 1
-	core.RandomBytes(routeToken.PrivateKey[:])
+	core.RandomBytes(routeToken.SessionPrivateKey[:])
 
 	// write the token to a buffer and read it back in
 
@@ -1116,8 +1116,8 @@ func TestRouteTokens_PublicAddresses(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
-		assert.Equal(t, kbpsUp, routeToken.KbpsUp)
-		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
+		assert.Equal(t, kbpsUp, routeToken.EnvelopeKbpsUp)
+		assert.Equal(t, kbpsDown, routeToken.EnvelopeKbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
 		if i != 0 {
 			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
@@ -1184,8 +1184,8 @@ func TestRouteTokens_InternalAddresses(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
-		assert.Equal(t, kbpsUp, routeToken.KbpsUp)
-		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
+		assert.Equal(t, kbpsUp, routeToken.EnvelopeKbpsUp)
+		assert.Equal(t, kbpsDown, routeToken.EnvelopeKbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
 		if i == 2 {
 			assert.Equal(t, routeToken.PrevInternal, uint8(0))
@@ -1271,8 +1271,8 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
-		assert.Equal(t, kbpsUp, routeToken.KbpsUp)
-		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
+		assert.Equal(t, kbpsUp, routeToken.EnvelopeKbpsUp)
+		assert.Equal(t, kbpsDown, routeToken.EnvelopeKbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
 		if i != 0 {
 			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
@@ -1342,8 +1342,8 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
-		assert.Equal(t, kbpsUp, routeToken.KbpsUp)
-		assert.Equal(t, kbpsDown, routeToken.KbpsDown)
+		assert.Equal(t, kbpsUp, routeToken.EnvelopeKbpsUp)
+		assert.Equal(t, kbpsDown, routeToken.EnvelopeKbpsDown)
 		assert.Equal(t, expireTimestamp, routeToken.ExpireTimestamp)
 		if i != 0 {
 			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
@@ -5100,15 +5100,21 @@ func TestPingTokenSignatures(t *testing.T) {
 	from.Port = 0
 	for i := 0; i < constants.MaxNearRelays; i++ {
 		to := relayPublicAddresses[i]
-		data := make([]byte, 32 + 20)
+		data := make([]byte, 32+20)
 		index := 0
-		copy(data[index:], key);                                           index += 32
-		binary.LittleEndian.PutUint64(data[index:], expireTimestamp);      index += 8
-		copy(data[index:], from.IP.To4());                                 index += 4
-		copy(data[index:], to.IP.To4());                                   index += 4
-		binary.BigEndian.PutUint16(data[index:], uint16(from.Port));       index += 2
-		binary.BigEndian.PutUint16(data[index:], uint16(to.Port));         index += 2
-		hash := sha256.Sum256(data[:index]);
+		copy(data[index:], key)
+		index += 32
+		binary.LittleEndian.PutUint64(data[index:], expireTimestamp)
+		index += 8
+		copy(data[index:], from.IP.To4())
+		index += 4
+		copy(data[index:], to.IP.To4())
+		index += 4
+		binary.BigEndian.PutUint16(data[index:], uint16(from.Port))
+		index += 2
+		binary.BigEndian.PutUint16(data[index:], uint16(to.Port))
+		index += 2
+		hash := sha256.Sum256(data[:index])
 		assert.True(t, bytes.Equal(pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes], hash[:]))
 	}
 }

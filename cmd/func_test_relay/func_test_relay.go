@@ -31,6 +31,8 @@ import (
 	"github.com/networknext/next/modules/crypto"
 )
 
+// todo: packet type numbers need to be updated in here, ideally made constants
+
 func Base64String(value string) []byte {
 	data, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
@@ -839,10 +841,8 @@ func test_unknown_packets() {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -905,10 +905,8 @@ func test_near_ping_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 20 // NEAR_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -969,10 +967,8 @@ func test_near_ping_packet_expired() {
 			packet := make([]byte, 18+8+8+8+32)
 			packet[0] = 20 // NEAR_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1035,10 +1031,8 @@ func test_near_ping_packet_did_not_verify() {
 			packet[0] = 20 // NEAR_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[18+8+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1131,10 +1125,8 @@ func test_near_ping_packet_responded_with_pong() {
 			binary.LittleEndian.PutUint64(packet[18+8+8:], expireTimestamp)
 			copy(packet[18+8+8+8:18+8+8+8+32], pingToken)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1204,10 +1196,8 @@ func test_relay_pong_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 76 // RELAY_PONG_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1269,10 +1259,8 @@ func test_relay_ping_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 75 // RELAY_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1333,10 +1321,8 @@ func test_relay_ping_packet_expired() {
 			packet := make([]byte, 18+1+8+8+32)
 			packet[0] = 75 // RELAY_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1399,10 +1385,8 @@ func test_relay_ping_packet_did_not_verify() {
 			packet[0] = 75 // RELAY_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[18+1+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1466,10 +1450,8 @@ func test_route_request_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1531,10 +1513,8 @@ func test_route_request_packet_could_not_read_token() {
 			common.RandomBytes(packet[:])
 			packet[0] = 9 // ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1603,10 +1583,8 @@ func test_route_request_packet_token_expired() {
 			token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 			core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1692,10 +1670,8 @@ func test_route_request_packet_forward_to_next_hop_public_address() {
 			token.PrevAddress = clientAddress
 			core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1788,10 +1764,8 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 			token.PrevInternal = 1
 			core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1860,10 +1834,8 @@ func test_route_response_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1924,10 +1896,8 @@ func test_route_response_packet_could_not_find_session() {
 			packet := make([]byte, 18+33)
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -1996,10 +1966,8 @@ func test_route_response_packet_already_received() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2013,10 +1981,8 @@ func test_route_response_packet_already_received() {
 			packet := make([]byte, 18+33)
 			packet[0] = 10 // ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2088,10 +2054,8 @@ func test_route_response_packet_header_did_not_verify() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2106,10 +2070,8 @@ func test_route_response_packet_header_did_not_verify() {
 		packet[0] = 10 // ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2184,13 +2146,11 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	copy(token.PrivateKey[:], sessionKey)
+	copy(token.SessionPrivateKey[:], sessionKey)
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2238,10 +2198,8 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 		}
 
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 
 		packetLength := len(packet)
 
@@ -2322,13 +2280,11 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	token.PrevAddress = clientAddress
 	token.NextInternal = 1
 	token.PrevInternal = 1
-	copy(token.PrivateKey[:], sessionKey)
+	copy(token.SessionPrivateKey[:], sessionKey)
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2376,10 +2332,8 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 		}
 
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 
 		packetLength := len(packet)
 
@@ -2450,10 +2404,8 @@ func test_continue_request_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // CONTINUE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2515,10 +2467,8 @@ func test_continue_request_packet_could_not_read_token() {
 			common.RandomBytes(packet[:])
 			packet[0] = 15 // ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2585,10 +2535,8 @@ func test_continue_request_packet_token_expired() {
 			token := core.ContinueToken{}
 			core.WriteEncryptedContinueToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2656,10 +2604,8 @@ func test_continue_request_packet_could_not_find_session() {
 			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 			core.WriteEncryptedContinueToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2729,10 +2675,8 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2766,10 +2710,8 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 			core.WriteEncryptedContinueToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2847,10 +2789,8 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 		token.PrevInternal = 1
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2884,10 +2824,8 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 			token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 			core.WriteEncryptedContinueToken(&token, packet[18:], privateKey, publicKey)
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -2957,10 +2895,8 @@ func test_continue_response_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3021,10 +2957,8 @@ func test_continue_response_packet_could_not_find_session() {
 			packet := make([]byte, 18+33)
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3093,10 +3027,8 @@ func test_continue_response_packet_already_received() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3110,10 +3042,8 @@ func test_continue_response_packet_already_received() {
 			packet := make([]byte, 18+33)
 			packet[0] = 16 // CONTINUE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3185,10 +3115,8 @@ func test_continue_response_packet_header_did_not_verify() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3203,10 +3131,8 @@ func test_continue_response_packet_header_did_not_verify() {
 		packet[0] = 16 // ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3281,13 +3207,11 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	copy(token.PrivateKey[:], sessionKey)
+	copy(token.SessionPrivateKey[:], sessionKey)
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3335,10 +3259,8 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 		}
 
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 
 		packetLength := len(packet)
 
@@ -3419,13 +3341,11 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	token.PrevAddress = clientAddress
 	token.PrevInternal = 1
 	token.NextInternal = 1
-	copy(token.PrivateKey[:], sessionKey)
+	copy(token.SessionPrivateKey[:], sessionKey)
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3473,10 +3393,8 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 		}
 
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 
 		packetLength := len(packet)
 
@@ -3547,10 +3465,8 @@ func test_client_to_server_packet_too_small() {
 			common.RandomBytes(packet[:])
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3612,10 +3528,8 @@ func test_client_to_server_packet_too_big() {
 			common.RandomBytes(packet[:])
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3676,10 +3590,8 @@ func test_client_to_server_packet_could_not_find_session() {
 			packet := make([]byte, 18+33+256)
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3748,10 +3660,8 @@ func test_client_to_server_packet_already_received() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3765,10 +3675,8 @@ func test_client_to_server_packet_already_received() {
 			packet := make([]byte, 18+33+256)
 			packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3840,10 +3748,8 @@ func test_client_to_server_packet_header_did_not_verify() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3858,10 +3764,8 @@ func test_client_to_server_packet_header_did_not_verify() {
 		packet[0] = 11 // CLIENT_TO_SERVER_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -3937,13 +3841,11 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
 		token.PrevAddress = clientAddress
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4008,10 +3910,8 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -4094,13 +3994,11 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4165,10 +4063,8 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -4240,10 +4136,8 @@ func test_server_to_client_packet_too_small() {
 			common.RandomBytes(packet[:])
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4305,10 +4199,8 @@ func test_server_to_client_packet_too_big() {
 			common.RandomBytes(packet[:])
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4369,10 +4261,8 @@ func test_server_to_client_packet_could_not_find_session() {
 			packet := make([]byte, 18+33+256)
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4441,10 +4331,8 @@ func test_server_to_client_packet_already_received() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4458,10 +4346,8 @@ func test_server_to_client_packet_already_received() {
 			packet := make([]byte, 18+33+256)
 			packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4533,10 +4419,8 @@ func test_server_to_client_packet_header_did_not_verify() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4551,10 +4435,8 @@ func test_server_to_client_packet_header_did_not_verify() {
 		packet[0] = 12 // SERVER_TO_CLIENT_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4630,13 +4512,11 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
 		token.PrevAddress = clientAddress
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4701,10 +4581,8 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -4787,13 +4665,11 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4858,10 +4734,8 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -4933,10 +4807,8 @@ func test_session_ping_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 13 // SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -4997,10 +4869,8 @@ func test_session_ping_packet_could_not_find_session() {
 			packet := make([]byte, 18+33+8)
 			packet[0] = 13 // SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5069,10 +4939,8 @@ func test_session_ping_packet_already_received() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5086,10 +4954,8 @@ func test_session_ping_packet_already_received() {
 			packet := make([]byte, 18+33+8)
 			packet[0] = 13 // SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5161,10 +5027,8 @@ func test_session_ping_packet_header_did_not_verify() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5179,10 +5043,8 @@ func test_session_ping_packet_header_did_not_verify() {
 		packet[0] = 13 // SESSION_PING_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5258,13 +5120,11 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
 		token.PrevAddress = clientAddress
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5329,10 +5189,8 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -5415,13 +5273,11 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5486,10 +5342,8 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -5561,10 +5415,8 @@ func test_session_pong_packet_wrong_size() {
 			common.RandomBytes(packet[:])
 			packet[0] = 14 // SESSION_PONG_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5625,10 +5477,8 @@ func test_session_pong_packet_could_not_find_session() {
 			packet := make([]byte, 18+33+8)
 			packet[0] = 14 // SESSION_PONG_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5697,10 +5547,8 @@ func test_session_pong_packet_already_received() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5714,10 +5562,8 @@ func test_session_pong_packet_already_received() {
 			packet := make([]byte, 18+33+8)
 			packet[0] = 14 // SESSION_PONG_PACKET
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5789,10 +5635,8 @@ func test_session_pong_packet_header_did_not_verify() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5807,10 +5651,8 @@ func test_session_pong_packet_header_did_not_verify() {
 		packet[0] = 14 // SESSION_PONG_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5886,13 +5728,11 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
 		token.PrevAddress = clientAddress
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -5957,10 +5797,8 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -6043,13 +5881,11 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 		token.PrevAddress = clientAddress
 		token.NextInternal = 1
 		token.PrevInternal = 1
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6114,10 +5950,8 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -6200,13 +6034,11 @@ func test_session_destroy() {
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 10
 		token.NextAddress = clientAddress
 		token.PrevAddress = clientAddress
-		copy(token.PrivateKey[:], sessionKey)
+		copy(token.SessionPrivateKey[:], sessionKey)
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6282,10 +6114,8 @@ func test_session_expired_route_response_packet() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6339,10 +6169,8 @@ func test_session_expired_route_response_packet() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 
 			packetLength := len(packet)
 
@@ -6425,10 +6253,8 @@ func test_session_expired_continue_response_packet() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6482,10 +6308,8 @@ func test_session_expired_continue_response_packet() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 
 			packetLength := len(packet)
 
@@ -6568,10 +6392,8 @@ func test_session_expired_client_to_server_packet() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6625,10 +6447,8 @@ func test_session_expired_client_to_server_packet() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 
 			packetLength := len(packet)
 
@@ -6711,10 +6531,8 @@ func test_session_expired_server_to_client_packet() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6768,10 +6586,8 @@ func test_session_expired_server_to_client_packet() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 
 			packetLength := len(packet)
 
@@ -6854,10 +6670,8 @@ func test_session_expired_session_ping_packet() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -6911,10 +6725,8 @@ func test_session_expired_session_ping_packet() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 
 			packetLength := len(packet)
 
@@ -6997,10 +6809,8 @@ func test_session_expired_session_pong_packet() {
 		token.PrevAddress = clientAddress
 		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 		var magic [constants.MagicBytes]byte
-		var fromAddressBuffer [32]byte
-		var toAddressBuffer [32]byte
-		fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-		toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+		fromAddress := core.GetAddressData(&clientAddress)
+		toAddress := core.GetAddressData(&serverAddress)
 		packetLength := len(packet)
 		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -7054,10 +6864,8 @@ func test_session_expired_session_pong_packet() {
 			}
 
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
 
 			packetLength := len(packet)
 
@@ -7134,14 +6942,12 @@ func test_relay_backend_stats() {
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	token.KbpsUp = 512
-	token.KbpsDown = 1024
+	token.EnvelopeKbpsUp = 512
+	token.EnvelopeKbpsDown = 1024
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -7221,10 +7027,8 @@ func test_relay_backend_counters() {
 	token.PrevAddress = clientAddress
 	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 	var magic [constants.MagicBytes]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-	fromAddress := core.GetAddressData(&clientAddress, fromAddressBuffer[:])
-	toAddress := core.GetAddressData(&serverAddress, toAddressBuffer[:])
+	fromAddress := core.GetAddressData(&clientAddress)
+	toAddress := core.GetAddressData(&serverAddress)
 	packetLength := len(packet)
 	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)

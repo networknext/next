@@ -182,10 +182,8 @@ func soak_test_relay(run_forever bool) {
 			packet := make([]byte, common.RandomInt(18, 6000))
 			common.RandomBytes(packet[:])
 			var magic [constants.MagicBytes]byte
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-			fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-			toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+			fromAddress := core.GetAddressData(&clientAddress[i])
+			toAddress := core.GetAddressData(&relayAddress)
 			packetLength := len(packet)
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -208,13 +206,11 @@ func soak_test_relay(run_forever bool) {
 				token.NextAddress = clientAddress[i]
 				token.PrevAddress = clientAddress[i]
 				core.RandomBytes(sessionKey[i][:])
-				copy(token.PrivateKey[:], sessionKey[i][:])
+				copy(token.SessionPrivateKey[:], sessionKey[i][:])
 				core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 				packetLength := len(packet)
 				core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 				core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -263,10 +259,8 @@ func soak_test_relay(run_forever bool) {
 				}
 
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 
 				packetLength := len(packet)
 
@@ -294,10 +288,8 @@ func soak_test_relay(run_forever bool) {
 				token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 				core.WriteEncryptedContinueToken(&token, packet[16:], privateKey, publicKey)
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 				packetLength := len(packet)
 				core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
 				core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
@@ -346,10 +338,8 @@ func soak_test_relay(run_forever bool) {
 				}
 
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 
 				packetLength := len(packet)
 
@@ -404,10 +394,8 @@ func soak_test_relay(run_forever bool) {
 				}
 
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 
 				packetLength := len(packet)
 
@@ -462,10 +450,8 @@ func soak_test_relay(run_forever bool) {
 				}
 
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 
 				packetLength := len(packet)
 
@@ -520,10 +506,8 @@ func soak_test_relay(run_forever bool) {
 				}
 
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 
 				packetLength := len(packet)
 
@@ -578,10 +562,8 @@ func soak_test_relay(run_forever bool) {
 				}
 
 				var magic [constants.MagicBytes]byte
-				var fromAddressBuffer [32]byte
-				var toAddressBuffer [32]byte
-				fromAddress := core.GetAddressData(&clientAddress[i], fromAddressBuffer[:])
-				toAddress := core.GetAddressData(&relayAddress, toAddressBuffer[:])
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
 
 				packetLength := len(packet)
 

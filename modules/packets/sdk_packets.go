@@ -80,11 +80,9 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 	}
 
 	var magic [8]byte
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
 
-	fromAddressData := core.GetAddressData(from, fromAddressBuffer[:])
-	toAddressData := core.GetAddressData(to, toAddressBuffer[:])
+	fromAddressData := core.GetAddressData(from)
+	toAddressData := core.GetAddressData(to)
 
 	core.GeneratePittle(packetData[1:3], fromAddressData, toAddressData, packetBytes)
 
@@ -399,15 +397,15 @@ func GenerateRandomSessionData() SDK_SessionData {
 // ------------------------------------------------------------
 
 type SDK_SessionUpdateResponsePacket struct {
-	SessionId                uint64
-	SliceNumber              uint32
-	SessionDataBytes         int32
-	SessionData              [SDK_MaxSessionDataSize]byte
-	SessionDataSignature     [SDK_SignatureBytes]byte
-	RouteType                int32
-	NumTokens                int32
-	Tokens                   []byte
-	Multipath                bool
+	SessionId            uint64
+	SliceNumber          uint32
+	SessionDataBytes     int32
+	SessionData          [SDK_MaxSessionDataSize]byte
+	SessionDataSignature [SDK_SignatureBytes]byte
+	RouteType            int32
+	NumTokens            int32
+	Tokens               []byte
+	Multipath            bool
 }
 
 func (packet *SDK_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {

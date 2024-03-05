@@ -210,7 +210,7 @@ func UpdateAcceleratedPercent(service *common.Service) {
 			message.Timestamp = uint64(time.Now().UnixNano() / 1000000)
 			message.Keys = keys
 			message.Values = values
-			timeSeriesPublisher.MessageChannel <- &message			
+			timeSeriesPublisher.MessageChannel <- &message
 		})
 	}()
 }

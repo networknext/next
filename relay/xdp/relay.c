@@ -1,5 +1,5 @@
 /*
-	Network Next XDP Relay (userspace)
+    Network Next XDP Relay (userspace)
 */
 
 #include "relay.h"
@@ -65,7 +65,7 @@ int main( int argc, char *argv[] )
 
     relay_platform_init();
 
-	printf( "[network next relay]\n" );
+    printf( "[network next relay]\n" );
 
     signal( SIGINT,  interrupt_handler );
     signal( SIGTERM, clean_shutdown_handler );
@@ -123,7 +123,7 @@ int main( int argc, char *argv[] )
 
 #endif // #if RELAY_DEBUG
 
-	cleanup();
+    cleanup();
 
-	return result;
+    return result;
 }

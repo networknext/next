@@ -1769,13 +1769,13 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/portal/all_relays", env.API_URL), &portalRelaysResponse)
 
 	type RelayRow struct {
-		Name            string
-		PublicAddress   string
-		Id              string
-		Status          string
-		Uptime          string
-		Sessions        int
-		Version         string
+		Name          string
+		PublicAddress string
+		Id            string
+		Status        string
+		Uptime        string
+		Sessions      int
+		Version       string
 	}
 
 	relayMap := make(map[string]*RelayRow)
@@ -1876,10 +1876,10 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/datacenters", env.API_URL), &adminDatacentersResponse)
 
 	type DatacenterRow struct {
-		Name            string
-		Native			 string
-		Latitude        float64
-		Longitude       float64
+		Name      string
+		Native    string
+		Latitude  float64
+		Longitude float64
 	}
 
 	datacenterRows := make([]DatacenterRow, 0)
@@ -1891,7 +1891,7 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 		row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
 		row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
 		matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
-		if regexName == "" || ( matched && err == nil ) {
+		if regexName == "" || (matched && err == nil) {
 			datacenterRows = append(datacenterRows, row)
 		}
 	}
@@ -1936,7 +1936,7 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 				row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
 				matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
 				distance := core.HaversineDistance(row.Latitude, row.Longitude, averageLatitude, averageLongitude)
-				if distance <= threshold && ( !matched || err != nil ) {
+				if distance <= threshold && (!matched || err != nil) {
 					datacenterRows = append(datacenterRows, row)
 				}
 			}
@@ -1999,7 +1999,6 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
-
 	ExamplePremakeFile = `
 solution "next"
 	platforms { "portable", "x86", "x64", "avx", "avx2" }

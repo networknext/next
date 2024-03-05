@@ -1,16 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
-	"syscall"
-	"sync"
-	"bufio"
 	"strings"
+	"sync"
+	"syscall"
 
 	"github.com/joho/godotenv"
 )

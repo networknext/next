@@ -3,10 +3,10 @@ package ip2location
 import (
 	"fmt"
 	"net"
-	"time"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/networknext/next/modules/core"
 
@@ -150,10 +150,10 @@ func RemoveOldDatabaseFiles() {
 	var dirs []string
 	for _, match := range matches {
 		core.Debug("found '%s'", match)
-	    f, _ := os.Stat(match)
-	    if f.IsDir() && currentTime.Sub(f.ModTime()) > 2 * time.Hour {
-	        dirs = append(dirs, match)
-	    }
+		f, _ := os.Stat(match)
+		if f.IsDir() && currentTime.Sub(f.ModTime()) > 2*time.Hour {
+			dirs = append(dirs, match)
+		}
 	}
 	for i := range dirs {
 		if dirs[i][0] == '/' && dirs[i][1] == 't' && dirs[i][2] == 'm' && dirs[i][3] == 'p' && dirs[i][4] == '/' {

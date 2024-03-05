@@ -810,11 +810,8 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 			var emptyMagic [8]byte
 
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-
-			fromAddressData := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData := core.GetAddressData(&clientAddress, toAddressBuffer[:])
+			fromAddressData := core.GetAddressData(&harness.handler.ServerBackendAddress)
+			toAddressData := core.GetAddressData(&clientAddress)
 
 			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 				core.Debug("advanced packet filter failed")
@@ -1287,11 +1284,8 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 			var emptyMagic [8]byte
 
-			var fromAddressBuffer [32]byte
-			var toAddressBuffer [32]byte
-
-			fromAddressData := core.GetAddressData(&harness.handler.ServerBackendAddress, fromAddressBuffer[:])
-			toAddressData := core.GetAddressData(&clientAddress, toAddressBuffer[:])
+			fromAddressData := core.GetAddressData(&harness.handler.ServerBackendAddress)
+			toAddressData := core.GetAddressData(&clientAddress)
 
 			if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 				core.Debug("advanced packet filter failed")

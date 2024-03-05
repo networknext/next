@@ -942,8 +942,8 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i > 1 {
 			assert.Equal(t, token.PrevAddress.String(), addresses[i-1].String())
@@ -954,8 +954,8 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -1079,8 +1079,8 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 0 || i == NumTokens-1 {
 			assert.Equal(t, token.PrevInternal, uint8(0))
@@ -1109,8 +1109,8 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -1473,8 +1473,8 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 4 {
 			assert.Nil(t, nil)
@@ -1483,8 +1483,8 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -1681,8 +1681,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 4 {
 			assert.Nil(t, nil)
@@ -1691,8 +1691,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -1904,8 +1904,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 4 {
 			assert.Nil(t, nil)
@@ -1914,8 +1914,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -1989,8 +1989,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 3 {
 			assert.Nil(t, nil)
@@ -1999,8 +1999,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -2178,8 +2178,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 4 {
 			assert.Nil(t, nil)
@@ -2188,8 +2188,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -2396,8 +2396,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 4 {
 			assert.Nil(t, nil)
@@ -2406,8 +2406,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -2611,8 +2611,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
 		assert.Equal(t, token.SessionVersion, uint8(state.Output.SessionVersion))
-		assert.Equal(t, token.KbpsUp, uint32(256))
-		assert.Equal(t, token.KbpsDown, uint32(1024))
+		assert.Equal(t, token.EnvelopeKbpsUp, uint32(256))
+		assert.Equal(t, token.EnvelopeKbpsDown, uint32(1024))
 
 		if i == 4 {
 			assert.Nil(t, nil)
@@ -2621,8 +2621,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 		}
 
 		found := false
-		for j := range token.PrivateKey {
-			if token.PrivateKey[j] != 0 {
+		for j := range token.SessionPrivateKey {
+			if token.SessionPrivateKey[j] != 0 {
 				found = true
 				break
 			}
@@ -3109,43 +3109,43 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.Equal(t, state.Error, uint64(0))
 	// todo: near relays don't go in response
 	/*
-	assert.Equal(t, state.Response.NumNearRelays, int32(3))
-	assert.True(t, state.Response.HasNearRelays)
+		assert.Equal(t, state.Response.NumNearRelays, int32(3))
+		assert.True(t, state.Response.HasNearRelays)
 
-	contains_1 := false
-	contains_2 := false
-	contains_3 := false
+		contains_1 := false
+		contains_2 := false
+		contains_3 := false
 
-	for i := 0; i < int(state.Response.NumNearRelays); i++ {
-		if state.Response.NearRelayIds[i] == 1 {
-			contains_1 = true
+		for i := 0; i < int(state.Response.NumNearRelays); i++ {
+			if state.Response.NearRelayIds[i] == 1 {
+				contains_1 = true
+			}
+			if state.Response.NearRelayIds[i] == 2 {
+				contains_2 = true
+			}
+			if state.Response.NearRelayIds[i] == 3 {
+				contains_3 = true
+			}
 		}
-		if state.Response.NearRelayIds[i] == 2 {
-			contains_2 = true
+
+		assert.True(t, contains_1)
+		assert.True(t, contains_2)
+		assert.True(t, contains_3)
+
+		// make sure we have valid ping tokens and expire timestamp
+
+		assert.True(t, state.Response.NearRelayExpireTimestamp > uint64(time.Now().Unix()))
+
+		for i := 0; i < int(state.Response.NumNearRelays); i++ {
+			data := make([]byte, 256)
+			binary.LittleEndian.PutUint64(data[0:], state.Response.NearRelayExpireTimestamp)
+			clientAddressWithoutPort := state.Request.ClientAddress
+			clientAddressWithoutPort.Port = 0
+			core.WriteAddress(data[8:], &clientAddressWithoutPort)
+			core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &state.Response.NearRelayAddresses[i])
+			length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
+			assert.True(t, crypto.Auth_Verify(data[:length], state.PingKey, state.Response.NearRelayPingTokens[i*constants.PingTokenBytes:]))
 		}
-		if state.Response.NearRelayIds[i] == 3 {
-			contains_3 = true
-		}
-	}
-
-	assert.True(t, contains_1)
-	assert.True(t, contains_2)
-	assert.True(t, contains_3)
-
-	// make sure we have valid ping tokens and expire timestamp
-
-	assert.True(t, state.Response.NearRelayExpireTimestamp > uint64(time.Now().Unix()))
-
-	for i := 0; i < int(state.Response.NumNearRelays); i++ {
-		data := make([]byte, 256)
-		binary.LittleEndian.PutUint64(data[0:], state.Response.NearRelayExpireTimestamp)
-		clientAddressWithoutPort := state.Request.ClientAddress
-		clientAddressWithoutPort.Port = 0
-		core.WriteAddress(data[8:], &clientAddressWithoutPort)
-		core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &state.Response.NearRelayAddresses[i])
-		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
-		assert.True(t, crypto.Auth_Verify(data[:length], state.PingKey, state.Response.NearRelayPingTokens[i*constants.PingTokenBytes:]))
-	}
 	*/
 }
 
@@ -3165,8 +3165,8 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
 	// todo: near relays don't go in response
 	/*
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	assert.False(t, state.Response.HasNearRelays)
+		assert.Equal(t, state.Response.NumNearRelays, int32(0))
+		assert.False(t, state.Response.HasNearRelays)
 	*/
 }
 
@@ -3184,8 +3184,8 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
 	// todo: near relays don't go in response
 	/*
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	assert.False(t, state.Response.HasNearRelays)
+		assert.Equal(t, state.Response.NumNearRelays, int32(0))
+		assert.False(t, state.Response.HasNearRelays)
 	*/
 }
 
@@ -3298,11 +3298,11 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
 
-// todo: near relays don't go in response
-/*
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	assert.False(t, state.Response.HasNearRelays)
-*/
+	// todo: near relays don't go in response
+	/*
+		assert.Equal(t, state.Response.NumNearRelays, int32(0))
+		assert.False(t, state.Response.HasNearRelays)
+	*/
 }
 
 // --------------------------------------------------------------
@@ -3332,11 +3332,11 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 
 	handlers.SessionUpdate_Post(state)
 
-// todo: near relays don't go in response
-/*
-	assert.True(t, state.GetNearRelays)
-	assert.False(t, state.Response.HasNearRelays)
-*/
+	// todo: near relays don't go in response
+	/*
+		assert.True(t, state.GetNearRelays)
+		assert.False(t, state.Response.HasNearRelays)
+	*/
 }
 
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
@@ -3488,7 +3488,7 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 	assert.False(t, state.Output.WriteSummary)
 	assert.True(t, state.Output.WroteSummary)
 	// todo: near relays don't go in response
-//	assert.False(t, state.Response.HasNearRelays)
+	//	assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------

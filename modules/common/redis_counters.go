@@ -315,7 +315,7 @@ func (watcher *RedisCountersWatcher) watcherThread(ctx context.Context) {
 
 					timestamps[i] = []uint64{startTimestamp, endTimestamp}
 					values[i] = []float64{0.0, 0.0}
-					
+
 				}
 			}
 

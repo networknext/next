@@ -1,5 +1,5 @@
 /*
-	Network Next XDP Relay
+    Network Next XDP Relay
 */
 
 #ifndef RELAY_BPF_H
@@ -14,10 +14,10 @@
 struct bpf_t
 {
 #ifdef COMPILE_WITH_BPF
-	int interface_index;
-	struct xdp_program * program;
-	bool attached_native;
-	bool attached_skb;
+    int interface_index;
+    struct xdp_program * program;
+    bool attached_native;
+    bool attached_skb;
     int config_fd;
     int state_fd;
     int stats_fd;

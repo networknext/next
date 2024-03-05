@@ -545,11 +545,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	var emptyMagic [constants.MagicBytes]byte
 
-	var fromAddressBuffer [32]byte
-	var toAddressBuffer [32]byte
-
-	fromAddressData := core.GetAddressData(from, fromAddressBuffer[:])
-	toAddressData := core.GetAddressData(&serverBackendAddress, toAddressBuffer[:])
+	fromAddressData := core.GetAddressData(from)
+	toAddressData := core.GetAddressData(&serverBackendAddress)
 
 	if !core.AdvancedPacketFilter(packetData, emptyMagic[:], fromAddressData, toAddressData, len(packetData)) {
 		fmt.Printf("advanced packet filter failed\n")
@@ -817,11 +814,11 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		// direct route
 
 		responsePacket = &packets.SDK_SessionUpdateResponsePacket{
-			SessionId:     requestPacket.SessionId,
-			SliceNumber:   requestPacket.SliceNumber,
-			RouteType:     int32(packets.SDK_RouteTypeDirect),
-			NumTokens:     0,
-			Tokens:        nil,
+			SessionId:   requestPacket.SessionId,
+			SliceNumber: requestPacket.SliceNumber,
+			RouteType:   int32(packets.SDK_RouteTypeDirect),
+			NumTokens:   0,
+			Tokens:      nil,
 		}
 
 	} else {
