@@ -5,6 +5,8 @@ const (
 	MinorVersion = 0
 	PatchVersion = 0
 
+	MaxPacketBytes = 1384
+
 	MaxBuyers = 1024
 
 	MaxRelays        = 1000

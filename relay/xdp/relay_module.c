@@ -39,8 +39,6 @@ MODULE_DESCRIPTION( "Network Next relay kernel module" );
 #define XCHACHA20POLY1305_NONCE_SIZE 24
 #define CHACHA20POLY1305_KEY_SIZE 32
 
-// todo: since we don't use additional data, some optimizations should be done below
-
 static bool __chacha20poly1305_decrypt( u8 * dst, const u8 * src, const size_t src_len, const u8 * ad, const size_t ad_len, u32 * chacha_state )
 {
 	const u8 *pad0 = page_address(ZERO_PAGE(0));

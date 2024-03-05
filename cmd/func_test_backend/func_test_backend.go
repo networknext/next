@@ -430,7 +430,7 @@ func test_relay_manager() {
 
 	// setup a lot of relays
 
-	const NumRelays = 1500
+	const NumRelays = constants.MaxRelays
 
 	relayNames := make([]string, NumRelays)
 	relayIds := make([]uint64, NumRelays)

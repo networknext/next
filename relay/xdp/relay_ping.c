@@ -307,10 +307,6 @@ void * ping_thread_function( void * context )
 
                 for ( int i = 0; i < ping->relay_manager->num_relays; ++i )
                 {
-                    // todo: temporary for debugging
-                    if ( ping->relay_manager->relay_ports[i] != 2000 )
-                        continue;
-
                     if ( ping->relay_manager->relay_last_ping_time[i] + RELAY_PING_TIME <= current_time )
                     {
                         // send relay ping packet

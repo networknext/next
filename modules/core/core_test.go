@@ -5033,7 +5033,7 @@ func TestABI(t *testing.T) {
 
 func TestPittleAndChonkle(t *testing.T) {
 	rand.Seed(42)
-	var output [1500]byte
+	var output [constants.MaxPacketBytes]byte
 	output[0] = 0x32
 	iterations := 10000
 	for i := 0; i < iterations; i++ {
@@ -5066,7 +5066,7 @@ func TestBasicPacketFilter(t *testing.T) {
 
 func TestAdvancedBasicPacketFilter(t *testing.T) {
 	rand.Seed(42)
-	var output [1500]byte
+	var output [constants.MaxPacketBytes]byte
 	iterations := 10000
 	for i := 0; i < iterations; i++ {
 		var magic [8]byte

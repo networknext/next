@@ -752,7 +752,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 		DatacenterName: "local",
 	}
 
-	packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_INIT_REQUEST_PACKET, 1500, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+	packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_INIT_REQUEST_PACKET, constants.MaxPacketBytes, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write server init request packet: %v", err)
 		return
@@ -1229,7 +1229,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 		DatacenterId: common.DatacenterId("local"),
 	}
 
-	packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, 1500, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
+	packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, constants.MaxPacketBytes, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
 	if err != nil {
 		core.Error("failed to write server update request packet: %v", err)
 		return

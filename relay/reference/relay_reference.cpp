@@ -4923,9 +4923,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     assert( relay_basic_packet_filter( route_request_packet, packet_bytes ) );
                     assert( relay_advanced_packet_filter( route_request_packet, current_magic, relay_public_address_data, next_address_data, packet_bytes ) );
 
-                    // todo
-                    printf( "next hop is %x:%d\n", token.next_address.data.ip, token.next_address.port );
-
                     relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
                     relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP]++;
