@@ -11,7 +11,6 @@ import (
 	"net"
 
 	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	"github.com/networknext/next/modules/encoding"
@@ -406,17 +405,9 @@ type SDK_SessionUpdateResponsePacket struct {
 	SessionData              [SDK_MaxSessionDataSize]byte
 	SessionDataSignature     [SDK_SignatureBytes]byte
 	RouteType                int32
-	HasNearRelays            bool
-	NumNearRelays            int32
-	NearRelayIds             [SDK_MaxNearRelays]uint64
-	NearRelayAddresses       [SDK_MaxNearRelays]net.UDPAddr
-	NearRelayPingTokens      [SDK_MaxNearRelays * constants.PingTokenBytes]byte
-	NearRelayExpireTimestamp uint64
 	NumTokens                int32
 	Tokens                   []byte
 	Multipath                bool
-	HasDebug                 bool
-	Debug                    string
 }
 
 func (packet *SDK_SessionUpdateResponsePacket) Serialize(stream encoding.Stream) error {
@@ -433,18 +424,6 @@ func (packet *SDK_SessionUpdateResponsePacket) Serialize(stream encoding.Stream)
 	}
 
 	stream.SerializeInteger(&packet.RouteType, 0, SDK_RouteTypeContinue)
-
-	stream.SerializeBool(&packet.HasNearRelays)
-
-	if packet.HasNearRelays {
-		stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK_MaxNearRelays))
-		for i := int32(0); i < packet.NumNearRelays; i++ {
-			stream.SerializeUint64(&packet.NearRelayIds[i])
-			stream.SerializeAddress(&packet.NearRelayAddresses[i])
-			stream.SerializeBytes(packet.NearRelayPingTokens[i*constants.PingTokenBytes : (i+1)*constants.PingTokenBytes])
-		}
-		stream.SerializeUint64(&packet.NearRelayExpireTimestamp)
-	}
 
 	if packet.RouteType != SDK_RouteTypeDirect {
 		stream.SerializeBool(&packet.Multipath)
@@ -464,9 +443,6 @@ func (packet *SDK_SessionUpdateResponsePacket) Serialize(stream encoding.Stream)
 		}
 		stream.SerializeBytes(packet.Tokens)
 	}
-
-	stream.SerializeBool(&packet.HasDebug)
-	stream.SerializeString(&packet.Debug, SDK_MaxSessionDebug)
 
 	return stream.Error()
 }

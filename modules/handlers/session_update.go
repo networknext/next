@@ -515,25 +515,7 @@ func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
 
 	core.Debug("found %d near relays", numNearRelays)
 
-	state.Response.HasNearRelays = true
-	state.Response.NumNearRelays = int32(numNearRelays)
-
-	for i := 0; i < numNearRelays; i++ {
-		state.Response.NearRelayIds[i] = nearRelayIds[i]
-		state.Response.NearRelayAddresses[i] = nearRelayAddresses[i]
-	}
-
-	// generate ping tokens
-
-	if len(state.PingKey) == 0 {
-		panic("missing ping key")
-	}
-
-	expireTimestamp := uint64(time.Now().Unix()) + 15
-
-	core.GeneratePingTokens(expireTimestamp, &state.Request.ClientAddress, state.Response.NearRelayAddresses[:state.Response.NumNearRelays], state.PingKey, state.Response.NearRelayPingTokens[:])
-
-	state.Response.NearRelayExpireTimestamp = expireTimestamp
+	_ = nearRelayAddresses
 
 	return true
 }
@@ -1040,17 +1022,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.Output.PrevPacketsOutOfOrderServerToClient = state.Request.PacketsOutOfOrderServerToClient
 
 	/*
-		If the core routing logic generated a debug string, include it in the response packet
-	*/
-
-	if state.Debug != nil {
-		state.Response.Debug = *state.Debug
-		if state.Response.Debug != "" {
-			state.Response.HasDebug = true
-		}
-	}
-
-	/*
 		The session ends when the client ping times out or the client falls back to direct.
 
 		At this point we write a summary slice to bigquery, with more information than regular slices.
@@ -1068,27 +1039,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 			state.Output.WroteSummary = true
 			state.Output.WriteSummary = false
 		}
-	}
-
-	/*
-		Take note of when we send near relays down to the client. Useful for debugging.
-	*/
-
-	if state.Response.HasNearRelays {
-		core.Debug("sending %d near relays down to client:", state.Response.NumNearRelays)
-		for i := 0; i < int(state.Response.NumNearRelays); i++ {
-			relayIndex := state.RouteMatrix.RelayIdToIndex[state.Response.NearRelayIds[i]]
-			relayName := state.RouteMatrix.RelayNames[relayIndex]
-			core.Debug(" + %s [%016x]", relayName, state.Response.NearRelayIds[i])
-		}
-	}
-
-	if state.Output.SliceNumber == 1 && state.Response.HasNearRelays == false {
-		core.Debug("no near relays sent down to client for slice 1?!!!")
-	}
-
-	if state.Output.SliceNumber == 1 && state.Response.NumNearRelays == 0 {
-		core.Debug("num near relays is zero for slice 1?!!!!")
 	}
 
 	/*
@@ -1115,11 +1065,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	/*
 		Write the session update response packet.
 	*/
-
-	if state.Debug != nil {
-		state.Response.Debug = *state.Debug
-		core.Debug("-------------------------------------\n%s-------------------------------------", *state.Debug)
-	}
 
 	state.ResponsePacket, err = packets.SDK_WritePacket(&state.Response, packets.SDK_SESSION_UPDATE_RESPONSE_PACKET, packets.SDK_MaxPacketBytes, state.ServerBackendAddress, state.From, state.ServerBackendPrivateKey[:])
 	if err != nil {

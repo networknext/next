@@ -25,12 +25,11 @@ const (
 
 	SDK_MaxDatacenterNameLength = 256
 	SDK_MaxSessionDataSize      = 1024
-	SDK_MaxTags                 = 8
 	SDK_MaxTokens               = constants.NEXT_MAX_NODES
 	SDK_MaxRelaysPerRoute       = constants.NEXT_MAX_NODES - 2
 	SDK_MaxNearRelays           = int(constants.MaxNearRelays)
+	SDK_MaxDestRelays           = int(constants.MaxDestRelays)
 	SDK_MaxSessionUpdateRetries = 10
-	SDK_MaxSessionDebug         = 1024
 
 	SDK_ServerInitResponseOK             = 0
 	SDK_ServerInitResponseUnknownBuyer   = 1

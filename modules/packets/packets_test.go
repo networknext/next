@@ -241,12 +241,6 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK_SessionUpdateRespon
 		SessionId:        rand.Uint64(),
 		SliceNumber:      rand.Uint32(),
 		SessionDataBytes: int32(common.RandomInt(0, packets.SDK_MaxSessionDataSize)),
-		HasNearRelays:    common.RandomBool(),
-		HasDebug:         common.RandomBool(),
-	}
-
-	if packet.HasDebug {
-		packet.Debug = common.RandomString(packets.SDK_MaxSessionDebug)
 	}
 
 	for i := 0; i < int(packet.SessionDataBytes); i++ {
@@ -256,16 +250,6 @@ func GenerateRandomSessionUpdateResponsePacket() packets.SDK_SessionUpdateRespon
 	if packet.SessionDataBytes > 0 {
 		common.RandomBytes(packet.SessionData[:packet.SessionDataBytes])
 		common.RandomBytes(packet.SessionDataSignature[:])
-	}
-
-	if packet.HasNearRelays {
-		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK_MaxNearRelays))
-		for i := 0; i < int(packet.NumNearRelays); i++ {
-			packet.NearRelayIds[i] = uint64(i * 32)
-			packet.NearRelayAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", i+5000))
-		}
-		common.RandomBytes(packet.NearRelayPingTokens[:packet.NumNearRelays*constants.PingTokenBytes])
-		packet.NearRelayExpireTimestamp = rand.Uint64()
 	}
 
 	packet.RouteType = int32(common.RandomInt(packets.SDK_RouteTypeDirect, packets.SDK_RouteTypeContinue))

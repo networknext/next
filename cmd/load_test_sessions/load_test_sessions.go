@@ -174,11 +174,6 @@ func RunSession(index int) {
 
 							next = packet.RouteType != packets.SDK_RouteTypeDirect
 
-							if packet.HasNearRelays {
-								numNearRelays = packet.NumNearRelays
-								copy(nearRelayIds[:], packet.NearRelayIds[:])
-							}
-
 							receivedResponse = true
 
 						}

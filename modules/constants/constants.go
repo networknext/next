@@ -13,13 +13,12 @@ const (
 	RelayHistorySize = 300
 
 	MaxNearRelays  = 16
+	MaxDestRelays  = 8
 	MaxRouteRelays = 5
 
 	MaxRelayNameLength      = 63
 	MaxRelayVersionLength   = 32
 	MaxDatacenterNameLength = 256
-
-	MaxTags = 8
 
 	MagicBytes = 8
 
@@ -30,7 +29,6 @@ const (
 	CostBias          = 3
 	MaxIndirects      = 8
 	MaxRoutesPerEntry = 16
-	JitterThreshold   = 15
 	CostThreshold     = 1
 
 	MaxRouteCost = 255

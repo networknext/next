@@ -1,7 +1,6 @@
 package handlers_test
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net"
 	"testing"
@@ -2968,7 +2967,9 @@ func Test_SessionUpdate_GetNearRelays_DatacenterIsNil(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotGettingNearRelaysDatacenterIsNil)
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+
+	// todo: near relays need to go somewhere else
+	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
 }
 
 func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
@@ -2983,7 +2984,8 @@ func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotGettingNearRelaysAnalysisOnly)
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	// todo: near relays need to go somewhere else
+	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
 }
 
 func Test_SessionUpdate_GetNearRelays_DatacenterNotEnabled(t *testing.T) {
@@ -2998,7 +3000,8 @@ func Test_SessionUpdate_GetNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotGettingNearRelaysDatacenterNotEnabled)
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	// todo: near relays need to go somewhere else
+	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
 }
 
 func Test_SessionUpdate_GetNearRelays_NoNearRelays(t *testing.T) {
@@ -3011,7 +3014,8 @@ func Test_SessionUpdate_GetNearRelays_NoNearRelays(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, (state.Error&constants.SessionError_NoNearRelays) != 0)
-	assert.Equal(t, state.Response.NumNearRelays, int32(0))
+	// todo: near relays need to go somewhere else
+	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
 }
 
 func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
@@ -3103,6 +3107,8 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 	assert.False(t, state.NotGettingNearRelaysAnalysisOnly)
 	assert.False(t, state.NotGettingNearRelaysDatacenterNotEnabled)
 	assert.Equal(t, state.Error, uint64(0))
+	// todo: near relays don't go in response
+	/*
 	assert.Equal(t, state.Response.NumNearRelays, int32(3))
 	assert.True(t, state.Response.HasNearRelays)
 
@@ -3140,6 +3146,7 @@ func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
 		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
 		assert.True(t, crypto.Auth_Verify(data[:length], state.PingKey, state.Response.NearRelayPingTokens[i*constants.PingTokenBytes:]))
 	}
+	*/
 }
 
 // --------------------------------------------------------------
@@ -3156,8 +3163,11 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
+	// todo: near relays don't go in response
+	/*
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
+	*/
 }
 
 func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
@@ -3172,8 +3182,11 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+	// todo: near relays don't go in response
+	/*
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
+	*/
 }
 
 func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
@@ -3285,8 +3298,11 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
 
+// todo: near relays don't go in response
+/*
 	assert.Equal(t, state.Response.NumNearRelays, int32(0))
 	assert.False(t, state.Response.HasNearRelays)
+*/
 }
 
 // --------------------------------------------------------------
@@ -3316,8 +3332,11 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 
 	handlers.SessionUpdate_Post(state)
 
+// todo: near relays don't go in response
+/*
 	assert.True(t, state.GetNearRelays)
 	assert.False(t, state.Response.HasNearRelays)
+*/
 }
 
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
@@ -3399,45 +3418,6 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 	assert.Equal(t, state.Output.PrevPacketsLostServerToClient, state.Request.PacketsLostServerToClient)
 }
 
-func Test_SessionUpdate_Post_Debug(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	_, routingPrivateKey := crypto.Box_KeyPair()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.RelayBackendPrivateKey = routingPrivateKey
-	state.ServerBackendPublicKey = serverBackendPublicKey[:]
-	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
-
-	from := core.ParseAddress("127.0.0.1:40000")
-	state.From = &from
-	serverBackendAddress := core.ParseAddress("127.0.0.1:50000")
-	state.ServerBackendAddress = &serverBackendAddress
-
-	state.Request.SliceNumber = 2
-
-	sessionData := packets.GenerateRandomSessionData()
-	sessionData.WroteSummary = false
-	writeSessionData := WriteSessionData(sessionData)
-	copy(state.Request.SessionData[:], writeSessionData)
-	copy(state.Request.SessionDataSignature[:], crypto.Sign(writeSessionData, state.ServerBackendPrivateKey))
-	state.Request.SessionDataBytes = int32(len(writeSessionData))
-
-	debugString := "it's debug time"
-
-	state.Debug = &debugString
-
-	handlers.SessionUpdate_Post(state)
-
-	assert.True(t, state.Response.HasDebug)
-	assert.Equal(t, state.Response.Debug, *state.Debug)
-	assert.False(t, state.Response.HasNearRelays)
-}
-
 func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	t.Parallel()
@@ -3470,7 +3450,8 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	assert.True(t, state.Output.WriteSummary)
 	assert.False(t, state.Output.WroteSummary)
-	assert.False(t, state.Response.HasNearRelays)
+	// todo: near relays don't go in response
+	// assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
@@ -3506,7 +3487,8 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	assert.False(t, state.Output.WriteSummary)
 	assert.True(t, state.Output.WroteSummary)
-	assert.False(t, state.Response.HasNearRelays)
+	// todo: near relays don't go in response
+//	assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------
