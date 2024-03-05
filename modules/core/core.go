@@ -1804,8 +1804,8 @@ func MakeRouteDecision_StayOnNetworkNext(userId uint64, routeMatrix []RouteEntry
 
 func GeneratePittle(output []byte, fromAddress []byte, toAddress []byte, packetLength int) {
 
-	var packetLengthData [4]byte
-	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
+	var packetLengthData [2]byte
+	binary.LittleEndian.PutUint16(packetLengthData[:], uint16(packetLength))
 
 	sum := uint16(0)
 
@@ -1819,8 +1819,6 @@ func GeneratePittle(output []byte, fromAddress []byte, toAddress []byte, packetL
 
 	sum += uint16(packetLengthData[0])
 	sum += uint16(packetLengthData[1])
-	sum += uint16(packetLengthData[2])
-	sum += uint16(packetLengthData[3])
 
 	var sumData [2]byte
 	binary.LittleEndian.PutUint16(sumData[:], sum)
@@ -1831,8 +1829,8 @@ func GeneratePittle(output []byte, fromAddress []byte, toAddress []byte, packetL
 
 func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, toAddressData []byte, packetLength int) {
 
-	var packetLengthData [4]byte
-	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
+	var packetLengthData [2]byte
+	binary.LittleEndian.PutUint16(packetLengthData[:], uint16(packetLength))
 
 	hash := fnv.New64a()
 	hash.Write(magic)
@@ -1884,63 +1882,67 @@ func BasicPacketFilter(data []byte, packetLength int) bool {
 		return false
 	}
 
-	if data[0] < 0x01 || data[0] > 0x63 {
+	if data[0] < 0x32 || data[0] > 0x3C {
 		return false
 	}
 
-	if data[1] < 0x2A || data[1] > 0x2D {
+    if data[2] != ( 1 | ( ( 255 - data[1] ) ^ 113 ) ) {
+    	return false
+    }
+
+	if data[3] < 0x2A || data[3] > 0x2D {
 		return false
 	}
 
-	if data[2] < 0xC8 || data[2] > 0xE7 {
+	if data[4] < 0xC8 || data[4] > 0xE7 {
 		return false
 	}
 
-	if data[3] < 0x05 || data[3] > 0x44 {
+	if data[5] < 0x05 || data[5] > 0x44 {
 		return false
 	}
 
-	if data[5] < 0x4E || data[5] > 0x51 {
+	if data[7] < 0x4E || data[7] > 0x51 {
 		return false
 	}
 
-	if data[6] < 0x60 || data[6] > 0xDF {
+	if data[8] < 0x60 || data[8] > 0xDF {
 		return false
 	}
 
-	if data[7] < 0x64 || data[7] > 0xE3 {
+	if data[9] < 0x64 || data[9] > 0xE3 {
 		return false
 	}
 
-	if data[8] != 0x07 && data[8] != 0x4F {
+	if data[10] != 0x07 && data[10] != 0x4F {
 		return false
 	}
 
-	if data[9] != 0x25 && data[9] != 0x53 {
+	if data[11] != 0x25 && data[11] != 0x53 {
 		return false
 	}
 
-	if data[10] < 0x7C || data[10] > 0x83 {
+	if data[12] < 0x7C || data[12] > 0x83 {
 		return false
 	}
 
-	if data[11] < 0xAF || data[11] > 0xB6 {
+	if data[13] < 0xAF || data[13] > 0xB6 {
 		return false
 	}
 
-	if data[12] < 0x21 || data[12] > 0x60 {
+	if data[14] < 0x21 || data[14] > 0x60 {
 		return false
 	}
 
-	if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
+	if data[15] != 0x61 && data[15] != 0x05 && data[15] != 0x2B && data[15] != 0x0D {
 		return false
 	}
 
-	if data[14] < 0xD2 || data[14] > 0xF1 {
+	if data[16] < 0xD2 || data[16] > 0xF1 {
 		return false
 	}
 
-	if data[15] < 0x11 || data[15] > 0x90 {
+	if data[17] < 0x11 || data[17] > 0x90 {
 		return false
 	}
 
@@ -1951,24 +1953,20 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, toAddre
 	if packetLength < 18 {
 		return false
 	}
-	var a [15]byte
-	var b [2]byte
-	GenerateChonkle(a[:], magic, fromAddress, toAddress, packetLength)
-	GeneratePittle(b[:], fromAddress, toAddress, packetLength)
-	if bytes.Compare(a[0:15], data[1:16]) != 0 {
+	var a [2]byte
+	var b [15]byte
+	GeneratePittle(a[:], fromAddress, toAddress, packetLength)
+	GenerateChonkle(b[:], magic, fromAddress, toAddress, packetLength)
+	if bytes.Compare(a[:], data[1:3]) != 0 {
 		return false
 	}
-	if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
+	if bytes.Compare(b[:], data[3:18]) != 0 {
 		return false
 	}
 	return true
 }
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) []byte {
-	// IMPORTANT: this works only for IPv4, for now
-	if address == nil {
-		panic("can't get address data for nil address!")
-	}
 	return address.IP.To4()
 }
 

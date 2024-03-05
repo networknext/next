@@ -5005,38 +5005,6 @@ func randomBytes(buffer []byte) {
 	}
 }
 
-func TestPittle(t *testing.T) {
-	rand.Seed(42)
-	var output [256]byte
-	for i := 0; i < 10000; i++ {
-		var fromAddress [4]byte
-		var toAddress [4]byte
-		randomBytes(fromAddress[:])
-		randomBytes(toAddress[:])
-		packetLength := 1 + (i % 1500)
-		core.GeneratePittle(output[:], fromAddress[:], toAddress[:], packetLength)
-		assert.NotEqual(t, output[0], 0)
-		assert.NotEqual(t, output[1], 0)
-	}
-}
-
-func TestChonkle(t *testing.T) {
-	rand.Seed(42)
-	var output [1500]byte
-	output[0] = 1
-	for i := 0; i < 10000; i++ {
-		var magic [8]byte
-		var fromAddress [4]byte
-		var toAddress [4]byte
-		randomBytes(magic[:])
-		randomBytes(fromAddress[:])
-		randomBytes(toAddress[:])
-		packetLength := 18 + (i % (len(output) - 18))
-		core.GenerateChonkle(output[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
-		assert.Equal(t, true, core.BasicPacketFilter(output[:], packetLength))
-	}
-}
-
 func TestABI(t *testing.T) {
 
 	var output [1024]byte
@@ -5054,20 +5022,21 @@ func TestABI(t *testing.T) {
 	core.GenerateChonkle(output[:], magic[:], fromAddress[:], toAddress[:], packetLength)
 
 	assert.Equal(t, output[0], uint8(0x2a))
-	assert.Equal(t, output[1], uint8(0xdc))
-	assert.Equal(t, output[2], uint8(0x8))
-	assert.Equal(t, output[3], uint8(0x2c))
-	assert.Equal(t, output[4], uint8(0x51))
-	assert.Equal(t, output[5], uint8(0xa8))
-	assert.Equal(t, output[6], uint8(0x87))
-	assert.Equal(t, output[7], uint8(7))
+	assert.Equal(t, output[1], uint8(0xd0))
+	assert.Equal(t, output[2], uint8(0x1e))
+	assert.Equal(t, output[3], uint8(0x4c))
+	assert.Equal(t, output[4], uint8(0x4e))
+	assert.Equal(t, output[5], uint8(0xdc))
+	assert.Equal(t, output[6], uint8(0x9f))
+	assert.Equal(t, output[7], uint8(0x07))
 }
 
 func TestPittleAndChonkle(t *testing.T) {
 	rand.Seed(42)
 	var output [1500]byte
-	output[0] = 1
-	for i := 0; i < 10000; i++ {
+	output[0] = 0x32
+	iterations := 10000
+	for i := 0; i < iterations; i++ {
 		var magic [8]byte
 		var fromAddress [4]byte
 		var toAddress [4]byte
@@ -5075,8 +5044,8 @@ func TestPittleAndChonkle(t *testing.T) {
 		randomBytes(fromAddress[:])
 		randomBytes(toAddress[:])
 		packetLength := 18 + (i % (len(output) - 18))
-		core.GenerateChonkle(output[1:], magic[:], fromAddress[:], toAddress[:], packetLength)
-		core.GeneratePittle(output[packetLength-2:], fromAddress[:], toAddress[:], packetLength)
+		core.GeneratePittle(output[1:3], fromAddress[:], toAddress[:], packetLength)
+		core.GenerateChonkle(output[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
 		assert.Equal(t, true, core.BasicPacketFilter(output[:], packetLength))
 		assert.Equal(t, true, core.AdvancedPacketFilter(output[:], magic[:], fromAddress[:], toAddress[:], packetLength))
 	}
@@ -5193,7 +5162,6 @@ func TestPagination(t *testing.T) {
 	{
 		begin, end, outputPage, numPages := core.DoPagination(100, 15)
 		assert.True(t, begin == 0)
-		fmt.Printf("end = %d\n", end)
 		assert.True(t, end == 15)
 		assert.True(t, outputPage == 0)
 		assert.True(t, numPages == 1)
