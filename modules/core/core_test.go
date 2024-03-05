@@ -84,7 +84,7 @@ func TestTriMatrixIndex(t *testing.T) {
 
 func CheckNilAddress(t *testing.T) {
 	var address *net.UDPAddr
-	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
+	buffer := make([]uint8, constants.NextAddressBytes)
 	core.WriteAddress(buffer, address)
 	readAddress := core.ReadAddress(buffer)
 	assert.Equal(t, readAddress, net.UDPAddr{})
@@ -92,7 +92,7 @@ func CheckNilAddress(t *testing.T) {
 
 func CheckIPv4Address(t *testing.T, addressString string, expected string) {
 	address := core.ParseAddress(addressString)
-	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
+	buffer := make([]uint8, constants.NextAddressBytes)
 	core.WriteAddress(buffer, &address)
 	readAddress := core.ReadAddress(buffer)
 	readAddressString := readAddress.String()
@@ -101,7 +101,7 @@ func CheckIPv4Address(t *testing.T, addressString string, expected string) {
 
 func CheckIPv6Address(t *testing.T, addressString string, expected string) {
 	address := core.ParseAddress(addressString)
-	buffer := make([]uint8, constants.NEXT_ADDRESS_BYTES)
+	buffer := make([]uint8, constants.NextAddressBytes)
 	core.WriteAddress(buffer, &address)
 	readAddress := core.ReadAddress(buffer)
 	assert.Equal(t, readAddress.IP, address.IP)
@@ -1014,9 +1014,11 @@ func TestRouteToken(t *testing.T) {
 
 	t.Parallel()
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
+	// todo: work out what to do here, remove these?
 
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
+	//relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
+
+	// masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
 
 	routeToken := core.RouteToken{}
 	routeToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
@@ -1032,7 +1034,7 @@ func TestRouteToken(t *testing.T) {
 
 	// write the token to a buffer and read it back in
 
-	buffer := make([]byte, constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	buffer := make([]byte, constants.EncryptedRouteTokenBytes)
 
 	core.WriteRouteToken(&routeToken, buffer[:])
 
@@ -1050,24 +1052,27 @@ func TestRouteToken(t *testing.T) {
 
 	// write an encrypted route token and read it back
 
-	core.WriteEncryptedRouteToken(&routeToken, buffer, masterPrivateKey[:], relayPublicKey[:])
+	// todo: generate secret key
+	secretKey := make([]byte, constants.SecretKeyBytes)
 
-	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+	core.WriteEncryptedRouteToken(&routeToken, buffer, secretKey)
+
+	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, secretKey)
 
 	assert.NoError(t, err)
 	assert.Equal(t, routeToken, readRouteToken)
 
 	// can't read an encrypted route token if the buffer is too small
 
-	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer[:10], secretKey)
 
 	assert.Error(t, err)
 
 	// can't read an encrypted route token if the buffer is garbage
 
-	buffer = make([]byte, constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	buffer = make([]byte, constants.EncryptedRouteTokenBytes)
 
-	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+	err = core.ReadEncryptedRouteToken(&readRouteToken, buffer, secretKey)
 
 	assert.Error(t, err)
 }
@@ -1076,27 +1081,17 @@ func TestRouteTokens_PublicAddresses(t *testing.T) {
 
 	t.Parallel()
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
-
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
-
 	// write a bunch of tokens to a buffer
 
-	publicAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
+	publicAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
 	for i := range publicAddresses {
 		publicAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
-	hasInternalAddresses := make([]bool, constants.NEXT_MAX_NODES)
-	internalAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
-	internalGroups := make([]uint64, constants.NEXT_MAX_NODES)
-	sellers := make([]int, constants.NEXT_MAX_NODES)
-
-	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
-	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
-		copy(publicKeys[i], relayPublicKey[:])
-	}
+	hasInternalAddresses := make([]bool, constants.NextMaxNodes)
+	internalAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
+	internalGroups := make([]uint64, constants.NextMaxNodes)
+	sellers := make([]int, constants.NextMaxNodes)
 
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
@@ -1104,15 +1099,21 @@ func TestRouteTokens_PublicAddresses(t *testing.T) {
 	kbpsDown := uint32(256)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, publicKeys, masterPrivateKey)
+	// todo: generate secret keys
+	secretKeys := make([][]byte, constants.NextMaxNodes)
+	for i := range secretKeys {
+		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.RouteToken
-		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
@@ -1122,12 +1123,11 @@ func TestRouteTokens_PublicAddresses(t *testing.T) {
 		if i != 0 {
 			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
 		}
-		if i != constants.NEXT_MAX_NODES-1 {
+		if i != constants.NextMaxNodes-1 {
 			assert.Equal(t, publicAddresses[i+1].String(), routeToken.NextAddress.String())
 		}
 		assert.Equal(t, routeToken.NextInternal, uint8(0))
 		assert.Equal(t, routeToken.PrevInternal, uint8(0))
-		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
 
@@ -1135,21 +1135,17 @@ func TestRouteTokens_InternalAddresses(t *testing.T) {
 
 	t.Parallel()
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
-
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
-
 	// write some tokens with some that should communicate over internal addresses
 
-	publicAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
+	publicAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
 	for i := range publicAddresses {
 		publicAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
-	hasInternalAddresses := make([]bool, constants.NEXT_MAX_NODES)
-	internalAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
-	internalGroups := make([]uint64, constants.NEXT_MAX_NODES)
-	sellers := make([]int, constants.NEXT_MAX_NODES)
+	hasInternalAddresses := make([]bool, constants.NextMaxNodes)
+	internalAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
+	internalGroups := make([]uint64, constants.NextMaxNodes)
+	sellers := make([]int, constants.NextMaxNodes)
 
 	hasInternalAddresses[2] = true
 	hasInternalAddresses[3] = true
@@ -1160,27 +1156,27 @@ func TestRouteTokens_InternalAddresses(t *testing.T) {
 	internalGroups[2] = 0x12345
 	internalGroups[3] = 0x12345
 
-	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
-	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
-		copy(publicKeys[i], relayPublicKey[:])
-	}
-
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
 	kbpsUp := uint32(256)
 	kbpsDown := uint32(256)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, publicKeys, masterPrivateKey)
+	// todo: generate secret keys
+	secretKeys := make([][]byte, constants.NextMaxNodes)
+	for i := range secretKeys {
+		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.RouteToken
-		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
@@ -1204,14 +1200,13 @@ func TestRouteTokens_InternalAddresses(t *testing.T) {
 				assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
 			}
 		}
-		if i != constants.NEXT_MAX_NODES-1 {
+		if i != constants.NextMaxNodes-1 {
 			if i == 2 {
 				assert.Equal(t, "10.0.0.2:40000", routeToken.NextAddress.String())
 			} else {
 				assert.Equal(t, publicAddresses[i+1].String(), routeToken.NextAddress.String())
 			}
 		}
-		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
 
@@ -1219,21 +1214,17 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 
 	t.Parallel()
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
-
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
-
 	// setup some relays with internal addresses, but give them different sellers. they should not use the internal addresses
 
-	publicAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
+	publicAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
 	for i := range publicAddresses {
 		publicAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
-	hasInternalAddresses := make([]bool, constants.NEXT_MAX_NODES)
-	internalAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
-	internalGroups := make([]uint64, constants.NEXT_MAX_NODES)
-	sellers := make([]int, constants.NEXT_MAX_NODES)
+	hasInternalAddresses := make([]bool, constants.NextMaxNodes)
+	internalAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
+	internalGroups := make([]uint64, constants.NextMaxNodes)
+	sellers := make([]int, constants.NextMaxNodes)
 
 	hasInternalAddresses[2] = true
 	hasInternalAddresses[3] = true
@@ -1247,27 +1238,27 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 	sellers[2] = 1
 	sellers[3] = 2
 
-	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
-	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
-		copy(publicKeys[i], relayPublicKey[:])
-	}
-
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
 	kbpsUp := uint32(256)
 	kbpsDown := uint32(256)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, publicKeys, masterPrivateKey)
+	// todo: generate secret keys
+	secretKeys := make([][]byte, constants.NextMaxNodes)
+	for i := range secretKeys {
+		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.RouteToken
-		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.RouteTokenBytes:], secretKeys[i])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
@@ -1277,12 +1268,11 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 		if i != 0 {
 			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
 		}
-		if i != constants.NEXT_MAX_NODES-1 {
+		if i != constants.NextMaxNodes-1 {
 			assert.Equal(t, publicAddresses[i+1].String(), routeToken.NextAddress.String())
 		}
 		assert.Equal(t, routeToken.NextInternal, uint8(0))
 		assert.Equal(t, routeToken.PrevInternal, uint8(0))
-		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
 
@@ -1290,21 +1280,17 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 
 	t.Parallel()
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
-
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
-
 	// setup some relays with internal addresses, but give them different internal groups in the same seller. they should not use internal addresses
 
-	publicAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
+	publicAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
 	for i := range publicAddresses {
 		publicAddresses[i] = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", 40000+i))
 	}
 
-	hasInternalAddresses := make([]bool, constants.NEXT_MAX_NODES)
-	internalAddresses := make([]net.UDPAddr, constants.NEXT_MAX_NODES)
-	internalGroups := make([]uint64, constants.NEXT_MAX_NODES)
-	sellers := make([]int, constants.NEXT_MAX_NODES)
+	hasInternalAddresses := make([]bool, constants.NextMaxNodes)
+	internalAddresses := make([]net.UDPAddr, constants.NextMaxNodes)
+	internalGroups := make([]uint64, constants.NextMaxNodes)
+	sellers := make([]int, constants.NextMaxNodes)
 
 	hasInternalAddresses[2] = true
 	hasInternalAddresses[3] = true
@@ -1318,27 +1304,27 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 	sellers[2] = 1
 	sellers[3] = 1
 
-	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
-	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
-		copy(publicKeys[i], relayPublicKey[:])
-	}
-
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
 	kbpsUp := uint32(256)
 	kbpsDown := uint32(256)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NEXT_MAX_NODES, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, publicKeys, masterPrivateKey)
+	// todo: generate secret keys
+	secretKeys := make([][]byte, constants.NextMaxNodes)
+	for i := range secretKeys {
+		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.RouteToken
-		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
+		err := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
 		assert.NoError(t, err)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
@@ -1348,12 +1334,11 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 		if i != 0 {
 			assert.Equal(t, publicAddresses[i-1].String(), routeToken.PrevAddress.String())
 		}
-		if i != constants.NEXT_MAX_NODES-1 {
+		if i != constants.NextMaxNodes-1 {
 			assert.Equal(t, publicAddresses[i+1].String(), routeToken.NextAddress.String())
 		}
 		assert.Equal(t, routeToken.NextInternal, uint8(0))
 		assert.Equal(t, routeToken.PrevInternal, uint8(0))
-		assert.Equal(t, publicKeys[i], relayPublicKey[:])
 	}
 }
 
@@ -1424,7 +1409,7 @@ func TestContinueTokens(t *testing.T) {
 
 	// write a bunch of tokens to a buffer
 
-	publicKeys := make([][]byte, constants.NEXT_MAX_NODES)
+	publicKeys := make([][]byte, constants.NextMaxNodes)
 	for i := range publicKeys {
 		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
 		copy(publicKeys[i], relayPublicKey[:])
@@ -1434,13 +1419,13 @@ func TestContinueTokens(t *testing.T) {
 	sessionVersion := byte(100)
 	expireTimestamp := uint64(time.Now().Unix() + 10)
 
-	tokenData := make([]byte, constants.NEXT_MAX_NODES*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
+	tokenData := make([]byte, constants.NextMaxNodes*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES)
 
-	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, constants.NEXT_MAX_NODES, publicKeys, masterPrivateKey)
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, constants.NextMaxNodes, publicKeys, masterPrivateKey)
 
 	// read each token back individually and verify the token data matches what was written
 
-	for i := 0; i < constants.NEXT_MAX_NODES; i++ {
+	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.ContinueToken
 		err := core.ReadEncryptedContinueToken(&routeToken, tokenData[i*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPublicKey[:], relayPrivateKey[:])
 		assert.NoError(t, err)

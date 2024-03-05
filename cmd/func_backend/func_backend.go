@@ -2,6 +2,10 @@
    Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
+package ass
+
+// todo: disable for now
+/*
 package main
 
 import (
@@ -410,10 +414,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	copy(responsePacket.ExpectedRelayPublicKey[:], TestRelayPublicKey)
 	copy(responsePacket.ExpectedRelayBackendPublicKey[:], TestRelayBackendPublicKey)
 
+	// todo: generate test secret key from known keypairs, store it elsewhere (not calculated here), and pass down
+	testSecretKey := make([]byte, 32)
+
 	token := core.RouteToken{}
 	token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 10000}
 	token.PrevAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 20000}
-	core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], TestRelayBackendPrivateKey, TestRelayPublicKey)
+	core.WriteEncryptedRouteToken(&token, responsePacket.TestToken[:], testSecretKey)
 
 	// send the response packet
 
@@ -1001,3 +1008,4 @@ func main() {
 		return
 	}
 }
+*/

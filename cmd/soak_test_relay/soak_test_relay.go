@@ -2,6 +2,11 @@
    Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
+package ass
+
+// todo: disable for now
+/*
+
 package main
 
 // #cgo pkg-config: libsodium
@@ -600,3 +605,4 @@ func main() {
 	}
 	soak_test_relay(run_forever)
 }
+*/

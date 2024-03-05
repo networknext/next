@@ -35,11 +35,15 @@ const (
 
 	MaxRouteCost = 255
 
-	NEXT_MAX_NODES                      = 7
-	NEXT_ADDRESS_BYTES                  = 19
-	NEXT_ADDRESS_IPV4_BYTES             = 6
-	NEXT_ROUTE_TOKEN_BYTES              = 71
-	NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES    = 111
+	NextMaxNodes = 7
+
+	NextAddressBytes      = 19
+	NextAddressBytes_IPv4 = 6
+
+	RouteTokenBytes          = 71
+	EncryptedRouteTokenBytes = 111
+
+	// todo: clean up
 	NEXT_CONTINUE_TOKEN_BYTES           = 17
 	NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 
@@ -67,7 +71,11 @@ const (
 	RelayStatus_Online       = 1
 	RelayStatus_ShuttingDown = 2
 
+	PingKeyBytes = 32
+
 	PingTokenBytes = 32
+
+	SecretKeyBytes = 32
 
 	MaxDatabaseSize = 256 * 1024
 )

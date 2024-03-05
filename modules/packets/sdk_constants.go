@@ -27,8 +27,8 @@ const (
 
 	SDK_MaxDatacenterNameLength = 256
 	SDK_MaxSessionDataSize      = 256
-	SDK_MaxTokens               = constants.NEXT_MAX_NODES
-	SDK_MaxRelaysPerRoute       = constants.NEXT_MAX_NODES - 2
+	SDK_MaxTokens               = constants.NextMaxNodes
+	SDK_MaxRelaysPerRoute       = constants.NextMaxNodes - 2
 	SDK_MaxNearRelays           = int(constants.MaxNearRelays)
 	SDK_MaxDestRelays           = int(constants.MaxDestRelays)
 	SDK_MaxSessionUpdateRetries = 10

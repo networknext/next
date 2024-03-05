@@ -224,8 +224,8 @@ type RelayUpdateResponsePacket struct {
 	ExpectedHasInternalAddress    uint8
 	ExpectedRelayPublicKey        [crypto.Box_PublicKeySize]byte
 	ExpectedRelayBackendPublicKey [crypto.Box_PublicKeySize]byte
-	TestToken                     [constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES]byte
-	PingKey                       [crypto.Auth_KeySize]byte
+	TestToken                     [constants.EncryptedRouteTokenBytes]byte
+	PingKey                       [constants.PingKeyBytes]byte
 }
 
 func (packet *RelayUpdateResponsePacket) GetMaxSize() int {
@@ -235,7 +235,7 @@ func (packet *RelayUpdateResponsePacket) GetMaxSize() int {
 	size += constants.MagicBytes * 3
 	size += 7 * 2
 	size += 1 + 2*crypto.Box_PublicKeySize
-	size += constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES
+	size += constants.EncryptedRouteTokenBytes
 	size += crypto.Auth_KeySize
 	return size
 }
@@ -272,9 +272,9 @@ func (packet *RelayUpdateResponsePacket) Write(buffer []byte) []byte {
 	encoding.WriteBytes(buffer, &index, packet.ExpectedRelayPublicKey[:], crypto.Box_PublicKeySize)
 	encoding.WriteBytes(buffer, &index, packet.ExpectedRelayBackendPublicKey[:], crypto.Box_PublicKeySize)
 
-	encoding.WriteBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES)
+	encoding.WriteBytes(buffer, &index, packet.TestToken[:], constants.EncryptedRouteTokenBytes)
 
-	encoding.WriteBytes(buffer, &index, packet.PingKey[:], crypto.Auth_KeySize)
+	encoding.WriteBytes(buffer, &index, packet.PingKey[:], constants.PingKeyBytes)
 
 	return buffer[:index]
 }
@@ -356,11 +356,11 @@ func (packet *RelayUpdateResponsePacket) Read(buffer []byte) error {
 		return errors.New("could not read expected relay backend public key")
 	}
 
-	if !encoding.ReadBytes(buffer, &index, packet.TestToken[:], constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES) {
+	if !encoding.ReadBytes(buffer, &index, packet.TestToken[:], constants.EncryptedRouteTokenBytes) {
 		return errors.New("could not read test token")
 	}
 
-	if !encoding.ReadBytes(buffer, &index, packet.PingKey[:], crypto.Auth_KeySize) {
+	if !encoding.ReadBytes(buffer, &index, packet.PingKey[:], constants.PingKeyBytes) {
 		return errors.New("could not read ping key")
 	}
 

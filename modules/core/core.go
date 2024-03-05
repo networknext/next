@@ -18,6 +18,7 @@ import (
 
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/crypto"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 var DebugLogs bool
@@ -769,7 +770,7 @@ func WriteRouteToken(data *RouteToken, buffer []byte) {
 }
 
 func ReadRouteToken(token *RouteToken, buffer []byte) error {
-	if len(buffer) < constants.NEXT_ROUTE_TOKEN_BYTES {
+	if len(buffer) < constants.RouteTokenBytes {
 		return fmt.Errorf("buffer too small to read route token")
 	}
 
@@ -817,25 +818,44 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 	return nil
 }
 
-func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
-	RandomBytes(tokenData[:crypto.Box_NonceSize])
-	WriteRouteToken(token, tokenData[crypto.Box_NonceSize:])
-	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, tokenData[0:crypto.Box_NonceSize], tokenData[crypto.Box_NonceSize:], constants.NEXT_ROUTE_TOKEN_BYTES)
+func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) {
+
+	routeToken := make([]byte, constants.RouteTokenBytes)
+	WriteRouteToken(token, routeToken)
+
+	aead, err := chacha20poly1305.NewX(secretKey)
+	if err != nil {
+		panic(err)
+	}
+
+	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(routeToken)+aead.Overhead())
+	if _, err := crypto_rand.Read(nonce[:aead.NonceSize()]); err != nil {
+		panic(err)
+	}
+
+	encryptedContinueToken := aead.Seal(nonce, nonce, routeToken, nil)
+
+	copy(tokenData, encryptedContinueToken)
 }
 
-func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
-	if len(tokenData) < constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES {
-		return fmt.Errorf("not enough bytes for encrypted route token")
-	}
-	nonce := tokenData[0 : crypto.Box_NonceSize-1]
-	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.NEXT_ROUTE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
-		return err
-	}
-	return ReadRouteToken(token, tokenData)
+func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) error {
+	/*
+		// todo: update crypto below
+		if len(tokenData) < constants.EncryptedRouteTokenBytes {
+			return fmt.Errorf("not enough bytes for encrypted route token")
+		}
+		nonce := tokenData[0 : crypto.Box_NonceSize-1]
+		tokenData = tokenData[crypto.Box_NonceSize:]
+		if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.RouteTokenBytes+crypto.Box_MacSize); err != nil {
+			return err
+		}
+		return ReadRouteToken(token, tokenData)
+	*/
+	// todo: update crypto
+	return nil
 }
 
-func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, publicKeys [][]byte, masterPrivateKey []byte) {
+func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, secretKeys [][]byte) {
 	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
@@ -866,7 +886,7 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
 		copy(token.SessionPrivateKey[:], privateKey[:])
-		WriteEncryptedRouteToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
+		WriteEncryptedRouteToken(&token, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
 	}
 }
 

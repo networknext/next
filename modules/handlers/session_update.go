@@ -620,12 +620,12 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	numTokens := routeNumRelays + 2
 
-	var routePublicAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
-	var routeHasInternalAddresses [constants.NEXT_MAX_NODES]bool
-	var routeInternalAddresses [constants.NEXT_MAX_NODES]net.UDPAddr
-	var routeInternalGroups [constants.NEXT_MAX_NODES]uint64
-	var routeSellers [constants.NEXT_MAX_NODES]int
-	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
+	var routePublicAddresses [constants.NextMaxNodes]net.UDPAddr
+	var routeHasInternalAddresses [constants.NextMaxNodes]bool
+	var routeInternalAddresses [constants.NextMaxNodes]net.UDPAddr
+	var routeInternalGroups [constants.NextMaxNodes]uint64
+	var routeSellers [constants.NextMaxNodes]int
+	var routePublicKeys [constants.NextMaxNodes][]byte
 
 	// client node
 
@@ -663,6 +663,14 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	routePublicAddresses[numTokens-1] = *state.From
 	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
 
+	// generate route secret keys
+
+	// todo
+	var routeSecretKeys [constants.NextMaxNodes][]byte
+	for i := range routeSecretKeys {
+		routeSecretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
 	// write the tokens
 
 	tokenData := make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
@@ -673,7 +681,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	envelopeUpKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps)
 	envelopeDownKbps := uint32(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps)
 
-	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routePublicAddresses[:], routeHasInternalAddresses[:], routeInternalAddresses[:], routeInternalGroups[:], routeSellers[:], routePublicKeys[:], state.RelayBackendPrivateKey[:])
+	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, envelopeUpKbps, envelopeDownKbps, int(numTokens), routePublicAddresses[:], routeHasInternalAddresses[:], routeInternalAddresses[:], routeInternalGroups[:], routeSellers[:], routeSecretKeys[:])
 
 	state.Response.RouteType = packets.SDK_RouteTypeNew
 	state.Response.NumTokens = numTokens
@@ -684,7 +692,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	numTokens := routeNumRelays + 2
 
-	var routePublicKeys [constants.NEXT_MAX_NODES][]byte
+	var routePublicKeys [constants.NextMaxNodes][]byte
 
 	// client node
 
