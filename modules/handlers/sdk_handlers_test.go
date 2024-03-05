@@ -405,7 +405,7 @@ func TestSignatureCheckFailed_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// run the packet through the handler, it should fail the signature check
@@ -478,7 +478,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
@@ -560,14 +560,14 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// modify the packet so it has an old SDK version of 0.1.2
 
-	packetData[16] = 0
-	packetData[17] = 1
-	packetData[18] = 2
+	packetData[18] = 0
+	packetData[19] = 1
+	packetData[20] = 2
 
 	// actually sign the packet, so it passes the signature check
 
@@ -577,8 +577,6 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
-// todo: this is broken
-/*
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SDKTooOld])
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
@@ -603,7 +601,6 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	default:
 		panic("no server init message found on channel")
 	}
-*/
 }
 
 func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
@@ -651,7 +648,7 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
@@ -797,7 +794,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 			// ignore any packets that are too small
 
-			if len(packetData) < 16+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
+			if len(packetData) < 18+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
@@ -961,7 +958,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
@@ -1043,21 +1040,19 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// modify the packet so it has an old SDK version of 0.1.2
 
-	packetData[16] = 0
-	packetData[17] = 1
-	packetData[18] = 2
+	packetData[18] = 0
+	packetData[19] = 1
+	packetData[20] = 2
 
 	// actually sign the packet, so it passes the signature check
 
 	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
-// todo: this is broken
-/*
 	// run the packet through the handler, we should see that the SDK is too old
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
@@ -1086,7 +1081,6 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	default:
 		panic("no server update message found on channel")
 	}
-*/
 }
 
 func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
@@ -1134,7 +1128,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
 
-	index := 16 + 3
+	index := 18 + 3
 	encoding.WriteUint64(packetData[:], &index, buyerId)
 
 	// actually sign the packet, so it passes the signature check
@@ -1277,7 +1271,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 			// ignore any packets that are too small
 
-			if len(packetData) < 16+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
+			if len(packetData) < 18+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
@@ -1313,7 +1307,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 			// read packet
 
-			packetData = packetData[16 : len(packetData)-(2+packets.SDK_CRYPTO_SIGN_BYTES)]
+			packetData = packetData[18 : len(packetData)-(packets.SDK_CRYPTO_SIGN_BYTES)]
 
 			responsePacket := packets.SDK_ServerUpdateResponsePacket{}
 			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {

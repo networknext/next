@@ -558,7 +558,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	// process the packet according to type
 
-	packetData = packetData[16:]
+	packetData = packetData[18:]
 
 	switch packetType {
 
