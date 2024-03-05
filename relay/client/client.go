@@ -1544,8 +1544,8 @@ func TestContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDP
 
 func main() {
 
-	clientAddress := GetEnvAddress("CLIENT_ADDRESS", "192.168.1.34:30000")
-	// clientAddress := GetEnvAddress("CLIENT_ADDRESS", "192.168.1.11:30000")
+	// clientAddress := GetEnvAddress("CLIENT_ADDRESS", "192.168.1.34:30000")
+	clientAddress := GetEnvAddress("CLIENT_ADDRESS", "192.168.1.11:30000")
 	serverAddress := GetEnvAddress("SERVER_ADDRESS", "192.168.1.40:40000")
 
 	secretKey := []byte{0x22, 0x3c, 0x0c, 0xc6, 0x70, 0x7b, 0x99, 0xc4, 0xdd, 0x44, 0xb9, 0xe8, 0x3c, 0x78, 0x1c, 0xd7, 0xd3, 0x2f, 0x9b, 0xad, 0x70, 0xbf, 0x8d, 0x9f, 0xe3, 0xa6, 0xd4, 0xc7, 0xe3, 0xb2, 0x98, 0x90}

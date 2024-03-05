@@ -11,6 +11,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+	"bytes"
+	"crypto/sha256"
 
 	"github.com/stretchr/testify/assert"
 
@@ -5083,7 +5085,7 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 }
 
 func TestPingTokenSignatures(t *testing.T) {
-	const NumTokens = 32
+	const NumTokens = constants.MaxNearRelays
 	key := crypto.Auth_Key()
 	clientPublicAddress := common.RandomAddress()
 	relayPublicAddresses := make([]net.UDPAddr, NumTokens)
@@ -5094,15 +5096,20 @@ func TestPingTokenSignatures(t *testing.T) {
 	expireTimestamp := rand.Uint64()
 	pingTokens := make([]byte, NumTokens*constants.PingTokenBytes)
 	core.GeneratePingTokens(expireTimestamp, &clientPublicAddress, relayPublicAddresses, key, pingTokens)
-	for i := 0; i < 32; i++ {
-		data := make([]byte, 256)
-		binary.LittleEndian.PutUint64(data[0:], expireTimestamp)
-		clientAddressWithoutPort := clientPublicAddress
-		clientAddressWithoutPort.Port = 0
-		core.WriteAddress(data[8:], &clientAddressWithoutPort)
-		core.WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &relayPublicAddresses[i])
-		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
-		assert.True(t, crypto.Auth_Verify(data[:length], key, pingTokens[i*constants.PingTokenBytes:]))
+	from := clientPublicAddress
+	from.Port = 0
+	for i := 0; i < constants.MaxNearRelays; i++ {
+		to := relayPublicAddresses[i]
+		data := make([]byte, 32 + 20)
+		index := 0
+		copy(data[index:], key);                                           index += 32
+		binary.LittleEndian.PutUint64(data[index:], expireTimestamp);      index += 8
+		copy(data[index:], from.IP.To4());                                 index += 4
+		copy(data[index:], to.IP.To4());                                   index += 4
+		binary.BigEndian.PutUint16(data[index:], uint16(from.Port));       index += 2
+		binary.BigEndian.PutUint16(data[index:], uint16(to.Port));         index += 2
+		hash := sha256.Sum256(data[:index]);
+		assert.True(t, bytes.Equal(pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes], hash[:]))
 	}
 }
 

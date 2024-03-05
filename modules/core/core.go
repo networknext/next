@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"crypto/sha256"
 
 	crypto_rand "crypto/rand"
 	math_rand "math/rand"
@@ -1971,15 +1972,20 @@ func GetAddressData(address *net.UDPAddr, addressBuffer []byte) []byte {
 }
 
 func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr, relayPublicAddresses []net.UDPAddr, key []byte, pingTokens []byte) {
-	clientAddressWithoutPort := *clientPublicAddress
-	clientAddressWithoutPort.Port = 0
+	from := *clientPublicAddress
+	from.Port = 0
 	for i := range relayPublicAddresses {
-		data := make([]byte, 256)
-		binary.LittleEndian.PutUint64(data[0:], expireTimestamp)
-		WriteAddress(data[8:], &clientAddressWithoutPort)
-		WriteAddress(data[8+constants.NEXT_ADDRESS_BYTES:], &relayPublicAddresses[i])
-		length := 8 + constants.NEXT_ADDRESS_BYTES + constants.NEXT_ADDRESS_BYTES
-		crypto.Auth_Sign(data[:length], key, pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes])
+		to := relayPublicAddresses[i]
+		data := make([]byte, 32 + 20)
+		index := 0
+		copy(data[index:], key);                                           index += 32
+		binary.LittleEndian.PutUint64(data[index:], expireTimestamp);      index += 8
+		copy(data[index:], from.IP.To4());                                 index += 4
+		copy(data[index:], to.IP.To4());                                   index += 4
+		binary.BigEndian.PutUint16(data[index:], uint16(from.Port));       index += 2
+		binary.BigEndian.PutUint16(data[index:], uint16(to.Port));         index += 2
+		hash := sha256.Sum256(data[:index]);
+		copy(pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes], hash[:])
 	}
 }
 
