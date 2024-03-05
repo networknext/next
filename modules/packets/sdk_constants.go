@@ -26,7 +26,7 @@ const (
 	SDK_SESSION_UPDATE_RESPONSE_PACKET = 55
 
 	SDK_MaxDatacenterNameLength = 256
-	SDK_MaxSessionDataSize      = 1024
+	SDK_MaxSessionDataSize      = 256
 	SDK_MaxTokens               = constants.NEXT_MAX_NODES
 	SDK_MaxRelaysPerRoute       = constants.NEXT_MAX_NODES - 2
 	SDK_MaxNearRelays           = int(constants.MaxNearRelays)

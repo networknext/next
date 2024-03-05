@@ -138,7 +138,7 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 	// check packet signature
 
 	var buyerId uint64
-	index := 16 + 3
+	index := 18 + 3
 	encoding.ReadUint64(packetData, &index, &buyerId)
 
 	buyer, ok := handler.Database.BuyerMap[buyerId]
@@ -158,7 +158,7 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 
 	// process the packet according to type
 
-	packetData = packetData[16:]
+	packetData = packetData[18:]
 
 	switch packetType {
 

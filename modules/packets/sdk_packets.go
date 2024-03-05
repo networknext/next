@@ -27,8 +27,8 @@ func SDK_SignPacket(packetData []byte, privateKey []byte) {
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK_CRYPTO_SIGN_BYTES))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
 }
 
 func SDK_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
@@ -36,8 +36,8 @@ func SDK_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK_CRYPTO_SIGN_BYTES))
-	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
 
 	if result != 0 {
 		core.Error("signed packet did not verify")
@@ -53,7 +53,7 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 
 	writeStream := encoding.CreateWriteStream(buffer[:])
 
-	var dummy [16]byte
+	var dummy [18]byte
 	writeStream.SerializeBytes(dummy[:])
 
 	err := packet.Serialize(writeStream)
@@ -63,7 +63,7 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 
 	writeStream.Flush()
 
-	packetBytes := writeStream.GetBytesProcessed() + SDK_CRYPTO_SIGN_BYTES + 2
+	packetBytes := writeStream.GetBytesProcessed() + SDK_CRYPTO_SIGN_BYTES
 
 	packetData := buffer[:packetBytes]
 
@@ -72,8 +72,8 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[16]), C.ulonglong(len(packetData)-16-2-SDK_CRYPTO_SIGN_BYTES))
-	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-2-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
 
 	if result != 0 {
 		return nil, fmt.Errorf("failed to sign response packet: %d", result)
@@ -86,9 +86,9 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 	fromAddressData := core.GetAddressData(from, fromAddressBuffer[:])
 	toAddressData := core.GetAddressData(to, toAddressBuffer[:])
 
-	core.GenerateChonkle(packetData[1:16], magic[:], fromAddressData, toAddressData, packetBytes)
+	core.GeneratePittle(packetData[1:3], fromAddressData, toAddressData, packetBytes)
 
-	core.GeneratePittle(packetData[packetBytes-2:], fromAddressData, toAddressData, packetBytes)
+	core.GenerateChonkle(packetData[3:18], magic[:], fromAddressData, toAddressData, packetBytes)
 
 	return packetData, nil
 }
