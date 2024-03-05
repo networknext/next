@@ -11,9 +11,9 @@
 
 #define RELAY_HEADER_BYTES                                                                      25
 
-#define RELAY_MTU                                                                             1300
+#define RELAY_MTU                                                                             1200
 
-#define RELAY_MAX_PACKET_BYTES                                                                1400
+#define RELAY_MAX_PACKET_BYTES                                                                1384
 
 #define RELAY_ADDRESS_NONE                                         								 0
 #define RELAY_ADDRESS_IPV4                                                                       1

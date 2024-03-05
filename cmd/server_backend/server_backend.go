@@ -107,7 +107,7 @@ func main() {
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 
 	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024*1024)
-	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 4096)
+	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 1384)
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
 	serverBackendPublicKey = envvar.GetBase64("SERVER_BACKEND_PUBLIC_KEY", []byte{})
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})

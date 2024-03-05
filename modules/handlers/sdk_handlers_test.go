@@ -63,7 +63,7 @@ func CreateTestHarness() *TestHarness {
 	backendPort := harness.conn.LocalAddr().(*net.UDPAddr).Port
 
 	harness.handler = SDK_Handler{}
-	harness.handler.MaxPacketSize = 4096
+	harness.handler.MaxPacketSize = 1384
 	harness.handler.ServerBackendAddress = core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", backendPort))
 	harness.handler.GetMagicValues = getMagicValues
 

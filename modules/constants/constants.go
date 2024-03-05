@@ -1,7 +1,7 @@
 package constants
 
 const (
-	MajorVersion = 5
+	MajorVersion = 1
 	MinorVersion = 0
 	PatchVersion = 0
 

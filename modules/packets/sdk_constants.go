@@ -12,6 +12,8 @@ const (
 	SDK_SessionDataVersion_Max   = 1
 	SDK_SessionDataVersion_Write = 1
 
+	SDK_MaxPacketBytes = 1384
+
 	SDK_CRYPTO_SIGN_BYTES             = 64
 	SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
 	SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
@@ -93,7 +95,6 @@ const (
 	SDK_SliceSeconds = 10
 
 	SDK_MinPacketBytes = 16 + 3 + 8 + SDK_CRYPTO_SIGN_BYTES + 2
-	SDK_MaxPacketBytes = 4096
 
 	SDK_MacBytes        = crypto.Box_MacSize
 	SDK_NonceBytes      = crypto.Box_NonceSize

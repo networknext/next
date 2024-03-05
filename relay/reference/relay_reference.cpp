@@ -18,11 +18,13 @@
 #include "curl/curl.h"
 #include <time.h>
 
-#define RELAY_VERSION_LENGTH                                                                    32
+#define RELAY_MTU                                                                             1200
 
-#define RELAY_MTU                                                                             1300
+#define RELAY_MAX_PACKET_BYTES                                                                1384
 
 #define RELAY_HEADER_BYTES                                                                      25
+
+#define RELAY_VERSION_LENGTH                                                                    32
 
 #define RELAY_ADDRESS_BYTES                                                                     19
 #define RELAY_ADDRESS_IPV4_BYTES                                                                 6
@@ -53,13 +55,11 @@
 #define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                                                      111
 #define RELAY_CONTINUE_TOKEN_BYTES                                                              17
 #define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                                                    57
-#define RELAY_MTU                                                                             1300
 #define RELAY_HEADER_BYTES                                                                      25
 #define RELAY_PUBLIC_KEY_BYTES                                                                  32
 #define RELAY_PRIVATE_KEY_BYTES                                                                 32
 #define RELAY_SECRET_KEY_BYTES                                                                  32
 #define RELAY_BACKEND_PUBLIC_KEY_BYTES                                                          32
-#define RELAY_MAX_PACKET_BYTES                                                                1400
 
 #define RELAY_ROUTE_REQUEST_PACKET                                                               1
 #define RELAY_ROUTE_RESPONSE_PACKET                                                              2
