@@ -722,7 +722,15 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 	sessionVersion := uint8(state.Output.SessionVersion)
 	expireTimestamp := state.Output.ExpireTimestamp
 
-	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routePublicKeys[:], state.RelayBackendPrivateKey[:])
+	// generate route secret keys
+
+	// todo
+	var routeSecretKeys [constants.NextMaxNodes][]byte
+	for i := range routeSecretKeys {
+		routeSecretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routeSecretKeys[:])
 
 	state.Response.RouteType = packets.SDK_RouteTypeContinue
 	state.Response.NumTokens = numTokens

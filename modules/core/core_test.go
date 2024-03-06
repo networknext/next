@@ -1039,13 +1039,11 @@ func TestRouteToken(t *testing.T) {
 	result := core.ReadEncryptedRouteToken(&readRouteToken, buffer, secretKey)
 
 	assert.True(t, result)
+	if !result {
+		return
+	}
+
 	assert.Equal(t, routeToken, readRouteToken)
-
-	// can't read an encrypted route token if the buffer is too small
-
-	result = core.ReadEncryptedRouteToken(&readRouteToken, buffer[:10], secretKey)
-
-	assert.False(t, result)
 
 	// can't read an encrypted route token if the buffer is garbage
 
@@ -1094,9 +1092,9 @@ func TestRouteTokens_PublicAddresses(t *testing.T) {
 
 	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.RouteToken
-		result := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
+		result := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:(i+1)*constants.EncryptedRouteTokenBytes], secretKeys[i])
 		assert.True(t, result)
-		if result == false {
+		if !result {
 			return
 		}
 		assert.Equal(t, sessionId, routeToken.SessionId)
@@ -1115,8 +1113,6 @@ func TestRouteTokens_PublicAddresses(t *testing.T) {
 	}
 }
 
-// todo
-/*
 func TestRouteTokens_InternalAddresses(t *testing.T) {
 
 	t.Parallel()
@@ -1195,10 +1191,7 @@ func TestRouteTokens_InternalAddresses(t *testing.T) {
 		}
 	}
 }
-*/
 
-// todo
-/*
 func TestRouteTokens_DifferentSellers(t *testing.T) {
 
 	t.Parallel()
@@ -1247,8 +1240,11 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 
 	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.RouteToken
-		result := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.RouteTokenBytes:], secretKeys[i])
+		result := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
 		assert.True(t, result)
+		if !result {
+			return
+		}
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
 		assert.Equal(t, kbpsUp, routeToken.EnvelopeKbpsUp)
@@ -1264,10 +1260,7 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 		assert.Equal(t, routeToken.PrevInternal, uint8(0))
 	}
 }
-*/
 
-// todo
-/*
 func TestRouteTokens_DifferentGroups(t *testing.T) {
 
 	t.Parallel()
@@ -1318,6 +1311,9 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 		var routeToken core.RouteToken
 		result := core.ReadEncryptedRouteToken(&routeToken, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
 		assert.True(t, result)
+		if !result {
+			return
+		}
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)
 		assert.Equal(t, kbpsUp, routeToken.EnvelopeKbpsUp)
@@ -1333,7 +1329,6 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 		assert.Equal(t, routeToken.PrevInternal, uint8(0))
 	}
 }
-*/
 
 func TestContinueToken(t *testing.T) {
 
@@ -1341,31 +1336,24 @@ func TestContinueToken(t *testing.T) {
 
 	// write an encrypted continue token and verify we can decrypt and read it back
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
-
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
-
 	continueToken := core.ContinueToken{}
 	continueToken.ExpireTimestamp = uint64(time.Now().Unix() + 10)
 	continueToken.SessionId = 0x123131231313131
 	continueToken.SessionVersion = 100
 
+	secretKey := make([]byte, constants.SecretKeyBytes)
+	core.RandomBytes(secretKey)
+
 	buffer := make([]byte, constants.EncryptedContinueTokenBytes)
 
-	core.WriteEncryptedContinueToken(&continueToken, buffer, masterPrivateKey[:], relayPublicKey[:])
+	core.WriteEncryptedContinueToken(&continueToken, buffer, secretKey)
 
 	readContinueToken := core.ContinueToken{}
 
-	result := core.ReadEncryptedContinueToken(&readContinueToken, buffer, masterPublicKey[:], relayPrivateKey[:])
+	result := core.ReadEncryptedContinueToken(&readContinueToken, buffer, secretKey)
 
 	assert.True(t, result)
 	assert.Equal(t, continueToken, readContinueToken)
-
-	// read encrypted continue token should fail when buffer is too small
-
-	result = core.ReadEncryptedContinueToken(&readContinueToken, buffer[:10], masterPublicKey[:], relayPrivateKey[:])
-
-	assert.False(t, false)
 
 	// read encrypted continue token should fail on garbage data
 
@@ -1373,7 +1361,7 @@ func TestContinueToken(t *testing.T) {
 
 	core.RandomBytes(garbageData)
 
-	result = core.ReadEncryptedContinueToken(&readContinueToken, garbageData, masterPublicKey[:], relayPrivateKey[:])
+	result = core.ReadEncryptedContinueToken(&readContinueToken, garbageData, secretKey)
 
 	assert.False(t, result)
 }
@@ -1382,17 +1370,7 @@ func TestContinueTokens(t *testing.T) {
 
 	t.Parallel()
 
-	relayPublicKey, relayPrivateKey := crypto.Box_KeyPair()
-
-	masterPublicKey, masterPrivateKey := crypto.Box_KeyPair()
-
 	// write a bunch of tokens to a buffer
-
-	publicKeys := make([][]byte, constants.NextMaxNodes)
-	for i := range publicKeys {
-		publicKeys[i] = make([]byte, crypto.Box_PublicKeySize)
-		copy(publicKeys[i], relayPublicKey[:])
-	}
 
 	sessionId := uint64(0x123131231313131)
 	sessionVersion := byte(100)
@@ -1400,13 +1378,19 @@ func TestContinueTokens(t *testing.T) {
 
 	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedContinueTokenBytes)
 
-	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, constants.NextMaxNodes, publicKeys, masterPrivateKey)
+	// todo: generate secret keys
+	secretKeys := make([][]byte, constants.NextMaxNodes)
+	for i := range secretKeys {
+		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+	}
+
+	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, constants.NextMaxNodes, secretKeys)
 
 	// read each token back individually and verify the token data matches what was written
 
 	for i := 0; i < constants.NextMaxNodes; i++ {
 		var routeToken core.ContinueToken
-		result := core.ReadEncryptedContinueToken(&routeToken, tokenData[i*constants.EncryptedContinueTokenBytes:], masterPublicKey[:], relayPrivateKey[:])
+		result := core.ReadEncryptedContinueToken(&routeToken, tokenData[i*constants.EncryptedContinueTokenBytes:], secretKeys[i])
 		assert.True(t, result)
 		assert.Equal(t, sessionId, routeToken.SessionId)
 		assert.Equal(t, sessionVersion, routeToken.SessionVersion)

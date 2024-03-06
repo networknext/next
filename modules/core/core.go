@@ -815,24 +815,25 @@ func ReadRouteToken(token *RouteToken, buffer []byte) {
 
 func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) bool {
 
-	routeToken := make([]byte, constants.RouteTokenBytes)
+	data := make([]byte, constants.RouteTokenBytes)
 
-	WriteRouteToken(token, routeToken)
+	WriteRouteToken(token, data)
 
 	aead, err := chacha20poly1305.NewX(secretKey)
 	if err != nil {
 		return false
 	}
 
-	// todo: this copy can be avoided i think
-	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(routeToken)+aead.Overhead())
+	nonce := make([]byte, aead.NonceSize(), constants.EncryptedRouteTokenBytes)
 	if _, err := crypto_rand.Read(nonce[:aead.NonceSize()]); err != nil {
 		return false
 	}
 
-	encryptedContinueToken := aead.Seal(nonce, nonce, routeToken, nil)
+	dest := nonce
 
-	copy(tokenData, encryptedContinueToken)
+	encryptedRouteToken := aead.Seal(dest, nonce, data, nil)
+
+	copy(tokenData, encryptedRouteToken)
 
 	return true
 }
@@ -844,13 +845,15 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []by
 		return false
 	}
 
-	if len(tokenData) < aead.NonceSize() {
-		return false
-	}
+	nonceSize := aead.NonceSize()
 
-	nonce, encrypted := tokenData[:aead.NonceSize()], tokenData[aead.NonceSize():]
+	tokenData = tokenData[:constants.EncryptedRouteTokenBytes]
 
-	decrypted, err := aead.Open( nil, nonce, encrypted, nil )
+	nonce, encrypted := tokenData[:nonceSize], tokenData[nonceSize:]
+
+	output := make([]byte, 0, constants.RouteTokenBytes)
+
+	decrypted, err := aead.Open( output, nonce, encrypted, nil )
 	if err != nil {
 		return false
 	}
@@ -861,7 +864,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []by
 }
 
 func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, secretKeys [][]byte) {
-	privateKey := [crypto.Box_PrivateKeySize]byte{}
+	privateKey := [crypto.Box_PrivateKeySize]byte{}		// todo: new constant
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
 		var token RouteToken
@@ -891,7 +894,7 @@ func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64
 			token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 0}
 		}
 		copy(token.SessionPrivateKey[:], privateKey[:])
-		WriteEncryptedRouteToken(&token, tokenData[i*constants.EncryptedRouteTokenBytes:], secretKeys[i])
+		WriteEncryptedRouteToken(&token, tokenData[i*constants.EncryptedRouteTokenBytes:(i+1)*constants.EncryptedRouteTokenBytes], secretKeys[i])
 	}
 }
 
@@ -909,32 +912,63 @@ func ReadContinueToken(token *ContinueToken, buffer []byte) {
 	token.SessionVersion = buffer[8+8]
 }
 
-func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
-	RandomBytes(buffer[:crypto.Box_NonceSize])
-	WriteContinueToken(token, buffer[crypto.Box_NonceSize:])
-	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], constants.ContinueTokenBytes)
-}
+func WriteEncryptedContinueToken(token *ContinueToken, tokenData []byte, secretKey []byte) bool {
 
-func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) bool {
-	if len(tokenData) < constants.EncryptedContinueTokenBytes {
+	data := make([]byte, constants.ContinueTokenBytes)
+
+	WriteContinueToken(token, data)
+
+	aead, err := chacha20poly1305.NewX(secretKey)
+	if err != nil {
 		return false
 	}
-	nonce := tokenData[0 : crypto.Box_NonceSize-1]
-	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.ContinueTokenBytes+crypto.Box_MacSize); err != nil {
+
+	nonce := make([]byte, aead.NonceSize(), constants.EncryptedContinueTokenBytes)
+	if _, err := crypto_rand.Read(nonce[:aead.NonceSize()]); err != nil {
 		return false
 	}
-	ReadContinueToken(token, tokenData)
+
+	dest := nonce
+
+	encryptedContinueToken := aead.Seal(dest, nonce, data, nil)
+
+	copy(tokenData, encryptedContinueToken)
+
 	return true
 }
 
-func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) {
+func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, secretKey []byte) bool {
+
+	aead, err := chacha20poly1305.NewX(secretKey)
+	if err != nil {
+		return false
+	}
+
+	nonceSize := aead.NonceSize()
+
+	tokenData = tokenData[:constants.EncryptedContinueTokenBytes]
+
+	nonce, encrypted := tokenData[:nonceSize], tokenData[nonceSize:]
+
+	output := make([]byte, 0, constants.ContinueTokenBytes)
+
+	decrypted, err := aead.Open( output, nonce, encrypted, nil )
+	if err != nil {
+		return false
+	}
+
+	ReadContinueToken(token, decrypted)
+
+	return true
+}
+
+func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, secretKeys [][]byte) {
 	for i := 0; i < numNodes; i++ {
 		var token ContinueToken
 		token.ExpireTimestamp = expireTimestamp
 		token.SessionId = sessionId
 		token.SessionVersion = sessionVersion
-		WriteEncryptedContinueToken(&token, tokenData[i*constants.EncryptedContinueTokenBytes:], masterPrivateKey[:], publicKeys[i])
+		WriteEncryptedContinueToken(&token, tokenData[i*constants.EncryptedContinueTokenBytes:], secretKeys[i])
 	}
 }
 
