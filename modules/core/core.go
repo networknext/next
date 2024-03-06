@@ -903,32 +903,29 @@ func WriteContinueToken(token *ContinueToken, buffer []byte) {
 	buffer[8+8] = token.SessionVersion
 }
 
-func ReadContinueToken(token *ContinueToken, buffer []byte) error {
-	if len(buffer) < constants.NEXT_CONTINUE_TOKEN_BYTES {
-		return fmt.Errorf("buffer too small to read continue token")
-	}
+func ReadContinueToken(token *ContinueToken, buffer []byte) {
 	token.ExpireTimestamp = binary.LittleEndian.Uint64(buffer[0:])
 	token.SessionId = binary.LittleEndian.Uint64(buffer[8:])
 	token.SessionVersion = buffer[8+8]
-	return nil
 }
 
 func WriteEncryptedContinueToken(token *ContinueToken, buffer []byte, senderPrivateKey []byte, receiverPublicKey []byte) {
 	RandomBytes(buffer[:crypto.Box_NonceSize])
 	WriteContinueToken(token, buffer[crypto.Box_NonceSize:])
-	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], constants.NEXT_CONTINUE_TOKEN_BYTES)
+	crypto.Box_Encrypt(senderPrivateKey, receiverPublicKey, buffer[:crypto.Box_NonceSize], buffer[crypto.Box_NonceSize:], constants.ContinueTokenBytes)
 }
 
-func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) error {
-	if len(tokenData) < constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES {
-		return fmt.Errorf("not enough bytes for encrypted continue token")
+func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, senderPublicKey []byte, receiverPrivateKey []byte) bool {
+	if len(tokenData) < constants.EncryptedContinueTokenBytes {
+		return false
 	}
 	nonce := tokenData[0 : crypto.Box_NonceSize-1]
 	tokenData = tokenData[crypto.Box_NonceSize:]
-	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.NEXT_CONTINUE_TOKEN_BYTES+crypto.Box_MacSize); err != nil {
-		return err
+	if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.ContinueTokenBytes+crypto.Box_MacSize); err != nil {
+		return false
 	}
-	return ReadContinueToken(token, tokenData)
+	ReadContinueToken(token, tokenData)
+	return true
 }
 
 func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, numNodes int, publicKeys [][]byte, masterPrivateKey []byte) {
@@ -937,7 +934,7 @@ func WriteContinueTokens(tokenData []byte, expireTimestamp uint64, sessionId uin
 		token.ExpireTimestamp = expireTimestamp
 		token.SessionId = sessionId
 		token.SessionVersion = sessionVersion
-		WriteEncryptedContinueToken(&token, tokenData[i*constants.NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES:], masterPrivateKey[:], publicKeys[i])
+		WriteEncryptedContinueToken(&token, tokenData[i*constants.EncryptedContinueTokenBytes:], masterPrivateKey[:], publicKeys[i])
 	}
 }
 

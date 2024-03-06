@@ -43,9 +43,8 @@ const (
 	RouteTokenBytes          = 71
 	EncryptedRouteTokenBytes = 111
 
-	// todo: clean up
-	NEXT_CONTINUE_TOKEN_BYTES           = 17
-	NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
+	ContinueTokenBytes          = 17
+	EncryptedContinueTokenBytes = 57
 
 	SessionError_FallbackToDirect                = (1 << 0)
 	SessionError_NoRoute                         = (1 << 1)
