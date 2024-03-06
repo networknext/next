@@ -769,10 +769,7 @@ func WriteRouteToken(data *RouteToken, buffer []byte) {
 	index += 1
 }
 
-func ReadRouteToken(token *RouteToken, buffer []byte) error {
-	if len(buffer) < constants.RouteTokenBytes {
-		return fmt.Errorf("buffer too small to read route token")
-	}
+func ReadRouteToken(token *RouteToken, buffer []byte) {
 
 	index := 0
 
@@ -814,45 +811,53 @@ func ReadRouteToken(token *RouteToken, buffer []byte) error {
 
 	token.NextAddress = net.UDPAddr{IP: net.IPv4(uint8(nextAddress&0xFF), uint8((nextAddress>>8)&0xFF), uint8((nextAddress>>16)&0xFF), uint8((nextAddress>>24)&0xFF)), Port: int(nextPort)}
 	token.PrevAddress = net.UDPAddr{IP: net.IPv4(uint8(prevAddress&0xFF), uint8((prevAddress>>8)&0xFF), uint8((prevAddress>>16)&0xFF), uint8((prevAddress>>24)&0xFF)), Port: int(prevPort)}
-
-	return nil
 }
 
-func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) {
+func WriteEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) bool {
 
 	routeToken := make([]byte, constants.RouteTokenBytes)
+
 	WriteRouteToken(token, routeToken)
 
 	aead, err := chacha20poly1305.NewX(secretKey)
 	if err != nil {
-		panic(err)
+		return false
 	}
 
+	// todo: this copy can be avoided i think
 	nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(routeToken)+aead.Overhead())
 	if _, err := crypto_rand.Read(nonce[:aead.NonceSize()]); err != nil {
-		panic(err)
+		return false
 	}
 
 	encryptedContinueToken := aead.Seal(nonce, nonce, routeToken, nil)
 
 	copy(tokenData, encryptedContinueToken)
+
+	return true
 }
 
-func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) error {
-	/*
-		// todo: update crypto below
-		if len(tokenData) < constants.EncryptedRouteTokenBytes {
-			return fmt.Errorf("not enough bytes for encrypted route token")
-		}
-		nonce := tokenData[0 : crypto.Box_NonceSize-1]
-		tokenData = tokenData[crypto.Box_NonceSize:]
-		if err := crypto.Box_Decrypt(senderPublicKey, receiverPrivateKey, nonce, tokenData, constants.RouteTokenBytes+crypto.Box_MacSize); err != nil {
-			return err
-		}
-		return ReadRouteToken(token, tokenData)
-	*/
-	// todo: update crypto
-	return nil
+func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []byte) bool {
+
+	aead, err := chacha20poly1305.NewX(secretKey)
+	if err != nil {
+		return false
+	}
+
+	if len(tokenData) < aead.NonceSize() {
+		return false
+	}
+
+	nonce, encrypted := tokenData[:aead.NonceSize()], tokenData[aead.NonceSize():]
+
+	decrypted, err := aead.Open( nil, nonce, encrypted, nil )
+	if err != nil {
+		return false
+	}
+
+	ReadRouteToken(token, decrypted)
+
+	return true
 }
 
 func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, secretKeys [][]byte) {

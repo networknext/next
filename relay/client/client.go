@@ -285,28 +285,40 @@ func GenerateRouteToken(secretKey []byte, data RouteTokenData) []byte {
 	routeToken := make([]byte, RouteTokenBytes)
 
 	index := 0
+
 	copy(routeToken[index:], data.SessionPrivateKey[:])
 	index += 32
+
 	binary.LittleEndian.PutUint64(routeToken[index:], data.ExpireTimestamp)
 	index += 8
+
 	binary.LittleEndian.PutUint64(routeToken[index:], data.SessionId)
 	index += 8
+
 	binary.LittleEndian.PutUint32(routeToken[index:], data.EnvelopeKbpsUp)
 	index += 4
+
 	binary.LittleEndian.PutUint32(routeToken[index:], data.EnvelopeKbpsDown)
 	index += 4
+
 	copy(routeToken[index:], GetAddressData(data.NextAddress))
 	index += 4
+
 	copy(routeToken[index:], GetAddressData(data.PrevAddress))
 	index += 4
+
 	binary.BigEndian.PutUint16(routeToken[index:], uint16(data.NextAddress.Port))
 	index += 2
+
 	binary.BigEndian.PutUint16(routeToken[index:], uint16(data.PrevAddress.Port))
 	index += 2
+
 	routeToken[index] = data.SessionVersion
 	index += 1
+
 	routeToken[index] = data.NextInternal
 	index += 1
+
 	routeToken[index] = data.PrevInternal
 	index += 1
 
@@ -336,10 +348,13 @@ func GenerateContinueToken(secretKey []byte, data ContinueTokenData) []byte {
 	continueToken := make([]byte, ContinueTokenBytes)
 
 	index := 0
+
 	binary.LittleEndian.PutUint64(continueToken[index:], data.ExpireTimestamp)
 	index += 8
+
 	binary.LittleEndian.PutUint64(continueToken[index:], data.SessionId)
 	index += 8
+
 	continueToken[index] = data.SessionVersion
 	index += 1
 
