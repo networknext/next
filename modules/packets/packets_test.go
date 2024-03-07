@@ -158,6 +158,33 @@ func GenerateRandomServerUpdateResponsePacket() packets.SDK_ServerUpdateResponse
 	return packet
 }
 
+func GenerateRandomNearRelayRequestPacket() packets.SDK_NearRelayRequestPacket {
+
+	packet := packets.SDK_NearRelayRequestPacket{
+		Version:       packets.SDKVersion{1, 0, 0},
+		BuyerId:       rand.Uint64(),
+		ClientAddress: common.RandomAddress(),
+	}
+
+	return packet
+}
+
+func GenerateRandomNearRelayResponsePacket() packets.SDK_NearRelayResponsePacket {
+
+	packet := packets.SDK_NearRelayResponsePacket{
+		RequestId:     rand.Uint64(),
+		Latitude:      rand.Float32(),
+		Longitude:     rand.Float32(),
+		NumNearRelays: int32(common.RandomInt(0, constants.MaxNearRelays)),
+	}
+
+	for i := 0; i < int(packet.NumNearRelays); i++ {
+		packet.NearRelayIds[i] = rand.Uint64()
+	}
+
+	return packet
+}
+
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
@@ -332,6 +359,34 @@ func Test_SDK_ServerUpdateResponsePacket(t *testing.T) {
 		readPacket := packets.SDK_ServerUpdateResponsePacket{}
 
 		PacketSerializationTest[*packets.SDK_ServerUpdateResponsePacket](&writePacket, &readPacket, t)
+	}
+}
+
+func Test_SDK_NearRelayRequestPacket(t *testing.T) {
+
+	t.Parallel()
+
+	//for i := 0; i < NumIterations; i++ {
+	{
+		writePacket := GenerateRandomNearRelayRequestPacket()
+
+		readPacket := packets.SDK_NearRelayRequestPacket{}
+
+		PacketSerializationTest[*packets.SDK_NearRelayRequestPacket](&writePacket, &readPacket, t)
+	}
+}
+
+func Test_SDK_NearRelayResponsePacket(t *testing.T) {
+
+	t.Parallel()
+
+	// for i := 0; i < NumIterations; i++ {
+	{
+		writePacket := GenerateRandomNearRelayResponsePacket()
+
+		readPacket := packets.SDK_NearRelayResponsePacket{}
+
+		PacketSerializationTest[*packets.SDK_NearRelayResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 
