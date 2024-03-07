@@ -107,6 +107,9 @@ type Service struct {
 	ip2location_mutex   sync.RWMutex
 	ip2location_isp_db  *maxminddb.Reader
 	ip2location_city_db *maxminddb.Reader
+
+	relayBackendPublicKey  []byte
+	relayBackendPrivateKey []byte
 }
 
 func CreateService(serviceName string) *Service {
@@ -226,6 +229,11 @@ func (service *Service) LoadDatabase() {
 	core.Log("loaded database: %s", databasePath)
 
 	service.watchDatabase(service.Context, databasePath)
+}
+
+func (service *Service) GenerateRelaySecretKeys(relayBackendPublicKey []byte, relayBackendPrivateKey []byte) {
+	service.relayBackendPublicKey = relayBackendPublicKey
+	service.relayBackendPrivateKey = relayBackendPrivateKey
 }
 
 func (service *Service) LoadIP2Location() {
@@ -518,7 +526,7 @@ func (service *Service) Load(name string) []byte {
 	return data
 }
 
-func (service *Service) UpdateRouteMatrix() {
+func (service *Service) UpdateRouteMatrix(relayBackendPublicKey []byte, relayBackendPrivateKey []byte) {
 
 	routeMatrixURL := envvar.GetString("ROUTE_MATRIX_URL", "http://127.0.0.1:30001/route_matrix")
 	routeMatrixInterval := envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
@@ -593,6 +601,8 @@ func (service *Service) UpdateRouteMatrix() {
 					core.Error("failed to read database: %v", err)
 					continue
 				}
+
+				newDatabase.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
 
 				service.routeMatrixMutex.Lock()
 				service.routeMatrix = &newRouteMatrix

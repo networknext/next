@@ -3793,6 +3793,7 @@ struct main_t
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
+    uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
     uint64_t last_update_response_timestamp;
     double last_update_response_time;
     relay_queue_t ** relay_control_queue;
@@ -4320,15 +4321,12 @@ int main_update( main_t * main )
         return RELAY_ERROR;
     }
 
-    // todo: bring the back when ready
-    /*
     relay_route_token_t token;
-    if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, main->relay_backend_public_key, main->relay_private_key ) != RELAY_OK )
+    if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, main->relay_secret_key ) != RELAY_OK )
     {
         printf( "error: relay is misconfigured. could not decrypt test token\n" );
         return RELAY_ERROR;
     }
-    */
 
     uint8_t ping_key[RELAY_PING_KEY_BYTES];
     relay_read_bytes( &q, ping_key, RELAY_PING_KEY_BYTES );
@@ -6171,7 +6169,7 @@ int main( int argc, const char ** argv )
 
     printf( "Creating message queues\n" );
 
-    const int num_threads = 1;
+    const int num_threads = 1;	// IMPORTANT: This reference relay only works with one thread
 
     relay_queue_t * relay_stats_queue = relay_queue_create( num_threads * 64 );
     relay_platform_mutex_t * relay_stats_mutex = relay_platform_mutex_create();
@@ -6402,35 +6400,25 @@ int main( int argc, const char ** argv )
 			relay_platform_mutex_release( relay[0].control_mutex );
 		}
 
-/*
-    // send control message to ping thread
+	    // send control message to ping thread
 
-    relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
+	    relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
 
-    memset( message, 0, sizeof(relay_control_message_t) );
+	    memset( message, 0, sizeof(relay_control_message_t) );
 
-    message->num_relays = num_relays;
+	    message->current_timestamp = current_timestamp;
 
-    for ( int i = 0; i < int(num_relays); i++ )
-    {
-        message->relay_ids[i] = relay_ping_data[i].id;
-        message->relay_addresses[i] = relay_ping_data[i].address;
-        message->relay_internal[i] = relay_ping_data[i].internal;
-    }
+	    memcpy( message->next_magic, &next_magic, 8 );
+	    memcpy( message->current_magic, &current_magic, 8 );
+	    memcpy( message->previous_magic, &previous_magic, 8 );
 
-    memcpy( message->next_magic, &next_magic, 8 );
-    memcpy( message->current_magic, &current_magic, 8 );
-    memcpy( message->previous_magic, &previous_magic, 8 );
+		memcpy( message->relay_secret_key, relay_secret_key, RELAY_SECRET_KEY_BYTES );
 
-    message->last_update_response_time = main->last_update_response_time;
-    message->last_update_response_timestamp = main->last_update_response_timestamp;
+	    memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
-    memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
-
-    relay_platform_mutex_acquire( main->ping_control_mutex );
-    relay_queue_push( main->ping_control_queue, message );
-    relay_platform_mutex_release( main->ping_control_mutex );
-*/
+	    relay_platform_mutex_acquire( main->ping_control_mutex );
+	    relay_queue_push( main->ping_control_queue, message );
+	    relay_platform_mutex_release( main->ping_control_mutex );
 
 	    relay_platform_sleep( 1.0 );
 	}
@@ -6467,6 +6455,7 @@ int main( int argc, const char ** argv )
     memcpy( main.relay_public_key, relay_public_key, sizeof(relay_public_key) );
     memcpy( main.relay_private_key, relay_private_key, sizeof(relay_private_key) );
     memcpy( main.relay_backend_public_key, relay_backend_public_key, sizeof(relay_backend_public_key) );
+    memcpy( main.relay_secret_key, relay_secret_key, sizeof(relay_secret_key) );
     main.relay_control_queue = relay_control_queue;
     main.relay_control_mutex = relay_control_mutex;
     main.ping_control_queue = ping_control_queue;

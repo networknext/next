@@ -32,6 +32,7 @@ var maxPacketSize int
 var serverBackendAddress net.UDPAddr
 var serverBackendPublicKey []byte
 var serverBackendPrivateKey []byte
+var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
 
 var fallbackToDirectChannel chan uint64
@@ -112,6 +113,7 @@ func main() {
 	serverBackendPublicKey = envvar.GetBase64("SERVER_BACKEND_PUBLIC_KEY", []byte{})
 	serverBackendPrivateKey = envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
+	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	enableGooglePubsub = envvar.GetBool("ENABLE_GOOGLE_PUBSUB", false)
 	portalNextSessionsOnly = envvar.GetBool("PORTAL_NEXT_SESSIONS_ONLY", false)
 	sessionCruncherURL = envvar.GetString("SESSION_CRUNCHER_URL", "http://127.0.0.1:40200")
@@ -158,6 +160,10 @@ func main() {
 
 	if len(serverBackendPrivateKey) == 0 {
 		panic("SERVER_BACKEND_PRIVATE_KEY must be specified")
+	}
+
+	if len(relayBackendPublicKey) == 0 {
+		panic("RELAY_BACKEND_PUBLIC_KEY must be specified")
 	}
 
 	if len(relayBackendPrivateKey) == 0 {
@@ -278,7 +284,7 @@ func main() {
 
 	updateShuttingDown()
 
-	service.UpdateRouteMatrix()
+	service.UpdateRouteMatrix(relayBackendPublicKey, relayBackendPrivateKey)
 
 	service.SetHealthFunctions(sendTrafficToMe, machineIsHealthy, ready)
 
@@ -394,7 +400,7 @@ func updateShuttingDown() {
 
 			case <-ticker.C:
 
-				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
+				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups manaey)d list-instances server-backend --region %s", region))
 
 				lines := strings.Split(output, "\n")
 

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
 
 	_ "github.com/lib/pq"
 	"github.com/modood/table"
@@ -92,6 +93,7 @@ type Database struct {
 	BuyerCodeMap            map[string]*Buyer
 	SellerCodeMap           map[string]*Seller
 	DatacenterNameMap       map[string]*Datacenter
+	RelaySecretKeys         map[uint64][]byte
 }
 
 func CreateDatabase() *Database {
@@ -110,6 +112,7 @@ func CreateDatabase() *Database {
 		BuyerCodeMap:            make(map[string]*Buyer),
 		SellerCodeMap:           make(map[string]*Seller),
 		DatacenterNameMap:       make(map[string]*Datacenter),
+		RelaySecretKeys:         make(map[uint64][]byte),
 	}
 
 	return database
@@ -163,6 +166,24 @@ func (database *Database) Fixup() {
 			database.DatacenterNameMap[v.Name] = v
 		}
 	}
+
+	if len(database.RelaySecretKeys) == 0 {
+		database.RelaySecretKeys = make(map[uint64][]byte)
+	}
+}
+
+func (database *Database) GenerateRelaySecretKeys(relayBackendPublicKey []byte, relayBackendPrivateKey []byte) int {
+	numWarnings := 0
+	for i := range database.Relays {
+		relay := &database.Relays[i]
+		var err error
+		database.RelaySecretKeys[relay.Id], err = crypto.SecretKey_GenerateRemote(relayBackendPublicKey, relayBackendPrivateKey, relay.PublicKey)
+		if err != nil {
+			core.Warn("failed to generate secret key for relay %s", relay.Name)
+			numWarnings++
+		}
+	}
+	return numWarnings
 }
 
 func (database *Database) Save(filename string) error {
