@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net"
 
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
@@ -32,18 +33,15 @@ func SDK_SignPacket(packetData []byte, privateKey []byte) {
 }
 
 func SDK_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
-
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
 	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
 	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
-
 	if result != 0 {
 		core.Error("signed packet did not verify")
 		return false
 	}
-
 	return true
 }
 
@@ -166,6 +164,44 @@ func (packet *SDK_ServerUpdateResponsePacket) Serialize(stream encoding.Stream) 
 	stream.SerializeBytes(packet.UpcomingMagic[:])
 	stream.SerializeBytes(packet.CurrentMagic[:])
 	stream.SerializeBytes(packet.PreviousMagic[:])
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK_NearRelayRequestPacket struct {
+	Version       SDKVersion
+	BuyerId       uint64
+	RequestId     uint64
+	ClientAddress net.UDPAddr
+}
+
+func (packet *SDK_NearRelayRequestPacket) Serialize(stream encoding.Stream) error {
+	packet.Version.Serialize(stream)
+	stream.SerializeUint64(&packet.BuyerId)
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeAddress(&packet.ClientAddress)
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK_NearRelayResponsePacket struct {
+	RequestId     uint64
+	Latitude      float32
+	Longitude     float32
+	NumNearRelays int32
+	NearRelayIds  [constants.MaxNearRelays]uint64
+}
+
+func (packet *SDK_NearRelayResponsePacket) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeFloat32(&packet.Latitude)
+	stream.SerializeFloat32(&packet.Longitude)
+	stream.SerializeInteger(&packet.NumNearRelays, 0, constants.MaxNearRelays)
+	for i := 0; i < int(packet.NumNearRelays); i++ {
+		stream.SerializeUint64(&packet.NearRelayIds[i])
+	}
 	return stream.Error()
 }
 

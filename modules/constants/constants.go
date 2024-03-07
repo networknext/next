@@ -14,7 +14,7 @@ const (
 	RelayTimeout     = 10
 	RelayHistorySize = 300
 
-	MaxNearRelays  = 16
+	MaxNearRelays  = 32
 	MaxDestRelays  = 8
 	MaxRouteRelays = 5
 

@@ -32,19 +32,21 @@ const (
 
 	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 14
 	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 15
-	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 16
+	SDK_HandlerEvent_ProcessNearRelayRequestPacket     = 16
+	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 17
 
-	SDK_HandlerEvent_SentServerInitResponsePacket    = 17
-	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 18
-	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 19
+	SDK_HandlerEvent_SentServerInitResponsePacket    = 18
+	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 19
+	SDK_HandlerEvent_SentNearRelayResponsePacket  	 = 20
+	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 21
 
-	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 20
-	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 21
-	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 22
+	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 22
+	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 23
+	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 24
 
-	SDK_HandlerEvent_SentPortalServerUpdateMessage = 23
+	SDK_HandlerEvent_SentPortalServerUpdateMessage = 25
 
-	SDK_HandlerEvent_NumEvents = 24
+	SDK_HandlerEvent_NumEvents = 26
 )
 
 type SDK_Handler struct {
