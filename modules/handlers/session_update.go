@@ -626,7 +626,7 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	// server node
 
-	routeSecretKeys[numTokens-1], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ClientRoutePublicKey[:])
+	routeSecretKeys[numTokens-1], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ServerRoutePublicKey[:])
 
 	// build the tokens
 

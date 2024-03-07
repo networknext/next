@@ -1134,7 +1134,6 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 // --------------------------------------------------------------
 
-/*
 func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	t.Parallel()
@@ -1145,9 +1144,9 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
 
-	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+	clientPublicKey, _ := crypto.Box_KeyPair()
 
-	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+	serverPublicKey, _ := crypto.Box_KeyPair()
 
 	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
@@ -1171,9 +1170,9 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
 
-	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
-	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
-	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
 
 	state.Database.Relays = make([]db.Relay, 3)
 	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
@@ -1191,6 +1190,8 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	state.Database.RelayMap[1] = &state.Database.Relays[0]
 	state.Database.RelayMap[2] = &state.Database.Relays[1]
 	state.Database.RelayMap[3] = &state.Database.Relays[2]
+
+	state.Database.GenerateRelaySecretKeys(routingPublicKey, routingPrivateKey)
 
 	// initialize route matrix
 
@@ -1216,13 +1217,13 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	assert.Equal(t, state.Response.NumTokens, int32(NumTokens))
 	assert.Equal(t, len(state.Response.Tokens), NumTokens*packets.SDK_EncryptedContinueRouteTokenSize)
 
-	privateKeys := make([][]byte, NumTokens)
+	secretKeys := make([][]byte, NumTokens)
 
-	privateKeys[0] = clientPrivateKey
-	privateKeys[1] = relay_private_key_a
-	privateKeys[2] = relay_private_key_b
-	privateKeys[3] = relay_private_key_c
-	privateKeys[4] = serverPrivateKey
+	secretKeys[0], _ = crypto.SecretKey_GenerateRemote(routingPublicKey, routingPrivateKey, clientPublicKey)
+	secretKeys[1], _ = state.Database.RelaySecretKeys[1]
+	secretKeys[2], _ = state.Database.RelaySecretKeys[2]
+	secretKeys[3], _ = state.Database.RelaySecretKeys[3]
+	secretKeys[4], _ = crypto.SecretKey_GenerateRemote(routingPublicKey, routingPrivateKey, serverPublicKey)
 
 	for i := 0; i < NumTokens; i++ {
 
@@ -1232,8 +1233,11 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedContinueRouteTokenSize]
 
-		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedContinueToken(&token, tokenData, secretKeys[i])
+		assert.True(t, result)
+		if !result {
+			return
+		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -1241,6 +1245,7 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 	}
 }
 
+/*
 // --------------------------------------------------------------
 
 func Test_SessionUpdate_MakeRouteDecision_NoRouteRelays(t *testing.T) {
@@ -1483,8 +1488,11 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
+		if !result {
+			return
+		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -1692,8 +1700,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -1751,8 +1759,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedContinueRouteTokenSize]
 
-		err := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedContinueToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
+		if !result {
+			return
+		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -1916,8 +1927,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.Nil(t, result)
+		if !result {
+			return
+		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -2001,8 +2015,11 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
+		if !result {
+			return
+		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -2191,8 +2208,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -2410,8 +2427,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -2626,8 +2643,8 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
+		assert.True(t, result)
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
