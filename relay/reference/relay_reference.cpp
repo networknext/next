@@ -6062,7 +6062,7 @@ int main( int argc, const char ** argv )
 
 	uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
 
-    if ( crypto_kx_server_session_keys( relay_secret_key, NULL, relay_public_key, relay_private_key, relay_backend_public_key ) != 0 )
+    if ( crypto_kx_client_session_keys( relay_secret_key, NULL, relay_public_key, relay_private_key, relay_backend_public_key ) != 0 )
     {
         printf( "\nerror: failed to generate relay secret key\n\n" );
         return RELAY_ERROR;

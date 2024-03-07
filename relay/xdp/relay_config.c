@@ -127,7 +127,7 @@ int read_config( struct config_t * config )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
-    if ( crypto_kx_server_session_keys( config->relay_secret_key, NULL, config->relay_public_key, config->relay_private_key, config->relay_backend_public_key ) != 0 )
+    if ( crypto_kx_client_session_keys( config->relay_secret_key, NULL, config->relay_public_key, config->relay_private_key, config->relay_backend_public_key ) != 0 )
     {
         printf( "\nerror: failed to generate relay secret key\n\n" );
         return RELAY_ERROR;
