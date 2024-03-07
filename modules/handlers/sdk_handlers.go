@@ -182,6 +182,10 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 		SDK_ProcessServerUpdateRequestPacket(handler, conn, from, &packet)
 		break
 
+	case packets.SDK_NEAR_RELAY_REQUEST_PACKET:
+		// todo		
+		break
+
 	case packets.SDK_SESSION_UPDATE_REQUEST_PACKET:
 		packet := packets.SDK_SessionUpdateRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
