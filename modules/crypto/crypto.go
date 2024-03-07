@@ -26,6 +26,8 @@ const (
 
 	Auth_SignatureSize = 32
 	Auth_KeySize       = 32
+
+	SecretKeySize = 32
 )
 
 // ----------------------------------------------------
@@ -97,6 +99,14 @@ func Auth_Sign(data []byte, key []byte, signature []byte) {
 func Auth_Verify(data []byte, key []byte, signature []byte) bool {
 	length := len(data)
 	return C.crypto_auth_verify((*C.uchar)(&signature[0]), (*C.uchar)(&data[0]), C.ulonglong(length), (*C.uchar)(&key[0])) == 0
+}
+
+// ----------------------------------------------------
+
+func GenerateSecretKey(localPublicKey []byte, localPrivateKey []byte, remotePublicKey []byte) []byte {
+	secretKey := make([]byte, SecretKeySize)
+	C.crypto_kx_server_session_keys( (*C.uchar)(&secretKey[0]), nil, (*C.uchar)(&localPublicKey[0]), (*C.uchar)(&localPrivateKey[0]), (*C.uchar)(&remotePublicKey[0]))
+    return secretKey
 }
 
 // ----------------------------------------------------
