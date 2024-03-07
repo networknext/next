@@ -27,7 +27,9 @@ const (
 	Auth_SignatureSize = 32
 	Auth_KeySize       = 32
 
-	SecretKeySize = 32
+	SecretKey_PublicKeySize  = 32
+	SecretKey_PrivateKeySize = 32
+	SecretKey_KeySize        = 32
 )
 
 // ----------------------------------------------------
@@ -103,10 +105,29 @@ func Auth_Verify(data []byte, key []byte, signature []byte) bool {
 
 // ----------------------------------------------------
 
-func GenerateSecretKey(localPublicKey []byte, localPrivateKey []byte, remotePublicKey []byte) []byte {
-	secretKey := make([]byte, SecretKeySize)
-	C.crypto_kx_server_session_keys( (*C.uchar)(&secretKey[0]), nil, (*C.uchar)(&localPublicKey[0]), (*C.uchar)(&localPrivateKey[0]), (*C.uchar)(&remotePublicKey[0]))
-    return secretKey
+func SecretKey_KeyPair() ([]byte, []byte) {
+	publicKey := make([]byte, SecretKey_PublicKeySize)
+	privateKey := make([]byte, SecretKey_PrivateKeySize)
+	C.crypto_kx_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+	return publicKey, privateKey
+}
+
+func SecretKey_GenerateLocal(localPublicKey []byte, localPrivateKey []byte, remotePublicKey []byte) (error, []byte) {
+	secretKey := make([]byte, SecretKey_KeySize)
+	result := C.crypto_kx_client_session_keys( (*C.uchar)(&secretKey[0]), nil, (*C.uchar)(&localPublicKey[0]), (*C.uchar)(&localPrivateKey[0]), (*C.uchar)(&remotePublicKey[0]))
+	if result != 0 {
+		return fmt.Errorf("could not generate local secret key"), secretKey
+	}
+    return nil, secretKey
+}
+
+func SecretKey_GenerateRemote(remotePublicKey []byte, remotePrivateKey []byte, localPublicKey []byte) (error, []byte) {
+	secretKey := make([]byte, SecretKey_KeySize)
+	result := C.crypto_kx_server_session_keys( nil, (*C.uchar)(&secretKey[0]), (*C.uchar)(&remotePublicKey[0]), (*C.uchar)(&remotePrivateKey[0]), (*C.uchar)(&localPublicKey[0]))
+	if result != 0 {
+		return fmt.Errorf("could not generate remote secret key"), secretKey
+	}
+    return nil, secretKey
 }
 
 // ----------------------------------------------------

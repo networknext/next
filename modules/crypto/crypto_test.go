@@ -90,3 +90,13 @@ func Test_Encrypt(t *testing.T) {
 
 	assert.False(t, crypto.Auth_Verify(data, key, signature))
 }
+
+func Test_SecretKey(t *testing.T) {
+	localPublicKey, localPrivateKey := crypto.SecretKey_KeyPair()
+	remotePublicKey, remotePrivateKey := crypto.SecretKey_KeyPair()
+	localSecretKey, err := crypto.SecretKey_GenerateLocal(localPublicKey, localPrivateKey, remotePublicKey)
+	assert.Nil(t, err)
+	remoteSecretKey, err := crypto.SecretKey_GenerateRemote(remotePublicKey, remotePrivateKey, localPublicKey)
+	assert.Nil(t, err)
+	assert.Equal(t, localSecretKey, remoteSecretKey)
+}
