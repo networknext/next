@@ -53,6 +53,7 @@ type RelayData struct {
 	DatacenterRelays   map[uint64][]int
 	DestRelays         []bool
 	DatabaseBinFile    []byte
+	RelaySecretKeys    map[uint64][]byte
 }
 
 type Service struct {
@@ -107,9 +108,6 @@ type Service struct {
 	ip2location_mutex   sync.RWMutex
 	ip2location_isp_db  *maxminddb.Reader
 	ip2location_city_db *maxminddb.Reader
-
-	relayBackendPublicKey  []byte
-	relayBackendPrivateKey []byte
 }
 
 func CreateService(serviceName string) *Service {
@@ -197,7 +195,7 @@ func (service *Service) SetHealthFunctions(sendTrafficToMe func() bool, machineI
 	service.ready = ready
 }
 
-func (service *Service) LoadDatabase() {
+func (service *Service) LoadDatabase(relayBackendPublicKey []byte, relayBackendPrivateKey []byte) {
 
 	databasePath := envvar.GetString("DATABASE_PATH", "database.bin")
 
@@ -220,6 +218,8 @@ func (service *Service) LoadDatabase() {
 		os.Exit(1)
 	}
 
+	service.database.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
+
 	service.databaseRelayData = generateRelayData(service.database)
 	if service.databaseRelayData == nil {
 		core.Error("generate relay data failed")
@@ -229,11 +229,6 @@ func (service *Service) LoadDatabase() {
 	core.Log("loaded database: %s", databasePath)
 
 	service.watchDatabase(service.Context, databasePath)
-}
-
-func (service *Service) GenerateRelaySecretKeys(relayBackendPublicKey []byte, relayBackendPrivateKey []byte) {
-	service.relayBackendPublicKey = relayBackendPublicKey
-	service.relayBackendPrivateKey = relayBackendPrivateKey
 }
 
 func (service *Service) LoadIP2Location() {
@@ -602,7 +597,9 @@ func (service *Service) UpdateRouteMatrix(relayBackendPublicKey []byte, relayBac
 					continue
 				}
 
-				newDatabase.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
+				if relayBackendPublicKey != nil && relayBackendPrivateKey != nil {
+					newDatabase.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
+				}
 
 				service.routeMatrixMutex.Lock()
 				service.routeMatrix = &newRouteMatrix
@@ -740,6 +737,10 @@ func generateRelayData(database *db.Database) *RelayData {
 			}
 		}
 	}
+
+	// stash the relay secret keys. these are used to generate route and continue tokens
+
+	relayData.RelaySecretKeys = database.RelaySecretKeys
 
 	// stash the database bin file in the relay data, so it's all guaranteed to be consistent
 

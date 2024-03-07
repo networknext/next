@@ -83,6 +83,9 @@ var analyticsRelayToRelayPingReps int
 
 var postRelayUpdateRequestChannel chan *packets.RelayUpdateRequestPacket
 
+var relayBackendPublicKey []byte
+var relayBackendPrivateKey []byte
+
 //go:embed relay_update.json
 var relayUpdateSchemaData string
 
@@ -145,6 +148,19 @@ func main() {
 
 	redisPortalCluster = envvar.GetStringArray("REDIS_PORTAL_CLUSTER", []string{})
 	redisPortalHostname = envvar.GetString("REDIS_PORTAL_HOSTNAME", "127.0.0.1:6379")
+
+	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
+	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
+
+	if len(relayBackendPublicKey) == 0 {
+		core.Error("You must supply RELAY_BACKEND_PUBLIC_KEY")
+		os.Exit(1)
+	}
+
+	if len(relayBackendPrivateKey) == 0 {
+		core.Error("You must supply RELAY_BACKEND_PRIVATE_KEY")
+		os.Exit(1)
+	}
 
 	core.Debug("max jitter: %d", maxJitter)
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
@@ -258,7 +274,7 @@ func main() {
 
 	postRelayUpdateRequestChannel = make(chan *packets.RelayUpdateRequestPacket, 1024*1024)
 
-	service.LoadDatabase()
+	service.LoadDatabase(relayBackendPublicKey, relayBackendPrivateKey)
 
 	initCounterNames()
 

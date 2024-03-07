@@ -110,7 +110,7 @@ func main() {
 
 	service.UpdateMagic()
 
-	service.LoadDatabase()
+	service.LoadDatabase(relayBackendPublicKey, relayBackendPrivateKey)
 
 	service.StartWebServer()
 
@@ -286,8 +286,12 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		copy(responsePacket.ExpectedRelayPublicKey[:], relay.PublicKey)
 		copy(responsePacket.ExpectedRelayBackendPublicKey[:], relayBackendPublicKey)
 
-		// todo: relay secret key
-		relaySecretKey := make([]byte, 32)
+		relaySecretKey, ok := relayData.RelaySecretKeys[relay.Id]
+		if !ok {
+			core.Error("[%s] could not find relay secret key", request.RemoteAddr)
+			writer.WriteHeader(http.StatusBadRequest) // 400
+			return
+		}
 
 		token := core.RouteToken{}
 		token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 10000}

@@ -352,7 +352,7 @@ func main() {
 	}
 
 	if enablePortal || enableDatabase {
-		service.LoadDatabase() // needed by both portal and database REST APIs
+		service.LoadDatabase(nil, nil) // needed by both portal and database REST APIs
 	}
 
 	service.StartWebServer()

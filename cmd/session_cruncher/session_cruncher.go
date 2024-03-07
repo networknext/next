@@ -95,7 +95,7 @@ func main() {
 
 	service = common.CreateService("session_cruncher")
 
-	service.LoadDatabase()
+	service.LoadDatabase(nil, nil)
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
