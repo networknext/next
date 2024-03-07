@@ -55,6 +55,7 @@ type SDK_Handler struct {
 	PingKey                 []byte
 	ServerBackendPublicKey  []byte
 	ServerBackendPrivateKey []byte
+	RelayBackendPublicKey   []byte
 	RelayBackendPrivateKey  []byte
 	GetMagicValues          func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)
 	Events                  [SDK_HandlerEvent_NumEvents]bool
@@ -407,6 +408,7 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	var state SessionUpdateState
 
 	state.PingKey = handler.PingKey
+	state.RelayBackendPublicKey = handler.RelayBackendPublicKey
 	state.RelayBackendPrivateKey = handler.RelayBackendPrivateKey
 	state.ServerBackendPublicKey = handler.ServerBackendPublicKey
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey

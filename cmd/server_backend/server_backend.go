@@ -451,6 +451,7 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.ServerBackendAddress = serverBackendAddress
 	handler.ServerBackendPublicKey = serverBackendPublicKey
 	handler.ServerBackendPrivateKey = serverBackendPrivateKey
+	handler.RelayBackendPublicKey = relayBackendPublicKey
 	handler.RelayBackendPrivateKey = relayBackendPrivateKey
 	handler.RouteMatrix, handler.Database = service.RouteMatrixAndDatabase()
 	handler.MaxPacketSize = maxPacketSize

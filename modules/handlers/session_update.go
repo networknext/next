@@ -27,6 +27,7 @@ type SessionUpdateState struct {
 	*/
 
 	PingKey                 []byte
+	RelayBackendPublicKey   []byte
 	RelayBackendPrivateKey  []byte
 	ServerBackendAddress    *net.UDPAddr
 	ServerBackendPrivateKey []byte
