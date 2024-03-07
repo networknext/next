@@ -1,7 +1,5 @@
 package handlers_test
 
-// todo: disable for now
-/*
 import (
 	"fmt"
 	"net"
@@ -108,10 +106,11 @@ func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
 
 	state := CreateState()
 
-	_, routingPrivateKey := crypto.Box_KeyPair()
+	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -838,10 +837,11 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
 
-	clientPublicKey, clientPrivateKey := crypto.Box_KeyPair()
+	clientPublicKey, _ := crypto.Box_KeyPair()
 
-	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
+	serverPublicKey, _ := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -870,9 +870,9 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	relay_address_b := core.ParseAddress("127.0.0.1:40001")
 	relay_address_c := core.ParseAddress("127.0.0.1:40002")
 
-	relay_public_key_a, relay_private_key_a := crypto.Box_KeyPair()
-	relay_public_key_b, relay_private_key_b := crypto.Box_KeyPair()
-	relay_public_key_c, relay_private_key_c := crypto.Box_KeyPair()
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
 
 	state.Database.Relays = make([]db.Relay, 3)
 
@@ -891,6 +891,8 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	state.Database.RelayMap[1] = &state.Database.Relays[0]
 	state.Database.RelayMap[2] = &state.Database.Relays[1]
 	state.Database.RelayMap[3] = &state.Database.Relays[2]
+
+	state.Database.GenerateRelaySecretKeys(routingPublicKey, routingPrivateKey)
 
 	// initialize route matrix
 
@@ -922,13 +924,13 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	addresses[3] = relay_address_c
 	addresses[4] = serverAddress
 
-	privateKeys := make([][]byte, NumTokens)
+	secretKeys := make([][]byte, NumTokens)
 
-	privateKeys[0] = clientPrivateKey
-	privateKeys[1] = relay_private_key_a
-	privateKeys[2] = relay_private_key_b
-	privateKeys[3] = relay_private_key_c
-	privateKeys[4] = serverPrivateKey
+	secretKeys[0], _ = crypto.SecretKey_GenerateRemote(routingPublicKey, routingPrivateKey, clientPublicKey)
+	secretKeys[1], _ = state.Database.RelaySecretKeys[1]
+	secretKeys[2], _ = state.Database.RelaySecretKeys[2]
+	secretKeys[3], _ = state.Database.RelaySecretKeys[3]
+	secretKeys[4], _ = crypto.SecretKey_GenerateRemote(routingPublicKey, routingPrivateKey, serverPublicKey)
 
 	for i := 0; i < NumTokens; i++ {
 
@@ -938,8 +940,11 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 
 		tokenData := state.Response.Tokens[index : index+packets.SDK_EncryptedNextRouteTokenSize]
 
-		err := core.ReadEncryptedRouteToken(&token, tokenData, routingPublicKey, privateKeys[i])
-		assert.Nil(t, err)
+		result := core.ReadEncryptedRouteToken(&token, tokenData, secretKeys[i])
+		assert.True(t, result)
+		if !result {
+			return
+		}
 
 		assert.Equal(t, token.ExpireTimestamp, state.Output.ExpireTimestamp)
 		assert.Equal(t, token.SessionId, state.Output.SessionId)
@@ -966,6 +971,7 @@ func Test_SessionUpdate_BuildNextTokens_PublicAddresses(t *testing.T) {
 	}
 }
 
+/*
 func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 	t.Parallel()
@@ -980,6 +986,7 @@ func Test_SessionUpdate_BuildNextTokens_InternalAddresses(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -1137,6 +1144,7 @@ func Test_SessionUpdate_BuildContinueTokens(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -1333,6 +1341,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -1541,6 +1550,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -1764,6 +1774,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -2030,6 +2041,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -2250,6 +2262,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -2465,6 +2478,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 	serverPublicKey, serverPrivateKey := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -2688,6 +2702,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -2830,6 +2845,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 	serverPublicKey, _ := crypto.Box_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
 	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
@@ -2957,201 +2973,6 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 // --------------------------------------------------------------
 
-func Test_SessionUpdate_GetNearRelays_DatacenterIsNil(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Datacenter = nil
-
-	result := handlers.SessionUpdate_GetNearRelays(state)
-
-	assert.False(t, result)
-	assert.True(t, state.NotGettingNearRelaysDatacenterIsNil)
-
-	// todo: near relays need to go somewhere else
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-}
-
-func Test_SessionUpdate_GetNearRelays_AnalysisOnly(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Buyer.RouteShader.AnalysisOnly = true
-
-	result := handlers.SessionUpdate_GetNearRelays(state)
-
-	assert.False(t, result)
-	assert.True(t, state.NotGettingNearRelaysAnalysisOnly)
-	// todo: near relays need to go somewhere else
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-}
-
-func Test_SessionUpdate_GetNearRelays_DatacenterNotEnabled(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Error |= constants.SessionError_DatacenterNotEnabled
-
-	result := handlers.SessionUpdate_GetNearRelays(state)
-
-	assert.False(t, result)
-	assert.True(t, state.NotGettingNearRelaysDatacenterNotEnabled)
-	// todo: near relays need to go somewhere else
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-}
-
-func Test_SessionUpdate_GetNearRelays_NoNearRelays(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	result := handlers.SessionUpdate_GetNearRelays(state)
-
-	assert.False(t, result)
-	assert.True(t, (state.Error&constants.SessionError_NoNearRelays) != 0)
-	// todo: near relays need to go somewhere else
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-}
-
-func Test_SessionUpdate_GetNearRelays_Success(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	// initialize database with three relays
-
-	seller_a := &db.Seller{Id: 1, Name: "a"}
-	seller_b := &db.Seller{Id: 2, Name: "b"}
-	seller_c := &db.Seller{Id: 3, Name: "c"}
-
-	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
-
-	relay_address_a := core.ParseAddress("127.0.0.1:40000")
-	relay_address_b := core.ParseAddress("127.0.0.1:40001")
-	relay_address_c := core.ParseAddress("127.0.0.1:40002")
-
-	relay_public_key_a, _ := crypto.Box_KeyPair()
-	relay_public_key_b, _ := crypto.Box_KeyPair()
-	relay_public_key_c, _ := crypto.Box_KeyPair()
-
-	state.Database.Relays = make([]db.Relay, 3)
-	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
-
-	state.Database.SellerMap[1] = seller_a
-	state.Database.SellerMap[2] = seller_b
-	state.Database.SellerMap[3] = seller_c
-
-	state.Database.DatacenterMap[1] = datacenter_a
-	state.Database.DatacenterMap[2] = datacenter_b
-	state.Database.DatacenterMap[3] = datacenter_c
-
-	state.Database.RelayMap[1] = &state.Database.Relays[0]
-	state.Database.RelayMap[2] = &state.Database.Relays[1]
-	state.Database.RelayMap[3] = &state.Database.Relays[2]
-
-	// setup cost matrix with route through relays a -> b -> c
-
-	const NumRelays = 3
-
-	entryCount := core.TriMatrixLength(NumRelays)
-
-	costMatrix := make([]uint8, entryCount)
-
-	for i := range costMatrix {
-		costMatrix[i] = 255
-	}
-
-	costMatrix[core.TriMatrixIndex(0, 1)] = 10
-	costMatrix[core.TriMatrixIndex(1, 2)] = 10
-	costMatrix[core.TriMatrixIndex(0, 2)] = 100
-
-	// generate route matrix
-
-	relayIds := make([]uint64, 3)
-	relayIds[0] = 1
-	relayIds[1] = 2
-	relayIds[2] = 3
-
-	relayDatacenters := make([]uint64, 3)
-	relayDatacenters[0] = 1
-	relayDatacenters[1] = 2
-	relayDatacenters[2] = 3
-
-	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
-
-	state.RouteMatrix.RelayAddresses = make([]net.UDPAddr, NumRelays)
-	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
-	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
-
-	state.RouteMatrix.RelayAddresses[0] = relay_address_a
-	state.RouteMatrix.RelayAddresses[1] = relay_address_b
-	state.RouteMatrix.RelayAddresses[2] = relay_address_c
-
-	// get near relays
-
-	result := handlers.SessionUpdate_GetNearRelays(state)
-
-	// validate
-
-	assert.True(t, result)
-	assert.False(t, state.NotGettingNearRelaysAnalysisOnly)
-	assert.False(t, state.NotGettingNearRelaysDatacenterNotEnabled)
-	assert.Equal(t, state.Error, uint64(0))
-
-	// todo: near relays don't go in response
-	// assert.Equal(t, state.Response.NumNearRelays, int32(3))
-	// assert.True(t, state.Response.HasNearRelays)
-
-	// contains_1 := false
-	// contains_2 := false
-	// contains_3 := false
-
-	// for i := 0; i < int(state.Response.NumNearRelays); i++ {
-	// 	if state.Response.NearRelayIds[i] == 1 {
-	// 		contains_1 = true
-	// 	}
-	// 	if state.Response.NearRelayIds[i] == 2 {
-	// 		contains_2 = true
-	// 	}
-	// 	if state.Response.NearRelayIds[i] == 3 {
-	// 		contains_3 = true
-	// 	}
-	// }
-
-	// assert.True(t, contains_1)
-	// assert.True(t, contains_2)
-	// assert.True(t, contains_3)
-
-	// // make sure we have valid ping tokens and expire timestamp
-
-	// assert.True(t, state.Response.NearRelayExpireTimestamp > uint64(time.Now().Unix()))
-
-	// for i := 0; i < int(state.Response.NumNearRelays); i++ {
-	// 	data := make([]byte, 256)
-	// 	binary.LittleEndian.PutUint64(data[0:], state.Response.NearRelayExpireTimestamp)
-	// 	clientAddressWithoutPort := state.Request.ClientAddress
-	// 	clientAddressWithoutPort.Port = 0
-	// 	core.WriteAddress(data[8:], &clientAddressWithoutPort)
-	// 	core.WriteAddress(data[8+constants.NextAddressBytes:], &state.Response.NearRelayAddresses[i])
-	// 	length := 8 + constants.NextAddressBytes + constants.NextAddressBytes
-	// 	assert.True(t, crypto.Auth_Verify(data[:length], state.PingKey, state.Response.NearRelayPingTokens[i*constants.PingTokenBytes:]))
-	// }
-}
-
-// --------------------------------------------------------------
-
 func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
@@ -3164,8 +2985,6 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	// assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
@@ -3180,9 +2999,6 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	assert.False(t, result)
 	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
-	// todo: near relays don't go in response
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	// assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
@@ -3293,10 +3109,6 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[0], int32(10))
 	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
-
-	// todo: near relays don't go in response
-	// assert.Equal(t, state.Response.NumNearRelays, int32(0))
-	// assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------
@@ -3313,6 +3125,7 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3325,10 +3138,6 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 	state.Request.SliceNumber = 0
 
 	handlers.SessionUpdate_Post(state)
-
-	// todo: near relays don't go in response
-	// assert.True(t, state.GetNearRelays)
-	// assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
@@ -3341,6 +3150,7 @@ func Test_SessionUpdate_Post_DurationOnNext(t *testing.T) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3378,6 +3188,7 @@ func Test_SessionUpdate_Post_PacketsSentPacketsLost(t *testing.T) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3420,6 +3231,7 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3442,8 +3254,6 @@ func Test_SessionUpdate_Post_WriteSummary(t *testing.T) {
 
 	assert.True(t, state.Output.WriteSummary)
 	assert.False(t, state.Output.WroteSummary)
-	// todo: near relays don't go in response
-	// assert.False(t, state.Response.HasNearRelays)
 }
 
 func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
@@ -3456,6 +3266,7 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
 
+	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
 	state.ServerBackendPublicKey = serverBackendPublicKey[:]
 	state.ServerBackendPrivateKey = serverBackendPrivateKey[:]
@@ -3479,8 +3290,6 @@ func Test_SessionUpdate_Post_WroteSummary(t *testing.T) {
 
 	assert.False(t, state.Output.WriteSummary)
 	assert.True(t, state.Output.WroteSummary)
-	// todo: near relays don't go in response
-	//	assert.False(t, state.Response.HasNearRelays)
 }
 
 // --------------------------------------------------------------

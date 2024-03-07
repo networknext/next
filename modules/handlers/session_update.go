@@ -92,9 +92,6 @@ type SessionUpdateState struct {
 	StayDirect                                bool
 	FirstUpdate                               bool
 	ReadSessionData                           bool
-	NotGettingNearRelaysDatacenterIsNil       bool
-	NotGettingNearRelaysAnalysisOnly          bool
-	NotGettingNearRelaysDatacenterNotEnabled  bool
 	NotUpdatingNearRelaysAnalysisOnly         bool
 	NotUpdatingNearRelaysDatacenterNotEnabled bool
 	SentPortalSessionUpdateMessage            bool
@@ -103,7 +100,6 @@ type SessionUpdateState struct {
 	SentAnalyticsSessionUpdateMessage         bool
 	SentAnalyticsSessionSummaryMessage        bool
 	LocatedIP                                 bool
-	GetNearRelays                             bool
 	WroteResponsePacket                       bool
 	LongSessionUpdate                         bool
 
@@ -446,81 +442,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	}
 }
 
-func SessionUpdate_GetNearRelays(state *SessionUpdateState) bool {
-
-	/*
-		This function selects up to constants.MaxNearRelays near relays for the session,
-		according to the players latitude and longitude determined by
-		ip2location.
-
-		These near relays are selected only on the first slice (slice 0)
-		of a session, and are held fixed for the duration of the session.
-
-		The SDK pings the near relays, and reports up the latency, jitter
-		and packet loss to each near relay.
-
-		Network Next uses this data in route planning, adding the latency
-		to the first relay to the total route cost, and by excluding near relays
-		with higher jitter or packet loss.
-	*/
-
-	state.GetNearRelays = true
-
-	if state.Datacenter == nil {
-		core.Debug("datacenter is nil, not getting near relays")
-		state.NotGettingNearRelaysDatacenterIsNil = true
-		return false
-	}
-
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not getting near relays")
-		state.NotGettingNearRelaysAnalysisOnly = true
-		return false
-	}
-
-	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
-		core.Debug("datacenter not enabled, not getting near relays")
-		state.NotGettingNearRelaysDatacenterNotEnabled = true
-		return false
-	}
-
-	clientLatitude := state.Output.Latitude
-	clientLongitude := state.Output.Longitude
-
-	serverLatitude := state.Datacenter.Latitude
-	serverLongitude := state.Datacenter.Longitude
-
-	const distanceThreshold = 2500
-	const latencyThreshold = 30.0
-
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(constants.MaxNearRelays,
-		distanceThreshold,
-		latencyThreshold,
-		state.RouteMatrix.RelayIds,
-		state.RouteMatrix.RelayAddresses,
-		state.RouteMatrix.RelayLatitudes,
-		state.RouteMatrix.RelayLongitudes,
-		clientLatitude,
-		clientLongitude,
-		serverLatitude,
-		serverLongitude,
-	)
-
-	numNearRelays := len(nearRelayIds)
-
-	if numNearRelays == 0 {
-		core.Debug("no near relays :(")
-		state.Error |= constants.SessionError_NoNearRelays
-		return false
-	}
-
-	core.Debug("found %d near relays", numNearRelays)
-
-	_ = nearRelayAddresses
-
-	return true
-}
-
 func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
@@ -626,11 +547,11 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	var routeInternalAddresses [constants.NextMaxNodes]net.UDPAddr
 	var routeInternalGroups [constants.NextMaxNodes]uint64
 	var routeSellers [constants.NextMaxNodes]int
-	var routePublicKeys [constants.NextMaxNodes][]byte
+	var routeSecretKeys [constants.NextMaxNodes][]byte
 
 	// client node
 
-	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
+	routeSecretKeys[0], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ClientRoutePublicKey[:])
 	routePublicAddresses[0] = state.Request.ClientAddress
 	routePublicAddresses[0].Port = 0 // IMPORTANT: Set client port to zero, it will be replaced with whatever port is in from addr
 
@@ -641,7 +562,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 	relayInternalAddresses := routeInternalAddresses[1 : numTokens-1]
 	relayInternalGroups := routeInternalGroups[1 : numTokens-1]
 	relaySellers := routeSellers[1 : numTokens-1]
-	relayPublicKeys := routePublicKeys[1 : numTokens-1]
+	relaySecretKeys := routeSecretKeys[1 : numTokens-1]
 
 	numRouteRelays := len(routeRelays)
 
@@ -656,21 +577,13 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 		relayInternalAddresses[i] = relay.InternalAddress
 		relayInternalGroups[i] = relay.InternalGroup
 		relaySellers[i] = int(relay.Seller.Id)
-		relayPublicKeys[i] = relay.PublicKey
+		relaySecretKeys[i] = state.Database.RelaySecretKeys[relay.Id]
 	}
 
 	// server node
 
 	routePublicAddresses[numTokens-1] = *state.From
-	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
-
-	// generate route secret keys
-
-	// todo
-	var routeSecretKeys [constants.NextMaxNodes][]byte
-	for i := range routeSecretKeys {
-		routeSecretKeys[i] = make([]byte, constants.SecretKeyBytes)
-	}
+	routeSecretKeys[numTokens-1], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ServerRoutePublicKey[:])
 
 	// write the tokens
 
@@ -693,27 +606,27 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 
 	numTokens := routeNumRelays + 2
 
-	var routePublicKeys [constants.NextMaxNodes][]byte
+	var routeSecretKeys [constants.NextMaxNodes][]byte
 
 	// client node
 
-	routePublicKeys[0] = state.Request.ClientRoutePublicKey[:]
+	routeSecretKeys[0], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ClientRoutePublicKey[:])
 
 	// relay nodes
 
-	relayPublicKeys := routePublicKeys[1 : numTokens-1]
+	relaySecretKeys := routeSecretKeys[1 : numTokens-1]
 
 	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
 		relayIndex := routeRelays[i]
 		relay := &state.Database.Relays[relayIndex]
-		relayPublicKeys[i] = relay.PublicKey
+		relaySecretKeys[i] = state.Database.RelaySecretKeys[relay.Id]
 	}
 
 	// server node
 
-	routePublicKeys[numTokens-1] = state.Request.ServerRoutePublicKey[:]
+	routeSecretKeys[numTokens-1], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ClientRoutePublicKey[:])
 
 	// build the tokens
 
@@ -722,14 +635,6 @@ func SessionUpdate_BuildContinueTokens(state *SessionUpdateState, routeNumRelays
 	sessionId := state.Output.SessionId
 	sessionVersion := uint8(state.Output.SessionVersion)
 	expireTimestamp := state.Output.ExpireTimestamp
-
-	// generate route secret keys
-
-	// todo
-	var routeSecretKeys [constants.NextMaxNodes][]byte
-	for i := range routeSecretKeys {
-		routeSecretKeys[i] = make([]byte, constants.SecretKeyBytes)
-	}
 
 	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, int(numTokens), routeSecretKeys[:])
 
@@ -991,18 +896,13 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.Output.Error = state.Input.Error | state.Error
 
 	/*
-		Build the set of near relays for the SDK to ping.
-
-		The SDK pings these near relays and reports up the results in the next session update.
-
-		We hold the set of near relays fixed for the session, so we only do this work on the first slice.
+		The first slice always goes direct, because we do not have near relay stats yet.
 	*/
 
 	if state.Request.SliceNumber == 0 {
+		core.Debug("first slice always goes direct")
 		state.Output.Latitude = state.Latitude
 		state.Output.Longitude = state.Longitude
-		SessionUpdate_GetNearRelays(state)
-		core.Debug("first slice always goes direct")
 	}
 
 	/*

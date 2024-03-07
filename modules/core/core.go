@@ -864,7 +864,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []by
 }
 
 func WriteRouteTokens(tokenData []byte, expireTimestamp uint64, sessionId uint64, sessionVersion uint8, kbpsUp uint32, kbpsDown uint32, numNodes int, publicAddresses []net.UDPAddr, hasInternalAddress []bool, internalAddresses []net.UDPAddr, internalGroups []uint64, sellers []int, secretKeys [][]byte) {
-	privateKey := [crypto.Box_PrivateKeySize]byte{}		// todo: new constant
+	privateKey := [crypto.Box_PrivateKeySize]byte{}
 	RandomBytes(privateKey[:])
 	for i := 0; i < numNodes; i++ {
 		var token RouteToken

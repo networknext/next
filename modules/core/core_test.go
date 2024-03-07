@@ -1146,10 +1146,10 @@ func TestRouteTokens_InternalAddresses(t *testing.T) {
 
 	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	// todo: generate secret keys
 	secretKeys := make([][]byte, constants.NextMaxNodes)
 	for i := range secretKeys {
 		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+		core.RandomBytes(secretKeys[i])
 	}
 
 	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
@@ -1228,10 +1228,10 @@ func TestRouteTokens_DifferentSellers(t *testing.T) {
 
 	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	// todo: generate secret keys
 	secretKeys := make([][]byte, constants.NextMaxNodes)
 	for i := range secretKeys {
 		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+		core.RandomBytes(secretKeys[i])
 	}
 
 	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
@@ -1297,10 +1297,10 @@ func TestRouteTokens_DifferentGroups(t *testing.T) {
 
 	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedRouteTokenBytes)
 
-	// todo: generate secret keys
 	secretKeys := make([][]byte, constants.NextMaxNodes)
 	for i := range secretKeys {
 		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+		core.RandomBytes(secretKeys[i])
 	}
 
 	core.WriteRouteTokens(tokenData, expireTimestamp, sessionId, sessionVersion, kbpsUp, kbpsDown, constants.NextMaxNodes, publicAddresses, hasInternalAddresses, internalAddresses, internalGroups, sellers, secretKeys)
@@ -1378,10 +1378,10 @@ func TestContinueTokens(t *testing.T) {
 
 	tokenData := make([]byte, constants.NextMaxNodes*constants.EncryptedContinueTokenBytes)
 
-	// todo: generate secret keys
 	secretKeys := make([][]byte, constants.NextMaxNodes)
 	for i := range secretKeys {
 		secretKeys[i] = make([]byte, constants.SecretKeyBytes)
+		core.RandomBytes(secretKeys[i])
 	}
 
 	core.WriteContinueTokens(tokenData, expireTimestamp, sessionId, sessionVersion, constants.NextMaxNodes, secretKeys)
