@@ -3489,7 +3489,7 @@ void test_server_init_response_packet()
     }
 }
 
-void test_server_update_packet()
+void test_server_update_request_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3540,7 +3540,7 @@ void test_server_update_packet()
     }
 }
 
-void test_server_response_packet()
+void test_server_update_response_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3584,7 +3584,7 @@ void test_server_response_packet()
     }
 }
 
-void test_session_update_packet()
+void test_session_update_request_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3711,7 +3711,7 @@ void test_session_update_packet()
     }
 }
 
-void test_session_response_packet_direct()
+void test_session_update_response_packet_direct()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3754,7 +3754,7 @@ void test_session_response_packet_direct()
     }
 }
 
-void test_session_response_packet_route()
+void test_session_update_response_packet_route()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3809,7 +3809,7 @@ void test_session_response_packet_route()
     }
 }
 
-void test_session_response_packet_continue()
+void test_session_update_response_packet_continue()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3873,6 +3873,103 @@ void test_session_response_packet_continue()
         for ( int j = 0; j < NEXT_CRYPTO_SIGN_BYTES; ++j )
         {
             next_check( out.session_data_signature[j] == uint8_t(j) );
+        }
+    }
+}
+
+void test_near_relay_request_packet()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_crypto_random_bytes( magic, 8 );
+        next_crypto_random_bytes( from_address, 4 );
+        next_crypto_random_bytes( to_address, 4 );
+
+        static NextBackendNearRelayRequestPacket in, out;
+        in.request_id = next_random_uint64();
+        in.buyer_id = next_random_uint64();
+        next_address_parse( &in.client_address, "127.0.0.1:40000" );
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
+
+        const uint8_t packet_id = packet_data[0];
+        next_check( packet_id == NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
+
+        const int begin = 18;
+        const int end = packet_bytes;
+
+        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET );
+
+        next_check( in.version_major == out.version_major );
+        next_check( in.version_minor == out.version_minor );
+        next_check( in.version_patch == out.version_patch );
+        next_check( in.request_id == out.request_id );
+        next_check( in.buyer_id == out.buyer_id );
+        next_check( next_address_equal( &in.client_address, &out.client_address ) );
+    }
+}
+
+void test_near_relay_response_packet()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_crypto_random_bytes( magic, 8 );
+        next_crypto_random_bytes( from_address, 4 );
+        next_crypto_random_bytes( to_address, 4 );
+
+        static NextBackendNearRelayResponsePacket in, out;
+        in.request_id = next_random_uint64();
+        in.latitude = next_random_float();
+        in.longitude = next_random_float();
+        in.num_near_relays = rand() % ( NEXT_MAX_NEAR_RELAYS + 1 );
+        for ( int i = 0; i < in.num_near_relays; i++ )
+        {
+            in.near_relay_ids[i] = next_random_uint64();
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
+
+        const uint8_t packet_id = packet_data[0];
+        next_check( packet_id == NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
+
+        const int begin = 18;
+        const int end = packet_bytes;
+
+        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET );
+
+        next_check( in.request_id == out.request_id );
+        next_check( in.latitude == out.latitude );
+        next_check( in.longitude == out.longitude );
+        next_check( in.num_near_relays == out.num_near_relays );
+        for ( int i = 0; i < in.num_near_relays; i++ )
+        {
+            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
         }
     }
 }
@@ -4100,12 +4197,14 @@ void next_run_tests()
         RUN_TEST( test_client_pong_packet );
         RUN_TEST( test_server_init_request_packet );
         RUN_TEST( test_server_init_response_packet );
-        RUN_TEST( test_server_update_packet );
-        RUN_TEST( test_server_response_packet );
-        RUN_TEST( test_session_update_packet );
-        RUN_TEST( test_session_response_packet_direct );
-        RUN_TEST( test_session_response_packet_route );
-        RUN_TEST( test_session_response_packet_continue );
+        RUN_TEST( test_server_update_request_packet );
+        RUN_TEST( test_server_update_response_packet );
+        RUN_TEST( test_session_update_request_packet );
+        RUN_TEST( test_session_update_response_packet_direct );
+        RUN_TEST( test_session_update_response_packet_route );
+        RUN_TEST( test_session_update_response_packet_continue );
+        RUN_TEST( test_near_relay_request_packet );
+        RUN_TEST( test_near_relay_response_packet );
 #if NEXT_PLATFORM_CAN_RUN_SERVER
         RUN_TEST( test_passthrough_packets_ipv4 );
 #if NEXT_PLATFORM_HAS_IPV6
