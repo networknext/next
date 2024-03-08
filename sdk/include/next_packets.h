@@ -66,8 +66,8 @@ struct next_replay_protection_t;
 #define NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET                     53
 #define NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET                     54
 #define NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET                    55
-#define NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET                         54
-#define NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET                        55
+#define NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET                         56
+#define NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET                        57
 
 // ------------------------------------------------------------------------------------------------------
 
