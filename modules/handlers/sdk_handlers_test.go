@@ -359,7 +359,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 	}
 }
 
-func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
+func Test_ServerInitHandler_SDKTooOld_SDK(t *testing.T) {
 
 	t.Parallel()
 
@@ -782,7 +782,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 	}
 }
 
-func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
+func Test_ServerUpdateHandler_SDKTooOld_SDK(t *testing.T) {
 
 	t.Parallel()
 
@@ -913,6 +913,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_UnknownDatacenter])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
@@ -1188,6 +1189,134 @@ func Test_ClientRelayRequestHandler_BuyerNotLive_SDK(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_BuyerNotLive])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket])
 }
+
+func Test_ClientRelayRequestHandler_SDKTooOld_SDK(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 256)
+	packetData[0] = packets.SDK_CLIENT_RELAY_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	packetLength := len(packetData)
+
+	core.GeneratePittle(packetData[1:3], fromAddress[:], toAddress[:], packetLength)
+
+	core.GenerateChonkle(packetData[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = database.CreateDatabase()
+
+	buyerId := uint64(0x1111111122222222)
+
+	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	buyer := &database.Buyer{}
+	buyer.Live = true
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 18 + 3
+	encoding.WriteUint64(packetData[:], &index, buyerId)
+
+	// modify the packet so it has an old SDK version of 0.1.2
+
+	packetData[18] = 0
+	packetData[19] = 1
+	packetData[20] = 2
+
+	// actually sign the packet, so it passes the signature check
+
+	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+
+	// run the packet through the handler, we should see that the SDK is too old
+
+	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SDKTooOld])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket])
+}
+
+func Test_ClientRelayRequestHandler_UnknownDatacenter_SDK(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 256)
+	packetData[0] = packets.SDK_CLIENT_RELAY_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	packetLength := len(packetData)
+
+	core.GeneratePittle(packetData[1:3], fromAddress[:], toAddress[:], packetLength)
+
+	core.GenerateChonkle(packetData[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = database.CreateDatabase()
+
+	buyerId := uint64(0x1111111122222222)
+
+	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	buyer := &database.Buyer{}
+	buyer.Live = true
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 18 + 3
+	encoding.WriteUint64(packetData[:], &index, buyerId)
+
+	// actually sign the packet, so it passes the signature check
+
+	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+
+	// run the packet through the handler, we should see the datacenter is unknown
+
+	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_UnknownDatacenter])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket])
+}
+
+// todo: test for actual response
 
 // ---------------------------------------------------------------------------------------
 
