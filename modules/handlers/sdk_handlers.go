@@ -29,24 +29,25 @@ const (
 	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
 	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
 	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
+	SDK_HandlerEvent_CouldNotReadNearRelayRequestPacket = 14
 
-	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 14
-	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 15
-	SDK_HandlerEvent_ProcessNearRelayRequestPacket     = 16
-	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 17
+	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 15
+	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 16
+	SDK_HandlerEvent_ProcessNearRelayRequestPacket     = 17
+	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 18
 
-	SDK_HandlerEvent_SentServerInitResponsePacket    = 18
-	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 19
-	SDK_HandlerEvent_SentNearRelayResponsePacket  	 = 20
-	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 21
+	SDK_HandlerEvent_SentServerInitResponsePacket    = 19
+	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 20
+	SDK_HandlerEvent_SentNearRelayResponsePacket  	 = 21
+	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 22
 
-	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 22
-	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 23
-	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 24
+	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 23
+	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 24
+	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 25
 
-	SDK_HandlerEvent_SentPortalServerUpdateMessage = 25
+	SDK_HandlerEvent_SentPortalServerUpdateMessage = 26
 
-	SDK_HandlerEvent_NumEvents = 26
+	SDK_HandlerEvent_NumEvents = 27
 )
 
 type SDK_Handler struct {
@@ -183,7 +184,13 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 		break
 
 	case packets.SDK_NEAR_RELAY_REQUEST_PACKET:
-		// todo		
+		packet := packets.SDK_NearRelayRequestPacket{}
+		if err := packets.ReadPacket(packetData, &packet); err != nil {
+			core.Error("could not read near relay request packet from %s: %v", from.String(), err)
+			handler.Events[SDK_HandlerEvent_CouldNotReadNearRelayRequestPacket] = true
+			return
+		}
+		SDK_ProcessNearRelayRequestPacket(handler, conn, from, &packet)
 		break
 
 	case packets.SDK_SESSION_UPDATE_REQUEST_PACKET:
@@ -420,7 +427,6 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	state.ServerBackendPrivateKey = handler.ServerBackendPrivateKey
 	state.ServerBackendAddress = &handler.ServerBackendAddress
 	state.From = from
-	state.LocateIP = handler.LocateIP
 	state.Buyer = handler.Database.BuyerMap[requestPacket.BuyerId]
 
 	state.Request = requestPacket
@@ -531,3 +537,43 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	core.Debug("session updated successfully")
 }
+
+func SDK_ProcessNearRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_NearRelayRequestPacket) {
+
+	handler.Events[SDK_HandlerEvent_ProcessNearRelayRequestPacket] = true
+
+	core.Debug("---------------------------------------------------------------------------")
+	core.Debug("received near relay request packet from %s", from.String())
+	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+	core.Debug("buyer id: %016x", requestPacket.BuyerId)
+	core.Debug("request id: %016x", requestPacket.RequestId)
+	core.Debug("---------------------------------------------------------------------------")
+
+	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
+	if !exists {
+		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		handler.Events[SDK_HandlerEvent_UnknownBuyer] = true
+		return
+	}
+
+	if !buyer.Live {
+		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
+		handler.Events[SDK_HandlerEvent_BuyerNotLive] = true
+		return
+	}
+
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{1, 0, 0}) {
+		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
+		handler.Events[SDK_HandlerEvent_SDKTooOld] = true
+		return
+	}
+
+	responsePacket := &packets.SDK_NearRelayResponsePacket{}
+	responsePacket.RequestId = requestPacket.RequestId
+	responsePacket.Latitude, responsePacket.Longitude = handler.LocateIP(requestPacket.ClientAddress.IP)
+
+	// todo: find near relays
+
+	SDK_SendResponsePacket(handler, conn, from, packets.SDK_NEAR_RELAY_RESPONSE_PACKET, responsePacket)
+}
+

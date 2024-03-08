@@ -33,8 +33,6 @@ type SessionUpdateState struct {
 	ServerBackendPrivateKey []byte
 	ServerBackendPublicKey  []byte
 
-	LocateIP func(ip net.IP) (float32, float32)
-
 	From *net.UDPAddr
 
 	Input packets.SDK_SessionData // sent up from the SDK. previous slice.
@@ -227,6 +225,8 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		On subsequent slices, we use the cached location data from the session state.
 	*/
 
+	// todo: just have the server own the lat/long, and pass up with each request
+	/*
 	if state.Request.SliceNumber == 0 {
 
 		state.LocatedIP = true
@@ -241,6 +241,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			return true
 		}
 	}
+	*/
 
 	/*
 		Routing with an old route matrix runs a serious risk of sending players across routes that are WORSE

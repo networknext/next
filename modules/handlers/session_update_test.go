@@ -30,7 +30,6 @@ func CreateState() *handlers.SessionUpdateState {
 	state := handlers.SessionUpdateState{}
 	state.Request = &packets.SDK_SessionUpdateRequestPacket{}
 	state.Request.ClientAddress = core.ParseAddress("127.0.0.1:5000")
-	state.LocateIP = DummyLocateIP
 	state.RouteMatrix = &common.RouteMatrix{}
 	state.RouteMatrix.CreatedAt = uint64(time.Now().Unix())
 	state.Database = db.CreateDatabase()
@@ -166,20 +165,8 @@ func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 	assert.True(t, state.ClientPingTimedOut)
 }
 
-func Test_SessionUpdate_Pre_LocatedIP(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.True(t, state.LocatedIP)
-	assert.Equal(t, state.Latitude, float32(43))
-	assert.Equal(t, state.Longitude, float32(-75))
-}
-
+// todo: bring back something similar, but with the location coming back as (0,0) in slice 1 update or whatever
+/*
 func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 
 	t.Parallel()
@@ -198,6 +185,7 @@ func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
 	assert.True(t, result)
 	assert.True(t, state.Input.RouteState.LocationVeto)
 }
+*/
 
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 
