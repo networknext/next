@@ -1383,3 +1383,11 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------------------
+
+// todo: tests for the client relay request handler
+
+// ---------------------------------------------------------------------------------------
+
+// todo: tests for the server relay request handler
+
+// ---------------------------------------------------------------------------------------
