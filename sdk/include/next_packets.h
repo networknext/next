@@ -31,7 +31,45 @@
 
 struct next_replay_protection_t;
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
+
+#define NEXT_PASSTHROUGH_PACKET                                         0
+
+#define NEXT_ROUTE_REQUEST_PACKET                                       1
+#define NEXT_ROUTE_RESPONSE_PACKET                                      2
+#define NEXT_CLIENT_TO_SERVER_PACKET                                    3
+#define NEXT_SERVER_TO_CLIENT_PACKET                                    4
+#define NEXT_SESSION_PING_PACKET                                        5
+#define NEXT_SESSION_PONG_PACKET                                        6
+#define NEXT_CONTINUE_REQUEST_PACKET                                    7
+#define NEXT_CONTINUE_RESPONSE_PACKET                                   8
+#define NEXT_CLIENT_PING_PACKET                                         9
+#define NEXT_CLIENT_PONG_PACKET                                        10
+#define NEXT_RESERVED_PACKET_1                                         11
+#define NEXT_RESERVED_PACKET_2                                         12
+#define NEXT_SERVER_PING_PACKET                                        13
+#define NEXT_SERVER_PONG_PACKET                                        14
+
+#define NEXT_DIRECT_PACKET                                             20
+#define NEXT_DIRECT_PING_PACKET                                        21
+#define NEXT_DIRECT_PONG_PACKET                                        22
+#define NEXT_UPGRADE_REQUEST_PACKET                                    23
+#define NEXT_UPGRADE_RESPONSE_PACKET                                   24
+#define NEXT_UPGRADE_CONFIRM_PACKET                                    25
+#define NEXT_ROUTE_UPDATE_PACKET                                       26
+#define NEXT_ROUTE_UPDATE_ACK_PACKET                                   27
+#define NEXT_CLIENT_STATS_PACKET                                       28
+
+#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET                        50
+#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET                       51
+#define NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET                      52
+#define NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET                     53
+#define NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET                     54
+#define NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET                    55
+#define NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET                         54
+#define NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET                        55
+
+// ------------------------------------------------------------------------------------------------------
 
 struct NextUpgradeRequestPacket
 {
@@ -65,7 +103,7 @@ struct NextUpgradeRequestPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextUpgradeResponsePacket
 {
@@ -93,7 +131,7 @@ struct NextUpgradeResponsePacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextUpgradeConfirmPacket
 {
@@ -119,7 +157,7 @@ struct NextUpgradeConfirmPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextDirectPingPacket
 {
@@ -137,7 +175,7 @@ struct NextDirectPingPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextDirectPongPacket
 {
@@ -150,7 +188,7 @@ struct NextDirectPongPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextClientStatsPacket
 {
@@ -236,7 +274,7 @@ struct NextClientStatsPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextRouteUpdatePacket
 {
@@ -293,7 +331,7 @@ struct NextRouteUpdatePacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextRouteUpdateAckPacket
 {
@@ -311,7 +349,7 @@ struct NextRouteUpdateAckPacket
     }
 };
 
-// --------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextBackendServerInitRequestPacket
 {
@@ -347,7 +385,7 @@ struct NextBackendServerInitRequestPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextBackendServerInitResponsePacket
 {
@@ -373,7 +411,7 @@ struct NextBackendServerInitResponsePacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextBackendServerUpdateRequestPacket
 {
@@ -415,7 +453,7 @@ struct NextBackendServerUpdateRequestPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextBackendServerUpdateResponsePacket
 {
@@ -439,7 +477,69 @@ struct NextBackendServerUpdateResponsePacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
+
+struct NextBackendNearRelayRequestPacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t buyer_id;
+    uint64_t request_id;
+    next_address_t client_address;
+   
+    NextBackendNearRelayRequestPacket()
+    {
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+        buyer_id = 0;
+        request_id = 0;
+        memset( &client_address, 0, sizeof(next_address_t) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, buyer_id );
+        serialize_uint64( stream, request_id );
+        serialize_address( stream, client_address );
+        return true;
+    }
+};
+
+// ------------------------------------------------------------------------------------------------------
+
+struct NextBackendNearRelayResponsePacket
+{
+    uint64_t request_id;
+    float latitude;
+    float longitude;
+    int num_near_relays;
+    uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+
+    NextBackendNearRelayResponsePacket()
+    {
+        memset( this, 0, sizeof(NextBackendNearRelayResponsePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        serialize_float( stream, latitude );
+        serialize_float( stream, longitude );
+        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+        for ( int i = 0; i < num_near_relays; i++ )
+        {
+            serialize_uint64( stream, near_relay_ids[i] );
+        }
+        return true;
+    }
+};
+
+// ------------------------------------------------------------------------------------------------------
 
 struct NextBackendSessionUpdateRequestPacket
 {
@@ -623,7 +723,7 @@ struct NextBackendSessionUpdateRequestPacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 struct NextBackendSessionUpdateResponsePacket
 {
@@ -678,7 +778,7 @@ struct NextBackendSessionUpdateResponsePacket
     }
 };
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequence, uint64_t send_sequence, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address );
 
@@ -714,6 +814,6 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
 int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begin, int end, void * packet_object, const int * signed_packet, const uint8_t * sign_public_key );
 
-// ---------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
 
 #endif // #ifndef NEXT_PACKETS_H
