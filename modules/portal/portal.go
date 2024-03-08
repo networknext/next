@@ -341,7 +341,7 @@ func GenerateRandomSliceData() *SliceData {
 // --------------------------------------------------------------------------------------------------
 
 type ClientRelayData struct {
-	Timestamp           uint64                               `json:"timestamp,string"`
+	Timestamp             uint64                             `json:"timestamp,string"`
 	NumClientRelays       uint32                             `json:"num_client_relays"`
 	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"client_relay_id"`
 	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"client_relay_rtt"`
@@ -422,7 +422,7 @@ func GenerateRandomClientRelayData() *ClientRelayData {
 // --------------------------------------------------------------------------------------------------
 
 type ServerRelayData struct {
-	Timestamp           uint64                               `json:"timestamp,string"`
+	Timestamp             uint64                             `json:"timestamp,string"`
 	NumServerRelays       uint32                             `json:"num_client_relays"`
 	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"server_relay_id"`
 	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"server_relay_rtt"`

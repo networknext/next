@@ -853,7 +853,7 @@ func ReadEncryptedRouteToken(token *RouteToken, tokenData []byte, secretKey []by
 
 	output := make([]byte, 0, constants.RouteTokenBytes)
 
-	decrypted, err := aead.Open( output, nonce, encrypted, nil )
+	decrypted, err := aead.Open(output, nonce, encrypted, nil)
 	if err != nil {
 		return false
 	}
@@ -952,7 +952,7 @@ func ReadEncryptedContinueToken(token *ContinueToken, tokenData []byte, secretKe
 
 	output := make([]byte, 0, constants.ContinueTokenBytes)
 
-	decrypted, err := aead.Open( output, nonce, encrypted, nil )
+	decrypted, err := aead.Open(output, nonce, encrypted, nil)
 	if err != nil {
 		return false
 	}

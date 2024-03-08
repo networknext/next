@@ -114,20 +114,20 @@ func SecretKey_KeyPair() ([]byte, []byte) {
 
 func SecretKey_GenerateLocal(localPublicKey []byte, localPrivateKey []byte, remotePublicKey []byte) ([]byte, error) {
 	secretKey := make([]byte, SecretKey_KeySize)
-	result := C.crypto_kx_client_session_keys( (*C.uchar)(&secretKey[0]), nil, (*C.uchar)(&localPublicKey[0]), (*C.uchar)(&localPrivateKey[0]), (*C.uchar)(&remotePublicKey[0]))
+	result := C.crypto_kx_client_session_keys((*C.uchar)(&secretKey[0]), nil, (*C.uchar)(&localPublicKey[0]), (*C.uchar)(&localPrivateKey[0]), (*C.uchar)(&remotePublicKey[0]))
 	if result != 0 {
 		return nil, fmt.Errorf("could not generate local secret key")
 	}
-    return secretKey, nil
+	return secretKey, nil
 }
 
 func SecretKey_GenerateRemote(remotePublicKey []byte, remotePrivateKey []byte, localPublicKey []byte) ([]byte, error) {
 	secretKey := make([]byte, SecretKey_KeySize)
-	result := C.crypto_kx_server_session_keys( nil, (*C.uchar)(&secretKey[0]), (*C.uchar)(&remotePublicKey[0]), (*C.uchar)(&remotePrivateKey[0]), (*C.uchar)(&localPublicKey[0]))
+	result := C.crypto_kx_server_session_keys(nil, (*C.uchar)(&secretKey[0]), (*C.uchar)(&remotePublicKey[0]), (*C.uchar)(&remotePrivateKey[0]), (*C.uchar)(&localPublicKey[0]))
 	if result != 0 {
 		return nil, fmt.Errorf("could not generate remote secret key")
 	}
-    return secretKey, nil
+	return secretKey, nil
 }
 
 // ----------------------------------------------------

@@ -158,9 +158,9 @@ func GenerateRandomServerUpdateResponsePacket() packets.SDK_ServerUpdateResponse
 	return packet
 }
 
-func GenerateRandomNearRelayRequestPacket() packets.SDK_NearRelayRequestPacket {
+func GenerateRandomClientRelayRequestPacket() packets.SDK_ClientRelayRequestPacket {
 
-	packet := packets.SDK_NearRelayRequestPacket{
+	packet := packets.SDK_ClientRelayRequestPacket{
 		Version:       packets.SDKVersion{1, 0, 0},
 		BuyerId:       rand.Uint64(),
 		DatacenterId:  rand.Uint64(),
@@ -170,20 +170,51 @@ func GenerateRandomNearRelayRequestPacket() packets.SDK_NearRelayRequestPacket {
 	return packet
 }
 
-func GenerateRandomNearRelayResponsePacket() packets.SDK_NearRelayResponsePacket {
+func GenerateRandomClientRelayResponsePacket() packets.SDK_ClientRelayResponsePacket {
 
-	packet := packets.SDK_NearRelayResponsePacket{
+	packet := packets.SDK_ClientRelayResponsePacket{
 		RequestId:       rand.Uint64(),
 		Latitude:        rand.Float32(),
 		Longitude:       rand.Float32(),
-		NumNearRelays:   int32(common.RandomInt(0, constants.MaxNearRelays)),
+		NumClientRelays: int32(common.RandomInt(0, constants.MaxClientRelays)),
 		ExpireTimestamp: rand.Uint64(),
 	}
 
-	for i := 0; i < int(packet.NumNearRelays); i++ {
-		packet.NearRelayIds[i] = rand.Uint64()
-		packet.NearRelayAddresses[i] = common.RandomAddress()
-		common.RandomBytes(packet.NearRelayPingTokens[i][:])
+	for i := 0; i < int(packet.NumClientRelays); i++ {
+		packet.ClientRelayIds[i] = rand.Uint64()
+		packet.ClientRelayAddresses[i] = common.RandomAddress()
+		common.RandomBytes(packet.ClientRelayPingTokens[i][:])
+	}
+
+	return packet
+}
+
+func GenerateRandomServerRelayRequestPacket() packets.SDK_ServerRelayRequestPacket {
+
+	packet := packets.SDK_ServerRelayRequestPacket{
+		Version:       packets.SDKVersion{1, 0, 0},
+		BuyerId:       rand.Uint64(),
+		DatacenterId:  rand.Uint64(),
+		ServerAddress: common.RandomAddress(),
+	}
+
+	return packet
+}
+
+func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePacket {
+
+	packet := packets.SDK_ServerRelayResponsePacket{
+		RequestId:       rand.Uint64(),
+		Latitude:        rand.Float32(),
+		Longitude:       rand.Float32(),
+		NumServerRelays: int32(common.RandomInt(0, constants.MaxServerRelays)),
+		ExpireTimestamp: rand.Uint64(),
+	}
+
+	for i := 0; i < int(packet.NumServerRelays); i++ {
+		packet.ServerRelayIds[i] = rand.Uint64()
+		packet.ServerRelayAddresses[i] = common.RandomAddress()
+		common.RandomBytes(packet.ServerRelayPingTokens[i][:])
 	}
 
 	return packet

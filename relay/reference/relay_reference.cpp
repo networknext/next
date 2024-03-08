@@ -2661,9 +2661,9 @@ int relay_write_header( uint8_t packet_type, uint64_t packet_sequence, uint64_t 
     relay_write_uint64( &buffer, session_id );
     relay_write_uint8( &buffer, session_version );
 
-	struct header_data data;
-	memcpy( data.session_private_key, private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
-	data.packet_type = packet_type;
+    struct header_data data;
+    memcpy( data.session_private_key, private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+    data.packet_type = packet_type;
     data.packet_sequence = packet_sequence;
     data.session_id = session_id;
     data.session_version = session_version;
@@ -2695,11 +2695,11 @@ int relay_verify_header( int packet_type, const uint8_t * private_key, uint8_t *
     assert( header );
     assert( header_length >= RELAY_HEADER_BYTES );
 
-	struct header_data data;
+    struct header_data data;
 
-	memcpy( data.session_private_key, private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+    memcpy( data.session_private_key, private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
 
-	data.packet_type = packet_type;
+    data.packet_type = packet_type;
 
     data.packet_sequence  = header[0];
     data.packet_sequence |= ( ( (uint64_t)( header[1] ) ) << 8  );
@@ -2726,7 +2726,7 @@ int relay_verify_header( int packet_type, const uint8_t * private_key, uint8_t *
 
     if ( memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
     {
-    	return RELAY_ERROR;
+        return RELAY_ERROR;
     }
 
     return RELAY_OK;
@@ -2907,10 +2907,10 @@ uint64_t relay_hash_string( const char * string )
 
 void relay_address_data( uint32_t address, uint8_t * output )
 {
-	output[0] = address & 0xFF;
-	output[1] = ( address >> 8  ) & 0xFF;
-	output[2] = ( address >> 16 ) & 0xFF;
-	output[3] = ( address >> 24 ) & 0xFF;
+    output[0] = address & 0xFF;
+    output[1] = ( address >> 8  ) & 0xFF;
+    output[2] = ( address >> 16 ) & 0xFF;
+    output[3] = ( address >> 24 ) & 0xFF;
 }
 
 static void relay_generate_pittle( uint8_t * output, const uint8_t * from_address, const uint8_t * to_address, uint16_t packet_length )
@@ -3705,7 +3705,7 @@ void * relay_queue_pop( relay_queue_t * queue )
 
 struct relay_control_message_t 
 {
-	uint64_t current_timestamp;
+    uint64_t current_timestamp;
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
@@ -4859,7 +4859,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_route_token_t token;
             if ( relay_read_encrypted_route_token( &p, &token, relay->control.relay_secret_key ) != RELAY_OK )
             {
-            	relay_printf( "could not decrypt route token" );
+                relay_printf( "could not decrypt route token" );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN]++;
                 continue;
             }
@@ -4868,7 +4868,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( token.expire_timestamp < current_timestamp )
             {
-            	relay_printf( "route token expired" );
+                relay_printf( "route token expired" );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                 continue;
             }
@@ -4947,7 +4947,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
         {
-        	relay_printf( "received route response packet" );
+            relay_printf( "received route response packet" );
 
             relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED]++;
 
@@ -4972,14 +4972,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-            	relay_printf( "could not find session" );
+                relay_printf( "could not find session" );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
-            	relay_printf( "session expired" );
+                relay_printf( "session expired" );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
@@ -4990,14 +4990,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( sequence <= session->server_to_client_sequence )
             {
-            	relay_printf( "already received" );
+                relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-            	relay_printf( "header did not verify" );
+                relay_printf( "header did not verify" );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
@@ -5044,13 +5044,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET )
         {
-        	relay_printf( "received continue request packet" );
+            relay_printf( "received continue request packet" );
 
             relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED]++;
 
             if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
             {
-            	relay_printf( "wrong size" );
+                relay_printf( "wrong size" );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5058,14 +5058,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_continue_token_t token;
             if ( relay_read_encrypted_continue_token( &p, &token, relay->control.relay_secret_key ) != RELAY_OK )
             {
-            	relay_printf( "could not decrypt continue token" );
+                relay_printf( "could not decrypt continue token" );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN]++;
                 continue;
             }
 
             if ( token.expire_timestamp < relay->control.current_timestamp )
             {
-            	relay_printf( "continue token expired" );
+                relay_printf( "continue token expired" );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED]++;
                 continue;
             }
@@ -5142,13 +5142,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
         {
-        	relay_printf( "received continue response packet" );
+            relay_printf( "received continue response packet" );
 
             relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED]++;
 
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
-            	relay_printf( "wrong size" );
+                relay_printf( "wrong size" );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5167,14 +5167,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !session )
             {
-            	relay_printf( "could not find session" );
+                relay_printf( "could not find session" );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
-            	relay_printf( "session expired" );
+                relay_printf( "session expired" );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
@@ -5185,19 +5185,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( sequence <= session->server_to_client_sequence )
             {
-            	relay_printf( "already received" );
+                relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-            	relay_printf( "header did not verify" );
+                relay_printf( "header did not verify" );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
-        	relay_printf( "forward to next hop" );
+            relay_printf( "forward to next hop" );
 
             session->server_to_client_sequence = sequence;
 
@@ -5239,20 +5239,20 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET )
         {
-        	relay_printf( "received client to server packet" );
+            relay_printf( "received client to server packet" );
             
             relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED]++;
 
             if ( packet_bytes <= RELAY_HEADER_BYTES )
             {
-            	relay_printf( "packet too small" );
+                relay_printf( "packet too small" );
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL]++;
                 continue;
             }
 
             if ( packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
             {
-            	relay_printf( "packet too big" );
+                relay_printf( "packet too big" );
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG]++;
                 continue;
             }
@@ -5270,14 +5270,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_session_t * session = (*(relay->sessions))[key];
             if ( !session )
             {
-            	relay_printf( "could not find session" );
+                relay_printf( "could not find session" );
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
-            	relay_printf( "session expired" );
+                relay_printf( "session expired" );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED]++;
@@ -5288,19 +5288,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( relay_replay_protection_already_received( &session->replay_protection_client_to_server, sequence ) )
             {
-            	relay_printf( "already received" );
+                relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-            	relay_printf( "could not verify header" );
+                relay_printf( "could not verify header" );
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
-           	relay_printf( "forward to next hop" );
+               relay_printf( "forward to next hop" );
 
             relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, sequence );
 
@@ -5353,14 +5353,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes <= RELAY_HEADER_BYTES )
             {
-            	relay_printf( "too small" );
+                relay_printf( "too small" );
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL]++;
                 continue;
             }
 
             if ( packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
             {
-            	relay_printf( "too big" );
+                relay_printf( "too big" );
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG]++;
                 continue;
             }
@@ -5378,14 +5378,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_session_t * session = (*(relay->sessions))[key];
             if ( !session )
             {
-            	relay_printf( "could not find session" );
+                relay_printf( "could not find session" );
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
-            	relay_printf( "session expired" );
+                relay_printf( "session expired" );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
@@ -5396,14 +5396,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( relay_replay_protection_already_received( &session->replay_protection_server_to_client, sequence ) )
             {
-            	relay_printf( "already received" );
+                relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-            	relay_printf( "could not verify header" );
+                relay_printf( "could not verify header" );
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
@@ -5455,13 +5455,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SESSION_PING_PACKET )
         {
-        	relay_printf( "received session ping packet" );
+            relay_printf( "received session ping packet" );
 
             relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
             {
-            	relay_printf( "wrong size" );
+                relay_printf( "wrong size" );
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5479,7 +5479,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_session_t * session = (*(relay->sessions))[key];
             if ( !session )
             {
-            	relay_printf( "could not find session" );
+                relay_printf( "could not find session" );
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
@@ -5497,19 +5497,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( sequence <= session->client_to_server_sequence )
             {
-            	relay_printf( "already received" );
+                relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-            	relay_printf( "could not verify header" );
+                relay_printf( "could not verify header" );
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
-           	relay_printf( "forward to next hop" );
+               relay_printf( "forward to next hop" );
 
             session->client_to_server_sequence = sequence;
 
@@ -5556,13 +5556,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SESSION_PONG_PACKET )
         {
-           	relay_printf( "received session pong packet" );
+               relay_printf( "received session pong packet" );
 
             relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED]++;
 
             if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
             {
-            	relay_printf( "wrong size" );
+                relay_printf( "wrong size" );
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5580,14 +5580,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_session_t * session = (*(relay->sessions))[key];
             if ( !session )
             {
-            	relay_printf( "could not find session" );
+                relay_printf( "could not find session" );
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
 
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
-            	relay_printf( "session expired" );
+                relay_printf( "session expired" );
                 relay->envelope_bandwidth_kbps_up -= session->kbps_up;
                 relay->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
@@ -5598,19 +5598,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( sequence <= session->server_to_client_sequence )
             {
-            	relay_printf( "already received" );
+                relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED]++;
                 continue;
             }
 
             if ( relay_verify_header( packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
             {
-            	relay_printf( "could not verify header" );
+                relay_printf( "could not verify header" );
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY]++;
                 continue;
             }
 
-           	relay_printf( "forward to previous hop" );
+               relay_printf( "forward to previous hop" );
 
             session->server_to_client_sequence = sequence;
 
@@ -5655,13 +5655,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CLIENT_PING_PACKET )
         {
-        	relay_printf( "received client ping packet" );
+            relay_printf( "received client ping packet" );
 
             relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
-            	relay_printf( "wrong size" );
+                relay_printf( "wrong size" );
                 relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5676,7 +5676,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-            	relay_printf( "ping expired" );
+                relay_printf( "ping expired" );
                 relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_EXPIRED]++;
                 continue;
             }
@@ -5688,7 +5688,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from_without_port, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
-            	relay_printf( "ping token did not verify" );
+                relay_printf( "ping token did not verify" );
                 relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY]++;
                 continue;
             }
@@ -5711,13 +5711,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SERVER_PING_PACKET )
         {
-        	relay_printf( "received server ping packet" );
+            relay_printf( "received server ping packet" );
 
             relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
-            	relay_printf( "wrong size" );
+                relay_printf( "wrong size" );
                 relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5731,7 +5731,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             
             if ( expire_timestamp < current_timestamp )
             {
-            	relay_printf( "ping expired" );
+                relay_printf( "ping expired" );
                 relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_EXPIRED]++;
                 continue;
             }
@@ -5740,7 +5740,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( !relay_ping_token_verify( &from, &relay->relay_public_address, expire_timestamp, ping_token, relay->control.ping_key ) )
             {
-            	relay_printf( "ping token did not verify" );
+                relay_printf( "ping token did not verify" );
                 relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_DID_NOT_VERIFY]++;
                 continue;
             }
@@ -6058,7 +6058,7 @@ int main( int argc, const char ** argv )
 
 #if !RELAY_DEBUG
 
-	uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
+    uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
 
     if ( crypto_kx_client_session_keys( relay_secret_key, NULL, relay_public_key, relay_private_key, relay_backend_public_key ) != 0 )
     {
@@ -6169,7 +6169,7 @@ int main( int argc, const char ** argv )
 
     printf( "Creating message queues\n" );
 
-    const int num_threads = 1;	// IMPORTANT: This reference relay only works with one thread
+    const int num_threads = 1;    // IMPORTANT: This reference relay only works with one thread
 
     relay_queue_t * relay_stats_queue = relay_queue_create( num_threads * 64 );
     relay_platform_mutex_t * relay_stats_mutex = relay_platform_mutex_create();
@@ -6364,11 +6364,11 @@ int main( int argc, const char ** argv )
 
     while ( !quit )
     {
-		uint64_t current_timestamp = time( NULL );
+        uint64_t current_timestamp = time( NULL );
 
-		uint8_t current_magic[8];
-		uint8_t previous_magic[8];
-		uint8_t next_magic[8];
+        uint8_t current_magic[8];
+        uint8_t previous_magic[8];
+        uint8_t next_magic[8];
 
         for ( int i = 0; i < 8; i++ )
         {
@@ -6377,51 +6377,51 @@ int main( int argc, const char ** argv )
         memset( previous_magic, 1, sizeof( previous_magic ) );
         memset( next_magic,     2, sizeof( next_magic     ) );
 
-    	// send control message to relay threads
+        // send control message to relay threads
 
-   	    for ( int i = 0; i < num_threads; i++ )
-	    {
-			relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
+           for ( int i = 0; i < num_threads; i++ )
+        {
+            relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
 
-			memset( message, 0, sizeof(relay_control_message_t) );
+            memset( message, 0, sizeof(relay_control_message_t) );
 
-			message->current_timestamp = current_timestamp;
+            message->current_timestamp = current_timestamp;
 
-			memcpy( message->next_magic, &next_magic, 8 );
-			memcpy( message->current_magic, &current_magic, 8 );
-			memcpy( message->previous_magic, &previous_magic, 8 );
+            memcpy( message->next_magic, &next_magic, 8 );
+            memcpy( message->current_magic, &current_magic, 8 );
+            memcpy( message->previous_magic, &previous_magic, 8 );
 
-			memcpy( message->relay_secret_key, relay_secret_key, RELAY_SECRET_KEY_BYTES );
+            memcpy( message->relay_secret_key, relay_secret_key, RELAY_SECRET_KEY_BYTES );
 
-			memcpy( message->ping_key, relay_ping_key, RELAY_PING_KEY_BYTES );
+            memcpy( message->ping_key, relay_ping_key, RELAY_PING_KEY_BYTES );
 
-			relay_platform_mutex_acquire( relay[0].control_mutex );
-			relay_queue_push( relay[0].control_queue, message );
-			relay_platform_mutex_release( relay[0].control_mutex );
-		}
+            relay_platform_mutex_acquire( relay[0].control_mutex );
+            relay_queue_push( relay[0].control_queue, message );
+            relay_platform_mutex_release( relay[0].control_mutex );
+        }
 
-	    // send control message to ping thread
+        // send control message to ping thread
 
-	    relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
+        relay_control_message_t * message = (relay_control_message_t*) malloc( sizeof(relay_control_message_t) );
 
-	    memset( message, 0, sizeof(relay_control_message_t) );
+        memset( message, 0, sizeof(relay_control_message_t) );
 
-	    message->current_timestamp = current_timestamp;
+        message->current_timestamp = current_timestamp;
 
-	    memcpy( message->next_magic, &next_magic, 8 );
-	    memcpy( message->current_magic, &current_magic, 8 );
-	    memcpy( message->previous_magic, &previous_magic, 8 );
+        memcpy( message->next_magic, &next_magic, 8 );
+        memcpy( message->current_magic, &current_magic, 8 );
+        memcpy( message->previous_magic, &previous_magic, 8 );
 
-		memcpy( message->relay_secret_key, relay_secret_key, RELAY_SECRET_KEY_BYTES );
+        memcpy( message->relay_secret_key, relay_secret_key, RELAY_SECRET_KEY_BYTES );
 
-	    memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
+        memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
-	    relay_platform_mutex_acquire( main->ping_control_mutex );
-	    relay_queue_push( main->ping_control_queue, message );
-	    relay_platform_mutex_release( main->ping_control_mutex );
+        relay_platform_mutex_acquire( main->ping_control_mutex );
+        relay_queue_push( main->ping_control_queue, message );
+        relay_platform_mutex_release( main->ping_control_mutex );
 
-	    relay_platform_sleep( 1.0 );
-	}
+        relay_platform_sleep( 1.0 );
+    }
 
 #else // #if RELAY_DEBUG
 
@@ -6521,7 +6521,7 @@ int main( int argc, const char ** argv )
     free( update_response_memory );
 
     if ( aborted )
-    	result = 1;
+        result = 1;
 
 #endif // #if RELAY_DEBUG
 

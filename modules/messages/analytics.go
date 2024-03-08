@@ -144,7 +144,8 @@ type AnalyticsRelayUpdateMessage struct {
 	PacketsReceivedPerSecond  float32 `avro:"packets_received_per_second"`
 	BandwidthSentKbps         float32 `avro:"bandwidth_sent_kbps"`
 	BandwidthReceivedKbps     float32 `avro:"bandwidth_received_kbps"`
-	NearPingsPerSecond        float32 `avro:"near_pings_per_second"`
+	ClientPingsPerSecond      float32 `avro:"client_pings_per_second"`
+	ServerPingsPerSecond      float32 `avro:"server_pings_per_second"`
 	RelayPingsPerSecond       float32 `avro:"relay_pings_per_second"`
 	RelayFlags                int64   `avro:"relay_flags"`
 	NumRoutable               int32   `avro:"num_routable"`
@@ -188,20 +189,33 @@ type AnalyticsRouteMatrixUpdateMessage struct {
 
 // ----------------------------------------------------------------------------------------
 
-type AnalyticsNearRelayPingMessage struct {
-	Timestamp           int64   `avro:"timestamp"`
-	BuyerId             int64   `avro:"buyer_id"`
-	SessionId           int64   `avro:"session_id"`
-	UserHash            int64   `avro:"user_hash"`
-	Latitude            float32 `avro:"latitude"`
-	Longitude           float32 `avro:"longitude"`
-	ClientAddress       string  `avro:"client_address"`
-	ConnectionType      int32   `avro:"connection_type"`
-	PlatformType        int32   `avro:"platform_type"`
-	NearRelayId         int64   `avro:"near_relay_id"`
-	NearRelayRTT        int32   `avro:"near_relay_rtt"`
-	NearRelayJitter     int32   `avro:"near_relay_jitter"`
-	NearRelayPacketLoss float32 `avro:"near_relay_packet_loss"`
+type AnalyticsClientRelayPingMessage struct {
+	Timestamp             int64   `avro:"timestamp"`
+	BuyerId               int64   `avro:"buyer_id"`
+	SessionId             int64   `avro:"session_id"`
+	UserHash              int64   `avro:"user_hash"`
+	Latitude              float32 `avro:"latitude"`
+	Longitude             float32 `avro:"longitude"`
+	ClientAddress         string  `avro:"client_address"`
+	ConnectionType        int32   `avro:"connection_type"`
+	PlatformType          int32   `avro:"platform_type"`
+	ClientRelayId         int64   `avro:"client_relay_id"`
+	ClientRelayRTT        int32   `avro:"client_relay_rtt"`
+	ClientRelayJitter     int32   `avro:"client_relay_jitter"`
+	ClientRelayPacketLoss float32 `avro:"client_relay_packet_loss"`
+}
+
+// ----------------------------------------------------------------------------------------
+
+type AnalyticsServerRelayPingMessage struct {
+	Timestamp             int64   `avro:"timestamp"`
+	BuyerId               int64   `avro:"buyer_id"`
+	DatacenterId          int64   `avro:"datacenter_id"`
+	ServerAddress         string  `avro:"server_address"`
+	ServerRelayId         int64   `avro:"server_relay_id"`
+	ServerRelayRTT        int32   `avro:"server_relay_rtt"`
+	ServerRelayJitter     int32   `avro:"server_relay_jitter"`
+	ServerRelayPacketLoss float32 `avro:"server_relay_packet_loss"`
 }
 
 // ----------------------------------------------------------------------------------------

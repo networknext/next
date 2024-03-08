@@ -2085,7 +2085,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	relay_public_key_a, _ := crypto.Box_KeyPair()
 	relay_public_key_b, _ := crypto.Box_KeyPair()
 	relay_public_key_c, _ := crypto.Box_KeyPair()
- 
+
 	state.Database.Relays = make([]db.Relay, 3)
 	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
 	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}

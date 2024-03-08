@@ -10,8 +10,8 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	"github.com/networknext/next/modules/encoding"
@@ -189,14 +189,14 @@ func (packet *SDK_ClientRelayRequestPacket) Serialize(stream encoding.Stream) er
 // ------------------------------------------------------------
 
 type SDK_ClientRelayResponsePacket struct {
-	RequestId           uint64
-	Latitude            float32
-	Longitude           float32
+	RequestId             uint64
+	Latitude              float32
+	Longitude             float32
 	NumClientRelays       int32
-	ClientRelayIds  	    [constants.MaxClientRelays]uint64
+	ClientRelayIds        [constants.MaxClientRelays]uint64
 	ClientRelayAddresses  [constants.MaxClientRelays]net.UDPAddr
 	ClientRelayPingTokens [constants.MaxClientRelays][constants.PingTokenBytes]byte
-	ExpireTimestamp     uint64
+	ExpireTimestamp       uint64
 }
 
 func (packet *SDK_ClientRelayResponsePacket) Serialize(stream encoding.Stream) error {
@@ -208,6 +208,50 @@ func (packet *SDK_ClientRelayResponsePacket) Serialize(stream encoding.Stream) e
 		stream.SerializeUint64(&packet.ClientRelayIds[i])
 		stream.SerializeAddress(&packet.ClientRelayAddresses[i])
 		stream.SerializeBytes(packet.ClientRelayPingTokens[i][:])
+	}
+	stream.SerializeUint64(&packet.ExpireTimestamp)
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK_ServerRelayRequestPacket struct {
+	Version      SDKVersion
+	BuyerId      uint64
+	RequestId    uint64
+	DatacenterId uint64
+}
+
+func (packet *SDK_ServerRelayRequestPacket) Serialize(stream encoding.Stream) error {
+	packet.Version.Serialize(stream)
+	stream.SerializeUint64(&packet.BuyerId)
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeUint64(&packet.DatacenterId)
+	return stream.Error()
+}
+
+// ------------------------------------------------------------
+
+type SDK_ServerRelayResponsePacket struct {
+	RequestId             uint64
+	Latitude              float32
+	Longitude             float32
+	NumServerRelays       int32
+	ServerRelayIds        [constants.MaxServerRelays]uint64
+	ServerRelayAddresses  [constants.MaxServerRelays]net.UDPAddr
+	ServerRelayPingTokens [constants.MaxServerRelays][constants.PingTokenBytes]byte
+	ExpireTimestamp       uint64
+}
+
+func (packet *SDK_ServerRelayResponsePacket) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeFloat32(&packet.Latitude)
+	stream.SerializeFloat32(&packet.Longitude)
+	stream.SerializeInteger(&packet.NumServerRelays, 0, constants.MaxServerRelays)
+	for i := 0; i < int(packet.NumServerRelays); i++ {
+		stream.SerializeUint64(&packet.ServerRelayIds[i])
+		stream.SerializeAddress(&packet.ServerRelayAddresses[i])
+		stream.SerializeBytes(packet.ServerRelayPingTokens[i][:])
 	}
 	stream.SerializeUint64(&packet.ExpireTimestamp)
 	return stream.Error()

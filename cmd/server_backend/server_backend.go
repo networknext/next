@@ -39,13 +39,15 @@ var fallbackToDirectChannel chan uint64
 
 var portalSessionUpdateMessageChannel chan *messages.PortalSessionUpdateMessage
 var portalServerUpdateMessageChannel chan *messages.PortalServerUpdateMessage
-var portalNearRelayUpdateMessageChannel chan *messages.PortalNearRelayUpdateMessage
+var portalClientRelayUpdateMessageChannel chan *messages.PortalClientRelayUpdateMessage
+var portalServerRelayUpdateMessageChannel chan *messages.PortalServerRelayUpdateMessage
 
 var analyticsServerInitMessageChannel chan *messages.AnalyticsServerInitMessage
 var analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
 var analyticsSessionUpdateMessageChannel chan *messages.AnalyticsSessionUpdateMessage
 var analyticsSessionSummaryMessageChannel chan *messages.AnalyticsSessionSummaryMessage
-var analyticsNearRelayPingMessageChannel chan *messages.AnalyticsNearRelayPingMessage
+var analyticsClientRelayPingMessageChannel chan *messages.AnalyticsClientRelayPingMessage
+var analyticsServerRelayPingMessageChannel chan *messages.AnalyticsServerRelayPingMessage
 
 var enableGooglePubsub bool
 
@@ -59,7 +61,8 @@ var sessionCruncherURL string
 var serverCruncherURL string
 var sessionInsertBatchSize int
 var serverInsertBatchSize int
-var nearRelayInsertBatchSize int
+var clientRelayInsertBatchSize int
+var serverRelayInsertBatchSize int
 
 var enableRedisTimeSeries bool
 var redisTimeSeriesHostname string
@@ -734,8 +737,8 @@ func processPortalClientRelayUpdateMessages(service *common.Service, inputChanne
 			sessionId := message.SessionId
 
 			clientRelayData := portal.ClientRelayData{
-				Timestamp:           message.Timestamp,
-				NumClientRelays:     message.NumClientRelays,
+				Timestamp:             message.Timestamp,
+				NumClientRelays:       message.NumClientRelays,
 				ClientRelayId:         message.ClientRelayId,
 				ClientRelayRTT:        message.ClientRelayRTT,
 				ClientRelayJitter:     message.ClientRelayJitter,
@@ -754,7 +757,7 @@ func processPortalClientRelayUpdateMessages(service *common.Service, inputChanne
 
 func processPortalServerRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalServerRelayUpdateMessage) {
 
-	var redisServer redis.Cmdable
+	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
 		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
 	} else {
@@ -772,8 +775,8 @@ func processPortalServerRelayUpdateMessages(service *common.Service, inputChanne
 			sessionId := message.SessionId
 
 			serverRelayData := portal.ServerRelayData{
-				Timestamp:           message.Timestamp,
-				NumServerRelays:     message.NumServerRelays,
+				Timestamp:             message.Timestamp,
+				NumServerRelays:       message.NumServerRelays,
 				ServerRelayId:         message.ServerRelayId,
 				ServerRelayRTT:        message.ServerRelayRTT,
 				ServerRelayJitter:     message.ServerRelayJitter,

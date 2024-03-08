@@ -32,12 +32,23 @@ func TestSliceData(t *testing.T) {
 	}
 }
 
-func TestNearRelayData(t *testing.T) {
+func TestClientRelayData(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < NumIterations; i++ {
-		writeData := portal.GenerateRandomNearRelayData()
+		writeData := portal.GenerateRandomClientRelayData()
 		value := writeData.Value()
-		readData := portal.NearRelayData{}
+		readData := portal.ClientRelayData{}
+		readData.Parse(value)
+		assert.Equal(t, *writeData, readData)
+	}
+}
+
+func TestServerRelayData(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < NumIterations; i++ {
+		writeData := portal.GenerateRandomServerRelayData()
+		value := writeData.Value()
+		readData := portal.ServerRelayData{}
 		readData.Parse(value)
 		assert.Equal(t, *writeData, readData)
 	}

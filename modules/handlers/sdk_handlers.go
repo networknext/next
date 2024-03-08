@@ -29,25 +29,28 @@ const (
 	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
 	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
 	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
-	SDK_HandlerEvent_CouldNotReadNearRelayRequestPacket = 14
+	SDK_HandlerEvent_CouldNotReadClientRelayRequestPacket   = 14
+	SDK_HandlerEvent_CouldNotReadServerRelayRequestPacket   = 15
 
-	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 15
-	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 16
-	SDK_HandlerEvent_ProcessNearRelayRequestPacket     = 17
-	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 18
+	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 16
+	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 17
+	SDK_HandlerEvent_ProcessClientRelayRequestPacket   = 18
+	SDK_HandlerEvent_ProcessServerRelayRequestPacket   = 19
+	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 20
 
-	SDK_HandlerEvent_SentServerInitResponsePacket    = 19
-	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 20
-	SDK_HandlerEvent_SentNearRelayResponsePacket  	 = 21
-	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 22
+	SDK_HandlerEvent_SentServerInitResponsePacket    = 21
+	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 22
+	SDK_HandlerEvent_SentClientRelayResponsePacket   = 23
+	SDK_HandlerEvent_SentServerRelayResponsePacket   = 24
+	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 25
 
-	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 23
-	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 24
-	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 25
+	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 26
+	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 27
+	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 28
 
-	SDK_HandlerEvent_SentPortalServerUpdateMessage = 26
+	SDK_HandlerEvent_SentPortalServerUpdateMessage = 28
 
-	SDK_HandlerEvent_NumEvents = 27
+	SDK_HandlerEvent_NumEvents = 29
 )
 
 type SDK_Handler struct {
@@ -73,12 +76,12 @@ type SDK_Handler struct {
 	PortalClientRelayUpdateMessageChannel chan<- *messages.PortalClientRelayUpdateMessage
 	PortalServerRelayUpdateMessageChannel chan<- *messages.PortalServerRelayUpdateMessage
 
-	AnalyticsServerInitMessageChannel       chan<- *messages.AnalyticsServerInitMessage
-	AnalyticsServerUpdateMessageChannel     chan<- *messages.AnalyticsServerUpdateMessage
-	AnalyticsClientRelayPingMessageChannel  chan<- *messages.AnalyticsClientRelayPingMessage
-	AnalyticsClientRelayPingMessageChannel  chan<- *messages.AnalyticsServerRelayPingMessage
-	AnalyticsSessionUpdateMessageChannel    chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel   chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsServerInitMessageChannel      chan<- *messages.AnalyticsServerInitMessage
+	AnalyticsServerUpdateMessageChannel    chan<- *messages.AnalyticsServerUpdateMessage
+	AnalyticsClientRelayPingMessageChannel chan<- *messages.AnalyticsClientRelayPingMessage
+	AnalyticsServerRelayPingMessageChannel chan<- *messages.AnalyticsServerRelayPingMessage
+	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
 }
 
 func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
@@ -185,14 +188,24 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 		SDK_ProcessServerUpdateRequestPacket(handler, conn, from, &packet)
 		break
 
-	case packets.SDK_NEAR_RELAY_REQUEST_PACKET:
-		packet := packets.SDK_NearRelayRequestPacket{}
+	case packets.SDK_CLIENT_RELAY_REQUEST_PACKET:
+		packet := packets.SDK_ClientRelayRequestPacket{}
 		if err := packets.ReadPacket(packetData, &packet); err != nil {
-			core.Error("could not read near relay request packet from %s: %v", from.String(), err)
-			handler.Events[SDK_HandlerEvent_CouldNotReadNearRelayRequestPacket] = true
+			core.Error("could not read client relay request packet from %s: %v", from.String(), err)
+			handler.Events[SDK_HandlerEvent_CouldNotReadClientRelayRequestPacket] = true
 			return
 		}
-		SDK_ProcessNearRelayRequestPacket(handler, conn, from, &packet)
+		SDK_ProcessClientRelayRequestPacket(handler, conn, from, &packet)
+		break
+
+	case packets.SDK_SERVER_RELAY_REQUEST_PACKET:
+		packet := packets.SDK_ServerRelayRequestPacket{}
+		if err := packets.ReadPacket(packetData, &packet); err != nil {
+			core.Error("could not read server relay request packet from %s: %v", from.String(), err)
+			handler.Events[SDK_HandlerEvent_CouldNotReadServerRelayRequestPacket] = true
+			return
+		}
+		SDK_ProcessServerRelayRequestPacket(handler, conn, from, &packet)
 		break
 
 	case packets.SDK_SESSION_UPDATE_REQUEST_PACKET:
@@ -446,9 +459,11 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	state.FallbackToDirectChannel = handler.FallbackToDirectChannel
 
 	state.PortalSessionUpdateMessageChannel = handler.PortalSessionUpdateMessageChannel
-	state.PortalNearRelayUpdateMessageChannel = handler.PortalNearRelayUpdateMessageChannel
+	state.PortalClientRelayUpdateMessageChannel = handler.PortalClientRelayUpdateMessageChannel
+	state.PortalServerRelayUpdateMessageChannel = handler.PortalServerRelayUpdateMessageChannel
 
-	state.AnalyticsNearRelayPingMessageChannel = handler.AnalyticsNearRelayPingMessageChannel
+	state.AnalyticsClientRelayPingMessageChannel = handler.AnalyticsClientRelayPingMessageChannel
+	state.AnalyticsServerRelayPingMessageChannel = handler.AnalyticsServerRelayPingMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
 	state.AnalyticsSessionSummaryMessageChannel = handler.AnalyticsSessionSummaryMessageChannel
 
@@ -522,13 +537,14 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	}
 
 	/*
-	   Process near relay ping statistics after the first slice.
+	   Process client relay ping statistics after the first slice.
 
-	   We use near relay latency, jitter and packet loss for route planning.
+	   We use client and server relay latency, jitter and packet loss for route planning.
 	*/
 
 	if state.Request.SliceNumber > 0 {
-		SessionUpdate_UpdateNearRelays(&state)
+		SessionUpdate_UpdateClientRelays(&state)
+		SessionUpdate_UpdateServerRelays(&state)
 	}
 
 	/*
@@ -540,12 +556,12 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	core.Debug("session updated successfully")
 }
 
-func SDK_ProcessNearRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_NearRelayRequestPacket) {
+func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ClientRelayRequestPacket) {
 
-	handler.Events[SDK_HandlerEvent_ProcessNearRelayRequestPacket] = true
+	handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket] = true
 
 	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received near relay request packet from %s", from.String())
+	core.Debug("received client relay request packet from %s", from.String())
 	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 	core.Debug("buyer id: %016x", requestPacket.BuyerId)
 	core.Debug("request id: %016x", requestPacket.RequestId)
@@ -573,7 +589,7 @@ func SDK_ProcessNearRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, 
 	datacenter := handler.Database.GetDatacenter(requestPacket.DatacenterId)
 
 	if datacenter == nil {
-		core.Debug("datacenter is nil, not getting near relays")
+		core.Debug("datacenter is nil, not getting client relays")
 		handler.Events[SDK_HandlerEvent_UnknownDatacenter] = true
 		return
 	}
@@ -586,7 +602,7 @@ func SDK_ProcessNearRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, 
 	const distanceThreshold = 2500
 	const latencyThreshold = 30.0
 
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(constants.MaxNearRelays,
+	clientRelayIds, clientRelayAddresses := common.GetClientRelays(constants.MaxClientRelays,
 		distanceThreshold,
 		latencyThreshold,
 		handler.RouteMatrix.RelayIds,
@@ -599,20 +615,81 @@ func SDK_ProcessNearRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, 
 		serverLongitude,
 	)
 
-	numNearRelays := len(nearRelayIds)
+	numClientRelays := len(clientRelayIds)
 
-	core.Debug("found %d near relays", numNearRelays)
+	core.Debug("found %d client relays", numClientRelays)
 
-	responsePacket := &packets.SDK_NearRelayResponsePacket{}
+	responsePacket := &packets.SDK_ClientRelayResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
 	responsePacket.Latitude = clientLatitude
-	responsePacket.Longitude = clientLongitude 
-	responsePacket.NumNearRelays = int32(numNearRelays)
-	for i := 0; i < numNearRelays; i++ {
-		responsePacket.NearRelayIds[i] = nearRelayIds[i]
-		responsePacket.NearRelayAddresses[i] = nearRelayAddresses[i]
+	responsePacket.Longitude = clientLongitude
+	responsePacket.NumClientRelays = int32(numClientRelays)
+	for i := 0; i < numClientRelays; i++ {
+		responsePacket.ClientRelayIds[i] = clientRelayIds[i]
+		responsePacket.ClientRelayAddresses[i] = clientRelayAddresses[i]
 	}
 
-	SDK_SendResponsePacket(handler, conn, from, packets.SDK_NEAR_RELAY_RESPONSE_PACKET, responsePacket)
+	SDK_SendResponsePacket(handler, conn, from, packets.SDK_CLIENT_RELAY_RESPONSE_PACKET, responsePacket)
 }
 
+func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ServerRelayRequestPacket) {
+
+	handler.Events[SDK_HandlerEvent_ProcessServerRelayRequestPacket] = true
+
+	core.Debug("---------------------------------------------------------------------------")
+	core.Debug("received server relay request packet from %s", from.String())
+	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+	core.Debug("buyer id: %016x", requestPacket.BuyerId)
+	core.Debug("request id: %016x", requestPacket.RequestId)
+	core.Debug("---------------------------------------------------------------------------")
+
+	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
+	if !exists {
+		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		handler.Events[SDK_HandlerEvent_UnknownBuyer] = true
+		return
+	}
+
+	if !buyer.Live {
+		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
+		handler.Events[SDK_HandlerEvent_BuyerNotLive] = true
+		return
+	}
+
+	if !requestPacket.Version.AtLeast(packets.SDKVersion{1, 0, 0}) {
+		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
+		handler.Events[SDK_HandlerEvent_SDKTooOld] = true
+		return
+	}
+
+	datacenter := handler.Database.GetDatacenter(requestPacket.DatacenterId)
+
+	if datacenter == nil {
+		core.Debug("datacenter is nil, not getting server relays")
+		handler.Events[SDK_HandlerEvent_UnknownDatacenter] = true
+		return
+	}
+
+	/*
+		serverLatitude := datacenter.Latitude
+		serverLongitude := datacenter.Longitude
+	*/
+
+	// todo: just get dest relays in the datacenter from database
+	numServerRelays := 0
+
+	core.Debug("found %d server relays", numServerRelays)
+
+	responsePacket := &packets.SDK_ServerRelayResponsePacket{}
+	responsePacket.RequestId = requestPacket.RequestId
+	responsePacket.NumServerRelays = int32(numServerRelays)
+	// todo: fill
+	/*
+		for i := 0; i < numServerRelays; i++ {
+			responsePacket.ServerRelayIds[i] = serverRelayIds[i]
+			responsePacket.ServerRelayAddresses[i] = serverRelayAddresses[i]
+		}
+	*/
+
+	SDK_SendResponsePacket(handler, conn, from, packets.SDK_SERVER_RELAY_RESPONSE_PACKET, responsePacket)
+}

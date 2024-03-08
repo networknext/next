@@ -8,14 +8,27 @@ import (
 // ----------------------------------------------------------------------------------------
 
 type PortalClientRelayUpdateMessage struct {
-	Timestamp       uint64
-	BuyerId         uint64
-	SessionId       uint64
-	NumRelays       uint32
-	RelayId         [constants.MaxClientRelays]uint64
-	RelayRTT        [constants.MaxClientRelays]byte
-	RelayJitter     [constants.MaxClientRelays]byte
-	RelayPacketLoss [constants.MaxClientRelays]float32
+	Timestamp             uint64
+	BuyerId               uint64
+	SessionId             uint64
+	NumClientRelays       uint32
+	ClientRelayId         [constants.MaxClientRelays]uint64
+	ClientRelayRTT        [constants.MaxClientRelays]byte
+	ClientRelayJitter     [constants.MaxClientRelays]byte
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32
+}
+
+// ----------------------------------------------------------------------------------------
+
+type PortalServerRelayUpdateMessage struct {
+	Timestamp             uint64
+	BuyerId               uint64
+	SessionId             uint64
+	NumServerRelays       uint32
+	ServerRelayId         [constants.MaxServerRelays]uint64
+	ServerRelayRTT        [constants.MaxServerRelays]byte
+	ServerRelayJitter     [constants.MaxServerRelays]byte
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32
 }
 
 // ----------------------------------------------------------------------------------------
@@ -34,7 +47,7 @@ type PortalRelayUpdateMessage struct {
 	BandwidthReceivedKbps     float32
 	ClientPingsPerSecond      float32
 	RelayPingsPerSecond       float32
-	ServerPingsPerSecond      float32		// todo
+	ServerPingsPerSecond      float32 // todo
 	RelayFlags                uint64
 	NumRoutable               uint32
 	NumUnroutable             uint32

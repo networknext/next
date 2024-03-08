@@ -55,7 +55,7 @@ type SessionUpdateState struct {
 	RealJitter     float32
 	RealOutOfOrder float32
 
-	// route diversity is the number of unique near relays with viable routes
+	// route diversity is the number of unique client relays with viable routes
 	RouteDiversity int32
 
 	// for route planning
@@ -82,33 +82,39 @@ type SessionUpdateState struct {
 	PortalNextSessionsOnly bool
 
 	// codepath flags (for unit testing etc...)
-	ClientPingTimedOut                        bool
-	AnalysisOnly                              bool
-	RouteChanged                              bool
-	RouteContinued                            bool
-	TakeNetworkNext                           bool
-	StayDirect                                bool
-	FirstUpdate                               bool
-	ReadSessionData                           bool
-	NotUpdatingNearRelaysAnalysisOnly         bool
-	NotUpdatingNearRelaysDatacenterNotEnabled bool
-	SentPortalSessionUpdateMessage            bool
-	SentPortalNearRelayUpdateMessage          bool
-	SentAnalyticsNearRelayPingMessage         bool
-	SentAnalyticsSessionUpdateMessage         bool
-	SentAnalyticsSessionSummaryMessage        bool
-	LocatedIP                                 bool
-	WroteResponsePacket                       bool
-	LongSessionUpdate                         bool
+	ClientPingTimedOut                          bool
+	AnalysisOnly                                bool
+	RouteChanged                                bool
+	RouteContinued                              bool
+	TakeNetworkNext                             bool
+	StayDirect                                  bool
+	FirstUpdate                                 bool
+	ReadSessionData                             bool
+	NotUpdatingClientRelaysAnalysisOnly         bool
+	NotUpdatingClientRelaysDatacenterNotEnabled bool
+	NotUpdatingServerRelaysAnalysisOnly         bool
+	NotUpdatingServerRelaysDatacenterNotEnabled bool
+	SentPortalSessionUpdateMessage              bool
+	SentPortalClientRelayUpdateMessage          bool
+	SentPortalServerRelayUpdateMessage          bool
+	SentAnalyticsClientRelayPingMessage         bool
+	SentAnalyticsServerRelayPingMessage         bool
+	SentAnalyticsSessionUpdateMessage           bool
+	SentAnalyticsSessionSummaryMessage          bool
+	LocatedIP                                   bool
+	WroteResponsePacket                         bool
+	LongSessionUpdate                           bool
 
 	FallbackToDirectChannel chan<- uint64
 
-	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
-	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
+	PortalSessionUpdateMessageChannel     chan<- *messages.PortalSessionUpdateMessage
+	PortalClientRelayUpdateMessageChannel chan<- *messages.PortalClientRelayUpdateMessage
+	PortalServerRelayUpdateMessageChannel chan<- *messages.PortalServerRelayUpdateMessage
 
-	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
-	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
+	AnalyticsSessionUpdateMessageChannel   chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel  chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsClientRelayPingMessageChannel chan<- *messages.AnalyticsClientRelayPingMessage
+	AnalyticsServerRelayPingMessageChannel chan<- *messages.AnalyticsServerRelayPingMessage
 }
 
 func SessionUpdate_ReadSessionData(state *SessionUpdateState) bool {
@@ -227,20 +233,20 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	// todo: just have the server own the lat/long, and pass up with each request
 	/*
-	if state.Request.SliceNumber == 0 {
+		if state.Request.SliceNumber == 0 {
 
-		state.LocatedIP = true
+			state.LocatedIP = true
 
-		state.FirstUpdate = true
+			state.FirstUpdate = true
 
-		state.Latitude, state.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
+			state.Latitude, state.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
 
-		if state.Latitude == 0.0 && state.Longitude == 0.0 {
-			core.Error("location veto")
-			state.Input.RouteState.LocationVeto = true
-			return true
+			if state.Latitude == 0.0 && state.Longitude == 0.0 {
+				core.Error("location veto")
+				state.Input.RouteState.LocationVeto = true
+				return true
+			}
 		}
-	}
 	*/
 
 	/*
@@ -443,38 +449,38 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 	}
 }
 
-func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
+func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating near relay stats")
-		state.NotUpdatingNearRelaysAnalysisOnly = true
+		core.Debug("analysis only, not updating client relay stats")
+		state.NotUpdatingClientRelaysAnalysisOnly = true
 		return false
 	}
 
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
-		core.Debug("datacenter not enabled, not updating near relay stats")
-		state.NotUpdatingNearRelaysDatacenterNotEnabled = true
+		core.Debug("datacenter not enabled, not updating client relay stats")
+		state.NotUpdatingClientRelaysDatacenterNotEnabled = true
 		return false
 	}
 
 	/*
-		Debug print near relay ping results on slice 1. This is when the SDK tells us the near relay ping results.
+		Debug print client relay ping results on slice 1
 	*/
 
 	if state.Request.SliceNumber == 1 {
-		core.Debug("sdk uploaded near relay stats for %d relays:", state.Request.NumNearRelays)
-		for i := 0; i < int(state.Request.NumNearRelays); i++ {
-			relayId := state.Request.NearRelayIds[i]
+		core.Debug("sdk uploaded client relay stats for %d relays:", state.Request.NumClientRelays)
+		for i := 0; i < int(state.Request.NumClientRelays); i++ {
+			relayId := state.Request.ClientRelayIds[i]
 			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]
 			var relayName string
 			if exists {
 				relayName = state.RouteMatrix.RelayNames[relayIndex]
 			} else {
-				relayName = "???" // near relay no longer exists in route matrix
+				relayName = "???" // client relay no longer exists in route matrix
 			}
-			rtt := state.Request.NearRelayRTT[i]
-			jitter := state.Request.NearRelayJitter[i]
-			pl := state.Request.NearRelayPacketLoss[i]
+			rtt := state.Request.ClientRelayRTT[i]
+			jitter := state.Request.ClientRelayJitter[i]
+			pl := state.Request.ClientRelayPacketLoss[i]
 			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
 		}
 	}
@@ -498,10 +504,10 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
 	directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
-	sourceRelayIds := state.Request.NearRelayIds[:state.Request.NumNearRelays]
-	sourceRelayLatency := state.Request.NearRelayRTT[:state.Request.NumNearRelays]
-	sourceRelayJitter := state.Request.NearRelayJitter[:state.Request.NumNearRelays]
-	sourceRelayPacketLoss := state.Request.NearRelayPacketLoss[:state.Request.NumNearRelays]
+	sourceRelayIds := state.Request.ClientRelayIds[:state.Request.NumClientRelays]
+	sourceRelayLatency := state.Request.ClientRelayRTT[:state.Request.NumClientRelays]
+	sourceRelayJitter := state.Request.ClientRelayJitter[:state.Request.NumClientRelays]
+	sourceRelayPacketLoss := state.Request.ClientRelayPacketLoss[:state.Request.NumClientRelays]
 
 	firstUpdate := state.Request.SliceNumber == 1
 
@@ -514,12 +520,12 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 		sourceRelayJitter,
 		sourceRelayPacketLoss,
 		firstUpdate,
-		state.Output.ExcludeNearRelay[:])
+		state.Output.ExcludeClientRelay[:])
 
-	filteredSourceRelayLatency := [constants.MaxNearRelays]int32{}
+	filteredSourceRelayLatency := [constants.MaxClientRelays]int32{}
 
 	for i := range sourceRelayLatency {
-		if state.Output.ExcludeNearRelay[i] {
+		if state.Output.ExcludeClientRelay[i] {
 			filteredSourceRelayLatency[i] = 255
 		} else {
 			filteredSourceRelayLatency[i] = sourceRelayLatency[i]
@@ -534,6 +540,47 @@ func SessionUpdate_UpdateNearRelays(state *SessionUpdateState) bool {
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayLatency
 
+	return true
+}
+
+func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
+
+	if state.Buyer.RouteShader.AnalysisOnly {
+		core.Debug("analysis only, not updating server relay stats")
+		state.NotUpdatingServerRelaysAnalysisOnly = true
+		return false
+	}
+
+	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
+		core.Debug("datacenter not enabled, not updating server relay stats")
+		state.NotUpdatingServerRelaysDatacenterNotEnabled = true
+		return false
+	}
+
+	/*
+		Debug print server relay ping results on slice 1
+	*/
+
+	if state.Request.SliceNumber == 1 {
+		core.Debug("sdk uploaded server relay stats for %d relays:", state.Request.NumServerRelays)
+		for i := 0; i < int(state.Request.NumServerRelays); i++ {
+			relayId := state.Request.ServerRelayIds[i]
+			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]
+			var relayName string
+			if exists {
+				relayName = state.RouteMatrix.RelayNames[relayIndex]
+			} else {
+				relayName = "???" // server relay no longer exists in route matrix
+			}
+			rtt := state.Request.ServerRelayRTT[i]
+			jitter := state.Request.ServerRelayJitter[i]
+			pl := state.Request.ServerRelayPacketLoss[i]
+			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
+		}
+	}
+
+	// todo: more stuff here, reframe dest relays here etc...
+	
 	return true
 }
 
@@ -876,16 +923,16 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
-		Logic for sending near relay messages to portal
+		Logic for sending client relay messages to portal
 		This is somewhat complicated because at scale we usually only send next sessions to the portal
 		Thus, we send it right away if that flag is off, OR, if we are at scale, we must remember to send it only once
 		the first slice we are on next.
 	*/
 
-	shouldSendNearRelays := state.Input.SliceNumber >= 1 && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next)
+	shouldSendClientRelays := state.Input.SliceNumber >= 1 && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next)
 
-	if !state.Input.SentNearRelaysToPortal && shouldSendNearRelays {
-		state.Output.SentNearRelaysToPortal = true
+	if !state.Input.SentClientRelaysToPortal && shouldSendClientRelays {
+		state.Output.SentClientRelaysToPortal = true
 	}
 
 	/*
@@ -897,7 +944,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	state.Output.Error = state.Input.Error | state.Error
 
 	/*
-		The first slice always goes direct, because we do not have near relay stats yet.
+		The first slice always goes direct, because we do not have client relay stats yet.
 	*/
 
 	if state.Request.SliceNumber == 0 {
@@ -1000,11 +1047,13 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	if !state.FirstUpdate {
 
 		sendPortalSessionUpdateMessage(state)
-		sendPortalNearRelayUpdateMessage(state)
+		sendPortalClientRelayUpdateMessage(state)
+		sendPortalServerRelayUpdateMessage(state)
 
 		sendAnalyticsSessionUpdateMessage(state)
 		sendAnalyticsSessionSummaryMessage(state)
-		sendAnalyticsNearRelayPingMessages(state)
+		sendAnalyticsClientRelayPingMessages(state)
+		sendAnalyticsServerRelayPingMessages(state)
 	}
 }
 
@@ -1069,13 +1118,22 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealOutOfOrder = state.RealOutOfOrder
 
-	message.NumNearRelays = uint32(state.Request.NumNearRelays)
-	for i := 0; i < int(message.NumNearRelays); i++ {
-		message.NearRelayId[i] = state.Request.NearRelayIds[i]
-		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
-		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
-		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
-		message.NearRelayRoutable[i] = state.Request.NearRelayRTT[i] != 255
+	message.NumClientRelays = uint32(state.Request.NumClientRelays)
+	for i := 0; i < int(message.NumClientRelays); i++ {
+		message.ClientRelayId[i] = state.Request.ClientRelayIds[i]
+		message.ClientRelayRTT[i] = byte(state.Request.ClientRelayRTT[i])
+		message.ClientRelayJitter[i] = byte(state.Request.ClientRelayJitter[i])
+		message.ClientRelayPacketLoss[i] = state.Request.ClientRelayPacketLoss[i]
+		message.ClientRelayRoutable[i] = state.Request.ClientRelayRTT[i] != 255
+	}
+
+	message.NumServerRelays = uint32(state.Request.NumServerRelays)
+	for i := 0; i < int(message.NumServerRelays); i++ {
+		message.ServerRelayId[i] = state.Request.ServerRelayIds[i]
+		message.ServerRelayRTT[i] = byte(state.Request.ServerRelayRTT[i])
+		message.ServerRelayJitter[i] = byte(state.Request.ServerRelayJitter[i])
+		message.ServerRelayPacketLoss[i] = state.Request.ServerRelayPacketLoss[i]
+		message.ServerRelayRoutable[i] = state.Request.ServerRelayRTT[i] != 255
 	}
 
 	message.BestScore = state.Output.BestScore
@@ -1092,42 +1150,67 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	}
 }
 
-func sendPortalNearRelayUpdateMessage(state *SessionUpdateState) {
+func sendPortalClientRelayUpdateMessage(state *SessionUpdateState) {
 
-	if !(state.Input.SentNearRelaysToPortal == false && state.Output.SentNearRelaysToPortal == true) {
+	if !(state.Input.SentClientRelaysToPortal == false && state.Output.SentClientRelaysToPortal == true) {
 		return
 	}
 
-	message := messages.PortalNearRelayUpdateMessage{}
+	message := messages.PortalClientRelayUpdateMessage{}
 
 	message.Timestamp = state.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.SessionId = state.Output.SessionId
-	message.NumNearRelays = uint32(state.Request.NumNearRelays)
-	for i := 0; i < int(state.Request.NumNearRelays); i++ {
-		message.NearRelayId[i] = state.Request.NearRelayIds[i]
-		message.NearRelayRTT[i] = byte(state.Request.NearRelayRTT[i])
-		message.NearRelayJitter[i] = byte(state.Request.NearRelayJitter[i])
-		message.NearRelayPacketLoss[i] = state.Request.NearRelayPacketLoss[i]
+	message.NumClientRelays = uint32(state.Request.NumClientRelays)
+	for i := 0; i < int(state.Request.NumClientRelays); i++ {
+		message.ClientRelayId[i] = state.Request.ClientRelayIds[i]
+		message.ClientRelayRTT[i] = byte(state.Request.ClientRelayRTT[i])
+		message.ClientRelayJitter[i] = byte(state.Request.ClientRelayJitter[i])
+		message.ClientRelayPacketLoss[i] = state.Request.ClientRelayPacketLoss[i]
 	}
 
-	if state.PortalNearRelayUpdateMessageChannel != nil {
-		state.PortalNearRelayUpdateMessageChannel <- &message
-		state.SentPortalNearRelayUpdateMessage = true
+	if state.PortalClientRelayUpdateMessageChannel != nil {
+		state.PortalClientRelayUpdateMessageChannel <- &message
+		state.SentPortalClientRelayUpdateMessage = true
+	}
+}
+
+func sendPortalServerRelayUpdateMessage(state *SessionUpdateState) {
+
+	if !(state.Input.SentServerRelaysToPortal == false && state.Output.SentServerRelaysToPortal == true) {
+		return
+	}
+
+	message := messages.PortalServerRelayUpdateMessage{}
+
+	message.Timestamp = state.StartTimestamp
+	message.BuyerId = state.Request.BuyerId
+	message.SessionId = state.Output.SessionId
+	message.NumServerRelays = uint32(state.Request.NumServerRelays)
+	for i := 0; i < int(state.Request.NumServerRelays); i++ {
+		message.ServerRelayId[i] = state.Request.ServerRelayIds[i]
+		message.ServerRelayRTT[i] = byte(state.Request.ServerRelayRTT[i])
+		message.ServerRelayJitter[i] = byte(state.Request.ServerRelayJitter[i])
+		message.ServerRelayPacketLoss[i] = state.Request.ServerRelayPacketLoss[i]
+	}
+
+	if state.PortalServerRelayUpdateMessageChannel != nil {
+		state.PortalServerRelayUpdateMessageChannel <- &message
+		state.SentPortalServerRelayUpdateMessage = true
 	}
 }
 
 // ---------------------------------------------------------------------------------
 
-func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
+func sendAnalyticsClientRelayPingMessages(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber != 1 {
 		return
 	}
 
-	for i := 0; i < int(state.Request.NumNearRelays); i++ {
+	for i := 0; i < int(state.Request.NumClientRelays); i++ {
 
-		message := messages.AnalyticsNearRelayPingMessage{}
+		message := messages.AnalyticsClientRelayPingMessage{}
 
 		message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
 		message.BuyerId = int64(state.Request.BuyerId)
@@ -1138,14 +1221,40 @@ func sendAnalyticsNearRelayPingMessages(state *SessionUpdateState) {
 		message.ClientAddress = state.Request.ClientAddress.String()
 		message.ConnectionType = int32(state.Request.ConnectionType)
 		message.PlatformType = int32(state.Request.PlatformType)
-		message.NearRelayId = int64(state.Request.NearRelayIds[i])
-		message.NearRelayRTT = int32(state.Request.NearRelayRTT[i])
-		message.NearRelayJitter = int32(state.Request.NearRelayJitter[i])
-		message.NearRelayPacketLoss = state.Request.NearRelayPacketLoss[i]
+		message.ClientRelayId = int64(state.Request.ClientRelayIds[i])
+		message.ClientRelayRTT = int32(state.Request.ClientRelayRTT[i])
+		message.ClientRelayJitter = int32(state.Request.ClientRelayJitter[i])
+		message.ClientRelayPacketLoss = state.Request.ClientRelayPacketLoss[i]
 
-		if state.AnalyticsNearRelayPingMessageChannel != nil {
-			state.AnalyticsNearRelayPingMessageChannel <- &message
-			state.SentAnalyticsNearRelayPingMessage = true
+		if state.AnalyticsClientRelayPingMessageChannel != nil {
+			state.AnalyticsClientRelayPingMessageChannel <- &message
+			state.SentAnalyticsClientRelayPingMessage = true
+		}
+
+	}
+}
+
+func sendAnalyticsServerRelayPingMessages(state *SessionUpdateState) {
+
+	if state.Request.SliceNumber != 1 {
+		return
+	}
+
+	for i := 0; i < int(state.Request.NumServerRelays); i++ {
+
+		message := messages.AnalyticsServerRelayPingMessage{}
+
+		message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
+		message.BuyerId = int64(state.Request.BuyerId)
+		message.DatacenterId = int64(state.Request.DatacenterId)
+		message.ServerRelayId = int64(state.Request.ServerRelayIds[i])
+		message.ServerRelayRTT = int32(state.Request.ServerRelayRTT[i])
+		message.ServerRelayJitter = int32(state.Request.ServerRelayJitter[i])
+		message.ServerRelayPacketLoss = state.Request.ServerRelayPacketLoss[i]
+
+		if state.AnalyticsServerRelayPingMessageChannel != nil {
+			state.AnalyticsServerRelayPingMessageChannel <- &message
+			state.SentAnalyticsServerRelayPingMessage = true
 		}
 
 	}
