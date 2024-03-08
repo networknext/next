@@ -121,8 +121,11 @@ func RunSession(index int) {
 			var sessionData [packets.SDK_MaxSessionDataSize]byte
 			var sessionDataSignature [packets.SDK_SignatureBytes]byte
 
-			var numNearRelays int32
-			var nearRelayIds [packets.SDK_MaxNearRelays]uint64
+			var numClientRelays int32
+			var clientRelayIds [packets.SDK_MaxClientRelays]uint64
+
+			var numServerRelays int32
+			var serverRelayIds [packets.SDK_MaxServerRelays]uint64
 
 			lc := net.ListenConfig{}
 			lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
@@ -237,11 +240,20 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.HasNearRelayPings = true
-							packet.NumNearRelays = numNearRelays
-							copy(packet.NearRelayIds[:], nearRelayIds[:])
-							for i := range packet.NearRelayRTT {
-								packet.NearRelayRTT[i] = 100 + int32((sessionId^nearRelayIds[i])%100)
+							packet.HasClientRelayPings = true
+							packet.NumClientRelays = numClientRelays
+							copy(packet.ClientRelayIds[:], clientRelayIds[:])
+							for i := range packet.ClientRelayRTT {
+								packet.ClientRelayRTT[i] = 100 + int32((sessionId^clientRelayIds[i])%100)
+							}
+						}
+
+						if sliceNumber >= 1 {
+							packet.HasServerRelayPings = true
+							packet.NumServerRelays = numServerRelays
+							copy(packet.ServerRelayIds[:], clientRelayIds[:])
+							for i := range packet.ServerRelayRTT {
+								packet.ServerRelayRTT[i] = 100 + int32((sessionId^serverRelayIds[i])%100)
 							}
 						}
 

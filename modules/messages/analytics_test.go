@@ -174,11 +174,11 @@ func TestRouteMatrixUpdateMessage(t *testing.T) {
 	}
 }
 
-func TestNearRelayPingMessage(t *testing.T) {
+func TestClientRelayPingMessage(t *testing.T) {
 
 	t.Parallel()
 
-	schemaData, err := os.ReadFile("../../schemas/pubsub/near_relay_ping.json")
+	schemaData, err := os.ReadFile("../../schemas/pubsub/client_relay_ping.json")
 	if err != nil {
 		panic(err)
 	}
@@ -188,14 +188,42 @@ func TestNearRelayPingMessage(t *testing.T) {
 		panic(err)
 	}
 
-	in := AnalyticsNearRelayPingMessage{}
+	in := AnalyticsClientRelayPingMessage{}
 
 	data, err := avro.Marshal(schema, in)
 	if err != nil {
 		panic(err)
 	}
 
-	out := AnalyticsNearRelayPingMessage{}
+	out := AnalyticsClientRelayPingMessage{}
+	err = avro.Unmarshal(schema, data, &out)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TestServerRelayPingMessage(t *testing.T) {
+
+	t.Parallel()
+
+	schemaData, err := os.ReadFile("../../schemas/pubsub/server_relay_ping.json")
+	if err != nil {
+		panic(err)
+	}
+
+	schema, err := avro.Parse(string(schemaData))
+	if err != nil {
+		panic(err)
+	}
+
+	in := AnalyticsServerRelayPingMessage{}
+
+	data, err := avro.Marshal(schema, in)
+	if err != nil {
+		panic(err)
+	}
+
+	out := AnalyticsServerRelayPingMessage{}
 	err = avro.Unmarshal(schema, data, &out)
 	if err != nil {
 		panic(err)

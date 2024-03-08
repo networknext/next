@@ -29,7 +29,8 @@ test: build
 
 .PHONY: update-schemas
 update-schemas:
-	@cp -f schemas/pubsub/near_relay_ping.json cmd/server_backend
+	@cp -f schemas/pubsub/client_relay_ping.json cmd/server_backend
+	@cp -f schemas/pubsub/server_relay_ping.json cmd/server_backend
 	@cp -f schemas/pubsub/server_init.json cmd/server_backend
 	@cp -f schemas/pubsub/server_update.json cmd/server_backend
 	@cp -f schemas/pubsub/session_update.json cmd/server_backend

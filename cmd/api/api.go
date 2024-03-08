@@ -626,30 +626,60 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-type NearRelayData struct {
-	Timestamp           uint64                           `json:"timestamp,string"`
-	NumNearRelays       uint32                           `json:"num_near_relays"`
-	NearRelayName       [constants.MaxNearRelays]string  `json:"near_relay_name"`
-	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
-	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
-	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
-	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
+type ClientRelayData struct {
+	Timestamp             uint64                             `json:"timestamp,string"`
+	NumClientRelays       uint32                             `json:"num_client_relays"`
+	ClientRelayName       [constants.MaxClientRelays]string  `json:"client_relay_name"`
+	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"client_relay_id"`
+	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"client_relay_rtt"`
+	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"client_relay_jitter"`
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"client_relay_packet_loss"`
 }
 
-func upgradeNearRelayData(database *db.Database, input []portal.NearRelayData, output *[]NearRelayData) {
-	*output = make([]NearRelayData, len(input))
+func upgradeClientRelayData(database *db.Database, input []portal.ClientRelayData, output *[]ClientRelayData) {
+	*output = make([]ClientRelayData, len(input))
 	for i := range input {
 		(*output)[i].Timestamp = input[i].Timestamp
-		(*output)[i].NumNearRelays = input[i].NumNearRelays
-		for j := 0; j < int(input[i].NumNearRelays); j++ {
-			(*output)[i].NearRelayId[j] = input[i].NearRelayId[j]
-			(*output)[i].NearRelayRTT[j] = input[i].NearRelayRTT[j]
-			(*output)[i].NearRelayJitter[j] = input[i].NearRelayJitter[j]
-			(*output)[i].NearRelayPacketLoss[j] = input[i].NearRelayPacketLoss[j]
+		(*output)[i].NumClientRelays = input[i].NumClientRelays
+		for j := 0; j < int(input[i].NumClientRelays); j++ {
+			(*output)[i].ClientRelayId[j] = input[i].ClientRelayId[j]
+			(*output)[i].ClientRelayRTT[j] = input[i].ClientRelayRTT[j]
+			(*output)[i].ClientRelayJitter[j] = input[i].ClientRelayJitter[j]
+			(*output)[i].ClientRelayPacketLoss[j] = input[i].ClientRelayPacketLoss[j]
 			if database != nil {
-				relay := database.GetRelay(input[i].NearRelayId[j])
+				relay := database.GetRelay(input[i].ClientRelayId[j])
 				if relay != nil {
-					(*output)[i].NearRelayName[j] = relay.Name
+					(*output)[i].ClientRelayName[j] = relay.Name
+				}
+			}
+		}
+	}
+}
+
+type ServerRelayData struct {
+	Timestamp             uint64                             `json:"timestamp,string"`
+	NumServerRelays       uint32                             `json:"num_server_relays"`
+	ServerRelayName       [constants.MaxServerRelays]string  `json:"server_relay_name"`
+	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"server_relay_id"`
+	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"server_relay_rtt"`
+	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"server_relay_jitter"`
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"server_relay_packet_loss"`
+}
+
+func upgradeServerRelayData(database *db.Database, input []portal.ServerRelayData, output *[]ServerRelayData) {
+	*output = make([]ServerRelayData, len(input))
+	for i := range input {
+		(*output)[i].Timestamp = input[i].Timestamp
+		(*output)[i].NumServerRelays = input[i].NumServerRelays
+		for j := 0; j < int(input[i].NumServerRelays); j++ {
+			(*output)[i].ServerRelayId[j] = input[i].ServerRelayId[j]
+			(*output)[i].ServerRelayRTT[j] = input[i].ServerRelayRTT[j]
+			(*output)[i].ServerRelayJitter[j] = input[i].ServerRelayJitter[j]
+			(*output)[i].ServerRelayPacketLoss[j] = input[i].ServerRelayPacketLoss[j]
+			if database != nil {
+				relay := database.GetRelay(input[i].ServerRelayId[j])
+				if relay != nil {
+					(*output)[i].ServerRelayName[j] = relay.Name
 				}
 			}
 		}
@@ -657,9 +687,10 @@ func upgradeNearRelayData(database *db.Database, input []portal.NearRelayData, o
 }
 
 type PortalSessionDataResponse struct {
-	SessionData   PortalSessionData  `json:"session_data"`
-	SliceData     []portal.SliceData `json:"slice_data"`
-	NearRelayData []NearRelayData    `json:"near_relay_data"`
+	SessionData     PortalSessionData  `json:"session_data"`
+	SliceData       []portal.SliceData `json:"slice_data"`
+	ClientRelayData []ClientRelayData  `json:"client_relay_data"`
+	ServerRelayData []ServerRelayData  `json:"server_relay_data"`
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
@@ -680,7 +711,7 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := PortalSessionDataResponse{}
 
-	sessionData, sliceData, nearRelayData := portal.GetSessionData(service.Context, redisPortalClient, sessionId)
+	sessionData, sliceData, clientRelayData, serverRelayData := portal.GetSessionData(service.Context, redisPortalClient, sessionId)
 	if sessionData == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -690,7 +721,9 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.SliceData = sliceData
 
-	upgradeNearRelayData(database, nearRelayData, &response.NearRelayData)
+	upgradeClientRelayData(database, clientRelayData, &response.ClientRelayData)
+
+	upgradeServerRelayData(database, serverRelayData, &response.ServerRelayData)
 
 	w.WriteHeader(http.StatusOK)
 

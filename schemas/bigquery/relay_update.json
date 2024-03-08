@@ -60,10 +60,16 @@
     "description": "The amount of bandwidth received by this relay in kilobits per-second"
   },
   {
-    "name": "near_pings_per_second",
+    "name": "client_pings_per_second",
     "type": "FLOAT64",
     "mode": "REQUIRED",
-    "description": "The number of near relay pings received by this relay per-second"
+    "description": "The number of client relay pings received by this relay per-second"
+  },
+  {
+    "name": "server_pings_per_second",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "The number of server relay pings received by this relay per-second"
   },
   {
     "name": "relay_pings_per_second",

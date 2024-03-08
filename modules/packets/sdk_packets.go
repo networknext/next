@@ -169,7 +169,7 @@ func (packet *SDK_ServerUpdateResponsePacket) Serialize(stream encoding.Stream) 
 
 // ------------------------------------------------------------
 
-type SDK_NearRelayRequestPacket struct {
+type SDK_ClientRelayRequestPacket struct {
 	Version       SDKVersion
 	BuyerId       uint64
 	RequestId     uint64
@@ -177,7 +177,7 @@ type SDK_NearRelayRequestPacket struct {
 	ClientAddress net.UDPAddr
 }
 
-func (packet *SDK_NearRelayRequestPacket) Serialize(stream encoding.Stream) error {
+func (packet *SDK_ClientRelayRequestPacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
@@ -188,26 +188,26 @@ func (packet *SDK_NearRelayRequestPacket) Serialize(stream encoding.Stream) erro
 
 // ------------------------------------------------------------
 
-type SDK_NearRelayResponsePacket struct {
+type SDK_ClientRelayResponsePacket struct {
 	RequestId           uint64
 	Latitude            float32
 	Longitude           float32
-	NumNearRelays       int32
-	NearRelayIds  	    [constants.MaxNearRelays]uint64
-	NearRelayAddresses  [constants.MaxNearRelays]net.UDPAddr
-	NearRelayPingTokens [constants.MaxNearRelays][constants.PingTokenBytes]byte
+	NumClientRelays       int32
+	ClientRelayIds  	    [constants.MaxClientRelays]uint64
+	ClientRelayAddresses  [constants.MaxClientRelays]net.UDPAddr
+	ClientRelayPingTokens [constants.MaxClientRelays][constants.PingTokenBytes]byte
 	ExpireTimestamp     uint64
 }
 
-func (packet *SDK_NearRelayResponsePacket) Serialize(stream encoding.Stream) error {
+func (packet *SDK_ClientRelayResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeFloat32(&packet.Latitude)
 	stream.SerializeFloat32(&packet.Longitude)
-	stream.SerializeInteger(&packet.NumNearRelays, 0, constants.MaxNearRelays)
-	for i := 0; i < int(packet.NumNearRelays); i++ {
-		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeAddress(&packet.NearRelayAddresses[i])
-		stream.SerializeBytes(packet.NearRelayPingTokens[i][:])
+	stream.SerializeInteger(&packet.NumClientRelays, 0, constants.MaxClientRelays)
+	for i := 0; i < int(packet.NumClientRelays); i++ {
+		stream.SerializeUint64(&packet.ClientRelayIds[i])
+		stream.SerializeAddress(&packet.ClientRelayAddresses[i])
+		stream.SerializeBytes(packet.ClientRelayPingTokens[i][:])
 	}
 	stream.SerializeUint64(&packet.ExpireTimestamp)
 	return stream.Error()
@@ -238,7 +238,8 @@ type SDK_SessionUpdateRequestPacket struct {
 	ClientNextBandwidthOverLimit    bool
 	ServerNextBandwidthOverLimit    bool
 	ClientPingTimedOut              bool
-	HasNearRelayPings               bool
+	HasClientRelayPings             bool
+	HasServerRelayPings             bool
 	SessionEvents                   uint64
 	InternalEvents                  uint64
 	DirectRTT                       float32
@@ -248,11 +249,16 @@ type SDK_SessionUpdateRequestPacket struct {
 	NextRTT                         float32
 	NextJitter                      float32
 	NextPacketLoss                  float32
-	NumNearRelays                   int32
-	NearRelayIds                    [SDK_MaxNearRelays]uint64
-	NearRelayRTT                    [SDK_MaxNearRelays]int32
-	NearRelayJitter                 [SDK_MaxNearRelays]int32
-	NearRelayPacketLoss             [SDK_MaxNearRelays]float32
+	NumClientRelays                 int32
+	ClientRelayIds                  [SDK_MaxClientRelays]uint64
+	ClientRelayRTT                  [SDK_MaxClientRelays]int32
+	ClientRelayJitter               [SDK_MaxClientRelays]int32
+	ClientRelayPacketLoss           [SDK_MaxClientRelays]float32
+	NumServerRelays                 int32
+	ServerRelayIds                  [SDK_MaxServerRelays]uint64
+	ServerRelayRTT                  [SDK_MaxServerRelays]int32
+	ServerRelayJitter               [SDK_MaxServerRelays]int32
+	ServerRelayPacketLoss           [SDK_MaxServerRelays]float32
 	DirectKbpsUp                    uint32
 	DirectKbpsDown                  uint32
 	NextKbpsUp                      uint32
@@ -305,7 +311,8 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 	stream.SerializeBool(&packet.ClientNextBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerNextBandwidthOverLimit)
 	stream.SerializeBool(&packet.ClientPingTimedOut)
-	stream.SerializeBool(&packet.HasNearRelayPings)
+	stream.SerializeBool(&packet.HasClientRelayPings)
+	stream.SerializeBool(&packet.HasServerRelayPings)
 
 	hasSessionEvents := stream.IsWriting() && packet.SessionEvents != 0
 	hasInternalEvents := stream.IsWriting() && packet.InternalEvents != 0
@@ -336,14 +343,26 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 		stream.SerializeFloat32(&packet.NextPacketLoss)
 	}
 
-	if packet.HasNearRelayPings {
-		stream.SerializeInteger(&packet.NumNearRelays, 0, int32(SDK_MaxNearRelays))
-		for i := int32(0); i < packet.NumNearRelays; i++ {
-			stream.SerializeUint64(&packet.NearRelayIds[i])
-			if packet.HasNearRelayPings {
-				stream.SerializeInteger(&packet.NearRelayRTT[i], 0, SDK_MaxNearRelayRTT)
-				stream.SerializeInteger(&packet.NearRelayJitter[i], 0, SDK_MaxNearRelayJitter)
-				stream.SerializeFloat32(&packet.NearRelayPacketLoss[i])
+	if packet.HasClientRelayPings {
+		stream.SerializeInteger(&packet.NumClientRelays, 0, int32(SDK_MaxClientRelays))
+		for i := int32(0); i < packet.NumClientRelays; i++ {
+			stream.SerializeUint64(&packet.ClientRelayIds[i])
+			if packet.HasClientRelayPings {
+				stream.SerializeInteger(&packet.ClientRelayRTT[i], 0, SDK_MaxRelayRTT)
+				stream.SerializeInteger(&packet.ClientRelayJitter[i], 0, SDK_MaxRelayJitter)
+				stream.SerializeFloat32(&packet.ClientRelayPacketLoss[i])
+			}
+		}
+	}
+
+	if packet.HasServerRelayPings {
+		stream.SerializeInteger(&packet.NumServerRelays, 0, int32(SDK_MaxServerRelays))
+		for i := int32(0); i < packet.NumServerRelays; i++ {
+			stream.SerializeUint64(&packet.ServerRelayIds[i])
+			if packet.HasServerRelayPings {
+				stream.SerializeInteger(&packet.ServerRelayRTT[i], 0, SDK_MaxRelayRTT)
+				stream.SerializeInteger(&packet.ServerRelayJitter[i], 0, SDK_MaxRelayJitter)
+				stream.SerializeFloat32(&packet.ServerRelayPacketLoss[i])
 			}
 		}
 	}
@@ -392,7 +411,8 @@ func GenerateRandomSessionData() SDK_SessionData {
 		PrevPacketsLostServerToClient: rand.Uint64(),
 		WriteSummary:                  common.RandomBool(),
 		WroteSummary:                  common.RandomBool(),
-		SentNearRelaysToPortal:        common.RandomBool(),
+		SentClientRelaysToPortal:      common.RandomBool(),
+		SentServerRelaysToPortal:      common.RandomBool(),
 		NextEnvelopeBytesUpSum:        rand.Uint64(),
 		NextEnvelopeBytesDownSum:      rand.Uint64(),
 		StartTimestamp:                rand.Uint64(),
@@ -431,8 +451,12 @@ func GenerateRandomSessionData() SDK_SessionData {
 	sessionData.RouteState.LatencyWorseCounter = uint32(common.RandomInt(0, 3))
 	sessionData.RouteState.LocationVeto = common.RandomBool()
 
-	for i := range sessionData.ExcludeNearRelay {
-		sessionData.ExcludeNearRelay[i] = common.RandomBool()
+	for i := range sessionData.ExcludeClientRelay {
+		sessionData.ExcludeClientRelay[i] = common.RandomBool()
+	}
+
+	for i := range sessionData.ExcludeServerRelay {
+		sessionData.ExcludeServerRelay[i] = common.RandomBool()
 	}
 
 	return sessionData
@@ -506,7 +530,8 @@ type SDK_SessionData struct {
 	RouteState                          core.RouteState
 	WriteSummary                        bool
 	WroteSummary                        bool
-	SentNearRelaysToPortal              bool
+	SentClientRelaysToPortal            bool
+	SentServerRelaysToPortal            bool
 	PrevPacketsSentClientToServer       uint64
 	PrevPacketsSentServerToClient       uint64
 	PrevPacketsLostClientToServer       uint64
@@ -521,7 +546,8 @@ type SDK_SessionData struct {
 	BestScore                           uint32
 	BestDirectRTT                       uint32
 	BestNextRTT                         uint32
-	ExcludeNearRelay                    [SDK_MaxNearRelays]bool
+	ExcludeClientRelay                  [SDK_MaxClientRelays]bool
+	ExcludeServerRelay                  [SDK_MaxServerRelays]bool
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -593,7 +619,8 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 	stream.SerializeBool(&sessionData.WriteSummary)
 	stream.SerializeBool(&sessionData.WroteSummary)
-	stream.SerializeBool(&sessionData.SentNearRelaysToPortal)
+	stream.SerializeBool(&sessionData.SentClientRelaysToPortal)
+	stream.SerializeBool(&sessionData.SentClientRelaysToPortal)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 	stream.SerializeUint32(&sessionData.DurationOnNext)
@@ -604,8 +631,12 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&sessionData.BestDirectRTT, 10)
 	stream.SerializeBits(&sessionData.BestNextRTT, 10)
 
-	for i := 0; i < SDK_MaxNearRelays; i++ {
-		stream.SerializeBool(&sessionData.ExcludeNearRelay[i])
+	for i := 0; i < SDK_MaxClientRelays; i++ {
+		stream.SerializeBool(&sessionData.ExcludeClientRelay[i])
+	}
+
+	for i := 0; i < SDK_MaxServerRelays; i++ {
+		stream.SerializeBool(&sessionData.ExcludeServerRelay[i])
 	}
 
 	return stream.Error()

@@ -7,15 +7,15 @@ import (
 
 // ----------------------------------------------------------------------------------------
 
-type PortalNearRelayUpdateMessage struct {
-	Timestamp           uint64
-	BuyerId             uint64
-	SessionId           uint64
-	NumNearRelays       uint32
-	NearRelayId         [constants.MaxNearRelays]uint64
-	NearRelayRTT        [constants.MaxNearRelays]byte
-	NearRelayJitter     [constants.MaxNearRelays]byte
-	NearRelayPacketLoss [constants.MaxNearRelays]float32
+type PortalClientRelayUpdateMessage struct {
+	Timestamp       uint64
+	BuyerId         uint64
+	SessionId       uint64
+	NumRelays       uint32
+	RelayId         [constants.MaxClientRelays]uint64
+	RelayRTT        [constants.MaxClientRelays]byte
+	RelayJitter     [constants.MaxClientRelays]byte
+	RelayPacketLoss [constants.MaxClientRelays]float32
 }
 
 // ----------------------------------------------------------------------------------------
@@ -32,8 +32,9 @@ type PortalRelayUpdateMessage struct {
 	PacketsReceivedPerSecond  float32
 	BandwidthSentKbps         float32
 	BandwidthReceivedKbps     float32
-	NearPingsPerSecond        float32
+	ClientPingsPerSecond      float32
 	RelayPingsPerSecond       float32
+	ServerPingsPerSecond      float32		// todo
 	RelayFlags                uint64
 	NumRoutable               uint32
 	NumUnroutable             uint32
@@ -102,12 +103,19 @@ type PortalSessionUpdateMessage struct {
 	RealPacketLoss float32
 	RealOutOfOrder float32
 
-	NumNearRelays       uint32
-	NearRelayId         [constants.MaxNearRelays]uint64
-	NearRelayRTT        [constants.MaxNearRelays]byte
-	NearRelayJitter     [constants.MaxNearRelays]byte
-	NearRelayPacketLoss [constants.MaxNearRelays]float32
-	NearRelayRoutable   [constants.MaxNearRelays]bool
+	NumClientRelays       uint32
+	ClientRelayId         [constants.MaxClientRelays]uint64
+	ClientRelayRTT        [constants.MaxClientRelays]byte
+	ClientRelayJitter     [constants.MaxClientRelays]byte
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32
+	ClientRelayRoutable   [constants.MaxClientRelays]bool
+
+	NumServerRelays       uint32
+	ServerRelayId         [constants.MaxServerRelays]uint64
+	ServerRelayRTT        [constants.MaxServerRelays]byte
+	ServerRelayJitter     [constants.MaxServerRelays]byte
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32
+	ServerRelayRoutable   [constants.MaxServerRelays]bool
 
 	BestScore     uint32
 	BestDirectRTT uint32

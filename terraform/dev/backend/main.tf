@@ -403,7 +403,8 @@ locals {
     "relay_update"        = file("../../../schemas/bigquery/relay_update.json")
     "route_matrix_update" = file("../../../schemas/bigquery/route_matrix_update.json")
     "relay_to_relay_ping" = file("../../../schemas/bigquery/relay_to_relay_ping.json")
-    "near_relay_ping"     = file("../../../schemas/bigquery/near_relay_ping.json")
+    "client_relay_ping"   = file("../../../schemas/bigquery/client_relay_ping.json")
+    "server_relay_ping"   = file("../../../schemas/bigquery/server_relay_ping.json")
   }
 
   bigquery_table_clustering = {
@@ -414,7 +415,8 @@ locals {
     "relay_update"        = [ "relay_id" ]
     "route_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
-    "near_relay_ping"     = [ "near_relay_id", "user_hash" ]
+    "client_relay_ping"   = [ "client_relay_id", "user_hash" ]
+    "client_relay_ping"   = [ "client_relay_id", "user_hash" ]
   }
 
 }

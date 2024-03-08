@@ -64,13 +64,22 @@ type PortalRelayData struct {
 	RelayVersion string `json:"relay_version"`
 }
 
-type PortalNearRelayData struct {
-	Timestamp           string                           `json:"timestamp"`
-	NumNearRelays       uint32                           `json:"num_near_relays"`
-	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
-	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
-	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
-	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
+type PortalClientRelayData struct {
+	Timestamp             string                             `json:"timestamp"`
+	NumClientRelays       uint32                             `json:"num_client_relays"`
+	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"client_relay_id"`
+	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"client_relay_rtt"`
+	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"client_relay_jitter"`
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"client_relay_packet_loss"`
+}
+
+type PortalServerRelayData struct {
+	Timestamp             string                             `json:"timestamp"`
+	NumServerRelays       uint32                             `json:"num_server_relays"`
+	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"server_relay_id"`
+	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"server_relay_rtt"`
+	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"server_relay_jitter"`
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"server_relay_packet_loss"`
 }
 
 type PortalSessionData struct {
@@ -186,7 +195,9 @@ func RunSessionInsertThreads(threadCount int) {
 
 			sessionInserter := portal.CreateSessionInserter(context.Background(), redisClient, SessionCruncherURL, 1000)
 
-			nearRelayInserter := portal.CreateNearRelayInserter(redisClient, 1000)
+			clientRelayInserter := portal.CreateClientRelayInserter(redisClient, 1000)
+
+			serverRelayInserter := portal.CreateServerRelayInserter(redisClient, 1000)
 
 			iteration := uint64(0)
 
@@ -210,8 +221,11 @@ func RunSessionInsertThreads(threadCount int) {
 
 					sessionInserter.Insert(context.Background(), sessionId, userHash, next, score, sessionData, sliceData)
 
-					nearRelayData := portal.GenerateRandomNearRelayData()
-					nearRelayInserter.Insert(context.Background(), sessionId, nearRelayData)
+					clientRelayData := portal.GenerateRandomClientRelayData()
+					clientRelayInserter.Insert(context.Background(), sessionId, clientRelayData)
+
+					serverRelayData := portal.GenerateRandomServerRelayData()
+					serverRelayInserter.Insert(context.Background(), sessionId, serverRelayData)
 				}
 
 				time.Sleep(time.Second)
@@ -378,9 +392,10 @@ type PortalSessionsResponse struct {
 }
 
 type PortalSessionDataResponse struct {
-	SessionData   *PortalSessionData    `json:"session_data"`
-	SliceData     []PortalSliceData     `json:"slice_data"`
-	NearRelayData []PortalNearRelayData `json:"near_relay_data"`
+	SessionData     *PortalSessionData      `json:"session_data"`
+	SliceData       []PortalSliceData       `json:"slice_data"`
+	ClientRelayData []PortalClientRelayData `json:"client_relay_data"`
+	ServerRelayData []PortalServerRelayData `json:"server_relay_data"`
 }
 
 type PortalServerCountResponse struct {
@@ -508,7 +523,7 @@ func test_portal() {
 
 			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/session/%016x", sessionId), &sessionDataResponse)
 
-			fmt.Printf("session %016x has %d slices, %d near relay data\n", sessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.NearRelayData))
+			fmt.Printf("session %016x has %d slices, %d client relay data, %d server relay data\n", sessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.ClientRelayData), len(sessionDataResponse.ServerRelayData))
 		}
 
 		serverCountResponse := PortalServerCountResponse{}
@@ -575,18 +590,23 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(sessionDataResponse.NearRelayData) == 0 {
+		if len(sessionDataResponse.ClientRelayData) == 0 {
 			fmt.Printf("D\n")
 			ready = false
 		}
 
-		if len(serverDataResponse.ServerSessionIds) < 10 {
+		if len(sessionDataResponse.ServerRelayData) == 0 {
 			fmt.Printf("E\n")
 			ready = false
 		}
 
-		if relayCountResponse.RelayCount < 10 {
+		if len(serverDataResponse.ServerSessionIds) < 10 {
 			fmt.Printf("F\n")
+			ready = false
+		}
+
+		if relayCountResponse.RelayCount < 10 {
+			fmt.Printf("G\n")
 			ready = false
 		}
 

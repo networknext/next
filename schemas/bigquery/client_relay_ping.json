@@ -3,7 +3,7 @@
     "name": "timestamp",
     "type": "TIMESTAMP",
     "mode": "REQUIRED",
-    "description": "The timestamp when the near relays pings occurred"
+    "description": "The timestamp when the client relay pings occurred"
   },
   {
     "name": "buyer_id",
@@ -54,25 +54,25 @@
     "description": "Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5"
   },
   {
-    "name": "near_relay_id",
+    "name": "client_relay_id",
     "type": "INT64",
     "mode": "REQUIRED",
     "description": "Relay id being pinged by the client"
   },
   {
-    "name": "near_relay_rtt",
+    "name": "client_relay_rtt",
     "type": "INT64",
     "mode": "REQUIRED",
     "description": "Round trip time ping between the client and the relay (milliseconds)"
   },
   {
-    "name": "near_relay_jitter",
+    "name": "client_relay_jitter",
     "type": "INT64",
     "mode": "REQUIRED",
     "description": "Jitter between the client and the relay (milliseconds)"
   },
   {
-    "name": "near_relay_packet_loss",
+    "name": "client_relay_packet_loss",
     "type": "FLOAT64",
     "mode": "REQUIRED",
     "description": "Packet loss between the client and the relay (%)"

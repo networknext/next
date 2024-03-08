@@ -340,24 +340,24 @@ func GenerateRandomSliceData() *SliceData {
 
 // --------------------------------------------------------------------------------------------------
 
-type NearRelayData struct {
-	Timestamp           uint64                           `json:"timestamp,string"`
-	NumNearRelays       uint32                           `json:"num_near_relays"`
-	NearRelayId         [constants.MaxNearRelays]uint64  `json:"near_relay_id"`
-	NearRelayRTT        [constants.MaxNearRelays]uint8   `json:"near_relay_rtt"`
-	NearRelayJitter     [constants.MaxNearRelays]uint8   `json:"near_relay_jitter"`
-	NearRelayPacketLoss [constants.MaxNearRelays]float32 `json:"near_relay_packet_loss"`
+type ClientRelayData struct {
+	Timestamp           uint64                               `json:"timestamp,string"`
+	NumClientRelays       uint32                             `json:"num_client_relays"`
+	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"client_relay_id"`
+	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"client_relay_rtt"`
+	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"client_relay_jitter"`
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"client_relay_packet_loss"`
 }
 
-func (data *NearRelayData) Value() string {
-	output := fmt.Sprintf("%x|%d", data.Timestamp, data.NumNearRelays)
-	for i := 0; i < int(data.NumNearRelays); i++ {
-		output += fmt.Sprintf("|%x|%d|%d|%.2f", data.NearRelayId[i], data.NearRelayRTT[i], data.NearRelayJitter[i], data.NearRelayPacketLoss[i])
+func (data *ClientRelayData) Value() string {
+	output := fmt.Sprintf("%x|%d", data.Timestamp, data.NumClientRelays)
+	for i := 0; i < int(data.NumClientRelays); i++ {
+		output += fmt.Sprintf("|%x|%d|%d|%.2f", data.ClientRelayId[i], data.ClientRelayRTT[i], data.ClientRelayJitter[i], data.ClientRelayPacketLoss[i])
 	}
 	return output
 }
 
-func (data *NearRelayData) Parse(value string) {
+func (data *ClientRelayData) Parse(value string) {
 	values := strings.Split(value, "|")
 	if len(values) < 2 {
 		return
@@ -366,55 +366,136 @@ func (data *NearRelayData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	numNearRelays, err := strconv.ParseInt(values[1], 10, 8)
-	if err != nil || numNearRelays < 0 || numNearRelays > constants.MaxNearRelays {
+	numClientRelays, err := strconv.ParseInt(values[1], 10, 8)
+	if err != nil || numClientRelays < 0 || numClientRelays > constants.MaxClientRelays {
 		return
 	}
-	if len(values) != 2+int(numNearRelays)*4 {
+	if len(values) != 2+int(numClientRelays)*4 {
 		return
 	}
-	nearRelayId := make([]uint64, numNearRelays)
-	nearRelayRTT := make([]uint64, numNearRelays)
-	nearRelayJitter := make([]uint64, numNearRelays)
-	nearRelayPacketLoss := make([]float64, numNearRelays)
-	for i := 0; i < int(numNearRelays); i++ {
-		nearRelayId[i], err = strconv.ParseUint(values[2+i*4], 16, 64)
+	clientRelayId := make([]uint64, numClientRelays)
+	clientRelayRTT := make([]uint64, numClientRelays)
+	clientRelayJitter := make([]uint64, numClientRelays)
+	clientRelayPacketLoss := make([]float64, numClientRelays)
+	for i := 0; i < int(numClientRelays); i++ {
+		clientRelayId[i], err = strconv.ParseUint(values[2+i*4], 16, 64)
 		if err != nil {
 			return
 		}
-		nearRelayRTT[i], err = strconv.ParseUint(values[2+i*4+1], 10, 8)
+		clientRelayRTT[i], err = strconv.ParseUint(values[2+i*4+1], 10, 8)
 		if err != nil {
 			return
 		}
-		nearRelayJitter[i], err = strconv.ParseUint(values[2+i*4+2], 10, 8)
+		clientRelayJitter[i], err = strconv.ParseUint(values[2+i*4+2], 10, 8)
 		if err != nil {
 			return
 		}
-		nearRelayPacketLoss[i], err = strconv.ParseFloat(values[2+i*4+3], 32)
+		clientRelayPacketLoss[i], err = strconv.ParseFloat(values[2+i*4+3], 32)
 		if err != nil {
 			return
 		}
 	}
 	data.Timestamp = timestamp
-	data.NumNearRelays = uint32(numNearRelays)
-	for i := 0; i < int(numNearRelays); i++ {
-		data.NearRelayId[i] = nearRelayId[i]
-		data.NearRelayRTT[i] = uint8(nearRelayRTT[i])
-		data.NearRelayJitter[i] = uint8(nearRelayJitter[i])
-		data.NearRelayPacketLoss[i] = float32(nearRelayPacketLoss[i])
+	data.NumClientRelays = uint32(numClientRelays)
+	for i := 0; i < int(numClientRelays); i++ {
+		data.ClientRelayId[i] = clientRelayId[i]
+		data.ClientRelayRTT[i] = uint8(clientRelayRTT[i])
+		data.ClientRelayJitter[i] = uint8(clientRelayJitter[i])
+		data.ClientRelayPacketLoss[i] = float32(clientRelayPacketLoss[i])
 	}
 	return
 }
 
-func GenerateRandomNearRelayData() *NearRelayData {
-	data := NearRelayData{}
+func GenerateRandomClientRelayData() *ClientRelayData {
+	data := ClientRelayData{}
 	data.Timestamp = uint64(time.Now().Unix())
-	data.NumNearRelays = constants.MaxNearRelays
-	for i := 0; i < int(data.NumNearRelays); i++ {
-		data.NearRelayId[i] = rand.Uint64()
-		data.NearRelayRTT[i] = uint8(common.RandomInt(5, 20))
-		data.NearRelayJitter[i] = uint8(common.RandomInt(5, 20))
-		data.NearRelayPacketLoss[i] = float32(common.RandomInt(0, 10000)) / 100.0
+	data.NumClientRelays = constants.MaxClientRelays
+	for i := 0; i < int(data.NumClientRelays); i++ {
+		data.ClientRelayId[i] = rand.Uint64()
+		data.ClientRelayRTT[i] = uint8(common.RandomInt(5, 20))
+		data.ClientRelayJitter[i] = uint8(common.RandomInt(5, 20))
+		data.ClientRelayPacketLoss[i] = float32(common.RandomInt(0, 10000)) / 100.0
+	}
+	return &data
+}
+
+// --------------------------------------------------------------------------------------------------
+
+type ServerRelayData struct {
+	Timestamp           uint64                               `json:"timestamp,string"`
+	NumServerRelays       uint32                             `json:"num_client_relays"`
+	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"server_relay_id"`
+	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"server_relay_rtt"`
+	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"server_relay_jitter"`
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"server_relay_packet_loss"`
+}
+
+func (data *ServerRelayData) Value() string {
+	output := fmt.Sprintf("%x|%d", data.Timestamp, data.NumServerRelays)
+	for i := 0; i < int(data.NumServerRelays); i++ {
+		output += fmt.Sprintf("|%x|%d|%d|%.2f", data.ServerRelayId[i], data.ServerRelayRTT[i], data.ServerRelayJitter[i], data.ServerRelayPacketLoss[i])
+	}
+	return output
+}
+
+func (data *ServerRelayData) Parse(value string) {
+	values := strings.Split(value, "|")
+	if len(values) < 2 {
+		return
+	}
+	timestamp, err := strconv.ParseUint(values[0], 16, 64)
+	if err != nil {
+		return
+	}
+	numServerRelays, err := strconv.ParseInt(values[1], 10, 8)
+	if err != nil || numServerRelays < 0 || numServerRelays > constants.MaxServerRelays {
+		return
+	}
+	if len(values) != 2+int(numServerRelays)*4 {
+		return
+	}
+	serverRelayId := make([]uint64, numServerRelays)
+	serverRelayRTT := make([]uint64, numServerRelays)
+	serverRelayJitter := make([]uint64, numServerRelays)
+	serverRelayPacketLoss := make([]float64, numServerRelays)
+	for i := 0; i < int(numServerRelays); i++ {
+		serverRelayId[i], err = strconv.ParseUint(values[2+i*4], 16, 64)
+		if err != nil {
+			return
+		}
+		serverRelayRTT[i], err = strconv.ParseUint(values[2+i*4+1], 10, 8)
+		if err != nil {
+			return
+		}
+		serverRelayJitter[i], err = strconv.ParseUint(values[2+i*4+2], 10, 8)
+		if err != nil {
+			return
+		}
+		serverRelayPacketLoss[i], err = strconv.ParseFloat(values[2+i*4+3], 32)
+		if err != nil {
+			return
+		}
+	}
+	data.Timestamp = timestamp
+	data.NumServerRelays = uint32(numServerRelays)
+	for i := 0; i < int(numServerRelays); i++ {
+		data.ServerRelayId[i] = serverRelayId[i]
+		data.ServerRelayRTT[i] = uint8(serverRelayRTT[i])
+		data.ServerRelayJitter[i] = uint8(serverRelayJitter[i])
+		data.ServerRelayPacketLoss[i] = float32(serverRelayPacketLoss[i])
+	}
+	return
+}
+
+func GenerateRandomServerRelayData() *ServerRelayData {
+	data := ServerRelayData{}
+	data.Timestamp = uint64(time.Now().Unix())
+	data.NumServerRelays = constants.MaxServerRelays
+	for i := 0; i < int(data.NumServerRelays); i++ {
+		data.ServerRelayId[i] = rand.Uint64()
+		data.ServerRelayRTT[i] = uint8(common.RandomInt(5, 20))
+		data.ServerRelayJitter[i] = uint8(common.RandomInt(5, 20))
+		data.ServerRelayPacketLoss[i] = float32(common.RandomInt(0, 10000)) / 100.0
 	}
 	return &data
 }
@@ -591,7 +672,8 @@ type RelaySample struct {
 	PacketsReceivedPerSecond  float32 `json:"packets_recieved_per_second"`
 	BandwidthSentKbps         float32 `json:"bandwidth_sent_kbps"`
 	BandwidthReceivedKbps     float32 `json:"bandwidth_received_kbps"`
-	NearPingsPerSecond        float32 `json:"near_pings_per_second"`
+	ClientPingsPerSecond      float32 `json:"client_pings_per_second"`
+	ServerPingsPerSecond      float32 `json:"server_pings_per_second"`
 	RelayPingsPerSecond       float32 `json:"relay_pings_per_second"`
 	RelayFlags                uint64  `json:"relay_flags,string"`
 	NumRoutable               uint32  `json:"num_routable"`
@@ -609,7 +691,8 @@ func (data *RelaySample) Value() string {
 		data.PacketsReceivedPerSecond,
 		data.BandwidthSentKbps,
 		data.BandwidthReceivedKbps,
-		data.NearPingsPerSecond,
+		data.ClientPingsPerSecond,
+		data.ServerPingsPerSecond,
 		data.RelayPingsPerSecond,
 		data.RelayFlags,
 		data.NumRoutable,
@@ -620,7 +703,7 @@ func (data *RelaySample) Value() string {
 
 func (data *RelaySample) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 14 {
+	if len(values) != 15 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -655,27 +738,31 @@ func (data *RelaySample) Parse(value string) {
 	if err != nil {
 		return
 	}
-	nearPingsPerSecond, err := strconv.ParseFloat(values[8], 32)
+	clientPingsPerSecond, err := strconv.ParseFloat(values[8], 32)
 	if err != nil {
 		return
 	}
-	relayPingsPerSecond, err := strconv.ParseFloat(values[9], 32)
+	serverPingsPerSecond, err := strconv.ParseFloat(values[9], 32)
 	if err != nil {
 		return
 	}
-	relayFlags, err := strconv.ParseUint(values[10], 16, 64)
+	relayPingsPerSecond, err := strconv.ParseFloat(values[10], 32)
 	if err != nil {
 		return
 	}
-	numRoutable, err := strconv.ParseUint(values[11], 10, 32)
+	relayFlags, err := strconv.ParseUint(values[11], 16, 64)
 	if err != nil {
 		return
 	}
-	numUnroutable, err := strconv.ParseUint(values[12], 10, 32)
+	numRoutable, err := strconv.ParseUint(values[12], 10, 32)
 	if err != nil {
 		return
 	}
-	currentTime, err := strconv.ParseUint(values[13], 16, 64)
+	numUnroutable, err := strconv.ParseUint(values[13], 10, 32)
+	if err != nil {
+		return
+	}
+	currentTime, err := strconv.ParseUint(values[14], 16, 64)
 	if err != nil {
 		return
 	}
@@ -687,7 +774,8 @@ func (data *RelaySample) Parse(value string) {
 	data.PacketsReceivedPerSecond = float32(packetsReceivedPerSecond)
 	data.BandwidthSentKbps = float32(bandwidthSentKbps)
 	data.BandwidthReceivedKbps = float32(bandwidthReceivedKbps)
-	data.NearPingsPerSecond = float32(nearPingsPerSecond)
+	data.ClientPingsPerSecond = float32(clientPingsPerSecond)
+	data.ServerPingsPerSecond = float32(serverPingsPerSecond)
 	data.RelayPingsPerSecond = float32(relayPingsPerSecond)
 	data.RelayFlags = relayFlags
 	data.NumRoutable = uint32(numRoutable)
@@ -705,7 +793,8 @@ func GenerateRandomRelaySample() *RelaySample {
 	data.PacketsReceivedPerSecond = float32(common.RandomInt(0, 1000))
 	data.BandwidthSentKbps = float32(common.RandomInt(0, 1000))
 	data.BandwidthReceivedKbps = float32(common.RandomInt(0, 1000))
-	data.NearPingsPerSecond = float32(common.RandomInt(0, 1000))
+	data.ClientPingsPerSecond = float32(common.RandomInt(0, 1000))
+	data.ServerPingsPerSecond = float32(common.RandomInt(0, 1000))
 	data.RelayPingsPerSecond = float32(common.RandomInt(0, 1000))
 	data.RelayFlags = rand.Uint64()
 	data.NumRoutable = rand.Uint32()
@@ -1127,23 +1216,25 @@ func (watcher *MapDataWatcher) GetMapData() []byte {
 
 // --------------------------------------------------------------------------------------------------
 
-func GetSessionData(ctx context.Context, redisClient redis.Cmdable, sessionId uint64) (*SessionData, []SliceData, []NearRelayData) {
+func GetSessionData(ctx context.Context, redisClient redis.Cmdable, sessionId uint64) (*SessionData, []SliceData, []ClientRelayData, []ServerRelayData) {
 
 	pipeline := redisClient.Pipeline()
 
 	pipeline.Get(ctx, fmt.Sprintf("sd-%016x", sessionId))
 	pipeline.LRange(ctx, fmt.Sprintf("sl-%016x", sessionId), 0, -1)
-	pipeline.LRange(ctx, fmt.Sprintf("nr-%016x", sessionId), 0, -1)
+	pipeline.LRange(ctx, fmt.Sprintf("crd-%016x", sessionId), 0, -1)
+	pipeline.LRange(ctx, fmt.Sprintf("srd-%016x", sessionId), 0, -1)
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
 		core.Error("failed to get session data: %v", err)
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	redis_session_data := cmds[0].(*redis.StringCmd).Val()
 	redis_slice_data := cmds[1].(*redis.StringSliceCmd).Val()
-	redis_near_relay_data := cmds[2].(*redis.StringSliceCmd).Val()
+	redis_client_relay_data := cmds[2].(*redis.StringSliceCmd).Val()
+	redis_server_relay_data := cmds[3].(*redis.StringSliceCmd).Val()
 
 	sessionData := SessionData{}
 	sessionData.Parse(redis_session_data)
@@ -1153,12 +1244,17 @@ func GetSessionData(ctx context.Context, redisClient redis.Cmdable, sessionId ui
 		sliceData[i].Parse(redis_slice_data[i])
 	}
 
-	nearRelayData := make([]NearRelayData, len(redis_near_relay_data))
-	for i := 0; i < len(redis_near_relay_data); i++ {
-		nearRelayData[i].Parse(redis_near_relay_data[i])
+	clientRelayData := make([]ClientRelayData, len(redis_client_relay_data))
+	for i := 0; i < len(redis_client_relay_data); i++ {
+		clientRelayData[i].Parse(redis_client_relay_data[i])
 	}
 
-	return &sessionData, sliceData, nearRelayData
+	serverRelayData := make([]ServerRelayData, len(redis_server_relay_data))
+	for i := 0; i < len(redis_server_relay_data); i++ {
+		serverRelayData[i].Parse(redis_server_relay_data[i])
+	}
+
+	return &sessionData, sliceData, clientRelayData, serverRelayData
 }
 
 func GetSessionList(ctx context.Context, redisClient redis.Cmdable, sessionIds []uint64) []*SessionData {
@@ -1274,7 +1370,7 @@ func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash
 
 // ------------------------------------------------------------------------------------------------------------
 
-type NearRelayInserter struct {
+type ClientRelayInserter struct {
 	redisClient   redis.Cmdable
 	lastFlushTime time.Time
 	batchSize     int
@@ -1282,8 +1378,8 @@ type NearRelayInserter struct {
 	pipeline      redis.Pipeliner
 }
 
-func CreateNearRelayInserter(redisClient redis.Cmdable, batchSize int) *NearRelayInserter {
-	inserter := NearRelayInserter{}
+func CreateClientRelayInserter(redisClient redis.Cmdable, batchSize int) *ClientRelayInserter {
+	inserter := ClientRelayInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
@@ -1291,28 +1387,75 @@ func CreateNearRelayInserter(redisClient redis.Cmdable, batchSize int) *NearRela
 	return &inserter
 }
 
-func (inserter *NearRelayInserter) Insert(ctx context.Context, sessionId uint64, nearRelayData *NearRelayData) {
+func (inserter *ClientRelayInserter) Insert(ctx context.Context, sessionId uint64, clientRelayData *ClientRelayData) {
 
 	currentTime := time.Now()
 
-	key := fmt.Sprintf("nr-%016x", sessionId)
-	inserter.pipeline.RPush(ctx, key, nearRelayData.Value())
+	key := fmt.Sprintf("crd-%016x", sessionId)
+	inserter.pipeline.RPush(ctx, key, clientRelayData.Value())
 
 	inserter.numPending++
 
 	inserter.CheckForFlush(ctx, currentTime)
 }
 
-func (inserter *NearRelayInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
+func (inserter *ClientRelayInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
 	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
 		inserter.Flush(ctx)
 	}
 }
 
-func (inserter *NearRelayInserter) Flush(ctx context.Context) {
+func (inserter *ClientRelayInserter) Flush(ctx context.Context) {
 	_, err := inserter.pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("near relay insert error: %v", err)
+		core.Error("client relay insert error: %v", err)
+	}
+	inserter.numPending = 0
+	inserter.lastFlushTime = time.Now()
+	inserter.pipeline = inserter.redisClient.Pipeline()
+}
+
+// ------------------------------------------------------------------------------------------------------------
+
+type ServerRelayInserter struct {
+	redisClient   redis.Cmdable
+	lastFlushTime time.Time
+	batchSize     int
+	numPending    int
+	pipeline      redis.Pipeliner
+}
+
+func CreateServerRelayInserter(redisClient redis.Cmdable, batchSize int) *ServerRelayInserter {
+	inserter := ServerRelayInserter{}
+	inserter.redisClient = redisClient
+	inserter.lastFlushTime = time.Now()
+	inserter.batchSize = batchSize
+	inserter.pipeline = redisClient.Pipeline()
+	return &inserter
+}
+
+func (inserter *ServerRelayInserter) Insert(ctx context.Context, sessionId uint64, serverRelayData *ServerRelayData) {
+
+	currentTime := time.Now()
+
+	key := fmt.Sprintf("srd-%016x", sessionId)
+	inserter.pipeline.RPush(ctx, key, serverRelayData.Value())
+
+	inserter.numPending++
+
+	inserter.CheckForFlush(ctx, currentTime)
+}
+
+func (inserter *ServerRelayInserter) CheckForFlush(ctx context.Context, currentTime time.Time) {
+	if inserter.numPending > inserter.batchSize || currentTime.Sub(inserter.lastFlushTime) >= time.Second {
+		inserter.Flush(ctx)
+	}
+}
+
+func (inserter *ServerRelayInserter) Flush(ctx context.Context) {
+	_, err := inserter.pipeline.Exec(ctx)
+	if err != nil {
+		core.Error("server relay insert error: %v", err)
 	}
 	inserter.numPending = 0
 	inserter.lastFlushTime = time.Now()

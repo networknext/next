@@ -14,9 +14,10 @@ const (
 	RelayTimeout     = 10
 	RelayHistorySize = 300
 
-	MaxNearRelays  = 16
-	MaxDestRelays  = 8
-	MaxRouteRelays = 5
+	MaxRouteRelays   = 5
+	MaxClientRelays  = 16
+	MaxServerRelays  = 8
+	MaxDestRelays    = MaxServerRelays
 
 	MaxRelayNameLength      = 63
 	MaxRelayVersionLength   = 32
@@ -35,7 +36,7 @@ const (
 
 	MaxRouteCost = 255
 
-	NextMaxNodes = 7
+	NextMaxNodes = MaxRouteRelays + 2
 
 	NextAddressBytes      = 19
 	NextAddressBytes_IPv4 = 6
@@ -57,7 +58,8 @@ const (
 	SessionError_BadSessionId                    = (1 << 8)
 	SessionError_BadSliceNumber                  = (1 << 9)
 	SessionError_NoRelaysInDatacenter            = (1 << 10)
-	SessionError_NoNearRelays                    = (1 << 11)
+	SessionError_NoClientRelays                  = (1 << 11)
+	// todo: NoServerRelays?
 	SessionError_NoRouteRelays                   = (1 << 12)
 	SessionError_RouteRelayNoLongerExists        = (1 << 13)
 	SessionError_RouteNoLongerExists             = (1 << 14)

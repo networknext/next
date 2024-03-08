@@ -74,8 +74,11 @@ var startTime int64
 
 var initialDelay int
 
-//go:embed near_relay_ping.json
-var nearRelayPingSchemaData string
+//go:embed client_relay_ping.json
+var clientRelayPingSchemaData string
+
+//go:embed server_relay_ping.json
+var serverRelayPingSchemaData string
 
 //go:embed server_update.json
 var serverUpdateSchemaData string
@@ -89,7 +92,8 @@ var sessionUpdateSchemaData string
 //go:embed session_summary.json
 var sessionSummarySchemaData string
 
-var nearRelayPingSchema avro.Schema
+var clientRelayPingSchema avro.Schema
+var serverRelayPingSchema avro.Schema
 var serverUpdateSchema avro.Schema
 var serverInitSchema avro.Schema
 var sessionUpdateSchema avro.Schema
@@ -120,7 +124,8 @@ func main() {
 	serverCruncherURL = envvar.GetString("SERVER_CRUNCHER_URL", "http://127.0.0.1:40300")
 	sessionInsertBatchSize = envvar.GetInt("SESSION_INSERT_BATCH_SIZE", 10000)
 	serverInsertBatchSize = envvar.GetInt("SERVER_INSERT_BATCH_SIZE", 10000)
-	nearRelayInsertBatchSize = envvar.GetInt("NEAR_RELAY_INSERT_BATCH_SIZE", 10000)
+	clientRelayInsertBatchSize = envvar.GetInt("CLIENT_RELAY_INSERT_BATCH_SIZE", 10000)
+	clientRelayInsertBatchSize = envvar.GetInt("SERVER_RELAY_INSERT_BATCH_SIZE", 10000)
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
 	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
@@ -146,7 +151,8 @@ func main() {
 	core.Debug("server cruncher url: %s", serverCruncherURL)
 	core.Debug("session insert batch size: %d", sessionInsertBatchSize)
 	core.Debug("server insert batch size: %d", serverInsertBatchSize)
-	core.Debug("near relay insert batch size: %d", nearRelayInsertBatchSize)
+	core.Debug("client relay insert batch size: %d", clientRelayInsertBatchSize)
+	core.Debug("server relay insert batch size: %d", serverRelayInsertBatchSize)
 	core.Debug("enable ip2location: %v", enableIP2Location)
 
 	if len(pingKey) == 0 {
@@ -220,9 +226,14 @@ func main() {
 			panic(fmt.Sprintf("invalid session summary schema: %v", err))
 		}
 
-		nearRelayPingSchema, err = avro.Parse(nearRelayPingSchemaData)
+		clientRelayPingSchema, err = avro.Parse(clientRelayPingSchemaData)
 		if err != nil {
-			panic(fmt.Sprintf("invalid near relay ping schema: %v", err))
+			panic(fmt.Sprintf("invalid client relay ping schema: %v", err))
+		}
+
+		serverRelayPingSchema, err = avro.Parse(serverRelayPingSchemaData)
+		if err != nil {
+			panic(fmt.Sprintf("invalid server relay ping schema: %v", err))
 		}
 
 		serverUpdateSchema, err = avro.Parse(serverUpdateSchemaData)
@@ -246,7 +257,8 @@ func main() {
 
 	portalSessionUpdateMessageChannel = make(chan *messages.PortalSessionUpdateMessage, channelSize)
 	portalServerUpdateMessageChannel = make(chan *messages.PortalServerUpdateMessage, channelSize)
-	portalNearRelayUpdateMessageChannel = make(chan *messages.PortalNearRelayUpdateMessage, channelSize)
+	portalClientRelayUpdateMessageChannel = make(chan *messages.PortalClientRelayUpdateMessage, channelSize)
+	portalServerRelayUpdateMessageChannel = make(chan *messages.PortalServerRelayUpdateMessage, channelSize)
 
 	if enableRedisTimeSeries {
 
@@ -264,7 +276,8 @@ func main() {
 
 	processPortalSessionUpdateMessages(service, portalSessionUpdateMessageChannel)
 	processPortalServerUpdateMessages(service, portalServerUpdateMessageChannel)
-	processPortalNearRelayUpdateMessages(service, portalNearRelayUpdateMessageChannel)
+	processPortalClientRelayUpdateMessages(service, portalClientRelayUpdateMessageChannel)
+	processPortalServerRelayUpdateMessages(service, portalServerRelayUpdateMessageChannel)
 
 	// initialize analytics message channels
 
@@ -272,11 +285,13 @@ func main() {
 	analyticsServerUpdateMessageChannel = make(chan *messages.AnalyticsServerUpdateMessage, channelSize)
 	analyticsSessionUpdateMessageChannel = make(chan *messages.AnalyticsSessionUpdateMessage, channelSize)
 	analyticsSessionSummaryMessageChannel = make(chan *messages.AnalyticsSessionSummaryMessage, channelSize)
-	analyticsNearRelayPingMessageChannel = make(chan *messages.AnalyticsNearRelayPingMessage, channelSize)
+	analyticsClientRelayPingMessageChannel = make(chan *messages.AnalyticsClientRelayPingMessage, channelSize)
+	analyticsServerRelayPingMessageChannel = make(chan *messages.AnalyticsServerRelayPingMessage, channelSize)
 
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerInitMessage]("server init", analyticsServerInitMessageChannel, serverInitSchema)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerUpdateMessage]("server update", analyticsServerUpdateMessageChannel, serverUpdateSchema)
-	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsNearRelayPingMessage]("near relay ping", analyticsNearRelayPingMessageChannel, nearRelayPingSchema)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsClientRelayPingMessage]("client relay ping", analyticsClientRelayPingMessageChannel, clientRelayPingSchema)
+	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsServerRelayPingMessage]("server relay ping", analyticsServerRelayPingMessageChannel, serverRelayPingSchema)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionUpdateMessage]("session update", analyticsSessionUpdateMessageChannel, sessionUpdateSchema)
 	processAnalyticsMessages_GooglePubsub[*messages.AnalyticsSessionSummaryMessage]("session summary", analyticsSessionSummaryMessageChannel, sessionSummarySchema)
 
@@ -463,13 +478,15 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	handler.PortalSessionUpdateMessageChannel = portalSessionUpdateMessageChannel
 	handler.PortalServerUpdateMessageChannel = portalServerUpdateMessageChannel
-	handler.PortalNearRelayUpdateMessageChannel = portalNearRelayUpdateMessageChannel
+	handler.PortalClientRelayUpdateMessageChannel = portalClientRelayUpdateMessageChannel
+	handler.PortalServerRelayUpdateMessageChannel = portalServerRelayUpdateMessageChannel
 
 	handler.AnalyticsServerInitMessageChannel = analyticsServerInitMessageChannel
 	handler.AnalyticsServerUpdateMessageChannel = analyticsServerUpdateMessageChannel
 	handler.AnalyticsSessionUpdateMessageChannel = analyticsSessionUpdateMessageChannel
 	handler.AnalyticsSessionSummaryMessageChannel = analyticsSessionSummaryMessageChannel
-	handler.AnalyticsNearRelayPingMessageChannel = analyticsNearRelayPingMessageChannel
+	handler.AnalyticsClientRelayPingMessageChannel = analyticsClientRelayPingMessageChannel
+	handler.AnalyticsServerRelayPingMessageChannel = analyticsServerRelayPingMessageChannel
 
 	handler.LocateIP = locateIP_Local
 	if service.Env == "dev" {
@@ -697,7 +714,7 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 	}()
 }
 
-func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalNearRelayUpdateMessage) {
+func processPortalClientRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalClientRelayUpdateMessage) {
 
 	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
@@ -706,30 +723,68 @@ func processPortalNearRelayUpdateMessages(service *common.Service, inputChannel 
 		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
 
-	nearRelayInserter := portal.CreateNearRelayInserter(redisClient, nearRelayInsertBatchSize)
+	clientRelayInserter := portal.CreateClientRelayInserter(redisClient, clientRelayInsertBatchSize)
 
 	go func() {
 		for {
 			message := <-inputChannel
 
-			core.Debug("processing near relay update message")
+			core.Debug("processing client relay update message")
 
 			sessionId := message.SessionId
 
-			nearRelayData := portal.NearRelayData{
+			clientRelayData := portal.ClientRelayData{
 				Timestamp:           message.Timestamp,
-				NumNearRelays:       message.NumNearRelays,
-				NearRelayId:         message.NearRelayId,
-				NearRelayRTT:        message.NearRelayRTT,
-				NearRelayJitter:     message.NearRelayJitter,
-				NearRelayPacketLoss: message.NearRelayPacketLoss,
+				NumClientRelays:     message.NumClientRelays,
+				ClientRelayId:         message.ClientRelayId,
+				ClientRelayRTT:        message.ClientRelayRTT,
+				ClientRelayJitter:     message.ClientRelayJitter,
+				ClientRelayPacketLoss: message.ClientRelayPacketLoss,
 			}
 
-			nearRelayInserter.Insert(service.Context, sessionId, &nearRelayData)
+			clientRelayInserter.Insert(service.Context, sessionId, &clientRelayData)
 
 			if enableRedisTimeSeries {
 
-				countersPublisher.MessageChannel <- "near_relay_update"
+				countersPublisher.MessageChannel <- "client_relay_update"
+			}
+		}
+	}()
+}
+
+func processPortalServerRelayUpdateMessages(service *common.Service, inputChannel chan *messages.PortalServerRelayUpdateMessage) {
+
+	var redisServer redis.Cmdable
+	if len(redisPortalCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisPortalCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisPortalHostname)
+	}
+
+	serverRelayInserter := portal.CreateServerRelayInserter(redisClient, serverRelayInsertBatchSize)
+
+	go func() {
+		for {
+			message := <-inputChannel
+
+			core.Debug("processing server relay update message")
+
+			sessionId := message.SessionId
+
+			serverRelayData := portal.ServerRelayData{
+				Timestamp:           message.Timestamp,
+				NumServerRelays:     message.NumServerRelays,
+				ServerRelayId:         message.ServerRelayId,
+				ServerRelayRTT:        message.ServerRelayRTT,
+				ServerRelayJitter:     message.ServerRelayJitter,
+				ServerRelayPacketLoss: message.ServerRelayPacketLoss,
+			}
+
+			serverRelayInserter.Insert(service.Context, sessionId, &serverRelayData)
+
+			if enableRedisTimeSeries {
+
+				countersPublisher.MessageChannel <- "server_relay_update"
 			}
 		}
 	}()

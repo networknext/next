@@ -31,7 +31,8 @@ const (
 	SDK_MaxSessionDataSize      = 256
 	SDK_MaxTokens               = constants.NextMaxNodes
 	SDK_MaxRelaysPerRoute       = constants.NextMaxNodes - 2
-	SDK_MaxNearRelays           = int(constants.MaxNearRelays)
+	SDK_MaxClientRelays         = int(constants.MaxClientRelays)
+	SDK_MaxServerRelays         = int(constants.MaxServerRelays)
 	SDK_MaxDestRelays           = int(constants.MaxDestRelays)
 	SDK_MaxSessionUpdateRetries = 10
 
@@ -101,7 +102,7 @@ const (
 
 	SDK_SignatureBytes = crypto.Sign_SignatureSize
 
-	SDK_MaxNearRelayRTT        = 255
-	SDK_MaxNearRelayJitter     = 255
-	SDK_MaxNearRelayPacketLoss = 100
+	SDK_MaxRelayRTT        = 255
+	SDK_MaxRelayJitter     = 255
+	SDK_MaxRelayPacketLoss = 100
 )

@@ -68,15 +68,17 @@ type SDK_Handler struct {
 
 	FallbackToDirectChannel chan<- uint64
 
-	PortalServerUpdateMessageChannel    chan<- *messages.PortalServerUpdateMessage
-	PortalSessionUpdateMessageChannel   chan<- *messages.PortalSessionUpdateMessage
-	PortalNearRelayUpdateMessageChannel chan<- *messages.PortalNearRelayUpdateMessage
+	PortalServerUpdateMessageChannel      chan<- *messages.PortalServerUpdateMessage
+	PortalSessionUpdateMessageChannel     chan<- *messages.PortalSessionUpdateMessage
+	PortalClientRelayUpdateMessageChannel chan<- *messages.PortalClientRelayUpdateMessage
+	PortalServerRelayUpdateMessageChannel chan<- *messages.PortalServerRelayUpdateMessage
 
-	AnalyticsServerInitMessageChannel     chan<- *messages.AnalyticsServerInitMessage
-	AnalyticsServerUpdateMessageChannel   chan<- *messages.AnalyticsServerUpdateMessage
-	AnalyticsNearRelayPingMessageChannel  chan<- *messages.AnalyticsNearRelayPingMessage
-	AnalyticsSessionUpdateMessageChannel  chan<- *messages.AnalyticsSessionUpdateMessage
-	AnalyticsSessionSummaryMessageChannel chan<- *messages.AnalyticsSessionSummaryMessage
+	AnalyticsServerInitMessageChannel       chan<- *messages.AnalyticsServerInitMessage
+	AnalyticsServerUpdateMessageChannel     chan<- *messages.AnalyticsServerUpdateMessage
+	AnalyticsClientRelayPingMessageChannel  chan<- *messages.AnalyticsClientRelayPingMessage
+	AnalyticsClientRelayPingMessageChannel  chan<- *messages.AnalyticsServerRelayPingMessage
+	AnalyticsSessionUpdateMessageChannel    chan<- *messages.AnalyticsSessionUpdateMessage
+	AnalyticsSessionSummaryMessageChannel   chan<- *messages.AnalyticsSessionSummaryMessage
 }
 
 func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {

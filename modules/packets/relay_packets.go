@@ -46,7 +46,8 @@ type RelayUpdateRequestPacket struct {
 	PacketsReceivedPerSecond  float32
 	BandwidthSentKbps         float32
 	BandwidthReceivedKbps     float32
-	NearPingsPerSecond        float32
+	ClientPingsPerSecond      float32
+	ServerPingsPerSecond      float32
 	RelayPingsPerSecond       float32
 	RelayFlags                uint64
 	RelayVersion              string
@@ -82,7 +83,8 @@ func (packet *RelayUpdateRequestPacket) Write(buffer []byte) []byte {
 	encoding.WriteFloat32(buffer, &index, packet.PacketsReceivedPerSecond)
 	encoding.WriteFloat32(buffer, &index, packet.BandwidthSentKbps)
 	encoding.WriteFloat32(buffer, &index, packet.BandwidthReceivedKbps)
-	encoding.WriteFloat32(buffer, &index, packet.NearPingsPerSecond)
+	encoding.WriteFloat32(buffer, &index, packet.ClientPingsPerSecond)
+	encoding.WriteFloat32(buffer, &index, packet.ServerPingsPerSecond)
 	encoding.WriteFloat32(buffer, &index, packet.RelayPingsPerSecond)
 
 	encoding.WriteUint64(buffer, &index, packet.RelayFlags)
@@ -173,8 +175,12 @@ func (packet *RelayUpdateRequestPacket) Read(buffer []byte) error {
 		return errors.New("could not read bandwidth received kbps")
 	}
 
-	if !encoding.ReadFloat32(buffer, &index, &packet.NearPingsPerSecond) {
-		return errors.New("could not read near pings per-second")
+	if !encoding.ReadFloat32(buffer, &index, &packet.ClientPingsPerSecond) {
+		return errors.New("could not read client pings per-second")
+	}
+
+	if !encoding.ReadFloat32(buffer, &index, &packet.ServerPingsPerSecond) {
+		return errors.New("could not read server pings per-second")
 	}
 
 	if !encoding.ReadFloat32(buffer, &index, &packet.RelayPingsPerSecond) {

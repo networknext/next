@@ -1,0 +1,50 @@
+[
+  {
+    "name": "timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "The timestamp when the server relay pings occurred"
+  },
+  {
+    "name": "buyer_id",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The buyer the server belongs to"
+  },
+  {
+    "name": "datacenter_id",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "The datacenter the server is in"
+  },
+  {
+    "name": "server_address",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Server address and port number"
+  },
+  {
+    "name": "server_relay_id",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Relay id being pinged by the server"
+  },
+  {
+    "name": "server_relay_rtt",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Round trip time ping between the server and the relay (milliseconds)"
+  },
+  {
+    "name": "server_relay_jitter",
+    "type": "INT64",
+    "mode": "REQUIRED",
+    "description": "Jitter between the server and the relay (milliseconds)"
+  },
+  {
+    "name": "server_relay_packet_loss",
+    "type": "FLOAT64",
+    "mode": "REQUIRED",
+    "description": "Packet loss between the server and the relay (%)"
+  }
+]
