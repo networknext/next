@@ -47,7 +47,6 @@ type AnalyticsSessionUpdateMessage struct {
 	A                            bool `avro:"a"`
 	B                            bool `avro:"b"`
 	LatencyWorse                 bool `avro:"latency_worse"`
-	LocationVeto                 bool `avro:"location_veto"`
 	Mispredict                   bool `avro:"mispredict"`
 	LackOfDiversity              bool `avro:"lack_of_diversity"`
 }
@@ -100,7 +99,6 @@ type AnalyticsSessionSummaryMessage struct {
 	A                            bool `avro:"a"`
 	B                            bool `avro:"b"`
 	LatencyWorse                 bool `avro:"latency_worse"`
-	LocationVeto                 bool `avro:"location_veto"`
 	Mispredict                   bool `avro:"mispredict"`
 	LackOfDiversity              bool `avro:"lack_of_diversity"`
 }

@@ -1488,7 +1488,6 @@ type RouteState struct {
 	ReducePacketLoss    bool
 	Multipath           bool
 	LatencyWorse        bool
-	LocationVeto        bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
 	RouteLost           bool
@@ -1513,13 +1512,6 @@ func EarlyOutDirect(userId uint64, routeShader *RouteShader, routeState *RouteSt
 	if routeState.Veto {
 		if debug != nil {
 			*debug += "veto\n"
-		}
-		return true
-	}
-
-	if routeState.LocationVeto {
-		if debug != nil {
-			*debug += "location veto\n"
 		}
 		return true
 	}

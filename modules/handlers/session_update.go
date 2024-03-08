@@ -226,30 +226,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	}
 
 	/*
-		On the initial slice, we look up the lat/long for the player using ip2location.
-
-		On subsequent slices, we use the cached location data from the session state.
-	*/
-
-	// todo: just have the server own the lat/long, and pass up with each request
-	/*
-		if state.Request.SliceNumber == 0 {
-
-			state.LocatedIP = true
-
-			state.FirstUpdate = true
-
-			state.Latitude, state.Longitude = state.LocateIP(state.Request.ClientAddress.IP)
-
-			if state.Latitude == 0.0 && state.Longitude == 0.0 {
-				core.Error("location veto")
-				state.Input.RouteState.LocationVeto = true
-				return true
-			}
-		}
-	*/
-
-	/*
 		Routing with an old route matrix runs a serious risk of sending players across routes that are WORSE
 		than their default internet route, so it's best to just go direct if the route matrix is stale.
 	*/
@@ -1316,7 +1292,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.A = state.Input.RouteState.A
 	message.B = state.Input.RouteState.B
 	message.LatencyWorse = state.Input.RouteState.LatencyWorse
-	message.LocationVeto = state.Input.RouteState.LocationVeto
 	message.Mispredict = state.Input.RouteState.Mispredict
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 
@@ -1378,7 +1353,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.A = state.Input.RouteState.A
 	message.B = state.Input.RouteState.B
 	message.LatencyWorse = state.Input.RouteState.LatencyWorse
-	message.LocationVeto = state.Input.RouteState.LocationVeto
 	message.Mispredict = state.Input.RouteState.Mispredict
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 

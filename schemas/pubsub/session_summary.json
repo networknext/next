@@ -42,7 +42,6 @@
     {"name": "a",                                     "type": "boolean"},
     {"name": "b",                                     "type": "boolean"},
     {"name": "latency_worse",                         "type": "boolean"},
-    {"name": "location_veto",                         "type": "boolean"},
     {"name": "mispredict",                            "type": "boolean"},
     {"name": "lack_of_diversity",                     "type": "boolean"}
   ]

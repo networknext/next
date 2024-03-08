@@ -493,7 +493,6 @@ func GenerateRandomSessionData() SDK_SessionData {
 	sessionData.RouteState.LackOfDiversity = common.RandomBool()
 	sessionData.RouteState.MispredictCounter = uint32(common.RandomInt(0, 3))
 	sessionData.RouteState.LatencyWorseCounter = uint32(common.RandomInt(0, 3))
-	sessionData.RouteState.LocationVeto = common.RandomBool()
 
 	for i := range sessionData.ExcludeClientRelay {
 		sessionData.ExcludeClientRelay[i] = common.RandomBool()
@@ -655,7 +654,6 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
 	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
 	stream.SerializeBits(&sessionData.RouteState.PLSustainedCounter, 2)
-	stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 
 	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
 	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)

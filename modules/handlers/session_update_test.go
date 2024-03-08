@@ -165,28 +165,6 @@ func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 	assert.True(t, state.ClientPingTimedOut)
 }
 
-// todo: bring back something similar, but with the location coming back as (0,0) in slice 1 update or whatever
-/*
-func Test_SessionUpdate_Pre_LocationVeto(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.LocateIP = FailLocateIP
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.Input.RouteState.LocationVeto)
-}
-*/
-
 func TestSessionUpdate_Pre_StaleRouteMatrix(t *testing.T) {
 
 	t.Parallel()

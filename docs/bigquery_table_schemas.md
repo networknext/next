@@ -57,7 +57,6 @@ Session updates contain network performance data once every 10 seconds for a ses
 | a | BOOL | This session was part of an AB test, and is in the A group. (potentially accelerated) |
 | b | BOOL | This session was part of an AB test, and is in the A group. (never accelerated) |
 | latency_worse | BOOL | True if we made significantly latency worse. In this case the session is told to stop acceleration immediately. |
-| location_veto | BOOL | True if we could not locate the player using ip2location, eg. lat long is at null island (0,0). |
 | mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
@@ -105,7 +104,6 @@ A session summary is written at the end of each session, with the intent that if
 | a | BOOL | This session was part of an AB test, and is in the A group (potentially accelerated) |
 | b | BOOL | This session was part of an AB test, and is in the B group (never accelerated) |
 | latency_worse | BOOL | True if we made latency worse. |
-| location_veto | BOOL | True if we could not locate the player, eg. lat long is at null island (0,0). |
 | mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 

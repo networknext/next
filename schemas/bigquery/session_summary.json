@@ -234,12 +234,6 @@
     "description": "True if we made latency worse."
   },
   {
-    "name": "location_veto",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we could not locate the player, eg. lat long is at null island (0,0)."
-  },
-  {
     "name": "mispredict",
     "type": "BOOL",
     "mode": "REQUIRED",

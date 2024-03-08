@@ -2103,9 +2103,6 @@ func TestEarlyOutDirect(t *testing.T) {
 	routeState = core.RouteState{Veto: true}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 
-	routeState = core.RouteState{LocationVeto: true}
-	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
-
 	routeState = core.RouteState{Disabled: true}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 

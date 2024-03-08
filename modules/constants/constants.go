@@ -59,12 +59,12 @@ const (
 	SessionError_BadSliceNumber                  = (1 << 9)
 	SessionError_NoRelaysInDatacenter            = (1 << 10)
 	SessionError_NoClientRelays                  = (1 << 11)
-	// todo: NoServerRelays?
-	SessionError_NoRouteRelays               = (1 << 12)
-	SessionError_RouteRelayNoLongerExists    = (1 << 13)
-	SessionError_RouteNoLongerExists         = (1 << 14)
-	SessionError_FailedToWriteResponsePacket = (1 << 15)
-	SessionError_FailedToWriteSessionData    = (1 << 16)
+	SessionError_NoServerRelays                  = (1 << 12)
+	SessionError_NoRouteRelays                   = (1 << 13)
+	SessionError_RouteRelayNoLongerExists        = (1 << 14)
+	SessionError_RouteNoLongerExists             = (1 << 15)
+	SessionError_FailedToWriteResponsePacket     = (1 << 16)
+	SessionError_FailedToWriteSessionData        = (1 << 17)
 
 	RelayFlags_ShuttingDown = uint64(1)
 
