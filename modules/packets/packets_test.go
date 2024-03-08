@@ -173,15 +173,17 @@ func GenerateRandomNearRelayRequestPacket() packets.SDK_NearRelayRequestPacket {
 func GenerateRandomNearRelayResponsePacket() packets.SDK_NearRelayResponsePacket {
 
 	packet := packets.SDK_NearRelayResponsePacket{
-		RequestId:     rand.Uint64(),
-		Latitude:      rand.Float32(),
-		Longitude:     rand.Float32(),
-		NumNearRelays: int32(common.RandomInt(0, constants.MaxNearRelays)),
+		RequestId:       rand.Uint64(),
+		Latitude:        rand.Float32(),
+		Longitude:       rand.Float32(),
+		NumNearRelays:   int32(common.RandomInt(0, constants.MaxNearRelays)),
+		ExpireTimestamp: rand.Uint64(),
 	}
 
 	for i := 0; i < int(packet.NumNearRelays); i++ {
 		packet.NearRelayIds[i] = rand.Uint64()
 		packet.NearRelayAddresses[i] = common.RandomAddress()
+		common.RandomBytes(packet.NearRelayPingTokens[i][:])
 	}
 
 	return packet

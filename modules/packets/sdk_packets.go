@@ -189,12 +189,14 @@ func (packet *SDK_NearRelayRequestPacket) Serialize(stream encoding.Stream) erro
 // ------------------------------------------------------------
 
 type SDK_NearRelayResponsePacket struct {
-	RequestId          uint64
-	Latitude           float32
-	Longitude          float32
-	NumNearRelays      int32
-	NearRelayIds  	   [constants.MaxNearRelays]uint64
-	NearRelayAddresses [constants.MaxNearRelays]net.UDPAddr
+	RequestId           uint64
+	Latitude            float32
+	Longitude           float32
+	NumNearRelays       int32
+	NearRelayIds  	    [constants.MaxNearRelays]uint64
+	NearRelayAddresses  [constants.MaxNearRelays]net.UDPAddr
+	NearRelayPingTokens [constants.MaxNearRelays][constants.PingTokenBytes]byte
+	ExpireTimestamp     uint64
 }
 
 func (packet *SDK_NearRelayResponsePacket) Serialize(stream encoding.Stream) error {
@@ -205,7 +207,9 @@ func (packet *SDK_NearRelayResponsePacket) Serialize(stream encoding.Stream) err
 	for i := 0; i < int(packet.NumNearRelays); i++ {
 		stream.SerializeUint64(&packet.NearRelayIds[i])
 		stream.SerializeAddress(&packet.NearRelayAddresses[i])
+		stream.SerializeBytes(packet.NearRelayPingTokens[i][:])
 	}
+	stream.SerializeUint64(&packet.ExpireTimestamp)
 	return stream.Error()
 }
 

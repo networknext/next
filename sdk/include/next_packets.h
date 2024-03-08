@@ -523,6 +523,8 @@ struct NextBackendNearRelayResponsePacket
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
     next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
+    uint8_t near_relay_ping_tokens[NEXT_MAX_NEAR_RELAYS][NEXT_PING_TOKEN_BYTES];
+    uint64_t expire_timestamp;
 
     NextBackendNearRelayResponsePacket()
     {
@@ -539,7 +541,9 @@ struct NextBackendNearRelayResponsePacket
         {
             serialize_uint64( stream, near_relay_ids[i] );
             serialize_address( stream, near_relay_addresses[i] );
+            serialize_bytes( stream, near_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
         }
+        serialize_uint64( stream, expire_timestamp );
         return true;
     }
 };

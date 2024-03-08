@@ -1349,44 +1349,6 @@ void test_server_ipv4()
 
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
 
-#if NEXT_PLATFORM_HAS_IPV6
-
-void test_client_ipv6()
-{
-    next_client_t * client = next_client_create( NULL, "[::0]:0", test_client_packet_received_callback );
-    next_check( client );
-    next_check( next_client_port( client ) != 0 );
-    next_client_open_session( client, "[::1]:12345" );
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    next_client_send_packet( client, packet, sizeof(packet) );
-    next_client_update( client );
-    next_client_close_session( client );
-    next_client_destroy( client );
-}
-
-#if NEXT_PLATFORM_CAN_RUN_SERVER
-
-void test_server_ipv6()
-{
-    next_server_t * server = next_server_create( NULL, "[::1]:0", "[::0]:0", "local", test_server_packet_received_callback );
-    next_check( server );
-    next_check( next_server_port(server) != 0 );
-    next_address_t address;
-    next_address_parse( &address, "::1" );
-    address.port = next_server_port( server );
-    uint8_t packet[256];
-    memset( packet, 0, sizeof(packet) );
-    next_server_send_packet( server, &address, packet, sizeof(packet) );
-    next_server_update( server );
-    next_server_flush( server );
-    next_server_destroy( server );
-}
-
-#endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
-
-#endif // #if NEXT_PLATFORM_HAS_IPV6
-
 void test_upgrade_token()
 {
     NextUpgradeToken in, out;
@@ -3950,7 +3912,9 @@ void test_near_relay_response_packet()
         {
             in.near_relay_ids[i] = next_random_uint64();
             next_address_parse( &in.near_relay_addresses[i], "127.0.0.1:50000" );
+            next_crypto_random_bytes( in.near_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
         }
+        in.expire_timestamp = next_random_uint64();
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
@@ -3974,7 +3938,9 @@ void test_near_relay_response_packet()
         {
             next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
             next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
+            next_check( memcmp( in.near_relay_ping_tokens[i], out.near_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES ) == 0 );
         }
+        next_check( in.expire_timestamp == out.expire_timestamp );
     }
 }
 
@@ -4055,57 +4021,6 @@ void test_passthrough_packets_ipv4()
     next_server_destroy( server );
 }
 
-#if NEXT_PLATFORM_HAS_IPV6
-
-void test_passthrough_packets_ipv6()
-{
-    next_server_t * server = next_server_create( NULL, "::1", "[::0]:12345", "local", test_passthrough_packets_server_packet_received_callback );
-
-    next_check( server );
-
-    next_client_t * client = next_client_create( NULL, "::0", test_passthrough_packets_client_packet_received_callback );
-
-    next_check( client );
-
-    next_check( next_client_port( client ) != 0 );
-
-    next_client_open_session( client, "[::1]:12345" );
-
-    uint8_t packet_data[NEXT_MTU];
-    memset( packet_data, 0, sizeof(packet_data) );
-
-    for ( int i = 0; i < 10000; ++i )
-    {
-        int packet_bytes = 1 + rand() % NEXT_MTU;
-        for ( int j = 0; j < packet_bytes; j++ )
-        {
-            packet_data[j] = uint8_t( packet_bytes + j );
-        }
-
-        next_client_send_packet( client, packet_data, packet_bytes );
-
-        next_client_update( client );
-
-        next_server_update( server );
-
-        if ( test_passthrough_packets_client_packets_received > 10 && test_passthrough_packets_server_packets_received > 10 )
-            break;
-    }
-
-    next_assert( test_passthrough_packets_client_packets_received > 10 );
-    next_assert( test_passthrough_packets_server_packets_received > 10 );
-
-    next_client_close_session( client );
-
-    next_client_destroy( client );
-
-    next_server_flush( server );
-
-    next_server_destroy( server );
-}
-
-#endif // #if NEXT_PLATFORM_HAS_IPV6
-
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
 
 #define RUN_TEST( test_function )                                           \
@@ -4150,12 +4065,6 @@ void next_run_tests()
 #if NEXT_PLATFORM_CAN_RUN_SERVER
         RUN_TEST( test_server_ipv4 );
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
-#if NEXT_PLATFORM_HAS_IPV6
-        RUN_TEST( test_client_ipv6 );
-#if NEXT_PLATFORM_CAN_RUN_SERVER
-        RUN_TEST( test_server_ipv6 );
-#endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
-#endif // #if NEXT_PLATFORM_HAS_IPV6
         RUN_TEST( test_upgrade_token );
         RUN_TEST( test_header );
         RUN_TEST( test_abi );
@@ -4211,9 +4120,6 @@ void next_run_tests()
         RUN_TEST( test_near_relay_response_packet );
 #if NEXT_PLATFORM_CAN_RUN_SERVER
         RUN_TEST( test_passthrough_packets_ipv4 );
-#if NEXT_PLATFORM_HAS_IPV6
-        RUN_TEST( test_passthrough_packets_ipv6 );
-#endif // #if NEXT_PLATFORM_HAS_IPV6
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
     }
 }

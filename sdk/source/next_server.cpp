@@ -192,6 +192,8 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
 next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t packet_type, uint8_t * packet_data, int packet_bytes );
 
+void next_server_internal_update_near_relays( next_server_internal_t * server );
+
 void next_server_internal_update_route( next_server_internal_t * server );
 
 void next_server_internal_update_pending_upgrades( next_server_internal_t * server );
@@ -964,6 +966,72 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     }
 
     return entry;
+}
+
+void next_server_internal_update_near_relays( next_server_internal_t * server )
+{
+    next_assert( server );
+
+    next_server_internal_verify_sentinels( server );
+
+    next_assert( !next_global_config.disable_network_next );
+
+    if ( server->flushing )
+        return;
+
+    const double current_time = next_platform_time();
+
+    const int max_index = server->session_manager->max_entry_index;
+
+    for ( int i = 0; i <= max_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * entry = &server->session_manager->entries[i];
+
+        // todo
+        (void) entry;
+        (void) current_time;
+
+        // todo: near relay logic
+/*
+        if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
+        {
+            NextRouteUpdatePacket packet;
+            memcpy( packet.upcoming_magic, server->upcoming_magic, 8 );
+            memcpy( packet.current_magic, server->current_magic, 8 );
+            memcpy( packet.previous_magic, server->previous_magic, 8 );
+            packet.sequence = entry->update_sequence;
+
+            packet.update_type = entry->update_type;
+            packet.multipath = entry->multipath;
+            packet.num_tokens = entry->update_num_tokens;
+            if ( entry->update_type == NEXT_UPDATE_TYPE_ROUTE )
+            {
+                memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * size_t(entry->update_num_tokens) );
+            }
+            else if ( entry->update_type == NEXT_UPDATE_TYPE_CONTINUE )
+            {
+                memcpy( packet.tokens, entry->update_tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(entry->update_num_tokens) );
+            }
+            packet.packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
+            packet.packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
+            packet.jitter_client_to_server = float( entry->stats_jitter_client_to_server );
+
+            {
+                next_platform_mutex_guard( &server->session_mutex );
+                packet.packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+            }
+
+            next_server_internal_send_packet( server, &entry->address, NEXT_ROUTE_UPDATE_PACKET, &packet );
+
+            entry->update_last_send_time = current_time;
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route update packet to session %" PRIx64, entry->session_id );
+        }
+*/
+    }
 }
 
 void next_server_internal_update_route( next_server_internal_t * server )
@@ -3390,6 +3458,8 @@ static void next_server_update_internal( next_server_internal_t * server )
     next_server_internal_update_init( server );
 
     next_server_internal_update_pending_upgrades( server );
+
+    next_server_internal_update_near_relays( server );
 
     next_server_internal_update_route( server );
 
