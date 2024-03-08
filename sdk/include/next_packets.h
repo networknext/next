@@ -485,6 +485,7 @@ struct NextBackendNearRelayRequestPacket
     int version_minor;
     int version_patch;
     uint64_t buyer_id;
+    uint64_t datacenter_id;
     uint64_t request_id;
     next_address_t client_address;
    
@@ -494,6 +495,7 @@ struct NextBackendNearRelayRequestPacket
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
         buyer_id = 0;
+        datacenter_id = 0;
         request_id = 0;
         memset( &client_address, 0, sizeof(next_address_t) );
     }
@@ -504,6 +506,7 @@ struct NextBackendNearRelayRequestPacket
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, buyer_id );
+        serialize_uint64( stream, datacenter_id );
         serialize_uint64( stream, request_id );
         serialize_address( stream, client_address );
         return true;
@@ -519,6 +522,7 @@ struct NextBackendNearRelayResponsePacket
     float longitude;
     int num_near_relays;
     uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+    next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
 
     NextBackendNearRelayResponsePacket()
     {
@@ -534,6 +538,7 @@ struct NextBackendNearRelayResponsePacket
         for ( int i = 0; i < num_near_relays; i++ )
         {
             serialize_uint64( stream, near_relay_ids[i] );
+            serialize_address( stream, near_relay_addresses[i] );
         }
         return true;
     }

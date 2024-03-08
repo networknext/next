@@ -163,6 +163,7 @@ func GenerateRandomNearRelayRequestPacket() packets.SDK_NearRelayRequestPacket {
 	packet := packets.SDK_NearRelayRequestPacket{
 		Version:       packets.SDKVersion{1, 0, 0},
 		BuyerId:       rand.Uint64(),
+		DatacenterId:  rand.Uint64(),
 		ClientAddress: common.RandomAddress(),
 	}
 
@@ -180,6 +181,7 @@ func GenerateRandomNearRelayResponsePacket() packets.SDK_NearRelayResponsePacket
 
 	for i := 0; i < int(packet.NumNearRelays); i++ {
 		packet.NearRelayIds[i] = rand.Uint64()
+		packet.NearRelayAddresses[i] = common.RandomAddress()
 	}
 
 	return packet

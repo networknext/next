@@ -3895,8 +3895,9 @@ void test_near_relay_request_packet()
         next_crypto_random_bytes( to_address, 4 );
 
         static NextBackendNearRelayRequestPacket in, out;
-        in.request_id = next_random_uint64();
         in.buyer_id = next_random_uint64();
+        in.datacenter_id = next_random_uint64();
+        in.request_id = next_random_uint64();
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
 
         int packet_bytes = 0;
@@ -3916,8 +3917,9 @@ void test_near_relay_request_packet()
         next_check( in.version_major == out.version_major );
         next_check( in.version_minor == out.version_minor );
         next_check( in.version_patch == out.version_patch );
-        next_check( in.request_id == out.request_id );
         next_check( in.buyer_id == out.buyer_id );
+        next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.request_id == out.request_id );
         next_check( next_address_equal( &in.client_address, &out.client_address ) );
     }
 }
@@ -3947,6 +3949,7 @@ void test_near_relay_response_packet()
         for ( int i = 0; i < in.num_near_relays; i++ )
         {
             in.near_relay_ids[i] = next_random_uint64();
+            next_address_parse( &in.near_relay_addresses[i], "127.0.0.1:50000" );
         }
 
         int packet_bytes = 0;
@@ -3970,6 +3973,7 @@ void test_near_relay_response_packet()
         for ( int i = 0; i < in.num_near_relays; i++ )
         {
             next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
+            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
         }
     }
 }

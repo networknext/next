@@ -173,6 +173,7 @@ type SDK_NearRelayRequestPacket struct {
 	Version       SDKVersion
 	BuyerId       uint64
 	RequestId     uint64
+	DatacenterId  uint64
 	ClientAddress net.UDPAddr
 }
 
@@ -180,6 +181,7 @@ func (packet *SDK_NearRelayRequestPacket) Serialize(stream encoding.Stream) erro
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeAddress(&packet.ClientAddress)
 	return stream.Error()
 }
@@ -187,11 +189,12 @@ func (packet *SDK_NearRelayRequestPacket) Serialize(stream encoding.Stream) erro
 // ------------------------------------------------------------
 
 type SDK_NearRelayResponsePacket struct {
-	RequestId     uint64
-	Latitude      float32
-	Longitude     float32
-	NumNearRelays int32
-	NearRelayIds  [constants.MaxNearRelays]uint64
+	RequestId          uint64
+	Latitude           float32
+	Longitude          float32
+	NumNearRelays      int32
+	NearRelayIds  	   [constants.MaxNearRelays]uint64
+	NearRelayAddresses [constants.MaxNearRelays]net.UDPAddr
 }
 
 func (packet *SDK_NearRelayResponsePacket) Serialize(stream encoding.Stream) error {
@@ -201,6 +204,7 @@ func (packet *SDK_NearRelayResponsePacket) Serialize(stream encoding.Stream) err
 	stream.SerializeInteger(&packet.NumNearRelays, 0, constants.MaxNearRelays)
 	for i := 0; i < int(packet.NumNearRelays); i++ {
 		stream.SerializeUint64(&packet.NearRelayIds[i])
+		stream.SerializeAddress(&packet.NearRelayAddresses[i])
 	}
 	return stream.Error()
 }

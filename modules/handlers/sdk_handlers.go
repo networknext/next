@@ -568,11 +568,48 @@ func SDK_ProcessNearRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn, 
 		return
 	}
 
+	datacenter := handler.Database.GetDatacenter(requestPacket.DatacenterId)
+
+	if datacenter == nil {
+		core.Debug("datacenter is nil, not getting near relays")
+		handler.Events[SDK_HandlerEvent_UnknownDatacenter] = true
+		return
+	}
+
+	clientLatitude, clientLongitude := handler.LocateIP(requestPacket.ClientAddress.IP)
+
+	serverLatitude := datacenter.Latitude
+	serverLongitude := datacenter.Longitude
+
+	const distanceThreshold = 2500
+	const latencyThreshold = 30.0
+
+	nearRelayIds, nearRelayAddresses := common.GetNearRelays(constants.MaxNearRelays,
+		distanceThreshold,
+		latencyThreshold,
+		handler.RouteMatrix.RelayIds,
+		handler.RouteMatrix.RelayAddresses,
+		handler.RouteMatrix.RelayLatitudes,
+		handler.RouteMatrix.RelayLongitudes,
+		clientLatitude,
+		clientLongitude,
+		serverLatitude,
+		serverLongitude,
+	)
+
+	numNearRelays := len(nearRelayIds)
+
+	core.Debug("found %d near relays", numNearRelays)
+
 	responsePacket := &packets.SDK_NearRelayResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
-	responsePacket.Latitude, responsePacket.Longitude = handler.LocateIP(requestPacket.ClientAddress.IP)
-
-	// todo: find near relays
+	responsePacket.Latitude = clientLatitude
+	responsePacket.Longitude = clientLongitude 
+	responsePacket.NumNearRelays = int32(numNearRelays)
+	for i := 0; i < numNearRelays; i++ {
+		responsePacket.NearRelayIds[i] = nearRelayIds[i]
+		responsePacket.NearRelayAddresses[i] = nearRelayAddresses[i]
+	}
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_NEAR_RELAY_RESPONSE_PACKET, responsePacket)
 }
